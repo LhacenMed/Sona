@@ -15,9 +15,18 @@ interface TrackDao {
     @Query("SELECT path FROM tracks")
     suspend fun getAllPaths(): List<String>
 
+    @Query("SELECT * FROM tracks WHERE id IN (:ids)")
+    suspend fun getByIds(ids: List<Long>): List<TrackEntity>
+
+    @Query("SELECT path FROM tracks WHERE isFavorite = 1")
+    suspend fun getFavoritePaths(): List<String>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(tracks: List<TrackEntity>)
 
     @Query("DELETE FROM tracks WHERE path IN (:paths)")
     suspend fun deleteByPaths(paths: List<String>)
+
+    @Query("UPDATE tracks SET isFavorite = :isFavorite WHERE id = :trackId")
+    suspend fun setFavorite(trackId: Long, isFavorite: Boolean)
 }

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">Settings</string>
+    <string name="settings_excluded_folders">Excluded Folders</string>
+    <string name="settings_manage_tabs">Manage Tabs</string>
+
+    <string name="excluded_folders_title">Excluded Folders</string>
+    <string name="excluded_folders_empty_title">No excluded folders</string>
+    <string name="excluded_folders_empty_body">Folders you exclude are skipped when your library is scanned.</string>
+    <string name="excluded_folders_add">Add folder</string>
+    <string name="excluded_folders_remove">Remove folder</string>
+
+    <string name="manage_tabs_title">Manage Tabs</string>
+</resources>

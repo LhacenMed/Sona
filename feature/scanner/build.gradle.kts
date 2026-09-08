@@ -23,6 +23,9 @@ dependencies {
     implementation(project(":core:database"))
     implementation(project(":core:common"))
 
+    implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.core.ktx)
+
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 

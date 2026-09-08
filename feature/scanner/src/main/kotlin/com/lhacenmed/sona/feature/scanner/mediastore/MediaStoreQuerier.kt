@@ -138,6 +138,9 @@ class MediaStoreQuerier @Inject constructor(
                     dateAddedSeconds = dateAddedSeconds,
                     coverArtUri = coverArtUri,
                     isManuallyScanned = false,
+                    // MediaStore knows nothing about this; MediaScanner overlays the real value
+                    // from the database before persisting, so a rescan never clears favorites.
+                    isFavorite = false,
                 )
             }
         }

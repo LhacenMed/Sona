@@ -124,6 +124,9 @@ class ManualFileWalker @Inject constructor(
                 dateAddedSeconds = dateAddedSeconds,
                 coverArtUri = null,
                 isManuallyScanned = true,
+                // MediaScanner overlays the real value from the database before persisting, so a
+                // rescan never clears favorites.
+                isFavorite = false,
             )
         } catch (_: Exception) {
             return null
