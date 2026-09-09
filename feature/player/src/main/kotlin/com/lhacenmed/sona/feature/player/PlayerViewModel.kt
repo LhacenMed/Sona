@@ -2,8 +2,7 @@ package com.lhacenmed.sona.feature.player
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.lhacenmed.sona.core.database.dao.TrackDao
-import com.lhacenmed.sona.core.database.entity.toDomain
+import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackController
@@ -14,6 +13,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -21,8 +22,9 @@ import kotlinx.coroutines.launch
  * Combined playback + current-track state exposed to the mini player and the expandable
  * [com.lhacenmed.sona.feature.player.PlayerScreen]. [queueTracks] resolves
  * [PlaybackUiState.queue] (ordered track ids) to full [Track]s, in queue order, for the artwork
- * pager - kept reactive (re-derived from [TrackDao.observeAll]) rather than fetched once, so a
- * favorite toggle or library rescan is reflected immediately.
+ * pager - kept reactive (re-derived from [LibraryRepository.tracksById]) rather than fetched once,
+ * so a favourite toggle or library rescan is reflected immediately, but without ever re-reading the
+ * database: the repository already holds the library, and this only indexes into it.
  */
 data class PlayerUiState(
     val playback: PlaybackUiState = PlaybackUiState(),
@@ -32,21 +34,30 @@ data class PlayerUiState(
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
-    private val trackDao: TrackDao,
+    private val repository: LibraryRepository,
     private val playbackController: PlaybackController,
 ) : ViewModel() {
 
+    // The playback state ticks roughly twice a second while playing (it carries the position), so
+    // anything expensive keyed off it must be narrowed to the field it actually depends on first -
+    // otherwise resolving the queue is redone on every tick for a queue that has not changed.
+    private val currentTrack = combine(
+        playbackController.playbackState.map { it.currentTrackId }.distinctUntilChanged(),
+        repository.tracksById,
+    ) { trackId, tracksById -> tracksById[trackId] }
+
+    private val queueTracks = combine(
+        playbackController.playbackState.map { it.queue }.distinctUntilChanged(),
+        repository.tracksById,
+    ) { queue, tracksById -> queue.mapNotNull { tracksById[it] } }
+
     val uiState: StateFlow<PlayerUiState> = combine(
         playbackController.playbackState,
-        trackDao.observeAll(),
-    ) { playback, entities ->
-        val tracksById = entities.associateBy { it.id }
-        PlayerUiState(
-            playback = playback,
-            currentTrack = tracksById[playback.currentTrackId]?.toDomain(),
-            queueTracks = playback.queue.mapNotNull { id -> tracksById[id]?.toDomain() },
-        )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PlayerUiState())
+        currentTrack,
+        queueTracks,
+    ) { playback, track, queue ->
+        PlayerUiState(playback = playback, currentTrack = track, queueTracks = queue)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PlayerUiState())
 
     fun onTogglePlayPause() {
         playbackController.togglePlayPause()
@@ -85,7 +96,7 @@ class PlayerViewModel @Inject constructor(
     fun onToggleFavorite() {
         val track = uiState.value.currentTrack ?: return
         viewModelScope.launch(Dispatchers.IO) {
-            trackDao.setFavorite(track.id, !track.isFavorite)
+            repository.setFavorite(track.id, !track.isFavorite)
         }
     }
 

@@ -25,7 +25,7 @@ android {
 
 dependencies {
     implementation(project(":core:model"))
-    implementation(project(":core:database"))
+    implementation(project(":core:data"))
     implementation(project(":feature:playback"))
 
     implementation(platform(libs.androidx.compose.bom))

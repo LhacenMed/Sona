@@ -21,7 +21,7 @@ import com.lhacenmed.sona.core.database.entity.TrackEntity
         GenreEntity::class,
         QueueItemEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 abstract class SonaDatabase : RoomDatabase() {

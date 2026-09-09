@@ -9,7 +9,7 @@ import coil3.request.ImageRequest
 import coil3.request.SuccessResult
 import coil3.request.allowHardware
 import coil3.toBitmap
-import com.lhacenmed.sona.core.database.dao.TrackDao
+import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.designsystem.theme.DefaultThemeColor
 import com.lhacenmed.sona.core.designsystem.theme.extractThemeColor
 import com.lhacenmed.sona.core.datastore.ThemeSettings
@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
@@ -38,15 +39,18 @@ import kotlinx.coroutines.withContext
 class AppThemeViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     themeSettings: ThemeSettings,
-    trackDao: TrackDao,
+    repository: LibraryRepository,
     playbackController: PlaybackController,
 ) : ViewModel() {
 
+    // Narrowed to the playing track's id before touching the library: the playback state also
+    // carries a position that ticks twice a second, and this used to linearly scan the whole track
+    // table on every one of those ticks looking for a single row.
     private val currentCoverArtUri = combine(
-        playbackController.playbackState,
-        trackDao.observeAll(),
-    ) { playback, entities ->
-        entities.find { it.id == playback.currentTrackId }?.coverArtUri
+        playbackController.playbackState.map { it.currentTrackId }.distinctUntilChanged(),
+        repository.tracksById,
+    ) { trackId, tracksById ->
+        tracksById[trackId]?.coverArtUri
     }.distinctUntilChanged()
 
     val themeColor: StateFlow<androidx.compose.ui.graphics.Color> = combine(

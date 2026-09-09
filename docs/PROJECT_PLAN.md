@@ -1,7 +1,7 @@
 # Sona — Project Plan & Session Handoff
 
 **Package:** `com.lhacenmed.sona` · **Root:** `C:\Users\lhacenmed\AndroidStudioProjects\Sona`
-**Last updated:** 2026-09-08 · **Status:** Phases 1–3 complete and building; Phases 4–6 not started.
+**Last updated:** 2026-09-09 · **Status:** Phases 1–3 complete and building; Phases 4–6 not started.
 
 > **Read this first if you are a new session.** This document is the single source of truth for
 > what exists, what is left, and — critically — the toolchain landmines already discovered the hard
@@ -51,6 +51,7 @@ is already done.
 | 2 | Navigation shell, all library tabs, search, sorting, settings | ✅ Complete, builds clean |
 | 3 | Full player, playback behaviour, persistence, notification, dynamic theming | ✅ Complete, builds clean |
 | — | Performance & UX remediation (tabs redesign, load speed, colour transitions) | ✅ Complete, builds clean |
+| — | Library data-layer rebuild (`:core:data`, diff sync, stable ids, launch speed) | ✅ Complete, builds clean |
 | 4 | Metadata, lyrics, tagging, **ReplayGain**, content/image settings | ❌ Not started |
 | 5 | Playlists + listening stats | ❌ Not started |
 | 6 | Equalizer, language, in-app updater, personalize, settings consolidation | ❌ Not started |
@@ -70,7 +71,8 @@ This is a deliberate, user-approved standard, but it means runtime behaviour is 
 core/
   :core:model            Pure Kotlin/JVM domain models (no Android deps)
   :core:common           Hilt dispatcher qualifiers; natural-sort comparator
-  :core:database         Room: SonaDatabase (v3), entities, DAOs, mappers
+  :core:database         Room: SonaDatabase (v4), entities, DAOs, mappers, stable id derivation
+  :core:data             LibraryRepository (the app's single library view) + LibraryWriter (diff sync)
   :core:datastore        DataStore Preferences: Library/Playback/Theme settings
   :core:designsystem     SonaTheme, dynamic colour extraction, SonaTabRow
   :core:navigation       Screen contract, AppNavigator, HostActivity
@@ -98,14 +100,32 @@ observes `Flow`s. This is better, but it means Sona *needs* things Fossify doesn
 around multi-table writes (otherwise observers see partial batches and flicker). Do not "match
 Fossify" by removing transactions.
 
-**Nullable list state = "not loaded yet".** List ViewModels expose `StateFlow<List<T>?>` where
-`null` means the DB hasn't been read, distinct from an empty list. Screens render nothing while
-`null`. This is what stops the "Scanning…"/"no items" flash on launch, and it reproduces Fossify's
-real behaviour (scan UI only appears on a genuinely empty library, i.e. first run).
+**One `LibraryRepository`, shared from the application scope.** The library is process-wide
+state: the same rows feed five tabs, search, the player, the notification and the dynamic theme.
+It is queried, mapped and sorted **once**, on `Dispatchers.Default`, and shared `Eagerly` from an
+`@ApplicationScope` `CoroutineScope`. Before this, nine ViewModels each called
+`trackDao.observeAll()` and mapped/filtered/sorted the whole table inside
+`stateIn(viewModelScope, …)` — whose transform runs on `Dispatchers.Main.immediate`. Every write
+to `tracks` therefore fanned out into up to nine full-library re-sorts **on the main thread**.
+Do not reintroduce a DAO call in a ViewModel; add a query to the repository instead.
 
-**Library tab ViewModels use `SharingStarted.Eagerly`** and are all created up front in
-`LibraryPagerScreen`, so every tab holds its rows before it is swiped to. `SearchViewModel`
-deliberately still uses `WhileSubscribed` — it's a pushed screen, not a tab.
+**`LibraryContent` = `Loading | Ready(items)`.** "Empty" and "not loaded" mean opposite things
+to a person, and a bare `List` cannot tell them apart. `Loading` renders a placeholder list (same
+row height as the real one, so nothing reflows); only `Ready` with no items shows an
+empty-library message, still split three ways (no permission / scanning / genuinely empty). The
+previous `List<T>?` convention rendered *nothing* while loading — that blank window is what the
+launch used to show.
+
+**One `LibraryViewModel` for the whole pager.** The five tabs no longer have five ViewModels;
+they share one, whose lists are already computed. Opening a tab is a composition and nothing else.
+
+**Lists never highlight from `PlaybackUiState`.** It carries a position that ticks twice a
+second, so collecting it in a list recomposes every row twice a second. ViewModels expose a
+`distinctUntilChanged` `currentTrackId` instead, and rows take `isPlaying` as a **lambda** so
+only the two affected rows recompose.
+
+**Every Lazy list has a stable key + contentType**, funnelled through `LibraryList` so it cannot
+be forgotten. Search namespaces its keys (`"album-$id"`) because four id spaces share one list.
 
 **Theme animates one seed colour, not each role.** `SonaTheme` animates the seed and derives the
 whole `ColorScheme` from it. The earlier implementation animated ~34 roles individually, which
@@ -136,8 +156,21 @@ class PlaybackController {            // @Singleton
 
 // :feature:scanner
 class MediaScanner {                  // @Singleton — isScanning is shared state
-    suspend fun scan(excludedFolders: Set<String> = emptySet())
+    fun requestScan(force: Boolean = false)                 // fire-and-forget, on the app scope
+    suspend fun scan(excludedFolders: Set<String> = emptySet(), force: Boolean = false): SyncStats
     val isScanning: StateFlow<Boolean>
+}
+
+// :core:data
+class LibraryRepository {             // @Singleton — the only place that reads library DAOs
+    val tracks/albums/artists/genres/folders: StateFlow<LibraryContent<T>>  // Eagerly, app scope
+    val tracksById: StateFlow<Map<Long, Track>>
+    val isReady: StateFlow<Boolean>                         // the splash-screen gate
+    fun album/artist/genre(id); fun album/artist/genre/folderTracks(id)     // scoped queries
+    fun searchTracks/Albums/Artists/Genres(query, limit)     // SQL LIKE … LIMIT, not in-memory
+}
+class LibraryWriter {                // @Singleton
+    suspend fun sync(tracks, albums, artists, genres, deleteMissing = true): SyncStats
 }
 fun scannerRequiredPermission(): String            // single source of truth
 fun Context.hasScannerPermission(): Boolean
@@ -150,17 +183,28 @@ interface Screen : Serializable {
 }
 ```
 
-### Scanner pipeline (matches Fossify's real ordering)
+### Scanner pipeline (Fossify's ordering, made idempotent)
 
+0. **Skip check.** `scanSignatureOf()` fingerprints `MediaStore.getVersion()` +
+   `MediaStore.getGeneration()` (API 30+) + the excluded-folder set + a scanner schema version.
+   If it matches the last completed scan *and* `trackDao.count() > 0`, the scan does not run.
 1. Query MediaStore (fast, already indexed).
 2. Filter excluded folders + orphans; recompute album/artist/genre counts **via `groupBy`** (was
    O(entities × tracks) — a confirmed major bottleneck, now O(tracks)).
-3. Overlay favourites read from DB (so a rescan never clears them).
-4. **Persist Stage 1** — first paint happens here.
-5. API 29+ only: manual filesystem walk for files MediaStore missed → merge → persist again.
-6. `cleanup()` deletes rows no longer present.
+3. **Sync stage 1** — `deleteMissing = false`. First paint happens here on a first run.
+4. API 29+ only: manual filesystem walk for files MediaStore missed → merge.
+5. **Sync stage 2** — the authoritative pass, and the only one allowed to delete.
 
-Both persists and cleanup run inside `database.withTransaction { }`.
+Both syncs go through `LibraryWriter`, which **diffs** the result against what is stored and
+writes only genuine changes, inside one `withTransaction`. When there is no difference it opens
+**no transaction at all**, so nothing is invalidated and nothing repaints. Favourites are carried
+forward from the stored row rather than re-overlaid by path.
+
+**Track ids are derived from the file path** (`stableIdOf`), not auto-generated. With
+`autoGenerate = true` every scanned track arrived as `id = 0`, so `REPLACE` resolved the unique
+`path` index by deleting the row and reinserting it with a fresh rowid — every launch rewrote the
+whole table with new primary keys, which invalidated every observing Flow and orphaned the
+persisted playback queue. Do not reintroduce `autoGenerate` on `TrackEntity`.
 
 ---
 
@@ -271,12 +315,12 @@ Ordered roughly by how much they'd bite.
 2. **Player "Go to album/artist" callbacks are no-ops.** `SonaApp.kt` passes empty lambdas to
    `PlayerScreen(onGoToAlbum = {}, onGoToArtist = {})`. The detail screens exist
    (`AlbumDetailScreen(albumId)`, `ArtistDetailScreen(artistId)`) — just wire them via `LocalNavigator`.
-3. **Detail screens didn't get the loading-state fix.** `AlbumDetail`/`ArtistDetail`/`GenreDetail`/
-   `FolderDetail` still use non-null initial state, so they can briefly render an empty frame. Apply
-   the same nullable-state pattern as the list screens.
+3. ~~Detail screens didn't get the loading-state fix.~~ **Done.** They now share
+   `TrackListDetailViewModel` + `TrackListDetail`, so they inherit `LibraryContent.Loading` and
+   query only their own rows instead of filtering the whole table in memory.
 4. **Player lyrics section is an honest placeholder** ("Lyrics not available") pending Phase 4 data.
    Designed so real content slots in without restructuring.
-5. **`SearchViewModel` has an unresolved `FlowPreview` warning** (line ~59, `debounce`). Cosmetic.
+5. ~~`SearchViewModel` has an unresolved `FlowPreview` warning.~~ **Done** — opted in explicitly.
 6. **Destructive Room migration is still on.** `DatabaseModule` uses
    `fallbackToDestructiveMigration(dropAllTables = true)` — correct while pre-release, but **must be
    replaced with real migrations before shipping**, or users lose favourites/queue/playlists on upgrade.
@@ -300,6 +344,12 @@ Ordered roughly by how much they'd bite.
   `WRITE_EXTERNAL_STORAGE` while the scanner checked `READ_EXTERNAL_STORAGE`. Manifest now declares
   `READ_EXTERNAL_STORAGE` (maxSdk 32).
 - Empty states distinguish permission / scanning / genuinely-empty instead of assuming "empty = no permission".
+- **Launch/relaunch performance overhaul** (see §3): stable path-derived track ids; diff-based
+  `LibraryWriter`; MediaStore-signature scan skip; a single `LibraryRepository` shared off the
+  main thread; `SortKey` (names tokenized once per item rather than once per *comparison* — the
+  comparator was re-running ICU transliteration O(n log n) times); indices + scoped queries for
+  the detail screens; SQL-side search and folder aggregation; splash screen held until the
+  library is in memory.
 - Bottom `NavigationBar` replaced by top `SonaTabRow` + `HorizontalPager`; player overlay no longer
   needs reserved bottom space.
 

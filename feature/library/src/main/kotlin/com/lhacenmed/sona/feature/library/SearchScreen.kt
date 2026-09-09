@@ -34,7 +34,7 @@ object SearchScreen : Screen {
         val viewModel: SearchViewModel = hiltViewModel()
         val query by viewModel.query.collectAsStateWithLifecycle()
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-        val playbackState by viewModel.playbackState.collectAsStateWithLifecycle()
+        val currentTrackId by viewModel.currentTrackId.collectAsStateWithLifecycle()
 
         Column(modifier = Modifier.fillMaxSize()) {
             Row(
@@ -71,17 +71,17 @@ object SearchScreen : Screen {
                 else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
                     if (uiState.tracks.isNotEmpty()) {
                         item { SearchSectionHeader("Tracks") }
-                        items(uiState.tracks) { track ->
-                            DetailTrackRow(
+                        items(uiState.tracks, key = { "track-${it.id}" }) { track ->
+                            TrackRow(
                                 track = track,
-                                isPlaying = track.id == playbackState.currentTrackId,
+                                isPlaying = { track.id == currentTrackId },
                                 onClick = { viewModel.onTrackClick(track) },
                             )
                         }
                     }
                     if (uiState.albums.isNotEmpty()) {
                         item { SearchSectionHeader("Albums") }
-                        items(uiState.albums) { album ->
+                        items(uiState.albums, key = { "album-${it.id}" }) { album ->
                             SearchResultRow(
                                 title = album.title,
                                 subtitle = album.artistName,
@@ -91,7 +91,7 @@ object SearchScreen : Screen {
                     }
                     if (uiState.artists.isNotEmpty()) {
                         item { SearchSectionHeader("Artists") }
-                        items(uiState.artists) { artist ->
+                        items(uiState.artists, key = { "artist-${it.id}" }) { artist ->
                             SearchResultRow(
                                 title = artist.name,
                                 subtitle = "${artist.trackCount} tracks",
@@ -101,7 +101,7 @@ object SearchScreen : Screen {
                     }
                     if (uiState.genres.isNotEmpty()) {
                         item { SearchSectionHeader("Genres") }
-                        items(uiState.genres) { genre ->
+                        items(uiState.genres, key = { "genre-${it.id}" }) { genre ->
                             SearchResultRow(
                                 title = genre.name,
                                 subtitle = "${genre.trackCount} tracks",

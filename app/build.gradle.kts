@@ -170,7 +170,7 @@ kotlin {
 
 dependencies {
     implementation(project(":core:model"))
-    implementation(project(":core:database"))
+    implementation(project(":core:data"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:navigation"))
     implementation(project(":core:datastore"))
@@ -181,6 +181,7 @@ dependencies {
     implementation(project(":feature:settings"))
 
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.google.material)

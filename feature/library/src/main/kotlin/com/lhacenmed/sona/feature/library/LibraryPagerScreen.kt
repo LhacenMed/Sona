@@ -8,6 +8,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -22,23 +23,19 @@ import kotlinx.coroutines.launch
  * host's top app bar, plus its paged content. This is the single entry point `:app` needs - it
  * owns tab selection and visibility internally, leaving the bottom of the screen entirely free
  * for the expandable player.
+ *
+ * All five tabs share one [LibraryViewModel], which in turn reads lists that
+ * [com.lhacenmed.sona.core.data.LibraryRepository] has already computed once for the whole process.
+ * "Opening" a tab therefore costs a composition and nothing else - no query, no sort - which is why
+ * they can all exist at once without competing for the launch frame.
  */
 @Composable
 fun LibraryPagerScreen(
     modifier: Modifier = Modifier,
-    tabsViewModel: LibraryTabsViewModel = hiltViewModel(),
+    viewModel: LibraryViewModel = hiltViewModel(),
 ) {
-    val visibleTabs by tabsViewModel.visibleTabs.collectAsStateWithLifecycle()
+    val visibleTabs by viewModel.visibleTabs.collectAsStateWithLifecycle()
     if (visibleTabs.isEmpty()) return
-
-    // Every tab's view model is created up front, not on arrival. Their data flows are eagerly
-    // collected (see the view models' `SharingStarted.Eagerly`), so a tab already holds its rows
-    // before it is ever swiped to and paints them on its first frame.
-    val tracksViewModel: TracksViewModel = hiltViewModel()
-    val artistsViewModel: ArtistsViewModel = hiltViewModel()
-    val albumsViewModel: AlbumsViewModel = hiltViewModel()
-    val genresViewModel: GenresViewModel = hiltViewModel()
-    val foldersViewModel: FoldersViewModel = hiltViewModel()
 
     // Keying on the tab set (not just its size) fully resets the pager whenever it changes - a
     // settings change mid-session is rare enough that snapping back to the first tab is the
@@ -47,11 +44,12 @@ fun LibraryPagerScreen(
     key(visibleTabs) {
         val pagerState = rememberPagerState(pageCount = { visibleTabs.size })
         val scope = rememberCoroutineScope()
+        val tabTitles = remember(visibleTabs) { visibleTabs.map { it.label() } }
 
         Column(modifier = modifier.fillMaxSize()) {
             if (visibleTabs.size > 1) {
                 SonaTabRow(
-                    tabTitles = visibleTabs.map { it.label() },
+                    tabTitles = tabTitles,
                     // Passed as a lambda so the swipe position is read inside the tab row, not
                     // here - otherwise every frame of a swipe would recompose the pager below.
                     selectedPosition = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
@@ -64,13 +62,16 @@ fun LibraryPagerScreen(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize(),
                 beyondViewportPageCount = 1,
+                // Stable page keys, so a tab keeps its scroll position and composition when the
+                // visible set is unchanged but the pager recomposes.
+                key = { page -> visibleTabs[page].name },
             ) { page ->
                 when (visibleTabs[page]) {
-                    LibraryTab.TRACKS -> TracksScreen(viewModel = tracksViewModel)
-                    LibraryTab.ARTISTS -> ArtistsScreen(viewModel = artistsViewModel)
-                    LibraryTab.ALBUMS -> AlbumsScreen(viewModel = albumsViewModel)
-                    LibraryTab.GENRES -> GenresScreen(viewModel = genresViewModel)
-                    LibraryTab.FOLDERS -> FoldersScreen(viewModel = foldersViewModel)
+                    LibraryTab.TRACKS -> TracksScreen(viewModel = viewModel)
+                    LibraryTab.ARTISTS -> ArtistsScreen(viewModel = viewModel)
+                    LibraryTab.ALBUMS -> AlbumsScreen(viewModel = viewModel)
+                    LibraryTab.GENRES -> GenresScreen(viewModel = viewModel)
+                    LibraryTab.FOLDERS -> FoldersScreen(viewModel = viewModel)
                 }
             }
         }

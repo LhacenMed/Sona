@@ -5,6 +5,7 @@ import android.media.MediaMetadataRetriever
 import android.media.MediaScannerConnection
 import android.os.Build
 import android.os.storage.StorageManager
+import com.lhacenmed.sona.core.database.stableIdOf
 import com.lhacenmed.sona.core.model.Track
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
@@ -104,10 +105,11 @@ class ManualFileWalker @Inject constructor(
             val dateAddedSeconds = runCatching { File(path).lastModified() / 1000L }.getOrDefault(0L)
 
             return Track(
-                id = 0,
+                // Path-derived, so the same file keeps the same id across every future scan.
+                id = stableIdOf(path),
                 // There's no MediaStore row for a manually-discovered file, so derive a stable
                 // stand-in id from its path (the same path is also the DB's real unique key).
-                mediaStoreId = path.hashCode().toLong(),
+                mediaStoreId = stableIdOf(path),
                 title = title,
                 artist = artist,
                 artistId = 0L,
@@ -124,8 +126,8 @@ class ManualFileWalker @Inject constructor(
                 dateAddedSeconds = dateAddedSeconds,
                 coverArtUri = null,
                 isManuallyScanned = true,
-                // MediaScanner overlays the real value from the database before persisting, so a
-                // rescan never clears favorites.
+                // LibraryWriter carries the stored value forward on every sync, so a rescan never
+                // clears favourites.
                 isFavorite = false,
             )
         } catch (_: Exception) {
