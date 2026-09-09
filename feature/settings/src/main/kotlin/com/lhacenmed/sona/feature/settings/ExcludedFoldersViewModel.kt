@@ -8,7 +8,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -27,16 +26,23 @@ class ExcludedFoldersViewModel @Inject constructor(
         if (path.isBlank()) return
         viewModelScope.launch {
             librarySettings.addExcludedFolder(path)
-            val updated = librarySettings.excludedFolders.first()
-            mediaScanner.scan(excludedFolders = updated)
+            requestRescan()
         }
     }
 
     fun removeFolder(path: String) {
         viewModelScope.launch {
             librarySettings.removeExcludedFolder(path)
-            val updated = librarySettings.excludedFolders.first()
-            mediaScanner.scan(excludedFolders = updated)
+            requestRescan()
         }
+    }
+
+    /**
+     * Runs on the scanner's own application scope rather than this ViewModel's, so navigating away
+     * from the settings screen mid-scan doesn't cancel it and leave the library half-reconciled.
+     * The excluded-folder set is part of the scan signature, so this always does real work.
+     */
+    private fun requestRescan() {
+        mediaScanner.requestScan()
     }
 }

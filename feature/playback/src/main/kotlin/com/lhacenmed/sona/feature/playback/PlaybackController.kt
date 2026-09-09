@@ -13,10 +13,9 @@ import androidx.media3.common.Timeline
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
+import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
-import com.lhacenmed.sona.core.database.dao.TrackDao
 import com.lhacenmed.sona.core.database.entity.QueueItemEntity
-import com.lhacenmed.sona.core.database.entity.toDomain
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
@@ -50,7 +49,7 @@ import kotlinx.coroutines.withContext
 class PlaybackController @Inject constructor(
     @ApplicationContext private val context: Context,
     private val queueItemDao: QueueItemDao,
-    private val trackDao: TrackDao,
+    private val repository: LibraryRepository,
     private val playbackSettings: PlaybackSettings,
 ) {
 
@@ -206,11 +205,14 @@ class PlaybackController @Inject constructor(
         scope.launch {
             val items = withContext(Dispatchers.IO) { queueItemDao.getAll() }
             if (items.isEmpty()) return@launch
+            // Track ids are derived from file paths and so survive a rescan. Before that, a scan
+            // reassigned every id, and a restored queue silently resolved to nothing after the
+            // first relaunch.
             val tracksById = withContext(Dispatchers.IO) {
-                trackDao.getByIds(items.map { it.trackId }).associateBy { it.id }
+                repository.tracksByIds(items.map { it.trackId }).associateBy { it.id }
             }
             val restored = items.mapNotNull { queueItem ->
-                tracksById[queueItem.trackId]?.let { entity -> queueItem to entity.toDomain() }
+                tracksById[queueItem.trackId]?.let { track -> queueItem to track }
             }
             if (restored.isEmpty()) return@launch
             val currentIndex = restored.indexOfFirst { it.first.isCurrent }.takeIf { it >= 0 } ?: 0

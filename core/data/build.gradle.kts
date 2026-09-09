@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.lhacenmed.sona.feature.scanner"
+    namespace = "com.lhacenmed.sona.core.data"
     compileSdk = 36
 
     defaultConfig {
@@ -19,14 +19,15 @@ android {
 }
 
 dependencies {
-    implementation(project(":core:model"))
-    implementation(project(":core:database"))
-    implementation(project(":core:data"))
+    // `api`, not `implementation`: the repository's own surface is expressed in domain models and
+    // in Room's Flow types, so every consumer needs them on its compile classpath.
+    api(project(":core:model"))
+    api(project(":core:database"))
     implementation(project(":core:datastore"))
     implementation(project(":core:common"))
 
+    implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    implementation(libs.androidx.core.ktx)
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

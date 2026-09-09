@@ -1,3 +1,16 @@
 <resources>
     <style name="Theme.Sona" parent="Theme.Material3.DayNight.NoActionBar" />
+
+    <!--
+        The theme the window actually launches with. The system draws this before any of the app's
+        code runs, and MainActivity holds it on screen until the library's first rows are in memory
+        (or a short timeout elapses). That is what removes the "empty list for a second, then
+        everything appears" launch: there is no frame in which an empty library is shown, because
+        the app doesn't take the screen until it has something to show.
+    -->
+    <style name="Theme.Sona.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/ic_launcher_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Sona</item>
+    </style>
 </resources>
