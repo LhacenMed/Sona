@@ -56,9 +56,9 @@ data class SyncStats(
  * the fastest write is the one that is never issued.
  *
  * Rows are compared by value (`data class` equality), which is exact now that ids are derived from
- * stable identity rather than auto-generated. User-owned columns that a scan knows nothing about -
- * currently `isFavorite` - are carried forward from the stored row, which also replaces the old
- * "read all favourite paths and overlay them" pass.
+ * stable identity rather than auto-generated. Nothing user-owned lives on a track row any more -
+ * favourites are playlist membership, keyed on the same stable id - so a scan has nothing to carry
+ * forward and the row it writes is simply what it found.
  */
 @Singleton
 class LibraryWriter @Inject constructor(
@@ -90,10 +90,7 @@ class LibraryWriter @Inject constructor(
         val storedGenres = genreDao.getAll().associateBy { it.id }
 
         val trackDiff = diff(
-            desired = tracks.map { track ->
-                // A scan cannot know a track is a favourite; the stored row is the authority.
-                track.toEntity().copy(isFavorite = storedTracks[track.id]?.isFavorite ?: false)
-            },
+            desired = tracks.map { it.toEntity() },
             stored = storedTracks,
             idOf = TrackEntity::id,
             deleteMissing = deleteMissing,

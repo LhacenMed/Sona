@@ -14,6 +14,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
 import com.lhacenmed.sona.core.data.LibraryRepository
+import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
 import com.lhacenmed.sona.core.database.entity.QueueItemEntity
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
@@ -45,10 +46,18 @@ import kotlinx.coroutines.withContext
  * to collect. Also owns queue persistence (save on every relevant player event, restore once per
  * process on first connect) - ported from Fossify's `PlayerListener`/`AudioHelper` queue table.
  */
+/**
+ * How long a track has to play before the listen is counted, rather than merely remembered.
+ *
+ * Ported verbatim from Fossify's `PLAY_COUNT_THRESHOLD_MS`.
+ */
+private const val PLAY_COUNT_THRESHOLD_MS = 10_000L
+
 @Singleton
 class PlaybackController @Inject constructor(
     @ApplicationContext private val context: Context,
     private val queueItemDao: QueueItemDao,
+    private val playStatsDao: PlayStatsDao,
     private val repository: LibraryRepository,
     private val playbackSettings: PlaybackSettings,
 ) {
@@ -57,6 +66,10 @@ class PlaybackController @Inject constructor(
 
     private var controller: MediaController? = null
     private var positionPollJob: Job? = null
+    private var playCountJob: Job? = null
+
+    /** The track already counted, so pausing and resuming cannot count the same listen twice. */
+    private var countedTrackId: Long? = null
     private val hasRestoredQueue = AtomicBoolean(false)
 
     private val _playbackState = MutableStateFlow(PlaybackUiState())
@@ -65,6 +78,12 @@ class PlaybackController @Inject constructor(
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (isPlaying) startPositionPolling() else stopPositionPolling()
+            schedulePlayCount(isPlaying)
+        }
+
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            recordPlayStarted(mediaItem?.mediaId?.toLongOrNull())
+            schedulePlayCount(controller?.isPlaying == true)
         }
 
         // Ported from Fossify's PlayerListener.onEvents: recompute UI state and re-save the
@@ -175,6 +194,45 @@ class PlaybackController @Inject constructor(
 
     // Ported from Fossify's AudioHelper.resetQueue: a full delete-and-reinsert of the queue table
     // on every save, keeping it trivially consistent with the player's current timeline.
+    /**
+     * Remembers that a track was played, the moment it starts.
+     *
+     * Two different things are recorded, following Fossify's `PlayHistoryRecorder`: starting a track
+     * is enough to make it recent, but only a listen that lasts counts towards how often it has been
+     * played. Skipping through an album therefore reorders "Recent" without inflating any counts.
+     */
+    private fun recordPlayStarted(trackId: Long?) {
+        playCountJob?.cancel()
+        countedTrackId = null
+        if (trackId == null) return
+        scope.launch(Dispatchers.IO) {
+            playStatsDao.recordPlayStarted(trackId, System.currentTimeMillis())
+        }
+    }
+
+    /**
+     * Arms the count for the remainder of the threshold, or cancels it when playback stops.
+     *
+     * The wait is measured from where the track already is rather than restarted, so resuming after
+     * a pause does not start the clock again - the same arithmetic Fossify uses.
+     */
+    private fun schedulePlayCount(isPlaying: Boolean) {
+        playCountJob?.cancel()
+        if (!isPlaying) return
+        val mediaController = controller ?: return
+        val trackId = mediaController.currentMediaItem?.mediaId?.toLongOrNull() ?: return
+        if (trackId == countedTrackId) return
+
+        val remainingMs = (PLAY_COUNT_THRESHOLD_MS - mediaController.currentPosition).coerceAtLeast(0L)
+        playCountJob = scope.launch {
+            delay(remainingMs)
+            countedTrackId = trackId
+            withContext(Dispatchers.IO) {
+                playStatsDao.recordPlayCounted(trackId, System.currentTimeMillis())
+            }
+        }
+    }
+
     private fun persistQueueState(mediaController: MediaController) {
         val currentItem = mediaController.currentMediaItem ?: return
         val currentId = currentItem.mediaId.toLongOrNull() ?: return

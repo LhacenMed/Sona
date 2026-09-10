@@ -122,6 +122,10 @@ fun LibraryPagerScreen(
                 ),
             )
 
+            LibraryShortcuts(
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+
             if (visibleTabs.size > 1) {
                 SonaTabRow(
                     tabTitles = tabTitles,

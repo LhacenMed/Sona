@@ -58,6 +58,4 @@ interface TrackDao {
     @Query("DELETE FROM tracks WHERE id IN (:ids)")
     suspend fun deleteByIds(ids: List<Long>)
 
-    @Query("UPDATE tracks SET isFavorite = :isFavorite WHERE id = :trackId")
-    suspend fun setFavorite(trackId: Long, isFavorite: Boolean)
 }

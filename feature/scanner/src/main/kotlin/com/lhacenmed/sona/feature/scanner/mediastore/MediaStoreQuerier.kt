@@ -142,7 +142,6 @@ class MediaStoreQuerier @Inject constructor(
                     isManuallyScanned = false,
                     // MediaStore knows nothing about this; LibraryWriter carries the stored value
                     // forward on every sync, so a rescan never clears favourites.
-                    isFavorite = false,
                 )
             }
         }
