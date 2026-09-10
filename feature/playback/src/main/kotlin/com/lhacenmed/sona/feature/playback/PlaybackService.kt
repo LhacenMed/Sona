@@ -1,16 +1,20 @@
 package com.lhacenmed.sona.feature.playback
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.media.AudioManager
+import android.os.Build
 import android.os.Bundle
 import androidx.core.content.ContextCompat
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
@@ -35,13 +39,18 @@ import kotlinx.coroutines.runBlocking
 /**
  * Foreground [MediaSessionService] that owns the [ExoPlayer] instance and its [MediaSession].
  *
- * Hosting the player here (rather than in the UI process) gives us, for free, a system media
- * notification, lock screen transport controls, and headset button handling via
- * `androidx.media3.session` - none of that is hand-built (mirrors Fossify: no custom
- * `MediaNotification.Provider` is installed, media3's `DefaultMediaNotificationProvider` builds
- * the notification entirely from the session/player state).
+ * Hosting the player here (rather than in the UI process) gives us, for free, lock screen transport
+ * controls and headset button handling via `androidx.media3.session`.
+ *
+ * The notification itself is still rendered by media3, but through
+ * [SonaMediaNotificationProvider] rather than the bare default, so it carries Sona's icon and its
+ * own action buttons. Those buttons follow ArchiveTune's design: [updateNotification] rebuilds the
+ * whole layout from current state, and it is called from the player's state listeners rather than
+ * from the button handlers - a press only changes state, and the notification follows. That
+ * indirection is what keeps a button's icon from ever disagreeing with the player.
  */
 @AndroidEntryPoint
+@UnstableApi
 class PlaybackService : MediaSessionService() {
 
     @Inject
@@ -72,6 +81,11 @@ class PlaybackService : MediaSessionService() {
     private val playerListener = object : Player.Listener {
         override fun onRepeatModeChanged(repeatMode: Int) {
             updatePauseOnRepeat()
+            updateNotification()
+        }
+
+        override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+            updateNotification()
         }
     }
 
@@ -99,6 +113,8 @@ class PlaybackService : MediaSessionService() {
             val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
                 .buildUpon()
                 .add(PlaybackSessionCommands.closeSessionCommand)
+                .add(PlaybackSessionCommands.toggleShuffleCommand)
+                .add(PlaybackSessionCommands.toggleRepeatModeCommand)
                 .build()
             return MediaSession.ConnectionResult.accept(
                 sessionCommands,
@@ -112,16 +128,24 @@ class PlaybackService : MediaSessionService() {
             customCommand: SessionCommand,
             args: Bundle,
         ): ListenableFuture<SessionResult> {
-            if (customCommand.customAction == PlaybackSessionCommands.ACTION_CLOSE) {
-                stopPlaybackAndService()
-                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+            // Each branch only changes state. Nothing here touches the notification - the
+            // resulting player callback does, via updateNotification().
+            when (customCommand.customAction) {
+                PlaybackSessionCommands.ACTION_CLOSE -> stopPlaybackAndService()
+
+                PlaybackSessionCommands.ACTION_TOGGLE_SHUFFLE -> toggleShuffle()
+
+                PlaybackSessionCommands.ACTION_TOGGLE_REPEAT_MODE -> toggleRepeatMode()
+
+                else -> return super.onCustomCommand(session, controller, customCommand, args)
             }
-            return super.onCustomCommand(session, controller, customCommand, args)
+            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
         }
     }
 
     override fun onCreate() {
         super.onCreate()
+        createNotificationChannel()
 
         // One-time synchronous read of the persisted settings needed before the player/session
         // are built (mirrors Fossify's PlayerInit.initializeSessionAndPlayer, which reads its
@@ -162,11 +186,117 @@ class PlaybackService : MediaSessionService() {
         mediaSession = MediaSession.Builder(this, forwardingPlayer)
             .setCallback(sessionCallback)
             .setSessionActivity(buildSessionActivityPendingIntent())
-            .setCustomLayout(listOf(buildCloseCommandButton()))
             .build()
 
+        setMediaNotificationProvider(
+            SonaMediaNotificationProvider(
+                context = this,
+                smallIconResId = R.drawable.ic_notification,
+            ),
+        )
+
+        updateNotification()
         registerHeadsetReceiver()
         collectRuntimeSettings()
+    }
+
+    // Swipe-to-dismiss is routed here by SonaMediaNotificationProvider so the queue can be dropped
+    // rather than left behind for a session the user has just dismissed, then the original media3
+    // delete intent is forwarded so its own teardown still happens.
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_MEDIA_NOTIFICATION_DISMISSED) {
+            handleMediaNotificationDismissed(intent)
+            return START_NOT_STICKY
+        }
+        return super.onStartCommand(intent, flags, startId)
+    }
+
+    private fun handleMediaNotificationDismissed(intent: Intent) {
+        val originalDeleteIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra(EXTRA_MEDIA_NOTIFICATION_DELETE_INTENT, PendingIntent::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra(EXTRA_MEDIA_NOTIFICATION_DELETE_INTENT)
+        }
+        runCatching { originalDeleteIntent?.send() }
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        getSystemService(NotificationManager::class.java)?.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_ID,
+                getString(R.string.playback_notification_channel_name),
+                NotificationManager.IMPORTANCE_LOW,
+            ),
+        )
+    }
+
+    /**
+     * Rebuilds the whole notification layout from current player state.
+     *
+     * Ported from ArchiveTune's `updateNotification`. The list is always the same buttons in the
+     * same order - only each button's icon and label change - so media3 is never asked to add or
+     * remove an action, which is what makes the layout stable as state changes.
+     */
+    private fun updateNotification() {
+        val customLayout = listOf(
+            CommandButton.Builder()
+                .setDisplayName(
+                    getString(
+                        when (exoPlayer.repeatMode) {
+                            Player.REPEAT_MODE_ONE -> R.string.playback_action_repeat_one
+                            Player.REPEAT_MODE_ALL -> R.string.playback_action_repeat_all
+                            else -> R.string.playback_action_repeat_off
+                        },
+                    ),
+                )
+                .setIconResId(
+                    when (exoPlayer.repeatMode) {
+                        Player.REPEAT_MODE_ONE -> R.drawable.repeat_one_on
+                        Player.REPEAT_MODE_ALL -> R.drawable.repeat_on
+                        else -> R.drawable.repeat
+                    },
+                )
+                .setSessionCommand(PlaybackSessionCommands.toggleRepeatModeCommand)
+                .build(),
+            CommandButton.Builder()
+                .setDisplayName(
+                    getString(
+                        if (exoPlayer.shuffleModeEnabled) {
+                            R.string.playback_action_shuffle_off
+                        } else {
+                            R.string.playback_action_shuffle_on
+                        },
+                    ),
+                )
+                .setIconResId(
+                    if (exoPlayer.shuffleModeEnabled) R.drawable.shuffle_on else R.drawable.shuffle,
+                )
+                .setSessionCommand(PlaybackSessionCommands.toggleShuffleCommand)
+                .build(),
+            buildCloseCommandButton(),
+        )
+        mediaSession.setCustomLayout(customLayout)
+    }
+
+    // Deviation from ArchiveTune, which mutates the player and nothing else: Sona persists shuffle
+    // and repeat, so a toggle from the notification has to reach PlaybackSettings too or the choice
+    // would be forgotten on the next launch.
+    private fun toggleShuffle() {
+        val enabled = !exoPlayer.shuffleModeEnabled
+        exoPlayer.shuffleModeEnabled = enabled
+        serviceScope.launch { playbackSettings.setShuffleEnabled(enabled) }
+    }
+
+    private fun toggleRepeatMode() {
+        val next = when (exoPlayer.repeatMode) {
+            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+            else -> Player.REPEAT_MODE_OFF
+        }
+        exoPlayer.repeatMode = next
+        serviceScope.launch { playbackSettings.setRepeatMode(next.toRepeatMode()) }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession = mediaSession
@@ -249,6 +379,15 @@ class PlaybackService : MediaSessionService() {
     // package rather than referencing MainActivity directly - the one deliberate deviation from
     // Fossify's PlayerInit.getSessionActivityIntent(), which can reference its app's MainActivity
     // directly since notification wiring and the activity live in the same module there.
+    companion object {
+        const val CHANNEL_ID = "sona_playback_channel"
+        const val NOTIFICATION_ID = 888
+        const val ACTION_MEDIA_NOTIFICATION_DISMISSED =
+            "com.lhacenmed.sona.playback.action.MEDIA_NOTIFICATION_DISMISSED"
+        const val EXTRA_MEDIA_NOTIFICATION_DELETE_INTENT =
+            "com.lhacenmed.sona.playback.extra.MEDIA_NOTIFICATION_DELETE_INTENT"
+    }
+
     private fun buildSessionActivityPendingIntent(): PendingIntent {
         val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
             ?: Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setPackage(packageName)
