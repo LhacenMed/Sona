@@ -4,4 +4,6 @@
     <string name="top_bar_clear_selection">Clear selection</string>
     <string name="top_bar_more_actions">More actions</string>
     <string name="top_bar_back">Back</string>
+    <string name="top_bar_close_search">Close search</string>
+    <string name="top_bar_search_hint">Search</string>
 </resources>

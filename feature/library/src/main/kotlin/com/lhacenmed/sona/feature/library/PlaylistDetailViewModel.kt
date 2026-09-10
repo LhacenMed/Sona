@@ -17,11 +17,12 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 @HiltViewModel(assistedFactory = PlaylistDetailViewModel.Factory::class)
 class PlaylistDetailViewModel @AssistedInject constructor(
-    @Assisted playlistId: Long,
-    repository: LibraryRepository,
+    @Assisted private val playlistId: Long,
+    private val repository: LibraryRepository,
     playbackController: PlaybackController,
 ) : TrackListDetailViewModel(playbackController) {
 
@@ -36,16 +37,38 @@ class PlaylistDetailViewModel @AssistedInject constructor(
 
     override val tracks: StateFlow<LibraryContent<Track>> = repository.playlistTracks(playlistId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryContent.Loading)
-}
 
-@HiltViewModel
-class FavoritesViewModel @Inject constructor(
-    repository: LibraryRepository,
-    playbackController: PlaybackController,
-) : TrackListDetailViewModel(playbackController) {
+    /** Writes the order a drag ended on. Called once on drop, never while the finger moves. */
+    fun setOrder(trackIds: List<Long>) {
+        viewModelScope.launch { repository.setPlaylistOrder(playlistId, trackIds) }
+    }
 
-    override val tracks: StateFlow<LibraryContent<Track>> = repository.favoriteTracks()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryContent.Loading)
+    /** Drops the selected tracks out of this playlist. The files themselves are untouched. */
+    fun removeFromPlaylist(selectedKeys: Set<Any>) {
+        val trackIds = selectedKeys.filterIsInstance<Long>()
+        if (trackIds.isEmpty()) return
+        viewModelScope.launch { repository.removeTracksFromPlaylist(playlistId, trackIds) }
+    }
+
+    /** Adds the one track that lives at [path], if the library knows it. */
+    fun addFile(path: String) {
+        val track = repository.tracks.value.itemsOrEmpty.firstOrNull { it.path == path } ?: return
+        viewModelScope.launch { repository.addTracksToPlaylist(playlistId, listOf(track.id)) }
+    }
+
+    /**
+     * Adds everything the library holds beneath [folderPath].
+     *
+     * Filtered from the list already in memory rather than walking the filesystem as the reference
+     * app does: the last scan already found these, so the answer needs no I/O.
+     */
+    fun addFolder(folderPath: String) {
+        val trackIds = repository.tracks.value.itemsOrEmpty
+            .filter { it.folderPath == folderPath || it.folderPath.startsWith("$folderPath/") }
+            .map { it.id }
+        if (trackIds.isEmpty()) return
+        viewModelScope.launch { repository.addTracksToPlaylist(playlistId, trackIds) }
+    }
 }
 
 @HiltViewModel

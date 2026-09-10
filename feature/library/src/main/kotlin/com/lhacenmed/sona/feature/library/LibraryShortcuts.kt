@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 
 /**
@@ -33,7 +34,10 @@ import com.lhacenmed.sona.core.navigation.LocalNavigator
  * the pager to library data it otherwise never touches; the destinations show their own counts.
  */
 @Composable
-fun LibraryShortcuts(modifier: Modifier = Modifier) {
+fun LibraryShortcuts(
+    modifier: Modifier = Modifier,
+    viewModel: PlaylistsViewModel = hiltViewModel(),
+) {
     val navigator = LocalNavigator.current
 
     Row(
@@ -43,7 +47,7 @@ fun LibraryShortcuts(modifier: Modifier = Modifier) {
         ShortcutCard(
             title = "Favorites",
             icon = Icons.Filled.Favorite,
-            onClick = { navigator.go(FavoritesScreen) },
+            onClick = { navigator.go(PlaylistDetailScreen(viewModel.favoritesPlaylistId)) },
         )
         ShortcutCard(
             title = "Playlists",

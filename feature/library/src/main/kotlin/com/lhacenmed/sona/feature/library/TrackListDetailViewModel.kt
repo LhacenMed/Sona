@@ -6,11 +6,14 @@ import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackController
+import java.io.OutputStream
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 /**
  * What every "a heading, then a list of tracks you can play" screen needs: the album, artist, genre
@@ -47,4 +50,18 @@ abstract class TrackListDetailViewModel(
 
     /** Every row's selection key, which is what the context bar's "select all" selects. */
     fun selectableKeys(): List<Any> = tracks.value.itemsOrEmpty.map { it.id }
+
+    /**
+     * Writes what this screen is showing as an M3U file.
+     *
+     * Available to every track list, including the derived ones: exporting only reads, so "the
+     * fifty things I played most" is as exportable as a playlist someone built by hand.
+     */
+    fun exportTo(openStream: () -> OutputStream?) {
+        val exported = tracks.value.itemsOrEmpty
+        if (exported.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            openStream()?.use { stream -> writeM3u(stream, exported) }
+        }
+    }
 }

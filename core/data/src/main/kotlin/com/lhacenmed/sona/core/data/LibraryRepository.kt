@@ -9,6 +9,7 @@ import com.lhacenmed.sona.core.database.FAVORITES_PLAYLIST_ID
 import com.lhacenmed.sona.core.database.dao.GenreDao
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.PlaylistDao
+import com.lhacenmed.sona.core.database.entity.PlaylistEntity
 import com.lhacenmed.sona.core.database.dao.TrackDao
 import com.lhacenmed.sona.core.database.entity.TrackEntity
 import com.lhacenmed.sona.core.database.entity.toDomain
@@ -200,6 +201,46 @@ class LibraryRepository @Inject constructor(
         playlistDao.observeTracks(playlistId).map { entities ->
             LibraryContent.Ready(entities.map { it.toDomain() })
         }
+
+    /**
+     * Creates a playlist and returns its id, or null when the name is already taken.
+     *
+     * The uniqueness rule is the database's own (a unique index on `name`), so two screens racing
+     * to create the same name cannot both win - the loser simply gets null back.
+     */
+    /** Favourites is an ordinary playlist, so screens open it the same way as any other. */
+    val favoritesPlaylistId: Long get() = FAVORITES_PLAYLIST_ID
+
+    suspend fun createPlaylist(name: String): Long? =
+        runCatching {
+            playlistDao.insert(
+                PlaylistEntity(name = name.trim(), createdAt = System.currentTimeMillis()),
+            )
+        }.getOrNull()
+
+    /** Renames a playlist. Built-in ones are refused by the query itself, not by the caller. */
+    suspend fun renamePlaylist(playlistId: Long, name: String) {
+        playlistDao.rename(playlistId, name.trim())
+    }
+
+    /** Deletes a playlist and its membership. The tracks themselves are untouched. */
+    suspend fun deletePlaylist(playlistId: Long) {
+        playlistDao.delete(playlistId)
+    }
+
+    suspend fun removeTracksFromPlaylist(playlistId: Long, trackIds: List<Long>) {
+        playlistDao.removeTracks(playlistId, trackIds)
+    }
+
+    /** Persists the order a drag ended on, in one transaction. */
+    suspend fun setPlaylistOrder(playlistId: Long, trackIds: List<Long>) {
+        playlistDao.setOrder(playlistId, trackIds)
+    }
+
+    /** Appends tracks to a playlist, keeping the position of any already in it. */
+    suspend fun addTracksToPlaylist(playlistId: Long, trackIds: List<Long>) {
+        playlistDao.addTracks(playlistId, trackIds)
+    }
 
     /** The Favourites playlist's tracks. Its id lives here so no screen has to know it. */
     fun favoriteTracks(): Flow<LibraryContent<Track>> = playlistTracks(FAVORITES_PLAYLIST_ID)
