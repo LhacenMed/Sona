@@ -77,7 +77,7 @@ class MainActivity : ComponentActivity() {
             SonaTheme(themeColor = themeColor) {
                 val navigator = remember { IntentNavigator(this) }
                 CompositionLocalProvider(LocalNavigator provides navigator) {
-                    SonaApp()
+                    AppShell()
                 }
             }
         }

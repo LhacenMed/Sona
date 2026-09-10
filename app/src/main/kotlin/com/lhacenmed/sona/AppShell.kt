@@ -22,7 +22,7 @@ import com.lhacenmed.sona.feature.settings.SettingsScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SonaApp(modifier: Modifier = Modifier) {
+fun AppShell(modifier: Modifier = Modifier) {
     val navigator = LocalNavigator.current
 
     Box(modifier = modifier.fillMaxSize()) {
