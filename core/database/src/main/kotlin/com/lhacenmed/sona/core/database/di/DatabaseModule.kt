@@ -6,6 +6,7 @@ import com.lhacenmed.sona.core.database.SonaDatabase
 import com.lhacenmed.sona.core.database.dao.AlbumDao
 import com.lhacenmed.sona.core.database.dao.ArtistDao
 import com.lhacenmed.sona.core.database.dao.GenreDao
+import com.lhacenmed.sona.core.database.dao.QueueItemDao
 import com.lhacenmed.sona.core.database.dao.TrackDao
 import dagger.Module
 import dagger.Provides
@@ -20,7 +21,10 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideSonaDatabase(@ApplicationContext context: Context): SonaDatabase =
-        Room.databaseBuilder(context, SonaDatabase::class.java, SonaDatabase.FILE_NAME).build()
+        Room.databaseBuilder(context, SonaDatabase::class.java, SonaDatabase.FILE_NAME)
+            // Pre-release app, no user data to preserve yet - real migrations start once shipped.
+            .fallbackToDestructiveMigration(dropAllTables = true)
+            .build()
 
     @Provides
     fun provideTrackDao(database: SonaDatabase): TrackDao = database.trackDao()
@@ -33,4 +37,7 @@ object DatabaseModule {
 
     @Provides
     fun provideGenreDao(database: SonaDatabase): GenreDao = database.genreDao()
+
+    @Provides
+    fun provideQueueItemDao(database: SonaDatabase): QueueItemDao = database.queueItemDao()
 }
