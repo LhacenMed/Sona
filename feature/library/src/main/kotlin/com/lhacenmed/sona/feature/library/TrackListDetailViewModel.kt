@@ -38,4 +38,13 @@ abstract class TrackListDetailViewModel(
         val index = all.indexOfFirst { it.id == track.id }
         if (index >= 0) playbackController.playTracks(all, index)
     }
+
+    /** Plays just the selected rows, keeping the order the list shows them in. */
+    fun playSelection(selectedKeys: Set<Any>) {
+        val selected = tracks.value.itemsOrEmpty.filter { it.id in selectedKeys }
+        if (selected.isNotEmpty()) playbackController.playTracks(selected, startIndex = 0)
+    }
+
+    /** Every row's selection key, which is what the context bar's "select all" selects. */
+    fun selectableKeys(): List<Any> = tracks.value.itemsOrEmpty.map { it.id }
 }

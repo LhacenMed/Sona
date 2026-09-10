@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="top_bar_selected_count">%1$d selected</string>
+    <string name="top_bar_clear_selection">Clear selection</string>
+    <string name="top_bar_more_actions">More actions</string>
+    <string name="top_bar_back">Back</string>
+</resources>
