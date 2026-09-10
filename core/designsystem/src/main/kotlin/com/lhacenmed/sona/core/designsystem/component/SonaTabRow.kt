@@ -18,8 +18,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -96,15 +98,11 @@ private fun TabLabel(
     width: Dp,
     onClick: () -> Unit,
 ) {
-    // Fades between the inactive and active color by how close the strip currently sits to this
-    // tab, so labels cross-fade with the swipe. Reading the position here scopes the per-frame
-    // recomposition to this one label.
-    val activeFraction = (1f - abs(index - selectedPosition())).coerceIn(0f, 1f)
-    val color = lerp(
-        MaterialTheme.colorScheme.onSurfaceVariant,
-        MaterialTheme.colorScheme.onSecondaryContainer,
-        activeFraction,
-    )
+    // How close the strip currently sits to this tab, as an alpha rather than a color: the active
+    // label is laid over the inactive one and faded in, so a swipe changes one number in the draw
+    // phase. Lerping a color instead would have to be read during composition, which meant every
+    // label re-laying out its text on every frame of a swipe - the one per-frame cost in the strip.
+    val activeFraction = { (1f - abs(index - selectedPosition())).coerceIn(0f, 1f) }
 
     Box(
         modifier = Modifier
@@ -115,14 +113,32 @@ private fun TabLabel(
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelLarge,
-            color = color,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 4.dp),
+        TabLabelText(title = title, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        TabLabelText(
+            title = title,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            // The pair is one label wearing two colors, so only the layer underneath is described.
+            modifier = Modifier
+                .clearAndSetSemantics { }
+                .graphicsLayer { alpha = activeFraction() },
         )
     }
+}
+
+/** One rendering of a tab's title. Two of these stacked are what let the pair cross-fade. */
+@Composable
+private fun TabLabelText(
+    title: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        color = color,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        textAlign = TextAlign.Center,
+        modifier = modifier.padding(horizontal = 4.dp),
+    )
 }
