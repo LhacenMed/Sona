@@ -47,7 +47,7 @@ import kotlinx.coroutines.withContext
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @Singleton
-class ArtworkThemeSeed @Inject constructor(
+class SonaThemeSeed @Inject constructor(
     @ApplicationContext private val context: Context,
     @ApplicationScope scope: CoroutineScope,
     themeSettings: ThemeSettings,
@@ -95,5 +95,5 @@ class ArtworkThemeSeed @Inject constructor(
 @InstallIn(SingletonComponent::class)
 abstract class ThemeSeedModule {
     @Binds
-    abstract fun bindAppThemeSeed(seed: ArtworkThemeSeed): AppThemeSeed
+    abstract fun bindAppThemeSeed(seed: SonaThemeSeed): AppThemeSeed
 }
