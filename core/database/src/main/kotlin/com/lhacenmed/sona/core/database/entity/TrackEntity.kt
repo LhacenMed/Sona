@@ -50,7 +50,6 @@ data class TrackEntity(
     val dateAddedSeconds: Long,
     val coverArtUri: String?,
     val isManuallyScanned: Boolean,
-    val isFavorite: Boolean = false,
 )
 
 fun TrackEntity.toDomain() = Track(
@@ -72,7 +71,6 @@ fun TrackEntity.toDomain() = Track(
     dateAddedSeconds = dateAddedSeconds,
     coverArtUri = coverArtUri,
     isManuallyScanned = isManuallyScanned,
-    isFavorite = isFavorite,
 )
 
 fun Track.toEntity() = TrackEntity(
@@ -94,5 +92,4 @@ fun Track.toEntity() = TrackEntity(
     dateAddedSeconds = dateAddedSeconds,
     coverArtUri = coverArtUri,
     isManuallyScanned = isManuallyScanned,
-    isFavorite = isFavorite,
 )

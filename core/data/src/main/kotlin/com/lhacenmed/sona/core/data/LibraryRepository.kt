@@ -5,7 +5,11 @@ import com.lhacenmed.sona.core.common.di.DefaultDispatcher
 import com.lhacenmed.sona.core.common.sort.sortedByName
 import com.lhacenmed.sona.core.database.dao.AlbumDao
 import com.lhacenmed.sona.core.database.dao.ArtistDao
+import com.lhacenmed.sona.core.database.FAVORITES_PLAYLIST_ID
 import com.lhacenmed.sona.core.database.dao.GenreDao
+import com.lhacenmed.sona.core.database.dao.PlayStatsDao
+import com.lhacenmed.sona.core.database.dao.PlaylistDao
+import com.lhacenmed.sona.core.database.entity.PlaylistEntity
 import com.lhacenmed.sona.core.database.dao.TrackDao
 import com.lhacenmed.sona.core.database.entity.TrackEntity
 import com.lhacenmed.sona.core.database.entity.toDomain
@@ -14,6 +18,7 @@ import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Folder
 import com.lhacenmed.sona.core.model.Genre
+import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -59,6 +64,8 @@ class LibraryRepository @Inject constructor(
     private val albumDao: AlbumDao,
     private val artistDao: ArtistDao,
     private val genreDao: GenreDao,
+    private val playlistDao: PlaylistDao,
+    private val playStatsDao: PlayStatsDao,
     librarySettings: LibrarySettings,
     @ApplicationScope private val scope: CoroutineScope,
     @DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher,
@@ -168,8 +175,103 @@ class LibraryRepository @Inject constructor(
         return ids.mapNotNull { byId[it] }
     }
 
+    /** Every playlist, Favourites first, with the count each row shows. */
+    val playlists: StateFlow<LibraryContent<Playlist>> = playlistDao.observeAll()
+        .map { rows ->
+            LibraryContent.Ready(
+                rows.map { Playlist(it.id, it.name, it.isBuiltIn, it.trackCount) },
+            )
+        }
+        .stateIn(scope, SharingStarted.Eagerly, LibraryContent.Loading)
+
+    /** How many tracks each derived list would show, for the playlists tab's subtitles. */
+    val recentlyPlayedCount: StateFlow<Int> = playStatsDao.observeRecentlyPlayedCount()
+        .stateIn(scope, SharingStarted.Eagerly, 0)
+
+    val mostPlayedCount: StateFlow<Int> = playStatsDao.observeMostPlayedCount()
+        .stateIn(scope, SharingStarted.Eagerly, 0)
+
+    /**
+     * A playlist's tracks in the order the user arranged them.
+     *
+     * Deliberately not sorted here, unlike every other collection: for a playlist the order *is*
+     * the content, so re-sorting it would throw away what the user arranged.
+     */
+    fun playlistTracks(playlistId: Long): Flow<LibraryContent<Track>> =
+        playlistDao.observeTracks(playlistId).map { entities ->
+            LibraryContent.Ready(entities.map { it.toDomain() })
+        }
+
+    /**
+     * Creates a playlist and returns its id, or null when the name is already taken.
+     *
+     * The uniqueness rule is the database's own (a unique index on `name`), so two screens racing
+     * to create the same name cannot both win - the loser simply gets null back.
+     */
+    /** Favourites is an ordinary playlist, so screens open it the same way as any other. */
+    val favoritesPlaylistId: Long get() = FAVORITES_PLAYLIST_ID
+
+    suspend fun createPlaylist(name: String): Long? =
+        runCatching {
+            playlistDao.insert(
+                PlaylistEntity(name = name.trim(), createdAt = System.currentTimeMillis()),
+            )
+        }.getOrNull()
+
+    /** Renames a playlist. Built-in ones are refused by the query itself, not by the caller. */
+    suspend fun renamePlaylist(playlistId: Long, name: String) {
+        playlistDao.rename(playlistId, name.trim())
+    }
+
+    /** Deletes a playlist and its membership. The tracks themselves are untouched. */
+    suspend fun deletePlaylist(playlistId: Long) {
+        playlistDao.delete(playlistId)
+    }
+
+    suspend fun removeTracksFromPlaylist(playlistId: Long, trackIds: List<Long>) {
+        playlistDao.removeTracks(playlistId, trackIds)
+    }
+
+    /** Persists the order a drag ended on, in one transaction. */
+    suspend fun setPlaylistOrder(playlistId: Long, trackIds: List<Long>) {
+        playlistDao.setOrder(playlistId, trackIds)
+    }
+
+    /** Appends tracks to a playlist, keeping the position of any already in it. */
+    suspend fun addTracksToPlaylist(playlistId: Long, trackIds: List<Long>) {
+        playlistDao.addTracks(playlistId, trackIds)
+    }
+
+    /** The Favourites playlist's tracks. Its id lives here so no screen has to know it. */
+    fun favoriteTracks(): Flow<LibraryContent<Track>> = playlistTracks(FAVORITES_PLAYLIST_ID)
+
+    /** "Recent" and "Most played" - ordered by the statistics, so likewise never re-sorted. */
+    fun recentlyPlayedTracks(): Flow<LibraryContent<Track>> =
+        playStatsDao.observeRecentlyPlayed().map { entities ->
+            LibraryContent.Ready(entities.map { it.toDomain() })
+        }
+
+    fun mostPlayedTracks(): Flow<LibraryContent<Track>> =
+        playStatsDao.observeMostPlayed().map { entities ->
+            LibraryContent.Ready(entities.map { it.toDomain() })
+        }
+
+    /**
+     * The ids in Favourites, for anything that only needs to know whether a track is one.
+     *
+     * A set rather than a list of tracks: the player asks this about a single track on every song
+     * change, and the playlist screen already reads the tracks themselves in order.
+     */
+    val favoriteTrackIds: StateFlow<Set<Long>> = playlistDao.observeTrackIds(FAVORITES_PLAYLIST_ID)
+        .map { it.toSet() }
+        .stateIn(scope, SharingStarted.Eagerly, emptySet())
+
     suspend fun setFavorite(trackId: Long, isFavorite: Boolean) {
-        trackDao.setFavorite(trackId, isFavorite)
+        if (isFavorite) {
+            playlistDao.addTracks(FAVORITES_PLAYLIST_ID, listOf(trackId))
+        } else {
+            playlistDao.removeTracks(FAVORITES_PLAYLIST_ID, listOf(trackId))
+        }
     }
 
     // endregion

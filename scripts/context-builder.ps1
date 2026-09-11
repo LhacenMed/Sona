@@ -2,13 +2,14 @@
 # GUI context-file builder -- scrollable tree, mouse checkboxes, encoding-safe output.
 #
 # Usage: .\context-builder.ps1 [-Path <dir>] [-Out <file.txt>] [-Hidden]
+#        -Path defaults to this project's root, whatever the current directory is.
 # Keys : ENTER -> Generate   F5 -> Refresh   ESC -> Close
 #
 # Run:
-#   .\scripts\context-builder.ps1 -Path "C:\Users\lhacenmed\AndroidStudioProjects\Khatmah\"
+#   .\scripts\context-builder.ps1
 
 param (
-    [string]$Path   = ".",
+    [string]$Path   = (Split-Path $PSScriptRoot -Parent),
     [string]$Out    = "context.txt",
     [switch]$Hidden
 )
@@ -236,7 +237,32 @@ function Write-Context {
 
     $text = $sb.ToString()
     [IO.File]::WriteAllText($OutPath, $text, [Text.Encoding]::UTF8)
+    Add-GitExclude $OutPath
     return $text
+}
+
+# --- Git exclude -------------------------------------------------------------
+# Lists a generated file in the repo's .git/info/exclude -- git's local,
+# never-committed ignore list -- so it never shows up as an untracked change
+# and no project's .gitignore has to be edited. No-op outside a git repo or
+# when the file is already ignored.
+function Add-GitExclude {
+    param([string]$FilePath)
+
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) { return }
+    $dir    = Split-Path $FilePath -Parent
+    $name   = Split-Path $FilePath -Leaf
+    $prefix = git -C $dir rev-parse --show-prefix 2>$null   # $dir relative to the repo root
+    # Not a git repo: nothing to exclude, and git's failure code must not outlive this no-op
+    if ($LASTEXITCODE -ne 0) { $global:LASTEXITCODE = 0; return }
+    git -C $dir check-ignore -q -- $name 2>$null
+    if ($LASTEXITCODE -eq 0) { return }
+
+    $exclude   = git -C $dir rev-parse --path-format=absolute --git-path info/exclude
+    $existing  = if (Test-Path -LiteralPath $exclude) { [IO.File]::ReadAllText($exclude) } else { '' }
+    $separator = if ($existing -and -not $existing.EndsWith("`n")) { "`n" } else { '' }
+    New-Item -ItemType Directory -Force (Split-Path $exclude) | Out-Null
+    [IO.File]::AppendAllText($exclude, "$separator/$prefix$name`n")
 }
 
 # --- Resolve root path -------------------------------------------------------

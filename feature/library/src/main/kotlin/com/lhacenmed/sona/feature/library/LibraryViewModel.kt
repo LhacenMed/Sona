@@ -19,11 +19,14 @@ import com.lhacenmed.sona.feature.scanner.hasScannerPermission
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 private val CANONICAL_TAB_ORDER = listOf(
     LibraryTab.TRACKS,
@@ -46,8 +49,8 @@ private val CANONICAL_TAB_ORDER = listOf(
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    repository: LibraryRepository,
-    librarySettings: LibrarySettings,
+    private val repository: LibraryRepository,
+    private val librarySettings: LibrarySettings,
     private val mediaScanner: MediaScanner,
     private val playbackController: PlaybackController,
 ) : ViewModel() {
@@ -108,4 +111,65 @@ class LibraryViewModel @Inject constructor(
     fun onRescan() {
         mediaScanner.requestScan(force = true)
     }
+
+    /**
+     * Plays everything the current selection resolves to.
+     *
+     * Each tab selects whatever its own rows are - track ids on Tracks, album ids on Albums, folder
+     * paths on Folders - so turning those keys back into tracks belongs here, with the tab, rather
+     * than in the top bar. The bar only ever hands back the keys it was given.
+     */
+    fun playSelection(tab: LibraryTab, selectedKeys: Set<Any>) {
+        if (selectedKeys.isEmpty()) return
+        viewModelScope.launch {
+            val selectedTracks = tracksForSelection(tab, selectedKeys)
+            if (selectedTracks.isNotEmpty()) {
+                playbackController.playTracks(selectedTracks, startIndex = 0)
+            }
+        }
+    }
+
+    /** Keeps the selected folders out of the library, then rescans so they leave it immediately. */
+    fun excludeSelectedFolders(selectedKeys: Set<Any>) {
+        if (selectedKeys.isEmpty()) return
+        viewModelScope.launch {
+            selectedKeys.filterIsInstance<String>().forEach { librarySettings.addExcludedFolder(it) }
+            mediaScanner.requestScan()
+        }
+    }
+
+    /**
+     * Every row's selection key on the given tab, which is what "select all" selects.
+     *
+     * Read from the flows at the moment it is called rather than collected in composition: the
+     * pager deliberately reads no library data, and subscribing it to all five lists just to
+     * populate a menu action would undo that.
+     */
+    fun selectableKeys(tab: LibraryTab): List<Any> = when (tab) {
+        LibraryTab.TRACKS -> tracks.value.itemsOrEmpty.map { it.id }
+        LibraryTab.ALBUMS -> albums.value.itemsOrEmpty.map { it.id }
+        LibraryTab.ARTISTS -> artists.value.itemsOrEmpty.map { it.id }
+        LibraryTab.GENRES -> genres.value.itemsOrEmpty.map { it.id }
+        LibraryTab.FOLDERS -> folders.value.itemsOrEmpty.map { it.path }
+    }
+
+    private suspend fun tracksForSelection(tab: LibraryTab, selectedKeys: Set<Any>): List<Track> =
+        when (tab) {
+            LibraryTab.TRACKS -> tracks.value.itemsOrEmpty.filter { it.id in selectedKeys }
+            LibraryTab.ALBUMS -> selectedKeys.filterIsInstance<Long>()
+                .flatMap { readyTracks(repository.albumTracks(it)) }
+            LibraryTab.ARTISTS -> selectedKeys.filterIsInstance<Long>()
+                .flatMap { readyTracks(repository.artistTracks(it)) }
+            LibraryTab.GENRES -> selectedKeys.filterIsInstance<Long>()
+                .flatMap { readyTracks(repository.genreTracks(it)) }
+            LibraryTab.FOLDERS -> selectedKeys.filterIsInstance<String>()
+                .flatMap { readyTracks(repository.folderTracks(it)) }
+        }
+
+    /**
+     * Waits for the query to actually have rows rather than taking its first emission, which is
+     * [LibraryContent.Loading] and would silently resolve a selection to nothing.
+     */
+    private suspend fun readyTracks(query: Flow<LibraryContent<Track>>): List<Track> =
+        query.first { it is LibraryContent.Ready }.itemsOrEmpty
 }

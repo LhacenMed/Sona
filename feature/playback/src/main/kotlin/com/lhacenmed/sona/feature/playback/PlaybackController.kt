@@ -1,26 +1,22 @@
 package com.lhacenmed.sona.feature.playback
 
 import android.content.ComponentName
-import android.content.ContentUris
 import android.content.Context
-import android.net.Uri
-import android.provider.MediaStore
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
 import com.lhacenmed.sona.core.data.LibraryRepository
+import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
 import com.lhacenmed.sona.core.database.entity.QueueItemEntity
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
 import dagger.hilt.android.qualifiers.ApplicationContext
-import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -45,10 +41,18 @@ import kotlinx.coroutines.withContext
  * to collect. Also owns queue persistence (save on every relevant player event, restore once per
  * process on first connect) - ported from Fossify's `PlayerListener`/`AudioHelper` queue table.
  */
+/**
+ * How long a track has to play before the listen is counted, rather than merely remembered.
+ *
+ * Ported verbatim from Fossify's `PLAY_COUNT_THRESHOLD_MS`.
+ */
+private const val PLAY_COUNT_THRESHOLD_MS = 10_000L
+
 @Singleton
 class PlaybackController @Inject constructor(
     @ApplicationContext private val context: Context,
     private val queueItemDao: QueueItemDao,
+    private val playStatsDao: PlayStatsDao,
     private val repository: LibraryRepository,
     private val playbackSettings: PlaybackSettings,
 ) {
@@ -57,6 +61,14 @@ class PlaybackController @Inject constructor(
 
     private var controller: MediaController? = null
     private var positionPollJob: Job? = null
+    private var playCountJob: Job? = null
+
+    // The player's repeat int cannot tell RepeatMode.ONE from STOP_AFTER_CURRENT, so the stored
+    // mode is what the UI is told about.
+    @Volatile private var storedRepeatMode: RepeatMode = RepeatMode.OFF
+
+    /** The track already counted, so pausing and resuming cannot count the same listen twice. */
+    private var countedTrackId: Long? = null
     private val hasRestoredQueue = AtomicBoolean(false)
 
     private val _playbackState = MutableStateFlow(PlaybackUiState())
@@ -65,6 +77,12 @@ class PlaybackController @Inject constructor(
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (isPlaying) startPositionPolling() else stopPositionPolling()
+            schedulePlayCount(isPlaying)
+        }
+
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            recordPlayStarted(mediaItem?.mediaId?.toLongOrNull())
+            schedulePlayCount(controller?.isPlaying == true)
         }
 
         // Ported from Fossify's PlayerListener.onEvents: recompute UI state and re-save the
@@ -99,6 +117,13 @@ class PlaybackController @Inject constructor(
     }
 
     init {
+        scope.launch {
+            playbackSettings.repeatMode.collect { mode ->
+                storedRepeatMode = mode
+                controller?.let(::updateUiState)
+            }
+        }
+
         val sessionToken = SessionToken(context, ComponentName(context, PlaybackService::class.java))
         val future = MediaController.Builder(context, sessionToken).buildAsync()
         future.addListener(
@@ -117,7 +142,7 @@ class PlaybackController @Inject constructor(
     /** Builds a fresh queue from [tracks] and starts playback at [startIndex]. */
     fun playTracks(tracks: List<Track>, startIndex: Int) {
         val mediaController = controller ?: return
-        val mediaItems = tracks.map(::toMediaItem)
+        val mediaItems = tracks.map(Track::toMediaItem)
         mediaController.setMediaItems(mediaItems, startIndex, 0L)
         mediaController.prepare()
         mediaController.play()
@@ -158,7 +183,7 @@ class PlaybackController @Inject constructor(
                 positionMs = mediaController.currentPosition,
                 durationMs = currentDurationMsOrElse(it.durationMs),
                 shuffleEnabled = mediaController.shuffleModeEnabled,
-                repeatMode = mediaController.repeatMode.toRepeatMode(),
+                repeatMode = storedRepeatMode,
                 queue = currentQueueIds(mediaController),
             )
         }
@@ -175,6 +200,45 @@ class PlaybackController @Inject constructor(
 
     // Ported from Fossify's AudioHelper.resetQueue: a full delete-and-reinsert of the queue table
     // on every save, keeping it trivially consistent with the player's current timeline.
+    /**
+     * Remembers that a track was played, the moment it starts.
+     *
+     * Two different things are recorded, following Fossify's `PlayHistoryRecorder`: starting a track
+     * is enough to make it recent, but only a listen that lasts counts towards how often it has been
+     * played. Skipping through an album therefore reorders "Recent" without inflating any counts.
+     */
+    private fun recordPlayStarted(trackId: Long?) {
+        playCountJob?.cancel()
+        countedTrackId = null
+        if (trackId == null) return
+        scope.launch(Dispatchers.IO) {
+            playStatsDao.recordPlayStarted(trackId, System.currentTimeMillis())
+        }
+    }
+
+    /**
+     * Arms the count for the remainder of the threshold, or cancels it when playback stops.
+     *
+     * The wait is measured from where the track already is rather than restarted, so resuming after
+     * a pause does not start the clock again - the same arithmetic Fossify uses.
+     */
+    private fun schedulePlayCount(isPlaying: Boolean) {
+        playCountJob?.cancel()
+        if (!isPlaying) return
+        val mediaController = controller ?: return
+        val trackId = mediaController.currentMediaItem?.mediaId?.toLongOrNull() ?: return
+        if (trackId == countedTrackId) return
+
+        val remainingMs = (PLAY_COUNT_THRESHOLD_MS - mediaController.currentPosition).coerceAtLeast(0L)
+        playCountJob = scope.launch {
+            delay(remainingMs)
+            countedTrackId = trackId
+            withContext(Dispatchers.IO) {
+                playStatsDao.recordPlayCounted(trackId, System.currentTimeMillis())
+            }
+        }
+    }
+
     private fun persistQueueState(mediaController: MediaController) {
         val currentItem = mediaController.currentMediaItem ?: return
         val currentId = currentItem.mediaId.toLongOrNull() ?: return
@@ -217,7 +281,7 @@ class PlaybackController @Inject constructor(
             if (restored.isEmpty()) return@launch
             val currentIndex = restored.indexOfFirst { it.first.isCurrent }.takeIf { it >= 0 } ?: 0
             val startPositionMs = restored[currentIndex].first.lastPositionMs
-            val mediaItems = restored.map { toMediaItem(it.second) }
+            val mediaItems = restored.map { it.second.toMediaItem() }
             mediaController.setMediaItems(mediaItems, currentIndex, startPositionMs)
             mediaController.prepare()
         }
@@ -245,24 +309,4 @@ class PlaybackController @Inject constructor(
         positionPollJob = null
     }
 
-    private fun toMediaItem(track: Track): MediaItem {
-        val uri: Uri = if (track.isManuallyScanned) {
-            Uri.fromFile(File(track.path))
-        } else {
-            ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, track.mediaStoreId)
-        }
-        val metadata = MediaMetadata.Builder()
-            .setTitle(track.title)
-            .setArtist(track.artist)
-            .setAlbumTitle(track.album)
-            .apply {
-                track.coverArtUri?.let { setArtworkUri(Uri.parse(it)) }
-            }
-            .build()
-        return MediaItem.Builder()
-            .setMediaId(track.id.toString())
-            .setUri(uri)
-            .setMediaMetadata(metadata)
-            .build()
-    }
 }

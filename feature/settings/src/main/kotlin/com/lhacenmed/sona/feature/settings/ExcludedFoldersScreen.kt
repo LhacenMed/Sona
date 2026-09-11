@@ -1,8 +1,6 @@
 package com.lhacenmed.sona.feature.settings
 
-import android.content.Context
 import android.net.Uri
-import android.provider.DocumentsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -28,11 +26,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.common.storage.documentPathOrNull
 import com.lhacenmed.sona.core.navigation.Screen
 
 /** "Excluded Folders" screen: view/add/remove folders that the media scanner should skip. */
@@ -43,13 +41,12 @@ object ExcludedFoldersScreen : Screen {
     override fun Content() {
         val viewModel: ExcludedFoldersViewModel = hiltViewModel()
         val excludedFolders by viewModel.excludedFolders.collectAsStateWithLifecycle()
-        val context = LocalContext.current
 
         val pickFolderLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.OpenDocumentTree(),
         ) { uri: Uri? ->
             if (uri != null) {
-                treeUriToPath(context, uri)?.let(viewModel::addFolder)
+                documentPathOrNull(uri, isTree = true)?.let(viewModel::addFolder)
             }
         }
 
@@ -114,22 +111,4 @@ object ExcludedFoldersScreen : Screen {
             }
         }
     }
-}
-
-/**
- * Resolves a SAF tree [Uri] (from [ActivityResultContracts.OpenDocumentTree]) to a real
- * filesystem path, so it can be compared against [com.lhacenmed.sona.core.model.Track.folderPath].
- *
- * This only handles the common cases - primary external storage and simply-named secondary
- * volumes (document id shaped like "volume:relative/path") - which is an intentionally scoped
- * limitation rather than a full SD-card-agnostic resolver.
- */
-internal fun treeUriToPath(context: Context, treeUri: Uri): String? {
-    val docId = DocumentsContract.getTreeDocumentId(treeUri)
-    val parts = docId.split(":")
-    if (parts.size != 2) return null
-    val volume = parts[0]
-    val relativePath = parts[1]
-    val root = if (volume == "primary") "/storage/emulated/0" else "/storage/$volume"
-    return if (relativePath.isEmpty()) root else "$root/$relativePath"
 }

@@ -1,47 +1,45 @@
 package com.lhacenmed.sona
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.feature.library.LibraryPagerScreen
 import com.lhacenmed.sona.feature.library.SearchScreen
 import com.lhacenmed.sona.feature.player.PlayerScreen
 import com.lhacenmed.sona.feature.settings.SettingsScreen
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppShell(modifier: Modifier = Modifier) {
     val navigator = LocalNavigator.current
 
+    // The library owns the top bar rather than this Scaffold, because the bar has to become a
+    // context bar when a tab has a selection - and only the library knows which tab that is. These
+    // are the two actions the shell itself contributes.
+    val libraryActions = remember(navigator) {
+        listOf(
+            TopBarAction(label = "Search", icon = Icons.Filled.Search) { navigator.go(SearchScreen) },
+            TopBarAction(label = "Settings", icon = Icons.Filled.Settings) { navigator.go(SettingsScreen) },
+        )
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("Sona") },
-                    actions = {
-                        IconButton(onClick = { navigator.go(SearchScreen) }) {
-                            Icon(Icons.Filled.Search, contentDescription = "Search")
-                        }
-                        IconButton(onClick = { navigator.go(SettingsScreen) }) {
-                            Icon(Icons.Filled.Settings, contentDescription = "Settings")
-                        }
-                    },
-                )
-            },
-        ) { innerPadding ->
-            LibraryPagerScreen(modifier = Modifier.padding(innerPadding))
+        // No top bar slot and no content insets: the library's own bar handles the status bar
+        // inset, so letting the Scaffold add it too would pad the screen twice.
+        Scaffold(contentWindowInsets = WindowInsets(0, 0, 0, 0)) { innerPadding ->
+            LibraryPagerScreen(
+                modifier = Modifier.padding(innerPadding),
+                actions = libraryActions,
+            )
         }
 
         // The expandable player overlays the whole screen - collapsed, it's just a mini-bar
