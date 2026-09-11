@@ -2,13 +2,14 @@
 # GUI context-file builder -- scrollable tree, mouse checkboxes, encoding-safe output.
 #
 # Usage: .\context-builder.ps1 [-Path <dir>] [-Out <file.txt>] [-Hidden]
+#        -Path defaults to this project's root, whatever the current directory is.
 # Keys : ENTER -> Generate   F5 -> Refresh   ESC -> Close
 #
 # Run:
-#   .\scripts\context-builder.ps1 -Path "C:\Users\lhacenmed\AndroidStudioProjects\Khatmah\"
+#   .\scripts\context-builder.ps1
 
 param (
-    [string]$Path   = ".",
+    [string]$Path   = (Split-Path $PSScriptRoot -Parent),
     [string]$Out    = "context.txt",
     [switch]$Hidden
 )

@@ -1,14 +1,15 @@
 # show-folder-tree.ps1
 # Displays a tree-like structure of all files and folders in a given directory
 #
-# Usage: .\scripts\show-folder-tree.ps1 -Path "C:\Path\To\Directory" [-ShowHidden]
+# Usage: .\scripts\show-folder-tree.ps1 [-Path "C:\Path\To\Directory"] [-ShowHidden]
+#        -Path defaults to this project's root, whatever the current directory is.
 #
 # Run:
-#   .\scripts\show-folder-tree.ps1 -Path "C:\Users\lhacenmed\AndroidStudioProjects\Khatmah\"
+#   .\scripts\show-folder-tree.ps1
 
 param (
     [Parameter(Mandatory = $false)]
-    [string]$Path = ".",
+    [string]$Path = (Split-Path $PSScriptRoot -Parent),
 
     [Parameter(Mandatory = $false)]
     [switch]$ShowHidden
