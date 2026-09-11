@@ -25,6 +25,7 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
+import com.lhacenmed.sona.core.model.RepeatMode
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -73,17 +74,14 @@ class PlaybackService : MediaSessionService() {
         rewindBeforeSkipBack = true,
     )
 
-    @Volatile private var pauseOnRepeatEnabled = false
+    // The player's repeat int cannot tell RepeatMode.ONE from STOP_AFTER_CURRENT apart, so the
+    // stored mode is what both the player and the notification are driven from.
+    @Volatile private var repeatMode: RepeatMode = RepeatMode.OFF
 
     @Volatile private var headsetAutoplayEnabled = false
     private var initialHeadsetPlugEventHandled = false
 
     private val playerListener = object : Player.Listener {
-        override fun onRepeatModeChanged(repeatMode: Int) {
-            updatePauseOnRepeat()
-            updateNotification()
-        }
-
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
             updateNotification()
         }
@@ -152,16 +150,14 @@ class PlaybackService : MediaSessionService() {
         // SharedPreferences-backed Config synchronously at the same point) - DataStore has no
         // synchronous API, so a short blocking read at startup is the closest equivalent.
         val initialShuffleEnabled: Boolean
-        val initialRepeatMode: Int
         runBlocking {
             forwardingSettings = PlaybackForwardingPlayer.Snapshot(
                 rememberPause = playbackSettings.rememberPause.first(),
                 rewindBeforeSkipBack = playbackSettings.rewindBeforeSkipBack.first(),
             )
-            pauseOnRepeatEnabled = playbackSettings.pauseOnRepeat.first()
             headsetAutoplayEnabled = playbackSettings.headsetAutoplay.first()
             initialShuffleEnabled = playbackSettings.shuffleEnabled.first()
-            initialRepeatMode = playbackSettings.repeatMode.first().toPlayerRepeatMode()
+            repeatMode = playbackSettings.repeatMode.first()
         }
 
         exoPlayer = ExoPlayer.Builder(this)
@@ -176,8 +172,6 @@ class PlaybackService : MediaSessionService() {
             .build()
             .apply {
                 shuffleModeEnabled = initialShuffleEnabled
-                repeatMode = initialRepeatMode
-                pauseAtEndOfMediaItems = repeatMode == Player.REPEAT_MODE_ONE && pauseOnRepeatEnabled
                 addListener(playerListener)
             }
 
@@ -196,6 +190,7 @@ class PlaybackService : MediaSessionService() {
         )
 
         updateNotification()
+        applyRepeatMode(repeatMode)
         registerHeadsetReceiver()
         collectRuntimeSettings()
     }
@@ -235,27 +230,30 @@ class PlaybackService : MediaSessionService() {
     /**
      * Rebuilds the whole notification layout from current player state.
      *
-     * Ported from ArchiveTune's `updateNotification`. The list is always the same buttons in the
-     * same order - only each button's icon and label change - so media3 is never asked to add or
-     * remove an action, which is what makes the layout stable as state changes.
+     * Ported from ArchiveTune's `updateNotification`: the same three buttons, always in the same
+     * order, with no slot assigned to any of them - only each button's icon and label change from
+     * one call to the next. `setCustomLayout` (not `setMediaButtonPreferences`) is what ArchiveTune
+     * uses, and media3 fits play/pause plus as much of this list as the platform allows around it.
      */
     private fun updateNotification() {
         val customLayout = listOf(
             CommandButton.Builder()
                 .setDisplayName(
                     getString(
-                        when (exoPlayer.repeatMode) {
-                            Player.REPEAT_MODE_ONE -> R.string.playback_action_repeat_one
-                            Player.REPEAT_MODE_ALL -> R.string.playback_action_repeat_all
-                            else -> R.string.playback_action_repeat_off
+                        when (repeatMode) {
+                            RepeatMode.STOP_AFTER_CURRENT -> R.string.playback_action_repeat_one_stop
+                            RepeatMode.ONE -> R.string.playback_action_repeat_one
+                            RepeatMode.ALL -> R.string.playback_action_repeat_all
+                            RepeatMode.OFF -> R.string.playback_action_repeat_off
                         },
                     ),
                 )
                 .setIconResId(
-                    when (exoPlayer.repeatMode) {
-                        Player.REPEAT_MODE_ONE -> R.drawable.repeat_one_on
-                        Player.REPEAT_MODE_ALL -> R.drawable.repeat_on
-                        else -> R.drawable.repeat
+                    when (repeatMode) {
+                        RepeatMode.STOP_AFTER_CURRENT -> R.drawable.repeat_one_stop
+                        RepeatMode.ONE -> R.drawable.repeat_one_on
+                        RepeatMode.ALL -> R.drawable.repeat_on
+                        RepeatMode.OFF -> R.drawable.repeat
                     },
                 )
                 .setSessionCommand(PlaybackSessionCommands.toggleRepeatModeCommand)
@@ -290,13 +288,9 @@ class PlaybackService : MediaSessionService() {
     }
 
     private fun toggleRepeatMode() {
-        val next = when (exoPlayer.repeatMode) {
-            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
-            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
-            else -> Player.REPEAT_MODE_OFF
-        }
-        exoPlayer.repeatMode = next
-        serviceScope.launch { playbackSettings.setRepeatMode(next.toRepeatMode()) }
+        // Only the stored mode is written; the collector above puts it on the player and redraws
+        // the notification, so this path is the same one the player screen takes.
+        serviceScope.launch { playbackSettings.setRepeatMode(repeatMode.next) }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession = mediaSession
@@ -319,9 +313,10 @@ class PlaybackService : MediaSessionService() {
             }.collect { forwardingSettings = it }
         }
         serviceScope.launch {
-            playbackSettings.pauseOnRepeat.collect {
-                pauseOnRepeatEnabled = it
-                updatePauseOnRepeat()
+            playbackSettings.repeatMode.collect { mode ->
+                repeatMode = mode
+                applyRepeatMode(mode)
+                updateNotification()
             }
         }
         serviceScope.launch {
@@ -329,9 +324,16 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
-    private fun updatePauseOnRepeat() {
-        exoPlayer.pauseAtEndOfMediaItems =
-            exoPlayer.repeatMode == Player.REPEAT_MODE_ONE && pauseOnRepeatEnabled
+    /**
+     * Puts a repeat mode on the player.
+     *
+     * `pauseAtEndOfMediaItems` is what separates "repeat this track" from "play it once more, then
+     * stop" - media3 already knows how to pause at the end of an item, so unlike the reference app
+     * this needs no hand-written seek-and-pause when the track comes round.
+     */
+    private fun applyRepeatMode(mode: RepeatMode) {
+        exoPlayer.repeatMode = mode.toPlayerRepeatMode()
+        exoPlayer.pauseAtEndOfMediaItems = mode.stopsAfterCurrentTrack()
     }
 
     private fun registerHeadsetReceiver() {

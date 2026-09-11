@@ -90,14 +90,9 @@ class PlayerViewModel @Inject constructor(
         playbackController.setRepeatMode(mode)
     }
 
-    /** Cycles OFF -> ALL -> ONE -> OFF, matching Fossify's repeat-button tap behavior. */
+    /** Steps the repeat button through its four modes, in Fossify's order. */
     fun onCycleRepeatMode() {
-        val next = when (uiState.value.playback.repeatMode) {
-            RepeatMode.OFF -> RepeatMode.ALL
-            RepeatMode.ALL -> RepeatMode.ONE
-            RepeatMode.ONE -> RepeatMode.OFF
-        }
-        onSetRepeatMode(next)
+        onSetRepeatMode(uiState.value.playback.repeatMode.next)
     }
 
     fun onToggleFavorite() {

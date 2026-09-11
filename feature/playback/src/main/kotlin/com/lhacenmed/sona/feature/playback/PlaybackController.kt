@@ -68,6 +68,10 @@ class PlaybackController @Inject constructor(
     private var positionPollJob: Job? = null
     private var playCountJob: Job? = null
 
+    // The player's repeat int cannot tell RepeatMode.ONE from STOP_AFTER_CURRENT, so the stored
+    // mode is what the UI is told about.
+    @Volatile private var storedRepeatMode: RepeatMode = RepeatMode.OFF
+
     /** The track already counted, so pausing and resuming cannot count the same listen twice. */
     private var countedTrackId: Long? = null
     private val hasRestoredQueue = AtomicBoolean(false)
@@ -118,6 +122,13 @@ class PlaybackController @Inject constructor(
     }
 
     init {
+        scope.launch {
+            playbackSettings.repeatMode.collect { mode ->
+                storedRepeatMode = mode
+                controller?.let(::updateUiState)
+            }
+        }
+
         val sessionToken = SessionToken(context, ComponentName(context, PlaybackService::class.java))
         val future = MediaController.Builder(context, sessionToken).buildAsync()
         future.addListener(
@@ -177,7 +188,7 @@ class PlaybackController @Inject constructor(
                 positionMs = mediaController.currentPosition,
                 durationMs = currentDurationMsOrElse(it.durationMs),
                 shuffleEnabled = mediaController.shuffleModeEnabled,
-                repeatMode = mediaController.repeatMode.toRepeatMode(),
+                repeatMode = storedRepeatMode,
                 queue = currentQueueIds(mediaController),
             )
         }
