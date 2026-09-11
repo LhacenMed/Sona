@@ -4,11 +4,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 
 @Composable
 fun FoldersScreen(
     viewModel: LibraryViewModel,
+    selection: SelectionState,
     modifier: Modifier = Modifier,
 ) {
     val folders by viewModel.folders.collectAsStateWithLifecycle()
@@ -26,6 +28,8 @@ fun FoldersScreen(
         modifier = modifier,
     ) { folder ->
         LibraryEntityRow(
+            selection = selection,
+            selectionKey = folder.path,
             title = folder.name,
             subtitle = "${folder.trackCount} tracks",
             onClick = { navigator.go(FolderDetailScreen(folder.path)) },

@@ -48,4 +48,18 @@ internal class PlaybackForwardingPlayer(
         super.seekToNextMediaItem()
         if (!settings().rememberPause) play()
     }
+
+    // Repeating the current track (RepeatMode.ONE and STOP_AFTER_CURRENT both map to
+    // Player.REPEAT_MODE_ONE) makes "next" as pointless as it already is on the last queue item, so
+    // it is hidden the same way: the notification, lock screen, Android Auto, and headset buttons
+    // all read this, and all already know how to free the slot/button when a next track is
+    // unavailable - no separate notification-layout logic needed.
+    override fun getAvailableCommands(): Player.Commands {
+        val commands = super.getAvailableCommands()
+        if (repeatMode != Player.REPEAT_MODE_ONE) return commands
+        return commands.buildUpon()
+            .remove(Player.COMMAND_SEEK_TO_NEXT)
+            .remove(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+            .build()
+    }
 }

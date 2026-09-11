@@ -4,10 +4,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.designsystem.component.SelectionState
 
 @Composable
 fun TracksScreen(
     viewModel: LibraryViewModel,
+    selection: SelectionState,
     modifier: Modifier = Modifier,
 ) {
     val tracks by viewModel.tracks.collectAsStateWithLifecycle()
@@ -28,6 +30,7 @@ fun TracksScreen(
             track = track,
             // A lambda, so changing songs recomposes two rows instead of the whole list.
             isPlaying = { track.id == currentTrackId },
+            selection = selection,
             onClick = { viewModel.onTrackClick(track) },
         )
     }

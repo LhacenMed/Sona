@@ -3,26 +3,27 @@ package com.lhacenmed.sona.feature.library
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
+import com.lhacenmed.sona.core.designsystem.component.TopBarAction
+import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
+import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 
@@ -35,27 +36,33 @@ object SearchScreen : Screen {
         val query by viewModel.query.collectAsStateWithLifecycle()
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
         val currentTrackId by viewModel.currentTrackId.collectAsStateWithLifecycle()
+        val selection = rememberSelectionState()
 
         Column(modifier = Modifier.fillMaxSize()) {
-            Row(
+            SonaTopAppBar(
+                title = "Search",
+                onNavigateBack = navigator::back,
+                selection = selection.toTopBarSelection(
+                    actions = listOf(
+                        TopBarAction(label = "Play", icon = Icons.Filled.PlayArrow) {
+                            viewModel.playSelection(selection.selectedKeys)
+                            selection.clear()
+                        },
+                        TopBarAction(label = "Select all", icon = Icons.Filled.SelectAll) {
+                            selection.selectAll(viewModel.selectableKeys())
+                        },
+                    ),
+                ),
+            )
+            OutlinedTextField(
+                value = query,
+                onValueChange = viewModel::onQueryChange,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = navigator::back) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                }
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = viewModel::onQueryChange,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 12.dp),
-                    placeholder = { Text("Search your library") },
-                    singleLine = true,
-                )
-            }
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                placeholder = { Text("Search your library") },
+                singleLine = true,
+            )
 
             when {
                 query.isBlank() -> EmptyLibraryState(
@@ -75,6 +82,7 @@ object SearchScreen : Screen {
                             TrackRow(
                                 track = track,
                                 isPlaying = { track.id == currentTrackId },
+                                selection = selection,
                                 onClick = { viewModel.onTrackClick(track) },
                             )
                         }

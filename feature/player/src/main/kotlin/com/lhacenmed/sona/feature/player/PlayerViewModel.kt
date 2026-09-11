@@ -30,6 +30,7 @@ data class PlayerUiState(
     val playback: PlaybackUiState = PlaybackUiState(),
     val currentTrack: Track? = null,
     val queueTracks: List<Track> = emptyList(),
+    val isCurrentTrackFavorite: Boolean = false,
 )
 
 @HiltViewModel
@@ -55,8 +56,14 @@ class PlayerViewModel @Inject constructor(
         playbackController.playbackState,
         currentTrack,
         queueTracks,
-    ) { playback, track, queue ->
-        PlayerUiState(playback = playback, currentTrack = track, queueTracks = queue)
+        repository.favoriteTrackIds,
+    ) { playback, track, queue, favoriteIds ->
+        PlayerUiState(
+            playback = playback,
+            currentTrack = track,
+            queueTracks = queue,
+            isCurrentTrackFavorite = track != null && track.id in favoriteIds,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PlayerUiState())
 
     fun onTogglePlayPause() {
@@ -83,20 +90,16 @@ class PlayerViewModel @Inject constructor(
         playbackController.setRepeatMode(mode)
     }
 
-    /** Cycles OFF -> ALL -> ONE -> OFF, matching Fossify's repeat-button tap behavior. */
+    /** Steps the repeat button through its four modes, in Fossify's order. */
     fun onCycleRepeatMode() {
-        val next = when (uiState.value.playback.repeatMode) {
-            RepeatMode.OFF -> RepeatMode.ALL
-            RepeatMode.ALL -> RepeatMode.ONE
-            RepeatMode.ONE -> RepeatMode.OFF
-        }
-        onSetRepeatMode(next)
+        onSetRepeatMode(uiState.value.playback.repeatMode.next)
     }
 
     fun onToggleFavorite() {
         val track = uiState.value.currentTrack ?: return
+        val isFavorite = uiState.value.isCurrentTrackFavorite
         viewModelScope.launch(Dispatchers.IO) {
-            repository.setFavorite(track.id, !track.isFavorite)
+            repository.setFavorite(track.id, !isFavorite)
         }
     }
 

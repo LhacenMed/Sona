@@ -4,11 +4,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 
 @Composable
 fun GenresScreen(
     viewModel: LibraryViewModel,
+    selection: SelectionState,
     modifier: Modifier = Modifier,
 ) {
     val genres by viewModel.genres.collectAsStateWithLifecycle()
@@ -26,6 +28,8 @@ fun GenresScreen(
         modifier = modifier,
     ) { genre ->
         LibraryEntityRow(
+            selection = selection,
+            selectionKey = genre.id,
             title = genre.name,
             subtitle = "${genre.trackCount} tracks",
             onClick = { navigator.go(GenreDetailScreen(genre.id)) },

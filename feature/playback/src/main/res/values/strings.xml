@@ -1,3 +1,11 @@
 <resources>
-    <string name="playback_action_close">Close</string>
+    <string name="playback_notification_channel_name">Playback</string>
+    <string name="playback_action_add_favorite">Add to favorites</string>
+    <string name="playback_action_remove_favorite">Remove from favorites</string>
+    <string name="playback_action_shuffle_on">Shuffle on</string>
+    <string name="playback_action_shuffle_off">Shuffle off</string>
+    <string name="playback_action_repeat_off">Repeat mode off</string>
+    <string name="playback_action_repeat_one">Repeat current song</string>
+    <string name="playback_action_repeat_all">Repeat queue</string>
+    <string name="playback_action_repeat_one_stop">Stop after current song</string>
 </resources>

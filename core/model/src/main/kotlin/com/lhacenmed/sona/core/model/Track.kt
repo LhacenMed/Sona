@@ -19,5 +19,4 @@ data class Track(
     val dateAddedSeconds: Long,
     val coverArtUri: String?,
     val isManuallyScanned: Boolean,
-    val isFavorite: Boolean,
 )

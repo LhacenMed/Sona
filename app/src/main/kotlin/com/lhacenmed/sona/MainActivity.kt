@@ -8,10 +8,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.lhacenmed.sona.core.data.LibraryRepository
+import com.lhacenmed.sona.core.designsystem.theme.AppThemeSeed
 import com.lhacenmed.sona.core.designsystem.theme.SonaTheme
 import com.lhacenmed.sona.core.navigation.IntentNavigator
 import com.lhacenmed.sona.core.navigation.LocalNavigator
@@ -43,6 +43,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var libraryRepository: LibraryRepository
 
+    @Inject
+    lateinit var themeSeed: AppThemeSeed
+
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) mediaScanner.requestScan()
@@ -71,8 +74,7 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            val themeViewModel: AppThemeViewModel = hiltViewModel()
-            val themeColor by themeViewModel.themeColor.collectAsStateWithLifecycle()
+            val themeColor by themeSeed.color.collectAsStateWithLifecycle()
 
             SonaTheme(themeColor = themeColor) {
                 val navigator = remember { IntentNavigator(this) }

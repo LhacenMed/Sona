@@ -185,6 +185,7 @@ private fun ExpandedPlayerContent(
     modifier: Modifier = Modifier,
 ) {
     val track = uiState.currentTrack ?: return
+    val isFavorite = uiState.isCurrentTrackFavorite
     var showMoreSheet by remember { mutableStateOf(false) }
 
     Column(modifier = modifier.padding(horizontal = 20.dp)) {
@@ -243,9 +244,9 @@ private fun ExpandedPlayerContent(
             }
             IconButton(onClick = viewModel::onToggleFavorite) {
                 Icon(
-                    imageVector = if (track.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                    contentDescription = if (track.isFavorite) "Remove from favorites" else "Add to favorites",
-                    tint = if (track.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                    contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
+                    tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }

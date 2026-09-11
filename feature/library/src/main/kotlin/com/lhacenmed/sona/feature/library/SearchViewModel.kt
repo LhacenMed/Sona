@@ -90,4 +90,17 @@ class SearchViewModel @Inject constructor(
         val index = matching.indexOfFirst { it.id == track.id }
         if (index >= 0) playbackController.playTracks(matching, index)
     }
+
+    /**
+     * Plays the selected results. Only track results can be selected - an album and an artist have
+     * no single action in common, so letting them into a selection would give the bar nothing
+     * honest to offer.
+     */
+    fun playSelection(selectedKeys: Set<Any>) {
+        val selected = uiState.value.tracks.filter { it.id in selectedKeys }
+        if (selected.isNotEmpty()) playbackController.playTracks(selected, startIndex = 0)
+    }
+
+    /** Every track result's selection key, which is what the context bar's "select all" selects. */
+    fun selectableKeys(): List<Any> = uiState.value.tracks.map { it.id }
 }

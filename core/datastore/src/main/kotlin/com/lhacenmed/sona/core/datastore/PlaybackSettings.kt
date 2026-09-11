@@ -15,7 +15,6 @@ import kotlinx.coroutines.flow.map
 private val Context.playbackDataStore by preferencesDataStore(name = "playback_settings")
 
 private val REMEMBER_PAUSE = booleanPreferencesKey("remember_pause")
-private val PAUSE_ON_REPEAT = booleanPreferencesKey("pause_on_repeat")
 private val REWIND_BEFORE_SKIP_BACK = booleanPreferencesKey("rewind_before_skip_back")
 private val HEADSET_AUTOPLAY = booleanPreferencesKey("headset_autoplay")
 private val SHUFFLE_ENABLED = booleanPreferencesKey("shuffle_enabled")
@@ -38,13 +37,6 @@ class PlaybackSettings @Inject constructor(@ApplicationContext context: Context)
 
     suspend fun setRememberPause(enabled: Boolean) {
         dataStore.edit { it[REMEMBER_PAUSE] = enabled }
-    }
-
-    /** When true (and repeat mode is [RepeatMode.ONE]), playback pauses at the end of the track. */
-    val pauseOnRepeat: Flow<Boolean> = dataStore.data.map { it[PAUSE_ON_REPEAT] ?: false }
-
-    suspend fun setPauseOnRepeat(enabled: Boolean) {
-        dataStore.edit { it[PAUSE_ON_REPEAT] = enabled }
     }
 
     /**

@@ -126,9 +126,6 @@ class ManualFileWalker @Inject constructor(
                 dateAddedSeconds = dateAddedSeconds,
                 coverArtUri = null,
                 isManuallyScanned = true,
-                // LibraryWriter carries the stored value forward on every sync, so a rescan never
-                // clears favourites.
-                isFavorite = false,
             )
         } catch (_: Exception) {
             return null
