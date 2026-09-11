@@ -25,7 +25,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -107,7 +106,8 @@ private sealed interface BarContent {
  *
  * Searching replaces the title rather than sitting beside it, which is what makes it feel like the
  * bar became the search rather than grew one. A selection outranks a search: if rows get picked
- * while searching, the context bar is what the user needs to see.
+ * while searching, the context bar is what the user needs to see. Every mode keeps the same
+ * background, so changing mode never repaints the top of the screen a different colour.
  *
  * Taking [actions] as data rather than as a slot is what lets the bar overflow: it draws the first
  * few as icons and folds the remainder into a dropdown, the way a platform action bar does. A screen
@@ -199,13 +199,6 @@ fun SonaTopAppBar(
                     }
                 },
                 actions = { BarActions(actions = activeContent.selection.actions) },
-                // Tinted, so it is obvious at a glance that the app is in a different mode.
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    actionIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                ),
             )
         }
     }
