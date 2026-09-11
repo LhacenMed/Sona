@@ -276,51 +276,61 @@ class PlaybackService : MediaSessionService() {
     /**
      * Rebuilds the whole notification layout from current player state.
      *
-     * Ported from ArchiveTune's `updateNotification`: the same three buttons, always in the same
-     * order, with no slot assigned to any of them - only each button's icon and label change from
-     * one call to the next. `setCustomLayout` (not `setMediaButtonPreferences`) is what ArchiveTune
-     * uses, and media3 fits play/pause plus as much of this list as the platform allows around it.
+     * Ported from ArchiveTune's `updateNotification`: the same three buttons, with no slot assigned
+     * to any of them - only each button's icon and label change from one call to the next.
+     * `setCustomLayout` (not `setMediaButtonPreferences`) is what ArchiveTune uses, and media3 fits
+     * play/pause plus as much of this list as the platform allows around it.
+     *
+     * The one deviation: while repeating the current track (`ONE`/`STOP_AFTER_CURRENT`), favourite
+     * moves to the front of the list. media3 backfills a missing transport button - previous, or
+     * next when repeating - from whichever button is first, so this is what keeps repeat and
+     * shuffle from being the one pulled into that spot while there is nowhere to go next.
      */
     private fun updateNotification() {
-        val customLayout = listOf(
-            CommandButton.Builder()
-                .setDisplayName(
-                    getString(
-                        when (repeatMode) {
-                            RepeatMode.STOP_AFTER_CURRENT -> R.string.playback_action_repeat_one_stop
-                            RepeatMode.ONE -> R.string.playback_action_repeat_one
-                            RepeatMode.ALL -> R.string.playback_action_repeat_all
-                            RepeatMode.OFF -> R.string.playback_action_repeat_off
-                        },
-                    ),
-                )
-                .setIconResId(
+        val repeatButton = CommandButton.Builder()
+            .setDisplayName(
+                getString(
                     when (repeatMode) {
-                        RepeatMode.STOP_AFTER_CURRENT -> R.drawable.repeat_one_stop
-                        RepeatMode.ONE -> R.drawable.repeat_one_on
-                        RepeatMode.ALL -> R.drawable.repeat_on
-                        RepeatMode.OFF -> R.drawable.repeat
+                        RepeatMode.STOP_AFTER_CURRENT -> R.string.playback_action_repeat_one_stop
+                        RepeatMode.ONE -> R.string.playback_action_repeat_one
+                        RepeatMode.ALL -> R.string.playback_action_repeat_all
+                        RepeatMode.OFF -> R.string.playback_action_repeat_off
                     },
-                )
-                .setSessionCommand(PlaybackSessionCommands.toggleRepeatModeCommand)
-                .build(),
-            CommandButton.Builder()
-                .setDisplayName(
-                    getString(
-                        if (exoPlayer.shuffleModeEnabled) {
-                            R.string.playback_action_shuffle_off
-                        } else {
-                            R.string.playback_action_shuffle_on
-                        },
-                    ),
-                )
-                .setIconResId(
-                    if (exoPlayer.shuffleModeEnabled) R.drawable.shuffle_on else R.drawable.shuffle,
-                )
-                .setSessionCommand(PlaybackSessionCommands.toggleShuffleCommand)
-                .build(),
-            buildFavoriteCommandButton(),
-        )
+                ),
+            )
+            .setIconResId(
+                when (repeatMode) {
+                    RepeatMode.STOP_AFTER_CURRENT -> R.drawable.repeat_one_stop
+                    RepeatMode.ONE -> R.drawable.repeat_one_on
+                    RepeatMode.ALL -> R.drawable.repeat_on
+                    RepeatMode.OFF -> R.drawable.repeat
+                },
+            )
+            .setSessionCommand(PlaybackSessionCommands.toggleRepeatModeCommand)
+            .build()
+        val shuffleButton = CommandButton.Builder()
+            .setDisplayName(
+                getString(
+                    if (exoPlayer.shuffleModeEnabled) {
+                        R.string.playback_action_shuffle_off
+                    } else {
+                        R.string.playback_action_shuffle_on
+                    },
+                ),
+            )
+            .setIconResId(
+                if (exoPlayer.shuffleModeEnabled) R.drawable.shuffle_on else R.drawable.shuffle,
+            )
+            .setSessionCommand(PlaybackSessionCommands.toggleShuffleCommand)
+            .build()
+        val favoriteButton = buildFavoriteCommandButton()
+
+        val repeatsCurrentTrack = repeatMode == RepeatMode.ONE || repeatMode == RepeatMode.STOP_AFTER_CURRENT
+        val customLayout = if (repeatsCurrentTrack) {
+            listOf(favoriteButton, repeatButton, shuffleButton)
+        } else {
+            listOf(repeatButton, shuffleButton, favoriteButton)
+        }
         mediaSession.setCustomLayout(customLayout)
     }
 
