@@ -16,11 +16,11 @@ import com.google.common.collect.ImmutableList
  * The media notification, ported from ArchiveTune's `ArchiveTuneMediaNotificationProvider`.
  *
  * It builds nothing itself: media3's [DefaultMediaNotificationProvider] renders the notification
- * from the session, and this only wraps it to do two things the default cannot. It names the
- * channel and small icon, which is why the status bar now shows Sona's mark rather than media3's
- * generic glyph. And it replaces the notification's delete intent so that swiping the notification
- * away arrives at [PlaybackService] as an ordinary command, carrying the original intent along so
- * media3's own dismissal still runs afterwards.
+ * from the session, including its custom layout buttons, and this only wraps it to do two things
+ * the default cannot. It names the channel and small icon, which is why the status bar shows
+ * Sona's mark rather than media3's generic glyph. And it replaces the notification's delete intent
+ * so that swiping the notification away arrives at [PlaybackService] as an ordinary command,
+ * carrying the original intent along so media3's own dismissal still runs afterwards.
  *
  * Deviation from the source: ArchiveTune also overrides `getNotificationChannelInfo()`. That member
  * does not exist on `MediaNotification.Provider` in media3 1.9.1 (it arrives later), so the override

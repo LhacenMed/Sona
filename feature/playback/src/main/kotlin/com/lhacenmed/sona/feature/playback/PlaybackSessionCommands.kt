@@ -11,11 +11,11 @@ import androidx.media3.session.SessionCommand
  * is never touched there - it follows from the state the press changed.
  */
 internal object PlaybackSessionCommands {
-    const val ACTION_CLOSE = "com.lhacenmed.sona.playback.CLOSE"
+    const val ACTION_TOGGLE_FAVORITE = "TOGGLE_FAVORITE"
     const val ACTION_TOGGLE_SHUFFLE = "TOGGLE_SHUFFLE"
     const val ACTION_TOGGLE_REPEAT_MODE = "TOGGLE_REPEAT_MODE"
 
-    val closeSessionCommand = SessionCommand(ACTION_CLOSE, Bundle.EMPTY)
+    val toggleFavoriteCommand = SessionCommand(ACTION_TOGGLE_FAVORITE, Bundle.EMPTY)
     val toggleShuffleCommand = SessionCommand(ACTION_TOGGLE_SHUFFLE, Bundle.EMPTY)
     val toggleRepeatModeCommand = SessionCommand(ACTION_TOGGLE_REPEAT_MODE, Bundle.EMPTY)
 }

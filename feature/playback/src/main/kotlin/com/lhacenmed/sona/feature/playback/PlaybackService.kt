@@ -13,6 +13,7 @@ import android.os.Bundle
 import androidx.core.content.ContextCompat
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -23,7 +24,7 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
-import com.lhacenmed.sona.core.database.dao.QueueItemDao
+import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.model.RepeatMode
 import dagger.hilt.android.AndroidEntryPoint
@@ -55,7 +56,7 @@ import kotlinx.coroutines.runBlocking
 class PlaybackService : MediaSessionService() {
 
     @Inject
-    lateinit var queueItemDao: QueueItemDao
+    lateinit var libraryRepository: LibraryRepository
 
     @Inject
     lateinit var playbackSettings: PlaybackSettings
@@ -79,10 +80,19 @@ class PlaybackService : MediaSessionService() {
     @Volatile private var repeatMode: RepeatMode = RepeatMode.OFF
 
     @Volatile private var headsetAutoplayEnabled = false
+
+    // Mirrored into a field because the notification is rebuilt synchronously and cannot suspend to
+    // ask whether the playing track is a favourite.
+    @Volatile private var favoriteTrackIds: Set<Long> = emptySet()
     private var initialHeadsetPlugEventHandled = false
 
     private val playerListener = object : Player.Listener {
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+            updateNotification()
+        }
+
+        // The heart belongs to the track, so it has to be redrawn when the track changes.
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             updateNotification()
         }
     }
@@ -110,7 +120,7 @@ class PlaybackService : MediaSessionService() {
         ): MediaSession.ConnectionResult {
             val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
                 .buildUpon()
-                .add(PlaybackSessionCommands.closeSessionCommand)
+                .add(PlaybackSessionCommands.toggleFavoriteCommand)
                 .add(PlaybackSessionCommands.toggleShuffleCommand)
                 .add(PlaybackSessionCommands.toggleRepeatModeCommand)
                 .build()
@@ -129,7 +139,7 @@ class PlaybackService : MediaSessionService() {
             // Each branch only changes state. Nothing here touches the notification - the
             // resulting player callback does, via updateNotification().
             when (customCommand.customAction) {
-                PlaybackSessionCommands.ACTION_CLOSE -> stopPlaybackAndService()
+                PlaybackSessionCommands.ACTION_TOGGLE_FAVORITE -> toggleFavorite()
 
                 PlaybackSessionCommands.ACTION_TOGGLE_SHUFFLE -> toggleShuffle()
 
@@ -273,7 +283,7 @@ class PlaybackService : MediaSessionService() {
                 )
                 .setSessionCommand(PlaybackSessionCommands.toggleShuffleCommand)
                 .build(),
-            buildCloseCommandButton(),
+            buildFavoriteCommandButton(),
         )
         mediaSession.setCustomLayout(customLayout)
     }
@@ -322,6 +332,12 @@ class PlaybackService : MediaSessionService() {
         serviceScope.launch {
             playbackSettings.headsetAutoplay.collect { headsetAutoplayEnabled = it }
         }
+        serviceScope.launch {
+            libraryRepository.favoriteTrackIds.collect {
+                favoriteTrackIds = it
+                updateNotification()
+            }
+        }
     }
 
     /**
@@ -362,19 +378,40 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
-    private fun stopPlaybackAndService() {
-        exoPlayer.pause()
-        exoPlayer.clearMediaItems()
-        serviceScope.launch(Dispatchers.IO) { queueItemDao.clear() }
-        stopSelf()
+    private fun currentTrackId(): Long? = exoPlayer.currentMediaItem?.mediaId?.toLongOrNull()
+
+    private fun toggleFavorite() {
+        val trackId = currentTrackId() ?: return
+        val isFavorite = trackId in favoriteTrackIds
+        // Only the write happens here; the icon follows from the favourites flow re-emitting, the
+        // same way the shuffle and repeat icons follow their player callbacks.
+        serviceScope.launch { libraryRepository.setFavorite(trackId, !isFavorite) }
     }
 
-    private fun buildCloseCommandButton(): CommandButton =
-        CommandButton.Builder()
-            .setDisplayName(getString(R.string.playback_action_close))
-            .setSessionCommand(PlaybackSessionCommands.closeSessionCommand)
-            .setIconResId(R.drawable.ic_close)
+    /**
+     * The heart, always present and always in the same place.
+     *
+     * Ported from ArchiveTune's like button: it carries no slot, and is disabled rather than hidden
+     * while nothing is loaded, matching `.setEnabled(currentSong.value != null)`.
+     */
+    private fun buildFavoriteCommandButton(): CommandButton {
+        val trackId = currentTrackId()
+        val isFavorite = trackId?.let { it in favoriteTrackIds } == true
+        return CommandButton.Builder()
+            .setDisplayName(
+                getString(
+                    if (isFavorite) {
+                        R.string.playback_action_remove_favorite
+                    } else {
+                        R.string.playback_action_add_favorite
+                    },
+                ),
+            )
+            .setSessionCommand(PlaybackSessionCommands.toggleFavoriteCommand)
+            .setIconResId(if (isFavorite) R.drawable.favorite else R.drawable.favorite_border)
+            .setEnabled(trackId != null)
             .build()
+    }
 
     // feature:playback has no dependency on :app (that dependency runs the other way), so the
     // notification's tap target is resolved generically via the launcher intent for our own
