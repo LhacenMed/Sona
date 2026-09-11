@@ -42,6 +42,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -194,6 +195,12 @@ private fun <T> ReorderableColumn(
         items.toMutableList().apply { add(targetIndex, removeAt(draggedIndex)) }
     }
 
+    // The gesture callbacks are created once per `items` and would otherwise close over the values
+    // that existed when the drag began - a target of "no drag" and the untouched order - so the drop
+    // would compare them, find nothing had moved, and write nothing at all. These read the latest.
+    val latestTarget by rememberUpdatedState(targetIndex)
+    val latestOrder by rememberUpdatedState(ordered)
+
     LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
         itemsIndexed(
             items = ordered,
@@ -201,7 +208,7 @@ private fun <T> ReorderableColumn(
             contentType = { _, _ -> LIST_ROW_CONTENT_TYPE },
         ) { index, item ->
             val isDragging = targetIndex != NO_DRAG && index == targetIndex
-            Row(
+            Box(
                 modifier = Modifier
                     .zIndex(if (isDragging) 1f else 0f)
                     .graphicsLayer {
@@ -213,14 +220,16 @@ private fun <T> ReorderableColumn(
                             0f
                         }
                     },
-                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(modifier = Modifier.weight(1f)) { row(item) }
+                row(item)
+                // Drawn over the row rather than beside it, so it sits on whatever background the
+                // row has - selected, playing or plain - instead of cutting a strip out of it.
                 Icon(
                     imageVector = Icons.Filled.DragHandle,
                     contentDescription = "Reorder",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
+                        .align(Alignment.CenterEnd)
                         .padding(horizontal = 16.dp)
                         .pointerInput(items) {
                             detectDragGestures(
@@ -233,8 +242,8 @@ private fun <T> ReorderableColumn(
                                     dragOffsetPx += dragAmount.y
                                 },
                                 onDragEnd = {
-                                    if (targetIndex != NO_DRAG && targetIndex != draggedIndex) {
-                                        onReorder(ordered)
+                                    if (latestTarget != NO_DRAG && latestTarget != draggedIndex) {
+                                        onReorder(latestOrder)
                                     }
                                     draggedIndex = NO_DRAG
                                     dragOffsetPx = 0f
@@ -250,7 +259,6 @@ private fun <T> ReorderableColumn(
         }
     }
 }
-
 
 /**
  * Tap and long-press behaviour for any row that can be selected.
@@ -507,9 +515,10 @@ internal fun TrackListDetail(
             emptyMessage = emptyMessage,
             key = { it.id },
             modifier = Modifier.weight(1f).fillMaxWidth(),
-            // Dragging is only offered while the list shows its own order; a search has already
-            // reordered it, so a drop would write an order the user cannot see.
-            onReorder = onReorder.takeIf { searchQuery.isNullOrBlank() },
+            // Handles appear with the context bar: dragging is something done to a selection, so
+            // an ordinary tap-to-play list is never cluttered by them. A search has reordered the
+            // list already, so a drop would write an order the user cannot see.
+            onReorder = onReorder.takeIf { searchQuery.isNullOrBlank() && selection.isActive },
         ) { track ->
             TrackRow(
                 track = track,
