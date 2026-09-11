@@ -1,13 +1,9 @@
 package com.lhacenmed.sona.feature.playback
 
 import android.content.ComponentName
-import android.content.ContentUris
 import android.content.Context
-import android.net.Uri
-import android.provider.MediaStore
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.session.MediaController
@@ -21,7 +17,6 @@ import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
 import dagger.hilt.android.qualifiers.ApplicationContext
-import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -147,7 +142,7 @@ class PlaybackController @Inject constructor(
     /** Builds a fresh queue from [tracks] and starts playback at [startIndex]. */
     fun playTracks(tracks: List<Track>, startIndex: Int) {
         val mediaController = controller ?: return
-        val mediaItems = tracks.map(::toMediaItem)
+        val mediaItems = tracks.map(Track::toMediaItem)
         mediaController.setMediaItems(mediaItems, startIndex, 0L)
         mediaController.prepare()
         mediaController.play()
@@ -286,7 +281,7 @@ class PlaybackController @Inject constructor(
             if (restored.isEmpty()) return@launch
             val currentIndex = restored.indexOfFirst { it.first.isCurrent }.takeIf { it >= 0 } ?: 0
             val startPositionMs = restored[currentIndex].first.lastPositionMs
-            val mediaItems = restored.map { toMediaItem(it.second) }
+            val mediaItems = restored.map { it.second.toMediaItem() }
             mediaController.setMediaItems(mediaItems, currentIndex, startPositionMs)
             mediaController.prepare()
         }
@@ -314,24 +309,4 @@ class PlaybackController @Inject constructor(
         positionPollJob = null
     }
 
-    private fun toMediaItem(track: Track): MediaItem {
-        val uri: Uri = if (track.isManuallyScanned) {
-            Uri.fromFile(File(track.path))
-        } else {
-            ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, track.mediaStoreId)
-        }
-        val metadata = MediaMetadata.Builder()
-            .setTitle(track.title)
-            .setArtist(track.artist)
-            .setAlbumTitle(track.album)
-            .apply {
-                track.coverArtUri?.let { setArtworkUri(Uri.parse(it)) }
-            }
-            .build()
-        return MediaItem.Builder()
-            .setMediaId(track.id.toString())
-            .setUri(uri)
-            .setMediaMetadata(metadata)
-            .build()
-    }
 }

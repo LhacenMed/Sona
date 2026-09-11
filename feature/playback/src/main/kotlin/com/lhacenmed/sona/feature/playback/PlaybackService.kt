@@ -24,7 +24,9 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.SettableFuture
 import com.lhacenmed.sona.core.data.LibraryRepository
+import com.lhacenmed.sona.core.database.dao.QueueItemDao
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.model.RepeatMode
 import dagger.hilt.android.AndroidEntryPoint
@@ -37,6 +39,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 
 /**
  * Foreground [MediaSessionService] that owns the [ExoPlayer] instance and its [MediaSession].
@@ -60,6 +63,9 @@ class PlaybackService : MediaSessionService() {
 
     @Inject
     lateinit var playbackSettings: PlaybackSettings
+
+    @Inject
+    lateinit var queueItemDao: QueueItemDao
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -148,6 +154,36 @@ class PlaybackService : MediaSessionService() {
                 else -> return super.onCustomCommand(session, controller, customCommand, args)
             }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+        }
+
+        // Ported from Fossify's MediaSessionCallback.onPlaybackResumption: lets a media button
+        // (e.g. a headset's play button) start the service and resume the last queue even when
+        // no MediaController - and so no PlaybackController - is around to restore it, because
+        // nothing in the app process runs before this fires. Reads the same queue table
+        // PlaybackController restores from on a normal app launch.
+        override fun onPlaybackResumption(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+            val future = SettableFuture.create<MediaSession.MediaItemsWithStartPosition>()
+            serviceScope.launch {
+                val items = withContext(Dispatchers.IO) { queueItemDao.getAll() }
+                val tracksById = withContext(Dispatchers.IO) {
+                    libraryRepository.tracksByIds(items.map { it.trackId }).associateBy { it.id }
+                }
+                val restored = items.mapNotNull { queueItem ->
+                    tracksById[queueItem.trackId]?.let { track -> queueItem to track }
+                }
+                if (restored.isEmpty()) {
+                    future.setException(UnsupportedOperationException())
+                    return@launch
+                }
+                val currentIndex = restored.indexOfFirst { it.first.isCurrent }.takeIf { it >= 0 } ?: 0
+                val startPositionMs = restored[currentIndex].first.lastPositionMs
+                val mediaItems = restored.map { it.second.toMediaItem() }
+                future.set(MediaSession.MediaItemsWithStartPosition(mediaItems, currentIndex, startPositionMs))
+            }
+            return future
         }
     }
 
