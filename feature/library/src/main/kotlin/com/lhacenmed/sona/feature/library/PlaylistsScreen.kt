@@ -1,6 +1,7 @@
 package com.lhacenmed.sona.feature.library
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
@@ -41,11 +42,10 @@ import com.lhacenmed.sona.core.navigation.Screen
 private const val RECENT_TITLE = "Recent"
 private const val MOST_PLAYED_TITLE = "Most played"
 
-/** What the name dialog is currently being used for, since create, rename and import all need one. */
+/** What the name dialog is currently being used for, since create and rename both need one. */
 private sealed interface NamePrompt {
     data object Create : NamePrompt
     data class FromFolder(val folderPath: String) : NamePrompt
-    data class Import(val source: Uri) : NamePrompt
     data class Rename(val playlist: Playlist) : NamePrompt
 }
 
@@ -71,6 +71,15 @@ object PlaylistsScreen : Screen {
         var searchQuery by remember { mutableStateOf<String?>(null) }
         var namePrompt by remember { mutableStateOf<NamePrompt?>(null) }
         var confirmingDelete by remember { mutableStateOf<List<Playlist>>(emptyList()) }
+        // The file waiting to be imported, and whether its destination is being named. Both dialogs
+        // are on screen at once while naming, the destinations still behind the name.
+        var importSource by remember { mutableStateOf<Uri?>(null) }
+        var isNamingNewPlaylist by remember { mutableStateOf(false) }
+
+        fun showImportResult(succeeded: Boolean) {
+            val message = if (succeeded) "Playlist imported" else "Could not import playlist"
+            Toast.makeText(context.applicationContext, message, Toast.LENGTH_SHORT).show()
+        }
 
         val folderLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.OpenDocumentTree(),
@@ -82,7 +91,7 @@ object PlaylistsScreen : Screen {
         val importLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.OpenDocument(),
         ) { uri ->
-            if (uri != null) namePrompt = NamePrompt.Import(uri)
+            if (uri != null) importSource = uri
         }
 
         // The derived lists are rows here rather than playlists, so they are matched on their own
@@ -112,7 +121,7 @@ object PlaylistsScreen : Screen {
                         folderLauncher.launch(null)
                     },
                     TopBarAction(label = "Import playlist", icon = Icons.Filled.FileDownload) {
-                        importLauncher.launch(arrayOf(M3U_MIME_TYPE, "*/*"))
+                        importLauncher.launch(M3U_PICKER_MIME_TYPES)
                     },
                 ),
                 search = searchQuery?.let { current ->
@@ -203,7 +212,6 @@ object PlaylistsScreen : Screen {
                 initialName = when (prompt) {
                     is NamePrompt.Create -> ""
                     is NamePrompt.FromFolder -> prompt.folderPath.substringAfterLast('/')
-                    is NamePrompt.Import -> "Imported playlist"
                     is NamePrompt.Rename -> prompt.playlist.name
                 },
                 // Its own name is not "taken" by anything else, so renaming without changing it
@@ -219,15 +227,44 @@ object PlaylistsScreen : Screen {
                         is NamePrompt.Create -> viewModel.createPlaylist(name)
                         is NamePrompt.FromFolder ->
                             viewModel.createPlaylistFromFolder(name, prompt.folderPath)
-                        is NamePrompt.Import -> viewModel.importPlaylist(name) {
-                            context.contentResolver.openInputStream(prompt.source)
-                        }
                         is NamePrompt.Rename -> viewModel.renamePlaylist(prompt.playlist.id, name)
                     }
                     namePrompt = null
                     selection.clear()
                 },
             )
+        }
+
+        importSource?.let { source ->
+            val openSource = { context.contentResolver.openInputStream(source) }
+
+            ImportDestinationDialog(
+                playlists = playlists.itemsOrEmpty,
+                onDismiss = {
+                    importSource = null
+                    isNamingNewPlaylist = false
+                },
+                onPlaylistSelected = { playlist ->
+                    importSource = null
+                    viewModel.importIntoPlaylist(playlist.id, openSource, ::showImportResult)
+                },
+                onCreateNewSelected = { isNamingNewPlaylist = true },
+            )
+
+            if (isNamingNewPlaylist) {
+                PlaylistNameDialog(
+                    dialogTitle = "Create new playlist",
+                    confirmLabel = "Create",
+                    initialName = "",
+                    takenNames = playlists.itemsOrEmpty.map { it.name },
+                    onDismiss = { isNamingNewPlaylist = false },
+                    onConfirm = { name ->
+                        isNamingNewPlaylist = false
+                        importSource = null
+                        viewModel.importIntoNewPlaylist(name, openSource, ::showImportResult)
+                    },
+                )
+            }
         }
 
         if (confirmingDelete.isNotEmpty()) {

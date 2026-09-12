@@ -48,21 +48,69 @@ class PlaylistsViewModel @Inject constructor(
     }
 
     /**
+     * Adds an M3U file's tracks to a playlist that already exists.
+     *
+     * [onResult] reports whether anything was imported, which is the only outcome the user is told
+     * about: a file that cannot be opened and one that names no music this device has both leave the
+     * playlist as it was.
+     */
+    fun importIntoPlaylist(
+        playlistId: Long,
+        openStream: () -> InputStream?,
+        onResult: (Boolean) -> Unit,
+    ) {
+        viewModelScope.launch {
+            val trackIds = readTrackIds(openStream)
+            if (trackIds.isEmpty()) {
+                onResult(false)
+                return@launch
+            }
+            repository.addTracksToPlaylist(playlistId, trackIds)
+            onResult(true)
+        }
+    }
+
+    /**
      * Creates a playlist from an M3U file.
+     *
+     * The file is read before the playlist is created, so an import that resolves nothing leaves
+     * nothing behind - an empty playlist named after a failed import is worse than no playlist.
+     */
+    fun importIntoNewPlaylist(
+        name: String,
+        openStream: () -> InputStream?,
+        onResult: (Boolean) -> Unit,
+    ) {
+        viewModelScope.launch {
+            val trackIds = readTrackIds(openStream)
+            if (trackIds.isEmpty()) {
+                onResult(false)
+                return@launch
+            }
+            val playlistId = repository.createPlaylist(name)
+            if (playlistId == null) {
+                onResult(false)
+                return@launch
+            }
+            repository.addTracksToPlaylist(playlistId, trackIds)
+            onResult(true)
+        }
+    }
+
+    /**
+     * The tracks an M3U file names, as ids.
      *
      * Reading and matching happen off the main thread, but against the library already held in
      * memory rather than the database - the whole point of resolving by path is that it needs no
-     * query per entry.
+     * query per entry. Opening the stream is what can throw, the picked file having been moved or
+     * its permission revoked between the pick and the import.
      */
-    fun importPlaylist(name: String, openStream: () -> InputStream?) {
-        viewModelScope.launch {
-            val library = repository.tracks.value.itemsOrEmpty
-            val trackIds = withContext(Dispatchers.IO) {
+    private suspend fun readTrackIds(openStream: () -> InputStream?): List<Long> {
+        val library = repository.tracks.value.itemsOrEmpty
+        return withContext(Dispatchers.IO) {
+            runCatching {
                 openStream()?.use { stream -> readM3u(stream, library).map { it.id } }
-            } ?: return@launch
-
-            val playlistId = repository.createPlaylist(name) ?: return@launch
-            repository.addTracksToPlaylist(playlistId, trackIds)
+            }.getOrNull().orEmpty()
         }
     }
 
