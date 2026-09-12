@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
@@ -19,7 +20,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -157,12 +157,11 @@ fun SonaTopAppBar(
                 title = { BarTitle(title = activeContent.title, subtitle = activeContent.subtitle) },
                 navigationIcon = {
                     if (onNavigateBack != null) {
-                        IconButton(onClick = onNavigateBack) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.top_bar_back),
-                            )
-                        }
+                        SonaIconButton(
+                            onClick = onNavigateBack,
+                            icon = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.top_bar_back),
+                        )
                     }
                 },
                 actions = { BarActions(actions = activeContent.actions) },
@@ -171,12 +170,11 @@ fun SonaTopAppBar(
             is BarContent.Searching -> TopAppBar(
                 title = { SearchField(search = activeContent.search) },
                 navigationIcon = {
-                    IconButton(onClick = activeContent.search.onClose) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.top_bar_close_search),
-                        )
-                    }
+                    SonaIconButton(
+                        onClick = activeContent.search.onClose,
+                        icon = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.top_bar_close_search),
+                    )
                 },
             )
 
@@ -191,12 +189,11 @@ fun SonaTopAppBar(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = activeContent.selection.onDismiss) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = stringResource(R.string.top_bar_clear_selection),
-                        )
-                    }
+                    SonaIconButton(
+                        onClick = activeContent.selection.onDismiss,
+                        icon = Icons.Filled.Close,
+                        contentDescription = stringResource(R.string.top_bar_clear_selection),
+                    )
                 },
                 actions = { BarActions(actions = activeContent.selection.actions) },
             )
@@ -248,34 +245,51 @@ private fun BarTitle(title: String, subtitle: String?) {
     }
 }
 
+/**
+ * The bar's actions, as one [SonaIconButtonGroup] rather than loose buttons, so that pressing any of
+ * them is answered by the others giving up the width it grows into - the overflow button included,
+ * which is a button of the row like the rest.
+ *
+ * The group is laid out inside a [Box] so the dropdown has something to hang from that does not
+ * itself take part in the row: an item of the group would be compressed by its neighbours, and the
+ * menu would move with it.
+ */
 @Composable
 private fun BarActions(actions: List<TopBarAction>) {
-    actions.take(MAX_VISIBLE_ACTIONS).forEach { action ->
-        IconButton(onClick = action.onClick) {
-            Icon(imageVector = action.icon, contentDescription = action.label)
-        }
-    }
-
     val overflowed = actions.drop(MAX_VISIBLE_ACTIONS)
-    if (overflowed.isEmpty()) return
-
+    // Read here rather than inside the group: a group builds its items outside composition, so it
+    // cannot reach a resource itself.
+    val moreActionsLabel = stringResource(R.string.top_bar_more_actions)
     var expanded by remember { mutableStateOf(false) }
-    IconButton(onClick = { expanded = true }) {
-        Icon(
-            imageVector = Icons.Filled.MoreVert,
-            contentDescription = stringResource(R.string.top_bar_more_actions),
-        )
-    }
-    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-        overflowed.forEach { action ->
-            DropdownMenuItem(
-                text = { Text(action.label) },
-                leadingIcon = { Icon(imageVector = action.icon, contentDescription = null) },
-                onClick = {
-                    expanded = false
-                    action.onClick()
-                },
-            )
+
+    Box {
+        SonaIconButtonGroup {
+            actions.take(MAX_VISIBLE_ACTIONS).forEach { action ->
+                iconButton(
+                    icon = action.icon,
+                    label = action.label,
+                    onClick = action.onClick,
+                )
+            }
+            if (overflowed.isNotEmpty()) {
+                iconButton(
+                    icon = Icons.Filled.MoreVert,
+                    label = moreActionsLabel,
+                    onClick = { expanded = true },
+                )
+            }
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            overflowed.forEach { action ->
+                DropdownMenuItem(
+                    text = { Text(action.label) },
+                    leadingIcon = { Icon(imageVector = action.icon, contentDescription = null) },
+                    onClick = {
+                        expanded = false
+                        action.onClick()
+                    },
+                )
+            }
         }
     }
 }
