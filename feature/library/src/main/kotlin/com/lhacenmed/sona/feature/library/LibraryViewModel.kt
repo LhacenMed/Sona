@@ -85,6 +85,16 @@ class LibraryViewModel @Inject constructor(
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /**
+     * Whether that track is actually playing, which is what the playing indicator animates on.
+     * Split from [currentTrackId] for the same reason it exists: the two change at different
+     * moments, and a row that took both as one value would recompose on each.
+     */
+    val isPlaying: StateFlow<Boolean> = playbackController.playbackState
+        .map { it.isPlaying }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     // Permission state has no dedicated change broadcast; re-checking it whenever a scan
     // starts/stops (the moment it would actually change, since granting it is what unblocks the
     // first scan) is enough to avoid a stale "permission needed" message without any polling.

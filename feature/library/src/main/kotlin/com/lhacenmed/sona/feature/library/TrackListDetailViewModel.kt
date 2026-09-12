@@ -36,6 +36,16 @@ abstract class TrackListDetailViewModel(
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /**
+     * Whether that track is actually playing, which is what the playing indicator animates on.
+     * Split from [currentTrackId] for the same reason it exists: the two change at different
+     * moments, and a row that took both as one value would recompose on each.
+     */
+    val isPlaying: StateFlow<Boolean> = playbackController.playbackState
+        .map { it.isPlaying }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     fun onTrackClick(track: Track) {
         val all = tracks.value.itemsOrEmpty
         val index = all.indexOfFirst { it.id == track.id }

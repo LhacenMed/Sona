@@ -42,6 +42,7 @@ object SearchScreen : Screen {
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
         val filter by viewModel.filter.collectAsStateWithLifecycle()
         val currentTrackId by viewModel.currentTrackId.collectAsStateWithLifecycle()
+        val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
         val selection = rememberSelectionState()
 
         Column(modifier = Modifier.fillMaxSize()) {
@@ -91,7 +92,8 @@ object SearchScreen : Screen {
                         items(uiState.tracks, key = { "track-${it.id}" }) { track ->
                             TrackRow(
                                 track = track,
-                                isPlaying = { track.id == currentTrackId },
+                                isCurrent = { track.id == currentTrackId },
+                                isPlaying = { isPlaying },
                                 selection = selection,
                                 onClick = { viewModel.onTrackClick(track) },
                             )

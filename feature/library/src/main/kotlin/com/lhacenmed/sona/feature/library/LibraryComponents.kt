@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -29,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Search
@@ -52,11 +54,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.LibraryContent
+import com.lhacenmed.sona.core.designsystem.component.CoverArtDefaults
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
+import com.lhacenmed.sona.core.designsystem.component.SonaCoverArt
+import com.lhacenmed.sona.core.designsystem.component.SonaIconButton
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
@@ -92,11 +98,13 @@ internal fun <T> LibraryListContent(
     emptyTitle: String,
     emptyMessage: String,
     modifier: Modifier = Modifier,
+    rowsShowCoverArt: Boolean = false,
     body: @Composable (List<T>) -> Unit,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         when {
-            content is LibraryContent.Loading -> LoadingListPlaceholder()
+            content is LibraryContent.Loading ->
+                LoadingListPlaceholder(rowsShowCoverArt = rowsShowCoverArt)
             content is LibraryContent.Ready && content.items.isEmpty() -> {
                 val (title, message) = emptyLibraryStateContent(
                     hasPermission = hasPermission,
@@ -129,6 +137,7 @@ internal fun <T> LibraryList(
     key: (T) -> Any,
     modifier: Modifier = Modifier,
     onReorder: ((List<T>) -> Unit)? = null,
+    rowsShowCoverArt: Boolean = false,
     row: @Composable (T) -> Unit,
 ) {
     LibraryListContent(
@@ -138,6 +147,7 @@ internal fun <T> LibraryList(
         emptyTitle = emptyTitle,
         emptyMessage = emptyMessage,
         modifier = modifier,
+        rowsShowCoverArt = rowsShowCoverArt,
     ) { items ->
         if (onReorder != null) {
             ReorderableColumn(items = items, key = key, onReorder = onReorder, row = row)
@@ -223,7 +233,7 @@ private fun <T> ReorderableColumn(
             ) {
                 row(item)
                 // Drawn over the row rather than beside it, so it sits on whatever background the
-                // row has - selected, playing or plain - instead of cutting a strip out of it.
+                // row has - selected or plain - instead of cutting a strip out of it.
                 Icon(
                     imageVector = Icons.Filled.DragHandle,
                     contentDescription = "Reorder",
@@ -324,7 +334,10 @@ internal fun LibraryEntityRow(
  * only becomes visible at all on a genuinely slow first read.
  */
 @Composable
-private fun LoadingListPlaceholder(modifier: Modifier = Modifier) {
+private fun LoadingListPlaceholder(
+    rowsShowCoverArt: Boolean,
+    modifier: Modifier = Modifier,
+) {
     val transition = rememberInfiniteTransition(label = "libraryPlaceholder")
     val alpha by transition.animateFloat(
         initialValue = 0.25f,
@@ -341,14 +354,31 @@ private fun LoadingListPlaceholder(modifier: Modifier = Modifier) {
     // would allocate scroll state that is thrown away as soon as the real list arrives.
     Column(modifier = modifier.fillMaxSize()) {
         repeat(PLACEHOLDER_ROW_COUNT) {
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                PlaceholderBar(widthFraction = 0.55f, alpha = alpha, color = color)
-                PlaceholderBar(widthFraction = 0.32f, alpha = alpha * 0.7f, color = color)
+                // A row that will have a cover has to reserve it, or the real list is taller than
+                // the placeholder it replaces and the whole screen shifts as the library arrives.
+                if (rowsShowCoverArt) {
+                    Box(
+                        modifier = Modifier
+                            .size(CoverArtDefaults.ListSize)
+                            .clip(CoverArtDefaults.Shape)
+                            .drawBehind { drawRect(color = color.copy(alpha = alpha)) },
+                    )
+                }
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = if (rowsShowCoverArt) 16.dp else 0.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    PlaceholderBar(widthFraction = 0.55f, alpha = alpha, color = color)
+                    PlaceholderBar(widthFraction = 0.32f, alpha = alpha * 0.7f, color = color)
+                }
             }
         }
     }
@@ -434,6 +464,7 @@ internal fun TrackListDetail(
 ) {
     val tracks by viewModel.tracks.collectAsStateWithLifecycle()
     val currentTrackId by viewModel.currentTrackId.collectAsStateWithLifecycle()
+    val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
     val selection = rememberSelectionState()
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf<String?>(null) }
@@ -519,10 +550,12 @@ internal fun TrackListDetail(
             // an ordinary tap-to-play list is never cluttered by them. A search has reordered the
             // list already, so a drop would write an order the user cannot see.
             onReorder = onReorder.takeIf { searchQuery.isNullOrBlank() && selection.isActive },
+            rowsShowCoverArt = true,
         ) { track ->
             TrackRow(
                 track = track,
-                isPlaying = { track.id == currentTrackId },
+                isCurrent = { track.id == currentTrackId },
+                isPlaying = { isPlaying },
                 selection = selection,
                 onClick = { viewModel.onTrackClick(track) },
             )
@@ -531,45 +564,82 @@ internal fun TrackListDetail(
 }
 
 /**
- * A track row.
+ * A track row: cover art, title over artist and duration, and the row's own overflow button.
  *
- * [isPlaying] is a lambda, not a value, on purpose. Passed as a `Boolean`, every row in the list
- * recomposes whenever the playing track changes, because each row's parameters changed. Passed as a
- * lambda read inside the row's own composition, only the row that was highlighted and the row that
- * now is do any work.
+ * [isCurrent] and [isPlaying] are lambdas, not values, on purpose. Passed as `Boolean`s, every row in
+ * the list recomposes whenever the playing track changes, because each row's parameters changed.
+ * Read inside the row's own composition, only the row that was marked and the row that now is do any
+ * work.
+ *
+ * The playing track is shown by its cover and its title alone - see [SonaCoverArt]. Nothing paints
+ * the row behind them, so the one background a row can have still means "selected".
  */
 @Composable
 internal fun TrackRow(
     track: Track,
+    isCurrent: () -> Boolean,
     isPlaying: () -> Boolean,
     selection: SelectionState,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val playing = isPlaying()
-    val background = when {
-        // Selection outranks playback, and gets its own colour: were both the same, a selected row
-        // and the playing row would be indistinguishable exactly when the difference matters.
-        selection.isSelected(track.id) -> MaterialTheme.colorScheme.primaryContainer
-        playing -> MaterialTheme.colorScheme.secondaryContainer
-        else -> MaterialTheme.colorScheme.surface
-    }
-    Column(
+    val current = isCurrent()
+    val isSelected = selection.isSelected(track.id)
+    Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(background)
+            .background(
+                if (isSelected) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surface
+                },
+            )
             .selectableRow(selection, track.id, onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = track.title,
-            style = MaterialTheme.typography.bodyLarge,
+        SonaCoverArt(
+            coverArtUri = track.coverArtUri,
+            contentDescription = null,
+            isCurrent = current,
+            isPlaying = isPlaying(),
         )
-        Text(
-            text = "${track.artist} · ${formatTrackDuration(track.durationMs)}",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 16.dp),
+        ) {
+            Text(
+                text = track.title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (current) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = "${track.artist} · ${formatTrackDuration(track.durationMs)}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        // Hidden during a selection because the context bar is what acts on rows then - and because
+        // a reorderable list puts its drag handle in exactly this corner.
+        if (!selection.isActive) {
+            SonaIconButton(
+                // Opens nothing yet. It takes its place now because the row's shape is part of the
+                // list's: adding it later would move the title and the cover of every row.
+                onClick = {},
+                icon = Icons.Filled.MoreVert,
+                contentDescription = "More options",
+            )
+        }
     }
 }
 

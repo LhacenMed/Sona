@@ -28,6 +28,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.core)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.coil.compose)
     implementation(libs.kotlinx.coroutines.android)
 
     implementation(libs.androidx.palette)

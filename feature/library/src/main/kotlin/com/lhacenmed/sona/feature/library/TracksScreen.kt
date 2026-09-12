@@ -16,6 +16,7 @@ fun TracksScreen(
     val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
     val hasPermission by viewModel.hasPermission.collectAsStateWithLifecycle()
     val currentTrackId by viewModel.currentTrackId.collectAsStateWithLifecycle()
+    val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
 
     LibraryList(
         content = tracks,
@@ -25,11 +26,13 @@ fun TracksScreen(
         emptyMessage = "Add some music to your device to see it here.",
         key = { it.id },
         modifier = modifier,
+        rowsShowCoverArt = true,
     ) { track ->
         TrackRow(
             track = track,
-            // A lambda, so changing songs recomposes two rows instead of the whole list.
-            isPlaying = { track.id == currentTrackId },
+            // Lambdas, so changing songs recomposes two rows instead of the whole list.
+            isCurrent = { track.id == currentTrackId },
+            isPlaying = { isPlaying },
             selection = selection,
             onClick = { viewModel.onTrackClick(track) },
         )
