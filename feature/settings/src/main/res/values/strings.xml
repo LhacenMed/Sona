@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings_title">Settings</string>
-    <string name="settings_excluded_folders">Excluded Folders</string>
-    <string name="settings_manage_tabs">Manage Tabs</string>
 
     <string name="excluded_folders_title">Excluded Folders</string>
     <string name="excluded_folders_empty_title">No excluded folders</string>
@@ -11,4 +9,79 @@
     <string name="excluded_folders_remove">Remove folder</string>
 
     <string name="manage_tabs_title">Manage Tabs</string>
+
+    <!-- Settings home -->
+    <string name="look_and_feel_title">Look and feel</string>
+    <string name="look_and_feel_summary">Change the theme and colors of the app</string>
+    <string name="personalize_title">Personalize</string>
+    <string name="personalize_summary">Customize UI controls and behavior</string>
+    <string name="content_title">Content</string>
+    <string name="content_summary">Control how music and images are loaded</string>
+    <string name="audio_title">Audio</string>
+    <string name="audio_summary">Configure sound and playback behavior</string>
+
+    <!-- Look and feel -->
+    <string name="theme_title">Theme</string>
+    <string name="theme_value_automatic">Automatic</string>
+    <string name="color_scheme_title">Color scheme</string>
+    <string name="color_scheme_value_dynamic">Dynamic</string>
+    <string name="black_theme_title">Black theme</string>
+    <string name="black_theme_summary">Use a pure black dark theme</string>
+    <string name="round_mode_title">Round mode</string>
+    <string name="round_mode_summary">Enable rounded corners on additional UI elements (requires album covers to be rounded)</string>
+    <string name="cover_colors_title">Color the app from the playing track\'s cover</string>
+    <string name="cover_colors_summary">Take the app\'s colors from the artwork of whatever is playing</string>
+
+    <!-- Personalize -->
+    <string name="personalize_display_section">Display</string>
+    <string name="library_tabs_title">Library tabs</string>
+    <string name="library_tabs_summary">Change visibility and order of library tabs</string>
+    <string name="playback_bar_action_title">Custom playback bar action</string>
+    <string name="playback_bar_action_value_skip_next">Skip to next</string>
+    <string name="personalize_behavior_section">Behavior</string>
+    <string name="play_from_library_title">When playing from the library</string>
+    <string name="play_from_library_value_all_songs">Play from all songs</string>
+    <string name="play_from_details_title">When playing from item details</string>
+    <string name="play_from_details_value_shown_item">Play from shown item</string>
+    <string name="remember_shuffle_title">Remember shuffle</string>
+    <string name="remember_shuffle_summary">Keep shuffle on when playing a new song</string>
+    <string name="exit_on_close_title">Always exit on close</string>
+    <string name="exit_on_close_summary">Stop playback when removed from recents, even if playing</string>
+
+    <!-- Content -->
+    <string name="content_music_section">Music</string>
+    <string name="automatic_reloading_title">Automatic reloading</string>
+    <string name="automatic_reloading_summary">Reload the music library whenever it changes (requires persistent notification)</string>
+    <string name="separators_title">Multi-value separators</string>
+    <string name="separators_summary">Configure characters that denote multiple tag values</string>
+    <string name="intelligent_sorting_title">Intelligent sorting</string>
+    <string name="intelligent_sorting_summary">Correctly sort names that begin with numbers or words like \"the\" (works best with english-language music)</string>
+    <string name="hide_collaborators_title">Hide collaborators</string>
+    <string name="hide_collaborators_summary">Only show artists that are directly credited on an album (works best on well-tagged libraries)</string>
+    <string name="excluded_folders_summary">Skip folders when your library is scanned</string>
+    <string name="filename_as_title_title">Show filename as song title</string>
+    <string name="filename_as_title_summary">If title is not available</string>
+    <string name="content_images_section">Images</string>
+    <string name="album_covers_title">Album covers</string>
+    <string name="album_covers_value_as_is">As is</string>
+    <string name="force_square_covers_title">Force square album covers</string>
+    <string name="force_square_covers_summary">Crop all album covers to a 1:1 aspect ratio</string>
+
+    <!-- Audio -->
+    <string name="audio_playback_section">Playback</string>
+    <string name="headset_autoplay_title">Headset autoplay</string>
+    <string name="headset_autoplay_summary">Always start playing when a headset is connected (may not work on all devices)</string>
+    <string name="rewind_before_skip_title">Rewind before skipping back</string>
+    <string name="rewind_before_skip_summary">Rewind before skipping to the previous song</string>
+    <string name="pause_on_repeat_title">Pause on repeat</string>
+    <string name="pause_on_repeat_summary">Pause when a song repeats</string>
+    <string name="remember_pause_title">Remember pause</string>
+    <string name="remember_pause_summary">Remain playing/paused when skipping or editing queue</string>
+    <string name="swap_headphone_buttons_title">Swap previous/next headphone buttons</string>
+    <string name="swap_headphone_buttons_summary">Make the previous button skip forward and the next button skip back</string>
+    <string name="audio_normalization_section">Volume normalization</string>
+    <string name="replaygain_strategy_title">ReplayGain strategy</string>
+    <string name="replaygain_strategy_value_prefer_album">Prefer album if one is playing</string>
+    <string name="replaygain_preamp_title">ReplayGain pre-amp</string>
+    <string name="replaygain_preamp_summary">The pre-amp is applied to the existing adjustment during playback</string>
 </resources>
