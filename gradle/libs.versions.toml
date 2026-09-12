@@ -6,7 +6,10 @@ coreKtx = "1.10.1"
 coreSplashscreen = "1.0.1"
 lifecycle = "2.8.7"
 activityCompose = "1.10.1"
-composeBom = "2025.12.00"
+composeBom = "2026.09.00"
+# The BOM still pins material3 1.4.0; the expressive button group and the pressed-shape
+# morph it animates only exist from 1.5.0 onwards, which has not left alpha yet.
+material3 = "1.5.0-alpha27"
 hilt = "2.60.1"
 room = "2.7.1"
 media3 = "1.9.1"
@@ -33,7 +36,7 @@ androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
-androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
 androidx-compose-material-icons-core = { group = "androidx.compose.material", name = "material-icons-core" }
 androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 
