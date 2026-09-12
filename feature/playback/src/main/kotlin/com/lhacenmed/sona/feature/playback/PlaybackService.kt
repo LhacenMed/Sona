@@ -67,6 +67,9 @@ class PlaybackService : MediaSessionService() {
     @Inject
     lateinit var queueItemDao: QueueItemDao
 
+    @Inject
+    lateinit var equalizer: SonaEqualizer
+
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     private lateinit var exoPlayer: ExoPlayer
@@ -221,6 +224,10 @@ class PlaybackService : MediaSessionService() {
                 addListener(playerListener)
             }
 
+        // Bound here rather than in the UI because the session id is the player's, and the
+        // curve has to keep applying while no screen is open.
+        equalizer.attach(exoPlayer.audioSessionId)
+
         forwardingPlayer = PlaybackForwardingPlayer(exoPlayer) { forwardingSettings }
 
         mediaSession = MediaSession.Builder(this, forwardingPlayer)
@@ -355,6 +362,8 @@ class PlaybackService : MediaSessionService() {
         unregisterReceiver(headsetReceiver)
         serviceScope.cancel()
         mediaSession.release()
+        // Before the player, while the audio session the effect is attached to still exists.
+        equalizer.release()
         exoPlayer.release()
         super.onDestroy()
     }

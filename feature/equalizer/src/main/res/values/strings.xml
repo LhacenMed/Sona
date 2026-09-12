@@ -1,0 +1,5 @@
+<resources>
+    <string name="equalizer_title">Equalizer</string>
+    <string name="equalizer_preset_custom">Custom</string>
+    <string name="equalizer_unavailable">No equalizer is available for playback on this device.</string>
+</resources>
