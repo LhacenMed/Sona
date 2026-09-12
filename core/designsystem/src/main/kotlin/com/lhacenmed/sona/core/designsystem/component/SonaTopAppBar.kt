@@ -61,12 +61,20 @@ data class TopBarSelection(
     val onDismiss: () -> Unit,
 )
 
-/** What the bar shows while a screen is being searched: the query, in place of the title. */
+/**
+ * What the bar shows while a screen is being searched: the query, in place of the title.
+ *
+ * [closesWithBack] is false for a screen that *is* a search rather than one that grew a search. On
+ * such a screen [onClose] leaves the screen, and leaving a screen is what the system back press
+ * already does - so intercepting back to call [onClose] would have the bar answer a back press by
+ * pressing back, without end. Leaving it unhandled lets the press do what it was going to do.
+ */
 @Immutable
 data class TopBarSearch(
     val query: String,
     val onQueryChange: (String) -> Unit,
     val onClose: () -> Unit,
+    val closesWithBack: Boolean = true,
 )
 
 /** How many actions are drawn as icons before the rest collapse into the overflow menu. */
@@ -131,8 +139,11 @@ fun SonaTopAppBar(
     }
 
     // Back leaves the mode rather than the screen, which is what both a context bar and a search
-    // field are expected to do. Handling it here means no screen can adopt either and forget it.
-    BackHandler(enabled = selection != null || search != null) {
+    // field are expected to do. Handling it here means no screen can adopt either and forget it -
+    // except where the mode is the screen and there is no mode to leave, which is what a search
+    // declares by clearing `closesWithBack`.
+    val searchHandlesBack = search != null && search.closesWithBack
+    BackHandler(enabled = selection != null || searchHandlesBack) {
         selection?.onDismiss?.invoke() ?: search?.onClose?.invoke()
     }
 

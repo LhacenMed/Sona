@@ -2,17 +2,21 @@ package com.lhacenmed.sona.feature.library
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,6 +26,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
+import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
 import com.lhacenmed.sona.core.navigation.LocalNavigator
@@ -35,13 +40,22 @@ object SearchScreen : Screen {
         val viewModel: SearchViewModel = hiltViewModel()
         val query by viewModel.query.collectAsStateWithLifecycle()
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+        val filter by viewModel.filter.collectAsStateWithLifecycle()
         val currentTrackId by viewModel.currentTrackId.collectAsStateWithLifecycle()
         val selection = rememberSelectionState()
 
         Column(modifier = Modifier.fillMaxSize()) {
             SonaTopAppBar(
+                // The bar is only ever in its searching mode here: this screen has no other job, so
+                // there is no title to return to and closing the field is closing the screen.
                 title = "Search",
-                onNavigateBack = navigator::back,
+                search = TopBarSearch(
+                    query = query,
+                    onQueryChange = viewModel::onQueryChange,
+                    onClose = navigator::back,
+                    // Closing the search here is leaving the screen, which back already does.
+                    closesWithBack = false,
+                ),
                 selection = selection.toTopBarSelection(
                     actions = listOf(
                         TopBarAction(label = "Play", icon = Icons.Filled.PlayArrow) {
@@ -54,15 +68,7 @@ object SearchScreen : Screen {
                     ),
                 ),
             )
-            OutlinedTextField(
-                value = query,
-                onValueChange = viewModel::onQueryChange,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("Search your library") },
-                singleLine = true,
-            )
+            SearchFilterRow(selected = filter, onClick = viewModel::onFilterClick)
 
             when {
                 query.isBlank() -> EmptyLibraryState(
@@ -72,12 +78,16 @@ object SearchScreen : Screen {
 
                 uiState.isEmpty -> EmptyLibraryState(
                     title = "No results",
-                    message = "Nothing matched \"$query\".",
+                    message = filter?.let { "No ${it.label.lowercase()} matched \"$query\"." }
+                        ?: "Nothing matched \"$query\".",
                 )
 
                 else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    // A filter already names the one kind of result on screen, so repeating it as a
+                    // heading above the only section would say nothing the chip has not.
+                    val showHeaders = filter == null
                     if (uiState.tracks.isNotEmpty()) {
-                        item { SearchSectionHeader("Tracks") }
+                        if (showHeaders) item { SearchSectionHeader("Tracks") }
                         items(uiState.tracks, key = { "track-${it.id}" }) { track ->
                             TrackRow(
                                 track = track,
@@ -88,7 +98,7 @@ object SearchScreen : Screen {
                         }
                     }
                     if (uiState.albums.isNotEmpty()) {
-                        item { SearchSectionHeader("Albums") }
+                        if (showHeaders) item { SearchSectionHeader("Albums") }
                         items(uiState.albums, key = { "album-${it.id}" }) { album ->
                             SearchResultRow(
                                 title = album.title,
@@ -98,7 +108,7 @@ object SearchScreen : Screen {
                         }
                     }
                     if (uiState.artists.isNotEmpty()) {
-                        item { SearchSectionHeader("Artists") }
+                        if (showHeaders) item { SearchSectionHeader("Artists") }
                         items(uiState.artists, key = { "artist-${it.id}" }) { artist ->
                             SearchResultRow(
                                 title = artist.name,
@@ -108,7 +118,7 @@ object SearchScreen : Screen {
                         }
                     }
                     if (uiState.genres.isNotEmpty()) {
-                        item { SearchSectionHeader("Genres") }
+                        if (showHeaders) item { SearchSectionHeader("Genres") }
                         items(uiState.genres, key = { "genre-${it.id}" }) { genre ->
                             SearchResultRow(
                                 title = genre.name,
@@ -119,6 +129,36 @@ object SearchScreen : Screen {
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * The row of filters under the bar.
+ *
+ * Scrollable rather than wrapping, so that adding a fifth kind of result lengthens the row instead
+ * of pushing the results down a line - the height under the bar has to stay put while the user
+ * types. The padding sits inside the scroll so the first chip starts at the screen margin and then
+ * scrolls past it, the way a list's content padding behaves.
+ */
+@Composable
+private fun SearchFilterRow(
+    selected: SearchFilter?,
+    onClick: (SearchFilter) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        SearchFilter.entries.forEach { filter ->
+            FilterChip(
+                selected = filter == selected,
+                onClick = { onClick(filter) },
+                label = { Text(filter.label) },
+            )
         }
     }
 }
