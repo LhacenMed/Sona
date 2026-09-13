@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.LooksOne
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -457,7 +458,12 @@ private fun PlaybackControlsRow(
         }
         IconButton(onClick = onCycleRepeatMode) {
             Icon(
-                imageVector = if (repeatMode == RepeatMode.ONE) Icons.Filled.RepeatOne else Icons.Filled.Repeat,
+                // Same glyphs as the notification's repeat button, so both surfaces read alike.
+                imageVector = when (repeatMode) {
+                    RepeatMode.ONE -> Icons.Filled.RepeatOne
+                    RepeatMode.STOP_AFTER_CURRENT -> Icons.Filled.LooksOne
+                    RepeatMode.OFF, RepeatMode.ALL -> Icons.Filled.Repeat
+                },
                 contentDescription = "Repeat mode: $repeatMode",
                 tint = if (repeatMode == RepeatMode.OFF) inactiveColor else activeColor,
             )
