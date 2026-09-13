@@ -3,7 +3,6 @@ package com.lhacenmed.sona.feature.player
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.LibraryRepository
-import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
@@ -86,13 +85,9 @@ class PlayerViewModel @Inject constructor(
         playbackController.setShuffleEnabled(enabled)
     }
 
-    fun onSetRepeatMode(mode: RepeatMode) {
-        playbackController.setRepeatMode(mode)
-    }
-
-    /** Steps the repeat button through its four modes, in Fossify's order. */
+    /** Steps the repeat button through its enabled modes, in Fossify's order. */
     fun onCycleRepeatMode() {
-        onSetRepeatMode(uiState.value.playback.repeatMode.next)
+        playbackController.cycleRepeatMode()
     }
 
     fun onToggleFavorite() {

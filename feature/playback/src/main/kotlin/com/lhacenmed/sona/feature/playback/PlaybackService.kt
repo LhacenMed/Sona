@@ -353,7 +353,7 @@ class PlaybackService : MediaSessionService() {
     private fun toggleRepeatMode() {
         // Only the stored mode is written; the collector above puts it on the player and redraws
         // the notification, so this path is the same one the player screen takes.
-        serviceScope.launch { playbackSettings.setRepeatMode(repeatMode.next) }
+        serviceScope.launch { playbackSettings.cycleRepeatMode() }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession = mediaSession

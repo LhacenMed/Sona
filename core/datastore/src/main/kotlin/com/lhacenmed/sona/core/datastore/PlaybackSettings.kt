@@ -1,6 +1,7 @@
 package com.lhacenmed.sona.core.datastore
 
 import android.content.Context
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -19,6 +20,7 @@ private val REWIND_BEFORE_SKIP_BACK = booleanPreferencesKey("rewind_before_skip_
 private val HEADSET_AUTOPLAY = booleanPreferencesKey("headset_autoplay")
 private val SHUFFLE_ENABLED = booleanPreferencesKey("shuffle_enabled")
 private val REPEAT_MODE = stringPreferencesKey("repeat_mode")
+private val STOP_AFTER_CURRENT_ENABLED = booleanPreferencesKey("stop_after_current_enabled")
 
 /**
  * Audio-playback behavior settings (ported from Auxio's `PlaybackSettings`) plus restart-only
@@ -64,12 +66,37 @@ class PlaybackSettings @Inject constructor(@ApplicationContext context: Context)
         dataStore.edit { it[SHUFFLE_ENABLED] = enabled }
     }
 
-    val repeatMode: Flow<RepeatMode> = dataStore.data.map { preferences ->
-        preferences[REPEAT_MODE]?.let { name -> runCatching { RepeatMode.valueOf(name) }.getOrNull() }
-            ?: RepeatMode.OFF
+    val repeatMode: Flow<RepeatMode> = dataStore.data.map { it.readRepeatMode() }
+
+    /**
+     * Moves the repeat mode one step along the repeat button's cycle.
+     *
+     * Read and written in a single edit, so presses from the player and the notification each step
+     * from the mode the previous press left behind, never from a stale copy of it.
+     */
+    suspend fun cycleRepeatMode() {
+        dataStore.edit {
+            it[REPEAT_MODE] = it.readRepeatMode().next(it.readStopAfterCurrentEnabled()).name
+        }
     }
 
-    suspend fun setRepeatMode(mode: RepeatMode) {
-        dataStore.edit { it[REPEAT_MODE] = mode.name }
+    /** Whether [RepeatMode.STOP_AFTER_CURRENT] is one of the modes the repeat button cycles through. */
+    val stopAfterCurrentEnabled: Flow<Boolean> = dataStore.data.map { it.readStopAfterCurrentEnabled() }
+
+    suspend fun setStopAfterCurrentEnabled(enabled: Boolean) {
+        dataStore.edit {
+            it[STOP_AFTER_CURRENT_ENABLED] = enabled
+            // Dropping the option while it is the active mode would strand the player in a mode the
+            // button can no longer reach.
+            if (!enabled && it.readRepeatMode() == RepeatMode.STOP_AFTER_CURRENT) {
+                it[REPEAT_MODE] = RepeatMode.OFF.name
+            }
+        }
     }
 }
+
+private fun Preferences.readRepeatMode(): RepeatMode =
+    this[REPEAT_MODE]?.let { name -> runCatching { RepeatMode.valueOf(name) }.getOrNull() }
+        ?: RepeatMode.OFF
+
+private fun Preferences.readStopAfterCurrentEnabled(): Boolean = this[STOP_AFTER_CURRENT_ENABLED] ?: true

@@ -88,8 +88,8 @@
     <string name="gapless_summary">Play albums without a pause between tracks</string>
     <string name="skip_silence_title">Skip silence</string>
     <string name="skip_silence_summary">Shorten silent passages at the ends of tracks</string>
-    <string name="pause_on_repeat_title">Pause on repeat</string>
-    <string name="pause_on_repeat_summary">Pause when a track repeats</string>
+    <string name="stop_after_current_option_title">Stop after current song</string>
+    <string name="stop_after_current_option_summary">Offer it as a repeat mode in the player and the notification</string>
     <string name="remember_pause_title">Remember pause</string>
     <string name="remember_pause_summary">Remain playing or paused when skipping or editing the queue</string>
     <string name="playback_audio_section">Audio</string>

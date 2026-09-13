@@ -1,7 +1,10 @@
 package com.lhacenmed.sona.feature.settings.screen
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
 import com.lhacenmed.sona.feature.settings.component.SettingsChoiceItem
@@ -19,6 +22,8 @@ object PlaybackScreen : Screen {
     override fun Content() {
         val secondsFormat = stringResource(R.string.seconds_format)
         val decibelsFormat = stringResource(R.string.decibels_format)
+        val viewModel: PlaybackSettingsViewModel = hiltViewModel()
+        val stopAfterCurrentEnabled by viewModel.stopAfterCurrentEnabled.collectAsStateWithLifecycle()
 
         SettingsList {
             SettingsSection(stringResource(R.string.playback_controls_section)) {
@@ -68,8 +73,10 @@ object PlaybackScreen : Screen {
                     summary = stringResource(R.string.skip_silence_summary),
                 )
                 SettingsSwitchItem(
-                    title = stringResource(R.string.pause_on_repeat_title),
-                    summary = stringResource(R.string.pause_on_repeat_summary),
+                    title = stringResource(R.string.stop_after_current_option_title),
+                    summary = stringResource(R.string.stop_after_current_option_summary),
+                    checked = stopAfterCurrentEnabled,
+                    onCheckedChange = viewModel::setStopAfterCurrentEnabled,
                 )
                 SettingsSwitchItem(
                     title = stringResource(R.string.remember_pause_title),

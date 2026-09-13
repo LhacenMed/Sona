@@ -26,12 +26,14 @@ enum class RepeatMode {
     STOP_AFTER_CURRENT,
     ;
 
-    /** The mode the repeat button moves to next, in the order Fossify cycles them. */
-    val next: RepeatMode
-        get() = when (this) {
-            OFF -> ALL
-            ALL -> ONE
-            ONE -> STOP_AFTER_CURRENT
-            STOP_AFTER_CURRENT -> OFF
-        }
+    /**
+     * The mode the repeat button moves to next, in the order Fossify cycles them. [STOP_AFTER_CURRENT]
+     * is skipped when the user has turned it off as a repeat option.
+     */
+    fun next(stopAfterCurrentEnabled: Boolean): RepeatMode = when (this) {
+        OFF -> ALL
+        ALL -> ONE
+        ONE -> if (stopAfterCurrentEnabled) STOP_AFTER_CURRENT else OFF
+        STOP_AFTER_CURRENT -> OFF
+    }
 }

@@ -86,13 +86,31 @@ fun SettingsSwitchItem(
     initialValue: Boolean = false,
 ) {
     var checked by remember { mutableStateOf(initialValue) }
+    SettingsSwitchItem(
+        title = title,
+        summary = summary,
+        checked = checked,
+        onCheckedChange = { checked = it },
+        modifier = modifier,
+    )
+}
+
+/** A row that turns a stored setting on or off. */
+@Composable
+fun SettingsSwitchItem(
+    title: String,
+    summary: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     ListItem(
         headlineContent = { Text(title) },
         supportingContent = { Text(summary) },
-        trailingContent = { Switch(checked = checked, onCheckedChange = { checked = it }) },
+        trailingContent = { Switch(checked = checked, onCheckedChange = onCheckedChange) },
         // The whole row, not just the switch: a settings row is one target, and hitting the text
         // expecting it to toggle is the commonest way to miss.
-        modifier = modifier.clickable { checked = !checked },
+        modifier = modifier.clickable { onCheckedChange(!checked) },
     )
 }
 

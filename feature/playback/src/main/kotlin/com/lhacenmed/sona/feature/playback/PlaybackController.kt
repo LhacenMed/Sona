@@ -170,9 +170,10 @@ class PlaybackController @Inject constructor(
         scope.launch { playbackSettings.setShuffleEnabled(enabled) }
     }
 
-    fun setRepeatMode(mode: RepeatMode) {
-        controller?.repeatMode = mode.toPlayerRepeatMode()
-        scope.launch { playbackSettings.setRepeatMode(mode) }
+    // Only the stored mode is written; PlaybackService puts it on the player and the notification,
+    // and the collector in init hands it to the UI - the same path a notification press takes.
+    fun cycleRepeatMode() {
+        scope.launch { playbackSettings.cycleRepeatMode() }
     }
 
     private fun updateUiState(mediaController: MediaController) {
