@@ -2,86 +2,284 @@
 <resources>
     <string name="settings_title">Settings</string>
 
+    <string name="dialog_cancel">Cancel</string>
+    <string name="dialog_save">Save</string>
+    <string name="seconds_format">%1$ds</string>
+    <string name="decibels_format">%1$d dB</string>
+    <string name="sp_format">%1$dsp</string>
+    <string name="dp_format">%1$ddp</string>
+
+    <!-- Settings home -->
+    <string name="settings_group_library_and_playback">Library and playback</string>
+    <string name="settings_group_your_music">Your music</string>
+    <string name="settings_group_app">App</string>
+    <string name="appearance_title">Appearance</string>
+    <string name="appearance_summary">Themes, colours, and the shape of the player</string>
+    <string name="playback_title">Playback</string>
+    <string name="playback_summary">Audio behaviour, crossfade, and the queue</string>
+    <string name="lyrics_title">Lyrics</string>
+    <string name="lyrics_summary">Providers, appearance, and romanization</string>
+    <string name="content_title">Content</string>
+    <string name="content_summary">How music, tags, and artwork are loaded</string>
+    <string name="behavior_title">Behavior</string>
+    <string name="behavior_summary">Tabs, history, and privacy</string>
+    <string name="listening_stats_title">Listening stats</string>
+    <string name="listening_stats_summary">Your top tracks, artists, and playback time</string>
+    <string name="storage_title">Storage</string>
+    <string name="storage_summary">Caches the app keeps on disk</string>
+    <string name="updates_title">Updates</string>
+    <string name="updates_summary">Check for new versions</string>
+    <string name="about_title">About</string>
+    <string name="about_summary">Version, changelog, and licenses</string>
+
+    <!-- Appearance -->
+    <string name="appearance_theme_section">Theme</string>
+    <string name="theme_title">Theme</string>
+    <string name="theme_automatic">Automatic</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="color_scheme_title">Color scheme</string>
+    <string name="color_scheme_dynamic">Dynamic</string>
+    <string name="color_scheme_from_cover">From the playing track\'s cover</string>
+    <string name="color_scheme_custom">Custom</string>
+    <string name="black_theme_title">Black theme</string>
+    <string name="black_theme_summary">Use a pure black dark theme</string>
+    <string name="app_icon_title">App icon</string>
+    <string name="app_icon_default">Default</string>
+    <string name="app_icon_monochrome">Monochrome</string>
+    <string name="font_title">Font</string>
+    <string name="font_system">System</string>
+    <string name="font_rounded">Rounded</string>
+    <string name="appearance_player_section">Player</string>
+    <string name="player_style_title">Player style</string>
+    <string name="player_style_classic">Classic</string>
+    <string name="player_style_expressive">Expressive</string>
+    <string name="player_background_title">Player background</string>
+    <string name="player_background_solid">Solid</string>
+    <string name="player_background_gradient">Gradient</string>
+    <string name="player_background_blurred_cover">Blurred cover</string>
+    <string name="blur_intensity_title">Blur intensity</string>
+    <string name="show_volume_bar_title">Show volume bar</string>
+    <string name="show_volume_bar_summary">Put a volume slider in the player</string>
+    <string name="swipe_thumbnail_title">Swipe cover to change track</string>
+    <string name="swipe_thumbnail_summary">Swipe the player\'s artwork to skip</string>
+    <string name="appearance_motion_section">Shape and motion</string>
+    <string name="round_mode_title">Round mode</string>
+    <string name="round_mode_summary">Enable rounded corners on additional UI elements</string>
+    <string name="disable_animations_title">Disable animations</string>
+    <string name="disable_animations_summary">Cut transitions down to the minimum</string>
+    <string name="high_refresh_rate_title">Force high refresh rate</string>
+    <string name="high_refresh_rate_summary">Ask the display for its fastest mode</string>
+
+    <!-- Playback -->
+    <string name="playback_controls_section">Controls</string>
+    <string name="headset_autoplay_title">Headset autoplay</string>
+    <string name="headset_autoplay_summary">Always start playing when a headset is connected (may not work on all devices)</string>
+    <string name="bluetooth_autoplay_title">Bluetooth autoplay</string>
+    <string name="bluetooth_autoplay_summary">Start playing when a Bluetooth device connects</string>
+    <string name="swap_headphone_buttons_title">Swap previous/next headphone buttons</string>
+    <string name="swap_headphone_buttons_summary">Make the previous button skip forward and the next button skip back</string>
+    <string name="rewind_before_skip_title">Rewind before skipping back</string>
+    <string name="rewind_before_skip_summary">Rewind before skipping to the previous track</string>
+    <string name="seek_amount_title">Seek amount</string>
+    <string name="playback_transitions_section">Transitions</string>
+    <string name="crossfade_title">Crossfade</string>
+    <string name="gapless_title">Gapless playback</string>
+    <string name="gapless_summary">Play albums without a pause between tracks</string>
+    <string name="skip_silence_title">Skip silence</string>
+    <string name="skip_silence_summary">Shorten silent passages at the ends of tracks</string>
+    <string name="pause_on_repeat_title">Pause on repeat</string>
+    <string name="pause_on_repeat_summary">Pause when a track repeats</string>
+    <string name="remember_pause_title">Remember pause</string>
+    <string name="remember_pause_summary">Remain playing or paused when skipping or editing the queue</string>
+    <string name="playback_audio_section">Audio</string>
+    <string name="audio_offload_title">Audio offload</string>
+    <string name="audio_offload_summary">Let the device decode audio in hardware to save battery</string>
+    <string name="pause_on_mute_title">Pause when muted</string>
+    <string name="pause_on_mute_summary">Pause playback when the device volume reaches zero</string>
+    <string name="replaygain_strategy_title">ReplayGain strategy</string>
+    <string name="replaygain_prefer_album">Prefer album if one is playing</string>
+    <string name="replaygain_prefer_track">Always prefer track</string>
+    <string name="replaygain_off">Off</string>
+    <string name="replaygain_preamp_title">ReplayGain pre-amp</string>
+    <string name="playback_queue_section">Queue</string>
+    <string name="persistent_queue_title">Restore the queue</string>
+    <string name="persistent_queue_summary">Bring the queue back when the app reopens</string>
+    <string name="remember_shuffle_title">Remember shuffle</string>
+    <string name="remember_shuffle_summary">Keep shuffle on when playing a new track</string>
+    <string name="skip_on_error_title">Skip unplayable tracks</string>
+    <string name="skip_on_error_summary">Move to the next track when one cannot be played</string>
+    <string name="stop_on_task_clear_title">Always exit on close</string>
+    <string name="stop_on_task_clear_summary">Stop playback when removed from recents, even if playing</string>
+
+    <!-- Lyrics -->
+    <string name="lyrics_display_section">Display</string>
+    <string name="lyrics_mode_title">Lyrics mode</string>
+    <string name="lyrics_mode_synced">Synced when available</string>
+    <string name="lyrics_mode_plain">Plain text only</string>
+    <string name="lyrics_animation_title">Animation</string>
+    <string name="lyrics_animation_fade">Fade</string>
+    <string name="lyrics_animation_karaoke">Karaoke</string>
+    <string name="lyrics_animation_none">None</string>
+    <string name="lyrics_text_size_title">Text size</string>
+    <string name="lyrics_line_spacing_title">Line spacing</string>
+    <string name="lyrics_blur_title">Blur inactive lines</string>
+    <string name="lyrics_blur_summary">Soften every line except the one being sung</string>
+    <string name="lyrics_auto_scroll_title">Auto scroll</string>
+    <string name="lyrics_auto_scroll_summary">Follow the track as it plays</string>
+    <string name="lyrics_tap_to_seek_title">Tap a line to seek</string>
+    <string name="lyrics_tap_to_seek_summary">Jump to the moment a line is sung</string>
+    <string name="lyrics_providers_section">Providers</string>
+    <string name="lyrics_provider_embedded_title">Embedded lyrics</string>
+    <string name="lyrics_provider_embedded_summary">Read lyrics stored in the file\'s own tags</string>
+    <string name="lyrics_provider_lrclib_title">LRCLIB</string>
+    <string name="lyrics_provider_lrclib_summary">Community-maintained synced lyrics</string>
+    <string name="lyrics_provider_netease_title">NetEase</string>
+    <string name="lyrics_provider_netease_summary">Used when LRCLIB has nothing</string>
+    <string name="lyrics_providers_note">Providers are tried in the order shown. Embedded lyrics never need a connection.</string>
+    <string name="lyrics_romanization_section">Romanization</string>
+    <string name="romanize_japanese_title">Romanize Japanese</string>
+    <string name="romanize_japanese_summary">Show Japanese lyrics in Latin script</string>
+    <string name="romanize_korean_title">Romanize Korean</string>
+    <string name="romanize_korean_summary">Show Korean lyrics in Latin script</string>
+    <string name="romanize_chinese_title">Romanize Chinese</string>
+    <string name="romanize_chinese_summary">Show Chinese lyrics in Latin script</string>
+    <string name="lyrics_cache_section">Cache</string>
+    <string name="lyrics_preload_title">Preload lyrics for the queue</string>
+    <string name="lyrics_preload_summary">Fetch lyrics ahead of the track being played</string>
+    <string name="lyrics_clear_cache_title">Clear lyrics cache</string>
+    <string name="lyrics_clear_cache_summary">Remove every downloaded set of lyrics</string>
+
+    <!-- Content -->
+    <string name="content_library_section">Library</string>
+    <string name="automatic_reloading_title">Automatic reloading</string>
+    <string name="automatic_reloading_summary">Reload the music library whenever it changes</string>
+    <string name="excluded_folders_summary">Skip folders when your library is scanned</string>
+    <string name="filename_as_title_title">Show filename as track title</string>
+    <string name="filename_as_title_summary">If title is not available</string>
+    <string name="content_tags_section">Tags</string>
+    <string name="separators_title">Multi-value separators</string>
+    <string name="separators_summary">Configure characters that denote multiple tag values</string>
+    <string name="intelligent_sorting_title">Intelligent sorting</string>
+    <string name="intelligent_sorting_summary">Correctly sort names that begin with numbers or words like \"the\"</string>
+    <string name="hide_collaborators_title">Hide collaborators</string>
+    <string name="hide_collaborators_summary">Only show artists that are directly credited on an album</string>
+    <string name="content_images_section">Images</string>
+    <string name="album_covers_title">Album covers</string>
+    <string name="album_covers_as_is">As is</string>
+    <string name="album_covers_high">High quality</string>
+    <string name="album_covers_balanced">Balanced</string>
+    <string name="album_covers_save_space">Save space</string>
+    <string name="album_covers_off">Off</string>
+    <string name="force_square_covers_title">Force square album covers</string>
+    <string name="force_square_covers_summary">Crop all album covers to a 1:1 aspect ratio</string>
+    <string name="content_language_section">Language</string>
+    <string name="use_system_language_title">Use system language</string>
+    <string name="use_system_language_summary">Follow the language set for the device</string>
+    <string name="app_language_title">App language</string>
+    <string name="app_language_english">English</string>
+    <string name="app_language_french">French</string>
+    <string name="app_language_arabic">Arabic</string>
+
+    <!-- Behavior -->
+    <string name="behavior_display_section">Display</string>
+    <string name="library_tabs_title">Library tabs</string>
+    <string name="library_tabs_summary">Change visibility and order of library tabs</string>
+    <string name="default_tab_title">Tab opened at launch</string>
+    <string name="default_tab_tracks">Tracks</string>
+    <string name="default_tab_artists">Artists</string>
+    <string name="default_tab_albums">Albums</string>
+    <string name="default_tab_genres">Genres</string>
+    <string name="default_tab_folders">Folders</string>
+    <string name="playback_bar_action_title">Playback bar button</string>
+    <string name="playback_bar_action_skip_next">Skip to next</string>
+    <string name="playback_bar_action_favorite">Add to favourites</string>
+    <string name="playback_bar_action_none">None</string>
+    <string name="behavior_playing_section">Playing</string>
+    <string name="play_from_library_title">When playing from the library</string>
+    <string name="play_from_all_tracks">Play from all tracks</string>
+    <string name="play_from_shown_list">Play from the shown list</string>
+    <string name="play_from_details_title">When playing from item details</string>
+    <string name="play_from_shown_item">Play from shown item</string>
+    <string name="exit_on_close_title">Always exit on close</string>
+    <string name="exit_on_close_summary">Stop playback when removed from recents, even if playing</string>
+    <string name="behavior_history_section">History</string>
+    <string name="pause_listen_history_title">Pause listening history</string>
+    <string name="pause_listen_history_summary">Stop recording what has been played</string>
+    <string name="clear_listen_history_title">Clear listening history</string>
+    <string name="clear_listen_history_summary">Forget everything played so far</string>
+    <string name="pause_search_history_title">Pause search history</string>
+    <string name="pause_search_history_summary">Stop recording what has been searched for</string>
+    <string name="clear_search_history_title">Clear search history</string>
+    <string name="clear_search_history_summary">Forget every past search</string>
+    <string name="behavior_privacy_section">Privacy</string>
+    <string name="haptics_title">Haptic feedback</string>
+    <string name="haptics_summary">Vibrate on presses and long presses</string>
+    <string name="block_screenshots_title">Block screenshots</string>
+    <string name="block_screenshots_summary">Hide the app from screenshots and recents previews</string>
+
+    <!-- Listening stats -->
+    <string name="stats_period_section">Period</string>
+    <string name="stats_period_title">Show statistics for</string>
+    <string name="stats_period_week">The past week</string>
+    <string name="stats_period_month">The past month</string>
+    <string name="stats_period_year">The past year</string>
+    <string name="stats_period_all_time">All time</string>
+    <string name="stats_summary_section">Summary</string>
+    <string name="stats_listening_time_title">Listening time</string>
+    <string name="stats_tracks_played_title">Tracks played</string>
+    <string name="stats_different_artists_title">Different artists</string>
+    <string name="stats_top_section">Most played</string>
+    <string name="stats_top_track_title">Top track</string>
+    <string name="stats_top_artist_title">Top artist</string>
+    <string name="stats_top_album_title">Top album</string>
+    <string name="stats_placeholder_duration">0h 0m</string>
+    <string name="stats_placeholder_count">0</string>
+    <string name="stats_placeholder_empty">Nothing yet</string>
+    <string name="stats_note">A track counts as played once it has been listened to for ten seconds.</string>
+
+    <!-- Storage -->
+    <string name="storage_covers_section">Artwork</string>
+    <string name="storage_cover_cache_used_title">Cover cache</string>
+    <string name="storage_cover_cache_limit_title">Cover cache limit</string>
+    <string name="storage_limit_128">128 MB</string>
+    <string name="storage_limit_256">256 MB</string>
+    <string name="storage_limit_512">512 MB</string>
+    <string name="storage_limit_unlimited">Unlimited</string>
+    <string name="storage_clear_cover_cache_title">Clear cover cache</string>
+    <string name="storage_clear_cover_cache_summary">Artwork is decoded again the next time it is shown</string>
+    <string name="storage_library_section">Library</string>
+    <string name="storage_database_used_title">Library database</string>
+    <string name="storage_rescan_title">Rescan the library</string>
+    <string name="storage_rescan_summary">Read every folder again from scratch</string>
+    <string name="storage_placeholder_size">0 MB</string>
+    <string name="storage_note">Clearing a cache never removes music. Only files the app made are deleted.</string>
+
+    <!-- Updates -->
+    <string name="updates_section">Updates</string>
+    <string name="updates_automatic_check_title">Check automatically</string>
+    <string name="updates_automatic_check_summary">Look for a new version when the app starts</string>
+    <string name="updates_check_now_title">Check now</string>
+    <string name="updates_check_now_summary">Look for a new version straight away</string>
+    <string name="updates_installed_version_title">Installed version</string>
+    <string name="updates_placeholder_version">1.0.0</string>
+
+    <!-- About -->
+    <string name="about_app_section">This app</string>
+    <string name="about_version_title">Version</string>
+    <string name="changelog_title">Changelog</string>
+    <string name="changelog_summary">What changed in each release</string>
+    <string name="about_project_section">Project</string>
+    <string name="about_source_title">Source code</string>
+    <string name="about_source_summary">Read and contribute on GitHub</string>
+    <string name="about_licenses_title">Open source licenses</string>
+    <string name="about_licenses_summary">The libraries this app is built on</string>
+
+    <!-- Managed lists -->
     <string name="excluded_folders_title">Excluded Folders</string>
     <string name="excluded_folders_empty_title">No excluded folders</string>
     <string name="excluded_folders_empty_body">Folders you exclude are skipped when your library is scanned.</string>
     <string name="excluded_folders_add">Add folder</string>
     <string name="excluded_folders_remove">Remove folder</string>
-
     <string name="manage_tabs_title">Manage Tabs</string>
-
-    <!-- Settings home -->
-    <string name="look_and_feel_title">Look and feel</string>
-    <string name="look_and_feel_summary">Change the theme and colors of the app</string>
-    <string name="personalize_title">Personalize</string>
-    <string name="personalize_summary">Customize UI controls and behavior</string>
-    <string name="content_title">Content</string>
-    <string name="content_summary">Control how music and images are loaded</string>
-    <string name="audio_title">Audio</string>
-    <string name="audio_summary">Configure sound and playback behavior</string>
-
-    <!-- Look and feel -->
-    <string name="theme_title">Theme</string>
-    <string name="theme_value_automatic">Automatic</string>
-    <string name="color_scheme_title">Color scheme</string>
-    <string name="color_scheme_value_dynamic">Dynamic</string>
-    <string name="black_theme_title">Black theme</string>
-    <string name="black_theme_summary">Use a pure black dark theme</string>
-    <string name="round_mode_title">Round mode</string>
-    <string name="round_mode_summary">Enable rounded corners on additional UI elements (requires album covers to be rounded)</string>
-    <string name="cover_colors_title">Color the app from the playing track\'s cover</string>
-    <string name="cover_colors_summary">Take the app\'s colors from the artwork of whatever is playing</string>
-
-    <!-- Personalize -->
-    <string name="personalize_display_section">Display</string>
-    <string name="library_tabs_title">Library tabs</string>
-    <string name="library_tabs_summary">Change visibility and order of library tabs</string>
-    <string name="playback_bar_action_title">Custom playback bar action</string>
-    <string name="playback_bar_action_value_skip_next">Skip to next</string>
-    <string name="personalize_behavior_section">Behavior</string>
-    <string name="play_from_library_title">When playing from the library</string>
-    <string name="play_from_library_value_all_songs">Play from all songs</string>
-    <string name="play_from_details_title">When playing from item details</string>
-    <string name="play_from_details_value_shown_item">Play from shown item</string>
-    <string name="remember_shuffle_title">Remember shuffle</string>
-    <string name="remember_shuffle_summary">Keep shuffle on when playing a new song</string>
-    <string name="exit_on_close_title">Always exit on close</string>
-    <string name="exit_on_close_summary">Stop playback when removed from recents, even if playing</string>
-
-    <!-- Content -->
-    <string name="content_music_section">Music</string>
-    <string name="automatic_reloading_title">Automatic reloading</string>
-    <string name="automatic_reloading_summary">Reload the music library whenever it changes (requires persistent notification)</string>
-    <string name="separators_title">Multi-value separators</string>
-    <string name="separators_summary">Configure characters that denote multiple tag values</string>
-    <string name="intelligent_sorting_title">Intelligent sorting</string>
-    <string name="intelligent_sorting_summary">Correctly sort names that begin with numbers or words like \"the\" (works best with english-language music)</string>
-    <string name="hide_collaborators_title">Hide collaborators</string>
-    <string name="hide_collaborators_summary">Only show artists that are directly credited on an album (works best on well-tagged libraries)</string>
-    <string name="excluded_folders_summary">Skip folders when your library is scanned</string>
-    <string name="filename_as_title_title">Show filename as song title</string>
-    <string name="filename_as_title_summary">If title is not available</string>
-    <string name="content_images_section">Images</string>
-    <string name="album_covers_title">Album covers</string>
-    <string name="album_covers_value_as_is">As is</string>
-    <string name="force_square_covers_title">Force square album covers</string>
-    <string name="force_square_covers_summary">Crop all album covers to a 1:1 aspect ratio</string>
-
-    <!-- Audio -->
-    <string name="audio_playback_section">Playback</string>
-    <string name="headset_autoplay_title">Headset autoplay</string>
-    <string name="headset_autoplay_summary">Always start playing when a headset is connected (may not work on all devices)</string>
-    <string name="rewind_before_skip_title">Rewind before skipping back</string>
-    <string name="rewind_before_skip_summary">Rewind before skipping to the previous song</string>
-    <string name="pause_on_repeat_title">Pause on repeat</string>
-    <string name="pause_on_repeat_summary">Pause when a song repeats</string>
-    <string name="remember_pause_title">Remember pause</string>
-    <string name="remember_pause_summary">Remain playing/paused when skipping or editing queue</string>
-    <string name="swap_headphone_buttons_title">Swap previous/next headphone buttons</string>
-    <string name="swap_headphone_buttons_summary">Make the previous button skip forward and the next button skip back</string>
-    <string name="audio_normalization_section">Volume normalization</string>
-    <string name="replaygain_strategy_title">ReplayGain strategy</string>
-    <string name="replaygain_strategy_value_prefer_album">Prefer album if one is playing</string>
-    <string name="replaygain_preamp_title">ReplayGain pre-amp</string>
-    <string name="replaygain_preamp_summary">The pre-amp is applied to the existing adjustment during playback</string>
 </resources>
