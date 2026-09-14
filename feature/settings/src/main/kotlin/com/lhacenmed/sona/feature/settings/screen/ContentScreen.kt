@@ -1,7 +1,10 @@
 package com.lhacenmed.sona.feature.settings.screen
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
@@ -21,6 +24,8 @@ object ContentScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.current
+        val viewModel: ContentSettingsViewModel = hiltViewModel()
+        val intelligentSortingEnabled by viewModel.intelligentSortingEnabled.collectAsStateWithLifecycle()
 
         SettingsList {
             SettingsSection(stringResource(R.string.content_library_section)) {
@@ -49,7 +54,8 @@ object ContentScreen : Screen {
                 SettingsSwitchItem(
                     title = stringResource(R.string.intelligent_sorting_title),
                     summary = stringResource(R.string.intelligent_sorting_summary),
-                    initialValue = true,
+                    checked = intelligentSortingEnabled,
+                    onCheckedChange = viewModel::setIntelligentSortingEnabled,
                 )
                 SettingsSwitchItem(
                     title = stringResource(R.string.hide_collaborators_title),

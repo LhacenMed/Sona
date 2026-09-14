@@ -161,7 +161,7 @@
     <string name="separators_title">Multi-value separators</string>
     <string name="separators_summary">Configure characters that denote multiple tag values</string>
     <string name="intelligent_sorting_title">Intelligent sorting</string>
-    <string name="intelligent_sorting_summary">Correctly sort names that begin with numbers or words like \"the\"</string>
+    <string name="intelligent_sorting_summary">Correctly sort names that begin with numbers or words like \"the\" (works best with english-language music)</string>
     <string name="hide_collaborators_title">Hide collaborators</string>
     <string name="hide_collaborators_summary">Only show artists that are directly credited on an album</string>
     <string name="content_images_section">Images</string>
