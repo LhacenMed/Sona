@@ -2,6 +2,7 @@ package com.lhacenmed.sona.feature.library
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -11,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -119,7 +121,14 @@ fun LibraryPagerScreen(
 
         val selectedTab = visibleTabs[pagerState.settledPage]
 
-        Column(modifier = modifier.fillMaxSize()) {
+        // Painted here rather than left to whatever hosts the screen: the bar and every row are
+        // `surface`, while a Scaffold fills with `background` - the same colour on most devices, but
+        // not on all, where the shortcuts and the tab strip would sit on a band of a different shade.
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surface),
+        ) {
             SonaTopAppBar(
                 title = "Sona",
                 // First, so it is always one of the actions drawn as an icon: sorting belongs to the
