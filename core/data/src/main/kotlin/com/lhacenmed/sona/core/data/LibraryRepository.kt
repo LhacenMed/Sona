@@ -34,9 +34,6 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
-/** The library's default sorting mode, mirrored from [LibrarySettings.intelligentSortingEnabled]. */
-private const val DEFAULT_INTELLIGENT_SORTING = true
-
 /**
  * The whole app's single view of the music library.
  *
@@ -72,12 +69,12 @@ class LibraryRepository @Inject constructor(
 ) {
 
     /**
-     * Seeded with the default rather than awaited, so the first paint is never blocked on a
-     * DataStore disk read. If the stored value turns out to differ, exactly one re-sort follows.
+     * Starts from the stored mode, which is already in memory, so the first sort is the one the user
+     * chose - the library is never shown sorted one way and then re-sorted the other.
      */
-    private val intelligentSorting: StateFlow<Boolean> = librarySettings.intelligentSortingEnabled
+    private val intelligentSorting: StateFlow<Boolean> = librarySettings.intelligentSortingEnabled.flow
         .distinctUntilChanged()
-        .stateIn(scope, SharingStarted.Eagerly, DEFAULT_INTELLIGENT_SORTING)
+        .stateIn(scope, SharingStarted.Eagerly, librarySettings.intelligentSortingEnabled.value)
 
     val tracks: StateFlow<LibraryContent<Track>> = trackDao.observeAll()
         .shareSorted { entities, intelligent ->

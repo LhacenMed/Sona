@@ -5,11 +5,11 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.lhacenmed.sona.core.common.di.ApplicationScope
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.CoroutineScope
 
 private val Context.dataStore by preferencesDataStore(name = "theme_settings")
 
@@ -24,19 +24,25 @@ private val CUSTOM_THEME_COLOR_ARGB = intPreferencesKey("custom_theme_color_argb
  * owned by whatever observes playback.
  */
 @Singleton
-class ThemeSettings @Inject constructor(@ApplicationContext context: Context) {
+class ThemeSettings @Inject constructor(
+    @ApplicationContext context: Context,
+    @ApplicationScope scope: CoroutineScope,
+) {
 
     private val dataStore = context.dataStore
+    private val cache = PreferencesCache(dataStore, scope)
 
-    val dynamicThemeEnabled: Flow<Boolean> =
-        dataStore.data.map { it[DYNAMIC_THEME_ENABLED] ?: true }
+    internal suspend fun awaitLoaded() = cache.awaitLoaded()
+
+    val dynamicThemeEnabled: Setting<Boolean> =
+        cache.setting { it[DYNAMIC_THEME_ENABLED] ?: true }
 
     suspend fun setDynamicThemeEnabled(enabled: Boolean) {
         dataStore.edit { it[DYNAMIC_THEME_ENABLED] = enabled }
     }
 
-    val customThemeColorArgb: Flow<Int?> =
-        dataStore.data.map { it[CUSTOM_THEME_COLOR_ARGB] }
+    val customThemeColorArgb: Setting<Int?> =
+        cache.setting { it[CUSTOM_THEME_COLOR_ARGB] }
 
     suspend fun setCustomThemeColor(color: Int?) {
         dataStore.edit { preferences ->

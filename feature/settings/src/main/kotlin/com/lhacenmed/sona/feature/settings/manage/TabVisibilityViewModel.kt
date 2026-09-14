@@ -19,9 +19,9 @@ class TabVisibilityViewModel @Inject constructor(
     private val librarySettings: LibrarySettings,
 ) : ViewModel() {
 
-    val tabs: StateFlow<List<Pair<LibraryTab, Boolean>>> = librarySettings.visibleTabs
-        .map { visible -> LibraryTab.entries.map { tab -> tab to (tab in visible) } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), LibraryTab.entries.map { it to true })
+    val tabs: StateFlow<List<Pair<LibraryTab, Boolean>>> = librarySettings.visibleTabs.flow
+        .map { it.toTabRows() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), librarySettings.visibleTabs.value.toTabRows())
 
     fun setTabVisible(tab: LibraryTab, visible: Boolean) {
         // Never allow the last visible tab to be hidden.
@@ -33,3 +33,6 @@ class TabVisibilityViewModel @Inject constructor(
         }
     }
 }
+
+private fun Set<LibraryTab>.toTabRows(): List<Pair<LibraryTab, Boolean>> =
+    LibraryTab.entries.map { tab -> tab to (tab in this) }

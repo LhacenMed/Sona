@@ -9,7 +9,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -63,8 +62,8 @@ class SonaEqualizer @Inject constructor(
      */
     internal fun attach(audioSessionId: Int) {
         scope.launch {
-            val storedPreset = settings.preset.first()
-            val storedLevels = settings.bandLevels.first()
+            val storedPreset = settings.preset.value
+            val storedLevels = settings.bandLevels.value
             val engine = runCatching { Equalizer(0, audioSessionId).apply { enabled = true } }
                 .getOrNull() ?: return@launch
             equalizer = engine
@@ -82,7 +81,7 @@ class SonaEqualizer @Inject constructor(
     fun selectPreset(preset: Int) {
         val engine = equalizer ?: return
         scope.launch {
-            _state.value = engine.applyCurve(preset, settings.bandLevels.first())
+            _state.value = engine.applyCurve(preset, settings.bandLevels.value)
             settings.setPreset(preset)
         }
     }

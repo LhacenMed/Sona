@@ -36,6 +36,8 @@ private val CANONICAL_TAB_ORDER = listOf(
     LibraryTab.FOLDERS,
 )
 
+private fun Set<LibraryTab>.inCanonicalOrder(): List<LibraryTab> = CANONICAL_TAB_ORDER.filter { it in this }
+
 /**
  * One ViewModel for the entire library pager, replacing the five near-identical ones it used to
  * create up front.
@@ -62,13 +64,13 @@ class LibraryViewModel @Inject constructor(
     val folders: StateFlow<LibraryContent<Folder>> = repository.folders
 
     /**
-     * Defaults to "all visible" so the tab strip never flashes empty before the first DataStore
-     * emission lands.
+     * Starts from the stored tabs, so the strip is already right on its first frame rather than
+     * showing every tab until the setting arrives and then dropping the hidden ones.
      */
-    val visibleTabs: StateFlow<List<LibraryTab>> = librarySettings.visibleTabs
-        .map { visible -> CANONICAL_TAB_ORDER.filter { it in visible } }
+    val visibleTabs: StateFlow<List<LibraryTab>> = librarySettings.visibleTabs.flow
+        .map { it.inCanonicalOrder() }
         .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.Eagerly, CANONICAL_TAB_ORDER)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, librarySettings.visibleTabs.value.inCanonicalOrder())
 
     val isScanning: StateFlow<Boolean> = mediaScanner.isScanning
 

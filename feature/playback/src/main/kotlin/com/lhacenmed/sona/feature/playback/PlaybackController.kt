@@ -65,7 +65,7 @@ class PlaybackController @Inject constructor(
 
     // The player's repeat int cannot tell RepeatMode.ONE from STOP_AFTER_CURRENT, so the stored
     // mode is what the UI is told about.
-    @Volatile private var storedRepeatMode: RepeatMode = RepeatMode.OFF
+    @Volatile private var storedRepeatMode: RepeatMode = playbackSettings.repeatMode.value
 
     /** The track already counted, so pausing and resuming cannot count the same listen twice. */
     private var countedTrackId: Long? = null
@@ -118,7 +118,7 @@ class PlaybackController @Inject constructor(
 
     init {
         scope.launch {
-            playbackSettings.repeatMode.collect { mode ->
+            playbackSettings.repeatMode.flow.collect { mode ->
                 storedRepeatMode = mode
                 controller?.let(::updateUiState)
             }

@@ -16,8 +16,8 @@ class PlaybackSettingsViewModel @Inject constructor(
     private val playbackSettings: PlaybackSettings,
 ) : ViewModel() {
 
-    val stopAfterCurrentEnabled: StateFlow<Boolean> = playbackSettings.stopAfterCurrentEnabled
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+    val stopAfterCurrentEnabled: StateFlow<Boolean> = playbackSettings.stopAfterCurrentEnabled.flow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), playbackSettings.stopAfterCurrentEnabled.value)
 
     fun setStopAfterCurrentEnabled(enabled: Boolean) {
         viewModelScope.launch { playbackSettings.setStopAfterCurrentEnabled(enabled) }

@@ -5,11 +5,11 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.lhacenmed.sona.core.common.di.ApplicationScope
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.CoroutineScope
 
 private val Context.equalizerDataStore by preferencesDataStore(name = "equalizer_settings")
 
@@ -28,22 +28,28 @@ private const val BAND_LEVEL_SEPARATOR = ","
  * stored curve is self-describing and needs no JSON library to read back.
  */
 @Singleton
-class EqualizerSettings @Inject constructor(@ApplicationContext context: Context) {
+class EqualizerSettings @Inject constructor(
+    @ApplicationContext context: Context,
+    @ApplicationScope scope: CoroutineScope,
+) {
 
     private val dataStore = context.equalizerDataStore
+    private val cache = PreferencesCache(dataStore, scope)
+
+    internal suspend fun awaitLoaded() = cache.awaitLoaded()
 
     /**
      * The index of the device preset in use. Defaults to the device's first preset, matching
      * Fossify; a hand-tuned curve is stored as the custom sentinel the playback layer defines.
      */
-    val preset: Flow<Int> = dataStore.data.map { it[PRESET] ?: 0 }
+    val preset: Setting<Int> = cache.setting { it[PRESET] ?: 0 }
 
     suspend fun setPreset(preset: Int) {
         dataStore.edit { it[PRESET] = preset }
     }
 
     /** Per-band gains in millibels, ordered by band index. Empty until a band is first moved. */
-    val bandLevels: Flow<List<Int>> = dataStore.data.map { preferences ->
+    val bandLevels: Setting<List<Int>> = cache.setting { preferences ->
         preferences[BAND_LEVELS]
             .orEmpty()
             .split(BAND_LEVEL_SEPARATOR)

@@ -36,9 +36,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
 /**
@@ -194,20 +192,15 @@ class PlaybackService : MediaSessionService() {
         super.onCreate()
         createNotificationChannel()
 
-        // One-time synchronous read of the persisted settings needed before the player/session
-        // are built (mirrors Fossify's PlayerInit.initializeSessionAndPlayer, which reads its
-        // SharedPreferences-backed Config synchronously at the same point) - DataStore has no
-        // synchronous API, so a short blocking read at startup is the closest equivalent.
-        val initialShuffleEnabled: Boolean
-        runBlocking {
-            forwardingSettings = PlaybackForwardingPlayer.Snapshot(
-                rememberPause = playbackSettings.rememberPause.first(),
-                rewindBeforeSkipBack = playbackSettings.rewindBeforeSkipBack.first(),
-            )
-            headsetAutoplayEnabled = playbackSettings.headsetAutoplay.first()
-            initialShuffleEnabled = playbackSettings.shuffleEnabled.first()
-            repeatMode = playbackSettings.repeatMode.first()
-        }
+        // The settings the player and session are built with, read straight from memory: the
+        // application loaded every setting before any service could be created (see
+        // SettingsLoader), so the player starts configured rather than being corrected later.
+        forwardingSettings = PlaybackForwardingPlayer.Snapshot(
+            rememberPause = playbackSettings.rememberPause.value,
+            rewindBeforeSkipBack = playbackSettings.rewindBeforeSkipBack.value,
+        )
+        headsetAutoplayEnabled = playbackSettings.headsetAutoplay.value
+        repeatMode = playbackSettings.repeatMode.value
 
         exoPlayer = ExoPlayer.Builder(this)
             .setAudioAttributes(
@@ -220,7 +213,7 @@ class PlaybackService : MediaSessionService() {
             .setWakeMode(C.WAKE_MODE_LOCAL)
             .build()
             .apply {
-                shuffleModeEnabled = initialShuffleEnabled
+                shuffleModeEnabled = playbackSettings.shuffleEnabled.value
                 addListener(playerListener)
             }
 
@@ -371,21 +364,21 @@ class PlaybackService : MediaSessionService() {
     private fun collectRuntimeSettings() {
         serviceScope.launch {
             combine(
-                playbackSettings.rememberPause,
-                playbackSettings.rewindBeforeSkipBack,
+                playbackSettings.rememberPause.flow,
+                playbackSettings.rewindBeforeSkipBack.flow,
             ) { rememberPause, rewindBeforeSkipBack ->
                 PlaybackForwardingPlayer.Snapshot(rememberPause, rewindBeforeSkipBack)
             }.collect { forwardingSettings = it }
         }
         serviceScope.launch {
-            playbackSettings.repeatMode.collect { mode ->
+            playbackSettings.repeatMode.flow.collect { mode ->
                 repeatMode = mode
                 applyRepeatMode(mode)
                 updateNotification()
             }
         }
         serviceScope.launch {
-            playbackSettings.headsetAutoplay.collect { headsetAutoplayEnabled = it }
+            playbackSettings.headsetAutoplay.flow.collect { headsetAutoplayEnabled = it }
         }
         serviceScope.launch {
             libraryRepository.favoriteTrackIds.collect {
