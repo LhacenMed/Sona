@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -147,9 +149,18 @@ fun SonaTopAppBar(
         selection?.onDismiss?.invoke() ?: search?.onClose?.invoke()
     }
 
+    // Material's TopAppBar runs its container colour through an animation of its own (for the
+    // scrolled tint), so a theme change would reach the bar a moment after everything around it. The
+    // bars are left transparent and the background is painted here instead, straight from the theme -
+    // and once, behind the transition, so modes cross-fade over one steady background.
+    val barColors = TopAppBarDefaults.topAppBarColors(
+        containerColor = Color.Transparent,
+        scrolledContainerColor = Color.Transparent,
+    )
+
     AnimatedContent(
         targetState = content,
-        modifier = modifier,
+        modifier = modifier.background(MaterialTheme.colorScheme.surface),
         // Keyed on the *mode*, not the value: typing a letter or picking another row must re-render
         // the bar it is already in, not animate a fresh one in over it.
         contentKey = { it::class },
@@ -166,6 +177,7 @@ fun SonaTopAppBar(
         when (activeContent) {
             is BarContent.Browsing -> TopAppBar(
                 title = { BarTitle(title = activeContent.title, subtitle = activeContent.subtitle) },
+                colors = barColors,
                 navigationIcon = {
                     if (onNavigateBack != null) {
                         SonaIconButton(
@@ -180,6 +192,7 @@ fun SonaTopAppBar(
 
             is BarContent.Searching -> TopAppBar(
                 title = { SearchField(search = activeContent.search) },
+                colors = barColors,
                 navigationIcon = {
                     SonaIconButton(
                         onClick = activeContent.search.onClose,
@@ -190,6 +203,7 @@ fun SonaTopAppBar(
             )
 
             is BarContent.Selecting -> TopAppBar(
+                colors = barColors,
                 title = {
                     BarTitle(
                         title = stringResource(
