@@ -1,11 +1,9 @@
 package com.lhacenmed.sona.feature.library
 
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,19 +43,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverBackdrop
 import com.lhacenmed.sona.core.designsystem.component.SonaIconButton
+import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
+import com.lhacenmed.sona.core.designsystem.theme.pressedCornerRadius
+import com.lhacenmed.sona.core.designsystem.theme.rememberPressFraction
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 
 private const val SHORTCUT_COUNT = 3
-
-private val ShortcutSpacing = 8.dp
-
-/** How much wider a held card grows, as a share of its width. */
-private const val SHORTCUT_EXPANDED_RATIO = 0.08f
-
-private val RestingCornerRadius = 12.dp
-
-/** Tighter while held, the way an expressive button's corners answer a press. */
-private val PressedCornerRadius = 8.dp
 
 /** How much of the card's own colour is laid over a cover, enough for the icon and title to read on. */
 private const val COVER_SCRIM_ALPHA = 0.6f
@@ -90,7 +81,7 @@ fun LibraryShortcuts(
     // The row's width is the one width a press never changes, so each card's width at rest is read
     // from it rather than from the card, whose own width is exactly what is animating.
     var rowWidthPx by remember { mutableIntStateOf(0) }
-    val spacingPx = with(LocalDensity.current) { ShortcutSpacing.roundToPx() }
+    val spacingPx = with(LocalDensity.current) { SonaComponentStyle.ItemSpacing.roundToPx() }
     val restingCardWidthPx = (rowWidthPx - spacingPx * (SHORTCUT_COUNT - 1)) / SHORTCUT_COUNT
 
     ButtonGroup(
@@ -106,8 +97,8 @@ fun LibraryShortcuts(
         modifier = modifier
             .fillMaxWidth()
             .onSizeChanged { rowWidthPx = it.width },
-        expandedRatio = SHORTCUT_EXPANDED_RATIO,
-        horizontalArrangement = Arrangement.spacedBy(ShortcutSpacing),
+        expandedRatio = SonaComponentStyle.PressedExpandedRatio,
+        horizontalArrangement = Arrangement.spacedBy(SonaComponentStyle.ItemSpacing),
     ) {
         shortcutCard(
             title = "Favorites",
@@ -150,12 +141,7 @@ private fun ButtonGroupScope.shortcutCard(
 ) = customItem(
     buttonGroupContent = {
         val interactionSource = remember { MutableInteractionSource() }
-        val isPressed by interactionSource.collectIsPressedAsState()
-        val cornerRadius by animateDpAsState(
-            targetValue = if (isPressed) PressedCornerRadius else RestingCornerRadius,
-            animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-            label = "shortcutCardCornerRadius",
-        )
+        val pressFraction by rememberPressFraction(interactionSource)
         val containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
         Surface(
             modifier = Modifier
@@ -169,7 +155,7 @@ private fun ButtonGroupScope.shortcutCard(
                     role = Role.Button,
                     onClick = onClick,
                 ),
-            shape = RoundedCornerShape(cornerRadius),
+            shape = RoundedCornerShape(pressedCornerRadius(pressFraction)),
             color = containerColor,
         ) {
             Box {

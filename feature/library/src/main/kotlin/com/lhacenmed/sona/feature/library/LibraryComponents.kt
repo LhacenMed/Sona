@@ -75,6 +75,7 @@ import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.component.shape
 import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
 import com.lhacenmed.sona.core.designsystem.theme.LocalCoverStyle
+import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.library.sort.SortSheet
 import com.lhacenmed.sona.feature.library.sort.sortAction
@@ -352,7 +353,7 @@ internal fun LibraryEntityRow(
                     Modifier.selectableRow(selection, selectionKey, onClick)
                 },
             )
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = SonaComponentStyle.ContentHorizontalPadding, vertical = 12.dp),
     ) {
         Text(text = title, style = MaterialTheme.typography.bodyLarge)
         Text(
@@ -395,7 +396,7 @@ private fun LoadingListPlaceholder(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(horizontal = SonaComponentStyle.ContentHorizontalPadding, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 // A row that will have a cover has to reserve it, or the real list is taller than
@@ -661,7 +662,14 @@ internal fun TrackRow(
                 drawRect(selectedTint.copy(alpha = SELECTED_ROW_TINT_ALPHA * selectedFraction.value))
             }
             .selectableRow(selection, track.id, onClick)
-            .padding(start = 16.dp, top = 12.dp, end = 12.dp, bottom = 12.dp),
+            .padding(
+                start = SonaComponentStyle.ContentHorizontalPadding,
+                top = 12.dp,
+                // The overflow glyph, not its 48dp touch target, ends on the keyline: the target
+                // holds the glyph 12dp in from its edge.
+                end = SonaComponentStyle.ContentHorizontalPadding - 12.dp,
+                bottom = 12.dp,
+            ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SonaCoverArt(

@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -41,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.R
 
 /**
@@ -287,7 +289,10 @@ private fun BarActions(actions: List<TopBarAction>) {
     val moreActionsLabel = stringResource(R.string.top_bar_more_actions)
     var expanded by remember { mutableStateOf(false) }
 
-    Box {
+    // The bar ends its actions 4dp from the edge, which puts an ordinary 48dp button's glyph on the
+    // content keyline. A grouped button is only its 40dp container, holding the glyph 4dp nearer the
+    // edge, so the group gives those 4dp back.
+    Box(modifier = Modifier.padding(end = 4.dp)) {
         SonaIconButtonGroup {
             actions.take(MAX_VISIBLE_ACTIONS).forEach { action ->
                 iconButton(

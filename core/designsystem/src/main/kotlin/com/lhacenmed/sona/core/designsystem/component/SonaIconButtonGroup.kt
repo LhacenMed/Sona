@@ -17,18 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.R
-
-/**
- * The gap between two grouped buttons.
- *
- * An ungrouped icon button separates itself from its neighbour with the padding left over between
- * its 40dp container and the edge of its 48dp touch target. A grouped one has no such margin to
- * give - see [SonaIconButtonGroup] - so the row has to space the buttons itself to arrive at the
- * same 8dp between them.
- */
-private val GroupedButtonSpacing = 8.dp
+import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 
 /**
  * A row of [SonaIconButton]s that answer each other's presses.
@@ -49,8 +39,8 @@ private val GroupedButtonSpacing = 8.dp
  * touch target rather than of its container. Inside a group that inflation is doubly wrong: it
  * stretches the container into an oval, and it spends on the container the very padding that
  * normally separates one button from the next. Turning it off here restores both at once - the
- * buttons measure at the 40dp they actually draw, and [GroupedButtonSpacing] puts back the gap they
- * can no longer hold themselves.
+ * buttons measure at the 40dp they actually draw, and [SonaComponentStyle.ItemSpacing] puts back the
+ * gap they can no longer hold themselves.
  *
  * The cost is that a grouped button's touch target is its 40dp container rather than 48dp. That is
  * the one thing a group cannot give back: the width it hands out is the width that gets painted, so
@@ -74,7 +64,11 @@ fun SonaIconButtonGroup(
                 )
             },
             modifier = modifier,
-            horizontalArrangement = Arrangement.spacedBy(GroupedButtonSpacing),
+            expandedRatio = SonaComponentStyle.PressedExpandedRatio,
+            // An ungrouped icon button separates itself from its neighbour with the padding left over
+            // between its 40dp container and the edge of its 48dp touch target. A grouped one has no
+            // such margin to give, so the row spaces the buttons itself.
+            horizontalArrangement = Arrangement.spacedBy(SonaComponentStyle.ItemSpacing),
             content = content,
         )
     }

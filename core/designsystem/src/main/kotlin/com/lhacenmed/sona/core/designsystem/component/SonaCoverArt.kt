@@ -42,6 +42,7 @@ import coil3.request.ImageRequest
 import coil3.request.maxBitmapSize
 import com.lhacenmed.sona.core.designsystem.theme.CoverStyle
 import com.lhacenmed.sona.core.designsystem.theme.LocalCoverStyle
+import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import coil3.size.Size as DecodeSize
 
 /** The look every cover shares - Auxio's cover dimensions. */
@@ -50,8 +51,8 @@ object CoverArtDefaults {
     /** The size a cover takes in a list row: Auxio's `size_touchable_small`. */
     val ListSize = 48.dp
 
-    /** The corners a list cover is cut with in round mode: Material's medium corner, as in Auxio. */
-    val ListCornerRadius = 12.dp
+    /** The corners a list cover is cut with in round mode: the corners every component shares. */
+    val ListCornerRadius = SonaComponentStyle.CornerRadius
 
     internal val SelectionBadgeSize = 20.dp
 

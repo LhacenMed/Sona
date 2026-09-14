@@ -32,6 +32,7 @@ import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
+import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.feature.library.sort.SortSheet
 import com.lhacenmed.sona.feature.library.sort.sortAction
 import kotlinx.coroutines.coroutineScope
@@ -140,7 +141,7 @@ fun LibraryPagerScreen(
             )
 
             LibraryShortcuts(
-                modifier = Modifier.padding(horizontal = 16.dp),
+                modifier = Modifier.padding(horizontal = SonaComponentStyle.ContentHorizontalPadding),
             )
 
             if (visibleTabs.size > 1) {
@@ -156,7 +157,10 @@ fun LibraryPagerScreen(
                         }
                     },
                     onTabClick = { page -> requestedPage = page },
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(
+                        horizontal = SonaComponentStyle.ContentHorizontalPadding,
+                        vertical = 8.dp,
+                    ),
                 )
             }
 
