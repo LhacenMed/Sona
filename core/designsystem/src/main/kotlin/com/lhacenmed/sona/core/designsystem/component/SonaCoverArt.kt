@@ -35,6 +35,24 @@ object CoverArtDefaults {
 }
 
 /**
+ * A cover filling whatever it is laid over, for artwork that sits behind content rather than beside it.
+ *
+ * Draws nothing of its own, so until the image arrives the surface beneath simply shows through.
+ */
+@Composable
+fun SonaCoverBackdrop(
+    coverArtUri: String,
+    modifier: Modifier = Modifier,
+) {
+    AsyncImage(
+        model = coverArtUri,
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        modifier = modifier,
+    )
+}
+
+/**
  * A piece of cover art, or - while its track is the one being played - the playing indicator in its
  * place.
  *

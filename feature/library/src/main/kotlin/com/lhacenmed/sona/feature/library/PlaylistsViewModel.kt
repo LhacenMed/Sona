@@ -7,6 +7,7 @@ import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.data.sort.LibrarySortOrders
 import com.lhacenmed.sona.core.model.Playlist
+import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.sort.SortableList
 import com.lhacenmed.sona.feature.library.sort.SortControl
 import com.lhacenmed.sona.feature.library.sort.control
@@ -14,7 +15,12 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.InputStream
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -33,6 +39,16 @@ class PlaylistsViewModel @Inject constructor(
     val mostPlayedCount: StateFlow<Int> = repository.mostPlayedCount
 
     val favoritesPlaylistId: Long get() = repository.favoritesPlaylistId
+
+    /**
+     * The cover of the track Favorites lists first in its current sort, or null when that track has
+     * none or Favorites is empty. Follows the playlist's own sort, so re-sorting or reordering
+     * Favorites changes its shortcut card with it.
+     */
+    val favoritesCoverArtUri: StateFlow<String?> = repository.favoriteTracks().topCoverArtUri()
+
+    /** The cover of the track played last, or null when that track has none or nothing has been played. */
+    val recentlyPlayedCoverArtUri: StateFlow<String?> = repository.recentlyPlayedTracks().topCoverArtUri()
 
     fun renamePlaylist(playlistId: Long, name: String) {
         viewModelScope.launch { repository.renamePlaylist(playlistId, name) }
@@ -132,4 +148,10 @@ class PlaylistsViewModel @Inject constructor(
         repository.tracks.value.itemsOrEmpty
             .filter { it.folderPath == folderPath || it.folderPath.startsWith("$folderPath/") }
             .map { it.id }
+
+    /** The cover of whichever track a list shows first, kept current as the list changes. */
+    private fun Flow<LibraryContent<Track>>.topCoverArtUri(): StateFlow<String?> =
+        map { content -> content.itemsOrEmpty.firstOrNull()?.coverArtUri }
+            .distinctUntilChanged()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 }
