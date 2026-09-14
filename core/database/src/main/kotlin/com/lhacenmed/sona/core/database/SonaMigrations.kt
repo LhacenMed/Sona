@@ -112,6 +112,27 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
 }
 
 /**
+ * When each playlist last changed, and when each of its tracks was added - for sorting by either.
+ *
+ * Neither was ever recorded, so existing rows are given the one time that is known: the playlist's
+ * creation. Every playlist reads as unchanged since it was made, and its tracks as added with it.
+ */
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `playlists` ADD COLUMN `modifiedAt` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("UPDATE `playlists` SET `modifiedAt` = `createdAt`")
+
+        db.execSQL("ALTER TABLE `playlist_tracks` ADD COLUMN `addedAt` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL(
+            """
+            UPDATE `playlist_tracks` SET `addedAt` =
+                (SELECT `createdAt` FROM `playlists` WHERE `playlists`.`id` = `playlist_tracks`.`playlistId`)
+            """.trimIndent(),
+        )
+    }
+}
+
+/**
  * Makes sure Favourites exists, every time the database is opened.
  *
  * On open rather than on create, because creation is only one of the ways this database comes to
@@ -125,9 +146,10 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
  */
 object SeedBuiltInPlaylists : RoomDatabase.Callback() {
     override fun onOpen(db: SupportSQLiteDatabase) {
+        val now = System.currentTimeMillis()
         db.execSQL(
-            "INSERT OR IGNORE INTO `playlists` (`id`, `name`, `isBuiltIn`, `createdAt`) " +
-                "VALUES ($FAVORITES_PLAYLIST_ID, '$FAVORITES_PLAYLIST_NAME', 1, ${System.currentTimeMillis()})",
+            "INSERT OR IGNORE INTO `playlists` (`id`, `name`, `isBuiltIn`, `createdAt`, `modifiedAt`) " +
+                "VALUES ($FAVORITES_PLAYLIST_ID, '$FAVORITES_PLAYLIST_NAME', 1, $now, $now)",
         )
     }
 }

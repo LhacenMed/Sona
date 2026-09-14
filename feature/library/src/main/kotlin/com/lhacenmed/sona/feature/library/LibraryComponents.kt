@@ -22,12 +22,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.MoreVert
@@ -39,6 +39,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -46,6 +47,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -69,6 +71,8 @@ import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.library.sort.SortSheet
+import com.lhacenmed.sona.feature.library.sort.sortAction
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -153,7 +157,9 @@ internal fun <T> LibraryList(
             ReorderableColumn(items = items, key = key, onReorder = onReorder, row = row)
             return@LibraryListContent
         }
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
+        val listState = rememberLazyListState()
+        KeepAtTopWhenRowsChange(listState = listState, rows = items)
+        LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
             items(
                 items = items,
                 key = key,
@@ -166,6 +172,30 @@ internal fun <T> LibraryList(
 }
 
 private const val LIST_ROW_CONTENT_TYPE = "libraryRow"
+
+/**
+ * Keeps a list that was at its top at its top when its rows change.
+ *
+ * A keyed lazy list follows its first visible row wherever that row moves. Mid-list that is right - it
+ * is what keeps the user's place - but at the top there is no place being kept, and following the row
+ * is wrong: re-sorting would scroll to wherever the old first row landed instead of showing the new one.
+ *
+ * Where the list stood is read as the new rows arrive, before they are measured, and the request is
+ * made once per change of rows rather than on every recomposition, so a list scrolled away from its
+ * top is never pulled back to it.
+ */
+@Composable
+private fun KeepAtTopWhenRowsChange(listState: LazyListState, rows: List<*>) {
+    val wasAtTop = remember(rows) {
+        Snapshot.withoutReadObservation {
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+        }
+    }
+    DisposableEffect(rows) {
+        if (wasAtTop) listState.requestScrollToItem(0)
+        onDispose {}
+    }
+}
 
 private const val NO_DRAG = -1
 
@@ -190,6 +220,7 @@ private fun <T> ReorderableColumn(
     row: @Composable (T) -> Unit,
 ) {
     val listState = rememberLazyListState()
+    KeepAtTopWhenRowsChange(listState = listState, rows = items)
     var draggedIndex by remember(items) { mutableIntStateOf(NO_DRAG) }
     var dragOffsetPx by remember(items) { mutableFloatStateOf(0f) }
 
@@ -468,6 +499,8 @@ internal fun TrackListDetail(
     val selection = rememberSelectionState()
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf<String?>(null) }
+    var isSortSheetOpen by remember { mutableStateOf(false) }
+    val sort = viewModel.sort
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument(M3U_MIME_TYPE),
@@ -493,7 +526,7 @@ internal fun TrackListDetail(
                 add(
                     TopBarAction(label = "Search", icon = Icons.Filled.Search) { searchQuery = "" },
                 )
-                add(SortPlaceholderAction)
+                if (sort != null) add(sortAction { isSortSheetOpen = true })
                 addAll(extraActions)
                 add(
                     TopBarAction(label = "Export playlist", icon = Icons.Filled.FileUpload) {
@@ -560,6 +593,10 @@ internal fun TrackListDetail(
                 onClick = { viewModel.onTrackClick(track) },
             )
         }
+    }
+
+    if (isSortSheetOpen && sort != null) {
+        SortSheet(sort = sort, onDismiss = { isSortSheetOpen = false })
     }
 }
 
@@ -649,18 +686,6 @@ internal fun formatTrackDuration(durationMs: Long): String {
     val seconds = totalSeconds % 60
     return String.format(Locale.getDefault(), "%d:%02d", minutes, seconds)
 }
-
-/**
- * The sort button, which does not sort yet.
- *
- * Present because the bar's action set is part of the screen's shape: adding it later would move
- * every other action along, so it takes its place now and gains its menu when sorting arrives.
- */
-internal val SortPlaceholderAction = TopBarAction(
-    label = "Sort",
-    icon = Icons.AutoMirrored.Filled.Sort,
-    onClick = {},
-)
 
 /** Narrows a loaded list, leaving "still loading" alone so a search cannot look like an empty library. */
 internal fun <T> LibraryContent<T>.filterItems(predicate: (T) -> Boolean): LibraryContent<T> =

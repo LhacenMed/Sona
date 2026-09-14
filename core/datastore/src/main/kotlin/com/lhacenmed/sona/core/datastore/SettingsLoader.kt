@@ -21,11 +21,13 @@ class SettingsLoader @Inject constructor(
     private val playbackSettings: PlaybackSettings,
     private val themeSettings: ThemeSettings,
     private val equalizerSettings: EqualizerSettings,
+    private val sortSettings: SortSettings,
 ) {
     suspend fun load() {
         librarySettings.awaitLoaded()
         playbackSettings.awaitLoaded()
         themeSettings.awaitLoaded()
         equalizerSettings.awaitLoaded()
+        sortSettings.awaitLoaded()
     }
 }

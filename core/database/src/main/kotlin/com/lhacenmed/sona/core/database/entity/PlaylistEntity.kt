@@ -25,4 +25,6 @@ data class PlaylistEntity(
     val name: String,
     val isBuiltIn: Boolean = false,
     val createdAt: Long,
+    /** When the playlist last changed - made, renamed, or its tracks added, removed or moved. */
+    val modifiedAt: Long,
 )

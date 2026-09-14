@@ -37,6 +37,8 @@ import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.library.sort.SortSheet
+import com.lhacenmed.sona.feature.library.sort.sortAction
 
 /** The derived lists' titles, which are also what a search matches them on. */
 private const val RECENT_TITLE = "Recent"
@@ -71,6 +73,7 @@ object PlaylistsScreen : Screen {
         var searchQuery by remember { mutableStateOf<String?>(null) }
         var namePrompt by remember { mutableStateOf<NamePrompt?>(null) }
         var confirmingDelete by remember { mutableStateOf<List<Playlist>>(emptyList()) }
+        var isSortSheetOpen by remember { mutableStateOf(false) }
         // The file waiting to be imported, and whether its destination is being named. Both dialogs
         // are on screen at once while naming, the destinations still behind the name.
         var importSource by remember { mutableStateOf<Uri?>(null) }
@@ -110,7 +113,7 @@ object PlaylistsScreen : Screen {
                 onNavigateBack = navigator::back,
                 actions = listOf(
                     TopBarAction(label = "Search", icon = Icons.Filled.Search) { searchQuery = "" },
-                    SortPlaceholderAction,
+                    sortAction { isSortSheetOpen = true },
                     TopBarAction(label = "Create new playlist", icon = Icons.Filled.Add) {
                         namePrompt = NamePrompt.Create
                     },
@@ -265,6 +268,10 @@ object PlaylistsScreen : Screen {
                     },
                 )
             }
+        }
+
+        if (isSortSheetOpen) {
+            SortSheet(sort = viewModel.sort, onDismiss = { isSortSheetOpen = false })
         }
 
         if (confirmingDelete.isNotEmpty()) {

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.itemsOrEmpty
+import com.lhacenmed.sona.core.data.sort.LibrarySortOrders
 import com.lhacenmed.sona.core.datastore.LibrarySettings
 import com.lhacenmed.sona.core.datastore.LibraryTab
 import com.lhacenmed.sona.core.model.Album
@@ -13,6 +14,9 @@ import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Folder
 import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.model.sort.SortableList
+import com.lhacenmed.sona.feature.library.sort.SortControl
+import com.lhacenmed.sona.feature.library.sort.control
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.scanner.MediaScanner
 import com.lhacenmed.sona.feature.scanner.hasScannerPermission
@@ -38,6 +42,14 @@ private val CANONICAL_TAB_ORDER = listOf(
 
 private fun Set<LibraryTab>.inCanonicalOrder(): List<LibraryTab> = CANONICAL_TAB_ORDER.filter { it in this }
 
+private fun LibraryTab.sortableList(): SortableList = when (this) {
+    LibraryTab.TRACKS -> SortableList.TRACKS
+    LibraryTab.ARTISTS -> SortableList.ARTISTS
+    LibraryTab.ALBUMS -> SortableList.ALBUMS
+    LibraryTab.GENRES -> SortableList.GENRES
+    LibraryTab.FOLDERS -> SortableList.FOLDERS
+}
+
 /**
  * One ViewModel for the entire library pager, replacing the five near-identical ones it used to
  * create up front.
@@ -55,6 +67,7 @@ class LibraryViewModel @Inject constructor(
     private val librarySettings: LibrarySettings,
     private val mediaScanner: MediaScanner,
     private val playbackController: PlaybackController,
+    sortOrders: LibrarySortOrders,
 ) : ViewModel() {
 
     val tracks: StateFlow<LibraryContent<Track>> = repository.tracks
@@ -62,6 +75,12 @@ class LibraryViewModel @Inject constructor(
     val artists: StateFlow<LibraryContent<Artist>> = repository.artists
     val genres: StateFlow<LibraryContent<Genre>> = repository.genres
     val folders: StateFlow<LibraryContent<Folder>> = repository.folders
+
+    private val tabSorts: Map<LibraryTab, SortControl> =
+        LibraryTab.entries.associateWith { tab -> sortOrders.control(tab.sortableList()) }
+
+    /** How [tab] is sorted - what the bar's sort button opens over whichever tab is showing. */
+    fun sort(tab: LibraryTab): SortControl = tabSorts.getValue(tab)
 
     /**
      * Starts from the stored tabs, so the strip is already right on its first frame rather than

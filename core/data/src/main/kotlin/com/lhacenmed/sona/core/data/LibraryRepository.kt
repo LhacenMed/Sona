@@ -2,7 +2,10 @@ package com.lhacenmed.sona.core.data
 
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.common.di.DefaultDispatcher
-import com.lhacenmed.sona.core.common.sort.sortedByName
+import com.lhacenmed.sona.core.data.sort.LibrarySortOrders
+import com.lhacenmed.sona.core.data.sort.LibrarySortSpecs
+import com.lhacenmed.sona.core.data.sort.PlaylistEntry
+import com.lhacenmed.sona.core.data.sort.SortSpec
 import com.lhacenmed.sona.core.database.dao.AlbumDao
 import com.lhacenmed.sona.core.database.dao.ArtistDao
 import com.lhacenmed.sona.core.database.FAVORITES_PLAYLIST_ID
@@ -11,7 +14,6 @@ import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.PlaylistDao
 import com.lhacenmed.sona.core.database.entity.PlaylistEntity
 import com.lhacenmed.sona.core.database.dao.TrackDao
-import com.lhacenmed.sona.core.database.entity.TrackEntity
 import com.lhacenmed.sona.core.database.entity.toDomain
 import com.lhacenmed.sona.core.datastore.LibrarySettings
 import com.lhacenmed.sona.core.model.Album
@@ -51,6 +53,9 @@ import kotlinx.coroutines.flow.stateIn
  *     into one recompute, and [distinctUntilChanged] drops emissions whose *content* is identical -
  *     so a rescan that finds nothing new cannot repaint anything.
  *
+ * Every list is sorted the way the user last chose for it (see [LibrarySortOrders]), and re-sorted
+ * here - not on screen - the moment that choice changes.
+ *
  * Sharing is [SharingStarted.Eagerly] on a process-lifetime scope: the library survives a screen
  * being closed or the activity being recreated, so returning to it is a read from memory, not a
  * fresh round trip to SQLite.
@@ -63,6 +68,7 @@ class LibraryRepository @Inject constructor(
     private val genreDao: GenreDao,
     private val playlistDao: PlaylistDao,
     private val playStatsDao: PlayStatsDao,
+    private val sortOrders: LibrarySortOrders,
     librarySettings: LibrarySettings,
     @ApplicationScope private val scope: CoroutineScope,
     @DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher,
@@ -77,30 +83,25 @@ class LibraryRepository @Inject constructor(
         .stateIn(scope, SharingStarted.Eagerly, librarySettings.intelligentSortingEnabled.value)
 
     val tracks: StateFlow<LibraryContent<Track>> = trackDao.observeAll()
-        .shareSorted { entities, intelligent ->
-            entities.map { it.toDomain() }.sortedByName(intelligent) { it.title }
-        }
+        .sortedFor(LibrarySortSpecs.tracks) { rows -> rows.map { it.toDomain() } }
+        .shareContent()
 
     val albums: StateFlow<LibraryContent<Album>> = albumDao.observeAll()
-        .shareSorted { entities, intelligent ->
-            entities.map { it.toDomain() }.sortedByName(intelligent) { it.title }
-        }
+        .sortedFor(LibrarySortSpecs.albums) { rows -> rows.map { it.toDomain() } }
+        .shareContent()
 
     val artists: StateFlow<LibraryContent<Artist>> = artistDao.observeAll()
-        .shareSorted { entities, intelligent ->
-            entities.map { it.toDomain() }.sortedByName(intelligent) { it.name }
-        }
+        .sortedFor(LibrarySortSpecs.artists) { rows -> rows.map { it.toDomain() } }
+        .shareContent()
 
     val genres: StateFlow<LibraryContent<Genre>> = genreDao.observeAll()
-        .shareSorted { entities, intelligent ->
-            entities.map { it.toDomain() }.sortedByName(intelligent) { it.name }
-        }
+        .sortedFor(LibrarySortSpecs.genres) { rows -> rows.map { it.toDomain() } }
+        .shareContent()
 
     /** Aggregated by SQLite (`GROUP BY folderPath`), not by grouping the track list in memory. */
     val folders: StateFlow<LibraryContent<Folder>> = trackDao.observeFolders()
-        .shareSorted { rows, intelligent ->
-            rows.map { it.toDomain() }.sortedByName(intelligent) { it.name }
-        }
+        .sortedFor(LibrarySortSpecs.folders) { rows -> rows.map { it.toDomain() } }
+        .shareContent()
 
     /**
      * Track lookup by id, for the player and the notification theme. Derived from [tracks] so it
@@ -131,26 +132,26 @@ class LibraryRepository @Inject constructor(
     fun genre(genreId: Long): Flow<Genre?> =
         genreDao.observeById(genreId).map { it?.toDomain() }.distinctUntilChanged()
 
-    /** Album tracks in playback order: disc, then track number, then title. */
+    /** Album tracks, in playback order - disc, then track number - unless sorted otherwise. */
     fun albumTracks(albumId: Long): Flow<LibraryContent<Track>> =
-        trackDao.observeByAlbum(albumId).mapContent { entities ->
-            entities.map { it.toDomain() }.sortedWith(
-                compareBy(
-                    { it.discNumber ?: Int.MAX_VALUE },
-                    { it.trackNumber ?: Int.MAX_VALUE },
-                    { it.title },
-                ),
-            )
-        }
+        trackDao.observeByAlbum(albumId)
+            .sortedFor(LibrarySortSpecs.albumTracks) { rows -> rows.map { it.toDomain() } }
+            .asContent()
 
     fun artistTracks(artistId: Long): Flow<LibraryContent<Track>> =
-        trackDao.observeByArtist(artistId).mapSortedContent { it.title }
+        trackDao.observeByArtist(artistId)
+            .sortedFor(LibrarySortSpecs.artistTracks) { rows -> rows.map { it.toDomain() } }
+            .asContent()
 
     fun genreTracks(genreId: Long): Flow<LibraryContent<Track>> =
-        trackDao.observeByGenre(genreId).mapSortedContent { it.title }
+        trackDao.observeByGenre(genreId)
+            .sortedFor(LibrarySortSpecs.genreTracks) { rows -> rows.map { it.toDomain() } }
+            .asContent()
 
     fun folderTracks(folderPath: String): Flow<LibraryContent<Track>> =
-        trackDao.observeByFolder(folderPath).mapSortedContent { it.title }
+        trackDao.observeByFolder(folderPath)
+            .sortedFor(LibrarySortSpecs.folderTracks) { rows -> rows.map { it.toDomain() } }
+            .asContent()
 
     /** Search runs as four `LIKE … LIMIT` queries rather than scanning the library in memory. */
     fun searchTracks(query: String, limit: Int): Flow<List<Track>> =
@@ -172,14 +173,17 @@ class LibraryRepository @Inject constructor(
         return ids.mapNotNull { byId[it] }
     }
 
-    /** Every playlist, Favourites first, with the count each row shows. */
+    /** Every playlist in the chosen order, Favourites first, with the count each row shows. */
     val playlists: StateFlow<LibraryContent<Playlist>> = playlistDao.observeAll()
+        .sortedFor(LibrarySortSpecs.playlists) { rows -> rows }
         .map { rows ->
-            LibraryContent.Ready(
-                rows.map { Playlist(it.id, it.name, it.isBuiltIn, it.trackCount) },
-            )
+            rows
+                // Stable, so the chosen order holds among the rest. Favourites is the one playlist
+                // every user has, and it keeps the top whatever playlists are sorted by.
+                .sortedByDescending { it.isBuiltIn }
+                .map { Playlist(it.id, it.name, it.isBuiltIn, it.trackCount) }
         }
-        .stateIn(scope, SharingStarted.Eagerly, LibraryContent.Loading)
+        .shareContent()
 
     /** How many tracks each derived list would show, for the playlists tab's subtitles. */
     val recentlyPlayedCount: StateFlow<Int> = playStatsDao.observeRecentlyPlayedCount()
@@ -189,15 +193,20 @@ class LibraryRepository @Inject constructor(
         .stateIn(scope, SharingStarted.Eagerly, 0)
 
     /**
-     * A playlist's tracks in the order the user arranged them.
+     * A playlist's tracks, in the order they are sorted - the order the user arranged, by default.
      *
-     * Deliberately not sorted here, unlike every other collection: for a playlist the order *is*
-     * the content, so re-sorting it would throw away what the user arranged.
+     * Sorting only changes what is shown. The arranged order is never rewritten by it: it stays the
+     * Custom order, which is the one dragging edits.
      */
     fun playlistTracks(playlistId: Long): Flow<LibraryContent<Track>> =
-        playlistDao.observeTracks(playlistId).map { entities ->
-            LibraryContent.Ready(entities.map { it.toDomain() })
-        }
+        playlistDao.observeTracks(playlistId)
+            .sortedFor(LibrarySortSpecs.playlistTracks) { rows ->
+                rows.mapIndexed { position, row ->
+                    PlaylistEntry(track = row.track.toDomain(), position = position, addedAt = row.addedAt)
+                }
+            }
+            .map { entries -> entries.map { it.track } }
+            .asContent()
 
     /**
      * Creates a playlist and returns its id, or null when the name is already taken.
@@ -208,16 +217,18 @@ class LibraryRepository @Inject constructor(
     /** Favourites is an ordinary playlist, so screens open it the same way as any other. */
     val favoritesPlaylistId: Long get() = FAVORITES_PLAYLIST_ID
 
-    suspend fun createPlaylist(name: String): Long? =
-        runCatching {
+    suspend fun createPlaylist(name: String): Long? {
+        val createdAt = System.currentTimeMillis()
+        return runCatching {
             playlistDao.insert(
-                PlaylistEntity(name = name.trim(), createdAt = System.currentTimeMillis()),
+                PlaylistEntity(name = name.trim(), createdAt = createdAt, modifiedAt = createdAt),
             )
         }.getOrNull()
+    }
 
     /** Renames a playlist. Built-in ones are refused by the query itself, not by the caller. */
     suspend fun renamePlaylist(playlistId: Long, name: String) {
-        playlistDao.rename(playlistId, name.trim())
+        playlistDao.rename(playlistId, name.trim(), System.currentTimeMillis())
     }
 
     /** Deletes a playlist and its membership. The tracks themselves are untouched. */
@@ -226,17 +237,17 @@ class LibraryRepository @Inject constructor(
     }
 
     suspend fun removeTracksFromPlaylist(playlistId: Long, trackIds: List<Long>) {
-        playlistDao.removeTracks(playlistId, trackIds)
+        playlistDao.removeTracks(playlistId, trackIds, System.currentTimeMillis())
     }
 
     /** Persists the order a drag ended on, in one transaction. */
     suspend fun setPlaylistOrder(playlistId: Long, trackIds: List<Long>) {
-        playlistDao.setOrder(playlistId, trackIds)
+        playlistDao.setOrder(playlistId, trackIds, System.currentTimeMillis())
     }
 
     /** Appends tracks to a playlist, keeping the position of any already in it. */
     suspend fun addTracksToPlaylist(playlistId: Long, trackIds: List<Long>) {
-        playlistDao.addTracks(playlistId, trackIds)
+        playlistDao.addTracks(playlistId, trackIds, System.currentTimeMillis())
     }
 
     /** The Favourites playlist's tracks. Its id lives here so no screen has to know it. */
@@ -264,40 +275,39 @@ class LibraryRepository @Inject constructor(
         .stateIn(scope, SharingStarted.Eagerly, emptySet())
 
     suspend fun setFavorite(trackId: Long, isFavorite: Boolean) {
+        val changedAt = System.currentTimeMillis()
         if (isFavorite) {
-            playlistDao.addTracks(FAVORITES_PLAYLIST_ID, listOf(trackId))
+            playlistDao.addTracks(FAVORITES_PLAYLIST_ID, listOf(trackId), changedAt)
         } else {
-            playlistDao.removeTracks(FAVORITES_PLAYLIST_ID, listOf(trackId))
+            playlistDao.removeTracks(FAVORITES_PLAYLIST_ID, listOf(trackId), changedAt)
         }
     }
 
     // endregion
 
-    private fun <E, T> Flow<List<E>>.shareSorted(
-        transform: (List<E>, Boolean) -> List<T>,
-    ): StateFlow<LibraryContent<T>> = conflate()
+    /**
+     * Turns rows into [spec]'s items, sorted the way its list is set to, and sorts them again
+     * whenever that order or the name-sorting mode changes.
+     */
+    private fun <R, T> Flow<List<R>>.sortedFor(
+        spec: SortSpec<T>,
+        toItems: (List<R>) -> List<T>,
+    ): Flow<List<T>> =
         // conflate() sits *upstream* of the transform on purpose. Room can fire several
         // invalidations in quick succession; without it each one would be mapped and sorted in
         // turn, and only the last result would ever be shown. With it, anything superseded while a
         // sort is still running is dropped instead of computed.
-        .combine(intelligentSorting) { entities, intelligent ->
-            LibraryContent.Ready(transform(entities, intelligent)) as LibraryContent<T>
+        combine(conflate(), sortOrders.order(spec.list), intelligentSorting) { rows, order, intelligent ->
+            spec.sort(toItems(rows), order, intelligent)
         }
-        .distinctUntilChanged()
-        .stateIn(scope, SharingStarted.Eagerly, LibraryContent.Loading)
 
-    private fun <E, T> Flow<List<E>>.mapContent(
-        transform: (List<E>) -> List<T>,
-    ): Flow<LibraryContent<T>> =
-        map { LibraryContent.Ready(transform(it)) as LibraryContent<T> }
+    private fun <T> Flow<List<T>>.shareContent(): StateFlow<LibraryContent<T>> =
+        map { LibraryContent.Ready(it) as LibraryContent<T> }
+            .distinctUntilChanged()
+            .stateIn(scope, SharingStarted.Eagerly, LibraryContent.Loading)
+
+    private fun <T> Flow<List<T>>.asContent(): Flow<LibraryContent<T>> =
+        map { LibraryContent.Ready(it) as LibraryContent<T> }
             .distinctUntilChanged()
             .flowOn(defaultDispatcher)
-
-    private fun Flow<List<TrackEntity>>.mapSortedContent(
-        selector: (Track) -> String,
-    ): Flow<LibraryContent<Track>> = combine(intelligentSorting) { entities, intelligent ->
-        LibraryContent.Ready(
-            entities.map { it.toDomain() }.sortedByName(intelligent, selector),
-        ) as LibraryContent<Track>
-    }.distinctUntilChanged().flowOn(defaultDispatcher)
 }

@@ -29,7 +29,7 @@ import com.lhacenmed.sona.core.database.entity.TrackEntity
         PlaylistTrackEntity::class,
         PlayStatsEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 abstract class SonaDatabase : RoomDatabase() {

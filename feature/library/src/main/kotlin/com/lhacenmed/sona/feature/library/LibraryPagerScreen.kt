@@ -30,6 +30,8 @@ import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
+import com.lhacenmed.sona.feature.library.sort.SortSheet
+import com.lhacenmed.sona.feature.library.sort.sortAction
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -71,6 +73,10 @@ fun LibraryPagerScreen(
         // leaves this null: the pager is then its own authority and the strip simply follows it,
         // so the two can never fight over which tab is selected.
         var requestedPage by remember { mutableStateOf<Int?>(null) }
+
+        // The tab whose sort sheet is open. Held as the tab rather than a flag, so the sheet keeps
+        // sorting the tab it was opened over.
+        var sortingTab by remember { mutableStateOf<LibraryTab?>(null) }
 
         // Where the pill sits while a tap is being carried out. The pager cannot be asked to slide
         // the whole way across a long move - it snaps a page first - so the pill travels that
@@ -116,7 +122,9 @@ fun LibraryPagerScreen(
         Column(modifier = modifier.fillMaxSize()) {
             SonaTopAppBar(
                 title = "Sona",
-                actions = actions,
+                // First, so it is always one of the actions drawn as an icon: sorting belongs to the
+                // tab on screen, and the shell's actions are the ones that can fold into the menu.
+                actions = listOf(sortAction { sortingTab = selectedTab }) + actions,
                 selection = selection.toTopBarSelection(
                     actions = contextActions(selectedTab, selection, viewModel),
                 ),
@@ -165,6 +173,10 @@ fun LibraryPagerScreen(
                     LibraryTab.FOLDERS -> FoldersScreen(viewModel = viewModel, selection = selection)
                 }
             }
+        }
+
+        sortingTab?.let { tab ->
+            SortSheet(sort = viewModel.sort(tab), onDismiss = { sortingTab = null })
         }
     }
 }

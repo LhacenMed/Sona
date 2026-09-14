@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.library.sort.SortControl
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import java.io.OutputStream
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +30,9 @@ abstract class TrackListDetailViewModel(
 ) : ViewModel() {
 
     abstract val tracks: StateFlow<LibraryContent<Track>>
+
+    /** How this list is sorted, or null for one whose order is its content - Recent and Most played. */
+    open val sort: SortControl? = null
 
     /** Just the playing track's id - see [LibraryViewModel.currentTrackId] for why not the state. */
     val currentTrackId: StateFlow<Long?> = playbackController.playbackState

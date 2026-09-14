@@ -3,8 +3,12 @@ package com.lhacenmed.sona.feature.library
 import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
+import com.lhacenmed.sona.core.data.sort.LibrarySortOrders
 import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.model.sort.SortableList
+import com.lhacenmed.sona.feature.library.sort.SortControl
+import com.lhacenmed.sona.feature.library.sort.control
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -18,6 +22,7 @@ import kotlinx.coroutines.flow.stateIn
 class GenreDetailViewModel @AssistedInject constructor(
     @Assisted genreId: Long,
     repository: LibraryRepository,
+    sortOrders: LibrarySortOrders,
     playbackController: PlaybackController,
 ) : TrackListDetailViewModel(playbackController) {
 
@@ -31,4 +36,6 @@ class GenreDetailViewModel @AssistedInject constructor(
 
     override val tracks: StateFlow<LibraryContent<Track>> = repository.genreTracks(genreId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryContent.Loading)
+
+    override val sort: SortControl = sortOrders.control(SortableList.GENRE_TRACKS)
 }

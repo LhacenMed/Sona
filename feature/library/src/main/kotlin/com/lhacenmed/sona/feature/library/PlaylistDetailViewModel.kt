@@ -5,8 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.itemsOrEmpty
+import com.lhacenmed.sona.core.data.sort.LibrarySortOrders
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.model.sort.SortableList
+import com.lhacenmed.sona.feature.library.sort.SortControl
+import com.lhacenmed.sona.feature.library.sort.control
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -23,8 +27,11 @@ import kotlinx.coroutines.launch
 class PlaylistDetailViewModel @AssistedInject constructor(
     @Assisted private val playlistId: Long,
     private val repository: LibraryRepository,
+    sortOrders: LibrarySortOrders,
     playbackController: PlaybackController,
 ) : TrackListDetailViewModel(playbackController) {
+
+    override val sort: SortControl = sortOrders.control(SortableList.PLAYLIST_TRACKS)
 
     @AssistedFactory
     interface Factory {

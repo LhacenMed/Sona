@@ -5,7 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.itemsOrEmpty
+import com.lhacenmed.sona.core.data.sort.LibrarySortOrders
 import com.lhacenmed.sona.core.model.Playlist
+import com.lhacenmed.sona.core.model.sort.SortableList
+import com.lhacenmed.sona.feature.library.sort.SortControl
+import com.lhacenmed.sona.feature.library.sort.control
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.InputStream
 import javax.inject.Inject
@@ -17,10 +21,13 @@ import kotlinx.coroutines.withContext
 @HiltViewModel
 class PlaylistsViewModel @Inject constructor(
     private val repository: LibraryRepository,
+    sortOrders: LibrarySortOrders,
 ) : ViewModel() {
 
     /** Already shared from the application scope, so this only hands it on. */
     val playlists: StateFlow<LibraryContent<Playlist>> = repository.playlists
+
+    val sort: SortControl = sortOrders.control(SortableList.PLAYLISTS)
 
     val recentlyPlayedCount: StateFlow<Int> = repository.recentlyPlayedCount
     val mostPlayedCount: StateFlow<Int> = repository.mostPlayedCount
