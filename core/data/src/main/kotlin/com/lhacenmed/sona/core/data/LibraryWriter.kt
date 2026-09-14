@@ -57,7 +57,7 @@ data class SyncStats(
  *
  * Rows are compared by value (`data class` equality), which is exact now that ids are derived from
  * stable identity rather than auto-generated. Nothing user-owned lives on a track row any more -
- * favourites are playlist membership, keyed on the same stable id - so a scan has nothing to carry
+ * favorites are playlist membership, keyed on the same stable id - so a scan has nothing to carry
  * forward and the row it writes is simply what it found.
  */
 @Singleton

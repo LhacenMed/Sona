@@ -173,12 +173,12 @@ class LibraryRepository @Inject constructor(
         return ids.mapNotNull { byId[it] }
     }
 
-    /** Every playlist in the chosen order, Favourites first, with the count each row shows. */
+    /** Every playlist in the chosen order, Favorites first, with the count each row shows. */
     val playlists: StateFlow<LibraryContent<Playlist>> = playlistDao.observeAll()
         .sortedFor(LibrarySortSpecs.playlists) { rows -> rows }
         .map { rows ->
             rows
-                // Stable, so the chosen order holds among the rest. Favourites is the one playlist
+                // Stable, so the chosen order holds among the rest. Favorites is the one playlist
                 // every user has, and it keeps the top whatever playlists are sorted by.
                 .sortedByDescending { it.isBuiltIn }
                 .map { Playlist(it.id, it.name, it.isBuiltIn, it.trackCount) }
@@ -214,7 +214,7 @@ class LibraryRepository @Inject constructor(
      * The uniqueness rule is the database's own (a unique index on `name`), so two screens racing
      * to create the same name cannot both win - the loser simply gets null back.
      */
-    /** Favourites is an ordinary playlist, so screens open it the same way as any other. */
+    /** Favorites is an ordinary playlist, so screens open it the same way as any other. */
     val favoritesPlaylistId: Long get() = FAVORITES_PLAYLIST_ID
 
     suspend fun createPlaylist(name: String): Long? {
@@ -250,7 +250,7 @@ class LibraryRepository @Inject constructor(
         playlistDao.addTracks(playlistId, trackIds, System.currentTimeMillis())
     }
 
-    /** The Favourites playlist's tracks. Its id lives here so no screen has to know it. */
+    /** The Favorites playlist's tracks. Its id lives here so no screen has to know it. */
     fun favoriteTracks(): Flow<LibraryContent<Track>> = playlistTracks(FAVORITES_PLAYLIST_ID)
 
     /** "Recent" and "Most played" - ordered by the statistics, so likewise never re-sorted. */
@@ -265,7 +265,7 @@ class LibraryRepository @Inject constructor(
         }
 
     /**
-     * The ids in Favourites, for anything that only needs to know whether a track is one.
+     * The ids in Favorites, for anything that only needs to know whether a track is one.
      *
      * A set rather than a list of tracks: the player asks this about a single track on every song
      * change, and the playlist screen already reads the tracks themselves in order.

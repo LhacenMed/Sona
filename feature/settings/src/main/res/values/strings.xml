@@ -193,7 +193,7 @@
     <string name="default_tab_folders">Folders</string>
     <string name="playback_bar_action_title">Playback bar button</string>
     <string name="playback_bar_action_skip_next">Skip to next</string>
-    <string name="playback_bar_action_favorite">Add to favourites</string>
+    <string name="playback_bar_action_favorite">Add to favorites</string>
     <string name="playback_bar_action_none">None</string>
     <string name="behavior_playing_section">Playing</string>
     <string name="play_from_library_title">When playing from the library</string>

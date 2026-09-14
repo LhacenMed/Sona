@@ -53,7 +53,7 @@ private sealed interface NamePrompt {
 
 /**
  * Every collection of tracks the user can open: the two derived lists, then the playlists
- * themselves with Favourites at the top.
+ * themselves with Favorites at the top.
  *
  * Reached from the Playlists shortcut rather than a tab - the tabs browse the library by one of its
  * own dimensions, and a playlist is not one of those, it is something the user made.
@@ -135,7 +135,7 @@ object PlaylistsScreen : Screen {
                     )
                 },
                 // Rename needs exactly one playlist to rename, and neither action is offered for
-                // Favourites - the same rule the queries enforce, surfaced so it never looks broken.
+                // Favorites - the same rule the queries enforce, surfaced so it never looks broken.
                 selection = selection.toTopBarSelection(
                     actions = buildList {
                         if (renameTarget != null) {

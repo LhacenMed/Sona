@@ -4,10 +4,10 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-/** The id Favourites is seeded with. Fixed, so the heart always knows where to write. */
+/** The id Favorites is seeded with. Fixed, so the heart always knows where to write. */
 const val FAVORITES_PLAYLIST_ID = 1L
 
-private const val FAVORITES_PLAYLIST_NAME = "Favourites"
+private const val FAVORITES_PLAYLIST_NAME = "Favorites"
 
 /**
  * Playlists, playlist membership and play statistics.
@@ -16,8 +16,8 @@ private const val FAVORITES_PLAYLIST_NAME = "Favourites"
  * starts holding things a rescan cannot rebuild. Tracks, albums and artists can always be found on
  * disk again; which songs someone chose, and in what order they arranged them, cannot.
  *
- * Favourites moves from a column on `tracks` to a playlist of its own, so the migration carries the
- * existing favourites across as its first members. `id` is ordered by title only so that the
+ * Favorites moves from a column on `tracks` to a playlist of its own, so the migration carries the
+ * existing favorites across as its first members. `id` is ordered by title only so that the
  * migrated list starts in a defined order rather than in whatever order SQLite returned rows.
  */
 val MIGRATION_4_5 = object : Migration(4, 5) {
@@ -133,7 +133,23 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
 }
 
 /**
- * Makes sure Favourites exists, every time the database is opened.
+ * Renames the built-in playlist from "Favourites" to "Favorites", the spelling the rest of the app uses.
+ *
+ * OR IGNORE because playlist names are unique: an install where the user already made a playlist
+ * called "Favorites" keeps the old spelling on the built-in one, rather than the upgrade failing or a
+ * playlist the user named themselves being renamed for them.
+ */
+val MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "UPDATE OR IGNORE `playlists` SET `name` = '$FAVORITES_PLAYLIST_NAME' " +
+                "WHERE `id` = $FAVORITES_PLAYLIST_ID AND `isBuiltIn` = 1",
+        )
+    }
+}
+
+/**
+ * Makes sure Favorites exists, every time the database is opened.
  *
  * On open rather than on create, because creation is only one of the ways this database comes to
  * exist - a migration and a destructive rebuild are others, and `onCreate` fires for none of them.

@@ -7,9 +7,9 @@ import androidx.room.PrimaryKey
 /**
  * A user-ordered list of tracks.
  *
- * Favourites is one of these rather than a flag on a track, because everything a playlist can do -
- * reorder by dragging, take a whole folder, export to M3U - is something favourites has to do too.
- * As a column it would have needed each of those actions to carry an "unless it's favourites"
+ * Favorites is one of these rather than a flag on a track, because everything a playlist can do -
+ * reorder by dragging, take a whole folder, export to M3U - is something favorites has to do too.
+ * As a column it would have needed each of those actions to carry an "unless it's favorites"
  * branch; as a row it simply is a playlist, and there is one code path.
  *
  * [isBuiltIn] marks the ones the app owns rather than the user: they cannot be renamed or deleted,

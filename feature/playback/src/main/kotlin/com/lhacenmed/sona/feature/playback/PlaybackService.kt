@@ -89,7 +89,7 @@ class PlaybackService : MediaSessionService() {
     @Volatile private var headsetAutoplayEnabled = false
 
     // Mirrored into a field because the notification is rebuilt synchronously and cannot suspend to
-    // ask whether the playing track is a favourite.
+    // ask whether the playing track is a favorite.
     @Volatile private var favoriteTrackIds: Set<Long> = emptySet()
     private var initialHeadsetPlugEventHandled = false
 
@@ -281,7 +281,7 @@ class PlaybackService : MediaSessionService() {
      * `setCustomLayout` (not `setMediaButtonPreferences`) is what ArchiveTune uses, and media3 fits
      * play/pause plus as much of this list as the platform allows around it.
      *
-     * The one deviation: while repeating the current track (`ONE`/`STOP_AFTER_CURRENT`), favourite
+     * The one deviation: while repeating the current track (`ONE`/`STOP_AFTER_CURRENT`), favorite
      * moves to the front of the list. media3 backfills a missing transport button - previous, or
      * next when repeating - from whichever button is first, so this is what keeps repeat and
      * shuffle from being the one pulled into that spot while there is nowhere to go next.
@@ -431,7 +431,7 @@ class PlaybackService : MediaSessionService() {
     private fun toggleFavorite() {
         val trackId = currentTrackId() ?: return
         val isFavorite = trackId in favoriteTrackIds
-        // Only the write happens here; the icon follows from the favourites flow re-emitting, the
+        // Only the write happens here; the icon follows from the favorites flow re-emitting, the
         // same way the shuffle and repeat icons follow their player callbacks.
         serviceScope.launch { libraryRepository.setFavorite(trackId, !isFavorite) }
     }

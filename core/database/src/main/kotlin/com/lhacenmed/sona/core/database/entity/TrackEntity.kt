@@ -15,7 +15,7 @@ import com.lhacenmed.sona.core.model.Track
  * launch therefore rewrote the entire table with brand-new primary keys, which
  *   - invalidated every observing `Flow` and re-rendered all five library tabs from scratch,
  *   - orphaned the persisted playback queue (it stores track ids), and
- *   - forced favourites to be re-overlaid by path on every scan to survive.
+ *   - forced favorites to be re-overlaid by path on every scan to survive.
  * A path-derived id makes a rescan of unchanged files a no-op instead.
  *
  * The indices back the per-entity queries (album/artist/genre/folder detail screens) so they can

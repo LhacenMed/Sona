@@ -16,7 +16,7 @@ import com.lhacenmed.sona.core.model.sort.SortCriterion
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 
-/** One playlist's tracks, in the order they were arranged. Favourites arrives here too. */
+/** One playlist's tracks, in the order they were arranged. Favorites arrives here too. */
 data class PlaylistDetailScreen(val playlistId: Long) : Screen {
 
     @Composable

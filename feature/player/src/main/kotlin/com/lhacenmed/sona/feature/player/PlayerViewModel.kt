@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
  * [com.lhacenmed.sona.feature.player.PlayerScreen]. [queueTracks] resolves
  * [PlaybackUiState.queue] (ordered track ids) to full [Track]s, in queue order, for the artwork
  * pager - kept reactive (re-derived from [LibraryRepository.tracksById]) rather than fetched once,
- * so a favourite toggle or library rescan is reflected immediately, but without ever re-reading the
+ * so a favorite toggle or library rescan is reflected immediately, but without ever re-reading the
  * database: the repository already holds the library, and this only indexes into it.
  */
 data class PlayerUiState(
