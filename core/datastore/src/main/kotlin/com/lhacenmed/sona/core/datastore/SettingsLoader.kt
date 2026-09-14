@@ -22,6 +22,7 @@ class SettingsLoader @Inject constructor(
     private val themeSettings: ThemeSettings,
     private val equalizerSettings: EqualizerSettings,
     private val sortSettings: SortSettings,
+    private val imageSettings: ImageSettings,
 ) {
     suspend fun load() {
         librarySettings.awaitLoaded()
@@ -29,5 +30,6 @@ class SettingsLoader @Inject constructor(
         themeSettings.awaitLoaded()
         equalizerSettings.awaitLoaded()
         sortSettings.awaitLoaded()
+        imageSettings.awaitLoaded()
     }
 }

@@ -152,6 +152,37 @@ fun SettingsChoiceItem(
     }
 }
 
+/** A row whose stored value is one of a fixed set, picked from a dialog. */
+@Composable
+fun SettingsChoiceItem(
+    title: String,
+    options: List<String>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var isChoosing by remember { mutableStateOf(false) }
+
+    ListItem(
+        headlineContent = { Text(title) },
+        supportingContent = { Text(options[selectedIndex]) },
+        modifier = modifier.clickable { isChoosing = true },
+    )
+
+    if (isChoosing) {
+        SettingsChoiceDialog(
+            title = title,
+            options = options,
+            selectedIndex = selectedIndex,
+            onSelect = {
+                onSelect(it)
+                isChoosing = false
+            },
+            onDismiss = { isChoosing = false },
+        )
+    }
+}
+
 /**
  * A row holding a number on a continuous range.
  *

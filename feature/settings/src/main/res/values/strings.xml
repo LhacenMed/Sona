@@ -65,7 +65,7 @@
     <string name="swipe_thumbnail_summary">Swipe the player\'s artwork to skip</string>
     <string name="appearance_motion_section">Shape and motion</string>
     <string name="round_mode_title">Round mode</string>
-    <string name="round_mode_summary">Enable rounded corners on additional UI elements</string>
+    <string name="round_mode_summary">Enable rounded corners on additional UI elements (requires album covers to be rounded)</string>
     <string name="disable_animations_title">Disable animations</string>
     <string name="disable_animations_summary">Cut transitions down to the minimum</string>
     <string name="high_refresh_rate_title">Force high refresh rate</string>

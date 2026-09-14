@@ -9,6 +9,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,11 +36,14 @@ private const val ThemeTransitionDurationMillis = 350
  *
  * Every change of scheme - a new cover, the wallpaper colours returning, light and dark - is animated
  * by [animateColorSchemeAsState], so the whole app moves between schemes as one.
+ *
+ * [coverStyle] is provided alongside the colours, so every cover in the app is drawn the same way.
  */
 @Composable
 fun SonaTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     themeColor: Color = DefaultThemeColor,
+    coverStyle: CoverStyle,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -56,10 +60,9 @@ fun SonaTheme(
         }
     }
 
-    MaterialTheme(
-        colorScheme = animateColorSchemeAsState(targetColorScheme),
-        content = content,
-    )
+    MaterialTheme(colorScheme = animateColorSchemeAsState(targetColorScheme)) {
+        CompositionLocalProvider(LocalCoverStyle provides coverStyle, content = content)
+    }
 }
 
 /** The two schemes a transition runs between, and how far along it is. */

@@ -1,7 +1,10 @@
 package com.lhacenmed.sona.feature.settings.screen
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
 import com.lhacenmed.sona.feature.settings.component.SettingsChoiceItem
@@ -17,6 +20,9 @@ object AppearanceScreen : Screen {
 
     @Composable
     override fun Content() {
+        val viewModel: AppearanceSettingsViewModel = hiltViewModel()
+        val roundMode by viewModel.roundMode.collectAsStateWithLifecycle()
+
         SettingsList {
             SettingsSection(stringResource(R.string.appearance_theme_section)) {
                 SettingsChoiceItem(
@@ -97,7 +103,8 @@ object AppearanceScreen : Screen {
                 SettingsSwitchItem(
                     title = stringResource(R.string.round_mode_title),
                     summary = stringResource(R.string.round_mode_summary),
-                    initialValue = true,
+                    checked = roundMode,
+                    onCheckedChange = viewModel::setRoundMode,
                 )
                 SettingsSwitchItem(
                     title = stringResource(R.string.disable_animations_title),

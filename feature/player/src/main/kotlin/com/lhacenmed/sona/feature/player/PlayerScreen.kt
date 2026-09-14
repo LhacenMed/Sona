@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Favorite
@@ -56,10 +55,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -67,7 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.compose.AsyncImage
+import com.lhacenmed.sona.core.designsystem.component.SonaCoverImage
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
 import java.util.Locale
@@ -321,12 +318,11 @@ private fun ArtworkPager(
     modifier: Modifier = Modifier,
 ) {
     if (queueTracks.isEmpty()) {
-        AsyncImage(
-            model = null,
+        SonaCoverImage(
+            coverArtUri = null,
             contentDescription = null,
-            modifier = modifier
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+            cornerRadius = 16.dp,
+            modifier = modifier,
         )
         return
     }
@@ -368,15 +364,13 @@ private fun ArtworkPager(
     }
 
     HorizontalPager(state = pagerState, modifier = modifier) { page ->
-        AsyncImage(
-            model = queueTracks[page].coverArtUri,
+        SonaCoverImage(
+            coverArtUri = queueTracks[page].coverArtUri,
             contentDescription = null,
-            contentScale = ContentScale.Crop,
+            cornerRadius = 16.dp,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 4.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .padding(horizontal = 4.dp),
         )
     }
 }

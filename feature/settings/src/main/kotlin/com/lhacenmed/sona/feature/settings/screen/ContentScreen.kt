@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.datastore.CoverMode
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
@@ -26,6 +27,8 @@ object ContentScreen : Screen {
         val navigator = LocalNavigator.current
         val viewModel: ContentSettingsViewModel = hiltViewModel()
         val intelligentSortingEnabled by viewModel.intelligentSortingEnabled.collectAsStateWithLifecycle()
+        val coverMode by viewModel.coverMode.collectAsStateWithLifecycle()
+        val forceSquareCovers by viewModel.forceSquareCovers.collectAsStateWithLifecycle()
 
         SettingsList {
             SettingsSection(stringResource(R.string.content_library_section)) {
@@ -68,18 +71,22 @@ object ContentScreen : Screen {
             SettingsSection(stringResource(R.string.content_images_section)) {
                 SettingsChoiceItem(
                     title = stringResource(R.string.album_covers_title),
+                    // In CoverMode's order, which is Auxio's, so an option's index is its mode.
                     options = listOf(
-                        stringResource(R.string.album_covers_as_is),
-                        stringResource(R.string.album_covers_high),
-                        stringResource(R.string.album_covers_balanced),
-                        stringResource(R.string.album_covers_save_space),
                         stringResource(R.string.album_covers_off),
+                        stringResource(R.string.album_covers_save_space),
+                        stringResource(R.string.album_covers_balanced),
+                        stringResource(R.string.album_covers_high),
+                        stringResource(R.string.album_covers_as_is),
                     ),
+                    selectedIndex = coverMode.ordinal,
+                    onSelect = { viewModel.setCoverMode(CoverMode.entries[it]) },
                 )
                 SettingsSwitchItem(
                     title = stringResource(R.string.force_square_covers_title),
                     summary = stringResource(R.string.force_square_covers_summary),
-                    initialValue = true,
+                    checked = forceSquareCovers,
+                    onCheckedChange = viewModel::setForceSquareCovers,
                 )
             }
 

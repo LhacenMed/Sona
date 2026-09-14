@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.IntentCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
+import com.lhacenmed.sona.core.designsystem.theme.AppCoverStyle
 import com.lhacenmed.sona.core.designsystem.theme.AppThemeSeed
 import com.lhacenmed.sona.core.designsystem.theme.SonaTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -44,6 +45,10 @@ class HostActivity : ComponentActivity() {
     @Inject
     lateinit var themeSeed: AppThemeSeed
 
+    /** The same process-wide cover style, so a pushed screen draws covers exactly as the library does. */
+    @Inject
+    lateinit var appCoverStyle: AppCoverStyle
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -55,8 +60,9 @@ class HostActivity : ComponentActivity() {
 
         setContent {
             val themeColor by themeSeed.color.collectAsStateWithLifecycle()
+            val coverStyle by appCoverStyle.style.collectAsStateWithLifecycle()
 
-            SonaTheme(themeColor = themeColor) {
+            SonaTheme(themeColor = themeColor, coverStyle = coverStyle) {
                 val navigator = remember { IntentNavigator(this) }
                 // Only screens that named a title get a bar from the host; the rest draw their own,
                 // because a title alone cannot express a selection or an action.

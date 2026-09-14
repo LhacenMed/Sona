@@ -4,6 +4,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -30,7 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.FileUpload
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Search
@@ -39,7 +40,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -69,11 +72,12 @@ import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
+import com.lhacenmed.sona.core.designsystem.component.shape
 import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
+import com.lhacenmed.sona.core.designsystem.theme.LocalCoverStyle
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.library.sort.SortSheet
 import com.lhacenmed.sona.feature.library.sort.sortAction
-import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
@@ -200,6 +204,14 @@ private fun KeepAtTopWhenRowsChange(listState: LazyListState, rows: List<*>) {
 private const val NO_DRAG = -1
 
 /**
+ * The drag gesture for a row's handle, inside a list that can be reordered - null in every other list.
+ *
+ * Provided per row by [ReorderableColumn] rather than passed through [LibraryList]'s `row`, which every
+ * list shares and only a reorderable one has any use for.
+ */
+private val LocalDragHandle = compositionLocalOf<Modifier?> { null }
+
+/**
  * A list whose rows can be dragged into a new order.
  *
  * Dragging starts from a handle rather than a long press, because long press already starts a
@@ -262,40 +274,34 @@ private fun <T> ReorderableColumn(
                         }
                     },
             ) {
-                row(item)
-                // Drawn over the row rather than beside it, so it sits on whatever background the
-                // row has - selected or plain - instead of cutting a strip out of it.
-                Icon(
-                    imageVector = Icons.Filled.DragHandle,
-                    contentDescription = "Reorder",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(horizontal = 16.dp)
-                        .pointerInput(items) {
-                            detectDragGestures(
-                                onDragStart = {
-                                    draggedIndex = index
-                                    dragOffsetPx = 0f
-                                },
-                                onDrag = { change, dragAmount ->
-                                    change.consume()
-                                    dragOffsetPx += dragAmount.y
-                                },
-                                onDragEnd = {
-                                    if (latestTarget != NO_DRAG && latestTarget != draggedIndex) {
-                                        onReorder(latestOrder)
-                                    }
-                                    draggedIndex = NO_DRAG
-                                    dragOffsetPx = 0f
-                                },
-                                onDragCancel = {
-                                    draggedIndex = NO_DRAG
-                                    dragOffsetPx = 0f
-                                },
-                            )
-                        },
-                )
+                // The row draws the handle itself, beside its menu button, and gives it this gesture.
+                CompositionLocalProvider(
+                    LocalDragHandle provides Modifier.pointerInput(items) {
+                        detectDragGestures(
+                            onDragStart = {
+                                draggedIndex = index
+                                dragOffsetPx = 0f
+                            },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                dragOffsetPx += dragAmount.y
+                            },
+                            onDragEnd = {
+                                if (latestTarget != NO_DRAG && latestTarget != draggedIndex) {
+                                    onReorder(latestOrder)
+                                }
+                                draggedIndex = NO_DRAG
+                                dragOffsetPx = 0f
+                            },
+                            onDragCancel = {
+                                draggedIndex = NO_DRAG
+                                dragOffsetPx = 0f
+                            },
+                        )
+                    },
+                ) {
+                    row(item)
+                }
             }
         }
     }
@@ -380,6 +386,7 @@ private fun LoadingListPlaceholder(
         label = "libraryPlaceholderAlpha",
     )
     val color = MaterialTheme.colorScheme.onSurfaceVariant
+    val coverShape = LocalCoverStyle.current.shape(CoverArtDefaults.ListCornerRadius)
 
     // A plain Column, not a LazyColumn: the count is fixed and small, and a lazy container here
     // would allocate scroll state that is thrown away as soon as the real list arrives.
@@ -397,7 +404,7 @@ private fun LoadingListPlaceholder(
                     Box(
                         modifier = Modifier
                             .size(CoverArtDefaults.ListSize)
-                            .clip(CoverArtDefaults.Shape)
+                            .clip(coverShape)
                             .drawBehind { drawRect(color = color.copy(alpha = alpha)) },
                     )
                 }
@@ -600,8 +607,19 @@ internal fun TrackListDetail(
     }
 }
 
+/** How strongly a selected row is tinted with the primary colour: Auxio's `sel_item_activated_bg`. */
+private const val SELECTED_ROW_TINT_ALPHA = 0.12f
+
+/** How long that tint takes to fade in and out: Auxio's `anim_fade_enter_duration` and exit duration. */
+private const val SELECTED_ROW_FADE_IN_MILLIS = 200
+private const val SELECTED_ROW_FADE_OUT_MILLIS = 100
+
+/** The touch target a drag handle is centred in: Auxio's `size_touchable_small`. */
+private val DragHandleTouchSize = 48.dp
+
 /**
- * A track row: cover art, title over artist and duration, and the row's own overflow button.
+ * A track row, laid out as Auxio's `item_song`: cover art, title over "artist - album", and the row's
+ * own overflow button - with a drag handle beside that button in a list that can be reordered.
  *
  * [isCurrent] and [isPlaying] are lambdas, not values, on purpose. Passed as `Boolean`s, every row in
  * the list recomposes whenever the playing track changes, because each row's parameters changed.
@@ -609,7 +627,9 @@ internal fun TrackListDetail(
  * work.
  *
  * The playing track is shown by its cover and its title alone - see [SonaCoverArt]. Nothing paints
- * the row behind them, so the one background a row can have still means "selected".
+ * the row behind them, so the one tint a row can have still means "selected".
+ *
+ * The overflow button stays through a selection: the row keeps one shape whatever state it is in.
  */
 @Composable
 internal fun TrackRow(
@@ -622,18 +642,26 @@ internal fun TrackRow(
 ) {
     val current = isCurrent()
     val isSelected = selection.isSelected(track.id)
+    // The fade is animated rather than the colour, and read only when drawing: an animated colour would
+    // trail behind every theme transition, and reading it here would recompose the row every frame.
+    val selectedFraction = animateFloatAsState(
+        targetValue = if (isSelected) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = if (isSelected) SELECTED_ROW_FADE_IN_MILLIS else SELECTED_ROW_FADE_OUT_MILLIS,
+        ),
+        label = "trackRowSelection",
+    )
+    val selectedTint = MaterialTheme.colorScheme.primary
+    val dragHandle = LocalDragHandle.current
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(
-                if (isSelected) {
-                    MaterialTheme.colorScheme.primaryContainer
-                } else {
-                    MaterialTheme.colorScheme.surface
-                },
-            )
+            .background(MaterialTheme.colorScheme.surface)
+            .drawBehind {
+                drawRect(selectedTint.copy(alpha = SELECTED_ROW_TINT_ALPHA * selectedFraction.value))
+            }
             .selectableRow(selection, track.id, onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(start = 16.dp, top = 12.dp, end = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SonaCoverArt(
@@ -641,15 +669,16 @@ internal fun TrackRow(
             contentDescription = null,
             isCurrent = current,
             isPlaying = isPlaying(),
+            isSelected = isSelected,
         )
         Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(horizontal = 16.dp),
+                .padding(start = 16.dp, end = 12.dp),
         ) {
             Text(
                 text = track.title,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.titleMedium,
                 color = if (current) {
                     MaterialTheme.colorScheme.primary
                 } else {
@@ -659,32 +688,35 @@ internal fun TrackRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = "${track.artist} · ${formatTrackDuration(track.durationMs)}",
+                text = "${track.artist} - ${track.album}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        // Hidden during a selection because the context bar is what acts on rows then - and because
-        // a reorderable list puts its drag handle in exactly this corner.
-        if (!selection.isActive) {
-            SonaIconButton(
-                // Opens nothing yet. It takes its place now because the row's shape is part of the
-                // list's: adding it later would move the title and the cover of every row.
-                onClick = {},
-                icon = Icons.Filled.MoreVert,
-                contentDescription = "More options",
-            )
+        if (dragHandle != null) {
+            Box(
+                modifier = Modifier
+                    .size(DragHandleTouchSize)
+                    .then(dragHandle),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.DragHandle,
+                    contentDescription = "Reorder",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
+        SonaIconButton(
+            // Opens nothing yet. It takes its place now because the row's shape is part of the
+            // list's: adding it later would move the title and the cover of every row.
+            onClick = {},
+            icon = Icons.Filled.MoreHoriz,
+            contentDescription = "More options",
+        )
     }
-}
-
-internal fun formatTrackDuration(durationMs: Long): String {
-    val totalSeconds = durationMs / 1000
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return String.format(Locale.getDefault(), "%d:%02d", minutes, seconds)
 }
 
 /** Narrows a loaded list, leaving "still loading" alone so a search cannot look like an empty library. */
