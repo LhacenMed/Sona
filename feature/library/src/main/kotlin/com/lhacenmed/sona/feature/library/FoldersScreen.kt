@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 
 @Composable
@@ -25,6 +26,7 @@ fun FoldersScreen(
         emptyTitle = "No folders found",
         emptyMessage = "Add some music to your device to see it here.",
         key = { it.path },
+        loadingIcon = SonaIcons.Folder,
         modifier = modifier,
     ) { folder ->
         LibraryEntityRow(

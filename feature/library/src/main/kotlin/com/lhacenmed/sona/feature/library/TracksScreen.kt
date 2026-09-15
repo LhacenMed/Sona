@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 @Composable
 fun TracksScreen(
@@ -26,7 +27,7 @@ fun TracksScreen(
         emptyMessage = "Add some music to your device to see it here.",
         key = { it.id },
         modifier = modifier,
-        rowsShowCoverArt = true,
+        loadingIcon = SonaIcons.Song,
     ) { track ->
         TrackRow(
             track = track,

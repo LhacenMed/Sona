@@ -34,6 +34,7 @@ import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
@@ -167,6 +168,7 @@ object PlaylistsScreen : Screen {
                 isScanning = false,
                 emptyTitle = "No playlists yet",
                 emptyMessage = "Create one to start collecting tracks.",
+                loadingIcon = SonaIcons.Playlist,
                 modifier = Modifier.fillMaxSize(),
             ) { items ->
                 LazyColumn(modifier = Modifier.fillMaxSize()) {

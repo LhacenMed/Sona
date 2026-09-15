@@ -2,11 +2,7 @@ package com.lhacenmed.sona.feature.library
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -27,7 +23,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.FileUpload
@@ -53,10 +48,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
@@ -64,7 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.LibraryContent
-import com.lhacenmed.sona.core.designsystem.component.CoverArtDefaults
+import com.lhacenmed.sona.core.designsystem.component.CookieShape
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverArt
 import com.lhacenmed.sona.core.designsystem.component.SonaIconButton
@@ -72,9 +66,9 @@ import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
-import com.lhacenmed.sona.core.designsystem.component.shape
+import com.lhacenmed.sona.core.designsystem.component.shimmer
 import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
-import com.lhacenmed.sona.core.designsystem.theme.LocalCoverStyle
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.library.sort.SortSheet
@@ -86,18 +80,18 @@ import kotlin.math.roundToInt
  * this module so every screen feels like a sibling.
  */
 
-/** How many placeholder rows a loading list draws. Enough to fill a phone screen, no more. */
-private const val PLACEHOLDER_ROW_COUNT = 12
+/** The size of a loading list's cookie: Auxio's `size_fast_scroll_popup`. */
+private val LoadingCookieSize = 96.dp
 
 /**
  * The shell every library list screen renders inside. It keeps the screen's root layout shape
  * identical across all three states, so nothing reflows as data arrives.
  *
- * [LibraryContent.Loading] draws a placeholder list rather than either an empty-library message
- * (which would be a lie) or blank space (which reads as a broken screen, and was the "empty for a
- * second, then everything appears at once" the library used to show on launch). Because the
- * placeholder rows are the same height as real ones, the real list replaces them in place instead of
- * pushing the screen around.
+ * [LibraryContent.Loading] draws a placeholder rather than either an empty-library message (which
+ * would be a lie) or blank space (which reads as a broken screen, and was the "empty for a second,
+ * then everything appears at once" the library used to show on launch). The placeholder is centred
+ * in the space the list will fill, and takes up none of its layout, so the real list simply replaces
+ * it. [loadingIcon] is what the placeholder shows: the icon of what the list holds.
  */
 @Composable
 internal fun <T> LibraryListContent(
@@ -106,14 +100,14 @@ internal fun <T> LibraryListContent(
     isScanning: Boolean,
     emptyTitle: String,
     emptyMessage: String,
+    loadingIcon: ImageVector,
     modifier: Modifier = Modifier,
-    rowsShowCoverArt: Boolean = false,
     body: @Composable (List<T>) -> Unit,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         when {
             content is LibraryContent.Loading ->
-                LoadingListPlaceholder(rowsShowCoverArt = rowsShowCoverArt)
+                LoadingListPlaceholder(icon = loadingIcon)
             content is LibraryContent.Ready && content.items.isEmpty() -> {
                 val (title, message) = emptyLibraryStateContent(
                     hasPermission = hasPermission,
@@ -144,9 +138,9 @@ internal fun <T> LibraryList(
     emptyTitle: String,
     emptyMessage: String,
     key: (T) -> Any,
+    loadingIcon: ImageVector,
     modifier: Modifier = Modifier,
     onReorder: ((List<T>) -> Unit)? = null,
-    rowsShowCoverArt: Boolean = false,
     row: @Composable (T) -> Unit,
 ) {
     LibraryListContent(
@@ -155,8 +149,8 @@ internal fun <T> LibraryList(
         isScanning = isScanning,
         emptyTitle = emptyTitle,
         emptyMessage = emptyMessage,
+        loadingIcon = loadingIcon,
         modifier = modifier,
-        rowsShowCoverArt = rowsShowCoverArt,
     ) { items ->
         if (onReorder != null) {
             ReorderableColumn(items = items, key = key, onReorder = onReorder, row = row)
@@ -365,79 +359,29 @@ internal fun LibraryEntityRow(
 }
 
 /**
- * A quietly pulsing set of row-shaped blocks.
+ * Auxio's empty-list cookie - the six-sided expressive shape with [icon] inside it - centred and
+ * shimmering while the list loads.
  *
- * Deliberately low-contrast and slow: the loading window should normally be a frame or two (the
- * library is already in memory by then), so this must never read as a "loading spinner" moment. It
- * only becomes visible at all on a genuinely slow first read.
+ * The loading window should normally be a frame or two (the library is already in memory by then), so
+ * the cookie carries no message: text would only flash. On a genuinely slow first read, the shimmer
+ * is what says the list is on its way.
  */
 @Composable
 private fun LoadingListPlaceholder(
-    rowsShowCoverArt: Boolean,
+    icon: ImageVector,
     modifier: Modifier = Modifier,
 ) {
-    val transition = rememberInfiniteTransition(label = "libraryPlaceholder")
-    val alpha by transition.animateFloat(
-        initialValue = 0.25f,
-        targetValue = 0.5f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 900),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "libraryPlaceholderAlpha",
-    )
-    val color = MaterialTheme.colorScheme.onSurfaceVariant
-    val coverShape = LocalCoverStyle.current.shape(CoverArtDefaults.ListCornerRadius)
-
-    // A plain Column, not a LazyColumn: the count is fixed and small, and a lazy container here
-    // would allocate scroll state that is thrown away as soon as the real list arrives.
-    Column(modifier = modifier.fillMaxSize()) {
-        repeat(PLACEHOLDER_ROW_COUNT) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = SonaComponentStyle.ContentHorizontalPadding, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // A row that will have a cover has to reserve it, or the real list is taller than
-                // the placeholder it replaces and the whole screen shifts as the library arrives.
-                if (rowsShowCoverArt) {
-                    Box(
-                        modifier = Modifier
-                            .size(CoverArtDefaults.ListSize)
-                            .clip(coverShape)
-                            .drawBehind { drawRect(color = color.copy(alpha = alpha)) },
-                    )
-                }
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = if (rowsShowCoverArt) 16.dp else 0.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    PlaceholderBar(widthFraction = 0.55f, alpha = alpha, color = color)
-                    PlaceholderBar(widthFraction = 0.32f, alpha = alpha * 0.7f, color = color)
-                }
-            }
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier
+                .size(LoadingCookieSize)
+                .shimmer()
+                .background(MaterialTheme.colorScheme.surfaceVariant, CookieShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
-}
-
-@Composable
-private fun PlaceholderBar(
-    widthFraction: Float,
-    alpha: Float,
-    color: Color,
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth(widthFraction)
-            .height(12.dp)
-            .clip(RoundedCornerShape(4.dp))
-            // drawBehind, not background(): the colour changes every animation frame, and drawing
-            // it in the draw phase skips recomposition entirely.
-            .drawBehind { drawRect(color = color.copy(alpha = alpha)) },
-    )
 }
 
 /**
@@ -591,7 +535,7 @@ internal fun TrackListDetail(
             // an ordinary tap-to-play list is never cluttered by them. A search has reordered the
             // list already, so a drop would write an order the user cannot see.
             onReorder = onReorder.takeIf { searchQuery.isNullOrBlank() && selection.isActive },
-            rowsShowCoverArt = true,
+            loadingIcon = SonaIcons.Song,
         ) { track ->
             TrackRow(
                 track = track,
