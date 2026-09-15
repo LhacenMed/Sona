@@ -28,6 +28,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.clipPath
@@ -63,6 +64,9 @@ object CoverArtDefaults {
 
 /** The scale the selection badge shrinks to as it fades away, and grows from as it appears. */
 private const val SELECTION_BADGE_HIDDEN_SCALE = 0.9f
+
+/** How dark the current track's cover is dimmed beneath its playing indicator: ArchiveTune's `ActiveBoxAlpha`. */
+private const val ACTIVE_COVER_SCRIM_ALPHA = 0.6f
 
 /** The shape a cover with [cornerRadius] is cut to - square corners when round mode is off. */
 fun CoverStyle.shape(cornerRadius: Dp): Shape = RoundedCornerShape(if (isRounded) cornerRadius else 0.dp)
@@ -132,12 +136,12 @@ fun SonaCoverImage(
 }
 
 /**
- * A list cover, or - while its track is the one being played - the playing indicator in its place, with
- * a check badge that springs onto its corner while its row is selected. Auxio's `CoverView`.
+ * A list cover with a check badge that springs onto its corner while its row is selected. Auxio's
+ * `CoverView`.
  *
- * The indicator replaces the artwork rather than sitting on top of it, which is what lets a row say
- * "this one is playing" without tinting the row itself: the cover is the only thing that changes,
- * so the list keeps its rhythm and a selected row still reads as selected underneath.
+ * While its track is the current one the cover is dimmed beneath the playing indicator, the way
+ * ArchiveTune's thumbnail shows it: the cover is the only thing that changes, so the list keeps its
+ * rhythm and a selected row still reads as selected underneath.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -166,31 +170,27 @@ fun SonaCoverArt(
             modifier = Modifier
                 .fillMaxSize()
                 .clip(style.shape(CoverArtDefaults.ListCornerRadius))
-                .background(
-                    if (isCurrent) {
-                        MaterialTheme.colorScheme.primaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainer
-                    },
-                ),
+                .background(MaterialTheme.colorScheme.surfaceContainer),
             contentAlignment = Alignment.Center,
         ) {
-            // Hidden rather than removed while the indicator stands in, so the cover is already there
-            // the moment the track stops being the current one, instead of loading again.
             CoverPicture(
                 coverArtUri = coverArtUri,
                 contentDescription = contentDescription,
                 cornerRadius = CoverArtDefaults.ListCornerRadius,
                 style = style,
-                modifier = Modifier.graphicsLayer { alpha = if (isCurrent) 0f else 1f },
             )
-            if (isCurrent) {
-                SonaPlayingIndicator(
-                    isPlaying = isPlaying,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.fillMaxSize(0.5f),
-                )
-            }
+            // ArchiveTune's thumbnail: white on a black scrim in the cover's own shape.
+            SonaPlayingIndicatorBox(
+                isActive = isCurrent,
+                isPlaying = isPlaying,
+                color = Color.White,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        color = Color.Black.copy(alpha = ACTIVE_COVER_SCRIM_ALPHA),
+                        shape = style.shape(CoverArtDefaults.ListCornerRadius),
+                    ),
+            )
         }
         // Outside the clipped cover, so the badge keeps its round shape on a square-cornered cover.
         Box(
