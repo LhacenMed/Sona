@@ -140,6 +140,7 @@ internal fun <T> LibraryList(
     key: (T) -> Any,
     loadingIcon: ImageVector,
     modifier: Modifier = Modifier,
+    listState: LazyListState = rememberLazyListState(),
     onReorder: ((List<T>) -> Unit)? = null,
     row: @Composable (T) -> Unit,
 ) {
@@ -156,7 +157,6 @@ internal fun <T> LibraryList(
             ReorderableColumn(items = items, key = key, onReorder = onReorder, row = row)
             return@LibraryListContent
         }
-        val listState = rememberLazyListState()
         KeepAtTopWhenRowsChange(listState = listState, rows = items)
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
             items(

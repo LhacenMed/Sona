@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.feature.library
 
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -12,6 +13,7 @@ import com.lhacenmed.sona.core.navigation.LocalNavigator
 fun FoldersScreen(
     viewModel: LibraryViewModel,
     selection: SelectionState,
+    listState: LazyListState,
     modifier: Modifier = Modifier,
 ) {
     val folders by viewModel.folders.collectAsStateWithLifecycle()
@@ -28,6 +30,7 @@ fun FoldersScreen(
         key = { it.path },
         loadingIcon = SonaIcons.Folder,
         modifier = modifier,
+        listState = listState,
     ) { folder ->
         LibraryEntityRow(
             selection = selection,

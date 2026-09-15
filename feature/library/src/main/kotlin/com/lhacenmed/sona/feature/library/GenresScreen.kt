@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.feature.library
 
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -12,6 +13,7 @@ import com.lhacenmed.sona.core.navigation.LocalNavigator
 fun GenresScreen(
     viewModel: LibraryViewModel,
     selection: SelectionState,
+    listState: LazyListState,
     modifier: Modifier = Modifier,
 ) {
     val genres by viewModel.genres.collectAsStateWithLifecycle()
@@ -28,6 +30,7 @@ fun GenresScreen(
         key = { it.id },
         loadingIcon = SonaIcons.Genre,
         modifier = modifier,
+        listState = listState,
     ) { genre ->
         LibraryEntityRow(
             selection = selection,

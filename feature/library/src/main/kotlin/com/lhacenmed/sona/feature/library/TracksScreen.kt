@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.feature.library
 
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -11,6 +12,7 @@ import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 fun TracksScreen(
     viewModel: LibraryViewModel,
     selection: SelectionState,
+    listState: LazyListState,
     modifier: Modifier = Modifier,
 ) {
     val tracks by viewModel.tracks.collectAsStateWithLifecycle()
@@ -27,6 +29,7 @@ fun TracksScreen(
         emptyMessage = "Add some music to your device to see it here.",
         key = { it.id },
         modifier = modifier,
+        listState = listState,
         loadingIcon = SonaIcons.Song,
     ) { track ->
         TrackRow(
