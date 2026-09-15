@@ -77,6 +77,10 @@ class PlaybackController @Inject constructor(
     private val _playbackState = MutableStateFlow(PlaybackUiState())
     val playbackState: StateFlow<PlaybackUiState> = _playbackState.asStateFlow()
 
+    // Owned here, process-wide, so a timer set from one screen keeps running whichever screen is open.
+    private val sleepTimerHolder = SleepTimer(scope) { controller?.pause() }
+    val sleepTimer: StateFlow<SleepTimerState> = sleepTimerHolder.state
+
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (isPlaying) startPositionPolling() else stopPositionPolling()
@@ -86,6 +90,11 @@ class PlaybackController @Inject constructor(
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             recordPlayStarted(mediaItem?.mediaId?.toLongOrNull())
             schedulePlayCount(controller?.isPlaying == true)
+            sleepTimerHolder.onTrackEnd()
+        }
+
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            if (playbackState == Player.STATE_ENDED) sleepTimerHolder.onTrackEnd()
         }
 
         // Ported from Fossify's PlayerListener.onEvents: recompute UI state and re-save the
@@ -102,6 +111,7 @@ class PlaybackController @Inject constructor(
                     Player.EVENT_PLAY_WHEN_READY_CHANGED,
                     Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
                     Player.EVENT_REPEAT_MODE_CHANGED,
+                    Player.EVENT_AVAILABLE_COMMANDS_CHANGED,
                 )
             ) {
                 updateUiState(mediaController)
@@ -163,12 +173,58 @@ class PlaybackController @Inject constructor(
         controller?.seekTo(positionMs)
     }
 
+    /** The player's position at this moment, for a screen that follows it closer than [playbackState] ticks. */
+    fun currentPositionMs(): Long = controller?.currentPosition ?: _playbackState.value.positionMs
+
     fun skipToNext() {
         controller?.seekToNext()
     }
 
     fun skipToPrevious() {
         controller?.seekToPrevious()
+    }
+
+    /** Moves to the track before the current one without rewinding the current one first - what a swipe means. */
+    fun skipToPreviousTrack() {
+        controller?.seekToPreviousMediaItem()
+    }
+
+    fun playQueueItem(mediaItemIndex: Int) {
+        val mediaController = controller ?: return
+        mediaController.seekToDefaultPosition(mediaItemIndex)
+        mediaController.play()
+    }
+
+    fun moveQueueItem(fromMediaItemIndex: Int, toMediaItemIndex: Int) {
+        controller?.moveMediaItem(fromMediaItemIndex, toMediaItemIndex)
+    }
+
+    fun removeQueueItem(mediaItemIndex: Int) {
+        controller?.removeMediaItem(mediaItemIndex)
+    }
+
+    fun insertQueueItem(mediaItemIndex: Int, track: Track) {
+        controller?.addMediaItem(mediaItemIndex, track.toMediaItem())
+    }
+
+    /** Stops playback and drops the queue, the saved copy included, so nothing comes back on the next launch. */
+    fun stopAndClearQueue() {
+        val mediaController = controller ?: return
+        mediaController.stop()
+        mediaController.clearMediaItems()
+        scope.launch(Dispatchers.IO) { queueItemDao.clear() }
+    }
+
+    fun startSleepTimer(minutes: Int) {
+        sleepTimerHolder.start(minutes)
+    }
+
+    fun startSleepTimerAtEndOfTrack() {
+        sleepTimerHolder.startAtEndOfTrack()
+    }
+
+    fun clearSleepTimer() {
+        sleepTimerHolder.clear()
     }
 
     fun setShuffleEnabled(enabled: Boolean) {
@@ -184,28 +240,47 @@ class PlaybackController @Inject constructor(
 
     @OptIn(UnstableApi::class)
     private fun updateUiState(mediaController: MediaController) {
+        val queue = currentQueue(mediaController)
+        val currentMediaItemIndex = mediaController.currentMediaItemIndex
         _playbackState.update {
             it.copy(
                 // Playing as the user asked for it rather than as heard: a newly chosen track stays
                 // playing while it buffers, instead of passing through a moment of pause.
                 isPlaying = !Util.shouldShowPlayButton(mediaController),
+                isBuffering = mediaController.playbackState == Player.STATE_BUFFERING,
+                hasEnded = mediaController.playbackState == Player.STATE_ENDED,
                 currentTrackId = mediaController.currentMediaItem?.mediaId?.toLongOrNull(),
                 positionMs = mediaController.currentPosition,
                 durationMs = currentDurationMsOrElse(it.durationMs),
                 shuffleEnabled = mediaController.shuffleModeEnabled,
                 repeatMode = storedRepeatMode,
-                queue = currentQueueIds(mediaController),
+                canSkipPrevious = mediaController.isCommandAvailable(Player.COMMAND_SEEK_TO_PREVIOUS),
+                canSkipNext = mediaController.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT),
+                hasPreviousTrack = mediaController.hasPreviousMediaItem(),
+                hasNextTrack = mediaController.hasNextMediaItem(),
+                queue = queue,
+                currentQueueIndex = queue.indexOfFirst { entry -> entry.mediaItemIndex == currentMediaItemIndex },
             )
         }
     }
 
-    private fun currentQueueIds(mediaController: MediaController): List<Long> {
+    /** The queue in the order it plays - shuffle order while shuffling - the way ArchiveTune's `getQueueWindows` walks it. */
+    private fun currentQueue(mediaController: MediaController): List<QueueEntry> {
         val timeline = mediaController.currentTimeline
         if (timeline.isEmpty) return emptyList()
+        val shuffleEnabled = mediaController.shuffleModeEnabled
         val window = Timeline.Window()
-        return (0 until timeline.windowCount).mapNotNull { index ->
-            timeline.getWindow(index, window).mediaItem.mediaId.toLongOrNull()
+        val occurrences = HashMap<Long, Int>()
+        val queue = ArrayList<QueueEntry>(timeline.windowCount)
+        var mediaItemIndex = timeline.getFirstWindowIndex(shuffleEnabled)
+        while (mediaItemIndex != C.INDEX_UNSET) {
+            timeline.getWindow(mediaItemIndex, window).mediaItem.mediaId.toLongOrNull()?.let { trackId ->
+                val occurrence = occurrences.merge(trackId, 1, Int::plus)
+                queue += QueueEntry(key = "$trackId:$occurrence", mediaItemIndex = mediaItemIndex, trackId = trackId)
+            }
+            mediaItemIndex = timeline.getNextWindowIndex(mediaItemIndex, Player.REPEAT_MODE_OFF, shuffleEnabled)
         }
+        return queue
     }
 
     // Ported from Fossify's AudioHelper.resetQueue: a full delete-and-reinsert of the queue table
