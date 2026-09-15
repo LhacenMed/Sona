@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.lhacenmed.sona.core.designsystem.SonaActivity
 import com.lhacenmed.sona.core.designsystem.component.popupmenu.MenuItem
 import com.lhacenmed.sona.core.designsystem.component.popupmenu.PopupMenu
 import com.lhacenmed.sona.core.designsystem.component.popupmenu.PopupStyle
@@ -91,7 +92,9 @@ internal class TopBarOverflowMenu(content: OverflowMenuContent) {
             )
         }
         return PopupMenu(anchor.context, items, style) { chosen ->
-            actions[items.indexOfFirst { it === chosen }].onClick()
+            val action = actions[items.indexOfFirst { it === chosen }]
+            // Whether it opened an activity decides how the popup closes; the bar is always hosted in one.
+            (anchor.context as SonaActivity).startsActivity(action.onClick)
         }.also { popup ->
             popup.setOnDismissListener { openPopup = null }
             openPopup = popup
@@ -124,6 +127,9 @@ internal fun rememberTopBarOverflowMenu(actions: List<TopBarAction>): TopBarOver
             textSize = MaterialTheme.typography.labelLarge.fontSize.value,
             textTypeface = MenuLabelTypeface,
             cornerRadiusDp = SonaComponentStyle.CornerRadius.value,
+            // Above Material's 112dp floor, on its 56dp menu width steps, so a menu of short labels is
+            // not drawn tight around them.
+            minWidthDp = 224f,
             itemHeightDp = 48f,
             itemHorizontalPaddingDp = 12f,
             iconTextSpacingDp = 12f,

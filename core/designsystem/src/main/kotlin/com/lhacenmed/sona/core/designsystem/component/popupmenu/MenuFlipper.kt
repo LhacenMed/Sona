@@ -72,6 +72,13 @@ class MenuFlipper(
      */
     var onPanelSwitchComplete: (() -> Unit)? = null
 
+    /**
+     * Invoked when the popup's window stops being visible - once an activity started from the menu has
+     * covered the activity the popup belongs to. [PopupMenu] uses this to remove a popup it left up for
+     * that activity, out of sight.
+     */
+    var onWindowHidden: (() -> Unit)? = null
+
     // Stateless — a single instance is sufficient for all panel transitions.
     private val navInterpolator = FastOutSlowInInterpolator()
 
@@ -584,6 +591,11 @@ class MenuFlipper(
      */
     override fun generateDefaultLayoutParams(): LayoutParams =
         LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+
+    override fun onWindowVisibilityChanged(visibility: Int) {
+        super.onWindowVisibilityChanged(visibility)
+        if (visibility != VISIBLE) onWindowHidden?.invoke()
+    }
 
     override fun onDetachedFromWindow() {
         sizeAnimator.cancel()

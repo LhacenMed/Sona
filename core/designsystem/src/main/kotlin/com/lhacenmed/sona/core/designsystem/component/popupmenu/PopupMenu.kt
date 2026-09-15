@@ -56,7 +56,7 @@ class PopupMenu(
     private val rootItems: List<MenuItem>,
     private val style: PopupStyle,
     private val animConfig: AnimationConfig = AnimationConfig(),
-    private val onItemClick: (MenuItem) -> Unit
+    private val onItemClick: (MenuItem) -> Boolean
 ) : PopupWindow(context) {
 
     // Captured explicitly — PopupWindow.getContext() resolves as a function reference in
@@ -130,6 +130,9 @@ class PopupMenu(
     // Index of the item currently visually pressed via touch forwarding. -1 = none.
     private var hoveredIndex = -1
 
+    // Set when a chosen item opens an activity: the popup stays up until hidden, then closes unanimated.
+    private var closeOnceHidden = false
+
     init {
         // Apply the card background directly to the flipper so setBackgroundDrawable wraps
         // it in WidthClipDrawable(HeightClipDrawable(...)). clipToOutline then clips all
@@ -152,10 +155,16 @@ class PopupMenu(
         // Re-enable hit-testing once the outgoing panel is fully removed.
         menuFlipper.onPanelSwitchComplete = { recalculateBounds() }
 
+        // A popup left up for an activity closes once that activity has covered it.
+        menuFlipper.onWindowHidden = { if (closeOnceHidden) dismissWithoutAnimation() }
+
         contentView = menuFlipper
         height = WRAP_CONTENT
         isFocusable = true
         isOutsideTouchable = true
+        // No window animation. Left at its default, a drop-down PopupWindow scales and fades its whole
+        // window as it opens and closes - on top of the entry and exit animations the card runs itself.
+        animationStyle = 0
         elevation = context.dp(style.elevationDp)
         setBackgroundDrawable(null)
     }
@@ -177,7 +186,7 @@ class PopupMenu(
             panelWidth = rootWidth,
             onNavigateBack = ::navigateBack,
             onNavigateTo = ::navigateTo,
-            onItemClick = { dismiss(); onItemClick(it) }
+            onItemClick = ::chooseItem
         )
         itemViews = rootPanel.itemViews
         menuFlipper.show(rootPanel.panel, forward = true, toWidth = rootWidth)
@@ -236,6 +245,26 @@ class PopupMenu(
         } else {
             menuFlipper.startExitAnimation { super.dismiss() }
         }
+    }
+
+    /**
+     * Reports [item] chosen, then closes the popup the way a native popup menu does - which depends on
+     * what the item did.
+     *
+     * [onItemClick] answers whether the item opened another activity. If it did, the popup is left
+     * exactly as it is, for the activity to slide in over, and is removed without animation once it is
+     * out of sight: animating it out would stall part-way, because starting an activity takes the main
+     * thread the animation runs on. Any other item closes the popup with its exit animation.
+     */
+    private fun chooseItem(item: MenuItem) {
+        if (onItemClick(item)) closeOnceHidden = true else dismiss()
+    }
+
+    /** Removes the popup at once - for when it is already out of sight, with nothing to animate for. */
+    private fun dismissWithoutAnimation() {
+        cancelHoveredItem()
+        unregisterPredictiveBack()
+        super.dismiss()
     }
 
     /**
@@ -421,7 +450,7 @@ class PopupMenu(
             panelWidth = panelWidth,
             onNavigateBack = ::navigateBack,
             onNavigateTo = ::navigateTo,
-            onItemClick = { dismiss(); onItemClick(it) }
+            onItemClick = ::chooseItem
         )
         itemViews = result.itemViews
         menuFlipper.show(result.panel, forward, toWidth = panelWidth)

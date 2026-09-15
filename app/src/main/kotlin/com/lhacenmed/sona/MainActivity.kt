@@ -1,7 +1,6 @@
 package com.lhacenmed.sona
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.CompositionLocalProvider
@@ -11,6 +10,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.lhacenmed.sona.core.data.LibraryRepository
+import com.lhacenmed.sona.core.designsystem.SonaActivity
 import com.lhacenmed.sona.core.designsystem.theme.AppCoverStyle
 import com.lhacenmed.sona.core.designsystem.theme.AppThemeSeed
 import com.lhacenmed.sona.core.designsystem.theme.SonaTheme
@@ -36,7 +36,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 private const val MAX_SPLASH_WAIT_MS = 1_200L
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : SonaActivity() {
 
     @Inject
     lateinit var mediaScanner: MediaScanner

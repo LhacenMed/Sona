@@ -1,7 +1,6 @@
 package com.lhacenmed.sona.core.navigation
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -15,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.IntentCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.designsystem.SonaActivity
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.theme.AppCoverStyle
 import com.lhacenmed.sona.core.designsystem.theme.AppThemeSeed
@@ -32,7 +32,7 @@ import javax.inject.Inject
  * with a ViewModel would fail at runtime, however cleanly it compiled.
  */
 @AndroidEntryPoint
-class HostActivity : ComponentActivity() {
+class HostActivity : SonaActivity() {
 
     companion object {
         const val EXTRA_SCREEN = "extra_screen"
