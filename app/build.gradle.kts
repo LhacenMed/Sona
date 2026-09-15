@@ -66,7 +66,7 @@ val abiFilterList = (properties["ABI_FILTERS"] as? String)
 
 android {
     namespace = "com.lhacenmed.sona"
-    compileSdk = 36
+    compileSdk = 37
 
     if (keystorePropertiesFile.exists()) {
         val keystoreProperties = Properties().apply {
@@ -180,6 +180,7 @@ dependencies {
     implementation(project(":feature:library"))
     implementation(project(":feature:player"))
     implementation(project(":feature:settings"))
+    implementation(project(":feature:equalizer"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)

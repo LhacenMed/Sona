@@ -1,4 +1,6 @@
-package com.lhacenmed.sona.feature.settings
+package com.lhacenmed.sona.feature.settings.manage
+
+import com.lhacenmed.sona.feature.settings.R
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult

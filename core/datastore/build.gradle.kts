@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.lhacenmed.sona.core.datastore"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 26
@@ -20,6 +20,7 @@ android {
 
 dependencies {
     implementation(project(":core:model"))
+    implementation(project(":core:common"))
 
     implementation(libs.androidx.datastore.preferences)
 

@@ -3,7 +3,6 @@ package com.lhacenmed.sona.feature.player
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.LibraryRepository
-import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
@@ -23,7 +22,7 @@ import kotlinx.coroutines.launch
  * [com.lhacenmed.sona.feature.player.PlayerScreen]. [queueTracks] resolves
  * [PlaybackUiState.queue] (ordered track ids) to full [Track]s, in queue order, for the artwork
  * pager - kept reactive (re-derived from [LibraryRepository.tracksById]) rather than fetched once,
- * so a favourite toggle or library rescan is reflected immediately, but without ever re-reading the
+ * so a favorite toggle or library rescan is reflected immediately, but without ever re-reading the
  * database: the repository already holds the library, and this only indexes into it.
  */
 data class PlayerUiState(
@@ -86,13 +85,9 @@ class PlayerViewModel @Inject constructor(
         playbackController.setShuffleEnabled(enabled)
     }
 
-    fun onSetRepeatMode(mode: RepeatMode) {
-        playbackController.setRepeatMode(mode)
-    }
-
-    /** Steps the repeat button through its four modes, in Fossify's order. */
+    /** Steps the repeat button through its enabled modes, in Fossify's order. */
     fun onCycleRepeatMode() {
-        onSetRepeatMode(uiState.value.playback.repeatMode.next)
+        playbackController.cycleRepeatMode()
     }
 
     fun onToggleFavorite() {

@@ -85,7 +85,7 @@ class MediaScanner @Inject constructor(
     fun requestScan(force: Boolean = false) {
         if (scanJob?.isActive == true && !force) return
         scanJob = appScope.launch {
-            val excluded = librarySettings.excludedFolders.first()
+            val excluded = librarySettings.excludedFolders.value
             scan(excludedFolders = excluded, force = force)
         }
     }

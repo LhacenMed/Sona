@@ -1,21 +1,25 @@
 package com.lhacenmed.sona.feature.library
 
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 @Composable
 fun TracksScreen(
     viewModel: LibraryViewModel,
     selection: SelectionState,
+    listState: LazyListState,
     modifier: Modifier = Modifier,
 ) {
     val tracks by viewModel.tracks.collectAsStateWithLifecycle()
     val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
     val hasPermission by viewModel.hasPermission.collectAsStateWithLifecycle()
     val currentTrackId by viewModel.currentTrackId.collectAsStateWithLifecycle()
+    val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
 
     LibraryList(
         content = tracks,
@@ -25,11 +29,14 @@ fun TracksScreen(
         emptyMessage = "Add some music to your device to see it here.",
         key = { it.id },
         modifier = modifier,
+        listState = listState,
+        loadingIcon = SonaIcons.Song,
     ) { track ->
         TrackRow(
             track = track,
-            // A lambda, so changing songs recomposes two rows instead of the whole list.
-            isPlaying = { track.id == currentTrackId },
+            // Lambdas, so changing songs recomposes two rows instead of the whole list.
+            isCurrent = { track.id == currentTrackId },
+            isPlaying = { isPlaying },
             selection = selection,
             onClick = { viewModel.onTrackClick(track) },
         )

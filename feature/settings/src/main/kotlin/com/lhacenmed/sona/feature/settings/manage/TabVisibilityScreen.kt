@@ -1,4 +1,6 @@
-package com.lhacenmed.sona.feature.settings
+package com.lhacenmed.sona.feature.settings.manage
+
+import com.lhacenmed.sona.feature.settings.R
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn

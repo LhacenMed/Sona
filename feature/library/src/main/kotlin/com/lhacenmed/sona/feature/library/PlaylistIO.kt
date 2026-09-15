@@ -8,8 +8,17 @@ private const val M3U_HEADER = "#EXTM3U"
 private const val M3U_ENTRY = "#EXTINF:"
 private const val M3U_DURATION_SEPARATOR = ","
 
-/** The mime type a playlist file is picked and created with. */
+/** The mime type a playlist file is created with. */
 const val M3U_MIME_TYPE = "audio/x-mpegurl"
+
+/**
+ * The mime types the file picker will offer, which is how it is kept to playlists alone.
+ *
+ * Two of them, because the same `.m3u` is announced under either name depending on which provider
+ * is listing it. A provider that reports one as `application/octet-stream` will grey it out - the
+ * price of a picker that shows nothing else.
+ */
+val M3U_PICKER_MIME_TYPES = arrayOf(M3U_MIME_TYPE, "audio/mpegurl")
 
 /**
  * Writes [tracks] as an extended M3U, matching what Fossify Music Player produces: a header, then

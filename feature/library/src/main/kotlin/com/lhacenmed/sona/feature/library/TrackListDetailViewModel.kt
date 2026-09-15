@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.library.sort.SortControl
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import java.io.OutputStream
 import kotlinx.coroutines.Dispatchers
@@ -30,11 +31,25 @@ abstract class TrackListDetailViewModel(
 
     abstract val tracks: StateFlow<LibraryContent<Track>>
 
+    /** How this list is sorted, or null for one whose order is its content - Recent and Most played. */
+    open val sort: SortControl? = null
+
     /** Just the playing track's id - see [LibraryViewModel.currentTrackId] for why not the state. */
     val currentTrackId: StateFlow<Long?> = playbackController.playbackState
         .map { it.currentTrackId }
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /**
+     * Whether that track is playing - or about to, while it buffers - which is what the playing
+     * indicator animates on.
+     * Split from [currentTrackId] for the same reason it exists: the two change at different
+     * moments, and a row that took both as one value would recompose on each.
+     */
+    val isPlaying: StateFlow<Boolean> = playbackController.playbackState
+        .map { it.isPlaying }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     fun onTrackClick(track: Track) {
         val all = tracks.value.itemsOrEmpty

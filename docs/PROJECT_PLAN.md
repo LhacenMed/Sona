@@ -197,7 +197,7 @@ interface Screen : Serializable {
 
 Both syncs go through `LibraryWriter`, which **diffs** the result against what is stored and
 writes only genuine changes, inside one `withTransaction`. When there is no difference it opens
-**no transaction at all**, so nothing is invalidated and nothing repaints. Favourites are carried
+**no transaction at all**, so nothing is invalidated and nothing repaints. Favorites are carried
 forward from the stored row rather than re-overlaid by path.
 
 **Track ids are derived from the file path** (`stableIdOf`), not auto-generated. With
@@ -286,8 +286,8 @@ intentional; do not revert them.**
 - Playlist CRUD; **M3U import/export** (Fossify uses `com.github.bjoernpetersen:m3u-parser:1.4.0`);
   create-playlist-from-folder; add folder/files to playlist.
 - Play-time tracking — Fossify counts a play past a **10 s threshold**; most-played aggregation.
-- **Note:** favourites are currently a plain `Track.isFavorite` boolean column (deliberately simpler
-  than Fossify's playlist-backed favourites). Decide whether to migrate onto the playlist system or
+- **Note:** favorites are currently a plain `Track.isFavorite` boolean column (deliberately simpler
+  than Fossify's playlist-backed favorites). Decide whether to migrate onto the playlist system or
   keep the column. Keeping it is fine and simpler.
 
 ### Phase 6 — Equalizer, language, updater, polish
@@ -323,7 +323,7 @@ Ordered roughly by how much they'd bite.
 5. ~~`SearchViewModel` has an unresolved `FlowPreview` warning.~~ **Done** — opted in explicitly.
 6. **Destructive Room migration is still on.** `DatabaseModule` uses
    `fallbackToDestructiveMigration(dropAllTables = true)` — correct while pre-release, but **must be
-   replaced with real migrations before shipping**, or users lose favourites/queue/playlists on upgrade.
+   replaced with real migrations before shipping**, or users lose favorites/queue/playlists on upgrade.
 7. **No tests anywhere.** No unit, instrumentation, or screenshot tests exist.
 8. **Never run on a device.** Everything is compile-verified only.
 9. `MediaStoreQuerier` looks up cursor column indices per row rather than caching them. Investigated
@@ -339,7 +339,7 @@ Ordered roughly by how much they'd bite.
 - `recompute{Albums,Artists,Genres}` use `groupBy` — was O(entities × tracks).
 - Multi-table writes wrapped in `withTransaction`.
 - `MediaScanner` is `@Singleton` (its `isScanning` is shared state).
-- Favourites preserved across rescans via `getFavoritePaths()` overlay.
+- Favorites preserved across rescans via `getFavoritePaths()` overlay.
 - Permission unified on `scannerRequiredPermission()` — previously `MainActivity` requested
   `WRITE_EXTERNAL_STORAGE` while the scanner checked `READ_EXTERNAL_STORAGE`. Manifest now declares
   `READ_EXTERNAL_STORAGE` (maxSdk 32).
