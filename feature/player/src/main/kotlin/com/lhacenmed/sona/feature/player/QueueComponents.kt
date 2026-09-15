@@ -43,6 +43,7 @@ import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
@@ -52,6 +53,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -1143,44 +1145,65 @@ internal fun QueueTrackItem(
     trailingContent: @Composable RowScope.() -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+    val titleColor = if (isActive) colorScheme.onSecondaryContainer else colorScheme.onSurface
+    val subtitleColor = if (isActive) colorScheme.onSecondaryContainer.copy(alpha = 0.7f) else colorScheme.onSurfaceVariant
+    val trailingContentColor = if (isActive) colorScheme.onSecondaryContainer else colorScheme.onSurfaceVariant
+
     Row(
         modifier =
             modifier
                 .height(QueueItemHeight)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 8.dp)
+                .then(
+                    if (isActive) {
+                        Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(colorScheme.secondaryContainer)
+                    } else {
+                        Modifier
+                    },
+                ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SonaCoverArt(
-            coverArtUri = track.coverArtUri,
-            contentDescription = null,
-            isCurrent = isActive,
-            isPlaying = isPlaying,
-            isSelected = isSelected,
-        )
+        Box(Modifier.padding(8.dp), contentAlignment = Alignment.Center) {
+            SonaCoverArt(
+                coverArtUri = track.coverArtUri,
+                contentDescription = null,
+                isCurrent = isActive,
+                isPlaying = isPlaying,
+                isSelected = isSelected,
+            )
+        }
         Column(
             modifier =
                 Modifier
                     .weight(1f)
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(
                 text = track.title,
                 style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = titleColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = "${track.artist} • ${makeTimeString(track.durationMs)}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
+                color = subtitleColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            content = trailingContent,
-        )
+        CompositionLocalProvider(LocalContentColor provides trailingContentColor) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                content = trailingContent,
+            )
+        }
     }
 }
 
