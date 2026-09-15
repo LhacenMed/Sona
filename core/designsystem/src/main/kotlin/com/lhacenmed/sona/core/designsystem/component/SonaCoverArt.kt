@@ -70,32 +70,31 @@ fun CoverStyle.shape(cornerRadius: Dp): Shape = RoundedCornerShape(if (isRounded
 /**
  * A cover filling whatever it is laid over, for artwork that sits behind content rather than beside it.
  *
- * Where there is no image to show - no cover, covers turned off, or one that failed to load - the
- * default cover stands in, as it does for every other cover: its ground, with its glyph. Until an image
- * arrives nothing is drawn, so the surface beneath shows through.
+ * Like every other cover, it is the default cover - its ground, with its glyph - until an image has
+ * loaded over it: while one is on its way, and wherever there is none to show (no cover, covers turned
+ * off, or one that failed to load).
  */
 @Composable
 fun SonaCoverBackdrop(
     coverArtUri: String?,
     modifier: Modifier = Modifier,
 ) {
-    val style = LocalCoverStyle.current
-    var hasFailed by remember(coverArtUri) { mutableStateOf(false) }
-    if (coverArtUri == null || !style.showsCovers || hasFailed) {
-        Box(
-            modifier = modifier.background(MaterialTheme.colorScheme.surfaceContainer),
-            contentAlignment = Alignment.Center,
-        ) {
-            DefaultCoverGlyph(contentDescription = null)
+    val imageUri = coverArtUri?.takeIf { LocalCoverStyle.current.showsCovers }
+    var isImageLoaded by remember(imageUri) { mutableStateOf(false) }
+    Box(
+        modifier = modifier.background(MaterialTheme.colorScheme.surfaceContainer),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (!isImageLoaded) DefaultCoverGlyph(contentDescription = null)
+        if (imageUri != null) {
+            AsyncImage(
+                model = rememberCoverRequest(imageUri, LocalCoverStyle.current),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                onSuccess = { isImageLoaded = true },
+                modifier = Modifier.fillMaxSize(),
+            )
         }
-    } else {
-        AsyncImage(
-            model = rememberCoverRequest(coverArtUri, style),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            onError = { hasFailed = true },
-            modifier = modifier,
-        )
     }
 }
 
@@ -106,7 +105,8 @@ fun SonaCoverBackdrop(
  * is cropped to fill it; otherwise the whole image is fitted inside with its own corners rounded, the
  * way Auxio rounds the bitmap itself - so a wide cover is a rounded rectangle on the ground rather than
  * a strip cut off square by the shape's edge. Where there is no image to show - no cover, covers turned
- * off, or one that failed to load - an album icon half the cover's size stands in for it.
+ * off, or one that failed to load - an album icon half the cover's size stands in for it, as it does
+ * while an image is still loading.
  */
 @Composable
 fun SonaCoverImage(
@@ -215,7 +215,15 @@ fun SonaCoverArt(
     }
 }
 
-/** The image of a cover, or its placeholder icon where there is no image to show. */
+/**
+ * The image of a cover, over its placeholder icon.
+ *
+ * The icon is drawn from the first frame and taken away only once the image has loaded, so a cover shows
+ * the default cover while its image is on its way and keeps it wherever the image never comes - no
+ * artwork, covers turned off, or a load that fails. A cover already in memory draws straight over it.
+ * Drawing the icon only after a load had failed is what left covers blank in between: a track without
+ * artwork still has an artwork address, and only the failed load says there is nothing there.
+ */
 @Composable
 private fun CoverPicture(
     coverArtUri: String?,
@@ -224,20 +232,26 @@ private fun CoverPicture(
     style: CoverStyle,
     modifier: Modifier = Modifier,
 ) {
-    var hasFailed by remember(coverArtUri) { mutableStateOf(false) }
-    if (coverArtUri == null || !style.showsCovers || hasFailed) {
-        DefaultCoverGlyph(contentDescription = contentDescription, modifier = modifier)
-    } else {
-        var imageAspectRatio by remember(coverArtUri) { mutableFloatStateOf(Float.NaN) }
+    val imageUri = coverArtUri?.takeIf { style.showsCovers }
+    var isImageLoaded by remember(imageUri) { mutableStateOf(false) }
+    if (!isImageLoaded) {
+        // Described only when it is all there is to show; otherwise the image carries the description.
+        DefaultCoverGlyph(
+            contentDescription = if (imageUri == null) contentDescription else null,
+            modifier = modifier,
+        )
+    }
+    if (imageUri != null) {
+        var imageAspectRatio by remember(imageUri) { mutableFloatStateOf(Float.NaN) }
         AsyncImage(
-            model = rememberCoverRequest(coverArtUri, style),
+            model = rememberCoverRequest(imageUri, style),
             contentDescription = contentDescription,
             contentScale = if (style.isForcedSquare) ContentScale.Crop else ContentScale.Fit,
             onSuccess = { success ->
                 val intrinsicSize = success.painter.intrinsicSize
                 imageAspectRatio = intrinsicSize.width / intrinsicSize.height
+                isImageLoaded = true
             },
-            onError = { hasFailed = true },
             modifier = modifier
                 .fillMaxSize()
                 .then(

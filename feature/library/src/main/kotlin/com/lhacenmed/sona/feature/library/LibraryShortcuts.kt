@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.feature.library
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.indication
@@ -7,6 +8,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -160,20 +162,32 @@ private fun ButtonGroupScope.shortcutCard(
             color = containerColor,
         ) {
             Box {
-                if (cover != null) {
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .stretchedFromWidth(restingWidthPx),
-                    ) {
-                        SonaCoverBackdrop(coverArtUri = cover.coverArtUri, modifier = Modifier.matchParentSize())
-                        // The card's own colour rather than black, so the icon and title keep their
-                        // contrast in both themes without changing colour when a cover appears.
+                // Faded as a whole - cover and scrim together - so one cover gives way to the next, and a
+                // card gaining or losing its cover fades too, rather than switching in a single frame.
+                Crossfade(
+                    targetState = cover,
+                    modifier = Modifier.matchParentSize(),
+                    animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+                    label = "shortcutCover",
+                ) { shownCover ->
+                    if (shownCover != null) {
                         Box(
                             modifier = Modifier
-                                .matchParentSize()
-                                .background(containerColor.copy(alpha = COVER_SCRIM_ALPHA)),
-                        )
+                                .fillMaxSize()
+                                .stretchedFromWidth(restingWidthPx),
+                        ) {
+                            SonaCoverBackdrop(
+                                coverArtUri = shownCover.coverArtUri,
+                                modifier = Modifier.matchParentSize(),
+                            )
+                            // The card's own colour rather than black, so the icon and title keep their
+                            // contrast in both themes without changing colour when a cover appears.
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .background(containerColor.copy(alpha = COVER_SCRIM_ALPHA)),
+                            )
+                        }
                     }
                 }
                 Column(
