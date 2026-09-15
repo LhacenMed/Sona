@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.common.cover.DefaultCover
 
 /**
  * The icons the library is drawn with - Auxio's own, which are Material Symbols outlined glyphs - so a
@@ -60,6 +61,16 @@ object SonaIcons {
         materialSymbol(
             name = "Folder",
             pathData = "M140,800Q116,800 98,781.5Q80,763 80,740L80,220Q80,197 98,178.5Q116,160 140,160L421,160L481,220L820,220Q843,220 861.5,238.5Q880,257 880,280L880,740Q880,763 861.5,781.5Q843,800 820,800L140,800ZM140,740L820,740Q820,740 820,740Q820,740 820,740L820,280Q820,280 820,280Q820,280 820,280L456,280L396,220L140,220Q140,220 140,220Q140,220 140,220L140,740Q140,740 140,740Q140,740 140,740ZM140,740Q140,740 140,740Q140,740 140,740L140,220Q140,220 140,220Q140,220 140,220L140,220L140,280L140,280Q140,280 140,280Q140,280 140,280L140,740Q140,740 140,740Q140,740 140,740L140,740Z",
+        )
+    }
+
+    /** What stands in for a missing cover: [DefaultCover]'s glyph, the one every default cover shares. */
+    val CoverPlaceholder: ImageVector by lazy {
+        icon(
+            name = "CoverPlaceholder",
+            size = 24.dp,
+            viewportSize = DefaultCover.GLYPH_VIEWPORT_SIZE,
+            pathData = DefaultCover.GLYPH_PATH_DATA,
         )
     }
 }

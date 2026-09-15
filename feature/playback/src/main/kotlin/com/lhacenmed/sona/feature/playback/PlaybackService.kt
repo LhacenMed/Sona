@@ -27,6 +27,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
+import com.lhacenmed.sona.core.datastore.ImageSettings
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.model.RepeatMode
 import dagger.hilt.android.AndroidEntryPoint
@@ -61,6 +62,9 @@ class PlaybackService : MediaSessionService() {
 
     @Inject
     lateinit var playbackSettings: PlaybackSettings
+
+    @Inject
+    lateinit var imageSettings: ImageSettings
 
     @Inject
     lateinit var queueItemDao: QueueItemDao
@@ -226,6 +230,8 @@ class PlaybackService : MediaSessionService() {
         mediaSession = MediaSession.Builder(this, forwardingPlayer)
             .setCallback(sessionCallback)
             .setSessionActivity(buildSessionActivityPendingIntent())
+            // Artwork falls back to the default cover exactly where the app's own covers do.
+            .setBitmapLoader(DefaultCoverBitmapLoader(this, imageSettings))
             .build()
 
         setMediaNotificationProvider(

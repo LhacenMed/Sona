@@ -41,14 +41,14 @@ class PlaylistsViewModel @Inject constructor(
     val favoritesPlaylistId: Long get() = repository.favoritesPlaylistId
 
     /**
-     * The cover of the track Favorites lists first in its current sort, or null when that track has
-     * none or Favorites is empty. Follows the playlist's own sort, so re-sorting or reordering
-     * Favorites changes its shortcut card with it.
+     * The cover of the track Favorites lists first in its current sort, or null when Favorites is
+     * empty. Follows the playlist's own sort, so re-sorting or reordering Favorites changes its
+     * shortcut card with it.
      */
-    val favoritesCoverArtUri: StateFlow<String?> = repository.favoriteTracks().topCoverArtUri()
+    val favoritesCover: StateFlow<ShortcutCover?> = repository.favoriteTracks().topCover()
 
-    /** The cover of the track played last, or null when that track has none or nothing has been played. */
-    val recentlyPlayedCoverArtUri: StateFlow<String?> = repository.recentlyPlayedTracks().topCoverArtUri()
+    /** The cover of the track played last, or null when nothing has been played. */
+    val recentlyPlayedCover: StateFlow<ShortcutCover?> = repository.recentlyPlayedTracks().topCover()
 
     fun renamePlaylist(playlistId: Long, name: String) {
         viewModelScope.launch { repository.renamePlaylist(playlistId, name) }
@@ -150,8 +150,14 @@ class PlaylistsViewModel @Inject constructor(
             .map { it.id }
 
     /** The cover of whichever track a list shows first, kept current as the list changes. */
-    private fun Flow<LibraryContent<Track>>.topCoverArtUri(): StateFlow<String?> =
-        map { content -> content.itemsOrEmpty.firstOrNull()?.coverArtUri }
+    private fun Flow<LibraryContent<Track>>.topCover(): StateFlow<ShortcutCover?> =
+        map { content -> content.itemsOrEmpty.firstOrNull()?.let { ShortcutCover(it.coverArtUri) } }
             .distinctUntilChanged()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 }
+
+/**
+ * What a shortcut card previews of its list: the cover of the track the list shows first. Held apart
+ * from the list being empty, so a first track without artwork still previews the default cover.
+ */
+data class ShortcutCover(val coverArtUri: String?)

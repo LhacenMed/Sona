@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -40,6 +39,8 @@ import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.maxBitmapSize
+import com.lhacenmed.sona.core.common.cover.DefaultCover
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.CoverStyle
 import com.lhacenmed.sona.core.designsystem.theme.LocalCoverStyle
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
@@ -69,22 +70,33 @@ fun CoverStyle.shape(cornerRadius: Dp): Shape = RoundedCornerShape(if (isRounded
 /**
  * A cover filling whatever it is laid over, for artwork that sits behind content rather than beside it.
  *
- * Draws nothing of its own, so until the image arrives - and whenever covers are turned off - the
- * surface beneath simply shows through.
+ * Where there is no image to show - no cover, covers turned off, or one that failed to load - the
+ * default cover stands in, as it does for every other cover: its ground, with its glyph. Until an image
+ * arrives nothing is drawn, so the surface beneath shows through.
  */
 @Composable
 fun SonaCoverBackdrop(
-    coverArtUri: String,
+    coverArtUri: String?,
     modifier: Modifier = Modifier,
 ) {
     val style = LocalCoverStyle.current
-    if (!style.showsCovers) return
-    AsyncImage(
-        model = rememberCoverRequest(coverArtUri, style),
-        contentDescription = null,
-        contentScale = ContentScale.Crop,
-        modifier = modifier,
-    )
+    var hasFailed by remember(coverArtUri) { mutableStateOf(false) }
+    if (coverArtUri == null || !style.showsCovers || hasFailed) {
+        Box(
+            modifier = modifier.background(MaterialTheme.colorScheme.surfaceContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            DefaultCoverGlyph(contentDescription = null)
+        }
+    } else {
+        AsyncImage(
+            model = rememberCoverRequest(coverArtUri, style),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            onError = { hasFailed = true },
+            modifier = modifier,
+        )
+    }
 }
 
 /**
@@ -214,12 +226,7 @@ private fun CoverPicture(
 ) {
     var hasFailed by remember(coverArtUri) { mutableStateOf(false) }
     if (coverArtUri == null || !style.showsCovers || hasFailed) {
-        Icon(
-            imageVector = Icons.Filled.Album,
-            contentDescription = contentDescription,
-            tint = MaterialTheme.colorScheme.onSurface,
-            modifier = modifier.fillMaxSize(0.5f),
-        )
+        DefaultCoverGlyph(contentDescription = contentDescription, modifier = modifier)
     } else {
         var imageAspectRatio by remember(coverArtUri) { mutableFloatStateOf(Float.NaN) }
         AsyncImage(
@@ -245,6 +252,22 @@ private fun CoverPicture(
                 ),
         )
     }
+}
+
+/** [DefaultCover]'s glyph in the theme's colour, sized to the cover it stands in for. */
+@Composable
+private fun DefaultCoverGlyph(
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+) {
+    Icon(
+        imageVector = SonaIcons.CoverPlaceholder,
+        contentDescription = contentDescription,
+        tint = MaterialTheme.colorScheme.onSurface,
+        // An icon keeps its aspect ratio inside its bounds, so on a wide backdrop the glyph spans the
+        // same share of the shorter side as it does on a square cover.
+        modifier = modifier.fillMaxSize(DefaultCover.GLYPH_SIZE_FRACTION),
+    )
 }
 
 /** A request for [coverArtUri], decoded no larger than the cover mode allows. */

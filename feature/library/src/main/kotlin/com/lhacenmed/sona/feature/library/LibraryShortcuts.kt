@@ -75,8 +75,8 @@ fun LibraryShortcuts(
     viewModel: PlaylistsViewModel = hiltViewModel(),
 ) {
     val navigator = LocalNavigator.current
-    val favoritesCoverArtUri by viewModel.favoritesCoverArtUri.collectAsStateWithLifecycle()
-    val recentlyPlayedCoverArtUri by viewModel.recentlyPlayedCoverArtUri.collectAsStateWithLifecycle()
+    val favoritesCover by viewModel.favoritesCover.collectAsStateWithLifecycle()
+    val recentlyPlayedCover by viewModel.recentlyPlayedCover.collectAsStateWithLifecycle()
 
     // The row's width is the one width a press never changes, so each card's width at rest is read
     // from it rather than from the card, whose own width is exactly what is animating.
@@ -104,7 +104,7 @@ fun LibraryShortcuts(
             title = "Favorites",
             icon = Icons.Filled.Favorite,
             restingWidthPx = restingCardWidthPx,
-            coverArtUri = favoritesCoverArtUri,
+            cover = favoritesCover,
             onClick = { navigator.go(PlaylistDetailScreen(viewModel.favoritesPlaylistId)) },
         )
         shortcutCard(
@@ -117,14 +117,15 @@ fun LibraryShortcuts(
             title = "Recent",
             icon = Icons.Filled.History,
             restingWidthPx = restingCardWidthPx,
-            coverArtUri = recentlyPlayedCoverArtUri,
+            cover = recentlyPlayedCover,
             onClick = { navigator.go(RecentlyPlayedScreen) },
         )
     }
 }
 
 /**
- * One card: its icon at the top start, its title at the bottom start, over a cover when it has one.
+ * One card: its icon at the top start, its title at the bottom start, over a cover when it has one -
+ * the default cover, when its list's first track has no artwork.
  *
  * Equal weights, so the row's shape is fixed regardless of how long a title is. The cover only fills
  * the size the icon and title already give the card, so a cover arriving, changing or going away never
@@ -137,7 +138,7 @@ private fun ButtonGroupScope.shortcutCard(
     icon: ImageVector,
     restingWidthPx: Int,
     onClick: () -> Unit,
-    coverArtUri: String? = null,
+    cover: ShortcutCover? = null,
 ) = customItem(
     buttonGroupContent = {
         val interactionSource = remember { MutableInteractionSource() }
@@ -159,13 +160,13 @@ private fun ButtonGroupScope.shortcutCard(
             color = containerColor,
         ) {
             Box {
-                if (coverArtUri != null) {
+                if (cover != null) {
                     Box(
                         modifier = Modifier
                             .matchParentSize()
                             .stretchedFromWidth(restingWidthPx),
                     ) {
-                        SonaCoverBackdrop(coverArtUri = coverArtUri, modifier = Modifier.matchParentSize())
+                        SonaCoverBackdrop(coverArtUri = cover.coverArtUri, modifier = Modifier.matchParentSize())
                         // The card's own colour rather than black, so the icon and title keep their
                         // contrast in both themes without changing colour when a cover appears.
                         Box(
