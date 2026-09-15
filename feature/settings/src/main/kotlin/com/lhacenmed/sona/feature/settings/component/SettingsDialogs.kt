@@ -11,7 +11,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,6 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.component.SonaActionButtonGroup
+import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.feature.settings.R
 
 /**
@@ -64,7 +65,10 @@ internal fun SettingsChoiceDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.dialog_cancel)) }
+            val cancelLabel = stringResource(R.string.dialog_cancel)
+            SonaActionButtonGroup {
+                actionButton(label = cancelLabel, onClick = onDismiss)
+            }
         },
     )
 }
@@ -90,12 +94,12 @@ internal fun SettingsTextFieldDialog(
             )
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(value) }) {
-                Text(stringResource(R.string.dialog_save))
+            val cancelLabel = stringResource(R.string.dialog_cancel)
+            val saveLabel = stringResource(R.string.dialog_save)
+            SonaActionButtonGroup {
+                actionButton(label = cancelLabel, onClick = onDismiss)
+                actionButton(label = saveLabel, onClick = { onConfirm(value) })
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.dialog_cancel)) }
         },
     )
 }

@@ -17,7 +17,6 @@ import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,9 +28,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.common.storage.documentPathOrNull
 import com.lhacenmed.sona.core.data.itemsOrEmpty
+import com.lhacenmed.sona.core.designsystem.component.SonaActionButtonGroup
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
+import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
@@ -291,18 +292,17 @@ object PlaylistsScreen : Screen {
                     )
                 },
                 confirmButton = {
-                    TextButton(
-                        onClick = {
-                            viewModel.deletePlaylists(doomed.map { it.id })
-                            confirmingDelete = emptyList()
-                            selection.clear()
-                        },
-                    ) {
-                        Text("Remove")
+                    SonaActionButtonGroup {
+                        actionButton(label = "Cancel", onClick = { confirmingDelete = emptyList() })
+                        actionButton(
+                            label = "Remove",
+                            onClick = {
+                                viewModel.deletePlaylists(doomed.map { it.id })
+                                confirmingDelete = emptyList()
+                                selection.clear()
+                            },
+                        )
                     }
-                },
-                dismissButton = {
-                    TextButton(onClick = { confirmingDelete = emptyList() }) { Text("Cancel") }
                 },
             )
         }

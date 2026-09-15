@@ -12,7 +12,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -25,7 +24,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.component.SonaActionButtonGroup
 import com.lhacenmed.sona.core.designsystem.component.SonaBottomSheet
+import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.model.sort.SortCriterion
 import com.lhacenmed.sona.core.model.sort.SortDirection
 import com.lhacenmed.sona.core.model.sort.SortOrder
@@ -102,15 +103,16 @@ internal fun SortSheet(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.End,
         ) {
-            TextButton(onClick = { dismiss() }) { Text("Cancel") }
-            TextButton(
-                onClick = {
-                    sort.onApply(chosenOrder)
-                    dismiss()
-                },
-                enabled = chosenOrder != initialOrder,
-            ) {
-                Text("OK")
+            SonaActionButtonGroup {
+                actionButton(label = "Cancel", onClick = { dismiss() })
+                actionButton(
+                    label = "OK",
+                    onClick = {
+                        sort.onApply(chosenOrder)
+                        dismiss()
+                    },
+                    enabled = chosenOrder != initialOrder,
+                )
             }
         }
     }
