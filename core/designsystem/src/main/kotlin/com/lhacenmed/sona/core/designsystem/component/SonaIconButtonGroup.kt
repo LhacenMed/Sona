@@ -81,12 +81,13 @@ fun SonaIconButtonGroup(
  * joins it to its neighbours: the press has to be visible both to the button, which morphs, and to
  * the group, which widens it, so the two are given one interaction source to share. [label]
  * describes the button and is also what it says for itself if it ever has to fall back into the
- * overflow menu.
+ * overflow menu. [modifier] is applied to the button beneath the group's width animation.
  */
 fun ButtonGroupScope.iconButton(
     icon: ImageVector,
     label: String,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) = customItem(
     buttonGroupContent = {
         val interactionSource = remember { MutableInteractionSource() }
@@ -96,7 +97,7 @@ fun ButtonGroupScope.iconButton(
             contentDescription = label,
             // No size of its own: the width is the group's to animate, and pinning it here would
             // leave the press with nothing to grow into.
-            modifier = Modifier.animateWidth(interactionSource),
+            modifier = modifier.animateWidth(interactionSource),
             interactionSource = interactionSource,
         )
     },

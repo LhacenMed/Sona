@@ -18,10 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -31,10 +28,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -277,7 +271,7 @@ private fun BarTitle(title: String, subtitle: String?) {
  * them is answered by the others giving up the width it grows into - the overflow button included,
  * which is a button of the row like the rest.
  *
- * The group is laid out inside a [Box] so the dropdown has something to hang from that does not
+ * The group is laid out inside a [Box] so the overflow menu has something to hang from that does not
  * itself take part in the row: an item of the group would be compressed by its neighbours, and the
  * menu would move with it.
  */
@@ -287,12 +281,14 @@ private fun BarActions(actions: List<TopBarAction>) {
     // Read here rather than inside the group: a group builds its items outside composition, so it
     // cannot reach a resource itself.
     val moreActionsLabel = stringResource(R.string.top_bar_more_actions)
-    var expanded by remember { mutableStateOf(false) }
+    val overflowMenu = rememberTopBarOverflowMenu(overflowed)
 
     // The bar ends its actions 4dp from the edge, which puts an ordinary 48dp button's glyph on the
     // content keyline. A grouped button is only its 40dp container, holding the glyph 4dp nearer the
     // edge, so the group gives those 4dp back.
     Box(modifier = Modifier.padding(end = 4.dp)) {
+        // Beneath the group, so every press lands on a button rather than on the anchor.
+        OverflowMenuAnchor(menu = overflowMenu, modifier = Modifier.matchParentSize())
         SonaIconButtonGroup {
             actions.take(MAX_VISIBLE_ACTIONS).forEach { action ->
                 iconButton(
@@ -305,19 +301,8 @@ private fun BarActions(actions: List<TopBarAction>) {
                 iconButton(
                     icon = Icons.Filled.MoreVert,
                     label = moreActionsLabel,
-                    onClick = { expanded = true },
-                )
-            }
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            overflowed.forEach { action ->
-                DropdownMenuItem(
-                    text = { Text(action.label) },
-                    leadingIcon = { Icon(imageVector = action.icon, contentDescription = null) },
-                    onClick = {
-                        expanded = false
-                        action.onClick()
-                    },
+                    onClick = { overflowMenu.show() },
+                    modifier = Modifier.dragToOpen(overflowMenu),
                 )
             }
         }
