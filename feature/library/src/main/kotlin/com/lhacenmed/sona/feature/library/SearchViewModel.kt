@@ -80,7 +80,8 @@ class SearchViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /**
-     * Whether that track is actually playing, which is what the playing indicator animates on.
+     * Whether that track is playing - or about to, while it buffers - which is what the playing
+     * indicator animates on.
      * Split from [currentTrackId] for the same reason it exists: the two change at different
      * moments, and a row that took both as one value would recompose on each.
      */

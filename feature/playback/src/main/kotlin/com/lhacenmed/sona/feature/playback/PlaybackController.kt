@@ -2,10 +2,13 @@ package com.lhacenmed.sona.feature.playback
 
 import android.content.ComponentName
 import android.content.Context
+import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.common.util.Util
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
@@ -96,6 +99,7 @@ class PlaybackController @Inject constructor(
                     Player.EVENT_TIMELINE_CHANGED,
                     Player.EVENT_PLAYBACK_STATE_CHANGED,
                     Player.EVENT_IS_PLAYING_CHANGED,
+                    Player.EVENT_PLAY_WHEN_READY_CHANGED,
                     Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
                     Player.EVENT_REPEAT_MODE_CHANGED,
                 )
@@ -148,9 +152,11 @@ class PlaybackController @Inject constructor(
         mediaController.play()
     }
 
+    /** Pauses or plays by what the play/pause button shows, so a press always does what it says. */
+    @OptIn(UnstableApi::class)
     fun togglePlayPause() {
         val mediaController = controller ?: return
-        if (mediaController.isPlaying) mediaController.pause() else mediaController.play()
+        Util.handlePlayPauseButtonAction(mediaController)
     }
 
     fun seekTo(positionMs: Long) {
@@ -176,10 +182,13 @@ class PlaybackController @Inject constructor(
         scope.launch { playbackSettings.cycleRepeatMode() }
     }
 
+    @OptIn(UnstableApi::class)
     private fun updateUiState(mediaController: MediaController) {
         _playbackState.update {
             it.copy(
-                isPlaying = mediaController.isPlaying,
+                // Playing as the user asked for it rather than as heard: a newly chosen track stays
+                // playing while it buffers, instead of passing through a moment of pause.
+                isPlaying = !Util.shouldShowPlayButton(mediaController),
                 currentTrackId = mediaController.currentMediaItem?.mediaId?.toLongOrNull(),
                 positionMs = mediaController.currentPosition,
                 durationMs = currentDurationMsOrElse(it.durationMs),
