@@ -9,29 +9,26 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -39,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.R
 
 /**
@@ -61,12 +59,20 @@ data class TopBarSelection(
     val onDismiss: () -> Unit,
 )
 
-/** What the bar shows while a screen is being searched: the query, in place of the title. */
+/**
+ * What the bar shows while a screen is being searched: the query, in place of the title.
+ *
+ * [closesWithBack] is false for a screen that *is* a search rather than one that grew a search. On
+ * such a screen [onClose] leaves the screen, and leaving a screen is what the system back press
+ * already does - so intercepting back to call [onClose] would have the bar answer a back press by
+ * pressing back, without end. Leaving it unhandled lets the press do what it was going to do.
+ */
 @Immutable
 data class TopBarSearch(
     val query: String,
     val onQueryChange: (String) -> Unit,
     val onClose: () -> Unit,
+    val closesWithBack: Boolean = true,
 )
 
 /** How many actions are drawn as icons before the rest collapse into the overflow menu. */
@@ -131,14 +137,26 @@ fun SonaTopAppBar(
     }
 
     // Back leaves the mode rather than the screen, which is what both a context bar and a search
-    // field are expected to do. Handling it here means no screen can adopt either and forget it.
-    BackHandler(enabled = selection != null || search != null) {
+    // field are expected to do. Handling it here means no screen can adopt either and forget it -
+    // except where the mode is the screen and there is no mode to leave, which is what a search
+    // declares by clearing `closesWithBack`.
+    val searchHandlesBack = search != null && search.closesWithBack
+    BackHandler(enabled = selection != null || searchHandlesBack) {
         selection?.onDismiss?.invoke() ?: search?.onClose?.invoke()
     }
 
+    // Material's TopAppBar runs its container colour through an animation of its own (for the
+    // scrolled tint), so a theme change would reach the bar a moment after everything around it. The
+    // bars are left transparent and the background is painted here instead, straight from the theme -
+    // and once, behind the transition, so modes cross-fade over one steady background.
+    val barColors = TopAppBarDefaults.topAppBarColors(
+        containerColor = Color.Transparent,
+        scrolledContainerColor = Color.Transparent,
+    )
+
     AnimatedContent(
         targetState = content,
-        modifier = modifier,
+        modifier = modifier.background(MaterialTheme.colorScheme.surface),
         // Keyed on the *mode*, not the value: typing a letter or picking another row must re-render
         // the bar it is already in, not animate a fresh one in over it.
         contentKey = { it::class },
@@ -155,14 +173,14 @@ fun SonaTopAppBar(
         when (activeContent) {
             is BarContent.Browsing -> TopAppBar(
                 title = { BarTitle(title = activeContent.title, subtitle = activeContent.subtitle) },
+                colors = barColors,
                 navigationIcon = {
                     if (onNavigateBack != null) {
-                        IconButton(onClick = onNavigateBack) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.top_bar_back),
-                            )
-                        }
+                        SonaIconButton(
+                            onClick = onNavigateBack,
+                            icon = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.top_bar_back),
+                        )
                     }
                 },
                 actions = { BarActions(actions = activeContent.actions) },
@@ -170,17 +188,18 @@ fun SonaTopAppBar(
 
             is BarContent.Searching -> TopAppBar(
                 title = { SearchField(search = activeContent.search) },
+                colors = barColors,
                 navigationIcon = {
-                    IconButton(onClick = activeContent.search.onClose) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.top_bar_close_search),
-                        )
-                    }
+                    SonaIconButton(
+                        onClick = activeContent.search.onClose,
+                        icon = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.top_bar_close_search),
+                    )
                 },
             )
 
             is BarContent.Selecting -> TopAppBar(
+                colors = barColors,
                 title = {
                     BarTitle(
                         title = stringResource(
@@ -191,12 +210,11 @@ fun SonaTopAppBar(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = activeContent.selection.onDismiss) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = stringResource(R.string.top_bar_clear_selection),
-                        )
-                    }
+                    SonaIconButton(
+                        onClick = activeContent.selection.onDismiss,
+                        icon = Icons.Filled.Close,
+                        contentDescription = stringResource(R.string.top_bar_clear_selection),
+                    )
                 },
                 actions = { BarActions(actions = activeContent.selection.actions) },
             )
@@ -248,34 +266,45 @@ private fun BarTitle(title: String, subtitle: String?) {
     }
 }
 
+/**
+ * The bar's actions, as one [SonaIconButtonGroup] rather than loose buttons, so that pressing any of
+ * them is answered by the others giving up the width it grows into - the overflow button included,
+ * which is a button of the row like the rest.
+ *
+ * The group is laid out inside a [Box] so the overflow menu has something to hang from that does not
+ * itself take part in the row: an item of the group would be compressed by its neighbours, and the
+ * menu would move with it.
+ */
 @Composable
 private fun BarActions(actions: List<TopBarAction>) {
-    actions.take(MAX_VISIBLE_ACTIONS).forEach { action ->
-        IconButton(onClick = action.onClick) {
-            Icon(imageVector = action.icon, contentDescription = action.label)
-        }
-    }
-
     val overflowed = actions.drop(MAX_VISIBLE_ACTIONS)
-    if (overflowed.isEmpty()) return
+    // Read here rather than inside the group: a group builds its items outside composition, so it
+    // cannot reach a resource itself.
+    val moreActionsLabel = stringResource(R.string.top_bar_more_actions)
+    val overflowMenu = rememberTopBarOverflowMenu(overflowed)
 
-    var expanded by remember { mutableStateOf(false) }
-    IconButton(onClick = { expanded = true }) {
-        Icon(
-            imageVector = Icons.Filled.MoreVert,
-            contentDescription = stringResource(R.string.top_bar_more_actions),
-        )
-    }
-    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-        overflowed.forEach { action ->
-            DropdownMenuItem(
-                text = { Text(action.label) },
-                leadingIcon = { Icon(imageVector = action.icon, contentDescription = null) },
-                onClick = {
-                    expanded = false
-                    action.onClick()
-                },
-            )
+    // The bar ends its actions 4dp from the edge, which puts an ordinary 48dp button's glyph on the
+    // content keyline. A grouped button is only its 40dp container, holding the glyph 4dp nearer the
+    // edge, so the group gives those 4dp back.
+    Box(modifier = Modifier.padding(end = 4.dp)) {
+        // Beneath the group, so every press lands on a button rather than on the anchor.
+        OverflowMenuAnchor(menu = overflowMenu, modifier = Modifier.matchParentSize())
+        SonaIconButtonGroup {
+            actions.take(MAX_VISIBLE_ACTIONS).forEach { action ->
+                iconButton(
+                    icon = action.icon,
+                    label = action.label,
+                    onClick = action.onClick,
+                )
+            }
+            if (overflowed.isNotEmpty()) {
+                iconButton(
+                    icon = Icons.Filled.MoreVert,
+                    label = moreActionsLabel,
+                    onClick = { overflowMenu.show() },
+                    modifier = Modifier.dragToOpen(overflowMenu),
+                )
+            }
         }
     }
 }

@@ -6,6 +6,7 @@ import com.lhacenmed.sona.core.model.RepeatMode
  * Snapshot of playback state exposed to the UI layer.
  */
 data class PlaybackUiState(
+    /** Whether playback is on - including while the current track buffers - which is what play/pause shows. */
     val isPlaying: Boolean = false,
     val currentTrackId: Long? = null,
     val positionMs: Long = 0L,

@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.lhacenmed.sona.feature.scanner"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 26

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.itemsOrEmpty
+import com.lhacenmed.sona.core.data.sort.LibrarySortOrders
 import com.lhacenmed.sona.core.datastore.LibrarySettings
 import com.lhacenmed.sona.core.datastore.LibraryTab
 import com.lhacenmed.sona.core.model.Album
@@ -13,6 +14,9 @@ import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Folder
 import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.model.sort.SortableList
+import com.lhacenmed.sona.feature.library.sort.SortControl
+import com.lhacenmed.sona.feature.library.sort.control
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.scanner.MediaScanner
 import com.lhacenmed.sona.feature.scanner.hasScannerPermission
@@ -36,6 +40,16 @@ private val CANONICAL_TAB_ORDER = listOf(
     LibraryTab.FOLDERS,
 )
 
+private fun Set<LibraryTab>.inCanonicalOrder(): List<LibraryTab> = CANONICAL_TAB_ORDER.filter { it in this }
+
+private fun LibraryTab.sortableList(): SortableList = when (this) {
+    LibraryTab.TRACKS -> SortableList.TRACKS
+    LibraryTab.ARTISTS -> SortableList.ARTISTS
+    LibraryTab.ALBUMS -> SortableList.ALBUMS
+    LibraryTab.GENRES -> SortableList.GENRES
+    LibraryTab.FOLDERS -> SortableList.FOLDERS
+}
+
 /**
  * One ViewModel for the entire library pager, replacing the five near-identical ones it used to
  * create up front.
@@ -53,6 +67,7 @@ class LibraryViewModel @Inject constructor(
     private val librarySettings: LibrarySettings,
     private val mediaScanner: MediaScanner,
     private val playbackController: PlaybackController,
+    sortOrders: LibrarySortOrders,
 ) : ViewModel() {
 
     val tracks: StateFlow<LibraryContent<Track>> = repository.tracks
@@ -61,14 +76,20 @@ class LibraryViewModel @Inject constructor(
     val genres: StateFlow<LibraryContent<Genre>> = repository.genres
     val folders: StateFlow<LibraryContent<Folder>> = repository.folders
 
+    private val tabSorts: Map<LibraryTab, SortControl> =
+        LibraryTab.entries.associateWith { tab -> sortOrders.control(tab.sortableList()) }
+
+    /** How [tab] is sorted - what the bar's sort button opens over whichever tab is showing. */
+    fun sort(tab: LibraryTab): SortControl = tabSorts.getValue(tab)
+
     /**
-     * Defaults to "all visible" so the tab strip never flashes empty before the first DataStore
-     * emission lands.
+     * Starts from the stored tabs, so the strip is already right on its first frame rather than
+     * showing every tab until the setting arrives and then dropping the hidden ones.
      */
-    val visibleTabs: StateFlow<List<LibraryTab>> = librarySettings.visibleTabs
-        .map { visible -> CANONICAL_TAB_ORDER.filter { it in visible } }
+    val visibleTabs: StateFlow<List<LibraryTab>> = librarySettings.visibleTabs.flow
+        .map { it.inCanonicalOrder() }
         .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.Eagerly, CANONICAL_TAB_ORDER)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, librarySettings.visibleTabs.value.inCanonicalOrder())
 
     val isScanning: StateFlow<Boolean> = mediaScanner.isScanning
 
@@ -84,6 +105,17 @@ class LibraryViewModel @Inject constructor(
         .map { it.currentTrackId }
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /**
+     * Whether that track is playing - or about to, while it buffers - which is what the playing
+     * indicator animates on.
+     * Split from [currentTrackId] for the same reason it exists: the two change at different
+     * moments, and a row that took both as one value would recompose on each.
+     */
+    val isPlaying: StateFlow<Boolean> = playbackController.playbackState
+        .map { it.isPlaying }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     // Permission state has no dedicated change broadcast; re-checking it whenever a scan
     // starts/stops (the moment it would actually change, since granting it is what unblocks the

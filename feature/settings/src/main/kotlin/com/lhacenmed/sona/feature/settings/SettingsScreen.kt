@@ -1,22 +1,21 @@
 package com.lhacenmed.sona.feature.settings
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Tab
-import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.settings.component.SettingsList
+import com.lhacenmed.sona.feature.settings.component.SettingsNavigationItem
+import com.lhacenmed.sona.feature.settings.component.SettingsSection
+import com.lhacenmed.sona.feature.settings.component.SettingsSectionDivider
 
-/** Settings home: a simple menu of settings sub-screens. */
+/**
+ * Settings home: every category, grouped.
+ *
+ * The list is [SettingsCategory] rendered, not a list written out by hand - the categories are the
+ * data, and this only decides what a category looks like. Categories rather than one long list of
+ * settings, because the list is long enough that finding anything in it would mean reading all of it.
+ */
 object SettingsScreen : Screen {
     override val titleRes: Int get() = R.string.settings_title
 
@@ -24,19 +23,22 @@ object SettingsScreen : Screen {
     override fun Content() {
         val navigator = LocalNavigator.current
 
-        Column(modifier = Modifier.fillMaxSize()) {
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.settings_excluded_folders)) },
-                leadingContent = { Icon(Icons.Filled.Folder, contentDescription = null) },
-                trailingContent = { Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null) },
-                modifier = Modifier.clickable { navigator.go(ExcludedFoldersScreen) },
-            )
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.settings_manage_tabs)) },
-                leadingContent = { Icon(Icons.Filled.Tab, contentDescription = null) },
-                trailingContent = { Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null) },
-                modifier = Modifier.clickable { navigator.go(TabVisibilityScreen) },
-            )
+        SettingsList {
+            SettingsGroup.entries.forEachIndexed { index, group ->
+                if (index > 0) SettingsSectionDivider()
+                SettingsSection(stringResource(group.titleRes)) {
+                    SettingsCategory.entries
+                        .filter { it.group == group }
+                        .forEach { category ->
+                            SettingsNavigationItem(
+                                title = stringResource(category.titleRes),
+                                summary = stringResource(category.summaryRes),
+                                icon = category.icon,
+                                onClick = { navigator.go(category.screen) },
+                            )
+                        }
+                }
+            }
         }
     }
 }

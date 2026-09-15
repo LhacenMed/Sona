@@ -66,7 +66,7 @@ class SonaThemeSeed @Inject constructor(
     }.distinctUntilChanged()
 
     override val color: StateFlow<Color> = combine(
-        themeSettings.dynamicThemeEnabled,
+        themeSettings.dynamicThemeEnabled.flow,
         currentCoverArtUri,
     ) { enabled, coverArtUri -> enabled to coverArtUri }
         .mapLatest { (enabled, coverArtUri) ->

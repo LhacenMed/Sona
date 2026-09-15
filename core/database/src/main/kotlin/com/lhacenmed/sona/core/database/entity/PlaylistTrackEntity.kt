@@ -17,6 +17,9 @@ import androidx.room.Index
  * deleting a playlist drops its membership, and a track that disappears from the device takes its
  * memberships with it.
  *
+ * [addedAt] is when the track joined this playlist, which is what a playlist sorted by date added
+ * orders by - distinct from when its file joined the library.
+ *
  * The composite key means a track appears at most once in a playlist, matching the source app.
  */
 @Entity(
@@ -45,4 +48,5 @@ data class PlaylistTrackEntity(
     val playlistId: Long,
     val trackId: Long,
     val position: Int,
+    val addedAt: Long,
 )

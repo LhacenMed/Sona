@@ -1,4 +1,6 @@
-package com.lhacenmed.sona.feature.settings
+package com.lhacenmed.sona.feature.settings.manage
+
+import com.lhacenmed.sona.feature.settings.R
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -18,9 +20,9 @@ class ExcludedFoldersViewModel @Inject constructor(
     private val mediaScanner: MediaScanner,
 ) : ViewModel() {
 
-    val excludedFolders: StateFlow<List<String>> = librarySettings.excludedFolders
+    val excludedFolders: StateFlow<List<String>> = librarySettings.excludedFolders.flow
         .map { it.sorted() }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), librarySettings.excludedFolders.value.sorted())
 
     fun addFolder(path: String) {
         if (path.isBlank()) return

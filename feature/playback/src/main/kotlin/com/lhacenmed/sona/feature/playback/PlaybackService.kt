@@ -27,6 +27,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
+import com.lhacenmed.sona.core.datastore.ImageSettings
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.model.RepeatMode
 import dagger.hilt.android.AndroidEntryPoint
@@ -36,9 +37,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
 /**
@@ -65,7 +64,13 @@ class PlaybackService : MediaSessionService() {
     lateinit var playbackSettings: PlaybackSettings
 
     @Inject
+    lateinit var imageSettings: ImageSettings
+
+    @Inject
     lateinit var queueItemDao: QueueItemDao
+
+    @Inject
+    lateinit var equalizer: SonaEqualizer
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -88,7 +93,7 @@ class PlaybackService : MediaSessionService() {
     @Volatile private var headsetAutoplayEnabled = false
 
     // Mirrored into a field because the notification is rebuilt synchronously and cannot suspend to
-    // ask whether the playing track is a favourite.
+    // ask whether the playing track is a favorite.
     @Volatile private var favoriteTrackIds: Set<Long> = emptySet()
     private var initialHeadsetPlugEventHandled = false
 
@@ -191,20 +196,15 @@ class PlaybackService : MediaSessionService() {
         super.onCreate()
         createNotificationChannel()
 
-        // One-time synchronous read of the persisted settings needed before the player/session
-        // are built (mirrors Fossify's PlayerInit.initializeSessionAndPlayer, which reads its
-        // SharedPreferences-backed Config synchronously at the same point) - DataStore has no
-        // synchronous API, so a short blocking read at startup is the closest equivalent.
-        val initialShuffleEnabled: Boolean
-        runBlocking {
-            forwardingSettings = PlaybackForwardingPlayer.Snapshot(
-                rememberPause = playbackSettings.rememberPause.first(),
-                rewindBeforeSkipBack = playbackSettings.rewindBeforeSkipBack.first(),
-            )
-            headsetAutoplayEnabled = playbackSettings.headsetAutoplay.first()
-            initialShuffleEnabled = playbackSettings.shuffleEnabled.first()
-            repeatMode = playbackSettings.repeatMode.first()
-        }
+        // The settings the player and session are built with, read straight from memory: the
+        // application loaded every setting before any service could be created (see
+        // SettingsLoader), so the player starts configured rather than being corrected later.
+        forwardingSettings = PlaybackForwardingPlayer.Snapshot(
+            rememberPause = playbackSettings.rememberPause.value,
+            rewindBeforeSkipBack = playbackSettings.rewindBeforeSkipBack.value,
+        )
+        headsetAutoplayEnabled = playbackSettings.headsetAutoplay.value
+        repeatMode = playbackSettings.repeatMode.value
 
         exoPlayer = ExoPlayer.Builder(this)
             .setAudioAttributes(
@@ -217,15 +217,21 @@ class PlaybackService : MediaSessionService() {
             .setWakeMode(C.WAKE_MODE_LOCAL)
             .build()
             .apply {
-                shuffleModeEnabled = initialShuffleEnabled
+                shuffleModeEnabled = playbackSettings.shuffleEnabled.value
                 addListener(playerListener)
             }
+
+        // Bound here rather than in the UI because the session id is the player's, and the
+        // curve has to keep applying while no screen is open.
+        equalizer.attach(exoPlayer.audioSessionId)
 
         forwardingPlayer = PlaybackForwardingPlayer(exoPlayer) { forwardingSettings }
 
         mediaSession = MediaSession.Builder(this, forwardingPlayer)
             .setCallback(sessionCallback)
             .setSessionActivity(buildSessionActivityPendingIntent())
+            // Artwork falls back to the default cover exactly where the app's own covers do.
+            .setBitmapLoader(DefaultCoverBitmapLoader(this, imageSettings))
             .build()
 
         setMediaNotificationProvider(
@@ -276,51 +282,61 @@ class PlaybackService : MediaSessionService() {
     /**
      * Rebuilds the whole notification layout from current player state.
      *
-     * Ported from ArchiveTune's `updateNotification`: the same three buttons, always in the same
-     * order, with no slot assigned to any of them - only each button's icon and label change from
-     * one call to the next. `setCustomLayout` (not `setMediaButtonPreferences`) is what ArchiveTune
-     * uses, and media3 fits play/pause plus as much of this list as the platform allows around it.
+     * Ported from ArchiveTune's `updateNotification`: the same three buttons, with no slot assigned
+     * to any of them - only each button's icon and label change from one call to the next.
+     * `setCustomLayout` (not `setMediaButtonPreferences`) is what ArchiveTune uses, and media3 fits
+     * play/pause plus as much of this list as the platform allows around it.
+     *
+     * The one deviation: while repeating the current track (`ONE`/`STOP_AFTER_CURRENT`), favorite
+     * moves to the front of the list. media3 backfills a missing transport button - previous, or
+     * next when repeating - from whichever button is first, so this is what keeps repeat and
+     * shuffle from being the one pulled into that spot while there is nowhere to go next.
      */
     private fun updateNotification() {
-        val customLayout = listOf(
-            CommandButton.Builder()
-                .setDisplayName(
-                    getString(
-                        when (repeatMode) {
-                            RepeatMode.STOP_AFTER_CURRENT -> R.string.playback_action_repeat_one_stop
-                            RepeatMode.ONE -> R.string.playback_action_repeat_one
-                            RepeatMode.ALL -> R.string.playback_action_repeat_all
-                            RepeatMode.OFF -> R.string.playback_action_repeat_off
-                        },
-                    ),
-                )
-                .setIconResId(
+        val repeatButton = CommandButton.Builder()
+            .setDisplayName(
+                getString(
                     when (repeatMode) {
-                        RepeatMode.STOP_AFTER_CURRENT -> R.drawable.repeat_one_stop
-                        RepeatMode.ONE -> R.drawable.repeat_one_on
-                        RepeatMode.ALL -> R.drawable.repeat_on
-                        RepeatMode.OFF -> R.drawable.repeat
+                        RepeatMode.STOP_AFTER_CURRENT -> R.string.playback_action_repeat_one_stop
+                        RepeatMode.ONE -> R.string.playback_action_repeat_one
+                        RepeatMode.ALL -> R.string.playback_action_repeat_all
+                        RepeatMode.OFF -> R.string.playback_action_repeat_off
                     },
-                )
-                .setSessionCommand(PlaybackSessionCommands.toggleRepeatModeCommand)
-                .build(),
-            CommandButton.Builder()
-                .setDisplayName(
-                    getString(
-                        if (exoPlayer.shuffleModeEnabled) {
-                            R.string.playback_action_shuffle_off
-                        } else {
-                            R.string.playback_action_shuffle_on
-                        },
-                    ),
-                )
-                .setIconResId(
-                    if (exoPlayer.shuffleModeEnabled) R.drawable.shuffle_on else R.drawable.shuffle,
-                )
-                .setSessionCommand(PlaybackSessionCommands.toggleShuffleCommand)
-                .build(),
-            buildFavoriteCommandButton(),
-        )
+                ),
+            )
+            .setIconResId(
+                when (repeatMode) {
+                    RepeatMode.STOP_AFTER_CURRENT -> R.drawable.repeat_one_stop
+                    RepeatMode.ONE -> R.drawable.repeat_one_on
+                    RepeatMode.ALL -> R.drawable.repeat_on
+                    RepeatMode.OFF -> R.drawable.repeat
+                },
+            )
+            .setSessionCommand(PlaybackSessionCommands.toggleRepeatModeCommand)
+            .build()
+        val shuffleButton = CommandButton.Builder()
+            .setDisplayName(
+                getString(
+                    if (exoPlayer.shuffleModeEnabled) {
+                        R.string.playback_action_shuffle_off
+                    } else {
+                        R.string.playback_action_shuffle_on
+                    },
+                ),
+            )
+            .setIconResId(
+                if (exoPlayer.shuffleModeEnabled) R.drawable.shuffle_on else R.drawable.shuffle,
+            )
+            .setSessionCommand(PlaybackSessionCommands.toggleShuffleCommand)
+            .build()
+        val favoriteButton = buildFavoriteCommandButton()
+
+        val repeatsCurrentTrack = repeatMode == RepeatMode.ONE || repeatMode == RepeatMode.STOP_AFTER_CURRENT
+        val customLayout = if (repeatsCurrentTrack) {
+            listOf(favoriteButton, repeatButton, shuffleButton)
+        } else {
+            listOf(repeatButton, shuffleButton, favoriteButton)
+        }
         mediaSession.setCustomLayout(customLayout)
     }
 
@@ -336,7 +352,7 @@ class PlaybackService : MediaSessionService() {
     private fun toggleRepeatMode() {
         // Only the stored mode is written; the collector above puts it on the player and redraws
         // the notification, so this path is the same one the player screen takes.
-        serviceScope.launch { playbackSettings.setRepeatMode(repeatMode.next) }
+        serviceScope.launch { playbackSettings.cycleRepeatMode() }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession = mediaSession
@@ -345,6 +361,8 @@ class PlaybackService : MediaSessionService() {
         unregisterReceiver(headsetReceiver)
         serviceScope.cancel()
         mediaSession.release()
+        // Before the player, while the audio session the effect is attached to still exists.
+        equalizer.release()
         exoPlayer.release()
         super.onDestroy()
     }
@@ -352,21 +370,21 @@ class PlaybackService : MediaSessionService() {
     private fun collectRuntimeSettings() {
         serviceScope.launch {
             combine(
-                playbackSettings.rememberPause,
-                playbackSettings.rewindBeforeSkipBack,
+                playbackSettings.rememberPause.flow,
+                playbackSettings.rewindBeforeSkipBack.flow,
             ) { rememberPause, rewindBeforeSkipBack ->
                 PlaybackForwardingPlayer.Snapshot(rememberPause, rewindBeforeSkipBack)
             }.collect { forwardingSettings = it }
         }
         serviceScope.launch {
-            playbackSettings.repeatMode.collect { mode ->
+            playbackSettings.repeatMode.flow.collect { mode ->
                 repeatMode = mode
                 applyRepeatMode(mode)
                 updateNotification()
             }
         }
         serviceScope.launch {
-            playbackSettings.headsetAutoplay.collect { headsetAutoplayEnabled = it }
+            playbackSettings.headsetAutoplay.flow.collect { headsetAutoplayEnabled = it }
         }
         serviceScope.launch {
             libraryRepository.favoriteTrackIds.collect {
@@ -419,7 +437,7 @@ class PlaybackService : MediaSessionService() {
     private fun toggleFavorite() {
         val trackId = currentTrackId() ?: return
         val isFavorite = trackId in favoriteTrackIds
-        // Only the write happens here; the icon follows from the favourites flow re-emitting, the
+        // Only the write happens here; the icon follows from the favorites flow re-emitting, the
         // same way the shuffle and repeat icons follow their player callbacks.
         serviceScope.launch { libraryRepository.setFavorite(trackId, !isFavorite) }
     }

@@ -3,12 +3,13 @@ package com.lhacenmed.sona.feature.library
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.lhacenmed.sona.core.designsystem.component.SonaActionButtonGroup
+import com.lhacenmed.sona.core.designsystem.component.actionButton
 
 /**
  * Asks for a playlist's name, whether it is being created or renamed.
@@ -49,15 +50,14 @@ internal fun PlaylistNameDialog(
             )
         },
         confirmButton = {
-            TextButton(
-                onClick = { onConfirm(trimmed) },
-                enabled = trimmed.isNotEmpty() && !isTaken,
-            ) {
-                Text(confirmLabel)
+            SonaActionButtonGroup {
+                actionButton(label = "Cancel", onClick = onDismiss)
+                actionButton(
+                    label = confirmLabel,
+                    onClick = { onConfirm(trimmed) },
+                    enabled = trimmed.isNotEmpty() && !isTaken,
+                )
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
         },
     )
 }

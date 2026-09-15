@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.lhacenmed.sona.feature.player"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 26
@@ -26,6 +26,7 @@ android {
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:data"))
+    implementation(project(":core:designsystem"))
     implementation(project(":feature:playback"))
 
     implementation(platform(libs.androidx.compose.bom))
