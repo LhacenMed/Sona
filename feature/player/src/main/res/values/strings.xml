@@ -1,0 +1,43 @@
+<resources>
+    <string name="player_now_playing">Now Playing</string>
+    <string name="player_queue">Queue</string>
+    <string name="player_lyrics">Lyrics</string>
+    <string name="player_sleep_timer">Sleep timer</string>
+    <string name="player_end_of_song">End of song</string>
+    <plurals name="player_minute">
+        <item quantity="one">1 minute</item>
+        <item quantity="other">%d minutes</item>
+    </plurals>
+    <plurals name="player_n_song">
+        <item quantity="one">%d song</item>
+        <item quantity="other">%d songs</item>
+    </plurals>
+    <string name="player_reset">Reset</string>
+    <string name="player_more_options">More options</string>
+    <string name="player_like">Like</string>
+    <string name="player_remove_like">Remove like</string>
+    <string name="player_shuffle">Shuffle</string>
+    <string name="player_shuffle_on">Shuffle on</string>
+    <string name="player_shuffle_off">Shuffle off</string>
+    <string name="player_repeat_off">Repeat mode off</string>
+    <string name="player_repeat_one">Repeat current song</string>
+    <string name="player_repeat_all">Repeat queue</string>
+    <string name="player_play">Play</string>
+    <string name="player_pause">Pause</string>
+    <string name="player_previous">Previous</string>
+    <string name="player_next">Next</string>
+    <string name="player_minimum_volume">Minimum Volume</string>
+    <string name="player_maximum_volume">Maximum Volume</string>
+    <string name="player_seek_forward">+%1$d seconds forwards</string>
+    <string name="player_seek_backward">-%1$d seconds backwards</string>
+    <string name="player_removed_song_from_queue">Removed \"%s\" from queue</string>
+    <string name="player_removed_n_songs_from_queue">Removed %d songs from queue</string>
+    <string name="player_undo">Undo</string>
+    <string name="player_clear">Clear</string>
+    <string name="player_delete">Delete</string>
+    <string name="player_close">Close</string>
+    <string name="player_copied_title">Copied Title</string>
+    <string name="player_copied_artist">Copied Artist</string>
+    <string name="player_go_to_album">Go to album</string>
+    <string name="player_go_to_artist">Go to artist</string>
+</resources>

@@ -49,6 +49,10 @@ class HostActivity : SonaActivity() {
     @Inject
     lateinit var appCoverStyle: AppCoverStyle
 
+    /** The same player the main activity lays over its content, so every pushed screen has it too. */
+    @Inject
+    lateinit var playerOverlay: PlayerOverlay
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -67,24 +71,28 @@ class HostActivity : SonaActivity() {
                 // Only screens that named a title get a bar from the host; the rest draw their own,
                 // because a title alone cannot express a selection or an action.
                 val hostedTitle = screen.title(LocalContext.current)
-                Scaffold(
-                    topBar = {
-                        if (hostedTitle != null) {
-                            SonaTopAppBar(title = hostedTitle, onNavigateBack = navigator::back)
+                CompositionLocalProvider(LocalNavigator provides navigator) {
+                    Box {
+                        Scaffold(
+                            topBar = {
+                                if (hostedTitle != null) {
+                                    SonaTopAppBar(title = hostedTitle, onNavigateBack = navigator::back)
+                                }
+                            },
+                            // A screen drawing its own bar consumes the status bar inset there; letting the
+                            // Scaffold add it as well would inset the screen twice.
+                            contentWindowInsets = if (hostedTitle == null) {
+                                WindowInsets(0, 0, 0, 0)
+                            } else {
+                                ScaffoldDefaults.contentWindowInsets
+                            },
+                        ) { innerPadding ->
+                            Box(modifier = Modifier.padding(innerPadding)) {
+                                screen.Content()
+                            }
                         }
-                    },
-                    // A screen drawing its own bar consumes the status bar inset there; letting the
-                    // Scaffold add it as well would inset the screen twice.
-                    contentWindowInsets = if (hostedTitle == null) {
-                        WindowInsets(0, 0, 0, 0)
-                    } else {
-                        ScaffoldDefaults.contentWindowInsets
-                    },
-                ) { innerPadding ->
-                    CompositionLocalProvider(LocalNavigator provides navigator) {
-                        Box(modifier = Modifier.padding(innerPadding)) {
-                            screen.Content()
-                        }
+
+                        playerOverlay.Content()
                     }
                 }
             }

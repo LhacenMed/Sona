@@ -16,6 +16,7 @@ import com.lhacenmed.sona.core.designsystem.theme.AppThemeSeed
 import com.lhacenmed.sona.core.designsystem.theme.SonaTheme
 import com.lhacenmed.sona.core.navigation.IntentNavigator
 import com.lhacenmed.sona.core.navigation.LocalNavigator
+import com.lhacenmed.sona.core.navigation.PlayerOverlay
 import com.lhacenmed.sona.feature.scanner.MediaScanner
 import com.lhacenmed.sona.feature.scanner.hasScannerPermission
 import com.lhacenmed.sona.feature.scanner.scannerRequiredPermission
@@ -49,6 +50,9 @@ class MainActivity : SonaActivity() {
 
     @Inject
     lateinit var appCoverStyle: AppCoverStyle
+
+    @Inject
+    lateinit var playerOverlay: PlayerOverlay
 
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -84,7 +88,7 @@ class MainActivity : SonaActivity() {
             SonaTheme(themeColor = themeColor, coverStyle = coverStyle) {
                 val navigator = remember { IntentNavigator(this) }
                 CompositionLocalProvider(LocalNavigator provides navigator) {
-                    AppShell()
+                    AppShell(playerOverlay = playerOverlay)
                 }
             }
         }

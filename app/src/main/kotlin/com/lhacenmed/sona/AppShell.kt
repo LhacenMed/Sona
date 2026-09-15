@@ -14,14 +14,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.navigation.LocalNavigator
+import com.lhacenmed.sona.core.navigation.PlayerOverlay
 import com.lhacenmed.sona.feature.equalizer.EqualizerScreen
 import com.lhacenmed.sona.feature.library.LibraryPagerScreen
 import com.lhacenmed.sona.feature.library.SearchScreen
-import com.lhacenmed.sona.feature.player.PlayerScreen
 import com.lhacenmed.sona.feature.settings.SettingsScreen
 
 @Composable
-fun AppShell(modifier: Modifier = Modifier) {
+fun AppShell(playerOverlay: PlayerOverlay, modifier: Modifier = Modifier) {
     val navigator = LocalNavigator.current
 
     // The library owns the top bar rather than this Scaffold, because the bar has to become a
@@ -49,10 +49,6 @@ fun AppShell(modifier: Modifier = Modifier) {
         // pinned to the bottom; expanded, it covers everything. Nothing else occupies the bottom
         // of the screen anymore (tabs moved to the top, under the app bar), so it needs no
         // reserved space.
-        PlayerScreen(
-            modifier = Modifier.fillMaxSize(),
-            onGoToAlbum = { /* album detail navigation lands in a later phase's settings/nav work */ },
-            onGoToArtist = { /* artist detail navigation lands in a later phase's settings/nav work */ },
-        )
+        playerOverlay.Content()
     }
 }
