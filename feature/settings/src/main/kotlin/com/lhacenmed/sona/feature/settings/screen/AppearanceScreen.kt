@@ -2,13 +2,18 @@ package com.lhacenmed.sona.feature.settings.screen
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.datastore.PlayerStyle
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
 import com.lhacenmed.sona.feature.settings.component.SettingsChoiceItem
 import com.lhacenmed.sona.feature.settings.component.SettingsList
+import com.lhacenmed.sona.feature.settings.component.SettingsNavigationItem
 import com.lhacenmed.sona.feature.settings.component.SettingsSection
 import com.lhacenmed.sona.feature.settings.component.SettingsSectionDivider
 import com.lhacenmed.sona.feature.settings.component.SettingsSliderItem
@@ -22,6 +27,9 @@ object AppearanceScreen : Screen {
     override fun Content() {
         val viewModel: AppearanceSettingsViewModel = hiltViewModel()
         val roundMode by viewModel.roundMode.collectAsStateWithLifecycle()
+        val playerStyle by viewModel.playerStyle.collectAsStateWithLifecycle()
+        val sliderStyle by viewModel.sliderStyle.collectAsStateWithLifecycle()
+        var showSeekBarStyleDialog by rememberSaveable { mutableStateOf(false) }
 
         SettingsList {
             SettingsSection(stringResource(R.string.appearance_theme_section)) {
@@ -64,12 +72,24 @@ object AppearanceScreen : Screen {
             SettingsSectionDivider()
 
             SettingsSection(stringResource(R.string.appearance_player_section)) {
+                // Options in PlayerStyle's order, so an option's index is the style it names.
                 SettingsChoiceItem(
                     title = stringResource(R.string.player_style_title),
                     options = listOf(
                         stringResource(R.string.player_style_classic),
-                        stringResource(R.string.player_style_expressive),
+                        stringResource(R.string.player_style_minimal),
+                        stringResource(R.string.player_style_cinematic),
+                        stringResource(R.string.player_style_immersive),
+                        stringResource(R.string.player_style_immersive_extended),
+                        stringResource(R.string.player_style_editorial),
                     ),
+                    selectedIndex = playerStyle.ordinal,
+                    onSelect = { viewModel.setPlayerStyle(PlayerStyle.entries[it]) },
+                )
+                SettingsNavigationItem(
+                    title = stringResource(R.string.player_slider_style_title),
+                    summary = seekBarStyleLabel(sliderStyle),
+                    onClick = { showSeekBarStyleDialog = true },
                 )
                 SettingsChoiceItem(
                     title = stringResource(R.string.player_background_title),
@@ -115,6 +135,14 @@ object AppearanceScreen : Screen {
                     summary = stringResource(R.string.high_refresh_rate_summary),
                 )
             }
+        }
+
+        if (showSeekBarStyleDialog) {
+            SeekBarStyleDialog(
+                selectedStyle = sliderStyle,
+                onSelect = viewModel::setSliderStyle,
+                onDismiss = { showSeekBarStyleDialog = false },
+            )
         }
     }
 }

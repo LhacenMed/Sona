@@ -53,11 +53,15 @@ fun SonaTheme(
     val targetColorScheme = remember(themeColor, darkTheme) {
         val useSystemDynamicColor =
             themeColor == DefaultThemeColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-        if (useSystemDynamicColor) {
+        val scheme = if (useSystemDynamicColor) {
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         } else {
             materialKolorDynamicColorScheme(seedColor = themeColor, isDark = darkTheme)
         }
+        // Every bar, row and sheet is `surface`, while a Scaffold - and any screen that paints nothing
+        // itself - shows `background`. The two match on most devices but not all, and where they differ
+        // content sits in bands of another shade. One colour for both, here, keeps every screen whole.
+        scheme.copy(background = scheme.surface, onBackground = scheme.onSurface)
     }
 
     MaterialTheme(colorScheme = animateColorSchemeAsState(targetColorScheme)) {
