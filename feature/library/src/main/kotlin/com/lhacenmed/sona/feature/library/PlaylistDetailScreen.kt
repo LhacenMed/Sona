@@ -12,7 +12,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.common.storage.documentPathOrNull
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
-import com.lhacenmed.sona.core.model.sort.SortCriterion
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 
@@ -27,7 +26,6 @@ data class PlaylistDetailScreen(val playlistId: Long) : Screen {
         )
         val playlist by viewModel.playlist.collectAsStateWithLifecycle()
         val tracks by viewModel.tracks.collectAsStateWithLifecycle()
-        val sortOrder by viewModel.sort.order.collectAsStateWithLifecycle()
 
         val addFileLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.OpenDocument(),
@@ -51,13 +49,9 @@ data class PlaylistDetailScreen(val playlistId: Long) : Screen {
             viewModel = viewModel,
             emptyMessage = "This playlist has no tracks yet.",
             // Only a playlist has an order of its own to rearrange, and membership to remove from.
-            // Dragging edits that arranged order, which only Custom shows - under any other sort a
-            // drop would save an order different from the one on screen.
-            onReorder = if (sortOrder.criterion == SortCriterion.CUSTOM) {
-                { reordered -> viewModel.setOrder(reordered.map { it.id }) }
-            } else {
-                null
-            },
+            // Dragging works whatever the list is sorted by: the drop stores the order it ended on and
+            // puts the list in it, so what was dragged is what stays.
+            onReorder = { reordered -> viewModel.setOrder(reordered.map { it.id }) },
             onRemoveSelected = viewModel::removeFromPlaylist,
             // Only a real playlist has membership to add to, so these two live here rather than in
             // the shared detail screen - Recent and Most played get search and export only.

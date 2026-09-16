@@ -5,8 +5,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FileUpload
@@ -31,23 +30,19 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.designsystem.component.CookieShape
@@ -62,7 +57,8 @@ import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.library.sort.SortSheet
 import com.lhacenmed.sona.feature.library.sort.sortAction
-import kotlin.math.roundToInt
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 /**
  * Shared building blocks for the library's list/detail screens, kept small and private-ish to
@@ -143,7 +139,15 @@ internal fun <T> LibraryList(
         modifier = modifier,
     ) { items ->
         if (onReorder != null) {
-            ReorderableColumn(items = items, key = key, onReorder = onReorder, row = row)
+            // The same list state as the plain list below, so the rows keep their place when handles
+            // appear and again when they go: a list state belongs to the list, not to one of its modes.
+            ReorderableColumn(
+                items = items,
+                key = key,
+                listState = listState,
+                onReorder = onReorder,
+                row = row,
+            )
             return@LibraryListContent
         }
         KeepAtTopWhenRowsChange(listState = listState, rows = items)
@@ -185,7 +189,8 @@ private fun KeepAtTopWhenRowsChange(listState: LazyListState, rows: List<*>) {
     }
 }
 
-private const val NO_DRAG = -1
+/** How close to an edge a drag starts scrolling the list: one row's height, as the queue uses. */
+private val ReorderAutoScrollThreshold = 72.dp
 
 /**
  * The drag gesture for a row's handle, inside a list that can be reordered - null in every other list.
@@ -196,94 +201,76 @@ private const val NO_DRAG = -1
 internal val LocalDragHandle = compositionLocalOf<Modifier?> { null }
 
 /**
- * A list whose rows can be dragged into a new order.
+ * A list whose rows can be dragged into a new order, on the same drag system as the player's queue.
  *
  * Dragging starts from a handle rather than a long press, because long press already starts a
  * selection - one gesture cannot mean both, and a handle is what the reference app uses too.
  *
- * The order shown while dragging is derived rather than stored: the row is taken out of the list and
- * put back wherever the finger has reached, so an abandoned drag leaves nothing half-moved. Only the
- * order the finger let go of is written, once, on drop.
- *
- * Rows in these lists are all the same height, which is what lets the target be arithmetic rather
- * than a hit test against every visible row.
+ * The order on screen is a copy that the drag edits as the finger moves, so rows change places under
+ * the finger and nothing waits on the database. The order the finger let go of is written once, on
+ * drop, and only when it actually differs - until then the stored order is untouched, so an abandoned
+ * drag leaves nothing half-moved. With no drag running the copy simply follows the list it mirrors.
  */
 @Composable
 private fun <T> ReorderableColumn(
     items: List<T>,
     key: (T) -> Any,
+    listState: LazyListState,
     onReorder: (List<T>) -> Unit,
     row: @Composable (T) -> Unit,
 ) {
-    val listState = rememberLazyListState()
     KeepAtTopWhenRowsChange(listState = listState, rows = items)
-    var draggedIndex by remember(items) { mutableIntStateOf(NO_DRAG) }
-    var dragOffsetPx by remember(items) { mutableFloatStateOf(0f) }
+    val orderedRows = remember { mutableStateListOf<T>().apply { addAll(items) } }
+    var hasDropToWrite by remember { mutableStateOf(false) }
+    var writtenOrder by remember { mutableStateOf<List<Any>?>(null) }
 
-    val rowHeightPx = listState.layoutInfo.visibleItemsInfo.firstOrNull()?.size ?: 0
-    val targetIndex = if (draggedIndex == NO_DRAG || rowHeightPx == 0) {
-        NO_DRAG
-    } else {
-        (draggedIndex + (dragOffsetPx / rowHeightPx).roundToInt()).coerceIn(0, items.lastIndex)
-    }
-    val ordered = if (targetIndex == NO_DRAG) {
-        items
-    } else {
-        items.toMutableList().apply { add(targetIndex, removeAt(draggedIndex)) }
+    val reorderableState = rememberReorderableLazyListState(
+        lazyListState = listState,
+        scrollThresholdPadding = PaddingValues(vertical = ReorderAutoScrollThreshold),
+    ) { from, to ->
+        if (from.index in orderedRows.indices && to.index in orderedRows.indices) {
+            orderedRows.add(to.index, orderedRows.removeAt(from.index))
+            hasDropToWrite = true
+        }
     }
 
-    // The gesture callbacks are created once per `items` and would otherwise close over the values
-    // that existed when the drag began - a target of "no drag" and the untouched order - so the drop
-    // would compare them, find nothing had moved, and write nothing at all. These read the latest.
-    val latestTarget by rememberUpdatedState(targetIndex)
-    val latestOrder by rememberUpdatedState(ordered)
+    // Written once the finger is off the row, never while it moves. Anything else that changes the
+    // list - rows arriving, a re-sort - refills the copy instead.
+    LaunchedEffect(items, reorderableState.isAnyItemDragging) {
+        if (reorderableState.isAnyItemDragging) return@LaunchedEffect
+        val itemKeys = items.map(key)
+        if (hasDropToWrite) {
+            hasDropToWrite = false
+            val droppedKeys = orderedRows.map(key)
+            if (droppedKeys != itemKeys) {
+                writtenOrder = droppedKeys
+                onReorder(orderedRows.toList())
+                return@LaunchedEffect
+            }
+        }
+        // A drop is written in two parts - the arranged order, and the switch to it - so the list can
+        // arrive still in the order it was sorted by. The copy keeps what the finger left until the
+        // list catches up, and gives way at once if the rows themselves changed while it waited.
+        val awaited = writtenOrder
+        if (awaited != null && itemKeys != awaited && itemKeys.toSet() == awaited.toSet()) {
+            return@LaunchedEffect
+        }
+        writtenOrder = null
+        Snapshot.withMutableSnapshot {
+            orderedRows.clear()
+            orderedRows.addAll(items)
+        }
+    }
 
     LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-        itemsIndexed(
-            items = ordered,
-            key = { _, item -> key(item) },
-            contentType = { _, _ -> LIST_ROW_CONTENT_TYPE },
-        ) { index, item ->
-            val isDragging = targetIndex != NO_DRAG && index == targetIndex
-            Box(
-                modifier = Modifier
-                    .zIndex(if (isDragging) 1f else 0f)
-                    .graphicsLayer {
-                        // The row follows the finger, less the distance it has already covered by
-                        // changing places with its neighbours.
-                        translationY = if (isDragging) {
-                            dragOffsetPx - (targetIndex - draggedIndex) * rowHeightPx
-                        } else {
-                            0f
-                        }
-                    },
-            ) {
+        items(
+            items = orderedRows,
+            key = key,
+            contentType = { LIST_ROW_CONTENT_TYPE },
+        ) { item ->
+            ReorderableItem(state = reorderableState, key = key(item)) {
                 // The row draws the handle itself, beside its menu button, and gives it this gesture.
-                CompositionLocalProvider(
-                    LocalDragHandle provides Modifier.pointerInput(items) {
-                        detectDragGestures(
-                            onDragStart = {
-                                draggedIndex = index
-                                dragOffsetPx = 0f
-                            },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                dragOffsetPx += dragAmount.y
-                            },
-                            onDragEnd = {
-                                if (latestTarget != NO_DRAG && latestTarget != draggedIndex) {
-                                    onReorder(latestOrder)
-                                }
-                                draggedIndex = NO_DRAG
-                                dragOffsetPx = 0f
-                            },
-                            onDragCancel = {
-                                draggedIndex = NO_DRAG
-                                dragOffsetPx = 0f
-                            },
-                        )
-                    },
-                ) {
+                CompositionLocalProvider(LocalDragHandle provides Modifier.draggableHandle()) {
                     row(item)
                 }
             }
