@@ -7,6 +7,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.library.options.ArtistOptionsContext
+import com.lhacenmed.sona.feature.library.options.OptionsTarget
 import com.lhacenmed.sona.feature.library.options.TrackOptionsContext
 
 data class ArtistDetailScreen(val artistId: Long) : Screen {
@@ -26,6 +28,7 @@ data class ArtistDetailScreen(val artistId: Long) : Screen {
             onBack = navigator::back,
             viewModel = viewModel,
             emptyMessage = "This artist has no tracks.",
+            collection = artist?.let { OptionsTarget.ForArtist(it, ArtistOptionsContext.FROM_DETAIL) },
             trackOptionsContext = TrackOptionsContext.FROM_ARTIST,
         )
     }

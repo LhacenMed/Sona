@@ -9,17 +9,23 @@ import com.lhacenmed.sona.core.datastore.LibrarySettings
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.library.readM3uTrackIds
+import com.lhacenmed.sona.feature.library.writeM3u
 import com.lhacenmed.sona.feature.library.operation.launchOperation
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.selection.tracksOf
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.scanner.MediaScanner
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.InputStream
+import java.io.OutputStream
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * What an options sheet's rows do - playing, queueing, adding to a playlist, sharing, and the changes
@@ -106,7 +112,28 @@ class OptionsActionsViewModel @Inject constructor(
         viewModelScope.launchOperation(onFinished) { playlistIds.forEach { repository.deletePlaylist(it) } }
     }
 
-    /** Hands [target]'s own tracks to [onLoaded] once they are known - what sharing a collection needs. */
+    /**
+     * Adds an M3U file's tracks to [playlistId]. [onResult] reports whether anything was imported - a
+     * file that cannot be opened and one naming no music this device has both leave the playlist as it was.
+     */
+    fun importIntoPlaylist(playlistId: Long, openStream: () -> InputStream?, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val trackIds = readM3uTrackIds(openStream, repository.tracks.value.itemsOrEmpty)
+            if (trackIds.isNotEmpty()) repository.addTracksToPlaylist(playlistId, trackIds)
+            onResult(trackIds.isNotEmpty())
+        }
+    }
+
+    /** Writes [target]'s own tracks as an M3U file - nothing, for one holding no tracks. */
+    fun exportTracks(target: OptionsTarget, openStream: () -> OutputStream?) {
+        viewModelScope.launch {
+            val tracks = entityTracks(target)
+            if (tracks.isEmpty()) return@launch
+            withContext(Dispatchers.IO) { openStream()?.use { stream -> writeM3u(stream, tracks) } }
+        }
+    }
+
+    /** Hands [target]'s own tracks to [onLoaded] once they are known - what sharing a selection needs. */
     fun loadTracks(target: OptionsTarget, onLoaded: (List<Track>) -> Unit) {
         viewModelScope.launch { onLoaded(entityTracks(target)) }
     }

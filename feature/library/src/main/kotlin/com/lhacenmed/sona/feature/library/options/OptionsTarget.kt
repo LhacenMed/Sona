@@ -69,13 +69,30 @@ sealed interface OptionsTarget {
     ) : OptionsTarget
 
     /** A folder - Sona's own, as Auxio has no folders: a collection like an album, that can also be excluded. */
-    data class ForFolder(val folder: Folder) : OptionsTarget
+    data class ForFolder(
+        val folder: Folder,
+        val context: FolderOptionsContext = FolderOptionsContext.LIST,
+    ) : OptionsTarget
 
     /** A selection, as the tracks it stands for, in the order their rows were selected - Auxio's `Menu.ForSelection`. */
     data class ForSelection(val tracks: List<Track>) : OptionsTarget
 }
 
-/** The rows an options sheet lists, top to bottom - Auxio's inflated menu XML, chosen by target and context. */
+/**
+ * What a collection offers - one list each, which is both its row's options sheet and its own screen's
+ * menu, so the two can never drift apart. Its own screen leaves out View, which would only open the
+ * screen already showing, as Auxio's `detail_*` menus do.
+ *
+ * A collection is never shared as a whole: sharing is for tracks, one at a time or a selection of them.
+ */
+private val AlbumActions = listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ARTIST_DETAILS, EXPORT)
+private val ArtistActions = listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, EXPORT)
+private val GenreActions = listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, EXPORT)
+private val PlaylistActions =
+    listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, ADD_TRACKS, ADD_COLLECTIONS, EDIT, IMPORT, EXPORT, DELETE)
+private val FolderActions = listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, EXPORT, EXCLUDE)
+
+/** The rows an options sheet or a collection's menu lists, top to bottom - Auxio's inflated menu XML, chosen by target and context. */
 fun OptionsTarget.actions(): List<OptionsAction> = when (this) {
     is OptionsTarget.ForTrack -> when (context) {
         TrackOptionsContext.LIST ->
@@ -87,39 +104,37 @@ fun OptionsTarget.actions(): List<OptionsAction> = when (this) {
     }
 
     is OptionsTarget.ForAlbum -> when (context) {
-        AlbumOptionsContext.LIST ->
-            listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ARTIST_DETAILS, SHARE)
-        AlbumOptionsContext.FROM_ARTIST ->
-            listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, SHARE)
-        AlbumOptionsContext.FROM_DETAIL ->
-            listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ARTIST_DETAILS, SHARE)
+        AlbumOptionsContext.LIST -> AlbumActions
+        AlbumOptionsContext.FROM_ARTIST -> AlbumActions - ARTIST_DETAILS
+        AlbumOptionsContext.FROM_DETAIL -> AlbumActions - VIEW_DETAILS
     }
 
     is OptionsTarget.ForArtist -> when (context) {
-        ArtistOptionsContext.LIST -> listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, SHARE)
-        ArtistOptionsContext.FROM_DETAIL -> listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, SHARE)
+        ArtistOptionsContext.LIST -> ArtistActions
+        ArtistOptionsContext.FROM_DETAIL -> ArtistActions - VIEW_DETAILS
     }
 
     is OptionsTarget.ForGenre -> when (context) {
-        GenreOptionsContext.LIST -> listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, SHARE)
-        GenreOptionsContext.FROM_DETAIL -> listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, SHARE)
+        GenreOptionsContext.LIST -> GenreActions
+        GenreOptionsContext.FROM_DETAIL -> GenreActions - VIEW_DETAILS
     }
 
     is OptionsTarget.ForPlaylist -> when (context) {
-        PlaylistOptionsContext.LIST ->
-            listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, ADD_TRACKS, ADD_COLLECTIONS, EDIT, IMPORT, EXPORT, DELETE, SHARE)
-        PlaylistOptionsContext.FROM_DETAIL ->
-            listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, ADD_TRACKS, ADD_COLLECTIONS, EDIT, DELETE, SHARE)
+        PlaylistOptionsContext.LIST -> PlaylistActions
+        PlaylistOptionsContext.FROM_DETAIL -> PlaylistActions - VIEW_DETAILS
     }
 
-    is OptionsTarget.ForFolder -> listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, EXCLUDE, SHARE)
+    is OptionsTarget.ForFolder -> when (context) {
+        FolderOptionsContext.LIST -> FolderActions
+        FolderOptionsContext.FROM_DETAIL -> FolderActions - VIEW_DETAILS
+    }
 
     is OptionsTarget.ForSelection -> listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, SHARE)
 }
 
 /**
  * The actions listed but not clickable - Auxio's `getDisabledItemIds`: an artist or a playlist with no
- * tracks yet cannot be played, queued or shared, though it is still worth seeing and still worth
+ * tracks yet cannot be played, queued or exported, though it is still worth seeing and still worth
  * editing or deleting. A track, an album and a genre are never disabled this way.
  *
  * Favorites, which Auxio has no counterpart for, can never be deleted - the rule the
@@ -127,14 +142,14 @@ fun OptionsTarget.actions(): List<OptionsAction> = when (this) {
  */
 fun OptionsTarget.disabledActions(): Set<OptionsAction> = when (this) {
     is OptionsTarget.ForArtist -> if (artist.trackCount == 0) {
-        setOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, SHARE)
+        setOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, EXPORT)
     } else {
         emptySet()
     }
 
     is OptionsTarget.ForPlaylist -> buildSet {
         if (playlist.isBuiltIn) add(DELETE)
-        if (playlist.trackCount == 0) addAll(listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, EXPORT, SHARE))
+        if (playlist.trackCount == 0) addAll(listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, EXPORT))
     }
 
     is OptionsTarget.ForTrack,

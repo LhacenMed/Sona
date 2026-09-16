@@ -15,18 +15,14 @@ import com.lhacenmed.sona.feature.library.sort.control
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.InputStream
-import java.io.OutputStream
 import javax.inject.Inject
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @HiltViewModel
 class PlaylistsViewModel @Inject constructor(
@@ -66,15 +62,6 @@ class PlaylistsViewModel @Inject constructor(
 
     fun renamePlaylist(playlistId: Long, name: String) {
         viewModelScope.launch { repository.renamePlaylist(playlistId, name) }
-    }
-
-    /** Writes [playlistId]'s tracks as an M3U file - a row-level `exportTo`, by id rather than by instance. */
-    fun exportPlaylist(playlistId: Long, openStream: () -> OutputStream?) {
-        viewModelScope.launch {
-            val exported = repository.playlistTracks(playlistId).first { it is LibraryContent.Ready }.itemsOrEmpty
-            if (exported.isEmpty()) return@launch
-            withContext(Dispatchers.IO) { openStream()?.use { stream -> writeM3u(stream, exported) } }
-        }
     }
 
     fun createPlaylist(name: String) {

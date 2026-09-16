@@ -43,11 +43,15 @@ import com.lhacenmed.sona.core.designsystem.R
  * One thing a top app bar can do. Whether it is drawn as an icon or as a row in the overflow menu is
  * the bar's decision rather than the caller's - a screen declares what it offers, and the bar works
  * out how much of it fits.
+ *
+ * A disabled action is still drawn where it would be, faded and inert, so what a screen offers keeps
+ * one shape whether or not each action can be taken right now.
  */
 @Immutable
 data class TopBarAction(
     val label: String,
     val icon: ImageVector,
+    val enabled: Boolean = true,
     val onClick: () -> Unit,
 )
 
@@ -247,7 +251,7 @@ private fun SelectionActions(selection: TopBarSelection) {
     val moreOptionsLabel = stringResource(R.string.top_bar_more_actions)
     SonaIconButtonGroup(modifier = Modifier.padding(end = 4.dp)) {
         selection.actions.forEach { action ->
-            iconButton(icon = action.icon, label = action.label, onClick = action.onClick)
+            iconButton(icon = action.icon, label = action.label, onClick = action.onClick, enabled = action.enabled)
         }
         iconButton(icon = Icons.Filled.MoreVert, label = moreOptionsLabel, onClick = selection.onMoreOptions)
     }
@@ -326,6 +330,7 @@ private fun BarActions(actions: List<TopBarAction>, menuActions: List<TopBarActi
                     icon = action.icon,
                     label = action.label,
                     onClick = action.onClick,
+                    enabled = action.enabled,
                 )
             }
             if (overflowed.isNotEmpty()) {

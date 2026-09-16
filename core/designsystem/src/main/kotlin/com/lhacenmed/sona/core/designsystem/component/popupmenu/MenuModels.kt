@@ -56,6 +56,8 @@ import com.lhacenmed.sona.core.designsystem.R
  *                         inline links. Takes precedence over [infoText].
  * @param isDanger         When true, icon, title, and ripple are rendered in [PopupStyle.dangerColor]
  *                         to signal a destructive action.
+ * @param isEnabled        When false, the row is drawn faded and is inert: no ripple, no click,
+ *                         and a drag released over it neither chooses it nor closes the menu.
  */
 data class MenuItem(
     val title: String = "",
@@ -66,7 +68,8 @@ data class MenuItem(
     val spacerAbove: Boolean = false,
     val infoText: String? = null,
     val richText: RichText? = null,
-    val isDanger: Boolean = false
+    val isDanger: Boolean = false,
+    val isEnabled: Boolean = true
 )
 
 /**

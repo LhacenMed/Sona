@@ -45,3 +45,9 @@ enum class PlaylistOptionsContext {
     LIST,
     FROM_DETAIL,
 }
+
+/** Where a folder's options were opened from - its row (LIST), or its own screen's menu (FROM_DETAIL). */
+enum class FolderOptionsContext {
+    LIST,
+    FROM_DETAIL,
+}

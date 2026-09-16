@@ -38,7 +38,6 @@ import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.library.operation.DeletePlaylistsDialog
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
-import com.lhacenmed.sona.feature.library.options.PlaylistManageAction
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.selection.SelectionOptionsHost
 import com.lhacenmed.sona.feature.library.selection.toLibraryTopBarSelection
@@ -87,10 +86,6 @@ object PlaylistsScreen : Screen {
         // are on screen at once while naming, the destinations still behind the name.
         var importSource by remember { mutableStateOf<Uri?>(null) }
         var isNamingNewPlaylist by remember { mutableStateOf(false) }
-        // Set only for a row's own Import, so the same launcher can skip the destination picker
-        // and go straight into the playlist that was already chosen by opening its sheet.
-        var importTargetPlaylistId by remember { mutableStateOf<Long?>(null) }
-        var exportTarget by remember { mutableStateOf<Playlist?>(null) }
 
         fun showImportResult(succeeded: Boolean) {
             val message = if (succeeded) "Playlist imported" else "Could not import playlist"
@@ -107,24 +102,7 @@ object PlaylistsScreen : Screen {
         val importLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.OpenDocument(),
         ) { uri ->
-            val targetId = importTargetPlaylistId
-            importTargetPlaylistId = null
-            if (uri == null) return@rememberLauncherForActivityResult
-            if (targetId != null) {
-                viewModel.importIntoPlaylist(targetId, { context.contentResolver.openInputStream(uri) }, ::showImportResult)
-            } else {
-                importSource = uri
-            }
-        }
-
-        val exportLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.CreateDocument(M3U_MIME_TYPE),
-        ) { uri ->
-            val target = exportTarget
-            exportTarget = null
-            if (uri != null && target != null) {
-                viewModel.exportPlaylist(target.id) { context.contentResolver.openOutputStream(uri) }
-            }
+            if (uri != null) importSource = uri
         }
 
         // The derived lists are rows here rather than playlists, so they are matched on their own
@@ -314,23 +292,7 @@ object PlaylistsScreen : Screen {
         }
 
         optionsTarget?.let { target ->
-            OptionsSheet(
-                target = target,
-                onDismissRequest = { optionsTarget = null },
-                onManagePlaylist = { action, playlist ->
-                    when (action) {
-                        PlaylistManageAction.DELETE -> confirmingDelete = listOf(playlist)
-                        PlaylistManageAction.IMPORT -> {
-                            importTargetPlaylistId = playlist.id
-                            importLauncher.launch(M3U_PICKER_MIME_TYPES)
-                        }
-                        PlaylistManageAction.EXPORT -> {
-                            exportTarget = playlist
-                            exportLauncher.launch("${playlist.name}.m3u")
-                        }
-                    }
-                },
-            )
+            OptionsSheet(target = target, onDismissRequest = { optionsTarget = null })
         }
 
         if (confirmingDelete.isNotEmpty()) {

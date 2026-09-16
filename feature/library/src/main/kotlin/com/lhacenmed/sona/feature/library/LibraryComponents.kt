@@ -53,9 +53,13 @@ import com.lhacenmed.sona.core.designsystem.component.shimmer
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.library.operation.ConfirmedOperationDialog
+import com.lhacenmed.sona.feature.library.options.OptionsFollowUps
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
 import com.lhacenmed.sona.feature.library.options.TrackOptionsContext
+import com.lhacenmed.sona.feature.library.options.actions
+import com.lhacenmed.sona.feature.library.options.disabledActions
+import com.lhacenmed.sona.feature.library.options.rememberOptionsActions
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.selection.SelectionOptionsHost
 import com.lhacenmed.sona.feature.library.selection.toLibraryTopBarSelection
@@ -382,9 +386,11 @@ internal fun EmptyLibraryState(
  * so they share this. It also means they inherit the list screens' loading state - previously they
  * started from a non-null empty state and so briefly rendered "no tracks" over a list that existed.
  *
- * The bar's menu is [extraActions], then Export, then [trailingActions]. [removeFromPlaylist] is
- * given only by a real playlist, the one list with membership to remove from; removing asks first and
- * reports how it went.
+ * The bar's menu is [collection]'s own actions - exactly what its row's options sheet lists, minus
+ * View - carried out the way the sheet carries them out; a screen that closes once its collection is
+ * deleted goes back. A list that is no collection of its own - Recent, Most played - offers Export
+ * alone. [removeFromPlaylist] is given only by a real playlist, the one list with membership to remove
+ * from; removing asks first and reports how it went.
  */
 @Composable
 internal fun TrackListDetail(
@@ -393,9 +399,8 @@ internal fun TrackListDetail(
     onBack: () -> Unit,
     viewModel: TrackListDetailViewModel,
     emptyMessage: String,
+    collection: OptionsTarget?,
     modifier: Modifier = Modifier,
-    extraActions: List<TopBarAction> = emptyList(),
-    trailingActions: List<TopBarAction> = emptyList(),
     onReorder: ((List<Track>) -> Unit)? = null,
     removeFromPlaylist: ((trackIds: List<Long>, onFinished: (succeeded: Boolean) -> Unit) -> Unit)? = null,
     trackOptionsContext: TrackOptionsContext = TrackOptionsContext.LIST,
@@ -404,6 +409,7 @@ internal fun TrackListDetail(
     val playback by viewModel.playback.collectAsStateWithLifecycle()
     val selection = rememberSelectionState()
     val context = LocalContext.current
+    val collectionActions = rememberOptionsActions()
     var searchQuery by remember { mutableStateOf<String?>(null) }
     var isSortSheetOpen by remember { mutableStateOf(false) }
     var optionsTarget by remember { mutableStateOf<OptionsTarget.ForTrack?>(null) }
@@ -437,14 +443,22 @@ internal fun TrackListDetail(
                         TopBarAction(label = "Search", icon = Icons.Filled.Search) { searchQuery = "" },
                     )
                     if (sort != null) add(sortAction { isSortSheetOpen = true })
-                    addAll(extraActions)
-                    add(
-                        TopBarAction(label = "Export", icon = SonaIcons.Export) {
-                            exportLauncher.launch("$title.m3u")
-                        },
-                    )
-                    addAll(trailingActions)
+                    if (collection == null) {
+                        add(
+                            TopBarAction(label = "Export", icon = SonaIcons.Export) {
+                                exportLauncher.launch("$title.m3u")
+                            },
+                        )
+                    }
                 },
+                menuActions = collection?.let { target ->
+                    val disabledActions = target.disabledActions()
+                    target.actions().map { action ->
+                        TopBarAction(label = action.label, icon = action.icon, enabled = action !in disabledActions) {
+                            collectionActions.perform(target, action)
+                        }
+                    }
+                }.orEmpty(),
                 search = searchQuery?.let { query ->
                     TopBarSearch(
                         query = query,
@@ -509,6 +523,9 @@ internal fun TrackListDetail(
     optionsTarget?.let { target ->
         OptionsSheet(target = target, onDismissRequest = { optionsTarget = null })
     }
+
+    // Nothing is left here to show once the collection this screen is showing has been deleted.
+    OptionsFollowUps(actions = collectionActions, onPlaylistDeleted = onBack)
 
     if (removeFromPlaylist != null && removingTracks.isNotEmpty()) {
         val isSingle = removingTracks.size == 1

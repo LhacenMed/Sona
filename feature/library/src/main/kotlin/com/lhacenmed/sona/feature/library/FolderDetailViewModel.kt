@@ -3,7 +3,9 @@ package com.lhacenmed.sona.feature.library
 import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
+import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.data.sort.LibrarySortOrders
+import com.lhacenmed.sona.core.model.Folder
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.sort.SortableList
@@ -16,6 +18,7 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 @HiltViewModel(assistedFactory = FolderDetailViewModel.Factory::class)
@@ -34,6 +37,11 @@ class FolderDetailViewModel @AssistedInject constructor(
     override val playbackParent: PlaybackParent = PlaybackParent.Folder(folderPath)
 
     val folderName: String = folderPath.substringAfterLast('/')
+
+    /** The folder this screen shows, as its own menu acts on it - null until the library has it. */
+    val folder: StateFlow<Folder?> = repository.folders
+        .map { content -> content.itemsOrEmpty.firstOrNull { it.path == folderPath } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     override val tracks: StateFlow<LibraryContent<Track>> = repository.folderTracks(folderPath)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryContent.Loading)

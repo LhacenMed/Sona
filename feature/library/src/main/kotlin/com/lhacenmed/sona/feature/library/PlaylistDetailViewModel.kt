@@ -18,7 +18,6 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.io.InputStream
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -68,18 +67,6 @@ class PlaylistDetailViewModel @AssistedInject constructor(
     /** Drops [trackIds] out of this playlist. The files themselves are untouched. */
     fun removeFromPlaylist(trackIds: List<Long>, onFinished: (succeeded: Boolean) -> Unit) {
         viewModelScope.launchOperation(onFinished) { repository.removeTracksFromPlaylist(playlistId, trackIds) }
-    }
-
-    /**
-     * Adds an M3U file's tracks to this playlist. [onResult] reports whether anything was imported - a
-     * file that cannot be opened and one naming no music this device has both leave the playlist as it was.
-     */
-    fun importFrom(openStream: () -> InputStream?, onResult: (Boolean) -> Unit) {
-        viewModelScope.launch {
-            val trackIds = readM3uTrackIds(openStream, repository.tracks.value.itemsOrEmpty)
-            if (trackIds.isNotEmpty()) repository.addTracksToPlaylist(playlistId, trackIds)
-            onResult(trackIds.isNotEmpty())
-        }
     }
 }
 
