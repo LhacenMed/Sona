@@ -4,7 +4,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LibraryAdd
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -97,7 +96,7 @@ data class PlaylistDetailScreen(val playlistId: Long) : Screen {
                     )
                 }
                 add(
-                    TopBarAction(label = "Edit playlist", icon = Icons.Filled.Edit) {
+                    TopBarAction(label = "Edit", icon = SonaIcons.Edit) {
                         navigator.go(EditPlaylistScreen(playlistId))
                     },
                 )

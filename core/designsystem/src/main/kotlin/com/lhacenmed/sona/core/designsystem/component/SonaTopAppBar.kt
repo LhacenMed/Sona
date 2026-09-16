@@ -71,6 +71,9 @@ data class TopBarSelection(
  * such a screen [onClose] leaves the screen, and leaving a screen is what the system back press
  * already does - so intercepting back to call [onClose] would have the bar answer a back press by
  * pressing back, without end. Leaving it unhandled lets the press do what it was going to do.
+ *
+ * [actions] and [menuActions] are what stays reachable while searching, laid out as the ordinary bar
+ * lays out its own - none, for a screen whose search needs nothing beside the field.
  */
 @Immutable
 data class TopBarSearch(
@@ -78,6 +81,8 @@ data class TopBarSearch(
     val onQueryChange: (String) -> Unit,
     val onClose: () -> Unit,
     val closesWithBack: Boolean = true,
+    val actions: List<TopBarAction> = emptyList(),
+    val menuActions: List<TopBarAction> = emptyList(),
 )
 
 /** How many actions are drawn as icons before the rest collapse into the overflow menu. */
@@ -100,6 +105,7 @@ private sealed interface BarContent {
         val title: String,
         val subtitle: String?,
         val actions: List<TopBarAction>,
+        val menuActions: List<TopBarAction>,
     ) : BarContent
 
     data class Searching(val search: TopBarSearch) : BarContent
@@ -122,7 +128,8 @@ private sealed interface BarContent {
  *
  * Taking [actions] as data rather than as a slot is what lets the bar overflow: it draws the first
  * few as icons and folds the remainder into a dropdown, the way a platform action bar does. A screen
- * that grows a sixth action needs no layout work to accommodate it.
+ * that grows a sixth action needs no layout work to accommodate it. [menuActions] always go in that
+ * dropdown, after any that overflowed, for a screen that wants its icons kept for a few actions alone.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -132,13 +139,14 @@ fun SonaTopAppBar(
     subtitle: String? = null,
     onNavigateBack: (() -> Unit)? = null,
     actions: List<TopBarAction> = emptyList(),
+    menuActions: List<TopBarAction> = emptyList(),
     selection: TopBarSelection? = null,
     search: TopBarSearch? = null,
 ) {
     val content: BarContent = when {
         selection != null -> BarContent.Selecting(selection)
         search != null -> BarContent.Searching(search)
-        else -> BarContent.Browsing(title, subtitle, actions)
+        else -> BarContent.Browsing(title, subtitle, actions, menuActions)
     }
 
     // Back leaves the mode rather than the screen, which is what both a context bar and a search
@@ -188,7 +196,7 @@ fun SonaTopAppBar(
                         )
                     }
                 },
-                actions = { BarActions(actions = activeContent.actions) },
+                actions = { BarActions(actions = activeContent.actions, menuActions = activeContent.menuActions) },
             )
 
             is BarContent.Searching -> TopAppBar(
@@ -200,6 +208,9 @@ fun SonaTopAppBar(
                         icon = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(R.string.top_bar_close_search),
                     )
+                },
+                actions = {
+                    BarActions(actions = activeContent.search.actions, menuActions = activeContent.search.menuActions)
                 },
             )
 
@@ -296,8 +307,8 @@ private fun BarTitle(title: String, subtitle: String?) {
  * menu would move with it.
  */
 @Composable
-private fun BarActions(actions: List<TopBarAction>) {
-    val overflowed = actions.drop(MAX_VISIBLE_ACTIONS)
+private fun BarActions(actions: List<TopBarAction>, menuActions: List<TopBarAction>) {
+    val overflowed = actions.drop(MAX_VISIBLE_ACTIONS) + menuActions
     // Read here rather than inside the group: a group builds its items outside composition, so it
     // cannot reach a resource itself.
     val moreActionsLabel = stringResource(R.string.top_bar_more_actions)

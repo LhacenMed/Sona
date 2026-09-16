@@ -1,7 +1,9 @@
 package com.lhacenmed.sona.feature.library.options
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.LibraryAdd
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
@@ -10,8 +12,8 @@ import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
  *
  * [VIEW_DETAILS] is a song's own "View properties" as much as an album's, artist's, genre's or
  * playlist's "View" - two labels over the one glyph, the way Auxio's `lbl_song_detail` and
- * `lbl_parent_detail` are. [EXCLUDE] is Sona's own, for the folders Auxio has no counterpart for, and
- * so draws the Material glyph the selection bar already uses for it.
+ * `lbl_parent_detail` are. [ADD_TRACKS], [ADD_COLLECTIONS] and [EXCLUDE] are Sona's own, with no Auxio
+ * glyph to draw, so they draw the Material glyphs the playlist's menu and the selection bar already use.
  * Which [OptionsAction]s a sheet shows, and in what order, is [OptionsTarget]'s
  * to decide - this only says what each one looks like once chosen.
  */
@@ -25,7 +27,9 @@ enum class OptionsAction(val icon: ImageVector, val label: String) {
     ALBUM_DETAILS(SonaIcons.GoToAlbum, "Go to album"),
     SONG_PROPERTIES(SonaIcons.Details, "View properties"),
     VIEW_DETAILS(SonaIcons.Details, "View"),
-    RENAME(SonaIcons.Rename, "Rename"),
+    ADD_TRACKS(Icons.AutoMirrored.Filled.PlaylistAdd, "Add tracks"),
+    ADD_COLLECTIONS(Icons.Filled.LibraryAdd, "Add from collections"),
+    EDIT(SonaIcons.Edit, "Edit"),
     IMPORT(SonaIcons.Import, "Import"),
     EXPORT(SonaIcons.Export, "Export"),
     DELETE(SonaIcons.Delete, "Delete"),

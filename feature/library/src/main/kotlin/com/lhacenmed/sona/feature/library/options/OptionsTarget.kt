@@ -7,9 +7,12 @@ import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.library.options.OptionsAction.ADD_COLLECTIONS
+import com.lhacenmed.sona.feature.library.options.OptionsAction.ADD_TRACKS
 import com.lhacenmed.sona.feature.library.options.OptionsAction.ALBUM_DETAILS
 import com.lhacenmed.sona.feature.library.options.OptionsAction.ARTIST_DETAILS
 import com.lhacenmed.sona.feature.library.options.OptionsAction.DELETE
+import com.lhacenmed.sona.feature.library.options.OptionsAction.EDIT
 import com.lhacenmed.sona.feature.library.options.OptionsAction.EXCLUDE
 import com.lhacenmed.sona.feature.library.options.OptionsAction.EXPORT
 import com.lhacenmed.sona.feature.library.options.OptionsAction.IMPORT
@@ -17,7 +20,6 @@ import com.lhacenmed.sona.feature.library.options.OptionsAction.PLAY
 import com.lhacenmed.sona.feature.library.options.OptionsAction.PLAYLIST_ADD
 import com.lhacenmed.sona.feature.library.options.OptionsAction.PLAY_NEXT
 import com.lhacenmed.sona.feature.library.options.OptionsAction.QUEUE_ADD
-import com.lhacenmed.sona.feature.library.options.OptionsAction.RENAME
 import com.lhacenmed.sona.feature.library.options.OptionsAction.SHARE
 import com.lhacenmed.sona.feature.library.options.OptionsAction.SHUFFLE
 import com.lhacenmed.sona.feature.library.options.OptionsAction.SONG_PROPERTIES
@@ -105,9 +107,9 @@ fun OptionsTarget.actions(): List<OptionsAction> = when (this) {
 
     is OptionsTarget.ForPlaylist -> when (context) {
         PlaylistOptionsContext.LIST ->
-            listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, RENAME, IMPORT, EXPORT, DELETE, SHARE)
+            listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, ADD_TRACKS, ADD_COLLECTIONS, EDIT, IMPORT, EXPORT, DELETE, SHARE)
         PlaylistOptionsContext.FROM_DETAIL ->
-            listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, RENAME, DELETE, SHARE)
+            listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, ADD_TRACKS, ADD_COLLECTIONS, EDIT, DELETE, SHARE)
     }
 
     is OptionsTarget.ForFolder -> listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, EXCLUDE, SHARE)
@@ -118,9 +120,9 @@ fun OptionsTarget.actions(): List<OptionsAction> = when (this) {
 /**
  * The actions listed but not clickable - Auxio's `getDisabledItemIds`: an artist or a playlist with no
  * tracks yet cannot be played, queued or shared, though it is still worth seeing and still worth
- * deleting or renaming. A track, an album and a genre are never disabled this way.
+ * editing or deleting. A track, an album and a genre are never disabled this way.
  *
- * Favorites, which Auxio has no counterpart for, can never be renamed or deleted - the rule the
+ * Favorites, which Auxio has no counterpart for, can never be deleted - the rule the
  * playlists screen's selection bar already keeps.
  */
 fun OptionsTarget.disabledActions(): Set<OptionsAction> = when (this) {
@@ -131,7 +133,7 @@ fun OptionsTarget.disabledActions(): Set<OptionsAction> = when (this) {
     }
 
     is OptionsTarget.ForPlaylist -> buildSet {
-        if (playlist.isBuiltIn) addAll(listOf(RENAME, DELETE))
+        if (playlist.isBuiltIn) add(DELETE)
         if (playlist.trackCount == 0) addAll(listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, EXPORT, SHARE))
     }
 

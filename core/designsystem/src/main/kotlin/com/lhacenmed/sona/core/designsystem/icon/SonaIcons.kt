@@ -152,10 +152,10 @@ object SonaIcons {
         )
     }
 
-    /** Auxio's `ic_edit_24`: rename a playlist. */
-    val Rename: ImageVector by lazy {
+    /** Auxio's `ic_edit_24`: edit a playlist. */
+    val Edit: ImageVector by lazy {
         icon(
-            name = "Rename",
+            name = "Edit",
             size = 24.dp,
             viewportSize = 960f,
             pathData = "M200,760L256,760L601,415L545,359L200,704L200,760ZM772,357L602,189L715,76L884,245L772,357ZM120,840L120,670L544,246L714,416L290,840L120,840ZM573,387L545,359L545,359L601,415L601,415L573,387Z",

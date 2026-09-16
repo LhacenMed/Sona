@@ -7,16 +7,26 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.LibraryContent
+import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.component.SonaTabRow
+import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
+import com.lhacenmed.sona.core.model.Album
+import com.lhacenmed.sona.core.model.Artist
+import com.lhacenmed.sona.core.model.Folder
+import com.lhacenmed.sona.core.model.Genre
+import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.library.AlbumRow
 import com.lhacenmed.sona.feature.library.ArtistRow
@@ -37,21 +47,63 @@ private enum class CollectionTab(val label: String) {
     PLAYLISTS("Playlists"),
 }
 
+/** Every tab's rows as they stand on screen - narrowed by the search, and without the playlist being added to. */
+private class VisibleCollections(
+    val artists: LibraryContent<Artist>,
+    val albums: LibraryContent<Album>,
+    val genres: LibraryContent<Genre>,
+    val folders: LibraryContent<Folder>,
+    val playlists: LibraryContent<Playlist>,
+) {
+    /** The keys of [tab]'s rows that can be picked - what its Select all selects. */
+    fun selectableKeys(tab: CollectionTab): List<SelectionKey> = when (tab) {
+        CollectionTab.ARTISTS -> artists.itemsOrEmpty.filter { it.trackCount > 0 }.map { SelectionKey.Artist(it.id) }
+        CollectionTab.ALBUMS -> albums.itemsOrEmpty.map { SelectionKey.Album(it.id) }
+        CollectionTab.GENRES -> genres.itemsOrEmpty.map { SelectionKey.Genre(it.id) }
+        CollectionTab.FOLDERS -> folders.itemsOrEmpty.map { SelectionKey.Folder(it.path) }
+        CollectionTab.PLAYLISTS -> playlists.itemsOrEmpty.filter { it.trackCount > 0 }.map { SelectionKey.Playlist(it.id) }
+    }
+}
+
 /**
  * Picking whole collections - artists, albums, genres, folders and other playlists - to add every one
  * of their tracks to the playlist [playlistId].
  *
- * One selection runs across every tab, so an album and a genre can be gathered in a single add. The
- * playlist being added to is not offered, and neither is a collection holding no tracks.
+ * One selection runs across every tab, so an album and a genre can be gathered in a single add, and one
+ * search narrows every tab by name. Select all works on the tab on screen. The playlist being added to
+ * is not offered, and a collection holding no tracks cannot be picked.
  */
 data class AddCollectionsScreen(val playlistId: Long) : Screen {
 
     @Composable
     override fun Content() {
-        PlaylistTrackPicker(title = "Add from collections", playlistId = playlistId) { selection ->
-            val pagerState = rememberPagerState(pageCount = { CollectionTab.entries.size })
-            val scope = rememberCoroutineScope()
+        val viewModel: PlaylistPickerViewModel = hiltViewModel()
+        val artists by viewModel.artists.collectAsStateWithLifecycle()
+        val albums by viewModel.albums.collectAsStateWithLifecycle()
+        val genres by viewModel.genres.collectAsStateWithLifecycle()
+        val folders by viewModel.folders.collectAsStateWithLifecycle()
+        val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+        val selection = rememberSelectionState()
+        var searchQuery by remember { mutableStateOf<String?>(null) }
+        val pagerState = rememberPagerState(pageCount = { CollectionTab.entries.size })
+        val scope = rememberCoroutineScope()
 
+        val visible = VisibleCollections(
+            artists = artists.filterItems { matchesSearch(searchQuery, it.name) },
+            albums = albums.filterItems { matchesSearch(searchQuery, it.title, it.artistName) },
+            genres = genres.filterItems { matchesSearch(searchQuery, it.name) },
+            folders = folders.filterItems { matchesSearch(searchQuery, it.name) },
+            playlists = playlists.filterItems { it.id != playlistId && matchesSearch(searchQuery, it.name) },
+        )
+
+        PlaylistTrackPicker(
+            title = "Add from collections",
+            playlistId = playlistId,
+            selection = selection,
+            searchQuery = searchQuery,
+            onSearchQueryChange = { searchQuery = it },
+            visibleKeys = { visible.selectableKeys(CollectionTab.entries[pagerState.currentPage]) },
+        ) {
             SonaTabRow(
                 tabTitles = CollectionTab.entries.map { it.label },
                 selectedPosition = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
@@ -66,90 +118,78 @@ data class AddCollectionsScreen(val playlistId: Long) : Screen {
                 // Every tab kept composed, so a list keeps its place while another tab is on screen.
                 beyondViewportPageCount = CollectionTab.entries.size - 1,
             ) { page ->
-                CollectionPage(tab = CollectionTab.entries[page], playlistId = playlistId, selection = selection)
+                CollectionPage(
+                    tab = CollectionTab.entries[page],
+                    visible = visible,
+                    selection = selection,
+                    emptyMessage = pickerEmptyMessage(searchQuery),
+                )
             }
         }
     }
 }
 
 @Composable
-private fun CollectionPage(tab: CollectionTab, playlistId: Long, selection: SelectionState) {
-    val viewModel: PlaylistPickerViewModel = hiltViewModel()
-    val modifier = Modifier.fillMaxSize()
+private fun CollectionPage(
+    tab: CollectionTab,
+    visible: VisibleCollections,
+    selection: SelectionState,
+    emptyMessage: String,
+) {
     when (tab) {
-        CollectionTab.ARTISTS -> {
-            val artists by viewModel.artists.collectAsStateWithLifecycle()
-            PickerList(content = artists, emptyTitle = "No artists found", key = { it.id }, modifier = modifier) { artist ->
-                ArtistRow(
-                    artist = artist,
-                    selection = selection,
-                    isCurrent = { false },
-                    isPlaying = { false },
-                    onClick = selection.pickerClick(SelectionKey.Artist(artist.id).takeIf { artist.trackCount > 0 }),
-                    onOpenOptions = null,
-                )
-            }
+        CollectionTab.ARTISTS -> PickerList(visible.artists, "No artists found", emptyMessage, key = { it.id }) { artist ->
+            ArtistRow(
+                artist = artist,
+                selection = selection,
+                isCurrent = { false },
+                isPlaying = { false },
+                onClick = selection.pickerClick(SelectionKey.Artist(artist.id).takeIf { artist.trackCount > 0 }),
+                onOpenOptions = null,
+            )
         }
 
-        CollectionTab.ALBUMS -> {
-            val albums by viewModel.albums.collectAsStateWithLifecycle()
-            PickerList(content = albums, emptyTitle = "No albums found", key = { it.id }, modifier = modifier) { album ->
-                AlbumRow(
-                    album = album,
-                    selection = selection,
-                    isCurrent = { false },
-                    isPlaying = { false },
-                    onClick = selection.pickerClick(SelectionKey.Album(album.id)),
-                    onOpenOptions = null,
-                )
-            }
+        CollectionTab.ALBUMS -> PickerList(visible.albums, "No albums found", emptyMessage, key = { it.id }) { album ->
+            AlbumRow(
+                album = album,
+                selection = selection,
+                isCurrent = { false },
+                isPlaying = { false },
+                onClick = selection.pickerClick(SelectionKey.Album(album.id)),
+                onOpenOptions = null,
+            )
         }
 
-        CollectionTab.GENRES -> {
-            val genres by viewModel.genres.collectAsStateWithLifecycle()
-            PickerList(content = genres, emptyTitle = "No genres found", key = { it.id }, modifier = modifier) { genre ->
-                GenreRow(
-                    genre = genre,
-                    selection = selection,
-                    isCurrent = { false },
-                    isPlaying = { false },
-                    onClick = selection.pickerClick(SelectionKey.Genre(genre.id)),
-                    onOpenOptions = null,
-                )
-            }
+        CollectionTab.GENRES -> PickerList(visible.genres, "No genres found", emptyMessage, key = { it.id }) { genre ->
+            GenreRow(
+                genre = genre,
+                selection = selection,
+                isCurrent = { false },
+                isPlaying = { false },
+                onClick = selection.pickerClick(SelectionKey.Genre(genre.id)),
+                onOpenOptions = null,
+            )
         }
 
-        CollectionTab.FOLDERS -> {
-            val folders by viewModel.folders.collectAsStateWithLifecycle()
-            PickerList(content = folders, emptyTitle = "No folders found", key = { it.path }, modifier = modifier) { folder ->
-                FolderRow(
-                    folder = folder,
-                    selection = selection,
-                    isCurrent = { false },
-                    isPlaying = { false },
-                    onClick = selection.pickerClick(SelectionKey.Folder(folder.path)),
-                    onOpenOptions = null,
-                )
-            }
+        CollectionTab.FOLDERS -> PickerList(visible.folders, "No folders found", emptyMessage, key = { it.path }) { folder ->
+            FolderRow(
+                folder = folder,
+                selection = selection,
+                isCurrent = { false },
+                isPlaying = { false },
+                onClick = selection.pickerClick(SelectionKey.Folder(folder.path)),
+                onOpenOptions = null,
+            )
         }
 
-        CollectionTab.PLAYLISTS -> {
-            val playlists by viewModel.playlists.collectAsStateWithLifecycle()
-            PickerList(
-                content = playlists.filterItems { it.id != playlistId },
-                emptyTitle = "No other playlists",
-                key = { it.id },
-                modifier = modifier,
-            ) { playlist ->
-                PlaylistRow(
-                    playlist = playlist,
-                    selection = selection,
-                    isCurrent = { false },
-                    isPlaying = { false },
-                    onClick = selection.pickerClick(SelectionKey.Playlist(playlist.id).takeIf { playlist.trackCount > 0 }),
-                    onOpenOptions = null,
-                )
-            }
+        CollectionTab.PLAYLISTS -> PickerList(visible.playlists, "No other playlists", emptyMessage, key = { it.id }) { playlist ->
+            PlaylistRow(
+                playlist = playlist,
+                selection = selection,
+                isCurrent = { false },
+                isPlaying = { false },
+                onClick = selection.pickerClick(SelectionKey.Playlist(playlist.id).takeIf { playlist.trackCount > 0 }),
+                onOpenOptions = null,
+            )
         }
     }
 }
@@ -159,8 +199,8 @@ private fun CollectionPage(tab: CollectionTab, playlistId: Long, selection: Sele
 private fun <T> PickerList(
     content: LibraryContent<T>,
     emptyTitle: String,
+    emptyMessage: String,
     key: (T) -> Any,
-    modifier: Modifier,
     row: @Composable (T) -> Unit,
 ) {
     LibraryList(
@@ -168,10 +208,10 @@ private fun <T> PickerList(
         hasPermission = true,
         isScanning = false,
         emptyTitle = emptyTitle,
-        emptyMessage = "Add some music to your device to see it here.",
+        emptyMessage = emptyMessage,
         key = key,
         loadingIcon = SonaIcons.Playlist,
-        modifier = modifier,
+        modifier = Modifier.fillMaxSize(),
         row = row,
     )
 }

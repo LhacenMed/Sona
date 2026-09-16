@@ -319,7 +319,6 @@ object PlaylistsScreen : Screen {
                 onDismissRequest = { optionsTarget = null },
                 onManagePlaylist = { action, playlist ->
                     when (action) {
-                        PlaylistManageAction.RENAME -> namePrompt = NamePrompt.Rename(playlist)
                         PlaylistManageAction.DELETE -> confirmingDelete = listOf(playlist)
                         PlaylistManageAction.IMPORT -> {
                             importTargetPlaylistId = playlist.id

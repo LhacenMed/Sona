@@ -53,12 +53,15 @@ import com.lhacenmed.sona.feature.library.GenreDetailScreen
 import com.lhacenmed.sona.feature.library.PlaylistDetailScreen
 import com.lhacenmed.sona.feature.library.PlaylistNameDialog
 import com.lhacenmed.sona.feature.library.operation.ExcludeFoldersDialog
+import com.lhacenmed.sona.feature.library.playlist.AddCollectionsScreen
+import com.lhacenmed.sona.feature.library.playlist.AddTracksScreen
+import com.lhacenmed.sona.feature.library.playlist.EditPlaylistScreen
 
 /** How faint a disabled action reads, next to the actions it sits among: Material's disabled content alpha. */
 private const val DISABLED_ACTION_ALPHA = 0.38f
 
-/** What a playlist's Rename, Import, Export or Delete row asks the screen showing it to do. */
-enum class PlaylistManageAction { RENAME, IMPORT, EXPORT, DELETE }
+/** What a playlist's Import, Export or Delete row asks the screen showing it to do. */
+enum class PlaylistManageAction { IMPORT, EXPORT, DELETE }
 
 /**
  * What the sheet is doing besides listing [OptionsTarget]'s actions - a playlist picker, a track's
@@ -78,8 +81,8 @@ private sealed interface FollowUp {
  *
  * Every action plays, queues, navigates or shares on its own - this is the one place that logic lives,
  * so a track's sheet in the tracks tab and the same track's sheet in an album behave identically.
- * [onManagePlaylist] is the one exception: renaming, importing into, exporting or deleting a playlist
- * needs a file picker or a confirm dialog that must outlive this sheet, so those four are handed to
+ * [onManagePlaylist] is the one exception: importing into, exporting or deleting a playlist
+ * needs a file picker or a confirm dialog that must outlive this sheet, so those three are handed to
  * whatever screen is already showing the playlist row - only [PlaylistsScreen][com.lhacenmed.sona.feature.library.PlaylistsScreen]
  * does today, since it is the only screen a [OptionsTarget.ForPlaylist] can open from.
  *
@@ -219,7 +222,9 @@ private fun performAction(
         } else {
             actionsViewModel.loadTracks(target) { tracks -> context.shareTracks(tracks) }
         }
-        OptionsAction.RENAME -> onManagePlaylist(PlaylistManageAction.RENAME, playlistOf(target))
+        OptionsAction.ADD_TRACKS -> navigator.go(AddTracksScreen(playlistOf(target).id))
+        OptionsAction.ADD_COLLECTIONS -> navigator.go(AddCollectionsScreen(playlistOf(target).id))
+        OptionsAction.EDIT -> navigator.go(EditPlaylistScreen(playlistOf(target).id))
         OptionsAction.IMPORT -> onManagePlaylist(PlaylistManageAction.IMPORT, playlistOf(target))
         OptionsAction.EXPORT -> onManagePlaylist(PlaylistManageAction.EXPORT, playlistOf(target))
         OptionsAction.DELETE -> onManagePlaylist(PlaylistManageAction.DELETE, playlistOf(target))
