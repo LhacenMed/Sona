@@ -73,6 +73,22 @@ object SonaIcons {
             pathData = DefaultCover.GLYPH_PATH_DATA,
         )
     }
+
+    /**
+     * Auxio's `ic_check_20`: the badge on a selected cover.
+     *
+     * The tick is drawn small within its 20dp square, which is the whole of the badge - that built-in
+     * room around it is what sets the tick's size, so the drawable fills the badge rather than being
+     * inset inside it.
+     */
+    val Check: ImageVector by lazy {
+        icon(
+            name = "Check",
+            size = 20.dp,
+            viewportSize = 20f,
+            pathData = "M8.229,14.062 L4.708,10.521 5.75,9.479 8.229,11.938 14.25,5.938 15.292,7Z",
+        )
+    }
 }
 
 /** A 48dp Material Symbols glyph, drawn on its 960-unit grid. */
