@@ -40,5 +40,5 @@ class ArtistDetailViewModel @AssistedInject constructor(
     override val tracks: StateFlow<LibraryContent<Track>> = repository.artistTracks(artistId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryContent.Loading)
 
-    override val sort: SortControl = sortOrders.control(SortableList.ARTIST_TRACKS)
+    override val sort: SortControl = sortOrders.control(SortableList.ARTIST_TRACKS, artistId.toString())
 }

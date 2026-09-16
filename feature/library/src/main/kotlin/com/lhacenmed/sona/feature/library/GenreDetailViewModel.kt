@@ -40,5 +40,5 @@ class GenreDetailViewModel @AssistedInject constructor(
     override val tracks: StateFlow<LibraryContent<Track>> = repository.genreTracks(genreId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryContent.Loading)
 
-    override val sort: SortControl = sortOrders.control(SortableList.GENRE_TRACKS)
+    override val sort: SortControl = sortOrders.control(SortableList.GENRE_TRACKS, genreId.toString())
 }

@@ -38,5 +38,5 @@ class FolderDetailViewModel @AssistedInject constructor(
     override val tracks: StateFlow<LibraryContent<Track>> = repository.folderTracks(folderPath)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryContent.Loading)
 
-    override val sort: SortControl = sortOrders.control(SortableList.FOLDER_TRACKS)
+    override val sort: SortControl = sortOrders.control(SortableList.FOLDER_TRACKS, folderPath)
 }

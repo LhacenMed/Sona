@@ -23,6 +23,7 @@ import com.lhacenmed.sona.core.model.Folder
 import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.model.sort.SortTarget
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
@@ -146,22 +147,22 @@ class LibraryRepository @Inject constructor(
     /** Album tracks, in playback order - disc, then track number - unless sorted otherwise. */
     fun albumTracks(albumId: Long): Flow<LibraryContent<Track>> =
         trackDao.observeByAlbum(albumId)
-            .sortedFor(LibrarySortSpecs.albumTracks) { rows -> rows.map { it.toDomain() } }
+            .sortedFor(LibrarySortSpecs.albumTracks, albumId.toString()) { rows -> rows.map { it.toDomain() } }
             .asContent()
 
     fun artistTracks(artistId: Long): Flow<LibraryContent<Track>> =
         trackDao.observeByArtist(artistId)
-            .sortedFor(LibrarySortSpecs.artistTracks) { rows -> rows.map { it.toDomain() } }
+            .sortedFor(LibrarySortSpecs.artistTracks, artistId.toString()) { rows -> rows.map { it.toDomain() } }
             .asContent()
 
     fun genreTracks(genreId: Long): Flow<LibraryContent<Track>> =
         trackDao.observeByGenre(genreId)
-            .sortedFor(LibrarySortSpecs.genreTracks) { rows -> rows.map { it.toDomain() } }
+            .sortedFor(LibrarySortSpecs.genreTracks, genreId.toString()) { rows -> rows.map { it.toDomain() } }
             .asContent()
 
     fun folderTracks(folderPath: String): Flow<LibraryContent<Track>> =
         trackDao.observeByFolder(folderPath)
-            .sortedFor(LibrarySortSpecs.folderTracks) { rows -> rows.map { it.toDomain() } }
+            .sortedFor(LibrarySortSpecs.folderTracks, folderPath) { rows -> rows.map { it.toDomain() } }
             .asContent()
 
     /** Search runs as four `LIKE … LIMIT` queries rather than scanning the library in memory. */
@@ -222,7 +223,7 @@ class LibraryRepository @Inject constructor(
      */
     fun playlistTracks(playlistId: Long): Flow<LibraryContent<Track>> =
         playlistDao.observeTracks(playlistId)
-            .sortedFor(LibrarySortSpecs.playlistTracks) { rows ->
+            .sortedFor(LibrarySortSpecs.playlistTracks, playlistId.toString()) { rows ->
                 rows.mapIndexed { position, row ->
                     PlaylistEntry(track = row.track.toDomain(), position = position, addedAt = row.addedAt)
                 }
@@ -313,13 +314,20 @@ class LibraryRepository @Inject constructor(
      */
     private fun <R, T> Flow<List<R>>.sortedFor(
         spec: SortSpec<T>,
+        // Which list of its kind this is, for the lists there can be many of - so one playlist's order
+        // is its own. The library's own lists are the only one of their kind and name nothing here.
+        instanceId: String? = null,
         toItems: (List<R>) -> List<T>,
     ): Flow<List<T>> =
         // conflate() sits *upstream* of the transform on purpose. Room can fire several
         // invalidations in quick succession; without it each one would be mapped and sorted in
         // turn, and only the last result would ever be shown. With it, anything superseded while a
         // sort is still running is dropped instead of computed.
-        combine(conflate(), sortOrders.order(spec.list), intelligentSorting) { rows, order, intelligent ->
+        combine(
+            conflate(),
+            sortOrders.order(SortTarget(spec.list, instanceId)),
+            intelligentSorting,
+        ) { rows, order, intelligent ->
             spec.sort(toItems(rows), order, intelligent)
         }
 

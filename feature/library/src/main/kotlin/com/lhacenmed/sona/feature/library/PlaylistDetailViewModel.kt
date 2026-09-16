@@ -32,7 +32,7 @@ class PlaylistDetailViewModel @AssistedInject constructor(
     playbackController: PlaybackController,
 ) : TrackListDetailViewModel(playbackController, repository) {
 
-    override val sort: SortControl = sortOrders.control(SortableList.PLAYLIST_TRACKS)
+    override val sort: SortControl = sortOrders.control(SortableList.PLAYLIST_TRACKS, playlistId.toString())
 
     @AssistedFactory
     interface Factory {
