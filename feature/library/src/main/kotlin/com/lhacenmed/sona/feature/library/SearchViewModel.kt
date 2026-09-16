@@ -145,7 +145,15 @@ class SearchViewModel @Inject constructor(
         _filter.value = if (_filter.value == filter) null else filter
     }
 
+    /**
+     * Plays the results from [track] - or, when it is already playing from the library rather than
+     * from a collection, pauses or resumes it. See [LibraryPlayback.isReselection].
+     */
     fun onTrackClick(track: Track) {
+        if (playback.value.isReselection(track, listParent = null)) {
+            playbackController.togglePlayPause()
+            return
+        }
         val matching = uiState.value.tracks
         val index = matching.indexOfFirst { it.id == track.id }
         if (index >= 0) playbackController.playTracks(matching, index)

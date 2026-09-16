@@ -488,8 +488,7 @@ internal fun TrackListDetail(
         ) { track ->
             TrackRow(
                 track = track,
-                // Marked only while the queue is this very list's - see [LibraryPlayback].
-                isCurrent = { playback.marksWithin(track, viewModel.playbackParent) },
+                isCurrent = { playback.marks(track) },
                 isPlaying = { playback.isPlaying },
                 selection = selection,
                 onClick = { viewModel.onTrackClick(track) },

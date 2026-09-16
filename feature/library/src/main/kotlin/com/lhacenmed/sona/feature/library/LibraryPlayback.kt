@@ -17,10 +17,14 @@ import kotlinx.coroutines.flow.map
 /**
  * What each list marks as playing: Auxio's `updatePlayback` rules, in the one place every list reads.
  *
- * Auxio never marks a row merely for holding the playing track - it marks the row playback actually
- * came *from*. So an album lights up when the queue was built from that album, and stays dark while the
- * very same track plays from a genre instead. Both halves of that are checked here: the queue's
- * [parent] is this collection, and the playing track really belongs to it.
+ * A track and a collection answer two different questions, so they are marked by different rules.
+ *
+ * A track row says "this is the track playing", which is true of the track wherever it is listed - the
+ * same file in an album, a genre and three playlists is one playing track, and every list holding it
+ * says so. A collection row says "this is the list playing", which is only true of the one playback
+ * actually came *from*: an album lights up when the queue was built from that album, and stays dark
+ * while the very same track plays from a genre instead. That is what keeps a lit collection meaningful
+ * rather than lighting up every collection the track happens to belong to.
  *
  * A playlist is the one collection whose membership is not on the track, so being the parent is the
  * whole test there - the queue came from that playlist, which is what the row is saying.
@@ -32,8 +36,8 @@ data class LibraryPlayback(
     /** Whether playback is ongoing, which is what the indicator animates on. */
     val isPlaying: Boolean = false,
 ) {
-    /** A track in the library's own list: marked only when the queue is the library, as Auxio's is. */
-    fun marks(track: Track): Boolean = parent == null && currentTrack?.id == track.id
+    /** The playing track, in every list that holds it - see the rules above. */
+    fun marks(track: Track): Boolean = currentTrack?.id == track.id
 
     fun marks(album: Album): Boolean =
         parent == PlaybackParent.Album(album.id) && currentTrack?.albumId == album.id
@@ -54,10 +58,13 @@ data class LibraryPlayback(
     fun marks(collection: PlaybackParent): Boolean = parent == collection && currentTrack != null
 
     /**
-     * A track inside [listParent]'s own list of tracks, on that collection's screen: marked when the
-     * queue came from this very list, which is how Auxio's detail screens mark theirs.
+     * Whether tapping [track] in a list that plays from [listParent] means pause or resume rather than
+     * starting a queue: it is already the playing track, and it is already playing from this very list.
+     *
+     * Chosen from anywhere else - the same track in another playlist, or in the library's own list -
+     * it starts that list's queue instead, which is what makes the row that was tapped the one playing.
      */
-    fun marksWithin(track: Track, listParent: PlaybackParent?): Boolean =
+    fun isReselection(track: Track, listParent: PlaybackParent?): Boolean =
         parent == listParent && currentTrack?.id == track.id
 }
 

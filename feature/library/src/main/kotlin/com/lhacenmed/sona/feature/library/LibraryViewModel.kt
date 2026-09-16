@@ -112,8 +112,15 @@ class LibraryViewModel @Inject constructor(
     /**
      * Starts playback of the whole tracks tab, beginning at [track]. The index is resolved here
      * rather than passed down so the list can stay keyed by identity rather than by position.
+     *
+     * A track already playing from this list pauses or resumes instead of starting the queue over -
+     * see [LibraryPlayback.isReselection].
      */
     fun onTrackClick(track: Track) {
+        if (playback.value.isReselection(track, listParent = null)) {
+            playbackController.togglePlayPause()
+            return
+        }
         val all = tracks.value.itemsOrEmpty
         val index = all.indexOfFirst { it.id == track.id }
         if (index >= 0) playbackController.playTracks(all, index)

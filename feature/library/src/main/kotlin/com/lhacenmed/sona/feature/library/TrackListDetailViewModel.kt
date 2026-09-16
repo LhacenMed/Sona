@@ -47,7 +47,15 @@ abstract class TrackListDetailViewModel(
     val playback: StateFlow<LibraryPlayback> = libraryPlayback(playbackController, repository)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryPlayback())
 
+    /**
+     * Plays [track] from this list - or, when it is already playing from this very list, pauses or
+     * resumes it rather than starting the queue over. See [LibraryPlayback.isReselection].
+     */
     fun onTrackClick(track: Track) {
+        if (playback.value.isReselection(track, playbackParent)) {
+            playbackController.togglePlayPause()
+            return
+        }
         val all = tracks.value.itemsOrEmpty
         val index = all.indexOfFirst { it.id == track.id }
         if (index >= 0) playbackController.playTracks(all, index, playbackParent)
