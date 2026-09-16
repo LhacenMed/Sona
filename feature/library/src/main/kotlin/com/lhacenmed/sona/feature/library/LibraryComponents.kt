@@ -516,7 +516,7 @@ internal fun TrackListDetail(
         ConfirmedOperationDialog(
             title = if (isSingle) "Remove track" else "Remove ${removingTracks.size} tracks",
             message = "From $title. The files themselves are not deleted.",
-            subjects = removingTracks.map { it.title },
+            total = pluralCount(removingTracks.size, "track"),
             confirmLabel = "Remove",
             successMessage = if (isSingle) "Track removed" else "${removingTracks.size} tracks removed",
             failureMessage = if (isSingle) "Could not remove track" else "Could not remove tracks",
