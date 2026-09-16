@@ -3,6 +3,7 @@ package com.lhacenmed.sona.core.database.dao
 import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Upsert
+import com.lhacenmed.sona.core.database.entity.FolderCoverRow
 import com.lhacenmed.sona.core.database.entity.FolderRow
 import com.lhacenmed.sona.core.database.entity.TrackEntity
 import kotlinx.coroutines.flow.Flow
@@ -19,6 +20,20 @@ interface TrackDao {
      */
     @Query("SELECT folderPath AS path, COUNT(*) AS trackCount FROM tracks GROUP BY folderPath")
     fun observeFolders(): Flow<List<FolderRow>>
+
+    /**
+     * How many tracks in each folder share each cover, which is what the folders tab composes its
+     * covers from. Counted by SQLite rather than by grouping the track list, for the same reason the
+     * folders themselves are.
+     */
+    @Query(
+        """
+        SELECT folderPath AS path, coverArtUri AS coverArtUri, COUNT(*) AS trackCount FROM tracks
+        WHERE coverArtUri IS NOT NULL AND coverArtUri != ''
+        GROUP BY folderPath, coverArtUri
+        """,
+    )
+    fun observeFolderCoverArt(): Flow<List<FolderCoverRow>>
 
     @Query("SELECT * FROM tracks WHERE id = :trackId")
     fun observeById(trackId: Long): Flow<TrackEntity?>

@@ -74,21 +74,12 @@ class SearchViewModel @Inject constructor(
     /** Which kind of result the search is narrowed to, or null for all of them. */
     val filter: StateFlow<SearchFilter?> = _filter.asStateFlow()
 
-    val currentTrackId: StateFlow<Long?> = playbackController.playbackState
-        .map { it.currentTrackId }
-        .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
-
     /**
-     * Whether that track is playing - or about to, while it buffers - which is what the playing
-     * indicator animates on.
-     * Split from [currentTrackId] for the same reason it exists: the two change at different
-     * moments, and a row that took both as one value would recompose on each.
+     * What the results mark as playing - see [LibraryPlayback]. A search plays from the library rather
+     * than from any collection, so its track results mark themselves the way the tracks tab's do.
      */
-    val isPlaying: StateFlow<Boolean> = playbackController.playbackState
-        .map { it.isPlaying }
-        .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+    val playback: StateFlow<LibraryPlayback> = libraryPlayback(playbackController, repository)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryPlayback())
 
     /**
      * Search is a handful of `LIKE … LIMIT` queries - four, or one if a filter is on - re-issued

@@ -19,6 +19,7 @@ fun GenresScreen(
     val genres by viewModel.genres.collectAsStateWithLifecycle()
     val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
     val hasPermission by viewModel.hasPermission.collectAsStateWithLifecycle()
+    val playback by viewModel.playback.collectAsStateWithLifecycle()
     val navigator = LocalNavigator.current
 
     LibraryList(
@@ -32,11 +33,11 @@ fun GenresScreen(
         modifier = modifier,
         listState = listState,
     ) { genre ->
-        LibraryEntityRow(
+        GenreRow(
+            genre = genre,
             selection = selection,
-            selectionKey = genre.id,
-            title = genre.name,
-            subtitle = "${genre.trackCount} tracks",
+            isCurrent = { playback.marks(genre) },
+            isPlaying = { playback.isPlaying },
             onClick = { navigator.go(GenreDetailScreen(genre.id)) },
         )
     }

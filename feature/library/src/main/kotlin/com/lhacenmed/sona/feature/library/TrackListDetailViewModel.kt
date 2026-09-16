@@ -3,7 +3,9 @@ package com.lhacenmed.sona.feature.library
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.LibraryContent
+import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.itemsOrEmpty
+import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.library.sort.SortControl
 import com.lhacenmed.sona.feature.playback.PlaybackController
@@ -11,8 +13,6 @@ import java.io.OutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
  */
 abstract class TrackListDetailViewModel(
     private val playbackController: PlaybackController,
+    repository: LibraryRepository,
 ) : ViewModel() {
 
     abstract val tracks: StateFlow<LibraryContent<Track>>
@@ -34,30 +35,30 @@ abstract class TrackListDetailViewModel(
     /** How this list is sorted, or null for one whose order is its content - Recent and Most played. */
     open val sort: SortControl? = null
 
-    /** Just the playing track's id - see [LibraryViewModel.currentTrackId] for why not the state. */
-    val currentTrackId: StateFlow<Long?> = playbackController.playbackState
-        .map { it.currentTrackId }
-        .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
-
     /**
-     * Whether that track is playing - or about to, while it buffers - which is what the playing
-     * indicator animates on.
-     * Split from [currentTrackId] for the same reason it exists: the two change at different
-     * moments, and a row that took both as one value would recompose on each.
+     * The collection this screen is, which playing from here plays from.
+     *
+     * It is what lets this list mark the playing track only while the queue is its own - the same
+     * track playing from somewhere else leaves the row alone, exactly as on Auxio's detail screens.
      */
-    val isPlaying: StateFlow<Boolean> = playbackController.playbackState
-        .map { it.isPlaying }
-        .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+    abstract val playbackParent: PlaybackParent
+
+    /** What this list marks as playing - see [LibraryPlayback]. */
+    val playback: StateFlow<LibraryPlayback> = libraryPlayback(playbackController, repository)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryPlayback())
 
     fun onTrackClick(track: Track) {
         val all = tracks.value.itemsOrEmpty
         val index = all.indexOfFirst { it.id == track.id }
-        if (index >= 0) playbackController.playTracks(all, index)
+        if (index >= 0) playbackController.playTracks(all, index, playbackParent)
     }
 
-    /** Plays just the selected rows, keeping the order the list shows them in. */
+    /**
+     * Plays just the selected rows, keeping the order the list shows them in.
+     *
+     * The queue is then those rows rather than this collection, so it plays from no collection at all -
+     * Auxio's selection playback sets no parent either.
+     */
     fun playSelection(selectedKeys: Set<Any>) {
         val selected = tracks.value.itemsOrEmpty.filter { it.id in selectedKeys }
         if (selected.isNotEmpty()) playbackController.playTracks(selected, startIndex = 0)

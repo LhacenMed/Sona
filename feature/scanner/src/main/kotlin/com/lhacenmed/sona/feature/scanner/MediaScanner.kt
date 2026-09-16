@@ -2,6 +2,7 @@ package com.lhacenmed.sona.feature.scanner
 
 import android.content.Context
 import android.os.Build
+import com.lhacenmed.sona.core.common.cover.rankedCoverArtUris
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.common.di.IoDispatcher
 import com.lhacenmed.sona.core.data.LibraryWriter
@@ -14,6 +15,7 @@ import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.model.UnknownNames
 import com.lhacenmed.sona.feature.scanner.filesystem.ManualFileWalker
 import com.lhacenmed.sona.feature.scanner.mediastore.MediaStoreQuerier
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -137,9 +139,12 @@ class MediaScanner @Inject constructor(
                 track.artistId !in artistIds
         }
 
+        // From here on every track names exactly one genre, and every genre is one row per name.
+        tracks = canonicalGenreTracks(tracks, mediaStoreResult.genres)
+
         var albums = recomputeAlbums(mediaStoreResult.albums, tracks)
         var artists = recomputeArtists(mediaStoreResult.artists, albums, tracks)
-        var genres = recomputeGenres(mediaStoreResult.genres, tracks)
+        var genres = recomputeGenres(genresOf(tracks), tracks)
 
         // Stage 1: publish MediaStore's fast, already-indexed results right away, without
         // deletions - on a first run this is what paints the library, and the slow filesystem walk
@@ -176,6 +181,36 @@ class MediaScanner @Inject constructor(
     // artist/genre re-filtering the *entire* track list) into a single O(tracks) pass - the
     // dominant cost of every scan on any library past a few hundred tracks.
 
+    /**
+     * Every track pointed at the one genre for its name, and named after it.
+     *
+     * MediaStore hands out a genre row per tag occurrence rather than per genre, so the same name
+     * arrives several times under different ids - which is what listed "Urbano latino" twice. Auxio
+     * groups genres by name, so a genre's id is derived from its name here and every track is
+     * repointed at it. A track naming no genre joins [UnknownNames.GENRE], as Auxio gathers those.
+     */
+    private fun canonicalGenreTracks(tracks: List<Track>, genres: List<Genre>): List<Track> {
+        val nameByMediaStoreId = genres.associate { it.id to it.name.trim() }
+        return tracks.map { track ->
+            val name = track.genreId?.let { nameByMediaStoreId[it] }?.takeIf { it.isNotEmpty() }
+                ?: track.genre?.trim()?.takeIf { it.isNotEmpty() }
+                ?: UnknownNames.GENRE
+            track.copy(genre = name, genreId = stableIdOf("genre", name))
+        }
+    }
+
+    /** The genres [tracks] name, one row per name - the only genres that can exist after the pass above. */
+    private fun genresOf(tracks: List<Track>): List<Genre> =
+        tracks.mapNotNull { it.genre }.distinct().map { name ->
+            Genre(
+                id = stableIdOf("genre", name),
+                name = name,
+                trackCount = 0,
+                artistCount = 0,
+                coverArtUris = emptyList(),
+            )
+        }
+
     private fun recomputeAlbums(albums: List<Album>, tracks: List<Track>): List<Album> {
         val tracksByAlbumId = tracks.groupBy { it.albumId }
         return albums.mapNotNull { album ->
@@ -207,7 +242,9 @@ class MediaScanner @Inject constructor(
                 artist.copy(
                     trackCount = artistTracks.size,
                     albumCount = artistAlbums.size,
-                    coverArtUri = artistAlbums.firstOrNull { !it.coverArtUri.isNullOrEmpty() }?.coverArtUri,
+                    // Auxio falls back to the artist's albums only when none of its tracks has a cover.
+                    coverArtUris = rankedCoverArtUris(artistTracks.map { it.coverArtUri })
+                        .ifEmpty { rankedCoverArtUris(artistAlbums.map { it.coverArtUri }) },
                 )
             }
         }
@@ -222,11 +259,13 @@ class MediaScanner @Inject constructor(
             } else {
                 genre.copy(
                     trackCount = genreTracks.size,
-                    coverArtUri = genreTracks.firstOrNull { !it.coverArtUri.isNullOrEmpty() }?.coverArtUri,
+                    artistCount = genreTracks.distinctBy { it.artistId }.size,
+                    coverArtUris = rankedCoverArtUris(genreTracks.map { it.coverArtUri }),
                 )
             }
         }
     }
+
 
     private class MergedResult(
         val tracks: List<Track>,
@@ -263,7 +302,7 @@ class MediaScanner @Inject constructor(
                     name = track.artist,
                     trackCount = 0,
                     albumCount = 0,
-                    coverArtUri = null,
+                    coverArtUris = emptyList(),
                 ).also { newArtists += it }
             }.id
 
@@ -280,18 +319,19 @@ class MediaScanner @Inject constructor(
                 ).also { newAlbums += it }
             }.id
 
-            val genreId = track.genre?.takeIf { it.isNotEmpty() }?.let { genreName ->
-                genreByName.getOrPut(genreName) {
-                    Genre(
-                        id = stableIdOf("genre", genreName),
-                        name = genreName,
-                        trackCount = 0,
-                        coverArtUri = null,
-                    ).also { newGenres += it }
-                }.id
-            }
+            // A manual file names its genre or joins the unknown one, the rule every track follows.
+            val genreName = track.genre?.trim()?.takeIf { it.isNotEmpty() } ?: UnknownNames.GENRE
+            val genreId = genreByName.getOrPut(genreName) {
+                Genre(
+                    id = stableIdOf("genre", genreName),
+                    name = genreName,
+                    trackCount = 0,
+                    artistCount = 0,
+                    coverArtUris = emptyList(),
+                ).also { newGenres += it }
+            }.id
 
-            track.copy(artistId = artistId, albumId = albumId, genreId = genreId)
+            track.copy(artistId = artistId, albumId = albumId, genre = genreName, genreId = genreId)
         }
 
         val allTracks = existingTracks + resolvedTracks

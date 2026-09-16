@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.core.data
 
+import com.lhacenmed.sona.core.common.cover.rankedCoverArtUris
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.common.di.DefaultDispatcher
 import com.lhacenmed.sona.core.data.sort.LibrarySortOrders
@@ -100,7 +101,17 @@ class LibraryRepository @Inject constructor(
 
     /** Aggregated by SQLite (`GROUP BY folderPath`), not by grouping the track list in memory. */
     val folders: StateFlow<LibraryContent<Folder>> = trackDao.observeFolders()
-        .sortedFor(LibrarySortSpecs.folders) { rows -> rows.map { it.toDomain() } }
+        .combine(trackDao.observeFolderCoverArt()) { rows, coverRows ->
+            val coversByPath = coverRows.groupBy { it.path }
+            rows.map { row ->
+                row.toDomain(
+                    coverArtUris = rankedCoverArtUris(
+                        coversByPath[row.path].orEmpty().associate { it.coverArtUri to it.trackCount },
+                    ),
+                )
+            }
+        }
+        .sortedFor(LibrarySortSpecs.folders) { rows -> rows }
         .shareContent()
 
     /**
@@ -173,15 +184,26 @@ class LibraryRepository @Inject constructor(
         return ids.mapNotNull { byId[it] }
     }
 
-    /** Every playlist in the chosen order, Favorites first, with the count each row shows. */
+    /** Every playlist in the chosen order, Favorites first, with the count and covers each row shows. */
     val playlists: StateFlow<LibraryContent<Playlist>> = playlistDao.observeAll()
         .sortedFor(LibrarySortSpecs.playlists) { rows -> rows }
-        .map { rows ->
+        .combine(playlistDao.observeCoverArt()) { rows, coverRows ->
+            val coversByPlaylist = coverRows.groupBy { it.playlistId }
             rows
                 // Stable, so the chosen order holds among the rest. Favorites is the one playlist
                 // every user has, and it keeps the top whatever playlists are sorted by.
                 .sortedByDescending { it.isBuiltIn }
-                .map { Playlist(it.id, it.name, it.isBuiltIn, it.trackCount) }
+                .map { row ->
+                    Playlist(
+                        id = row.id,
+                        name = row.name,
+                        isBuiltIn = row.isBuiltIn,
+                        trackCount = row.trackCount,
+                        coverArtUris = rankedCoverArtUris(
+                            coversByPlaylist[row.id].orEmpty().associate { it.coverArtUri to it.trackCount },
+                        ),
+                    )
+                }
         }
         .shareContent()
 

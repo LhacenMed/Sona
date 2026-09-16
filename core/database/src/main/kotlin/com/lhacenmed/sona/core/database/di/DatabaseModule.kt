@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.lhacenmed.sona.core.database.MIGRATION_4_5
 import com.lhacenmed.sona.core.database.MIGRATION_5_6
 import com.lhacenmed.sona.core.database.MIGRATION_6_7
+import com.lhacenmed.sona.core.database.MIGRATION_7_8
 import com.lhacenmed.sona.core.database.SeedBuiltInPlaylists
 import com.lhacenmed.sona.core.database.SonaDatabase
 import com.lhacenmed.sona.core.database.dao.AlbumDao
@@ -28,7 +29,7 @@ object DatabaseModule {
     @Singleton
     fun provideSonaDatabase(@ApplicationContext context: Context): SonaDatabase =
         Room.databaseBuilder(context, SonaDatabase::class.java, SonaDatabase.FILE_NAME)
-            .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+            .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
             // Seeds Favorites on a fresh install; MIGRATION_4_5 does the same for an existing one.
             .addCallback(SeedBuiltInPlaylists)
             // Still a net for a version pair no migration covers. Real migrations take precedence

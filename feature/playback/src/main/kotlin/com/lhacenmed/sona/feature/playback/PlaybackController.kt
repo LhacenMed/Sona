@@ -17,6 +17,7 @@ import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
 import com.lhacenmed.sona.core.database.entity.QueueItemEntity
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
+import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -69,6 +70,10 @@ class PlaybackController @Inject constructor(
     // The player's repeat int cannot tell RepeatMode.ONE from STOP_AFTER_CURRENT, so the stored
     // mode is what the UI is told about.
     @Volatile private var storedRepeatMode: RepeatMode = playbackSettings.repeatMode.value
+
+    // Read from the setting rather than held only in memory, so a queue restored on a cold start is
+    // still playing from the collection it was started from.
+    @Volatile private var storedParent: PlaybackParent? = playbackSettings.playbackParent.value
 
     /** The track already counted, so pausing and resuming cannot count the same listen twice. */
     private var countedTrackId: Long? = null
@@ -138,6 +143,15 @@ class PlaybackController @Inject constructor(
             }
         }
 
+        // This class is the only writer, so collecting is how the stored value reaches the UI once
+        // the settings have loaded - the same path the repeat mode takes.
+        scope.launch {
+            playbackSettings.playbackParent.flow.collect { parent ->
+                storedParent = parent
+                controller?.let(::updateUiState)
+            }
+        }
+
         val sessionToken = SessionToken(context, ComponentName(context, PlaybackService::class.java))
         val future = MediaController.Builder(context, sessionToken).buildAsync()
         future.addListener(
@@ -153,9 +167,17 @@ class PlaybackController @Inject constructor(
         )
     }
 
-    /** Builds a fresh queue from [tracks] and starts playback at [startIndex]. */
-    fun playTracks(tracks: List<Track>, startIndex: Int) {
+    /**
+     * Builds a fresh queue from [tracks] and starts playback at [startIndex].
+     *
+     * [parent] is the collection those tracks came from, which is what every list marks as playing -
+     * null for a queue that stands for the whole library rather than one collection. It is written
+     * down with the queue, so the list playing when the app closes is still the one marked on the
+     * next launch.
+     */
+    fun playTracks(tracks: List<Track>, startIndex: Int, parent: PlaybackParent? = null) {
         val mediaController = controller ?: return
+        scope.launch { playbackSettings.setPlaybackParent(parent) }
         val mediaItems = tracks.map(Track::toMediaItem)
         mediaController.setMediaItems(mediaItems, startIndex, 0L)
         mediaController.prepare()
@@ -212,6 +234,7 @@ class PlaybackController @Inject constructor(
         val mediaController = controller ?: return
         mediaController.stop()
         mediaController.clearMediaItems()
+        scope.launch { playbackSettings.setPlaybackParent(null) }
         scope.launch(Dispatchers.IO) { queueItemDao.clear() }
     }
 
@@ -250,6 +273,7 @@ class PlaybackController @Inject constructor(
                 isBuffering = mediaController.playbackState == Player.STATE_BUFFERING,
                 hasEnded = mediaController.playbackState == Player.STATE_ENDED,
                 currentTrackId = mediaController.currentMediaItem?.mediaId?.toLongOrNull(),
+                parent = storedParent,
                 positionMs = mediaController.currentPosition,
                 durationMs = currentDurationMsOrElse(it.durationMs),
                 shuffleEnabled = mediaController.shuffleModeEnabled,

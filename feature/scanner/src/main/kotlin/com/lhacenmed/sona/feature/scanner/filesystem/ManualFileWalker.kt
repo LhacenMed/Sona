@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.storage.StorageManager
 import com.lhacenmed.sona.core.database.stableIdOf
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.model.UnknownNames
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.io.FileInputStream
@@ -93,11 +94,11 @@ class ManualFileWalker @Inject constructor(
 
             val artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
                 ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
-                ?: android.provider.MediaStore.UNKNOWN_STRING
+                ?: UnknownNames.ARTIST
             val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
             val folderPath = File(path).parent.orEmpty()
             val album = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
-                ?: folderPath.substringAfterLast('/').ifEmpty { android.provider.MediaStore.UNKNOWN_STRING }
+                ?: folderPath.substringAfterLast('/').ifEmpty { UnknownNames.ALBUM }
             val trackNumber = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER).firstNumber()
             val discNumber = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DISC_NUMBER).firstNumber()
             val year = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_YEAR)?.toIntOrNull()?.takeIf { it > 0 }

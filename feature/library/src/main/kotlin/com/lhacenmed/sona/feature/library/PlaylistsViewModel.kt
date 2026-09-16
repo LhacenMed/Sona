@@ -2,6 +2,7 @@ package com.lhacenmed.sona.feature.library
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lhacenmed.sona.core.common.cover.rankedCoverArtUris
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.itemsOrEmpty
@@ -11,6 +12,7 @@ import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.sort.SortableList
 import com.lhacenmed.sona.feature.library.sort.SortControl
 import com.lhacenmed.sona.feature.library.sort.control
+import com.lhacenmed.sona.feature.playback.PlaybackController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.InputStream
 import javax.inject.Inject
@@ -28,10 +30,20 @@ import kotlinx.coroutines.withContext
 class PlaylistsViewModel @Inject constructor(
     private val repository: LibraryRepository,
     sortOrders: LibrarySortOrders,
+    playbackController: PlaybackController,
 ) : ViewModel() {
 
     /** Already shared from the application scope, so this only hands it on. */
     val playlists: StateFlow<LibraryContent<Playlist>> = repository.playlists
+
+    /** What the rows mark as playing - see [LibraryPlayback]. */
+    val playback: StateFlow<LibraryPlayback> = libraryPlayback(playbackController, repository)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryPlayback())
+
+    /** The covers Recent and Most played compose theirs from, ranked the way any collection's are. */
+    val recentlyPlayedCoverArtUris: StateFlow<List<String>> = repository.recentlyPlayedTracks().rankedCovers()
+
+    val mostPlayedCoverArtUris: StateFlow<List<String>> = repository.mostPlayedTracks().rankedCovers()
 
     val sort: SortControl = sortOrders.control(SortableList.PLAYLISTS)
 
@@ -148,6 +160,12 @@ class PlaylistsViewModel @Inject constructor(
         repository.tracks.value.itemsOrEmpty
             .filter { it.folderPath == folderPath || it.folderPath.startsWith("$folderPath/") }
             .map { it.id }
+
+    /** Every cover in the list, most shared first, kept current as the list changes. */
+    private fun Flow<LibraryContent<Track>>.rankedCovers(): StateFlow<List<String>> =
+        map { content -> rankedCoverArtUris(content.itemsOrEmpty.map { it.coverArtUri }) }
+            .distinctUntilChanged()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** The cover of whichever track a list shows first, kept current as the list changes. */
     private fun Flow<LibraryContent<Track>>.topCover(): StateFlow<ShortcutCover?> =

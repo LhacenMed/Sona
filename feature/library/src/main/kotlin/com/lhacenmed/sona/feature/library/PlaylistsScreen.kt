@@ -36,6 +36,7 @@ import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
@@ -69,6 +70,9 @@ object PlaylistsScreen : Screen {
         val playlists by viewModel.playlists.collectAsStateWithLifecycle()
         val recentlyPlayedCount by viewModel.recentlyPlayedCount.collectAsStateWithLifecycle()
         val mostPlayedCount by viewModel.mostPlayedCount.collectAsStateWithLifecycle()
+        val recentlyPlayedCoverArtUris by viewModel.recentlyPlayedCoverArtUris.collectAsStateWithLifecycle()
+        val mostPlayedCoverArtUris by viewModel.mostPlayedCoverArtUris.collectAsStateWithLifecycle()
+        val playback by viewModel.playback.collectAsStateWithLifecycle()
         val selection = rememberSelectionState()
         val context = LocalContext.current
 
@@ -175,33 +179,34 @@ object PlaylistsScreen : Screen {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     if (matchesQuery(RECENT_TITLE)) {
                         item(key = "recently-played") {
-                            LibraryEntityRow(
-                                // Not a playlist, so it takes no part in a playlist selection.
-                                selection = null,
-                                selectionKey = "recently-played",
+                            TrackCollectionRow(
                                 title = RECENT_TITLE,
-                                subtitle = "$recentlyPlayedCount tracks",
+                                trackCount = recentlyPlayedCount,
+                                coverArtUris = recentlyPlayedCoverArtUris,
+                                isCurrent = { playback.marks(PlaybackParent.RecentlyPlayed) },
+                                isPlaying = { playback.isPlaying },
                                 onClick = { navigator.go(RecentlyPlayedScreen) },
                             )
                         }
                     }
                     if (matchesQuery(MOST_PLAYED_TITLE)) {
                         item(key = "most-played") {
-                            LibraryEntityRow(
-                                selection = null,
-                                selectionKey = "most-played",
+                            TrackCollectionRow(
                                 title = MOST_PLAYED_TITLE,
-                                subtitle = "$mostPlayedCount tracks",
+                                trackCount = mostPlayedCount,
+                                coverArtUris = mostPlayedCoverArtUris,
+                                isCurrent = { playback.marks(PlaybackParent.MostPlayed) },
+                                isPlaying = { playback.isPlaying },
                                 onClick = { navigator.go(MostPlayedScreen) },
                             )
                         }
                     }
                     items(items = items, key = { "playlist-${it.id}" }) { playlist ->
-                        LibraryEntityRow(
+                        PlaylistRow(
+                            playlist = playlist,
                             selection = selection,
-                            selectionKey = playlist.id,
-                            title = playlist.name,
-                            subtitle = "${playlist.trackCount} tracks",
+                            isCurrent = { playback.marks(playlist) },
+                            isPlaying = { playback.isPlaying },
                             onClick = { navigator.go(PlaylistDetailScreen(playlist.id)) },
                         )
                     }

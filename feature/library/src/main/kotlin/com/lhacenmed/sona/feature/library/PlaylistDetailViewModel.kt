@@ -6,6 +6,7 @@ import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.data.sort.LibrarySortOrders
+import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.sort.SortableList
@@ -29,7 +30,7 @@ class PlaylistDetailViewModel @AssistedInject constructor(
     private val repository: LibraryRepository,
     sortOrders: LibrarySortOrders,
     playbackController: PlaybackController,
-) : TrackListDetailViewModel(playbackController) {
+) : TrackListDetailViewModel(playbackController, repository) {
 
     override val sort: SortControl = sortOrders.control(SortableList.PLAYLIST_TRACKS)
 
@@ -37,6 +38,8 @@ class PlaylistDetailViewModel @AssistedInject constructor(
     interface Factory {
         fun create(playlistId: Long): PlaylistDetailViewModel
     }
+
+    override val playbackParent: PlaybackParent = PlaybackParent.Playlist(playlistId)
 
     val playlist: StateFlow<Playlist?> = repository.playlists
         .map { content -> content.itemsOrEmpty.firstOrNull { it.id == playlistId } }
@@ -82,7 +85,9 @@ class PlaylistDetailViewModel @AssistedInject constructor(
 class RecentlyPlayedViewModel @Inject constructor(
     repository: LibraryRepository,
     playbackController: PlaybackController,
-) : TrackListDetailViewModel(playbackController) {
+) : TrackListDetailViewModel(playbackController, repository) {
+
+    override val playbackParent: PlaybackParent = PlaybackParent.RecentlyPlayed
 
     override val tracks: StateFlow<LibraryContent<Track>> = repository.recentlyPlayedTracks()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryContent.Loading)
@@ -92,7 +97,9 @@ class RecentlyPlayedViewModel @Inject constructor(
 class MostPlayedViewModel @Inject constructor(
     repository: LibraryRepository,
     playbackController: PlaybackController,
-) : TrackListDetailViewModel(playbackController) {
+) : TrackListDetailViewModel(playbackController, repository) {
+
+    override val playbackParent: PlaybackParent = PlaybackParent.MostPlayed
 
     override val tracks: StateFlow<LibraryContent<Track>> = repository.mostPlayedTracks()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryContent.Loading)

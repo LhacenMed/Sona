@@ -19,6 +19,7 @@ fun AlbumsScreen(
     val albums by viewModel.albums.collectAsStateWithLifecycle()
     val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
     val hasPermission by viewModel.hasPermission.collectAsStateWithLifecycle()
+    val playback by viewModel.playback.collectAsStateWithLifecycle()
     val navigator = LocalNavigator.current
 
     LibraryList(
@@ -32,11 +33,11 @@ fun AlbumsScreen(
         modifier = modifier,
         listState = listState,
     ) { album ->
-        LibraryEntityRow(
+        AlbumRow(
+            album = album,
             selection = selection,
-            selectionKey = album.id,
-            title = album.title,
-            subtitle = "${album.artistName} · ${album.trackCount} tracks",
+            isCurrent = { playback.marks(album) },
+            isPlaying = { playback.isPlaying },
             onClick = { navigator.go(AlbumDetailScreen(album.id)) },
         )
     }

@@ -2,6 +2,7 @@ package com.lhacenmed.sona.core.database
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import com.lhacenmed.sona.core.database.dao.AlbumDao
 import com.lhacenmed.sona.core.database.dao.ArtistDao
 import com.lhacenmed.sona.core.database.dao.GenreDao
@@ -29,9 +30,10 @@ import com.lhacenmed.sona.core.database.entity.TrackEntity
         PlaylistTrackEntity::class,
         PlayStatsEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
+@TypeConverters(CoverArtUrisConverter::class)
 abstract class SonaDatabase : RoomDatabase() {
     abstract fun trackDao(): TrackDao
     abstract fun albumDao(): AlbumDao

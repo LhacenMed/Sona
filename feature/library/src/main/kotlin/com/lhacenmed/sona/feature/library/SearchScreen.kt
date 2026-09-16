@@ -1,7 +1,5 @@
 package com.lhacenmed.sona.feature.library
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -41,8 +39,7 @@ object SearchScreen : Screen {
         val query by viewModel.query.collectAsStateWithLifecycle()
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
         val filter by viewModel.filter.collectAsStateWithLifecycle()
-        val currentTrackId by viewModel.currentTrackId.collectAsStateWithLifecycle()
-        val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
+        val playback by viewModel.playback.collectAsStateWithLifecycle()
         val selection = rememberSelectionState()
 
         Column(modifier = Modifier.fillMaxSize()) {
@@ -92,8 +89,8 @@ object SearchScreen : Screen {
                         items(uiState.tracks, key = { "track-${it.id}" }) { track ->
                             TrackRow(
                                 track = track,
-                                isCurrent = { track.id == currentTrackId },
-                                isPlaying = { isPlaying },
+                                isCurrent = { playback.marks(track) },
+                                isPlaying = { playback.isPlaying },
                                 selection = selection,
                                 onClick = { viewModel.onTrackClick(track) },
                             )
@@ -102,9 +99,12 @@ object SearchScreen : Screen {
                     if (uiState.albums.isNotEmpty()) {
                         if (showHeaders) item { SearchSectionHeader("Albums") }
                         items(uiState.albums, key = { "album-${it.id}" }) { album ->
-                            SearchResultRow(
-                                title = album.title,
-                                subtitle = album.artistName,
+                            // The search's selection plays tracks, so these rows are only ever opened.
+                            AlbumRow(
+                                album = album,
+                                selection = null,
+                                isCurrent = { playback.marks(album) },
+                                isPlaying = { playback.isPlaying },
                                 onClick = { navigator.go(AlbumDetailScreen(album.id)) },
                             )
                         }
@@ -112,9 +112,11 @@ object SearchScreen : Screen {
                     if (uiState.artists.isNotEmpty()) {
                         if (showHeaders) item { SearchSectionHeader("Artists") }
                         items(uiState.artists, key = { "artist-${it.id}" }) { artist ->
-                            SearchResultRow(
-                                title = artist.name,
-                                subtitle = "${artist.trackCount} tracks",
+                            ArtistRow(
+                                artist = artist,
+                                selection = null,
+                                isCurrent = { playback.marks(artist) },
+                                isPlaying = { playback.isPlaying },
                                 onClick = { navigator.go(ArtistDetailScreen(artist.id)) },
                             )
                         }
@@ -122,9 +124,11 @@ object SearchScreen : Screen {
                     if (uiState.genres.isNotEmpty()) {
                         if (showHeaders) item { SearchSectionHeader("Genres") }
                         items(uiState.genres, key = { "genre-${it.id}" }) { genre ->
-                            SearchResultRow(
-                                title = genre.name,
-                                subtitle = "${genre.trackCount} tracks",
+                            GenreRow(
+                                genre = genre,
+                                selection = null,
+                                isCurrent = { playback.marks(genre) },
+                                isPlaying = { playback.isPlaying },
                                 onClick = { navigator.go(GenreDetailScreen(genre.id)) },
                             )
                         }
@@ -173,29 +177,4 @@ private fun SearchSectionHeader(title: String) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
     )
-}
-
-@Composable
-private fun SearchResultRow(
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyLarge,
-        )
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
 }

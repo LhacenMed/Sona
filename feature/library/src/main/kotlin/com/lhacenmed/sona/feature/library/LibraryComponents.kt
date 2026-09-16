@@ -2,17 +2,13 @@ package com.lhacenmed.sona.feature.library
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,9 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.FileUpload
-import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Search
@@ -48,20 +42,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.designsystem.component.CookieShape
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
-import com.lhacenmed.sona.core.designsystem.component.SonaCoverArt
-import com.lhacenmed.sona.core.designsystem.component.SonaIconButton
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
@@ -69,7 +59,6 @@ import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.component.shimmer
 import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
-import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.library.sort.SortSheet
 import com.lhacenmed.sona.feature.library.sort.sortAction
@@ -204,7 +193,7 @@ private const val NO_DRAG = -1
  * Provided per row by [ReorderableColumn] rather than passed through [LibraryList]'s `row`, which every
  * list shares and only a reorderable one has any use for.
  */
-private val LocalDragHandle = compositionLocalOf<Modifier?> { null }
+internal val LocalDragHandle = compositionLocalOf<Modifier?> { null }
 
 /**
  * A list whose rows can be dragged into a new order.
@@ -319,45 +308,6 @@ internal fun Modifier.selectableRow(
     onLongClick = { selection.toggle(selectionKey) },
 )
 
-/** The two-line row shape shared by the artists, albums, genres and folders tabs. */
-@Composable
-internal fun LibraryEntityRow(
-    title: String,
-    subtitle: String,
-    // Null for a row that stands for something other than a real entity - the derived lists on the
-    // playlists screen - so it can be opened but never gathered into a selection meant for playlists.
-    selection: SelectionState?,
-    selectionKey: Any,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val background = if (selection?.isSelected(selectionKey) == true) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.surface
-    }
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(background)
-            .then(
-                if (selection == null) {
-                    Modifier.clickable(onClick = onClick)
-                } else {
-                    Modifier.selectableRow(selection, selectionKey, onClick)
-                },
-            )
-            .padding(horizontal = SonaComponentStyle.ContentHorizontalPadding, vertical = 12.dp),
-    ) {
-        Text(text = title, style = MaterialTheme.typography.bodyLarge)
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
 /**
  * Auxio's empty-list cookie - the six-sided expressive shape with [icon] inside it - centred and
  * shimmering while the list loads.
@@ -446,8 +396,7 @@ internal fun TrackListDetail(
     onRemoveSelected: ((Set<Any>) -> Unit)? = null,
 ) {
     val tracks by viewModel.tracks.collectAsStateWithLifecycle()
-    val currentTrackId by viewModel.currentTrackId.collectAsStateWithLifecycle()
-    val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
+    val playback by viewModel.playback.collectAsStateWithLifecycle()
     val selection = rememberSelectionState()
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf<String?>(null) }
@@ -539,8 +488,9 @@ internal fun TrackListDetail(
         ) { track ->
             TrackRow(
                 track = track,
-                isCurrent = { track.id == currentTrackId },
-                isPlaying = { isPlaying },
+                // Marked only while the queue is this very list's - see [LibraryPlayback].
+                isCurrent = { playback.marksWithin(track, viewModel.playbackParent) },
+                isPlaying = { playback.isPlaying },
                 selection = selection,
                 onClick = { viewModel.onTrackClick(track) },
             )
@@ -549,125 +499,6 @@ internal fun TrackListDetail(
 
     if (isSortSheetOpen && sort != null) {
         SortSheet(sort = sort, onDismiss = { isSortSheetOpen = false })
-    }
-}
-
-/** How strongly a selected row is tinted with the primary colour: Auxio's `sel_item_activated_bg`. */
-private const val SELECTED_ROW_TINT_ALPHA = 0.12f
-
-/** How long that tint takes to fade in and out: Auxio's `anim_fade_enter_duration` and exit duration. */
-private const val SELECTED_ROW_FADE_IN_MILLIS = 200
-private const val SELECTED_ROW_FADE_OUT_MILLIS = 100
-
-/** The touch target a drag handle is centred in: Auxio's `size_touchable_small`. */
-private val DragHandleTouchSize = 48.dp
-
-/**
- * A track row, laid out as Auxio's `item_song`: cover art, title over "artist - album", and the row's
- * own overflow button - with a drag handle beside that button in a list that can be reordered.
- *
- * [isCurrent] and [isPlaying] are lambdas, not values, on purpose. Passed as `Boolean`s, every row in
- * the list recomposes whenever the playing track changes, because each row's parameters changed.
- * Read inside the row's own composition, only the row that was marked and the row that now is do any
- * work.
- *
- * The playing track is shown by its cover and its title alone - see [SonaCoverArt]. Nothing paints
- * the row behind them, so the one tint a row can have still means "selected".
- *
- * The overflow button stays through a selection: the row keeps one shape whatever state it is in.
- */
-@Composable
-internal fun TrackRow(
-    track: Track,
-    isCurrent: () -> Boolean,
-    isPlaying: () -> Boolean,
-    selection: SelectionState,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val current = isCurrent()
-    val isSelected = selection.isSelected(track.id)
-    // The fade is animated rather than the colour, and read only when drawing: an animated colour would
-    // trail behind every theme transition, and reading it here would recompose the row every frame.
-    val selectedFraction = animateFloatAsState(
-        targetValue = if (isSelected) 1f else 0f,
-        animationSpec = tween(
-            durationMillis = if (isSelected) SELECTED_ROW_FADE_IN_MILLIS else SELECTED_ROW_FADE_OUT_MILLIS,
-        ),
-        label = "trackRowSelection",
-    )
-    val selectedTint = MaterialTheme.colorScheme.primary
-    val dragHandle = LocalDragHandle.current
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .drawBehind {
-                drawRect(selectedTint.copy(alpha = SELECTED_ROW_TINT_ALPHA * selectedFraction.value))
-            }
-            .selectableRow(selection, track.id, onClick)
-            .padding(
-                start = SonaComponentStyle.ContentHorizontalPadding,
-                top = 12.dp,
-                // The overflow glyph, not its 48dp touch target, ends on the keyline: the target
-                // holds the glyph 12dp in from its edge.
-                end = SonaComponentStyle.ContentHorizontalPadding - 12.dp,
-                bottom = 12.dp,
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        SonaCoverArt(
-            coverArtUri = track.coverArtUri,
-            contentDescription = null,
-            isCurrent = current,
-            isPlaying = isPlaying(),
-            isSelected = isSelected,
-        )
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 16.dp, end = 12.dp),
-        ) {
-            Text(
-                text = track.title,
-                style = MaterialTheme.typography.titleMedium,
-                color = if (current) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = "${track.artist} - ${track.album}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        if (dragHandle != null) {
-            Box(
-                modifier = Modifier
-                    .size(DragHandleTouchSize)
-                    .then(dragHandle),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.DragHandle,
-                    contentDescription = "Reorder",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        SonaIconButton(
-            // Opens nothing yet. It takes its place now because the row's shape is part of the
-            // list's: adding it later would move the title and the cover of every row.
-            onClick = {},
-            icon = Icons.Filled.MoreHoriz,
-            contentDescription = "More options",
-        )
     }
 }
 

@@ -18,8 +18,7 @@ fun TracksScreen(
     val tracks by viewModel.tracks.collectAsStateWithLifecycle()
     val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
     val hasPermission by viewModel.hasPermission.collectAsStateWithLifecycle()
-    val currentTrackId by viewModel.currentTrackId.collectAsStateWithLifecycle()
-    val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
+    val playback by viewModel.playback.collectAsStateWithLifecycle()
 
     LibraryList(
         content = tracks,
@@ -35,8 +34,8 @@ fun TracksScreen(
         TrackRow(
             track = track,
             // Lambdas, so changing songs recomposes two rows instead of the whole list.
-            isCurrent = { track.id == currentTrackId },
-            isPlaying = { isPlaying },
+            isCurrent = { playback.marks(track) },
+            isPlaying = { playback.isPlaying },
             selection = selection,
             onClick = { viewModel.onTrackClick(track) },
         )

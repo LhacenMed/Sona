@@ -3,6 +3,7 @@ package com.lhacenmed.sona.core.designsystem.component
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -33,7 +34,9 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -41,6 +44,9 @@ import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.maxBitmapSize
 import com.lhacenmed.sona.core.common.cover.DefaultCover
+import com.lhacenmed.sona.core.designsystem.component.cover.CoverArrangement
+import com.lhacenmed.sona.core.designsystem.component.cover.CoverComposition
+import com.lhacenmed.sona.core.designsystem.component.cover.CoverCompositionFetcher
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.CoverStyle
 import com.lhacenmed.sona.core.designsystem.theme.LocalCoverStyle
@@ -50,11 +56,17 @@ import coil3.size.Size as DecodeSize
 /** The look every cover shares - Auxio's cover dimensions. */
 object CoverArtDefaults {
 
-    /** The size a cover takes in a list row: Auxio's `size_touchable_small`. */
+    /** The size a track's cover takes in a list row: Auxio's `size_touchable_small`. */
     val ListSize = 48.dp
+
+    /** The size an album's, artist's, genre's, playlist's or folder's cover takes: Auxio's `size_touchable_medium`. */
+    val CollectionListSize = 56.dp
 
     /** The corners a list cover is cut with in round mode: the corners every component shares. */
     val ListCornerRadius = SonaComponentStyle.CornerRadius
+
+    /** The icon a collection's cover shows while it has no image: Auxio's `size_icon_medium`. */
+    internal val CollectionGlyphSize = 32.dp
 
     internal val SelectionBadgeSize = 20.dp
 
@@ -71,6 +83,9 @@ private const val ACTIVE_COVER_SCRIM_ALPHA = 0.6f
 /** The shape a cover with [cornerRadius] is cut to - square corners when round mode is off. */
 fun CoverStyle.shape(cornerRadius: Dp): Shape = RoundedCornerShape(if (isRounded) cornerRadius else 0.dp)
 
+/** The shape an artist's cover is cut to: Auxio's circular shape appearance - square when round mode is off. */
+private fun CoverStyle.circularShape(): Shape = if (isRounded) CircleShape else RoundedCornerShape(0.dp)
+
 /**
  * A cover filling whatever it is laid over, for artwork that sits behind content rather than beside it.
  *
@@ -83,16 +98,16 @@ fun SonaCoverBackdrop(
     coverArtUri: String?,
     modifier: Modifier = Modifier,
 ) {
-    val imageUri = coverArtUri?.takeIf { LocalCoverStyle.current.showsCovers }
-    var isImageLoaded by remember(imageUri) { mutableStateOf(false) }
+    val request = rememberCoverRequest(coverArtUri, LocalCoverStyle.current)
+    var isImageLoaded by remember(request) { mutableStateOf(false) }
     Box(
         modifier = modifier.background(MaterialTheme.colorScheme.surfaceContainer),
         contentAlignment = Alignment.Center,
     ) {
         if (!isImageLoaded) DefaultCoverGlyph(contentDescription = null)
-        if (imageUri != null) {
+        if (request != null) {
             AsyncImage(
-                model = rememberCoverRequest(imageUri, LocalCoverStyle.current),
+                model = request,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 onSuccess = { isImageLoaded = true },
@@ -127,7 +142,7 @@ fun SonaCoverImage(
         contentAlignment = Alignment.Center,
     ) {
         CoverPicture(
-            coverArtUri = coverArtUri,
+            request = rememberCoverRequest(coverArtUri, style),
             contentDescription = contentDescription,
             cornerRadius = cornerRadius,
             style = style,
@@ -136,14 +151,12 @@ fun SonaCoverImage(
 }
 
 /**
- * A list cover with a check badge that springs onto its corner while its row is selected. Auxio's
- * `CoverView`.
+ * A track's list cover: Auxio's `CoverView` as its `item_song` sizes it.
  *
  * While its track is the current one the cover is dimmed beneath the playing indicator, the way
  * ArchiveTune's thumbnail shows it: the cover is the only thing that changes, so the list keeps its
  * rhythm and a selected row still reads as selected underneath.
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SonaCoverArt(
     coverArtUri: String?,
@@ -154,6 +167,201 @@ fun SonaCoverArt(
     isSelected: Boolean = false,
 ) {
     val style = LocalCoverStyle.current
+    ListCoverFrame(
+        size = CoverArtDefaults.ListSize,
+        shape = style.shape(CoverArtDefaults.ListCornerRadius),
+        isCurrent = isCurrent,
+        isPlaying = isPlaying,
+        isSelected = isSelected,
+        modifier = modifier,
+    ) {
+        CoverPicture(
+            request = rememberCoverRequest(coverArtUri, style),
+            contentDescription = contentDescription,
+            cornerRadius = CoverArtDefaults.ListCornerRadius,
+            style = style,
+        )
+    }
+}
+
+/**
+ * An album's list cover: Auxio's `CoverView` bound to an album in its `item_parent`.
+ *
+ * An album is one cover, so it is drawn like a track's - only larger.
+ */
+@Composable
+fun SonaAlbumCover(
+    coverArtUri: String?,
+    modifier: Modifier = Modifier,
+    isCurrent: Boolean = false,
+    isPlaying: Boolean = false,
+    isSelected: Boolean = false,
+) {
+    CollectionCover(
+        request = rememberCoverRequest(coverArtUri, LocalCoverStyle.current),
+        glyph = SonaIcons.CoverPlaceholder,
+        isCircular = false,
+        isCurrent = isCurrent,
+        isPlaying = isPlaying,
+        isSelected = isSelected,
+        modifier = modifier,
+    )
+}
+
+/**
+ * An artist's list cover: Auxio's `CoverView` bound to an artist - circular, and with four or more
+ * covers among the artist's tracks, those covers scattered like a messy pile of records.
+ *
+ * [seed] keeps the pile the same every time the cover is drawn: the artist's identity.
+ */
+@Composable
+fun SonaArtistCover(
+    coverArtUris: List<String>,
+    seed: Int,
+    modifier: Modifier = Modifier,
+    isCurrent: Boolean = false,
+    isPlaying: Boolean = false,
+    isSelected: Boolean = false,
+) {
+    CollectionCover(
+        request = rememberCompositionRequest(coverArtUris, CoverArrangement.Smattering, seed),
+        glyph = SonaIcons.Artist,
+        isCircular = true,
+        isCurrent = isCurrent,
+        isPlaying = isPlaying,
+        isSelected = isSelected,
+        modifier = modifier,
+    )
+}
+
+/**
+ * A genre's list cover: Auxio's `CoverView` bound to a genre - with four or more covers among the
+ * genre's tracks, those covers framed side by side like a gallery wall.
+ *
+ * [seed] keeps the gallery the same every time the cover is drawn: the genre's identity.
+ */
+@Composable
+fun SonaGenreCover(
+    coverArtUris: List<String>,
+    seed: Int,
+    modifier: Modifier = Modifier,
+    isCurrent: Boolean = false,
+    isPlaying: Boolean = false,
+    isSelected: Boolean = false,
+) {
+    CollectionCover(
+        request = rememberCompositionRequest(coverArtUris, CoverArrangement.Gallery, seed),
+        glyph = SonaIcons.Genre,
+        isCircular = false,
+        isCurrent = isCurrent,
+        isPlaying = isPlaying,
+        isSelected = isSelected,
+        modifier = modifier,
+    )
+}
+
+/**
+ * A playlist's list cover: Auxio's `CoverView` bound to a playlist - with four or more covers among
+ * its tracks, those covers stacked into a neat pile.
+ *
+ * [seed] keeps the pile the same every time the cover is drawn: the playlist's identity.
+ */
+@Composable
+fun SonaPlaylistCover(
+    coverArtUris: List<String>,
+    seed: Int,
+    modifier: Modifier = Modifier,
+    isCurrent: Boolean = false,
+    isPlaying: Boolean = false,
+    isSelected: Boolean = false,
+) {
+    CollectionCover(
+        request = rememberCompositionRequest(coverArtUris, CoverArrangement.Stack, seed),
+        glyph = SonaIcons.Playlist,
+        isCircular = false,
+        isCurrent = isCurrent,
+        isPlaying = isPlaying,
+        isSelected = isSelected,
+        modifier = modifier,
+    )
+}
+
+/**
+ * A folder's list cover: the covers of its tracks stacked as a playlist's are - a folder is a pile of
+ * files in an order, which is the same thing a stack says. Auxio has no folders of its own.
+ *
+ * [seed] keeps the pile the same every time the cover is drawn: the folder's path.
+ */
+@Composable
+fun SonaFolderCover(
+    coverArtUris: List<String>,
+    seed: Int,
+    modifier: Modifier = Modifier,
+    isCurrent: Boolean = false,
+    isPlaying: Boolean = false,
+    isSelected: Boolean = false,
+) {
+    CollectionCover(
+        request = rememberCompositionRequest(coverArtUris, CoverArrangement.Stack, seed),
+        glyph = SonaIcons.Folder,
+        isCircular = false,
+        isCurrent = isCurrent,
+        isPlaying = isPlaying,
+        isSelected = isSelected,
+        modifier = modifier,
+    )
+}
+
+/** The list cover every album, artist, genre, playlist and folder shares: Auxio's `Widget.Auxio.Image.Medium`. */
+@Composable
+private fun CollectionCover(
+    request: ImageRequest?,
+    glyph: ImageVector,
+    isCircular: Boolean,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    isSelected: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val style = LocalCoverStyle.current
+    ListCoverFrame(
+        size = CoverArtDefaults.CollectionListSize,
+        shape = if (isCircular) style.circularShape() else style.shape(CoverArtDefaults.ListCornerRadius),
+        isCurrent = isCurrent,
+        isPlaying = isPlaying,
+        isSelected = isSelected,
+        modifier = modifier,
+    ) {
+        CoverPicture(
+            request = request,
+            contentDescription = null,
+            cornerRadius = CoverArtDefaults.ListCornerRadius,
+            style = style,
+            isCircular = isCircular,
+            glyph = glyph,
+            glyphSize = CoverArtDefaults.CollectionGlyphSize,
+        )
+    }
+}
+
+/**
+ * A list cover's frame: its ground cut to [shape], the playing indicator over whatever is playing, and a
+ * check badge that springs onto its corner while its row is selected.
+ *
+ * Every list cover in the app is one of these, so a track, an album and a genre all say "this is the one
+ * playing" in exactly the same way.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ListCoverFrame(
+    size: Dp,
+    shape: Shape,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    isSelected: Boolean,
+    modifier: Modifier = Modifier,
+    cover: @Composable BoxScope.() -> Unit,
+) {
     val badgeAlpha = animateFloatAsState(
         targetValue = if (isSelected) 1f else 0f,
         animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
@@ -165,20 +373,15 @@ fun SonaCoverArt(
         label = "coverSelectionBadgeScale",
     )
 
-    Box(modifier = modifier.size(CoverArtDefaults.ListSize)) {
+    Box(modifier = modifier.size(size)) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .clip(style.shape(CoverArtDefaults.ListCornerRadius))
+                .clip(shape)
                 .background(MaterialTheme.colorScheme.surfaceContainer),
             contentAlignment = Alignment.Center,
         ) {
-            CoverPicture(
-                coverArtUri = coverArtUri,
-                contentDescription = contentDescription,
-                cornerRadius = CoverArtDefaults.ListCornerRadius,
-                style = style,
-            )
+            cover()
             // ArchiveTune's thumbnail: white on a black scrim in the cover's own shape.
             SonaPlayingIndicatorBox(
                 isActive = isCurrent,
@@ -186,10 +389,7 @@ fun SonaCoverArt(
                 color = Color.White,
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(
-                        color = Color.Black.copy(alpha = ACTIVE_COVER_SCRIM_ALPHA),
-                        shape = style.shape(CoverArtDefaults.ListCornerRadius),
-                    ),
+                    .background(color = Color.Black.copy(alpha = ACTIVE_COVER_SCRIM_ALPHA), shape = shape),
             )
         }
         // Outside the clipped cover, so the badge keeps its round shape on a square-cornered cover.
@@ -223,30 +423,37 @@ fun SonaCoverArt(
  * artwork, covers turned off, or a load that fails. A cover already in memory draws straight over it.
  * Drawing the icon only after a load had failed is what left covers blank in between: a track without
  * artwork still has an artwork address, and only the failed load says there is nothing there.
+ *
+ * A circular cover is always cropped to fill its circle, as Auxio square-crops every circular image.
  */
 @Composable
 private fun CoverPicture(
-    coverArtUri: String?,
+    request: ImageRequest?,
     contentDescription: String?,
     cornerRadius: Dp,
     style: CoverStyle,
     modifier: Modifier = Modifier,
+    isCircular: Boolean = false,
+    glyph: ImageVector = SonaIcons.CoverPlaceholder,
+    glyphSize: Dp? = null,
 ) {
-    val imageUri = coverArtUri?.takeIf { style.showsCovers }
-    var isImageLoaded by remember(imageUri) { mutableStateOf(false) }
+    var isImageLoaded by remember(request) { mutableStateOf(false) }
     if (!isImageLoaded) {
         // Described only when it is all there is to show; otherwise the image carries the description.
         DefaultCoverGlyph(
-            contentDescription = if (imageUri == null) contentDescription else null,
+            contentDescription = if (request == null) contentDescription else null,
+            glyph = glyph,
+            size = glyphSize,
             modifier = modifier,
         )
     }
-    if (imageUri != null) {
-        var imageAspectRatio by remember(imageUri) { mutableFloatStateOf(Float.NaN) }
+    if (request != null) {
+        val cropsToFill = style.isForcedSquare || isCircular
+        var imageAspectRatio by remember(request) { mutableFloatStateOf(Float.NaN) }
         AsyncImage(
-            model = rememberCoverRequest(imageUri, style),
+            model = request,
             contentDescription = contentDescription,
-            contentScale = if (style.isForcedSquare) ContentScale.Crop else ContentScale.Fit,
+            contentScale = if (cropsToFill) ContentScale.Crop else ContentScale.Fit,
             onSuccess = { success ->
                 val intrinsicSize = success.painter.intrinsicSize
                 imageAspectRatio = intrinsicSize.width / intrinsicSize.height
@@ -255,7 +462,7 @@ private fun CoverPicture(
             modifier = modifier
                 .fillMaxSize()
                 .then(
-                    if (style.isForcedSquare) {
+                    if (cropsToFill) {
                         Modifier
                     } else {
                         Modifier.clipToFittedImage(
@@ -268,30 +475,80 @@ private fun CoverPicture(
     }
 }
 
-/** [DefaultCover]'s glyph in the theme's colour, sized to the cover it stands in for. */
+/**
+ * [glyph] in the theme's colour: [DefaultCover]'s glyph by default. It is [size] when given, and otherwise
+ * spans [DefaultCover]'s share of the cover it stands in for.
+ */
 @Composable
 private fun DefaultCoverGlyph(
     contentDescription: String?,
     modifier: Modifier = Modifier,
+    glyph: ImageVector = SonaIcons.CoverPlaceholder,
+    size: Dp? = null,
 ) {
     Icon(
-        imageVector = SonaIcons.CoverPlaceholder,
+        imageVector = glyph,
         contentDescription = contentDescription,
         tint = MaterialTheme.colorScheme.onSurface,
         // An icon keeps its aspect ratio inside its bounds, so on a wide backdrop the glyph spans the
         // same share of the shorter side as it does on a square cover.
-        modifier = modifier.fillMaxSize(DefaultCover.GLYPH_SIZE_FRACTION),
+        modifier = if (size == null) {
+            modifier.fillMaxSize(DefaultCover.GLYPH_SIZE_FRACTION)
+        } else {
+            modifier.size(size)
+        },
     )
 }
 
-/** A request for [coverArtUri], decoded no larger than the cover mode allows. */
+/**
+ * A request for [coverArtUri], decoded no larger than the cover mode allows - or null when there is no
+ * image to load: no cover, or covers turned off.
+ */
 @Composable
-private fun rememberCoverRequest(coverArtUri: String, style: CoverStyle): ImageRequest {
+private fun rememberCoverRequest(coverArtUri: String?, style: CoverStyle): ImageRequest? {
     val context = LocalPlatformContext.current
-    return remember(coverArtUri, style.maxResolutionPx) {
+    return remember(coverArtUri, style.showsCovers, style.maxResolutionPx) {
+        if (coverArtUri == null || !style.showsCovers) return@remember null
         ImageRequest.Builder(context)
             .data(coverArtUri)
             .apply { style.maxResolutionPx?.let { maxBitmapSize(DecodeSize(it, it)) } }
+            .build()
+    }
+}
+
+/**
+ * A request for [coverArtUris] composed as [arrangement] at a collection's list cover size - or null when
+ * there is no image to load: no covers, or covers turned off.
+ *
+ * Its corner is Auxio's `responsiveCornerRatio`: the squarish corner as a share of the cover's side, even
+ * for an artist's circular cover.
+ */
+@Composable
+private fun rememberCompositionRequest(
+    coverArtUris: List<String>,
+    arrangement: CoverArrangement,
+    seed: Int,
+): ImageRequest? {
+    val style = LocalCoverStyle.current
+    val context = LocalPlatformContext.current
+    val sizePx = with(LocalDensity.current) { CoverArtDefaults.CollectionListSize.roundToPx() }
+    return remember(coverArtUris, arrangement, seed, style.showsCovers, style.isRounded, sizePx) {
+        if (coverArtUris.isEmpty() || !style.showsCovers) return@remember null
+        val composition = CoverComposition(
+            coverArtUris = coverArtUris,
+            arrangement = arrangement,
+            seed = seed,
+            cornerRadiusRatio = if (style.isRounded) {
+                CoverArtDefaults.ListCornerRadius / CoverArtDefaults.CollectionListSize
+            } else {
+                0f
+            },
+        )
+        ImageRequest.Builder(context)
+            .data(composition)
+            .fetcherFactory(CoverCompositionFetcher.Factory)
+            .memoryCacheKey(composition.memoryCacheKey(sizePx))
+            .size(sizePx)
             .build()
     }
 }

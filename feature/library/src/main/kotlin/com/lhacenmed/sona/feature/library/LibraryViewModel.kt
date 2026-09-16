@@ -93,29 +93,9 @@ class LibraryViewModel @Inject constructor(
 
     val isScanning: StateFlow<Boolean> = mediaScanner.isScanning
 
-    /**
-     * Only the *identity* of the playing track, not the whole playback state.
-     *
-     * The track list highlights the current row, and it used to do that by collecting the entire
-     * `PlaybackUiState` - which carries a playback position updated twice a second. Every one of
-     * those ticks recomposed the whole list for a value the list does not display. Narrowing it to a
-     * distinct-until-changed id means the list recomposes when the song changes, and not otherwise.
-     */
-    val currentTrackId: StateFlow<Long?> = playbackController.playbackState
-        .map { it.currentTrackId }
-        .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
-
-    /**
-     * Whether that track is playing - or about to, while it buffers - which is what the playing
-     * indicator animates on.
-     * Split from [currentTrackId] for the same reason it exists: the two change at different
-     * moments, and a row that took both as one value would recompose on each.
-     */
-    val isPlaying: StateFlow<Boolean> = playbackController.playbackState
-        .map { it.isPlaying }
-        .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+    /** What every tab marks as playing - see [LibraryPlayback]. */
+    val playback: StateFlow<LibraryPlayback> = libraryPlayback(playbackController, repository)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryPlayback())
 
     // Permission state has no dedicated change broadcast; re-checking it whenever a scan
     // starts/stops (the moment it would actually change, since granting it is what unblocks the

@@ -19,6 +19,7 @@ fun FoldersScreen(
     val folders by viewModel.folders.collectAsStateWithLifecycle()
     val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
     val hasPermission by viewModel.hasPermission.collectAsStateWithLifecycle()
+    val playback by viewModel.playback.collectAsStateWithLifecycle()
     val navigator = LocalNavigator.current
 
     LibraryList(
@@ -32,11 +33,11 @@ fun FoldersScreen(
         modifier = modifier,
         listState = listState,
     ) { folder ->
-        LibraryEntityRow(
+        FolderRow(
+            folder = folder,
             selection = selection,
-            selectionKey = folder.path,
-            title = folder.name,
-            subtitle = "${folder.trackCount} tracks",
+            isCurrent = { playback.marks(folder) },
+            isPlaying = { playback.isPlaying },
             onClick = { navigator.go(FolderDetailScreen(folder.path)) },
         )
     }

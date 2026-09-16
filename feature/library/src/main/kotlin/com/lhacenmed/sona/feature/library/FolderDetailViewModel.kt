@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.sort.LibrarySortOrders
+import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.sort.SortableList
 import com.lhacenmed.sona.feature.library.sort.SortControl
@@ -23,12 +24,14 @@ class FolderDetailViewModel @AssistedInject constructor(
     repository: LibraryRepository,
     sortOrders: LibrarySortOrders,
     playbackController: PlaybackController,
-) : TrackListDetailViewModel(playbackController) {
+) : TrackListDetailViewModel(playbackController, repository) {
 
     @AssistedFactory
     interface Factory {
         fun create(folderPath: String): FolderDetailViewModel
     }
+
+    override val playbackParent: PlaybackParent = PlaybackParent.Folder(folderPath)
 
     val folderName: String = folderPath.substringAfterLast('/')
 
