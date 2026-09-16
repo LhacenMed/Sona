@@ -45,6 +45,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.LibraryContent
+import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.CookieShape
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
@@ -484,7 +485,14 @@ internal fun TrackListDetail(
                 isPlaying = { playback.isPlaying },
                 selection = selection,
                 onClick = { viewModel.onTrackClick(track) },
-                onOpenOptions = { optionsTarget = OptionsTarget.ForTrack(track, trackOptionsContext) },
+                onOpenOptions = {
+                    optionsTarget = OptionsTarget.ForTrack(
+                        track = track,
+                        context = trackOptionsContext,
+                        queueSource = tracks.itemsOrEmpty,
+                        queueParent = viewModel.playbackParent,
+                    )
+                },
             )
         }
     }

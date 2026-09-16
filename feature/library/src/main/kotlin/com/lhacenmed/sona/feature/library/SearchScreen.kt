@@ -99,7 +99,9 @@ object SearchScreen : Screen {
                                 isPlaying = { playback.isPlaying },
                                 selection = selection,
                                 onClick = { viewModel.onTrackClick(track) },
-                                onOpenOptions = { optionsTarget = OptionsTarget.ForTrack(track) },
+                                onOpenOptions = {
+                                    optionsTarget = OptionsTarget.ForTrack(track, queueSource = uiState.tracks)
+                                },
                             )
                         }
                     }

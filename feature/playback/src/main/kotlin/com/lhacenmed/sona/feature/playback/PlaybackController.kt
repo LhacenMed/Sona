@@ -2,6 +2,7 @@ package com.lhacenmed.sona.feature.playback
 
 import android.content.ComponentName
 import android.content.Context
+import android.os.Bundle
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -10,6 +11,7 @@ import androidx.media3.common.Timeline
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.util.Util
 import androidx.media3.session.MediaController
+import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
 import com.lhacenmed.sona.core.data.LibraryRepository
@@ -174,10 +176,16 @@ class PlaybackController @Inject constructor(
      * null for a queue that stands for the whole library rather than one collection. It is written
      * down with the queue, so the list playing when the app closes is still the one marked on the
      * next launch.
+     *
+     * [shuffled] turns shuffle on or off for the new queue - Auxio's explicit Play and Shuffle - or,
+     * when null, leaves it as it was, the way tapping a row does. Shuffled, [startIndex] still plays
+     * first and the rest follow in random order; the queue itself keeps the order it was given.
      */
-    fun playTracks(tracks: List<Track>, startIndex: Int, parent: PlaybackParent? = null) {
+    fun playTracks(tracks: List<Track>, startIndex: Int, parent: PlaybackParent? = null, shuffled: Boolean? = null) {
         val mediaController = controller ?: return
         scope.launch { playbackSettings.setPlaybackParent(parent) }
+        // Before the items, so the player builds the new shuffle order around startIndex.
+        shuffled?.let(::setShuffleEnabled)
         val mediaItems = tracks.map(Track::toMediaItem)
         mediaController.setMediaItems(mediaItems, startIndex, 0L)
         mediaController.prepare()
@@ -227,6 +235,34 @@ class PlaybackController @Inject constructor(
 
     fun insertQueueItem(mediaItemIndex: Int, track: Track) {
         controller?.addMediaItem(mediaItemIndex, track.toMediaItem())
+    }
+
+    /**
+     * Plays [tracks] right after the current track, in play order - moving any already queued rather
+     * than repeating them. Starts them instead when nothing is queued.
+     */
+    fun playNext(tracks: List<Track>) {
+        enqueue(tracks, PlaybackSessionCommands.playNextCommand)
+    }
+
+    /**
+     * Plays [tracks] after everything else queued - moving any already queued rather than repeating
+     * them. Starts them instead when nothing is queued.
+     */
+    fun addToQueue(tracks: List<Track>) {
+        enqueue(tracks, PlaybackSessionCommands.addToQueueCommand)
+    }
+
+    private fun enqueue(tracks: List<Track>, command: SessionCommand) {
+        val mediaController = controller ?: return
+        if (mediaController.mediaItemCount == 0) {
+            playTracks(tracks, startIndex = 0)
+            return
+        }
+        val args = Bundle().apply {
+            putLongArray(PlaybackSessionCommands.EXTRA_TRACK_IDS, tracks.map(Track::id).toLongArray())
+        }
+        mediaController.sendCustomCommand(command, args)
     }
 
     /** Stops playback and drops the queue, the saved copy included, so nothing comes back on the next launch. */

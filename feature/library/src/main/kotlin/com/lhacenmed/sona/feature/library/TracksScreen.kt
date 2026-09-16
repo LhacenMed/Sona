@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
@@ -44,7 +45,9 @@ fun TracksScreen(
             isPlaying = { playback.isPlaying },
             selection = selection,
             onClick = { viewModel.onTrackClick(track) },
-            onOpenOptions = { optionsTarget = OptionsTarget.ForTrack(track) },
+            onOpenOptions = {
+                optionsTarget = OptionsTarget.ForTrack(track, queueSource = tracks.itemsOrEmpty)
+            },
         )
     }
 

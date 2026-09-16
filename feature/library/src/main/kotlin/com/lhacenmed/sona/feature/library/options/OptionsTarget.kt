@@ -3,6 +3,7 @@ package com.lhacenmed.sona.feature.library.options
 import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Genre
+import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.library.options.OptionsAction.ALBUM_DETAILS
@@ -30,9 +31,17 @@ import com.lhacenmed.sona.feature.library.trackCountLabel
  * a row reaches when nothing about where it sits narrows the choices further.
  */
 sealed interface OptionsTarget {
+    /**
+     * [queueSource] and [queueParent] are the list [track] was opened from and what it plays as -
+     * a bare list and no parent for a track with no list around it. Playing this track plays this
+     * list from here, the same as tapping the row does; Play next, Add to queue and Add to playlist
+     * only ever touch [track] itself, whatever list it came from.
+     */
     data class ForTrack(
         val track: Track,
         val context: TrackOptionsContext = TrackOptionsContext.LIST,
+        val queueSource: List<Track> = listOf(track),
+        val queueParent: PlaybackParent? = null,
     ) : OptionsTarget
 
     data class ForAlbum(
@@ -98,6 +107,9 @@ fun OptionsTarget.actions(): List<OptionsAction> = when (this) {
  * The actions listed but not clickable - Auxio's `getDisabledItemIds`: an artist or a playlist with no
  * tracks yet cannot be played, queued or shared, though it is still worth seeing and still worth
  * deleting or renaming. A track, an album and a genre are never disabled this way.
+ *
+ * Favorites, which Auxio has no counterpart for, can never be renamed or deleted - the rule the
+ * playlists screen's selection bar already keeps.
  */
 fun OptionsTarget.disabledActions(): Set<OptionsAction> = when (this) {
     is OptionsTarget.ForArtist -> if (artist.trackCount == 0) {
@@ -106,10 +118,9 @@ fun OptionsTarget.disabledActions(): Set<OptionsAction> = when (this) {
         emptySet()
     }
 
-    is OptionsTarget.ForPlaylist -> if (playlist.trackCount == 0) {
-        setOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, EXPORT, SHARE)
-    } else {
-        emptySet()
+    is OptionsTarget.ForPlaylist -> buildSet {
+        if (playlist.isBuiltIn) addAll(listOf(RENAME, DELETE))
+        if (playlist.trackCount == 0) addAll(listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, EXPORT, SHARE))
     }
 
     is OptionsTarget.ForTrack,
