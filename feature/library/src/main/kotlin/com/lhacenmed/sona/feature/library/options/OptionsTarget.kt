@@ -1,0 +1,157 @@
+package com.lhacenmed.sona.feature.library.options
+
+import com.lhacenmed.sona.core.model.Album
+import com.lhacenmed.sona.core.model.Artist
+import com.lhacenmed.sona.core.model.Genre
+import com.lhacenmed.sona.core.model.Playlist
+import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.library.options.OptionsAction.ALBUM_DETAILS
+import com.lhacenmed.sona.feature.library.options.OptionsAction.ARTIST_DETAILS
+import com.lhacenmed.sona.feature.library.options.OptionsAction.DELETE
+import com.lhacenmed.sona.feature.library.options.OptionsAction.EXPORT
+import com.lhacenmed.sona.feature.library.options.OptionsAction.IMPORT
+import com.lhacenmed.sona.feature.library.options.OptionsAction.PLAY
+import com.lhacenmed.sona.feature.library.options.OptionsAction.PLAYLIST_ADD
+import com.lhacenmed.sona.feature.library.options.OptionsAction.PLAY_NEXT
+import com.lhacenmed.sona.feature.library.options.OptionsAction.QUEUE_ADD
+import com.lhacenmed.sona.feature.library.options.OptionsAction.RENAME
+import com.lhacenmed.sona.feature.library.options.OptionsAction.SHARE
+import com.lhacenmed.sona.feature.library.options.OptionsAction.SHUFFLE
+import com.lhacenmed.sona.feature.library.options.OptionsAction.SONG_PROPERTIES
+import com.lhacenmed.sona.feature.library.options.OptionsAction.VIEW_DETAILS
+import com.lhacenmed.sona.feature.library.pluralCount
+import com.lhacenmed.sona.feature.library.trackCountLabel
+
+/**
+ * What an options sheet is showing options for, and where it was opened from - Auxio's `Menu.ForSong`,
+ * `ForAlbum`, `ForArtist`, `ForGenre` and `ForPlaylist`.
+ *
+ * The context defaults to [TrackOptionsContext.LIST] and its siblings: the plain, most-permissive menu
+ * a row reaches when nothing about where it sits narrows the choices further.
+ */
+sealed interface OptionsTarget {
+    data class ForTrack(
+        val track: Track,
+        val context: TrackOptionsContext = TrackOptionsContext.LIST,
+    ) : OptionsTarget
+
+    data class ForAlbum(
+        val album: Album,
+        val context: AlbumOptionsContext = AlbumOptionsContext.LIST,
+    ) : OptionsTarget
+
+    data class ForArtist(
+        val artist: Artist,
+        val context: ArtistOptionsContext = ArtistOptionsContext.LIST,
+    ) : OptionsTarget
+
+    data class ForGenre(
+        val genre: Genre,
+        val context: GenreOptionsContext = GenreOptionsContext.LIST,
+    ) : OptionsTarget
+
+    data class ForPlaylist(
+        val playlist: Playlist,
+        val context: PlaylistOptionsContext = PlaylistOptionsContext.LIST,
+    ) : OptionsTarget
+}
+
+/** The rows an options sheet lists, top to bottom - Auxio's inflated menu XML, chosen by target and context. */
+fun OptionsTarget.actions(): List<OptionsAction> = when (this) {
+    is OptionsTarget.ForTrack -> when (context) {
+        TrackOptionsContext.LIST ->
+            listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ARTIST_DETAILS, ALBUM_DETAILS, SONG_PROPERTIES, SHARE)
+        TrackOptionsContext.FROM_ALBUM ->
+            listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ARTIST_DETAILS, SONG_PROPERTIES, SHARE)
+        TrackOptionsContext.FROM_ARTIST ->
+            listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ALBUM_DETAILS, SONG_PROPERTIES, SHARE)
+    }
+
+    is OptionsTarget.ForAlbum -> when (context) {
+        AlbumOptionsContext.LIST ->
+            listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ARTIST_DETAILS, SHARE)
+        AlbumOptionsContext.FROM_ARTIST ->
+            listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, SHARE)
+        AlbumOptionsContext.FROM_DETAIL ->
+            listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ARTIST_DETAILS, SHARE)
+    }
+
+    is OptionsTarget.ForArtist -> when (context) {
+        ArtistOptionsContext.LIST -> listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, SHARE)
+        ArtistOptionsContext.FROM_DETAIL -> listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, SHARE)
+    }
+
+    is OptionsTarget.ForGenre -> when (context) {
+        GenreOptionsContext.LIST -> listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, SHARE)
+        GenreOptionsContext.FROM_DETAIL -> listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, SHARE)
+    }
+
+    is OptionsTarget.ForPlaylist -> when (context) {
+        PlaylistOptionsContext.LIST ->
+            listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, RENAME, IMPORT, EXPORT, DELETE, SHARE)
+        PlaylistOptionsContext.FROM_DETAIL ->
+            listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, RENAME, DELETE, SHARE)
+    }
+}
+
+/**
+ * The actions listed but not clickable - Auxio's `getDisabledItemIds`: an artist or a playlist with no
+ * tracks yet cannot be played, queued or shared, though it is still worth seeing and still worth
+ * deleting or renaming. A track, an album and a genre are never disabled this way.
+ */
+fun OptionsTarget.disabledActions(): Set<OptionsAction> = when (this) {
+    is OptionsTarget.ForArtist -> if (artist.trackCount == 0) {
+        setOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, SHARE)
+    } else {
+        emptySet()
+    }
+
+    is OptionsTarget.ForPlaylist -> if (playlist.trackCount == 0) {
+        setOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, EXPORT, SHARE)
+    } else {
+        emptySet()
+    }
+
+    is OptionsTarget.ForTrack,
+    is OptionsTarget.ForAlbum,
+    is OptionsTarget.ForGenre,
+    -> emptySet()
+}
+
+/** What kind of thing the sheet is showing options for - Auxio's `lbl_song`/`lbl_album`/etc, over the name. */
+fun OptionsTarget.typeLabel(): String = when (this) {
+    is OptionsTarget.ForTrack -> "Track"
+    is OptionsTarget.ForAlbum -> "Album"
+    is OptionsTarget.ForArtist -> "Artist"
+    is OptionsTarget.ForGenre -> "Genre"
+    is OptionsTarget.ForPlaylist -> "Playlist"
+}
+
+/** The sheet's headline - Auxio's `menuName`. */
+fun OptionsTarget.name(): String = when (this) {
+    is OptionsTarget.ForTrack -> track.title
+    is OptionsTarget.ForAlbum -> album.title
+    is OptionsTarget.ForArtist -> artist.name
+    is OptionsTarget.ForGenre -> genre.name
+    is OptionsTarget.ForPlaylist -> playlist.name
+}
+
+/** The line under the name - Auxio's `menuInfo`. */
+fun OptionsTarget.infoLine(): String = when (this) {
+    is OptionsTarget.ForTrack -> track.artist
+    is OptionsTarget.ForAlbum -> album.artistName
+    is OptionsTarget.ForArtist ->
+        albumCountLabel(artist.albumCount) + COUNTS_SEPARATOR + trackCountLabel(artist.trackCount)
+    is OptionsTarget.ForGenre ->
+        artistCountLabel(genre.artistCount) + COUNTS_SEPARATOR + trackCountLabel(genre.trackCount)
+    is OptionsTarget.ForPlaylist -> trackCountLabel(playlist.trackCount)
+}
+
+/** What separates the two counts under an artist or a genre: Auxio's `fmt_two`. */
+private const val COUNTS_SEPARATOR = " • "
+
+/** A count of albums, or Auxio's `def_album_count` for one that holds none. */
+private fun albumCountLabel(count: Int): String = if (count == 0) "No albums" else pluralCount(count, "album")
+
+/** A count of artists, or Auxio's `def_artist_count` for one that holds none. */
+private fun artistCountLabel(count: Int): String = if (count == 0) "No artists" else pluralCount(count, "artist")

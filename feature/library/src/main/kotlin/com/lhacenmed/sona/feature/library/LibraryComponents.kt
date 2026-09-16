@@ -55,6 +55,9 @@ import com.lhacenmed.sona.core.designsystem.component.shimmer
 import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.library.options.OptionsSheet
+import com.lhacenmed.sona.feature.library.options.OptionsTarget
+import com.lhacenmed.sona.feature.library.options.TrackOptionsContext
 import com.lhacenmed.sona.feature.library.sort.SortSheet
 import com.lhacenmed.sona.feature.library.sort.sortAction
 import sh.calvin.reorderable.ReorderableItem
@@ -381,6 +384,7 @@ internal fun TrackListDetail(
     extraActions: List<TopBarAction> = emptyList(),
     onReorder: ((List<Track>) -> Unit)? = null,
     onRemoveSelected: ((Set<Any>) -> Unit)? = null,
+    trackOptionsContext: TrackOptionsContext = TrackOptionsContext.LIST,
 ) {
     val tracks by viewModel.tracks.collectAsStateWithLifecycle()
     val playback by viewModel.playback.collectAsStateWithLifecycle()
@@ -388,6 +392,7 @@ internal fun TrackListDetail(
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf<String?>(null) }
     var isSortSheetOpen by remember { mutableStateOf(false) }
+    var optionsTarget by remember { mutableStateOf<OptionsTarget.ForTrack?>(null) }
     val sort = viewModel.sort
 
     val exportLauncher = rememberLauncherForActivityResult(
@@ -479,12 +484,17 @@ internal fun TrackListDetail(
                 isPlaying = { playback.isPlaying },
                 selection = selection,
                 onClick = { viewModel.onTrackClick(track) },
+                onOpenOptions = { optionsTarget = OptionsTarget.ForTrack(track, trackOptionsContext) },
             )
         }
     }
 
     if (isSortSheetOpen && sort != null) {
         SortSheet(sort = sort, onDismiss = { isSortSheetOpen = false })
+    }
+
+    optionsTarget?.let { target ->
+        OptionsSheet(target = target, onDismissRequest = { optionsTarget = null })
     }
 }
 

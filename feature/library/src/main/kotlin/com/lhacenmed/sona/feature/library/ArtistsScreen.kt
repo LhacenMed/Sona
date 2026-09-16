@@ -3,11 +3,16 @@ package com.lhacenmed.sona.feature.library
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.navigation.LocalNavigator
+import com.lhacenmed.sona.feature.library.options.OptionsSheet
+import com.lhacenmed.sona.feature.library.options.OptionsTarget
 
 @Composable
 fun ArtistsScreen(
@@ -21,6 +26,7 @@ fun ArtistsScreen(
     val hasPermission by viewModel.hasPermission.collectAsStateWithLifecycle()
     val playback by viewModel.playback.collectAsStateWithLifecycle()
     val navigator = LocalNavigator.current
+    var optionsTarget by remember { mutableStateOf<OptionsTarget.ForArtist?>(null) }
 
     LibraryList(
         content = artists,
@@ -39,6 +45,11 @@ fun ArtistsScreen(
             isCurrent = { playback.marks(artist) },
             isPlaying = { playback.isPlaying },
             onClick = { navigator.go(ArtistDetailScreen(artist.id)) },
+            onOpenOptions = { optionsTarget = OptionsTarget.ForArtist(artist) },
         )
+    }
+
+    optionsTarget?.let { target ->
+        OptionsSheet(target = target, onDismissRequest = { optionsTarget = null })
     }
 }

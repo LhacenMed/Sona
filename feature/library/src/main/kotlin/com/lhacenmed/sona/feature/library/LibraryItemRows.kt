@@ -77,6 +77,7 @@ internal fun TrackRow(
     isPlaying: () -> Boolean,
     selection: SelectionState,
     onClick: () -> Unit,
+    onOpenOptions: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val current = isCurrent()
@@ -86,6 +87,7 @@ internal fun TrackRow(
         selection = selection,
         selectionKey = track.id,
         onClick = onClick,
+        onOpenOptions = onOpenOptions,
         modifier = modifier,
         isCurrent = current,
     ) { isSelected ->
@@ -108,6 +110,7 @@ internal fun AlbumRow(
     isCurrent: () -> Boolean,
     isPlaying: () -> Boolean,
     onClick: () -> Unit,
+    onOpenOptions: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val current = isCurrent()
@@ -117,6 +120,7 @@ internal fun AlbumRow(
         selection = selection,
         selectionKey = album.id,
         onClick = onClick,
+        onOpenOptions = onOpenOptions,
         modifier = modifier,
         isCurrent = current,
     ) { isSelected ->
@@ -137,6 +141,7 @@ internal fun ArtistRow(
     isCurrent: () -> Boolean,
     isPlaying: () -> Boolean,
     onClick: () -> Unit,
+    onOpenOptions: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val current = isCurrent()
@@ -147,6 +152,7 @@ internal fun ArtistRow(
         selection = selection,
         selectionKey = artist.id,
         onClick = onClick,
+        onOpenOptions = onOpenOptions,
         modifier = modifier,
         isCurrent = current,
     ) { isSelected ->
@@ -168,6 +174,7 @@ internal fun GenreRow(
     isCurrent: () -> Boolean,
     isPlaying: () -> Boolean,
     onClick: () -> Unit,
+    onOpenOptions: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val current = isCurrent()
@@ -178,6 +185,7 @@ internal fun GenreRow(
         selection = selection,
         selectionKey = genre.id,
         onClick = onClick,
+        onOpenOptions = onOpenOptions,
         modifier = modifier,
         isCurrent = current,
     ) { isSelected ->
@@ -199,6 +207,7 @@ internal fun PlaylistRow(
     isCurrent: () -> Boolean,
     isPlaying: () -> Boolean,
     onClick: () -> Unit,
+    onOpenOptions: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val current = isCurrent()
@@ -208,6 +217,7 @@ internal fun PlaylistRow(
         selection = selection,
         selectionKey = playlist.id,
         onClick = onClick,
+        onOpenOptions = onOpenOptions,
         modifier = modifier,
         isCurrent = current,
     ) { isSelected ->
@@ -305,6 +315,8 @@ private fun LibraryItemRow(
     selection: SelectionState?,
     selectionKey: Any,
     onClick: () -> Unit,
+    // Folder and track-collection rows have no options sheet of their own yet.
+    onOpenOptions: () -> Unit = {},
     modifier: Modifier = Modifier,
     isCurrent: Boolean = false,
     cover: @Composable (isSelected: Boolean) -> Unit,
@@ -381,9 +393,7 @@ private fun LibraryItemRow(
             }
         }
         SonaIconButton(
-            // Opens nothing yet. It takes its place now because the row's shape is part of the
-            // list's: adding it later would move the title and the cover of every row.
-            onClick = {},
+            onClick = onOpenOptions,
             icon = Icons.Filled.MoreHoriz,
             contentDescription = "More options",
         )
@@ -391,7 +401,7 @@ private fun LibraryItemRow(
 }
 
 /** "1 track", "12 tracks": Auxio's count plurals. */
-private fun pluralCount(count: Int, noun: String): String = if (count == 1) "$count $noun" else "$count ${noun}s"
+internal fun pluralCount(count: Int, noun: String): String = if (count == 1) "$count $noun" else "$count ${noun}s"
 
 /** A count of tracks, or Auxio's `def_song_count` for a list that holds none yet. */
-private fun trackCountLabel(count: Int): String = if (count == 0) "No tracks" else pluralCount(count, "track")
+internal fun trackCountLabel(count: Int): String = if (count == 0) "No tracks" else pluralCount(count, "track")

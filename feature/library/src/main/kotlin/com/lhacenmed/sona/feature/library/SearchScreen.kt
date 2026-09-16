@@ -18,6 +18,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -29,6 +32,8 @@ import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.library.options.OptionsSheet
+import com.lhacenmed.sona.feature.library.options.OptionsTarget
 
 object SearchScreen : Screen {
 
@@ -41,6 +46,7 @@ object SearchScreen : Screen {
         val filter by viewModel.filter.collectAsStateWithLifecycle()
         val playback by viewModel.playback.collectAsStateWithLifecycle()
         val selection = rememberSelectionState()
+        var optionsTarget by remember { mutableStateOf<OptionsTarget?>(null) }
 
         Column(modifier = Modifier.fillMaxSize()) {
             SonaTopAppBar(
@@ -93,6 +99,7 @@ object SearchScreen : Screen {
                                 isPlaying = { playback.isPlaying },
                                 selection = selection,
                                 onClick = { viewModel.onTrackClick(track) },
+                                onOpenOptions = { optionsTarget = OptionsTarget.ForTrack(track) },
                             )
                         }
                     }
@@ -106,6 +113,7 @@ object SearchScreen : Screen {
                                 isCurrent = { playback.marks(album) },
                                 isPlaying = { playback.isPlaying },
                                 onClick = { navigator.go(AlbumDetailScreen(album.id)) },
+                                onOpenOptions = { optionsTarget = OptionsTarget.ForAlbum(album) },
                             )
                         }
                     }
@@ -118,6 +126,7 @@ object SearchScreen : Screen {
                                 isCurrent = { playback.marks(artist) },
                                 isPlaying = { playback.isPlaying },
                                 onClick = { navigator.go(ArtistDetailScreen(artist.id)) },
+                                onOpenOptions = { optionsTarget = OptionsTarget.ForArtist(artist) },
                             )
                         }
                     }
@@ -130,11 +139,16 @@ object SearchScreen : Screen {
                                 isCurrent = { playback.marks(genre) },
                                 isPlaying = { playback.isPlaying },
                                 onClick = { navigator.go(GenreDetailScreen(genre.id)) },
+                                onOpenOptions = { optionsTarget = OptionsTarget.ForGenre(genre) },
                             )
                         }
                     }
                 }
             }
+        }
+
+        optionsTarget?.let { target ->
+            OptionsSheet(target = target, onDismissRequest = { optionsTarget = null })
         }
     }
 }

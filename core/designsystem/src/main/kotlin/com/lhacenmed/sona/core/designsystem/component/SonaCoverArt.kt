@@ -60,6 +60,9 @@ object CoverArtDefaults {
     /** The size an album's, artist's, genre's, playlist's or folder's cover takes: Auxio's `size_touchable_medium`. */
     val CollectionListSize = 56.dp
 
+    /** The size an options sheet's cover takes: Auxio's `Widget.Auxio.Image.MidFull`, larger than any list row's. */
+    val OptionsHeaderSize = 72.dp
+
     /** The corners a list cover is cut with in round mode: the corners every component shares. */
     val ListCornerRadius = SonaComponentStyle.CornerRadius
 
@@ -163,10 +166,11 @@ fun SonaCoverArt(
     isCurrent: Boolean = false,
     isPlaying: Boolean = false,
     isSelected: Boolean = false,
+    size: Dp = CoverArtDefaults.ListSize,
 ) {
     val style = LocalCoverStyle.current
     ListCoverFrame(
-        size = CoverArtDefaults.ListSize,
+        size = size,
         shape = style.shape(CoverArtDefaults.ListCornerRadius),
         isCurrent = isCurrent,
         isPlaying = isPlaying,
@@ -194,6 +198,7 @@ fun SonaAlbumCover(
     isCurrent: Boolean = false,
     isPlaying: Boolean = false,
     isSelected: Boolean = false,
+    size: Dp = CoverArtDefaults.CollectionListSize,
 ) {
     CollectionCover(
         request = rememberCoverRequest(coverArtUri, LocalCoverStyle.current),
@@ -202,6 +207,7 @@ fun SonaAlbumCover(
         isCurrent = isCurrent,
         isPlaying = isPlaying,
         isSelected = isSelected,
+        size = size,
         modifier = modifier,
     )
 }
@@ -220,14 +226,16 @@ fun SonaArtistCover(
     isCurrent: Boolean = false,
     isPlaying: Boolean = false,
     isSelected: Boolean = false,
+    size: Dp = CoverArtDefaults.CollectionListSize,
 ) {
     CollectionCover(
-        request = rememberCompositionRequest(coverArtUris, CoverArrangement.Smattering, seed),
+        request = rememberCompositionRequest(coverArtUris, CoverArrangement.Smattering, seed, size),
         glyph = SonaIcons.Artist,
         isCircular = true,
         isCurrent = isCurrent,
         isPlaying = isPlaying,
         isSelected = isSelected,
+        size = size,
         modifier = modifier,
     )
 }
@@ -246,14 +254,16 @@ fun SonaGenreCover(
     isCurrent: Boolean = false,
     isPlaying: Boolean = false,
     isSelected: Boolean = false,
+    size: Dp = CoverArtDefaults.CollectionListSize,
 ) {
     CollectionCover(
-        request = rememberCompositionRequest(coverArtUris, CoverArrangement.Gallery, seed),
+        request = rememberCompositionRequest(coverArtUris, CoverArrangement.Gallery, seed, size),
         glyph = SonaIcons.Genre,
         isCircular = false,
         isCurrent = isCurrent,
         isPlaying = isPlaying,
         isSelected = isSelected,
+        size = size,
         modifier = modifier,
     )
 }
@@ -272,14 +282,16 @@ fun SonaPlaylistCover(
     isCurrent: Boolean = false,
     isPlaying: Boolean = false,
     isSelected: Boolean = false,
+    size: Dp = CoverArtDefaults.CollectionListSize,
 ) {
     CollectionCover(
-        request = rememberCompositionRequest(coverArtUris, CoverArrangement.Stack, seed),
+        request = rememberCompositionRequest(coverArtUris, CoverArrangement.Stack, seed, size),
         glyph = SonaIcons.Playlist,
         isCircular = false,
         isCurrent = isCurrent,
         isPlaying = isPlaying,
         isSelected = isSelected,
+        size = size,
         modifier = modifier,
     )
 }
@@ -306,6 +318,7 @@ fun SonaFolderCover(
         isCurrent = isCurrent,
         isPlaying = isPlaying,
         isSelected = isSelected,
+        size = CoverArtDefaults.CollectionListSize,
         modifier = modifier,
     )
 }
@@ -319,11 +332,12 @@ private fun CollectionCover(
     isCurrent: Boolean,
     isPlaying: Boolean,
     isSelected: Boolean,
+    size: Dp,
     modifier: Modifier = Modifier,
 ) {
     val style = LocalCoverStyle.current
     ListCoverFrame(
-        size = CoverArtDefaults.CollectionListSize,
+        size = size,
         shape = if (isCircular) style.circularShape() else style.shape(CoverArtDefaults.ListCornerRadius),
         isCurrent = isCurrent,
         isPlaying = isPlaying,
@@ -337,7 +351,8 @@ private fun CollectionCover(
             style = style,
             isCircular = isCircular,
             glyph = glyph,
-            glyphSize = CoverArtDefaults.CollectionGlyphSize,
+            // The glyph keeps the same share of the cover whatever size the cover is drawn at.
+            glyphSize = size * (CoverArtDefaults.CollectionGlyphSize / CoverArtDefaults.CollectionListSize),
         )
     }
 }
@@ -526,21 +541,18 @@ private fun rememberCompositionRequest(
     coverArtUris: List<String>,
     arrangement: CoverArrangement,
     seed: Int,
+    size: Dp = CoverArtDefaults.CollectionListSize,
 ): ImageRequest? {
     val style = LocalCoverStyle.current
     val context = LocalPlatformContext.current
-    val sizePx = with(LocalDensity.current) { CoverArtDefaults.CollectionListSize.roundToPx() }
+    val sizePx = with(LocalDensity.current) { size.roundToPx() }
     return remember(coverArtUris, arrangement, seed, style.showsCovers, style.isRounded, sizePx) {
         if (coverArtUris.isEmpty() || !style.showsCovers) return@remember null
         val composition = CoverComposition(
             coverArtUris = coverArtUris,
             arrangement = arrangement,
             seed = seed,
-            cornerRadiusRatio = if (style.isRounded) {
-                CoverArtDefaults.ListCornerRadius / CoverArtDefaults.CollectionListSize
-            } else {
-                0f
-            },
+            cornerRadiusRatio = if (style.isRounded) CoverArtDefaults.ListCornerRadius / size else 0f,
         )
         ImageRequest.Builder(context)
             .data(composition)

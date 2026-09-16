@@ -40,6 +40,8 @@ import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.library.options.OptionsSheet
+import com.lhacenmed.sona.feature.library.options.OptionsTarget
 import com.lhacenmed.sona.feature.library.sort.SortSheet
 import com.lhacenmed.sona.feature.library.sort.sortAction
 
@@ -80,6 +82,7 @@ object PlaylistsScreen : Screen {
         var namePrompt by remember { mutableStateOf<NamePrompt?>(null) }
         var confirmingDelete by remember { mutableStateOf<List<Playlist>>(emptyList()) }
         var isSortSheetOpen by remember { mutableStateOf(false) }
+        var optionsTarget by remember { mutableStateOf<OptionsTarget.ForPlaylist?>(null) }
         // The file waiting to be imported, and whether its destination is being named. Both dialogs
         // are on screen at once while naming, the destinations still behind the name.
         var importSource by remember { mutableStateOf<Uri?>(null) }
@@ -208,6 +211,7 @@ object PlaylistsScreen : Screen {
                             isCurrent = { playback.marks(playlist) },
                             isPlaying = { playback.isPlaying },
                             onClick = { navigator.go(PlaylistDetailScreen(playlist.id)) },
+                            onOpenOptions = { optionsTarget = OptionsTarget.ForPlaylist(playlist) },
                         )
                     }
                 }
@@ -280,6 +284,10 @@ object PlaylistsScreen : Screen {
 
         if (isSortSheetOpen) {
             SortSheet(sort = viewModel.sort, onDismiss = { isSortSheetOpen = false })
+        }
+
+        optionsTarget?.let { target ->
+            OptionsSheet(target = target, onDismissRequest = { optionsTarget = null })
         }
 
         if (confirmingDelete.isNotEmpty()) {

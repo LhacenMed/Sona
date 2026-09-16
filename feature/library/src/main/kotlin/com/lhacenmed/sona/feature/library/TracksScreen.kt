@@ -3,10 +3,15 @@ package com.lhacenmed.sona.feature.library
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.feature.library.options.OptionsSheet
+import com.lhacenmed.sona.feature.library.options.OptionsTarget
 
 @Composable
 fun TracksScreen(
@@ -19,6 +24,7 @@ fun TracksScreen(
     val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
     val hasPermission by viewModel.hasPermission.collectAsStateWithLifecycle()
     val playback by viewModel.playback.collectAsStateWithLifecycle()
+    var optionsTarget by remember { mutableStateOf<OptionsTarget.ForTrack?>(null) }
 
     LibraryList(
         content = tracks,
@@ -38,6 +44,11 @@ fun TracksScreen(
             isPlaying = { playback.isPlaying },
             selection = selection,
             onClick = { viewModel.onTrackClick(track) },
+            onOpenOptions = { optionsTarget = OptionsTarget.ForTrack(track) },
         )
+    }
+
+    optionsTarget?.let { target ->
+        OptionsSheet(target = target, onDismissRequest = { optionsTarget = null })
     }
 }
