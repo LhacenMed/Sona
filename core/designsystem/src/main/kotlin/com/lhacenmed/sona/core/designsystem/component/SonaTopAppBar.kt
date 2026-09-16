@@ -51,11 +51,16 @@ data class TopBarAction(
     val onClick: () -> Unit,
 )
 
-/** What the bar shows while a list has rows selected: how many, and what can be done with them. */
+/**
+ * What the bar shows while a list has rows selected: how many, what can be done with them, and the
+ * more options button that opens everything else - Auxio's selection toolbar, whose overflow opens
+ * the selection's options sheet rather than a menu.
+ */
 @Immutable
 data class TopBarSelection(
     val count: Int,
     val actions: List<TopBarAction>,
+    val onMoreOptions: () -> Unit,
     val onDismiss: () -> Unit,
 )
 
@@ -216,9 +221,24 @@ fun SonaTopAppBar(
                         contentDescription = stringResource(R.string.top_bar_clear_selection),
                     )
                 },
-                actions = { BarActions(actions = activeContent.selection.actions) },
+                actions = { SelectionActions(selection = activeContent.selection) },
             )
         }
+    }
+}
+
+/**
+ * A selection's actions, every one an icon, then the more options button - the same group [BarActions]
+ * draws, but with no menu to fold into: the selection's options sheet is where everything else lives.
+ */
+@Composable
+private fun SelectionActions(selection: TopBarSelection) {
+    val moreOptionsLabel = stringResource(R.string.top_bar_more_actions)
+    SonaIconButtonGroup(modifier = Modifier.padding(end = 4.dp)) {
+        selection.actions.forEach { action ->
+            iconButton(icon = action.icon, label = action.label, onClick = action.onClick)
+        }
+        iconButton(icon = Icons.Filled.MoreVert, label = moreOptionsLabel, onClick = selection.onMoreOptions)
     }
 }
 

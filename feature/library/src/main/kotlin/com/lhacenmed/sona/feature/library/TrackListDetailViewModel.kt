@@ -7,6 +7,7 @@ import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.sort.SortControl
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import java.io.OutputStream
@@ -61,19 +62,8 @@ abstract class TrackListDetailViewModel(
         if (index >= 0) playbackController.playTracks(all, index, playbackParent)
     }
 
-    /**
-     * Plays just the selected rows, keeping the order the list shows them in.
-     *
-     * The queue is then those rows rather than this collection, so it plays from no collection at all -
-     * Auxio's selection playback sets no parent either.
-     */
-    fun playSelection(selectedKeys: Set<Any>) {
-        val selected = tracks.value.itemsOrEmpty.filter { it.id in selectedKeys }
-        if (selected.isNotEmpty()) playbackController.playTracks(selected, startIndex = 0)
-    }
-
     /** Every row's selection key, which is what the context bar's "select all" selects. */
-    fun selectableKeys(): List<Any> = tracks.value.itemsOrEmpty.map { it.id }
+    fun selectableKeys(): List<SelectionKey> = tracks.value.itemsOrEmpty.map { SelectionKey.Track(it.id) }
 
     /**
      * Writes what this screen is showing as an M3U file.

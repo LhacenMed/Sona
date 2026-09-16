@@ -297,6 +297,31 @@ fun SonaPlaylistCover(
 }
 
 /**
+ * A selection's cover: Auxio's `CoverView` bound to a list of songs - the selected tracks' covers
+ * stacked as a playlist's are, over the song glyph while there is none to show.
+ *
+ * [seed] keeps the pile the same every time the cover is drawn: the selection's identity.
+ */
+@Composable
+fun SonaSelectionCover(
+    coverArtUris: List<String>,
+    seed: Int,
+    size: Dp,
+    modifier: Modifier = Modifier,
+) {
+    CollectionCover(
+        request = rememberCompositionRequest(coverArtUris, CoverArrangement.Stack, seed, size),
+        glyph = SonaIcons.Song,
+        isCircular = false,
+        isCurrent = false,
+        isPlaying = false,
+        isSelected = false,
+        size = size,
+        modifier = modifier,
+    )
+}
+
+/**
  * A folder's list cover: the covers of its tracks stacked as a playlist's are - a folder is a pile of
  * files in an order, which is the same thing a stack says. Auxio has no folders of its own.
  *
@@ -310,15 +335,16 @@ fun SonaFolderCover(
     isCurrent: Boolean = false,
     isPlaying: Boolean = false,
     isSelected: Boolean = false,
+    size: Dp = CoverArtDefaults.CollectionListSize,
 ) {
     CollectionCover(
-        request = rememberCompositionRequest(coverArtUris, CoverArrangement.Stack, seed),
+        request = rememberCompositionRequest(coverArtUris, CoverArrangement.Stack, seed, size),
         glyph = SonaIcons.Folder,
         isCircular = false,
         isCurrent = isCurrent,
         isPlaying = isPlaying,
         isSelected = isSelected,
-        size = CoverArtDefaults.CollectionListSize,
+        size = size,
         modifier = modifier,
     )
 }

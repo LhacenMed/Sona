@@ -30,14 +30,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.common.cover.rankedCoverArtUris
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.CoverArtDefaults
 import com.lhacenmed.sona.core.designsystem.component.SonaAlbumCover
 import com.lhacenmed.sona.core.designsystem.component.SonaArtistCover
 import com.lhacenmed.sona.core.designsystem.component.SonaBottomSheet
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverArt
+import com.lhacenmed.sona.core.designsystem.component.SonaFolderCover
 import com.lhacenmed.sona.core.designsystem.component.SonaGenreCover
 import com.lhacenmed.sona.core.designsystem.component.SonaPlaylistCover
+import com.lhacenmed.sona.core.designsystem.component.SonaSelectionCover
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.navigation.AppNavigator
@@ -45,9 +48,11 @@ import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.library.AlbumDetailScreen
 import com.lhacenmed.sona.feature.library.ArtistDetailScreen
+import com.lhacenmed.sona.feature.library.FolderDetailScreen
 import com.lhacenmed.sona.feature.library.GenreDetailScreen
 import com.lhacenmed.sona.feature.library.PlaylistDetailScreen
 import com.lhacenmed.sona.feature.library.PlaylistNameDialog
+import com.lhacenmed.sona.feature.library.operation.ExcludeFoldersDialog
 
 /** How faint a disabled action reads, next to the actions it sits among: Material's disabled content alpha. */
 private const val DISABLED_ACTION_ALPHA = 0.38f
@@ -56,18 +61,18 @@ private const val DISABLED_ACTION_ALPHA = 0.38f
 enum class PlaylistManageAction { RENAME, IMPORT, EXPORT, DELETE }
 
 /**
- * What the sheet is doing besides listing [OptionsTarget]'s actions - a playlist picker, naming a new
- * playlist, or a track's properties. Owned here rather than by whatever opened the sheet, so every
- * entity gets the same follow-up dialogs without its caller building them.
+ * What the sheet is doing besides listing [OptionsTarget]'s actions - a playlist picker, a track's
+ * properties, or confirming a folder's exclusion. Owned here rather than by whatever opened the sheet,
+ * so every entity gets the same follow-up dialogs without its caller building them.
  */
 private sealed interface FollowUp {
     data object PlaylistPicker : FollowUp
-    data object NewPlaylist : FollowUp
     data class Properties(val track: Track) : FollowUp
+    data class ExcludeFolder(val folderPath: String) : FollowUp
 }
 
 /**
- * The sheet every song, album, artist, genre and playlist opens for its overflow button - Auxio's menu
+ * The sheet every song, album, artist, genre, folder and playlist opens for its overflow button - Auxio's menu
  * bottom sheet: the entity's cover over its type, name and a line of detail, then [target]'s actions in
  * order, each disabled exactly where [disabledActions] says.
  *
@@ -77,6 +82,9 @@ private sealed interface FollowUp {
  * needs a file picker or a confirm dialog that must outlive this sheet, so those four are handed to
  * whatever screen is already showing the playlist row - only [PlaylistsScreen][com.lhacenmed.sona.feature.library.PlaylistsScreen]
  * does today, since it is the only screen a [OptionsTarget.ForPlaylist] can open from.
+ *
+ * [onActionChosen] hears of any action being chosen, before it runs - how a selection's sheet ends the
+ * selection, as Auxio's does for every one of its actions.
  */
 @Composable
 fun OptionsSheet(
@@ -84,6 +92,7 @@ fun OptionsSheet(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
     onManagePlaylist: (PlaylistManageAction, Playlist) -> Unit = { _, _ -> },
+    onActionChosen: () -> Unit = {},
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
@@ -110,14 +119,17 @@ fun OptionsSheet(
                         .let { rowModifier ->
                             if (enabled) {
                                 rowModifier.clickable {
+                                    onActionChosen()
                                     // Play next and Add to queue open nothing further, so they slide
-                                    // away like every other action; a picker or the properties dialog
-                                    // has to outlive that slide, so those two skip it and cut straight
-                                    // to their follow-up instead.
+                                    // away like every other action; a picker, the properties dialog or
+                                    // an exclusion to confirm has to outlive that slide, so those skip it
+                                    // and cut straight to their follow-up instead.
                                     when (action) {
                                         OptionsAction.PLAYLIST_ADD -> followUp = FollowUp.PlaylistPicker
                                         OptionsAction.SONG_PROPERTIES ->
                                             followUp = FollowUp.Properties((target as OptionsTarget.ForTrack).track)
+                                        OptionsAction.EXCLUDE ->
+                                            followUp = FollowUp.ExcludeFolder((target as OptionsTarget.ForFolder).folder.path)
                                         else -> {
                                             dismiss()
                                             performAction(action, target, actionsViewModel, navigator, context, onManagePlaylist)
@@ -139,6 +151,9 @@ fun OptionsSheet(
         FollowUp.PlaylistPicker -> {
             val playlists by actionsViewModel.playlists.collectAsStateWithLifecycle()
             var fullPlaylistIds by remember { mutableStateOf(emptySet<Long>()) }
+            // Naming a new playlist opens over the picker rather than in its place, so cancelling the
+            // name goes back to the playlists that already exist, still holding the same tracks.
+            var isNamingNewPlaylist by remember { mutableStateOf(false) }
             LaunchedEffect(target) { fullPlaylistIds = actionsViewModel.playlistIdsHoldingAll(target) }
             AddToPlaylistDialog(
                 playlists = playlists.itemsOrEmpty,
@@ -149,27 +164,30 @@ fun OptionsSheet(
                     context.toast("Added to playlist")
                     onDismissRequest()
                 },
-                onNewPlaylistSelected = { followUp = FollowUp.NewPlaylist },
+                onNewPlaylistSelected = { isNamingNewPlaylist = true },
             )
-        }
-
-        FollowUp.NewPlaylist -> {
-            val playlists by actionsViewModel.playlists.collectAsStateWithLifecycle()
-            PlaylistNameDialog(
-                dialogTitle = "New playlist",
-                confirmLabel = "Create",
-                initialName = "",
-                takenNames = playlists.itemsOrEmpty.map { it.name },
-                onDismiss = onDismissRequest,
-                onConfirm = { name ->
-                    actionsViewModel.createPlaylistAndAddTo(target, name)
-                    context.toast("Added to playlist")
-                    onDismissRequest()
-                },
-            )
+            if (isNamingNewPlaylist) {
+                PlaylistNameDialog(
+                    dialogTitle = "New playlist",
+                    confirmLabel = "Create",
+                    initialName = "",
+                    takenNames = playlists.itemsOrEmpty.map { it.name },
+                    onDismiss = { isNamingNewPlaylist = false },
+                    onConfirm = { name ->
+                        actionsViewModel.createPlaylistAndAddTo(target, name)
+                        context.toast("Added to playlist")
+                        onDismissRequest()
+                    },
+                )
+            }
         }
 
         is FollowUp.Properties -> TrackPropertiesDialog(track = current.track, onDismiss = onDismissRequest)
+
+        is FollowUp.ExcludeFolder -> ExcludeFoldersDialog(
+            folderPaths = listOf(current.folderPath),
+            onDismiss = onDismissRequest,
+        )
     }
 }
 
@@ -205,7 +223,7 @@ private fun performAction(
         OptionsAction.IMPORT -> onManagePlaylist(PlaylistManageAction.IMPORT, playlistOf(target))
         OptionsAction.EXPORT -> onManagePlaylist(PlaylistManageAction.EXPORT, playlistOf(target))
         OptionsAction.DELETE -> onManagePlaylist(PlaylistManageAction.DELETE, playlistOf(target))
-        OptionsAction.PLAYLIST_ADD, OptionsAction.SONG_PROPERTIES ->
+        OptionsAction.PLAYLIST_ADD, OptionsAction.SONG_PROPERTIES, OptionsAction.EXCLUDE ->
             error("$action opens a follow-up dialog and never reaches performAction")
     }
 }
@@ -226,13 +244,15 @@ private fun detailScreenOf(target: OptionsTarget): Screen = when (target) {
     is OptionsTarget.ForArtist -> ArtistDetailScreen(target.artist.id)
     is OptionsTarget.ForGenre -> GenreDetailScreen(target.genre.id)
     is OptionsTarget.ForPlaylist -> PlaylistDetailScreen(target.playlist.id)
+    is OptionsTarget.ForFolder -> FolderDetailScreen(target.folder.path)
     is OptionsTarget.ForTrack -> error("A track's own detail is Song properties, not View")
+    is OptionsTarget.ForSelection -> error("A selection has no detail screen of its own")
 }
 
 private fun playlistOf(target: OptionsTarget): Playlist =
     (target as? OptionsTarget.ForPlaylist)?.playlist ?: error("$target is not a playlist")
 
-private fun Context.toast(message: String) {
+internal fun Context.toast(message: String) {
     Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
 }
 
@@ -338,6 +358,18 @@ private fun OptionsSheetCover(target: OptionsTarget) {
         is OptionsTarget.ForPlaylist -> SonaPlaylistCover(
             coverArtUris = target.playlist.coverArtUris,
             seed = target.playlist.id.hashCode(),
+            size = size,
+        )
+
+        is OptionsTarget.ForFolder -> SonaFolderCover(
+            coverArtUris = target.folder.coverArtUris,
+            seed = target.folder.path.hashCode(),
+            size = size,
+        )
+
+        is OptionsTarget.ForSelection -> SonaSelectionCover(
+            coverArtUris = remember(target.tracks) { rankedCoverArtUris(target.tracks.map { it.coverArtUri }) },
+            seed = remember(target.tracks) { target.tracks.hashCode() },
             size = size,
         )
     }

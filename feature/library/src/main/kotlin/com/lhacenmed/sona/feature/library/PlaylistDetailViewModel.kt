@@ -10,6 +10,7 @@ import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.sort.SortableList
+import com.lhacenmed.sona.feature.library.operation.launchOperation
 import com.lhacenmed.sona.feature.library.sort.SortControl
 import com.lhacenmed.sona.feature.library.sort.control
 import com.lhacenmed.sona.feature.playback.PlaybackController
@@ -17,6 +18,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.InputStream
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -63,31 +65,21 @@ class PlaylistDetailViewModel @AssistedInject constructor(
         }
     }
 
-    /** Drops the selected tracks out of this playlist. The files themselves are untouched. */
-    fun removeFromPlaylist(selectedKeys: Set<Any>) {
-        val trackIds = selectedKeys.filterIsInstance<Long>()
-        if (trackIds.isEmpty()) return
-        viewModelScope.launch { repository.removeTracksFromPlaylist(playlistId, trackIds) }
-    }
-
-    /** Adds the one track that lives at [path], if the library knows it. */
-    fun addFile(path: String) {
-        val track = repository.tracks.value.itemsOrEmpty.firstOrNull { it.path == path } ?: return
-        viewModelScope.launch { repository.addTracksToPlaylist(playlistId, listOf(track.id)) }
+    /** Drops [trackIds] out of this playlist. The files themselves are untouched. */
+    fun removeFromPlaylist(trackIds: List<Long>, onFinished: (succeeded: Boolean) -> Unit) {
+        viewModelScope.launchOperation(onFinished) { repository.removeTracksFromPlaylist(playlistId, trackIds) }
     }
 
     /**
-     * Adds everything the library holds beneath [folderPath].
-     *
-     * Filtered from the list already in memory rather than walking the filesystem as the reference
-     * app does: the last scan already found these, so the answer needs no I/O.
+     * Adds an M3U file's tracks to this playlist. [onResult] reports whether anything was imported - a
+     * file that cannot be opened and one naming no music this device has both leave the playlist as it was.
      */
-    fun addFolder(folderPath: String) {
-        val trackIds = repository.tracks.value.itemsOrEmpty
-            .filter { it.folderPath == folderPath || it.folderPath.startsWith("$folderPath/") }
-            .map { it.id }
-        if (trackIds.isEmpty()) return
-        viewModelScope.launch { repository.addTracksToPlaylist(playlistId, trackIds) }
+    fun importFrom(openStream: () -> InputStream?, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val trackIds = readM3uTrackIds(openStream, repository.tracks.value.itemsOrEmpty)
+            if (trackIds.isNotEmpty()) repository.addTracksToPlaylist(playlistId, trackIds)
+            onResult(trackIds.isNotEmpty())
+        }
     }
 }
 

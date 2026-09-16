@@ -128,7 +128,7 @@ private fun formatFileSize(bytes: Long): String {
 }
 
 /** "m:ss", or "h:mm:ss" from the hour on. */
-private fun formatDurationMs(durationMs: Long): String {
+internal fun formatDurationMs(durationMs: Long): String {
     val totalSeconds = durationMs.coerceAtLeast(0L) / 1000
     val hours = totalSeconds / 3600
     val minutes = totalSeconds % 3600 / 60

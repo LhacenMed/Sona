@@ -1,5 +1,7 @@
 package com.lhacenmed.sona.feature.library.options
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
@@ -8,7 +10,9 @@ import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
  *
  * [VIEW_DETAILS] is a song's own "View properties" as much as an album's, artist's, genre's or
  * playlist's "View" - two labels over the one glyph, the way Auxio's `lbl_song_detail` and
- * `lbl_parent_detail` are. Which [OptionsAction]s a sheet shows, and in what order, is [OptionsTarget]'s
+ * `lbl_parent_detail` are. [EXCLUDE] is Sona's own, for the folders Auxio has no counterpart for, and
+ * so draws the Material glyph the selection bar already uses for it.
+ * Which [OptionsAction]s a sheet shows, and in what order, is [OptionsTarget]'s
  * to decide - this only says what each one looks like once chosen.
  */
 enum class OptionsAction(val icon: ImageVector, val label: String) {
@@ -25,5 +29,6 @@ enum class OptionsAction(val icon: ImageVector, val label: String) {
     IMPORT(SonaIcons.Import, "Import"),
     EXPORT(SonaIcons.Export, "Export"),
     DELETE(SonaIcons.Delete, "Delete"),
+    EXCLUDE(Icons.Filled.Block, "Exclude folder"),
     SHARE(SonaIcons.Share, "Share"),
 }

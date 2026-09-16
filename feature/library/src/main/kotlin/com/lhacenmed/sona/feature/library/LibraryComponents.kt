@@ -20,10 +20,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FileUpload
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -53,12 +51,15 @@ import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.component.shimmer
-import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.library.operation.ConfirmedOperationDialog
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
 import com.lhacenmed.sona.feature.library.options.TrackOptionsContext
+import com.lhacenmed.sona.feature.library.selection.SelectionKey
+import com.lhacenmed.sona.feature.library.selection.SelectionOptionsHost
+import com.lhacenmed.sona.feature.library.selection.toLibraryTopBarSelection
 import com.lhacenmed.sona.feature.library.sort.SortSheet
 import com.lhacenmed.sona.feature.library.sort.sortAction
 import sh.calvin.reorderable.ReorderableItem
@@ -288,15 +289,23 @@ private fun <T> ReorderableColumn(
  * Long-press starts a selection; once one is running an ordinary tap adds to it instead of opening
  * anything, which is what stops a stray tap from navigating away mid-selection. Every selectable
  * list in the app goes through this, so the gesture cannot drift between them.
+ *
+ * A row with no [selectionKey] cannot be selected - Auxio's empty collection: a long-press does
+ * nothing, and while a selection runs neither does a tap.
  */
 @OptIn(ExperimentalFoundationApi::class)
 internal fun Modifier.selectableRow(
     selection: SelectionState,
-    selectionKey: Any,
+    selectionKey: SelectionKey?,
     onClick: () -> Unit,
 ): Modifier = combinedClickable(
-    onClick = { if (selection.isActive) selection.toggle(selectionKey) else onClick() },
-    onLongClick = { selection.toggle(selectionKey) },
+    onClick = {
+        when {
+            !selection.isActive -> onClick()
+            selectionKey != null -> selection.toggle(selectionKey)
+        }
+    },
+    onLongClick = { selectionKey?.let(selection::toggle) },
 )
 
 /**
@@ -373,6 +382,10 @@ internal fun EmptyLibraryState(
  * The album, artist, genre and folder detail screens differ only in their heading and their query,
  * so they share this. It also means they inherit the list screens' loading state - previously they
  * started from a non-null empty state and so briefly rendered "no tracks" over a list that existed.
+ *
+ * The bar's menu is [extraActions], then Export, then [trailingActions]. [removeFromPlaylist] is
+ * given only by a real playlist, the one list with membership to remove from; removing asks first and
+ * reports how it went.
  */
 @Composable
 internal fun TrackListDetail(
@@ -383,8 +396,9 @@ internal fun TrackListDetail(
     emptyMessage: String,
     modifier: Modifier = Modifier,
     extraActions: List<TopBarAction> = emptyList(),
+    trailingActions: List<TopBarAction> = emptyList(),
     onReorder: ((List<Track>) -> Unit)? = null,
-    onRemoveSelected: ((Set<Any>) -> Unit)? = null,
+    removeFromPlaylist: ((trackIds: List<Long>, onFinished: (succeeded: Boolean) -> Unit) -> Unit)? = null,
     trackOptionsContext: TrackOptionsContext = TrackOptionsContext.LIST,
 ) {
     val tracks by viewModel.tracks.collectAsStateWithLifecycle()
@@ -394,6 +408,8 @@ internal fun TrackListDetail(
     var searchQuery by remember { mutableStateOf<String?>(null) }
     var isSortSheetOpen by remember { mutableStateOf(false) }
     var optionsTarget by remember { mutableStateOf<OptionsTarget.ForTrack?>(null) }
+    // The selected tracks waiting on the user to confirm removing them, in the order they were selected.
+    var removingTracks by remember { mutableStateOf<List<Track>>(emptyList()) }
     val sort = viewModel.sort
 
     val exportLauncher = rememberLauncherForActivityResult(
@@ -411,89 +427,79 @@ internal fun TrackListDetail(
             track.artist.contains(query, ignoreCase = true)
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
-        SonaTopAppBar(
-            title = title,
-            subtitle = subtitle,
-            onNavigateBack = onBack,
-            actions = buildList {
-                add(
-                    TopBarAction(label = "Search", icon = Icons.Filled.Search) { searchQuery = "" },
-                )
-                if (sort != null) add(sortAction { isSortSheetOpen = true })
-                addAll(extraActions)
-                add(
-                    TopBarAction(label = "Export playlist", icon = Icons.Filled.FileUpload) {
-                        exportLauncher.launch("$title.m3u")
-                    },
-                )
-            },
-            search = searchQuery?.let { query ->
-                TopBarSearch(
-                    query = query,
-                    onQueryChange = { searchQuery = it },
-                    onClose = { searchQuery = null },
-                )
-            },
-            selection = selection.toTopBarSelection(
+    SelectionOptionsHost(selection) { openSelectionOptions ->
+        Column(modifier = modifier.fillMaxSize()) {
+            SonaTopAppBar(
+                title = title,
+                subtitle = subtitle,
+                onNavigateBack = onBack,
                 actions = buildList {
                     add(
-                        TopBarAction(label = "Play", icon = Icons.Filled.PlayArrow) {
-                            viewModel.playSelection(selection.selectedKeys)
-                            selection.clear()
-                        },
+                        TopBarAction(label = "Search", icon = Icons.Filled.Search) { searchQuery = "" },
                     )
-                    // Only a real playlist has membership to remove from.
-                    if (onRemoveSelected != null) {
-                        add(
-                            TopBarAction(
-                                label = "Remove from playlist",
-                                icon = Icons.Filled.RemoveCircleOutline,
-                            ) {
-                                onRemoveSelected(selection.selectedKeys)
-                                selection.clear()
-                            },
-                        )
-                    }
+                    if (sort != null) add(sortAction { isSortSheetOpen = true })
+                    addAll(extraActions)
                     add(
-                        TopBarAction(label = "Select all", icon = Icons.Filled.SelectAll) {
-                            selection.selectAll(viewModel.selectableKeys())
+                        TopBarAction(label = "Export playlist", icon = Icons.Filled.FileUpload) {
+                            exportLauncher.launch("$title.m3u")
                         },
                     )
+                    addAll(trailingActions)
                 },
-            ),
-        )
-        LibraryList(
-            content = visibleTracks,
-            // A detail screen is only reachable from a library that already loaded, so neither the
-            // permission nor the scanning explanation can apply here.
-            hasPermission = true,
-            isScanning = false,
-            emptyTitle = "No tracks found",
-            emptyMessage = emptyMessage,
-            key = { it.id },
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            // Handles appear with the context bar: dragging is something done to a selection, so
-            // an ordinary tap-to-play list is never cluttered by them. A search has reordered the
-            // list already, so a drop would write an order the user cannot see.
-            onReorder = onReorder.takeIf { searchQuery.isNullOrBlank() && selection.isActive },
-            loadingIcon = SonaIcons.Song,
-        ) { track ->
-            TrackRow(
-                track = track,
-                isCurrent = { playback.marks(track) },
-                isPlaying = { playback.isPlaying },
-                selection = selection,
-                onClick = { viewModel.onTrackClick(track) },
-                onOpenOptions = {
-                    optionsTarget = OptionsTarget.ForTrack(
-                        track = track,
-                        context = trackOptionsContext,
-                        queueSource = tracks.itemsOrEmpty,
-                        queueParent = viewModel.playbackParent,
+                search = searchQuery?.let { query ->
+                    TopBarSearch(
+                        query = query,
+                        onQueryChange = { searchQuery = it },
+                        onClose = { searchQuery = null },
                     )
                 },
+                selection = selection.toLibraryTopBarSelection(
+                    listKeys = viewModel::selectableKeys,
+                    // Only a real playlist has membership to remove from.
+                    actions = listOfNotNull(
+                        removeFromPlaylist?.let {
+                            TopBarAction(label = "Remove from playlist", icon = Icons.Filled.RemoveCircleOutline) {
+                                val tracksById = tracks.itemsOrEmpty.associateBy { it.id }
+                                removingTracks = selection.selectedKeys.filterIsInstance<SelectionKey.Track>()
+                                    .mapNotNull { tracksById[it.trackId] }
+                            }
+                        },
+                    ),
+                    onMoreOptions = openSelectionOptions,
+                ),
             )
+            LibraryList(
+                content = visibleTracks,
+                // A detail screen is only reachable from a library that already loaded, so neither the
+                // permission nor the scanning explanation can apply here.
+                hasPermission = true,
+                isScanning = false,
+                emptyTitle = "No tracks found",
+                emptyMessage = emptyMessage,
+                key = { it.id },
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                // Handles appear with the context bar: dragging is something done to a selection, so
+                // an ordinary tap-to-play list is never cluttered by them. A search has reordered the
+                // list already, so a drop would write an order the user cannot see.
+                onReorder = onReorder.takeIf { searchQuery.isNullOrBlank() && selection.isActive },
+                loadingIcon = SonaIcons.Song,
+            ) { track ->
+                TrackRow(
+                    track = track,
+                    isCurrent = { playback.marks(track) },
+                    isPlaying = { playback.isPlaying },
+                    selection = selection,
+                    onClick = { viewModel.onTrackClick(track) },
+                    onOpenOptions = {
+                        optionsTarget = OptionsTarget.ForTrack(
+                            track = track,
+                            context = trackOptionsContext,
+                            queueSource = tracks.itemsOrEmpty,
+                            queueParent = viewModel.playbackParent,
+                        )
+                    },
+                )
+            }
         }
     }
 
@@ -503,6 +509,24 @@ internal fun TrackListDetail(
 
     optionsTarget?.let { target ->
         OptionsSheet(target = target, onDismissRequest = { optionsTarget = null })
+    }
+
+    if (removeFromPlaylist != null && removingTracks.isNotEmpty()) {
+        val isSingle = removingTracks.size == 1
+        ConfirmedOperationDialog(
+            title = if (isSingle) "Remove track" else "Remove ${removingTracks.size} tracks",
+            message = "From $title. The files themselves are not deleted.",
+            subjects = removingTracks.map { it.title },
+            confirmLabel = "Remove",
+            successMessage = if (isSingle) "Track removed" else "${removingTracks.size} tracks removed",
+            failureMessage = if (isSingle) "Could not remove track" else "Could not remove tracks",
+            onDismiss = { removingTracks = emptyList() },
+            operation = { onFinished ->
+                // The selection ends once the removal is confirmed; cancelling leaves every row picked.
+                selection.clear()
+                removeFromPlaylist(removingTracks.map { it.id }, onFinished)
+            },
+        )
     }
 }
 

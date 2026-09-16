@@ -37,6 +37,7 @@ import com.lhacenmed.sona.core.model.Folder
 import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.library.selection.SelectionKey
 
 /*
  * The rows of the library's lists, laid out as Auxio's: a track as its `item_song`, and an album,
@@ -77,7 +78,7 @@ internal fun TrackRow(
     isPlaying: () -> Boolean,
     selection: SelectionState,
     onClick: () -> Unit,
-    onOpenOptions: () -> Unit,
+    onOpenOptions: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val current = isCurrent()
@@ -85,7 +86,7 @@ internal fun TrackRow(
         title = track.title,
         subtitle = "${track.artist} - ${track.album}",
         selection = selection,
-        selectionKey = track.id,
+        selectionKey = SelectionKey.Track(track.id),
         onClick = onClick,
         onOpenOptions = onOpenOptions,
         modifier = modifier,
@@ -110,7 +111,7 @@ internal fun AlbumRow(
     isCurrent: () -> Boolean,
     isPlaying: () -> Boolean,
     onClick: () -> Unit,
-    onOpenOptions: () -> Unit,
+    onOpenOptions: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val current = isCurrent()
@@ -118,7 +119,7 @@ internal fun AlbumRow(
         title = album.title,
         subtitle = album.artistName,
         selection = selection,
-        selectionKey = album.id,
+        selectionKey = SelectionKey.Album(album.id),
         onClick = onClick,
         onOpenOptions = onOpenOptions,
         modifier = modifier,
@@ -141,7 +142,7 @@ internal fun ArtistRow(
     isCurrent: () -> Boolean,
     isPlaying: () -> Boolean,
     onClick: () -> Unit,
-    onOpenOptions: () -> Unit,
+    onOpenOptions: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val current = isCurrent()
@@ -150,7 +151,7 @@ internal fun ArtistRow(
         subtitle = pluralCount(artist.albumCount, "album") + COUNTS_SEPARATOR +
             pluralCount(artist.trackCount, "track"),
         selection = selection,
-        selectionKey = artist.id,
+        selectionKey = SelectionKey.Artist(artist.id).takeIf { artist.trackCount > 0 },
         onClick = onClick,
         onOpenOptions = onOpenOptions,
         modifier = modifier,
@@ -174,7 +175,7 @@ internal fun GenreRow(
     isCurrent: () -> Boolean,
     isPlaying: () -> Boolean,
     onClick: () -> Unit,
-    onOpenOptions: () -> Unit,
+    onOpenOptions: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val current = isCurrent()
@@ -183,7 +184,7 @@ internal fun GenreRow(
         subtitle = pluralCount(genre.artistCount, "artist") + COUNTS_SEPARATOR +
             pluralCount(genre.trackCount, "track"),
         selection = selection,
-        selectionKey = genre.id,
+        selectionKey = SelectionKey.Genre(genre.id),
         onClick = onClick,
         onOpenOptions = onOpenOptions,
         modifier = modifier,
@@ -207,7 +208,7 @@ internal fun PlaylistRow(
     isCurrent: () -> Boolean,
     isPlaying: () -> Boolean,
     onClick: () -> Unit,
-    onOpenOptions: () -> Unit,
+    onOpenOptions: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val current = isCurrent()
@@ -215,7 +216,7 @@ internal fun PlaylistRow(
         title = playlist.name,
         subtitle = trackCountLabel(playlist.trackCount),
         selection = selection,
-        selectionKey = playlist.id,
+        selectionKey = SelectionKey.Playlist(playlist.id).takeIf { playlist.trackCount > 0 },
         onClick = onClick,
         onOpenOptions = onOpenOptions,
         modifier = modifier,
@@ -239,6 +240,7 @@ internal fun FolderRow(
     isCurrent: () -> Boolean,
     isPlaying: () -> Boolean,
     onClick: () -> Unit,
+    onOpenOptions: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val current = isCurrent()
@@ -246,8 +248,9 @@ internal fun FolderRow(
         title = folder.name,
         subtitle = trackCountLabel(folder.trackCount),
         selection = selection,
-        selectionKey = folder.path,
+        selectionKey = SelectionKey.Folder(folder.path),
         onClick = onClick,
+        onOpenOptions = onOpenOptions,
         modifier = modifier,
         isCurrent = current,
     ) { isSelected ->
@@ -265,7 +268,8 @@ internal fun FolderRow(
  * A row for a list of tracks with no library row of its own: Recent and Most played.
  *
  * They sit among the playlists, so they are drawn as playlists are - the list keeps one rhythm, and
- * they mark themselves while playing like everything else.
+ * they mark themselves while playing like everything else. Not being playlists, they have no options
+ * of their own, and so no options button.
  */
 @Composable
 internal fun TrackCollectionRow(
@@ -283,8 +287,9 @@ internal fun TrackCollectionRow(
         subtitle = trackCountLabel(trackCount),
         // Not a playlist, so it can be opened but never gathered into a selection meant for playlists.
         selection = null,
-        selectionKey = title,
+        selectionKey = null,
         onClick = onClick,
+        onOpenOptions = null,
         modifier = modifier,
         isCurrent = current,
     ) { isSelected ->
@@ -302,9 +307,11 @@ internal fun TrackCollectionRow(
  * The shape every library row shares: [cover], [title] over [subtitle], and the row's own overflow button
  * - with a drag handle beside that button in a list that can be reordered.
  *
- * [selection] is null where the row cannot join a selection - a search's selection plays tracks, so its
- * albums, artists and genres can only be opened. [cover] is told whether the row is selected, which its
- * badge shows; [isCurrent] accents the title, the way Auxio accents the row playback came from.
+ * [selection] is null where the row cannot join a selection - Recent and Most played, which are not
+ * music of their own. [selectionKey] is null for a collection with no tracks, which Auxio refuses to
+ * select since it stands for nothing to act on: while a selection runs, tapping it does nothing. [cover]
+ * is told whether the row is selected, which its badge shows; [isCurrent] accents the title, the way
+ * Auxio accents the row playback came from.
  *
  * The overflow button stays through a selection: the row keeps one shape whatever state it is in.
  */
@@ -313,15 +320,15 @@ private fun LibraryItemRow(
     title: String,
     subtitle: String,
     selection: SelectionState?,
-    selectionKey: Any,
+    selectionKey: SelectionKey?,
     onClick: () -> Unit,
-    // Folder and track-collection rows have no options sheet of their own yet.
-    onOpenOptions: () -> Unit = {},
+    // Null for a row with no options of its own, which then draws no options button.
+    onOpenOptions: (() -> Unit)?,
     modifier: Modifier = Modifier,
     isCurrent: Boolean = false,
     cover: @Composable (isSelected: Boolean) -> Unit,
 ) {
-    val isSelected = selection?.isSelected(selectionKey) == true
+    val isSelected = selectionKey != null && selection?.isSelected(selectionKey) == true
     // The fade is animated rather than the colour, and read only when drawing: an animated colour would
     // trail behind every theme transition, and reading it here would recompose the row every frame.
     val selectedFraction = animateFloatAsState(
@@ -392,11 +399,13 @@ private fun LibraryItemRow(
                 )
             }
         }
-        SonaIconButton(
-            onClick = onOpenOptions,
-            icon = Icons.Filled.MoreHoriz,
-            contentDescription = "More options",
-        )
+        if (onOpenOptions != null) {
+            SonaIconButton(
+                onClick = onOpenOptions,
+                icon = Icons.Filled.MoreHoriz,
+                contentDescription = "More options",
+            )
+        }
     }
 }
 

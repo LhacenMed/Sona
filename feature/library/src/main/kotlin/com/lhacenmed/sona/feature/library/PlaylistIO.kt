@@ -3,6 +3,8 @@ package com.lhacenmed.sona.feature.library
 import com.lhacenmed.sona.core.model.Track
 import java.io.InputStream
 import java.io.OutputStream
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private const val M3U_HEADER = "#EXTM3U"
 private const val M3U_ENTRY = "#EXTINF:"
@@ -63,3 +65,18 @@ fun readM3u(inputStream: InputStream, library: List<Track>): List<Track> {
             .toList()
     }
 }
+
+/**
+ * The ids of the tracks in [library] an M3U file names, in its order - none when the file cannot be
+ * opened, which is what the picked file having been moved or its permission revoked between the pick
+ * and the import looks like.
+ *
+ * Reading and matching happen off the main thread, but against the library already held in memory
+ * rather than the database - the whole point of resolving by path is that it needs no query per entry.
+ */
+suspend fun readM3uTrackIds(openStream: () -> InputStream?, library: List<Track>): List<Long> =
+    withContext(Dispatchers.IO) {
+        runCatching {
+            openStream()?.use { stream -> readM3u(stream, library).map { it.id } }
+        }.getOrNull().orEmpty()
+    }

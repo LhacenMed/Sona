@@ -2,6 +2,7 @@ package com.lhacenmed.sona.feature.library.options
 
 import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
+import com.lhacenmed.sona.core.model.Folder
 import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
@@ -9,6 +10,7 @@ import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.library.options.OptionsAction.ALBUM_DETAILS
 import com.lhacenmed.sona.feature.library.options.OptionsAction.ARTIST_DETAILS
 import com.lhacenmed.sona.feature.library.options.OptionsAction.DELETE
+import com.lhacenmed.sona.feature.library.options.OptionsAction.EXCLUDE
 import com.lhacenmed.sona.feature.library.options.OptionsAction.EXPORT
 import com.lhacenmed.sona.feature.library.options.OptionsAction.IMPORT
 import com.lhacenmed.sona.feature.library.options.OptionsAction.PLAY
@@ -63,6 +65,12 @@ sealed interface OptionsTarget {
         val playlist: Playlist,
         val context: PlaylistOptionsContext = PlaylistOptionsContext.LIST,
     ) : OptionsTarget
+
+    /** A folder - Sona's own, as Auxio has no folders: a collection like an album, that can also be excluded. */
+    data class ForFolder(val folder: Folder) : OptionsTarget
+
+    /** A selection, as the tracks it stands for, in the order their rows were selected - Auxio's `Menu.ForSelection`. */
+    data class ForSelection(val tracks: List<Track>) : OptionsTarget
 }
 
 /** The rows an options sheet lists, top to bottom - Auxio's inflated menu XML, chosen by target and context. */
@@ -101,6 +109,10 @@ fun OptionsTarget.actions(): List<OptionsAction> = when (this) {
         PlaylistOptionsContext.FROM_DETAIL ->
             listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, RENAME, DELETE, SHARE)
     }
+
+    is OptionsTarget.ForFolder -> listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, EXCLUDE, SHARE)
+
+    is OptionsTarget.ForSelection -> listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, SHARE)
 }
 
 /**
@@ -126,6 +138,8 @@ fun OptionsTarget.disabledActions(): Set<OptionsAction> = when (this) {
     is OptionsTarget.ForTrack,
     is OptionsTarget.ForAlbum,
     is OptionsTarget.ForGenre,
+    is OptionsTarget.ForFolder,
+    is OptionsTarget.ForSelection,
     -> emptySet()
 }
 
@@ -136,6 +150,8 @@ fun OptionsTarget.typeLabel(): String = when (this) {
     is OptionsTarget.ForArtist -> "Artist"
     is OptionsTarget.ForGenre -> "Genre"
     is OptionsTarget.ForPlaylist -> "Playlist"
+    is OptionsTarget.ForFolder -> "Folder"
+    is OptionsTarget.ForSelection -> "Selection"
 }
 
 /** The sheet's headline - Auxio's `menuName`. */
@@ -145,6 +161,8 @@ fun OptionsTarget.name(): String = when (this) {
     is OptionsTarget.ForArtist -> artist.name
     is OptionsTarget.ForGenre -> genre.name
     is OptionsTarget.ForPlaylist -> playlist.name
+    is OptionsTarget.ForFolder -> folder.name
+    is OptionsTarget.ForSelection -> pluralCount(tracks.size, "track")
 }
 
 /** The line under the name - Auxio's `menuInfo`. */
@@ -156,6 +174,8 @@ fun OptionsTarget.infoLine(): String = when (this) {
     is OptionsTarget.ForGenre ->
         artistCountLabel(genre.artistCount) + COUNTS_SEPARATOR + trackCountLabel(genre.trackCount)
     is OptionsTarget.ForPlaylist -> trackCountLabel(playlist.trackCount)
+    is OptionsTarget.ForFolder -> trackCountLabel(folder.trackCount)
+    is OptionsTarget.ForSelection -> formatDurationMs(tracks.sumOf { it.durationMs })
 }
 
 /** What separates the two counts under an artist or a genre: Auxio's `fmt_two`. */

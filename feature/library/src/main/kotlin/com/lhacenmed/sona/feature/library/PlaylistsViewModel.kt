@@ -68,10 +68,6 @@ class PlaylistsViewModel @Inject constructor(
         viewModelScope.launch { repository.renamePlaylist(playlistId, name) }
     }
 
-    fun deletePlaylists(playlistIds: List<Long>) {
-        viewModelScope.launch { playlistIds.forEach { repository.deletePlaylist(it) } }
-    }
-
     /** Writes [playlistId]'s tracks as an M3U file - a row-level `exportTo`, by id rather than by instance. */
     fun exportPlaylist(playlistId: Long, openStream: () -> OutputStream?) {
         viewModelScope.launch {
@@ -143,22 +139,9 @@ class PlaylistsViewModel @Inject constructor(
         }
     }
 
-    /**
-     * The tracks an M3U file names, as ids.
-     *
-     * Reading and matching happen off the main thread, but against the library already held in
-     * memory rather than the database - the whole point of resolving by path is that it needs no
-     * query per entry. Opening the stream is what can throw, the picked file having been moved or
-     * its permission revoked between the pick and the import.
-     */
-    private suspend fun readTrackIds(openStream: () -> InputStream?): List<Long> {
-        val library = repository.tracks.value.itemsOrEmpty
-        return withContext(Dispatchers.IO) {
-            runCatching {
-                openStream()?.use { stream -> readM3u(stream, library).map { it.id } }
-            }.getOrNull().orEmpty()
-        }
-    }
+    /** The tracks an M3U file names, as ids - see [readM3uTrackIds]. */
+    private suspend fun readTrackIds(openStream: () -> InputStream?): List<Long> =
+        readM3uTrackIds(openStream, repository.tracks.value.itemsOrEmpty)
 
     /**
      * Tracks the library holds anywhere beneath [folderPath].

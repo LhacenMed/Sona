@@ -24,6 +24,7 @@ import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -91,6 +92,17 @@ class MediaScanner @Inject constructor(
             scan(excludedFolders = excluded, force = force)
         }
     }
+
+    /**
+     * Rescans with the current exclusions and waits for it to finish - for a change the user is
+     * watching take effect, such as excluding a folder.
+     *
+     * The scan itself runs on the application scope, like [requestScan], so a screen closing mid-way
+     * cannot leave the library half-rewritten; only the waiting belongs to the caller. A failure is
+     * thrown here, to the caller that is waiting on it.
+     */
+    suspend fun rescan(): SyncStats =
+        appScope.async { scan(excludedFolders = librarySettings.excludedFolders.value) }.await()
 
     /**
      * Runs a scan, awaiting its completion. [force] skips the unchanged-library check (used by an

@@ -15,8 +15,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,21 +26,22 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.common.storage.documentPathOrNull
 import com.lhacenmed.sona.core.data.itemsOrEmpty
-import com.lhacenmed.sona.core.designsystem.component.SonaActionButtonGroup
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
-import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
-import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.library.operation.DeletePlaylistsDialog
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
 import com.lhacenmed.sona.feature.library.options.PlaylistManageAction
+import com.lhacenmed.sona.feature.library.selection.SelectionKey
+import com.lhacenmed.sona.feature.library.selection.SelectionOptionsHost
+import com.lhacenmed.sona.feature.library.selection.toLibraryTopBarSelection
 import com.lhacenmed.sona.feature.library.sort.SortSheet
 import com.lhacenmed.sona.feature.library.sort.sortAction
 
@@ -134,107 +133,113 @@ object PlaylistsScreen : Screen {
         fun matchesQuery(text: String) = query.isBlank() || text.contains(query, ignoreCase = true)
 
         val visiblePlaylists = playlists.filterItems { matchesQuery(it.name) }
-        val selectedPlaylists = playlists.itemsOrEmpty.filter { it.id in selection.selectedKeys }
+        val selectedPlaylists = playlists.itemsOrEmpty.filter { SelectionKey.Playlist(it.id) in selection.selectedKeys }
         val deletablePlaylists = selectedPlaylists.filterNot { it.isBuiltIn }
         val renameTarget = selectedPlaylists.singleOrNull()?.takeUnless { it.isBuiltIn }
 
-        Column(modifier = Modifier.fillMaxSize()) {
-            SonaTopAppBar(
-                title = "Playlists",
-                onNavigateBack = navigator::back,
-                actions = listOf(
-                    TopBarAction(label = "Search", icon = Icons.Filled.Search) { searchQuery = "" },
-                    sortAction { isSortSheetOpen = true },
-                    TopBarAction(label = "Create new playlist", icon = Icons.Filled.Add) {
-                        namePrompt = NamePrompt.Create
-                    },
-                    TopBarAction(
-                        label = "Create new playlist from folder",
-                        icon = Icons.Filled.CreateNewFolder,
-                    ) {
-                        folderLauncher.launch(null)
-                    },
-                    TopBarAction(label = "Import playlist", icon = Icons.Filled.FileDownload) {
-                        importLauncher.launch(M3U_PICKER_MIME_TYPES)
-                    },
-                ),
-                search = searchQuery?.let { current ->
-                    TopBarSearch(
-                        query = current,
-                        onQueryChange = { searchQuery = it },
-                        onClose = { searchQuery = null },
-                    )
-                },
-                // Rename needs exactly one playlist to rename, and neither action is offered for
-                // Favorites - the same rule the queries enforce, surfaced so it never looks broken.
-                selection = selection.toTopBarSelection(
-                    actions = buildList {
-                        if (renameTarget != null) {
-                            add(
-                                TopBarAction(
-                                    label = "Rename",
-                                    icon = Icons.Filled.DriveFileRenameOutline,
-                                ) {
-                                    namePrompt = NamePrompt.Rename(renameTarget)
-                                },
-                            )
-                        }
-                        if (deletablePlaylists.isNotEmpty()) {
-                            add(
-                                TopBarAction(label = "Delete", icon = Icons.Filled.Delete) {
-                                    confirmingDelete = deletablePlaylists
-                                },
-                            )
-                        }
-                    },
-                ),
-            )
-
-            LibraryListContent(
-                content = visiblePlaylists,
-                // A playlist exists whether or not the library has been scanned, so neither the
-                // permission nor the scanning explanation can apply to this list being empty.
-                hasPermission = true,
-                isScanning = false,
-                emptyTitle = "No playlists yet",
-                emptyMessage = "Create one to start collecting tracks.",
-                loadingIcon = SonaIcons.Playlist,
-                modifier = Modifier.fillMaxSize(),
-            ) { items ->
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    if (matchesQuery(RECENT_TITLE)) {
-                        item(key = "recently-played") {
-                            TrackCollectionRow(
-                                title = RECENT_TITLE,
-                                trackCount = recentlyPlayedCount,
-                                coverArtUris = recentlyPlayedCoverArtUris,
-                                isCurrent = { playback.marks(PlaybackParent.RecentlyPlayed) },
-                                isPlaying = { playback.isPlaying },
-                                onClick = { navigator.go(RecentlyPlayedScreen) },
-                            )
-                        }
-                    }
-                    if (matchesQuery(MOST_PLAYED_TITLE)) {
-                        item(key = "most-played") {
-                            TrackCollectionRow(
-                                title = MOST_PLAYED_TITLE,
-                                trackCount = mostPlayedCount,
-                                coverArtUris = mostPlayedCoverArtUris,
-                                isCurrent = { playback.marks(PlaybackParent.MostPlayed) },
-                                isPlaying = { playback.isPlaying },
-                                onClick = { navigator.go(MostPlayedScreen) },
-                            )
-                        }
-                    }
-                    items(items = items, key = { "playlist-${it.id}" }) { playlist ->
-                        PlaylistRow(
-                            playlist = playlist,
-                            selection = selection,
-                            isCurrent = { playback.marks(playlist) },
-                            isPlaying = { playback.isPlaying },
-                            onClick = { navigator.go(PlaylistDetailScreen(playlist.id)) },
-                            onOpenOptions = { optionsTarget = OptionsTarget.ForPlaylist(playlist) },
+        SelectionOptionsHost(selection) { openSelectionOptions ->
+            Column(modifier = Modifier.fillMaxSize()) {
+                SonaTopAppBar(
+                    title = "Playlists",
+                    onNavigateBack = navigator::back,
+                    actions = listOf(
+                        TopBarAction(label = "Search", icon = Icons.Filled.Search) { searchQuery = "" },
+                        sortAction { isSortSheetOpen = true },
+                        TopBarAction(label = "Create new playlist", icon = Icons.Filled.Add) {
+                            namePrompt = NamePrompt.Create
+                        },
+                        TopBarAction(
+                            label = "Create new playlist from folder",
+                            icon = Icons.Filled.CreateNewFolder,
+                        ) {
+                            folderLauncher.launch(null)
+                        },
+                        TopBarAction(label = "Import playlist", icon = Icons.Filled.FileDownload) {
+                            importLauncher.launch(M3U_PICKER_MIME_TYPES)
+                        },
+                    ),
+                    search = searchQuery?.let { current ->
+                        TopBarSearch(
+                            query = current,
+                            onQueryChange = { searchQuery = it },
+                            onClose = { searchQuery = null },
                         )
+                    },
+                    // Rename needs exactly one playlist to rename, and neither action is offered for
+                    // Favorites - the same rule the queries enforce, surfaced so it never looks broken.
+                    selection = selection.toLibraryTopBarSelection(
+                        listKeys = {
+                            visiblePlaylists.itemsOrEmpty.filter { it.trackCount > 0 }.map { SelectionKey.Playlist(it.id) }
+                        },
+                        onMoreOptions = openSelectionOptions,
+                        actions = buildList {
+                            if (renameTarget != null) {
+                                add(
+                                    TopBarAction(
+                                        label = "Rename",
+                                        icon = Icons.Filled.DriveFileRenameOutline,
+                                    ) {
+                                        namePrompt = NamePrompt.Rename(renameTarget)
+                                    },
+                                )
+                            }
+                            if (deletablePlaylists.isNotEmpty()) {
+                                add(
+                                    TopBarAction(label = "Delete", icon = Icons.Filled.Delete) {
+                                        confirmingDelete = deletablePlaylists
+                                    },
+                                )
+                            }
+                        },
+                    ),
+                )
+
+                LibraryListContent(
+                    content = visiblePlaylists,
+                    // A playlist exists whether or not the library has been scanned, so neither the
+                    // permission nor the scanning explanation can apply to this list being empty.
+                    hasPermission = true,
+                    isScanning = false,
+                    emptyTitle = "No playlists yet",
+                    emptyMessage = "Create one to start collecting tracks.",
+                    loadingIcon = SonaIcons.Playlist,
+                    modifier = Modifier.fillMaxSize(),
+                ) { items ->
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        if (matchesQuery(RECENT_TITLE)) {
+                            item(key = "recently-played") {
+                                TrackCollectionRow(
+                                    title = RECENT_TITLE,
+                                    trackCount = recentlyPlayedCount,
+                                    coverArtUris = recentlyPlayedCoverArtUris,
+                                    isCurrent = { playback.marks(PlaybackParent.RecentlyPlayed) },
+                                    isPlaying = { playback.isPlaying },
+                                    onClick = { navigator.go(RecentlyPlayedScreen) },
+                                )
+                            }
+                        }
+                        if (matchesQuery(MOST_PLAYED_TITLE)) {
+                            item(key = "most-played") {
+                                TrackCollectionRow(
+                                    title = MOST_PLAYED_TITLE,
+                                    trackCount = mostPlayedCount,
+                                    coverArtUris = mostPlayedCoverArtUris,
+                                    isCurrent = { playback.marks(PlaybackParent.MostPlayed) },
+                                    isPlaying = { playback.isPlaying },
+                                    onClick = { navigator.go(MostPlayedScreen) },
+                                )
+                            }
+                        }
+                        items(items = items, key = { "playlist-${it.id}" }) { playlist ->
+                            PlaylistRow(
+                                playlist = playlist,
+                                selection = selection,
+                                isCurrent = { playback.marks(playlist) },
+                                isPlaying = { playback.isPlaying },
+                                onClick = { navigator.go(PlaylistDetailScreen(playlist.id)) },
+                                onOpenOptions = { optionsTarget = OptionsTarget.ForPlaylist(playlist) },
+                            )
+                        }
                     }
                 }
             }
@@ -330,32 +335,10 @@ object PlaylistsScreen : Screen {
         }
 
         if (confirmingDelete.isNotEmpty()) {
-            val doomed = confirmingDelete
-            AlertDialog(
-                onDismissRequest = { confirmingDelete = emptyList() },
-                title = { Text("Remove playlist") },
-                text = {
-                    Text(
-                        if (doomed.size == 1) {
-                            "This removes \"${doomed.single().name}\". The tracks themselves are not deleted."
-                        } else {
-                            "This removes ${doomed.size} playlists. The tracks themselves are not deleted."
-                        },
-                    )
-                },
-                confirmButton = {
-                    SonaActionButtonGroup {
-                        actionButton(label = "Cancel", onClick = { confirmingDelete = emptyList() })
-                        actionButton(
-                            label = "Remove",
-                            onClick = {
-                                viewModel.deletePlaylists(doomed.map { it.id })
-                                confirmingDelete = emptyList()
-                                selection.clear()
-                            },
-                        )
-                    }
-                },
+            DeletePlaylistsDialog(
+                playlists = confirmingDelete,
+                onDismiss = { confirmingDelete = emptyList() },
+                onConfirmed = { selection.clear() },
             )
         }
     }

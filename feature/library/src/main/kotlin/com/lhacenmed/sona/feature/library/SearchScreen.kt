@@ -10,9 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,14 +23,14 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
-import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
-import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
+import com.lhacenmed.sona.feature.library.selection.SelectionOptionsHost
+import com.lhacenmed.sona.feature.library.selection.toLibraryTopBarSelection
 
 object SearchScreen : Screen {
 
@@ -48,101 +45,98 @@ object SearchScreen : Screen {
         val selection = rememberSelectionState()
         var optionsTarget by remember { mutableStateOf<OptionsTarget?>(null) }
 
-        Column(modifier = Modifier.fillMaxSize()) {
-            SonaTopAppBar(
-                // The bar is only ever in its searching mode here: this screen has no other job, so
-                // there is no title to return to and closing the field is closing the screen.
-                title = "Search",
-                search = TopBarSearch(
-                    query = query,
-                    onQueryChange = viewModel::onQueryChange,
-                    onClose = navigator::back,
-                    // Closing the search here is leaving the screen, which back already does.
-                    closesWithBack = false,
-                ),
-                selection = selection.toTopBarSelection(
-                    actions = listOf(
-                        TopBarAction(label = "Play", icon = Icons.Filled.PlayArrow) {
-                            viewModel.playSelection(selection.selectedKeys)
-                            selection.clear()
-                        },
-                        TopBarAction(label = "Select all", icon = Icons.Filled.SelectAll) {
-                            selection.selectAll(viewModel.selectableKeys())
-                        },
+        // Every kind of result can be selected, as in Auxio's search: albums, artists and genres join
+        // a selection as the tracks they hold.
+        SelectionOptionsHost(selection) { openSelectionOptions ->
+            Column(modifier = Modifier.fillMaxSize()) {
+                SonaTopAppBar(
+                    // The bar is only ever in its searching mode here: this screen has no other job, so
+                    // there is no title to return to and closing the field is closing the screen.
+                    title = "Search",
+                    search = TopBarSearch(
+                        query = query,
+                        onQueryChange = viewModel::onQueryChange,
+                        onClose = navigator::back,
+                        // Closing the search here is leaving the screen, which back already does.
+                        closesWithBack = false,
                     ),
-                ),
-            )
-            SearchFilterRow(selected = filter, onClick = viewModel::onFilterClick)
-
-            when {
-                query.isBlank() -> EmptyLibraryState(
-                    title = "Search your library",
-                    message = "Find tracks, albums, artists, and genres.",
+                    selection = selection.toLibraryTopBarSelection(
+                        listKeys = viewModel::selectableKeys,
+                        actions = emptyList(),
+                        onMoreOptions = openSelectionOptions,
+                    ),
                 )
+                SearchFilterRow(selected = filter, onClick = viewModel::onFilterClick)
 
-                uiState.isEmpty -> EmptyLibraryState(
-                    title = "No results",
-                    message = filter?.let { "No ${it.label.lowercase()} matched \"$query\"." }
-                        ?: "Nothing matched \"$query\".",
-                )
+                when {
+                    query.isBlank() -> EmptyLibraryState(
+                        title = "Search your library",
+                        message = "Find tracks, albums, artists, and genres.",
+                    )
 
-                else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    // A filter already names the one kind of result on screen, so repeating it as a
-                    // heading above the only section would say nothing the chip has not.
-                    val showHeaders = filter == null
-                    if (uiState.tracks.isNotEmpty()) {
-                        if (showHeaders) item { SearchSectionHeader("Tracks") }
-                        items(uiState.tracks, key = { "track-${it.id}" }) { track ->
-                            TrackRow(
-                                track = track,
-                                isCurrent = { playback.marks(track) },
-                                isPlaying = { playback.isPlaying },
-                                selection = selection,
-                                onClick = { viewModel.onTrackClick(track) },
-                                onOpenOptions = {
-                                    optionsTarget = OptionsTarget.ForTrack(track, queueSource = uiState.tracks)
-                                },
-                            )
+                    uiState.isEmpty -> EmptyLibraryState(
+                        title = "No results",
+                        message = filter?.let { "No ${it.label.lowercase()} matched \"$query\"." }
+                            ?: "Nothing matched \"$query\".",
+                    )
+
+                    else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        // A filter already names the one kind of result on screen, so repeating it as a
+                        // heading above the only section would say nothing the chip has not.
+                        val showHeaders = filter == null
+                        if (uiState.tracks.isNotEmpty()) {
+                            if (showHeaders) item { SearchSectionHeader("Tracks") }
+                            items(uiState.tracks, key = { "track-${it.id}" }) { track ->
+                                TrackRow(
+                                    track = track,
+                                    isCurrent = { playback.marks(track) },
+                                    isPlaying = { playback.isPlaying },
+                                    selection = selection,
+                                    onClick = { viewModel.onTrackClick(track) },
+                                    onOpenOptions = {
+                                        optionsTarget = OptionsTarget.ForTrack(track, queueSource = uiState.tracks)
+                                    },
+                                )
+                            }
                         }
-                    }
-                    if (uiState.albums.isNotEmpty()) {
-                        if (showHeaders) item { SearchSectionHeader("Albums") }
-                        items(uiState.albums, key = { "album-${it.id}" }) { album ->
-                            // The search's selection plays tracks, so these rows are only ever opened.
-                            AlbumRow(
-                                album = album,
-                                selection = null,
-                                isCurrent = { playback.marks(album) },
-                                isPlaying = { playback.isPlaying },
-                                onClick = { navigator.go(AlbumDetailScreen(album.id)) },
-                                onOpenOptions = { optionsTarget = OptionsTarget.ForAlbum(album) },
-                            )
+                        if (uiState.albums.isNotEmpty()) {
+                            if (showHeaders) item { SearchSectionHeader("Albums") }
+                            items(uiState.albums, key = { "album-${it.id}" }) { album ->
+                                AlbumRow(
+                                    album = album,
+                                    selection = selection,
+                                    isCurrent = { playback.marks(album) },
+                                    isPlaying = { playback.isPlaying },
+                                    onClick = { navigator.go(AlbumDetailScreen(album.id)) },
+                                    onOpenOptions = { optionsTarget = OptionsTarget.ForAlbum(album) },
+                                )
+                            }
                         }
-                    }
-                    if (uiState.artists.isNotEmpty()) {
-                        if (showHeaders) item { SearchSectionHeader("Artists") }
-                        items(uiState.artists, key = { "artist-${it.id}" }) { artist ->
-                            ArtistRow(
-                                artist = artist,
-                                selection = null,
-                                isCurrent = { playback.marks(artist) },
-                                isPlaying = { playback.isPlaying },
-                                onClick = { navigator.go(ArtistDetailScreen(artist.id)) },
-                                onOpenOptions = { optionsTarget = OptionsTarget.ForArtist(artist) },
-                            )
+                        if (uiState.artists.isNotEmpty()) {
+                            if (showHeaders) item { SearchSectionHeader("Artists") }
+                            items(uiState.artists, key = { "artist-${it.id}" }) { artist ->
+                                ArtistRow(
+                                    artist = artist,
+                                    selection = selection,
+                                    isCurrent = { playback.marks(artist) },
+                                    isPlaying = { playback.isPlaying },
+                                    onClick = { navigator.go(ArtistDetailScreen(artist.id)) },
+                                    onOpenOptions = { optionsTarget = OptionsTarget.ForArtist(artist) },
+                                )
+                            }
                         }
-                    }
-                    if (uiState.genres.isNotEmpty()) {
-                        if (showHeaders) item { SearchSectionHeader("Genres") }
-                        items(uiState.genres, key = { "genre-${it.id}" }) { genre ->
-                            GenreRow(
-                                genre = genre,
-                                selection = null,
-                                isCurrent = { playback.marks(genre) },
-                                isPlaying = { playback.isPlaying },
-                                onClick = { navigator.go(GenreDetailScreen(genre.id)) },
-                                onOpenOptions = { optionsTarget = OptionsTarget.ForGenre(genre) },
-                            )
+                        if (uiState.genres.isNotEmpty()) {
+                            if (showHeaders) item { SearchSectionHeader("Genres") }
+                            items(uiState.genres, key = { "genre-${it.id}" }) { genre ->
+                                GenreRow(
+                                    genre = genre,
+                                    selection = selection,
+                                    isCurrent = { playback.marks(genre) },
+                                    isPlaying = { playback.isPlaying },
+                                    onClick = { navigator.go(GenreDetailScreen(genre.id)) },
+                                    onOpenOptions = { optionsTarget = OptionsTarget.ForGenre(genre) },
+                                )
+                            }
                         }
                     }
                 }

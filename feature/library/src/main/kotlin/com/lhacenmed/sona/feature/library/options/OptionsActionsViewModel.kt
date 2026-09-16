@@ -5,10 +5,15 @@ import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.itemsOrEmpty
+import com.lhacenmed.sona.core.datastore.LibrarySettings
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.library.operation.launchOperation
+import com.lhacenmed.sona.feature.library.selection.SelectionKey
+import com.lhacenmed.sona.feature.library.selection.tracksOf
 import com.lhacenmed.sona.feature.playback.PlaybackController
+import com.lhacenmed.sona.feature.scanner.MediaScanner
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
@@ -17,9 +22,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
- * What an options sheet's Play, Shuffle, Play next, Add to queue, Add to playlist and Share rows do -
- * shared by every entity's sheet, so a track, an album, an artist, a genre and a playlist all reach
- * the queue and the playlist table the same way.
+ * What an options sheet's rows do - playing, queueing, adding to a playlist, sharing, and the changes
+ * that cannot be taken back: excluding folders and deleting playlists. Shared by every entity's sheet
+ * and every selection bar, so a track, an album, an artist, a genre, a folder and a playlist all reach
+ * the queue, the playlist table and the library the same way.
  *
  * Scoped to the screen rather than the sheet, so work started from a row - resolving a collection's
  * tracks to share them - finishes even though the sheet has already slid away.
@@ -28,6 +34,8 @@ import kotlinx.coroutines.launch
 class OptionsActionsViewModel @Inject constructor(
     private val repository: LibraryRepository,
     private val playbackController: PlaybackController,
+    private val librarySettings: LibrarySettings,
+    private val mediaScanner: MediaScanner,
 ) : ViewModel() {
 
     /** Every playlist there is to add to. */
@@ -82,9 +90,36 @@ class OptionsActionsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Keeps [folderPaths] out of the library, then waits for the rescan that takes their tracks out, so
+     * [onFinished] is told only once the folders are really gone from every list.
+     */
+    fun excludeFolders(folderPaths: List<String>, onFinished: (succeeded: Boolean) -> Unit) {
+        viewModelScope.launchOperation(onFinished) {
+            folderPaths.forEach { librarySettings.addExcludedFolder(it) }
+            mediaScanner.rescan()
+        }
+    }
+
+    /** Deletes the playlists [playlistIds] name. The tracks they hold are untouched. */
+    fun deletePlaylists(playlistIds: List<Long>, onFinished: (succeeded: Boolean) -> Unit) {
+        viewModelScope.launchOperation(onFinished) { playlistIds.forEach { repository.deletePlaylist(it) } }
+    }
+
     /** Hands [target]'s own tracks to [onLoaded] once they are known - what sharing a collection needs. */
     fun loadTracks(target: OptionsTarget, onLoaded: (List<Track>) -> Unit) {
         viewModelScope.launch { onLoaded(entityTracks(target)) }
+    }
+
+    /**
+     * Turns a selection into the tracks it stands for - see [tracksOf] - and hands them to [onResolved]
+     * as the selection's sheet target. Nothing is handed over for a selection that stands for no tracks.
+     */
+    fun resolveSelection(keys: List<SelectionKey>, onResolved: (OptionsTarget.ForSelection) -> Unit) {
+        viewModelScope.launch {
+            val tracks = repository.tracksOf(keys)
+            if (tracks.isNotEmpty()) onResolved(OptionsTarget.ForSelection(tracks))
+        }
     }
 
     /** The playlists already holding every one of [target]'s own tracks - Auxio's `PlaylistChoice.alreadyAdded`. */
@@ -115,14 +150,19 @@ class OptionsActionsViewModel @Inject constructor(
         is OptionsTarget.ForArtist -> readyTracks(repository.artistTracks(target.artist.id))
         is OptionsTarget.ForGenre -> readyTracks(repository.genreTracks(target.genre.id))
         is OptionsTarget.ForPlaylist -> readyTracks(repository.playlistTracks(target.playlist.id))
+        is OptionsTarget.ForFolder -> readyTracks(repository.folderTracks(target.folder.path))
+        is OptionsTarget.ForSelection -> target.tracks
     }
 
+    /** What [target] plays as - null for a selection, which Auxio plays from no collection at all. */
     private fun parentOf(target: OptionsTarget): PlaybackParent? = when (target) {
         is OptionsTarget.ForTrack -> target.queueParent
         is OptionsTarget.ForAlbum -> PlaybackParent.Album(target.album.id)
         is OptionsTarget.ForArtist -> PlaybackParent.Artist(target.artist.id)
         is OptionsTarget.ForGenre -> PlaybackParent.Genre(target.genre.id)
         is OptionsTarget.ForPlaylist -> PlaybackParent.Playlist(target.playlist.id)
+        is OptionsTarget.ForFolder -> PlaybackParent.Folder(target.folder.path)
+        is OptionsTarget.ForSelection -> null
     }
 
     /** Waits for the query to actually have rows rather than [LibraryContent.Loading]'s empty first emission. */

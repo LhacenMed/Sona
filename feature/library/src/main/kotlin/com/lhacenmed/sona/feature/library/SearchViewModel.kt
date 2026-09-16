@@ -7,6 +7,7 @@ import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -160,15 +161,13 @@ class SearchViewModel @Inject constructor(
     }
 
     /**
-     * Plays the selected results. Only track results can be selected - an album and an artist have
-     * no single action in common, so letting them into a selection would give the bar nothing
-     * honest to offer.
+     * Every result's selection key, in the order the results are shown, which is what the context bar's
+     * "select all" selects - an artist with no tracks left out, as its row cannot be selected.
      */
-    fun playSelection(selectedKeys: Set<Any>) {
-        val selected = uiState.value.tracks.filter { it.id in selectedKeys }
-        if (selected.isNotEmpty()) playbackController.playTracks(selected, startIndex = 0)
+    fun selectableKeys(): List<SelectionKey> = uiState.value.let { results ->
+        results.tracks.map { SelectionKey.Track(it.id) } +
+            results.albums.map { SelectionKey.Album(it.id) } +
+            results.artists.filter { it.trackCount > 0 }.map { SelectionKey.Artist(it.id) } +
+            results.genres.map { SelectionKey.Genre(it.id) }
     }
-
-    /** Every track result's selection key, which is what the context bar's "select all" selects. */
-    fun selectableKeys(): List<Any> = uiState.value.tracks.map { it.id }
 }
