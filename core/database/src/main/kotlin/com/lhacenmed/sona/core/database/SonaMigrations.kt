@@ -191,6 +191,29 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
 }
 
 /**
+ * Lyrics, read from each track's tags or typed in by the user.
+ *
+ * A new table and nothing else, so existing rows are untouched. Written rather than left to the
+ * destructive fallback, which would throw away the playlists and play counts earlier migrations kept.
+ */
+val MIGRATION_8_9 = object : Migration(8, 9) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `lyrics` (
+                `trackId` INTEGER NOT NULL,
+                `lyrics` TEXT NOT NULL,
+                `source` TEXT NOT NULL,
+                `updatedAt` INTEGER NOT NULL,
+                PRIMARY KEY(`trackId`),
+                FOREIGN KEY(`trackId`) REFERENCES `tracks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent(),
+        )
+    }
+}
+
+/**
  * Makes sure Favorites exists, every time the database is opened.
  *
  * On open rather than on create, because creation is only one of the ways this database comes to

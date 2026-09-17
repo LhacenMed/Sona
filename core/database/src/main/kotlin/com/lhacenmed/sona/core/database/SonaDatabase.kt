@@ -6,6 +6,7 @@ import androidx.room.TypeConverters
 import com.lhacenmed.sona.core.database.dao.AlbumDao
 import com.lhacenmed.sona.core.database.dao.ArtistDao
 import com.lhacenmed.sona.core.database.dao.GenreDao
+import com.lhacenmed.sona.core.database.dao.LyricsDao
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.PlaylistDao
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
@@ -13,6 +14,7 @@ import com.lhacenmed.sona.core.database.dao.TrackDao
 import com.lhacenmed.sona.core.database.entity.AlbumEntity
 import com.lhacenmed.sona.core.database.entity.ArtistEntity
 import com.lhacenmed.sona.core.database.entity.GenreEntity
+import com.lhacenmed.sona.core.database.entity.LyricsEntity
 import com.lhacenmed.sona.core.database.entity.PlayStatsEntity
 import com.lhacenmed.sona.core.database.entity.PlaylistEntity
 import com.lhacenmed.sona.core.database.entity.PlaylistTrackEntity
@@ -29,8 +31,9 @@ import com.lhacenmed.sona.core.database.entity.TrackEntity
         PlaylistEntity::class,
         PlaylistTrackEntity::class,
         PlayStatsEntity::class,
+        LyricsEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
 )
 @TypeConverters(CoverArtUrisConverter::class)
@@ -42,6 +45,7 @@ abstract class SonaDatabase : RoomDatabase() {
     abstract fun queueItemDao(): QueueItemDao
     abstract fun playlistDao(): PlaylistDao
     abstract fun playStatsDao(): PlayStatsDao
+    abstract fun lyricsDao(): LyricsDao
 
     companion object {
         const val FILE_NAME = "sona.db"

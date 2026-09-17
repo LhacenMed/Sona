@@ -36,10 +36,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -129,6 +131,7 @@ internal fun BottomSheetPlayer(
     val duration = track?.durationMs?.takeIf { it > 0L } ?: playback.durationMs
     val latestDuration by rememberUpdatedState(duration)
     var position by remember(track?.id) { mutableLongStateOf(viewModel.currentPositionMs()) }
+    var lyricsSyncOffset by rememberSaveable(track?.id) { mutableIntStateOf(0) }
     var sliderPosition by remember(track?.id) { mutableStateOf<Long?>(null) }
     var isUserSeeking by remember(track?.id) { mutableStateOf(false) }
 
@@ -318,9 +321,11 @@ internal fun BottomSheetPlayer(
             initialAnchor = DISMISSED_ANCHOR,
         )
 
+    var isLyricsSheetVisible by rememberSaveable { mutableStateOf(false) }
     val openQueue =
         remember(state, queueSheetState) {
             {
+                isLyricsSheetVisible = false
                 if (!state.isExpandedOrExpanding) {
                     state.expandSoft()
                 }
@@ -334,6 +339,7 @@ internal fun BottomSheetPlayer(
                 state.isExpandedOrExpanding,
     ) {
         when {
+            isLyricsSheetVisible && state.isExpandedOrExpanding -> isLyricsSheetVisible = false
             queueSheetState.isExpandedOrExpanding -> queueSheetState.collapseSoft()
             state.isExpandedOrExpanding -> state.collapseSoft()
         }
@@ -543,8 +549,7 @@ internal fun BottomSheetPlayer(
                         titleActions = titleActions,
                         onCollapseClick = state::collapseSoft,
                         onQueueClick = openQueue,
-                        // Lyrics have no screen yet; the button keeps its place until they do.
-                        onLyricsClick = {},
+                        onLyricsClick = { isLyricsSheetVisible = true },
                         onMenuClick = onMenuClick,
                         viewModel = viewModel,
                         onSliderValueChange = onSliderValueChange,
@@ -655,8 +660,23 @@ internal fun BottomSheetPlayer(
             onBackgroundColor = MaterialTheme.colorScheme.onSurface,
             textBackgroundColor = textBackgroundColor,
             onMenuClick = { menuTrack = it },
+            onShowLyrics = { isLyricsSheetVisible = true },
             viewModel = viewModel,
         )
+
+        track?.let { currentTrack ->
+            LyricsSheetTransition(
+                visible = isLyricsSheetVisible,
+                backHandlerEnabled = isLyricsSheetVisible && state.isExpandedOrExpanding,
+                track = currentTrack,
+                playback = playback,
+                durationMs = duration,
+                lyricsSyncOffset = lyricsSyncOffset,
+                onLyricsSyncOffsetChange = { lyricsSyncOffset = it },
+                onDismiss = { isLyricsSheetVisible = false },
+                viewModel = viewModel,
+            )
+        }
     }
 
     menuTrack?.let { menuFor ->

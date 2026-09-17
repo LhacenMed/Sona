@@ -15,6 +15,7 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
 import com.lhacenmed.sona.core.data.LibraryRepository
+import com.lhacenmed.sona.core.data.lyrics.LyricsPreloadManager
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
 import com.lhacenmed.sona.core.database.entity.QueueItemEntity
@@ -61,6 +62,7 @@ class PlaybackController @Inject constructor(
     private val playStatsDao: PlayStatsDao,
     private val repository: LibraryRepository,
     private val playbackSettings: PlaybackSettings,
+    private val lyricsPreloadManager: LyricsPreloadManager,
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -97,6 +99,7 @@ class PlaybackController @Inject constructor(
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             recordPlayStarted(mediaItem?.mediaId?.toLongOrNull())
             schedulePlayCount(controller?.isPlaying == true)
+            controller?.let(::preloadUpcomingLyrics)
             sleepTimerHolder.onTrackEnd()
         }
 
@@ -382,6 +385,14 @@ class PlaybackController @Inject constructor(
                 playStatsDao.recordPlayCounted(trackId, System.currentTimeMillis())
             }
         }
+    }
+
+    /** Hands the queue, as it plays from here, to the lyrics preload - ArchiveTune does this on every song change. */
+    private fun preloadUpcomingLyrics(mediaController: MediaController) {
+        val queue = currentQueue(mediaController)
+        val currentIndex = queue.indexOfFirst { it.mediaItemIndex == mediaController.currentMediaItemIndex }
+        val tracksById = repository.tracksById.value
+        lyricsPreloadManager.onSongChanged(currentIndex, queue.map { tracksById[it.trackId] })
     }
 
     private fun persistQueueState(mediaController: MediaController) {

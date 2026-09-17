@@ -29,6 +29,9 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
 
+    // Tokenizes Japanese lyrics into readings for romanization.
+    implementation(libs.kuromoji.ipadic)
+
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
