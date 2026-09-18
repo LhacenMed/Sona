@@ -7,6 +7,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.library.options.AlbumOptionsContext
+import com.lhacenmed.sona.feature.library.options.OptionsTarget
+import com.lhacenmed.sona.feature.library.options.TrackOptionsContext
 
 data class AlbumDetailScreen(val albumId: Long) : Screen {
 
@@ -25,6 +28,8 @@ data class AlbumDetailScreen(val albumId: Long) : Screen {
             onBack = navigator::back,
             viewModel = viewModel,
             emptyMessage = "This album has no tracks.",
+            collection = album?.let { OptionsTarget.ForAlbum(it, AlbumOptionsContext.FROM_DETAIL) },
+            trackOptionsContext = TrackOptionsContext.FROM_ALBUM,
         )
     }
 }

@@ -8,6 +8,7 @@
     <string name="decibels_format">%1$d dB</string>
     <string name="sp_format">%1$dsp</string>
     <string name="dp_format">%1$ddp</string>
+    <string name="percent_format">%1$d%%</string>
 
     <!-- Settings home -->
     <string name="settings_group_library_and_playback">Library and playback</string>
@@ -18,7 +19,7 @@
     <string name="playback_title">Playback</string>
     <string name="playback_summary">Audio behaviour, crossfade, and the queue</string>
     <string name="lyrics_title">Lyrics</string>
-    <string name="lyrics_summary">Providers, appearance, and romanization</string>
+    <string name="lyrics_summary">Appearance, animation, and romanization</string>
     <string name="content_title">Content</string>
     <string name="content_summary">How music, tags, and artwork are loaded</string>
     <string name="behavior_title">Behavior</string>
@@ -121,29 +122,23 @@
 
     <!-- Lyrics -->
     <string name="lyrics_display_section">Display</string>
-    <string name="lyrics_mode_title">Lyrics mode</string>
-    <string name="lyrics_mode_synced">Synced when available</string>
-    <string name="lyrics_mode_plain">Plain text only</string>
-    <string name="lyrics_animation_title">Animation</string>
-    <string name="lyrics_animation_fade">Fade</string>
-    <string name="lyrics_animation_karaoke">Karaoke</string>
-    <string name="lyrics_animation_none">None</string>
-    <string name="lyrics_text_size_title">Text size</string>
-    <string name="lyrics_line_spacing_title">Line spacing</string>
-    <string name="lyrics_blur_title">Blur inactive lines</string>
-    <string name="lyrics_blur_summary">Soften every line except the one being sung</string>
-    <string name="lyrics_auto_scroll_title">Auto scroll</string>
+    <string name="lyrics_animation_style_title">Lyrics animation style</string>
+    <string name="lyrics_animation_style_summary">Line bounce, glow, and word fill</string>
+    <string name="lyrics_click_change_title">Change lyrics on click</string>
+    <string name="lyrics_click_change_summary">Jump to the moment a line is sung</string>
+    <string name="lyrics_auto_scroll_title">Auto scroll lyrics</string>
     <string name="lyrics_auto_scroll_summary">Follow the track as it plays</string>
-    <string name="lyrics_tap_to_seek_title">Tap a line to seek</string>
-    <string name="lyrics_tap_to_seek_summary">Jump to the moment a line is sung</string>
-    <string name="lyrics_providers_section">Providers</string>
-    <string name="lyrics_provider_embedded_title">Embedded lyrics</string>
-    <string name="lyrics_provider_embedded_summary">Read lyrics stored in the file\'s own tags</string>
-    <string name="lyrics_provider_lrclib_title">LRCLIB</string>
-    <string name="lyrics_provider_lrclib_summary">Community-maintained synced lyrics</string>
-    <string name="lyrics_provider_netease_title">NetEase</string>
-    <string name="lyrics_provider_netease_summary">Used when LRCLIB has nothing</string>
-    <string name="lyrics_providers_note">Providers are tried in the order shown. Embedded lyrics never need a connection.</string>
+    <string name="lyrics_blur_title">Blur lyrics lines</string>
+    <string name="lyrics_blur_summary">Soften every line except the one being sung</string>
+    <string name="lyrics_text_size_title">Lyrics text size</string>
+    <string name="lyrics_line_spacing_title">Lyrics line spacing</string>
+    <string name="lyrics_line_spacing_format">%.1fx</string>
+    <string name="lyrics_background_style_title">Lyrics background style</string>
+    <string name="lyrics_background_default">Default</string>
+    <string name="lyrics_background_follow_theme">Follow theme</string>
+    <string name="lyrics_background_coloring">Coloring</string>
+    <string name="lyrics_show_player_controls_title">Show player controls</string>
+    <string name="lyrics_show_player_controls_summary">Keep playback controls beneath the lyrics</string>
     <string name="lyrics_romanization_section">Romanization</string>
     <string name="romanize_japanese_title">Romanize Japanese</string>
     <string name="romanize_japanese_summary">Show Japanese lyrics in Latin script</string>
@@ -151,11 +146,26 @@
     <string name="romanize_korean_summary">Show Korean lyrics in Latin script</string>
     <string name="romanize_chinese_title">Romanize Chinese</string>
     <string name="romanize_chinese_summary">Show Chinese lyrics in Latin script</string>
+    <string name="romanize_hindi_title">Romanize Hindi</string>
+    <string name="romanize_hindi_summary">Show Hindi lyrics in Latin script</string>
+    <string name="romanize_other_languages_title">Romanize other languages</string>
+    <string name="romanize_other_languages_summary">Show lyrics in any other non-Latin script in Latin script</string>
+    <string name="lyrics_queue_section">Queue</string>
+    <string name="lyrics_preload_title">Preload queue lyrics</string>
+    <string name="lyrics_preload_summary">Read lyrics for upcoming tracks before they play</string>
+    <string name="lyrics_preload_count_title">Number of songs to preload</string>
+    <string name="lyrics_preload_count_off">Off</string>
     <string name="lyrics_cache_section">Cache</string>
-    <string name="lyrics_preload_title">Preload lyrics for the queue</string>
-    <string name="lyrics_preload_summary">Fetch lyrics ahead of the track being played</string>
     <string name="lyrics_clear_cache_title">Clear lyrics cache</string>
-    <string name="lyrics_clear_cache_summary">Remove every downloaded set of lyrics</string>
+    <string name="lyrics_clear_cache_summary">Forget stored and edited lyrics; they are read again from each file</string>
+    <string name="lyrics_clear_cache_confirm">Are you sure you want to clear all lyrics cache?</string>
+    <string name="lyrics_clear_cache_action">Clear</string>
+    <string name="lyrics_animation_tuning_section">Animation tuning</string>
+    <string name="lyrics_line_bounce_title">Line bounce effect</string>
+    <string name="lyrics_line_bounce_summary">Enable bounce animation for line-synced (LRC) lyrics</string>
+    <string name="lyrics_bounce_amplitude_title">Bounce amplitude</string>
+    <string name="lyrics_glow_intensity_title">Glow intensity</string>
+    <string name="lyrics_fill_smoothness_title">Fill transition smoothness</string>
 
     <!-- Content -->
     <string name="content_library_section">Library</string>

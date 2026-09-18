@@ -16,7 +16,11 @@ internal class SortSpec<T>(
     private val default: SortOrder,
     private val orderings: Map<SortCriterion, List<SortField<T>>>,
 ) {
-    val criteria: List<SortCriterion> = orderings.keys.toList()
+    /**
+     * What the sort sheet offers. The arranged order is left out of it: dragging is what puts a list
+     * in that order, so it is never something to pick - only something a list can already be in.
+     */
+    val criteria: List<SortCriterion> = orderings.keys.filterNot { it == SortCriterion.CUSTOM }
 
     /** [stored] if this list still offers it, otherwise the list's default. */
     fun resolve(stored: SortOrder?): SortOrder = stored?.takeIf { it.criterion in orderings } ?: default

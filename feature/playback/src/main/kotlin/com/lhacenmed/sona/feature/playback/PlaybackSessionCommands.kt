@@ -14,8 +14,15 @@ internal object PlaybackSessionCommands {
     const val ACTION_TOGGLE_FAVORITE = "TOGGLE_FAVORITE"
     const val ACTION_TOGGLE_SHUFFLE = "TOGGLE_SHUFFLE"
     const val ACTION_TOGGLE_REPEAT_MODE = "TOGGLE_REPEAT_MODE"
+    const val ACTION_PLAY_NEXT = "PLAY_NEXT"
+    const val ACTION_ADD_TO_QUEUE = "ADD_TO_QUEUE"
+
+    /** The ids of the tracks [ACTION_PLAY_NEXT] and [ACTION_ADD_TO_QUEUE] act on, as a `LongArray`. */
+    const val EXTRA_TRACK_IDS = "TRACK_IDS"
 
     val toggleFavoriteCommand = SessionCommand(ACTION_TOGGLE_FAVORITE, Bundle.EMPTY)
     val toggleShuffleCommand = SessionCommand(ACTION_TOGGLE_SHUFFLE, Bundle.EMPTY)
     val toggleRepeatModeCommand = SessionCommand(ACTION_TOGGLE_REPEAT_MODE, Bundle.EMPTY)
+    val playNextCommand = SessionCommand(ACTION_PLAY_NEXT, Bundle.EMPTY)
+    val addToQueueCommand = SessionCommand(ACTION_ADD_TO_QUEUE, Bundle.EMPTY)
 }

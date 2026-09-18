@@ -40,4 +40,15 @@
     <string name="player_copied_artist">Copied Artist</string>
     <string name="player_go_to_album">Go to album</string>
     <string name="player_go_to_artist">Go to artist</string>
+    <string name="player_lyrics_not_found">Lyrics not found</string>
+    <string name="player_lyrics_resume">Resume</string>
+    <string name="player_max_selection_limit">Up to %d lines can be selected</string>
+    <string name="player_share">Share</string>
+    <string name="player_share_lyrics">Share lyrics</string>
+    <string name="player_edit">Edit</string>
+    <string name="player_lyrics_sync_offset">Lyrics sync offset</string>
+    <string name="player_show_lyrics_player_controls">Show player controls</string>
+    <string name="player_cancel">Cancel</string>
+    <string name="player_save">Save</string>
+    <string name="player_ok">OK</string>
 </resources>

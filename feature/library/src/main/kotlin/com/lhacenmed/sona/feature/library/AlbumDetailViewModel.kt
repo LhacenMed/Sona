@@ -5,6 +5,7 @@ import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.sort.LibrarySortOrders
 import com.lhacenmed.sona.core.model.Album
+import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.sort.SortableList
 import com.lhacenmed.sona.feature.library.sort.SortControl
@@ -24,12 +25,14 @@ class AlbumDetailViewModel @AssistedInject constructor(
     repository: LibraryRepository,
     sortOrders: LibrarySortOrders,
     playbackController: PlaybackController,
-) : TrackListDetailViewModel(playbackController) {
+) : TrackListDetailViewModel(playbackController, repository) {
 
     @AssistedFactory
     interface Factory {
         fun create(albumId: Long): AlbumDetailViewModel
     }
+
+    override val playbackParent: PlaybackParent = PlaybackParent.Album(albumId)
 
     val album: StateFlow<Album?> = repository.album(albumId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -37,5 +40,5 @@ class AlbumDetailViewModel @AssistedInject constructor(
     override val tracks: StateFlow<LibraryContent<Track>> = repository.albumTracks(albumId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryContent.Loading)
 
-    override val sort: SortControl = sortOrders.control(SortableList.ALBUM_TRACKS)
+    override val sort: SortControl = sortOrders.control(SortableList.ALBUM_TRACKS, albumId.toString())
 }

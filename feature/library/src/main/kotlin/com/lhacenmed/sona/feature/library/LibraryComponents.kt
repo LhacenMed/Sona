@@ -2,17 +2,13 @@ package com.lhacenmed.sona.feature.library
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,59 +17,56 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DragHandle
-import androidx.compose.material.icons.filled.FileUpload
-import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.LibraryContent
+import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.CookieShape
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
-import com.lhacenmed.sona.core.designsystem.component.SonaCoverArt
-import com.lhacenmed.sona.core.designsystem.component.SonaIconButton
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.component.shimmer
-import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
-import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.library.operation.ConfirmedOperationDialog
+import com.lhacenmed.sona.feature.library.options.OptionsFollowUps
+import com.lhacenmed.sona.feature.library.options.OptionsSheet
+import com.lhacenmed.sona.feature.library.options.OptionsTarget
+import com.lhacenmed.sona.feature.library.options.TrackOptionsContext
+import com.lhacenmed.sona.feature.library.options.actions
+import com.lhacenmed.sona.feature.library.options.disabledActions
+import com.lhacenmed.sona.feature.library.options.rememberOptionsActions
+import com.lhacenmed.sona.feature.library.selection.SelectionKey
+import com.lhacenmed.sona.feature.library.selection.SelectionOptionsHost
+import com.lhacenmed.sona.feature.library.selection.toLibraryTopBarSelection
 import com.lhacenmed.sona.feature.library.sort.SortSheet
 import com.lhacenmed.sona.feature.library.sort.sortAction
-import kotlin.math.roundToInt
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 /**
  * Shared building blocks for the library's list/detail screens, kept small and private-ish to
@@ -154,7 +147,15 @@ internal fun <T> LibraryList(
         modifier = modifier,
     ) { items ->
         if (onReorder != null) {
-            ReorderableColumn(items = items, key = key, onReorder = onReorder, row = row)
+            // The same list state as the plain list below, so the rows keep their place when handles
+            // appear and again when they go: a list state belongs to the list, not to one of its modes.
+            ReorderableColumn(
+                items = items,
+                key = key,
+                listState = listState,
+                onReorder = onReorder,
+                row = row,
+            )
             return@LibraryListContent
         }
         KeepAtTopWhenRowsChange(listState = listState, rows = items)
@@ -196,7 +197,8 @@ private fun KeepAtTopWhenRowsChange(listState: LazyListState, rows: List<*>) {
     }
 }
 
-private const val NO_DRAG = -1
+/** How close to an edge a drag starts scrolling the list: one row's height, as the queue uses. */
+private val ReorderAutoScrollThreshold = 72.dp
 
 /**
  * The drag gesture for a row's handle, inside a list that can be reordered - null in every other list.
@@ -204,97 +206,79 @@ private const val NO_DRAG = -1
  * Provided per row by [ReorderableColumn] rather than passed through [LibraryList]'s `row`, which every
  * list shares and only a reorderable one has any use for.
  */
-private val LocalDragHandle = compositionLocalOf<Modifier?> { null }
+internal val LocalDragHandle = compositionLocalOf<Modifier?> { null }
 
 /**
- * A list whose rows can be dragged into a new order.
+ * A list whose rows can be dragged into a new order, on the same drag system as the player's queue.
  *
  * Dragging starts from a handle rather than a long press, because long press already starts a
  * selection - one gesture cannot mean both, and a handle is what the reference app uses too.
  *
- * The order shown while dragging is derived rather than stored: the row is taken out of the list and
- * put back wherever the finger has reached, so an abandoned drag leaves nothing half-moved. Only the
- * order the finger let go of is written, once, on drop.
- *
- * Rows in these lists are all the same height, which is what lets the target be arithmetic rather
- * than a hit test against every visible row.
+ * The order on screen is a copy that the drag edits as the finger moves, so rows change places under
+ * the finger and nothing waits on the database. The order the finger let go of is written once, on
+ * drop, and only when it actually differs - until then the stored order is untouched, so an abandoned
+ * drag leaves nothing half-moved. With no drag running the copy simply follows the list it mirrors.
  */
 @Composable
 private fun <T> ReorderableColumn(
     items: List<T>,
     key: (T) -> Any,
+    listState: LazyListState,
     onReorder: (List<T>) -> Unit,
     row: @Composable (T) -> Unit,
 ) {
-    val listState = rememberLazyListState()
     KeepAtTopWhenRowsChange(listState = listState, rows = items)
-    var draggedIndex by remember(items) { mutableIntStateOf(NO_DRAG) }
-    var dragOffsetPx by remember(items) { mutableFloatStateOf(0f) }
+    val orderedRows = remember { mutableStateListOf<T>().apply { addAll(items) } }
+    var hasDropToWrite by remember { mutableStateOf(false) }
+    var writtenOrder by remember { mutableStateOf<List<Any>?>(null) }
 
-    val rowHeightPx = listState.layoutInfo.visibleItemsInfo.firstOrNull()?.size ?: 0
-    val targetIndex = if (draggedIndex == NO_DRAG || rowHeightPx == 0) {
-        NO_DRAG
-    } else {
-        (draggedIndex + (dragOffsetPx / rowHeightPx).roundToInt()).coerceIn(0, items.lastIndex)
-    }
-    val ordered = if (targetIndex == NO_DRAG) {
-        items
-    } else {
-        items.toMutableList().apply { add(targetIndex, removeAt(draggedIndex)) }
+    val reorderableState = rememberReorderableLazyListState(
+        lazyListState = listState,
+        scrollThresholdPadding = PaddingValues(vertical = ReorderAutoScrollThreshold),
+    ) { from, to ->
+        if (from.index in orderedRows.indices && to.index in orderedRows.indices) {
+            orderedRows.add(to.index, orderedRows.removeAt(from.index))
+            hasDropToWrite = true
+        }
     }
 
-    // The gesture callbacks are created once per `items` and would otherwise close over the values
-    // that existed when the drag began - a target of "no drag" and the untouched order - so the drop
-    // would compare them, find nothing had moved, and write nothing at all. These read the latest.
-    val latestTarget by rememberUpdatedState(targetIndex)
-    val latestOrder by rememberUpdatedState(ordered)
+    // Written once the finger is off the row, never while it moves. Anything else that changes the
+    // list - rows arriving, a re-sort - refills the copy instead.
+    LaunchedEffect(items, reorderableState.isAnyItemDragging) {
+        if (reorderableState.isAnyItemDragging) return@LaunchedEffect
+        val itemKeys = items.map(key)
+        if (hasDropToWrite) {
+            hasDropToWrite = false
+            val droppedKeys = orderedRows.map(key)
+            if (droppedKeys != itemKeys) {
+                writtenOrder = droppedKeys
+                onReorder(orderedRows.toList())
+                return@LaunchedEffect
+            }
+        }
+        // A drop is written in two parts - the arranged order, and the switch to it - so the list can
+        // arrive still in the order it was sorted by. The copy keeps what the finger left until the
+        // list catches up, and gives way at once if the rows themselves changed while it waited.
+        val awaited = writtenOrder
+        if (awaited != null && itemKeys != awaited && itemKeys.toSet() == awaited.toSet()) {
+            return@LaunchedEffect
+        }
+        writtenOrder = null
+        Snapshot.withMutableSnapshot {
+            orderedRows.clear()
+            orderedRows.addAll(items)
+        }
+    }
 
     LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-        itemsIndexed(
-            items = ordered,
-            key = { _, item -> key(item) },
-            contentType = { _, _ -> LIST_ROW_CONTENT_TYPE },
-        ) { index, item ->
-            val isDragging = targetIndex != NO_DRAG && index == targetIndex
-            Box(
-                modifier = Modifier
-                    .zIndex(if (isDragging) 1f else 0f)
-                    .graphicsLayer {
-                        // The row follows the finger, less the distance it has already covered by
-                        // changing places with its neighbours.
-                        translationY = if (isDragging) {
-                            dragOffsetPx - (targetIndex - draggedIndex) * rowHeightPx
-                        } else {
-                            0f
-                        }
-                    },
-            ) {
+        items(
+            items = orderedRows,
+            key = key,
+            contentType = { LIST_ROW_CONTENT_TYPE },
+        ) { item ->
+            ReorderableItem(state = reorderableState, key = key(item)) {
                 // The row draws the handle itself, beside its menu button, and gives it this gesture.
-                CompositionLocalProvider(
-                    LocalDragHandle provides Modifier.pointerInput(items) {
-                        detectDragGestures(
-                            onDragStart = {
-                                draggedIndex = index
-                                dragOffsetPx = 0f
-                            },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                dragOffsetPx += dragAmount.y
-                            },
-                            onDragEnd = {
-                                if (latestTarget != NO_DRAG && latestTarget != draggedIndex) {
-                                    onReorder(latestOrder)
-                                }
-                                draggedIndex = NO_DRAG
-                                dragOffsetPx = 0f
-                            },
-                            onDragCancel = {
-                                draggedIndex = NO_DRAG
-                                dragOffsetPx = 0f
-                            },
-                        )
-                    },
-                ) {
+                CompositionLocalProvider(LocalDragHandle provides Modifier.draggableHandle()) {
                     row(item)
                 }
             }
@@ -308,55 +292,24 @@ private fun <T> ReorderableColumn(
  * Long-press starts a selection; once one is running an ordinary tap adds to it instead of opening
  * anything, which is what stops a stray tap from navigating away mid-selection. Every selectable
  * list in the app goes through this, so the gesture cannot drift between them.
+ *
+ * A row with no [selectionKey] cannot be selected - Auxio's empty collection: a long-press does
+ * nothing, and while a selection runs neither does a tap.
  */
 @OptIn(ExperimentalFoundationApi::class)
 internal fun Modifier.selectableRow(
     selection: SelectionState,
-    selectionKey: Any,
+    selectionKey: SelectionKey?,
     onClick: () -> Unit,
 ): Modifier = combinedClickable(
-    onClick = { if (selection.isActive) selection.toggle(selectionKey) else onClick() },
-    onLongClick = { selection.toggle(selectionKey) },
+    onClick = {
+        when {
+            !selection.isActive -> onClick()
+            selectionKey != null -> selection.toggle(selectionKey)
+        }
+    },
+    onLongClick = { selectionKey?.let(selection::toggle) },
 )
-
-/** The two-line row shape shared by the artists, albums, genres and folders tabs. */
-@Composable
-internal fun LibraryEntityRow(
-    title: String,
-    subtitle: String,
-    // Null for a row that stands for something other than a real entity - the derived lists on the
-    // playlists screen - so it can be opened but never gathered into a selection meant for playlists.
-    selection: SelectionState?,
-    selectionKey: Any,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val background = if (selection?.isSelected(selectionKey) == true) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.surface
-    }
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(background)
-            .then(
-                if (selection == null) {
-                    Modifier.clickable(onClick = onClick)
-                } else {
-                    Modifier.selectableRow(selection, selectionKey, onClick)
-                },
-            )
-            .padding(horizontal = SonaComponentStyle.ContentHorizontalPadding, vertical = 12.dp),
-    ) {
-        Text(text = title, style = MaterialTheme.typography.bodyLarge)
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
 
 /**
  * Auxio's empty-list cookie - the six-sided expressive shape with [icon] inside it - centred and
@@ -432,6 +385,12 @@ internal fun EmptyLibraryState(
  * The album, artist, genre and folder detail screens differ only in their heading and their query,
  * so they share this. It also means they inherit the list screens' loading state - previously they
  * started from a non-null empty state and so briefly rendered "no tracks" over a list that existed.
+ *
+ * The bar's menu is [collection]'s own actions - exactly what its row's options sheet lists, minus
+ * View - carried out the way the sheet carries them out; a screen that closes once its collection is
+ * deleted goes back. A list that is no collection of its own - Recent, Most played - offers Export
+ * alone. [removeFromPlaylist] is given only by a real playlist, the one list with membership to remove
+ * from; removing asks first and reports how it went.
  */
 @Composable
 internal fun TrackListDetail(
@@ -440,18 +399,22 @@ internal fun TrackListDetail(
     onBack: () -> Unit,
     viewModel: TrackListDetailViewModel,
     emptyMessage: String,
+    collection: OptionsTarget?,
     modifier: Modifier = Modifier,
-    extraActions: List<TopBarAction> = emptyList(),
     onReorder: ((List<Track>) -> Unit)? = null,
-    onRemoveSelected: ((Set<Any>) -> Unit)? = null,
+    removeFromPlaylist: ((trackIds: List<Long>, onFinished: (succeeded: Boolean) -> Unit) -> Unit)? = null,
+    trackOptionsContext: TrackOptionsContext = TrackOptionsContext.LIST,
 ) {
     val tracks by viewModel.tracks.collectAsStateWithLifecycle()
-    val currentTrackId by viewModel.currentTrackId.collectAsStateWithLifecycle()
-    val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
+    val playback by viewModel.playback.collectAsStateWithLifecycle()
     val selection = rememberSelectionState()
     val context = LocalContext.current
+    val collectionActions = rememberOptionsActions()
     var searchQuery by remember { mutableStateOf<String?>(null) }
     var isSortSheetOpen by remember { mutableStateOf(false) }
+    var optionsTarget by remember { mutableStateOf<OptionsTarget.ForTrack?>(null) }
+    // The selected tracks waiting on the user to confirm removing them, in the order they were selected.
+    var removingTracks by remember { mutableStateOf<List<Track>>(emptyList()) }
     val sort = viewModel.sort
 
     val exportLauncher = rememberLauncherForActivityResult(
@@ -469,204 +432,116 @@ internal fun TrackListDetail(
             track.artist.contains(query, ignoreCase = true)
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
-        SonaTopAppBar(
-            title = title,
-            subtitle = subtitle,
-            onNavigateBack = onBack,
-            actions = buildList {
-                add(
-                    TopBarAction(label = "Search", icon = Icons.Filled.Search) { searchQuery = "" },
-                )
-                if (sort != null) add(sortAction { isSortSheetOpen = true })
-                addAll(extraActions)
-                add(
-                    TopBarAction(label = "Export playlist", icon = Icons.Filled.FileUpload) {
-                        exportLauncher.launch("$title.m3u")
-                    },
-                )
-            },
-            search = searchQuery?.let { query ->
-                TopBarSearch(
-                    query = query,
-                    onQueryChange = { searchQuery = it },
-                    onClose = { searchQuery = null },
-                )
-            },
-            selection = selection.toTopBarSelection(
+    SelectionOptionsHost(selection) { openSelectionOptions ->
+        Column(modifier = modifier.fillMaxSize()) {
+            SonaTopAppBar(
+                title = title,
+                subtitle = subtitle,
+                onNavigateBack = onBack,
                 actions = buildList {
                     add(
-                        TopBarAction(label = "Play", icon = Icons.Filled.PlayArrow) {
-                            viewModel.playSelection(selection.selectedKeys)
-                            selection.clear()
-                        },
+                        TopBarAction(label = "Search", icon = Icons.Filled.Search) { searchQuery = "" },
                     )
-                    // Only a real playlist has membership to remove from.
-                    if (onRemoveSelected != null) {
+                    if (sort != null) add(sortAction { isSortSheetOpen = true })
+                    if (collection == null) {
                         add(
-                            TopBarAction(
-                                label = "Remove from playlist",
-                                icon = Icons.Filled.RemoveCircleOutline,
-                            ) {
-                                onRemoveSelected(selection.selectedKeys)
-                                selection.clear()
+                            TopBarAction(label = "Export", icon = SonaIcons.Export) {
+                                exportLauncher.launch("$title.m3u")
                             },
                         )
                     }
-                    add(
-                        TopBarAction(label = "Select all", icon = Icons.Filled.SelectAll) {
-                            selection.selectAll(viewModel.selectableKeys())
-                        },
+                },
+                menuActions = collection?.let { target ->
+                    val disabledActions = target.disabledActions()
+                    target.actions().map { action ->
+                        TopBarAction(label = action.label, icon = action.icon, enabled = action !in disabledActions) {
+                            collectionActions.perform(target, action)
+                        }
+                    }
+                }.orEmpty(),
+                search = searchQuery?.let { query ->
+                    TopBarSearch(
+                        query = query,
+                        onQueryChange = { searchQuery = it },
+                        onClose = { searchQuery = null },
                     )
                 },
-            ),
-        )
-        LibraryList(
-            content = visibleTracks,
-            // A detail screen is only reachable from a library that already loaded, so neither the
-            // permission nor the scanning explanation can apply here.
-            hasPermission = true,
-            isScanning = false,
-            emptyTitle = "No tracks found",
-            emptyMessage = emptyMessage,
-            key = { it.id },
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            // Handles appear with the context bar: dragging is something done to a selection, so
-            // an ordinary tap-to-play list is never cluttered by them. A search has reordered the
-            // list already, so a drop would write an order the user cannot see.
-            onReorder = onReorder.takeIf { searchQuery.isNullOrBlank() && selection.isActive },
-            loadingIcon = SonaIcons.Song,
-        ) { track ->
-            TrackRow(
-                track = track,
-                isCurrent = { track.id == currentTrackId },
-                isPlaying = { isPlaying },
-                selection = selection,
-                onClick = { viewModel.onTrackClick(track) },
+                selection = selection.toLibraryTopBarSelection(
+                    listKeys = viewModel::selectableKeys,
+                    // Only a real playlist has membership to remove from.
+                    actions = listOfNotNull(
+                        removeFromPlaylist?.let {
+                            TopBarAction(label = "Remove from playlist", icon = Icons.Filled.RemoveCircleOutline) {
+                                val tracksById = tracks.itemsOrEmpty.associateBy { it.id }
+                                removingTracks = selection.selectedKeys.filterIsInstance<SelectionKey.Track>()
+                                    .mapNotNull { tracksById[it.trackId] }
+                            }
+                        },
+                    ),
+                    onMoreOptions = openSelectionOptions,
+                ),
             )
+            LibraryList(
+                content = visibleTracks,
+                // A detail screen is only reachable from a library that already loaded, so neither the
+                // permission nor the scanning explanation can apply here.
+                hasPermission = true,
+                isScanning = false,
+                emptyTitle = "No tracks found",
+                emptyMessage = emptyMessage,
+                key = { it.id },
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                // Handles appear with the context bar: dragging is something done to a selection, so
+                // an ordinary tap-to-play list is never cluttered by them. A search has reordered the
+                // list already, so a drop would write an order the user cannot see.
+                onReorder = onReorder.takeIf { searchQuery.isNullOrBlank() && selection.isActive },
+                loadingIcon = SonaIcons.Song,
+            ) { track ->
+                TrackRow(
+                    track = track,
+                    isCurrent = { playback.marks(track) },
+                    isPlaying = { playback.isPlaying },
+                    selection = selection,
+                    onClick = { viewModel.onTrackClick(track) },
+                    onOpenOptions = {
+                        optionsTarget = OptionsTarget.ForTrack(
+                            track = track,
+                            context = trackOptionsContext,
+                            queueSource = tracks.itemsOrEmpty,
+                            queueParent = viewModel.playbackParent,
+                        )
+                    },
+                )
+            }
         }
     }
 
     if (isSortSheetOpen && sort != null) {
         SortSheet(sort = sort, onDismiss = { isSortSheetOpen = false })
     }
-}
 
-/** How strongly a selected row is tinted with the primary colour: Auxio's `sel_item_activated_bg`. */
-private const val SELECTED_ROW_TINT_ALPHA = 0.12f
+    optionsTarget?.let { target ->
+        OptionsSheet(target = target, onDismissRequest = { optionsTarget = null })
+    }
 
-/** How long that tint takes to fade in and out: Auxio's `anim_fade_enter_duration` and exit duration. */
-private const val SELECTED_ROW_FADE_IN_MILLIS = 200
-private const val SELECTED_ROW_FADE_OUT_MILLIS = 100
+    // Nothing is left here to show once the collection this screen is showing has been deleted.
+    OptionsFollowUps(actions = collectionActions, onPlaylistDeleted = onBack)
 
-/** The touch target a drag handle is centred in: Auxio's `size_touchable_small`. */
-private val DragHandleTouchSize = 48.dp
-
-/**
- * A track row, laid out as Auxio's `item_song`: cover art, title over "artist - album", and the row's
- * own overflow button - with a drag handle beside that button in a list that can be reordered.
- *
- * [isCurrent] and [isPlaying] are lambdas, not values, on purpose. Passed as `Boolean`s, every row in
- * the list recomposes whenever the playing track changes, because each row's parameters changed.
- * Read inside the row's own composition, only the row that was marked and the row that now is do any
- * work.
- *
- * The playing track is shown by its cover and its title alone - see [SonaCoverArt]. Nothing paints
- * the row behind them, so the one tint a row can have still means "selected".
- *
- * The overflow button stays through a selection: the row keeps one shape whatever state it is in.
- */
-@Composable
-internal fun TrackRow(
-    track: Track,
-    isCurrent: () -> Boolean,
-    isPlaying: () -> Boolean,
-    selection: SelectionState,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val current = isCurrent()
-    val isSelected = selection.isSelected(track.id)
-    // The fade is animated rather than the colour, and read only when drawing: an animated colour would
-    // trail behind every theme transition, and reading it here would recompose the row every frame.
-    val selectedFraction = animateFloatAsState(
-        targetValue = if (isSelected) 1f else 0f,
-        animationSpec = tween(
-            durationMillis = if (isSelected) SELECTED_ROW_FADE_IN_MILLIS else SELECTED_ROW_FADE_OUT_MILLIS,
-        ),
-        label = "trackRowSelection",
-    )
-    val selectedTint = MaterialTheme.colorScheme.primary
-    val dragHandle = LocalDragHandle.current
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .drawBehind {
-                drawRect(selectedTint.copy(alpha = SELECTED_ROW_TINT_ALPHA * selectedFraction.value))
-            }
-            .selectableRow(selection, track.id, onClick)
-            .padding(
-                start = SonaComponentStyle.ContentHorizontalPadding,
-                top = 12.dp,
-                // The overflow glyph, not its 48dp touch target, ends on the keyline: the target
-                // holds the glyph 12dp in from its edge.
-                end = SonaComponentStyle.ContentHorizontalPadding - 12.dp,
-                bottom = 12.dp,
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        SonaCoverArt(
-            coverArtUri = track.coverArtUri,
-            contentDescription = null,
-            isCurrent = current,
-            isPlaying = isPlaying(),
-            isSelected = isSelected,
-        )
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 16.dp, end = 12.dp),
-        ) {
-            Text(
-                text = track.title,
-                style = MaterialTheme.typography.titleMedium,
-                color = if (current) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = "${track.artist} - ${track.album}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        if (dragHandle != null) {
-            Box(
-                modifier = Modifier
-                    .size(DragHandleTouchSize)
-                    .then(dragHandle),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.DragHandle,
-                    contentDescription = "Reorder",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        SonaIconButton(
-            // Opens nothing yet. It takes its place now because the row's shape is part of the
-            // list's: adding it later would move the title and the cover of every row.
-            onClick = {},
-            icon = Icons.Filled.MoreHoriz,
-            contentDescription = "More options",
+    if (removeFromPlaylist != null && removingTracks.isNotEmpty()) {
+        val isSingle = removingTracks.size == 1
+        ConfirmedOperationDialog(
+            title = if (isSingle) "Remove track" else "Remove ${removingTracks.size} tracks",
+            message = "From $title. The files themselves are not deleted.",
+            total = pluralCount(removingTracks.size, "track"),
+            confirmLabel = "Remove",
+            successMessage = if (isSingle) "Track removed" else "${removingTracks.size} tracks removed",
+            failureMessage = if (isSingle) "Could not remove track" else "Could not remove tracks",
+            onDismiss = { removingTracks = emptyList() },
+            operation = { onFinished ->
+                // The selection ends once the removal is confirmed; cancelling leaves every row picked.
+                selection.clear()
+                removeFromPlaylist(removingTracks.map { it.id }, onFinished)
+            },
         )
     }
 }

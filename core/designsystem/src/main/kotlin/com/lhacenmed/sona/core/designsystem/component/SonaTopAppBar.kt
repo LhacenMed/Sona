@@ -43,19 +43,28 @@ import com.lhacenmed.sona.core.designsystem.R
  * One thing a top app bar can do. Whether it is drawn as an icon or as a row in the overflow menu is
  * the bar's decision rather than the caller's - a screen declares what it offers, and the bar works
  * out how much of it fits.
+ *
+ * A disabled action is still drawn where it would be, faded and inert, so what a screen offers keeps
+ * one shape whether or not each action can be taken right now.
  */
 @Immutable
 data class TopBarAction(
     val label: String,
     val icon: ImageVector,
+    val enabled: Boolean = true,
     val onClick: () -> Unit,
 )
 
-/** What the bar shows while a list has rows selected: how many, and what can be done with them. */
+/**
+ * What the bar shows while a list has rows selected: how many, what can be done with them, and the
+ * more options button that opens everything else - Auxio's selection toolbar, whose overflow opens
+ * the selection's options sheet rather than a menu.
+ */
 @Immutable
 data class TopBarSelection(
     val count: Int,
     val actions: List<TopBarAction>,
+    val onMoreOptions: () -> Unit,
     val onDismiss: () -> Unit,
 )
 
@@ -66,6 +75,9 @@ data class TopBarSelection(
  * such a screen [onClose] leaves the screen, and leaving a screen is what the system back press
  * already does - so intercepting back to call [onClose] would have the bar answer a back press by
  * pressing back, without end. Leaving it unhandled lets the press do what it was going to do.
+ *
+ * [actions] and [menuActions] are what stays reachable while searching, laid out as the ordinary bar
+ * lays out its own - none, for a screen whose search needs nothing beside the field.
  */
 @Immutable
 data class TopBarSearch(
@@ -73,6 +85,8 @@ data class TopBarSearch(
     val onQueryChange: (String) -> Unit,
     val onClose: () -> Unit,
     val closesWithBack: Boolean = true,
+    val actions: List<TopBarAction> = emptyList(),
+    val menuActions: List<TopBarAction> = emptyList(),
 )
 
 /** How many actions are drawn as icons before the rest collapse into the overflow menu. */
@@ -95,6 +109,7 @@ private sealed interface BarContent {
         val title: String,
         val subtitle: String?,
         val actions: List<TopBarAction>,
+        val menuActions: List<TopBarAction>,
     ) : BarContent
 
     data class Searching(val search: TopBarSearch) : BarContent
@@ -117,7 +132,8 @@ private sealed interface BarContent {
  *
  * Taking [actions] as data rather than as a slot is what lets the bar overflow: it draws the first
  * few as icons and folds the remainder into a dropdown, the way a platform action bar does. A screen
- * that grows a sixth action needs no layout work to accommodate it.
+ * that grows a sixth action needs no layout work to accommodate it. [menuActions] always go in that
+ * dropdown, after any that overflowed, for a screen that wants its icons kept for a few actions alone.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -127,13 +143,14 @@ fun SonaTopAppBar(
     subtitle: String? = null,
     onNavigateBack: (() -> Unit)? = null,
     actions: List<TopBarAction> = emptyList(),
+    menuActions: List<TopBarAction> = emptyList(),
     selection: TopBarSelection? = null,
     search: TopBarSearch? = null,
 ) {
     val content: BarContent = when {
         selection != null -> BarContent.Selecting(selection)
         search != null -> BarContent.Searching(search)
-        else -> BarContent.Browsing(title, subtitle, actions)
+        else -> BarContent.Browsing(title, subtitle, actions, menuActions)
     }
 
     // Back leaves the mode rather than the screen, which is what both a context bar and a search
@@ -183,7 +200,7 @@ fun SonaTopAppBar(
                         )
                     }
                 },
-                actions = { BarActions(actions = activeContent.actions) },
+                actions = { BarActions(actions = activeContent.actions, menuActions = activeContent.menuActions) },
             )
 
             is BarContent.Searching -> TopAppBar(
@@ -195,6 +212,9 @@ fun SonaTopAppBar(
                         icon = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(R.string.top_bar_close_search),
                     )
+                },
+                actions = {
+                    BarActions(actions = activeContent.search.actions, menuActions = activeContent.search.menuActions)
                 },
             )
 
@@ -216,9 +236,24 @@ fun SonaTopAppBar(
                         contentDescription = stringResource(R.string.top_bar_clear_selection),
                     )
                 },
-                actions = { BarActions(actions = activeContent.selection.actions) },
+                actions = { SelectionActions(selection = activeContent.selection) },
             )
         }
+    }
+}
+
+/**
+ * A selection's actions, every one an icon, then the more options button - the same group [BarActions]
+ * draws, but with no menu to fold into: the selection's options sheet is where everything else lives.
+ */
+@Composable
+private fun SelectionActions(selection: TopBarSelection) {
+    val moreOptionsLabel = stringResource(R.string.top_bar_more_actions)
+    SonaIconButtonGroup(modifier = Modifier.padding(end = 4.dp)) {
+        selection.actions.forEach { action ->
+            iconButton(icon = action.icon, label = action.label, onClick = action.onClick, enabled = action.enabled)
+        }
+        iconButton(icon = Icons.Filled.MoreVert, label = moreOptionsLabel, onClick = selection.onMoreOptions)
     }
 }
 
@@ -276,8 +311,8 @@ private fun BarTitle(title: String, subtitle: String?) {
  * menu would move with it.
  */
 @Composable
-private fun BarActions(actions: List<TopBarAction>) {
-    val overflowed = actions.drop(MAX_VISIBLE_ACTIONS)
+private fun BarActions(actions: List<TopBarAction>, menuActions: List<TopBarAction>) {
+    val overflowed = actions.drop(MAX_VISIBLE_ACTIONS) + menuActions
     // Read here rather than inside the group: a group builds its items outside composition, so it
     // cannot reach a resource itself.
     val moreActionsLabel = stringResource(R.string.top_bar_more_actions)
@@ -295,6 +330,7 @@ private fun BarActions(actions: List<TopBarAction>) {
                     icon = action.icon,
                     label = action.label,
                     onClick = action.onClick,
+                    enabled = action.enabled,
                 )
             }
             if (overflowed.isNotEmpty()) {

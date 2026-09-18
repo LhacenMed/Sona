@@ -2,6 +2,7 @@ package com.lhacenmed.sona.feature.playback
 
 import android.content.ComponentName
 import android.content.Context
+import android.os.Bundle
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -10,13 +11,16 @@ import androidx.media3.common.Timeline
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.util.Util
 import androidx.media3.session.MediaController
+import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
 import com.lhacenmed.sona.core.data.LibraryRepository
+import com.lhacenmed.sona.core.data.lyrics.LyricsPreloadManager
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
 import com.lhacenmed.sona.core.database.entity.QueueItemEntity
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
+import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -58,6 +62,7 @@ class PlaybackController @Inject constructor(
     private val playStatsDao: PlayStatsDao,
     private val repository: LibraryRepository,
     private val playbackSettings: PlaybackSettings,
+    private val lyricsPreloadManager: LyricsPreloadManager,
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -69,6 +74,10 @@ class PlaybackController @Inject constructor(
     // The player's repeat int cannot tell RepeatMode.ONE from STOP_AFTER_CURRENT, so the stored
     // mode is what the UI is told about.
     @Volatile private var storedRepeatMode: RepeatMode = playbackSettings.repeatMode.value
+
+    // Read from the setting rather than held only in memory, so a queue restored on a cold start is
+    // still playing from the collection it was started from.
+    @Volatile private var storedParent: PlaybackParent? = playbackSettings.playbackParent.value
 
     /** The track already counted, so pausing and resuming cannot count the same listen twice. */
     private var countedTrackId: Long? = null
@@ -90,6 +99,7 @@ class PlaybackController @Inject constructor(
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             recordPlayStarted(mediaItem?.mediaId?.toLongOrNull())
             schedulePlayCount(controller?.isPlaying == true)
+            controller?.let(::preloadUpcomingLyrics)
             sleepTimerHolder.onTrackEnd()
         }
 
@@ -138,6 +148,15 @@ class PlaybackController @Inject constructor(
             }
         }
 
+        // This class is the only writer, so collecting is how the stored value reaches the UI once
+        // the settings have loaded - the same path the repeat mode takes.
+        scope.launch {
+            playbackSettings.playbackParent.flow.collect { parent ->
+                storedParent = parent
+                controller?.let(::updateUiState)
+            }
+        }
+
         val sessionToken = SessionToken(context, ComponentName(context, PlaybackService::class.java))
         val future = MediaController.Builder(context, sessionToken).buildAsync()
         future.addListener(
@@ -153,9 +172,23 @@ class PlaybackController @Inject constructor(
         )
     }
 
-    /** Builds a fresh queue from [tracks] and starts playback at [startIndex]. */
-    fun playTracks(tracks: List<Track>, startIndex: Int) {
+    /**
+     * Builds a fresh queue from [tracks] and starts playback at [startIndex].
+     *
+     * [parent] is the collection those tracks came from, which is what every list marks as playing -
+     * null for a queue that stands for the whole library rather than one collection. It is written
+     * down with the queue, so the list playing when the app closes is still the one marked on the
+     * next launch.
+     *
+     * [shuffled] turns shuffle on or off for the new queue - Auxio's explicit Play and Shuffle - or,
+     * when null, leaves it as it was, the way tapping a row does. Shuffled, [startIndex] still plays
+     * first and the rest follow in random order; the queue itself keeps the order it was given.
+     */
+    fun playTracks(tracks: List<Track>, startIndex: Int, parent: PlaybackParent? = null, shuffled: Boolean? = null) {
         val mediaController = controller ?: return
+        scope.launch { playbackSettings.setPlaybackParent(parent) }
+        // Before the items, so the player builds the new shuffle order around startIndex.
+        shuffled?.let(::setShuffleEnabled)
         val mediaItems = tracks.map(Track::toMediaItem)
         mediaController.setMediaItems(mediaItems, startIndex, 0L)
         mediaController.prepare()
@@ -207,11 +240,40 @@ class PlaybackController @Inject constructor(
         controller?.addMediaItem(mediaItemIndex, track.toMediaItem())
     }
 
+    /**
+     * Plays [tracks] right after the current track, in play order - moving any already queued rather
+     * than repeating them. Starts them instead when nothing is queued.
+     */
+    fun playNext(tracks: List<Track>) {
+        enqueue(tracks, PlaybackSessionCommands.playNextCommand)
+    }
+
+    /**
+     * Plays [tracks] after everything else queued - moving any already queued rather than repeating
+     * them. Starts them instead when nothing is queued.
+     */
+    fun addToQueue(tracks: List<Track>) {
+        enqueue(tracks, PlaybackSessionCommands.addToQueueCommand)
+    }
+
+    private fun enqueue(tracks: List<Track>, command: SessionCommand) {
+        val mediaController = controller ?: return
+        if (mediaController.mediaItemCount == 0) {
+            playTracks(tracks, startIndex = 0)
+            return
+        }
+        val args = Bundle().apply {
+            putLongArray(PlaybackSessionCommands.EXTRA_TRACK_IDS, tracks.map(Track::id).toLongArray())
+        }
+        mediaController.sendCustomCommand(command, args)
+    }
+
     /** Stops playback and drops the queue, the saved copy included, so nothing comes back on the next launch. */
     fun stopAndClearQueue() {
         val mediaController = controller ?: return
         mediaController.stop()
         mediaController.clearMediaItems()
+        scope.launch { playbackSettings.setPlaybackParent(null) }
         scope.launch(Dispatchers.IO) { queueItemDao.clear() }
     }
 
@@ -250,6 +312,7 @@ class PlaybackController @Inject constructor(
                 isBuffering = mediaController.playbackState == Player.STATE_BUFFERING,
                 hasEnded = mediaController.playbackState == Player.STATE_ENDED,
                 currentTrackId = mediaController.currentMediaItem?.mediaId?.toLongOrNull(),
+                parent = storedParent,
                 positionMs = mediaController.currentPosition,
                 durationMs = currentDurationMsOrElse(it.durationMs),
                 shuffleEnabled = mediaController.shuffleModeEnabled,
@@ -322,6 +385,14 @@ class PlaybackController @Inject constructor(
                 playStatsDao.recordPlayCounted(trackId, System.currentTimeMillis())
             }
         }
+    }
+
+    /** Hands the queue, as it plays from here, to the lyrics preload - ArchiveTune does this on every song change. */
+    private fun preloadUpcomingLyrics(mediaController: MediaController) {
+        val queue = currentQueue(mediaController)
+        val currentIndex = queue.indexOfFirst { it.mediaItemIndex == mediaController.currentMediaItemIndex }
+        val tracksById = repository.tracksById.value
+        lyricsPreloadManager.onSongChanged(currentIndex, queue.map { tracksById[it.trackId] })
     }
 
     private fun persistQueueState(mediaController: MediaController) {

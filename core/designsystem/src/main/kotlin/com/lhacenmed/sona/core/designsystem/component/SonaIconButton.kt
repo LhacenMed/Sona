@@ -32,6 +32,7 @@ fun SonaIconButton(
     icon: ImageVector,
     contentDescription: String?,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     interactionSource: MutableInteractionSource? = null,
 ) {
     IconButton(
@@ -41,6 +42,7 @@ fun SonaIconButton(
             pressedShape = SonaComponentStyle.Shape,
         ),
         modifier = modifier,
+        enabled = enabled,
         interactionSource = interactionSource,
     ) {
         Icon(imageVector = icon, contentDescription = contentDescription)
