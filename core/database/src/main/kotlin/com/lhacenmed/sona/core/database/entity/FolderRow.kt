@@ -11,8 +11,16 @@ data class FolderRow(
     val trackCount: Int,
 )
 
-fun FolderRow.toDomain() = Folder(
+/** How many of a folder's tracks share one cover, which is what ranks a folder's composed cover. */
+data class FolderCoverRow(
+    val path: String,
+    val coverArtUri: String,
+    val trackCount: Int,
+)
+
+fun FolderRow.toDomain(coverArtUris: List<String>) = Folder(
     path = path,
     name = path.substringAfterLast('/'),
     trackCount = trackCount,
+    coverArtUris = coverArtUris,
 )

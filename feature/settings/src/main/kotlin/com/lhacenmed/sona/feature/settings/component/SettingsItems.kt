@@ -56,10 +56,26 @@ fun SettingsActionItem(
     summary: String,
     modifier: Modifier = Modifier,
 ) {
+    SettingsActionItem(
+        title = title,
+        summary = summary,
+        onClick = {},
+        modifier = modifier,
+    )
+}
+
+/** A row that does something when pressed. */
+@Composable
+fun SettingsActionItem(
+    title: String,
+    summary: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     ListItem(
         headlineContent = { Text(title) },
         supportingContent = { Text(summary) },
-        modifier = modifier.clickable {},
+        modifier = modifier.clickable(onClick = onClick),
     )
 }
 
@@ -201,15 +217,44 @@ fun SettingsSliderItem(
     steps: Int = 0,
 ) {
     var value by remember { mutableFloatStateOf(initialValue) }
+    SettingsSliderItem(
+        title = title,
+        value = value,
+        onValueChangeFinished = { value = it },
+        valueRange = valueRange,
+        formatValue = formatValue,
+        modifier = modifier,
+        steps = steps,
+    )
+}
+
+/**
+ * A row holding a stored number on a continuous range.
+ *
+ * The slider follows the finger on its own and hands over [onValueChangeFinished] only once it is let
+ * go, so dragging it writes the setting once rather than on every frame of the drag.
+ */
+@Composable
+fun SettingsSliderItem(
+    title: String,
+    value: Float,
+    onValueChangeFinished: (Float) -> Unit,
+    valueRange: ClosedFloatingPointRange<Float>,
+    formatValue: (Float) -> String,
+    modifier: Modifier = Modifier,
+    steps: Int = 0,
+) {
+    var draggedValue by remember(value) { mutableFloatStateOf(value) }
     Column(modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         ListItem(
             headlineContent = { Text(title) },
-            supportingContent = { Text(formatValue(value)) },
+            supportingContent = { Text(formatValue(draggedValue)) },
             modifier = Modifier.padding(horizontal = 0.dp),
         )
         Slider(
-            value = value,
-            onValueChange = { value = it },
+            value = draggedValue,
+            onValueChange = { draggedValue = it },
+            onValueChangeFinished = { onValueChangeFinished(draggedValue) },
             valueRange = valueRange,
             steps = steps,
             modifier = Modifier.fillMaxWidth(),

@@ -88,6 +88,7 @@ fun ButtonGroupScope.iconButton(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) = customItem(
     buttonGroupContent = {
         val interactionSource = remember { MutableInteractionSource() }
@@ -98,6 +99,7 @@ fun ButtonGroupScope.iconButton(
             // No size of its own: the width is the group's to animate, and pinning it here would
             // leave the press with nothing to grow into.
             modifier = modifier.animateWidth(interactionSource),
+            enabled = enabled,
             interactionSource = interactionSource,
         )
     },
@@ -109,6 +111,7 @@ fun ButtonGroupScope.iconButton(
                 menuState.dismiss()
                 onClick()
             },
+            enabled = enabled,
         )
     },
 )

@@ -10,7 +10,7 @@ data class ArtistEntity(
     val name: String,
     val trackCount: Int,
     val albumCount: Int,
-    val coverArtUri: String?,
+    val coverArtUris: List<String>,
 )
 
 fun ArtistEntity.toDomain() = Artist(
@@ -18,7 +18,7 @@ fun ArtistEntity.toDomain() = Artist(
     name = name,
     trackCount = trackCount,
     albumCount = albumCount,
-    coverArtUri = coverArtUri,
+    coverArtUris = coverArtUris,
 )
 
 fun Artist.toEntity() = ArtistEntity(
@@ -26,5 +26,5 @@ fun Artist.toEntity() = ArtistEntity(
     name = name,
     trackCount = trackCount,
     albumCount = albumCount,
-    coverArtUri = coverArtUri,
+    coverArtUris = coverArtUris,
 )

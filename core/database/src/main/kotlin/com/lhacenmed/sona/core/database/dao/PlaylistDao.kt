@@ -20,6 +20,13 @@ data class PlaylistWithCount(
     val modifiedAt: Long,
 )
 
+/** How many of a playlist's tracks share one cover, which is what ranks a playlist's composed cover. */
+data class PlaylistCoverRow(
+    val playlistId: Long,
+    val coverArtUri: String,
+    val trackCount: Int,
+)
+
 /** A playlist's track, with when it was added to that playlist. */
 data class PlaylistTrackRow(
     @Embedded val track: TrackEntity,
@@ -40,6 +47,22 @@ interface PlaylistDao {
         """,
     )
     fun observeAll(): Flow<List<PlaylistWithCount>>
+
+    /**
+     * How many tracks in each playlist share each cover, which is what a playlist row composes its
+     * cover from. One aggregate for every playlist rather than a query per row, so the list costs the
+     * same whether there is one playlist or fifty.
+     */
+    @Query(
+        """
+        SELECT pt.playlistId AS playlistId, t.coverArtUri AS coverArtUri, COUNT(*) AS trackCount
+        FROM playlist_tracks pt
+        INNER JOIN tracks t ON t.id = pt.trackId
+        WHERE t.coverArtUri IS NOT NULL AND t.coverArtUri != ''
+        GROUP BY pt.playlistId, t.coverArtUri
+        """,
+    )
+    fun observeCoverArt(): Flow<List<PlaylistCoverRow>>
 
     /** A playlist's tracks, in the order the user arranged them. */
     @Query(

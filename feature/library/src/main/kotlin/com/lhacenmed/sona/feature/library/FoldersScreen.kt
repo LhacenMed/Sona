@@ -3,11 +3,16 @@ package com.lhacenmed.sona.feature.library
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.navigation.LocalNavigator
+import com.lhacenmed.sona.feature.library.options.OptionsSheet
+import com.lhacenmed.sona.feature.library.options.OptionsTarget
 
 @Composable
 fun FoldersScreen(
@@ -19,7 +24,9 @@ fun FoldersScreen(
     val folders by viewModel.folders.collectAsStateWithLifecycle()
     val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
     val hasPermission by viewModel.hasPermission.collectAsStateWithLifecycle()
+    val playback by viewModel.playback.collectAsStateWithLifecycle()
     val navigator = LocalNavigator.current
+    var optionsTarget by remember { mutableStateOf<OptionsTarget.ForFolder?>(null) }
 
     LibraryList(
         content = folders,
@@ -32,12 +39,17 @@ fun FoldersScreen(
         modifier = modifier,
         listState = listState,
     ) { folder ->
-        LibraryEntityRow(
+        FolderRow(
+            folder = folder,
             selection = selection,
-            selectionKey = folder.path,
-            title = folder.name,
-            subtitle = "${folder.trackCount} tracks",
+            isCurrent = { playback.marks(folder) },
+            isPlaying = { playback.isPlaying },
             onClick = { navigator.go(FolderDetailScreen(folder.path)) },
+            onOpenOptions = { optionsTarget = OptionsTarget.ForFolder(folder) },
         )
+    }
+
+    optionsTarget?.let { target ->
+        OptionsSheet(target = target, onDismissRequest = { optionsTarget = null })
     }
 }

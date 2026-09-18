@@ -9,19 +9,22 @@ data class GenreEntity(
     @PrimaryKey val id: Long,
     val name: String,
     val trackCount: Int,
-    val coverArtUri: String?,
+    val artistCount: Int,
+    val coverArtUris: List<String>,
 )
 
 fun GenreEntity.toDomain() = Genre(
     id = id,
     name = name,
     trackCount = trackCount,
-    coverArtUri = coverArtUri,
+    artistCount = artistCount,
+    coverArtUris = coverArtUris,
 )
 
 fun Genre.toEntity() = GenreEntity(
     id = id,
     name = name,
     trackCount = trackCount,
-    coverArtUri = coverArtUri,
+    artistCount = artistCount,
+    coverArtUris = coverArtUris,
 )

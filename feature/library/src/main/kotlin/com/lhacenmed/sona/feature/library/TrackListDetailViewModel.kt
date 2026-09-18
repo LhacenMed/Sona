@@ -3,16 +3,17 @@ package com.lhacenmed.sona.feature.library
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.LibraryContent
+import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.itemsOrEmpty
+import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.sort.SortControl
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import java.io.OutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -27,6 +28,7 @@ import kotlinx.coroutines.launch
  */
 abstract class TrackListDetailViewModel(
     private val playbackController: PlaybackController,
+    repository: LibraryRepository,
 ) : ViewModel() {
 
     abstract val tracks: StateFlow<LibraryContent<Track>>
@@ -34,37 +36,34 @@ abstract class TrackListDetailViewModel(
     /** How this list is sorted, or null for one whose order is its content - Recent and Most played. */
     open val sort: SortControl? = null
 
-    /** Just the playing track's id - see [LibraryViewModel.currentTrackId] for why not the state. */
-    val currentTrackId: StateFlow<Long?> = playbackController.playbackState
-        .map { it.currentTrackId }
-        .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    /**
+     * The collection this screen is, which playing from here plays from.
+     *
+     * It is what lets this list mark the playing track only while the queue is its own - the same
+     * track playing from somewhere else leaves the row alone, exactly as on Auxio's detail screens.
+     */
+    abstract val playbackParent: PlaybackParent
+
+    /** What this list marks as playing - see [LibraryPlayback]. */
+    val playback: StateFlow<LibraryPlayback> = libraryPlayback(playbackController, repository)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryPlayback())
 
     /**
-     * Whether that track is playing - or about to, while it buffers - which is what the playing
-     * indicator animates on.
-     * Split from [currentTrackId] for the same reason it exists: the two change at different
-     * moments, and a row that took both as one value would recompose on each.
+     * Plays [track] from this list - or, when it is already playing from this very list, pauses or
+     * resumes it rather than starting the queue over. See [LibraryPlayback.isReselection].
      */
-    val isPlaying: StateFlow<Boolean> = playbackController.playbackState
-        .map { it.isPlaying }
-        .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
-
     fun onTrackClick(track: Track) {
+        if (playback.value.isReselection(track, playbackParent)) {
+            playbackController.togglePlayPause()
+            return
+        }
         val all = tracks.value.itemsOrEmpty
         val index = all.indexOfFirst { it.id == track.id }
-        if (index >= 0) playbackController.playTracks(all, index)
-    }
-
-    /** Plays just the selected rows, keeping the order the list shows them in. */
-    fun playSelection(selectedKeys: Set<Any>) {
-        val selected = tracks.value.itemsOrEmpty.filter { it.id in selectedKeys }
-        if (selected.isNotEmpty()) playbackController.playTracks(selected, startIndex = 0)
+        if (index >= 0) playbackController.playTracks(all, index, playbackParent)
     }
 
     /** Every row's selection key, which is what the context bar's "select all" selects. */
-    fun selectableKeys(): List<Any> = tracks.value.itemsOrEmpty.map { it.id }
+    fun selectableKeys(): List<SelectionKey> = tracks.value.itemsOrEmpty.map { SelectionKey.Track(it.id) }
 
     /**
      * Writes what this screen is showing as an M3U file.

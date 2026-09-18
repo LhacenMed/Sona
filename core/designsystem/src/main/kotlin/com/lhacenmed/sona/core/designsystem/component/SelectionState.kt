@@ -8,12 +8,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 
 /**
- * Which rows a list currently has selected.
+ * Which rows a screen currently has selected, in the order they were selected - Auxio's `ListViewModel`
+ * selection.
  *
- * Keys are opaque [Any] rather than a type parameter. Only one list selects at a time, and each list
- * already knows what shape its own keys are - a track id, a folder path. Typing this would push a
- * type parameter all the way up into [SonaTopAppBar], which has no interest in *what* is selected,
- * only in how many rows there are and what can be done with them.
+ * Keys are opaque [Any] rather than a type parameter: [SonaTopAppBar] has no interest in *what* is
+ * selected, only in how many rows there are and what can be done with them. The screens that select
+ * give their keys a shape of their own, one that stays distinct across every kind of row a selection
+ * can mix.
  */
 @Stable
 class SelectionState {
@@ -32,8 +33,14 @@ class SelectionState {
         selectedKeys = if (key in selectedKeys) selectedKeys - key else selectedKeys + key
     }
 
+    /** Adds [keys] after whatever is already selected, leaving every other selected row where it is. */
     fun selectAll(keys: Collection<Any>) {
-        selectedKeys = keys.toSet()
+        selectedKeys = selectedKeys + keys
+    }
+
+    /** Removes [keys], leaving every other selected row where it is. */
+    fun deselectAll(keys: Collection<Any>) {
+        selectedKeys = selectedKeys - keys.toSet()
     }
 
     fun clear() {
@@ -49,5 +56,9 @@ fun rememberSelectionState(): SelectionState = remember { SelectionState() }
  * what leaves the bar in its ordinary mode. Every selectable screen needs this same conversion, so
  * it lives here rather than as a null check repeated at each one.
  */
-fun SelectionState.toTopBarSelection(actions: List<TopBarAction>): TopBarSelection? =
-    if (!isActive) null else TopBarSelection(count = count, actions = actions, onDismiss = { clear() })
+fun SelectionState.toTopBarSelection(actions: List<TopBarAction>, onMoreOptions: () -> Unit): TopBarSelection? =
+    if (!isActive) {
+        null
+    } else {
+        TopBarSelection(count = count, actions = actions, onMoreOptions = onMoreOptions, onDismiss = { clear() })
+    }

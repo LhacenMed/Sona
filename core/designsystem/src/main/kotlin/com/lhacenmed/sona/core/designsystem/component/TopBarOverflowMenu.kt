@@ -89,6 +89,7 @@ internal class TopBarOverflowMenu(content: OverflowMenuContent) {
             MenuItem(
                 title = action.label,
                 iconDrawable = iconPainters[index].toDrawable(anchor.resources, iconSizePx, density, layoutDirection),
+                isEnabled = action.enabled,
             )
         }
         return PopupMenu(anchor.context, items, style) { chosen ->

@@ -11,4 +11,6 @@ data class Playlist(
     val name: String,
     val isBuiltIn: Boolean,
     val trackCount: Int,
+    /** Every distinct cover among the playlist's tracks, the most shared first - what its cover is composed from. */
+    val coverArtUris: List<String>,
 )

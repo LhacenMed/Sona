@@ -36,12 +36,37 @@ class SonaBottomSheetScope internal constructor(private val dismissAnimated: () 
  * and a half-open one hides the buttons at its bottom. The content scrolls, so a sheet opened in
  * landscape can still reach its last row.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SonaBottomSheet(
     title: String,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
+    content: @Composable SonaBottomSheetScope.() -> Unit,
+) {
+    SonaBottomSheet(
+        onDismissRequest = onDismissRequest,
+        modifier = modifier,
+        header = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
+            )
+        },
+        content = content,
+    )
+}
+
+/**
+ * The same sheet, with [header] standing in for the plain title - an options sheet's cover, type,
+ * name and info line, in place of a single line of text.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SonaBottomSheet(
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+    header: @Composable () -> Unit,
     content: @Composable SonaBottomSheetScope.() -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -59,11 +84,7 @@ fun SonaBottomSheet(
         sheetState = sheetState,
     ) {
         Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
-            )
+            header()
             sheetScope.content()
         }
     }

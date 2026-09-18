@@ -12,7 +12,15 @@ import com.lhacenmed.sona.core.model.sort.SortDirection
  * year - is not a zero, and sorts after every present one whichever way the list runs.
  */
 internal sealed interface SortField<in T> {
-    class Name<in T>(val read: (T) -> String) : SortField<T>
+    /**
+     * [isPlaceholder] marks a name the file never gave - "Unknown artist" and the like. Auxio's
+     * `Name.Unknown` orders those before every real name, and so after them once the list is
+     * reversed, which is what reading it as part of the name's own key gives.
+     */
+    class Name<in T>(
+        val read: (T) -> String,
+        val isPlaceholder: (T) -> Boolean = { false },
+    ) : SortField<T>
 
     class Number<in T>(val read: (T) -> Long?) : SortField<T>
 }
@@ -36,13 +44,24 @@ internal fun <T> List<T>.sortedByFields(
     return map { item ->
         item to Array<Comparable<*>?>(fields.size) { index ->
             when (val field = fields[index]) {
-                is SortField.Name -> field.read(item).let { name -> nameKeys.getOrPut(name) { sortKeyOf(name) } }
+                is SortField.Name -> {
+                    val name = field.read(item)
+                    NameKey(field.isPlaceholder(item), nameKeys.getOrPut(name) { sortKeyOf(name) })
+                }
                 is SortField.Number -> field.read(item)
             }
         }
     }
         .sortedWith { (_, keys), (_, otherKeys) -> compareKeys(keys, otherKeys, direction) }
         .map { it.first }
+}
+
+/** A name as it sorts: a placeholder before any real name, then the name itself. */
+private class NameKey(private val isPlaceholder: Boolean, private val key: SortKey) : Comparable<NameKey> {
+    override fun compareTo(other: NameKey): Int = when {
+        isPlaceholder != other.isPlaceholder -> if (isPlaceholder) -1 else 1
+        else -> key.compareTo(other.key)
+    }
 }
 
 private fun compareKeys(

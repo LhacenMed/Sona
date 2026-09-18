@@ -135,8 +135,12 @@ internal class MenuPanelBuilder(
                 item.richText != null -> createRichTextRow(item.richText)
                 item.infoText != null -> createTextRow(item.infoText)
                 else -> createItemRow(item, hasSubMenuSiblings, hasIconSiblings).also { row ->
-                    row.setOnClickListener {
-                        if (item.subItems != null) onNavigateTo(item) else onItemClick(item)
+                    // A disabled row gets no listener, which leaves it unclickable - and so skipped by
+                    // drag hit-testing too.
+                    if (item.isEnabled) {
+                        row.setOnClickListener {
+                            if (item.subItems != null) onNavigateTo(item) else onItemClick(item)
+                        }
                     }
                 }
             }
@@ -199,7 +203,8 @@ internal class MenuPanelBuilder(
             setPadding(hPad, 0, hPad / 2, 0)
             tag = item
             layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, itemHeightPx)
-            background = buildRowBackground(item.isDanger)
+            background = buildItemBackground(item)
+            if (!item.isEnabled) alpha = DISABLED_ITEM_ALPHA
 
             when {
                 item.hasIcon -> addView(ImageView(ctx).apply {
@@ -495,7 +500,7 @@ internal class MenuPanelBuilder(
         when (val role = row.tag) {
             is MenuItem -> {
                 (row as ViewGroup).tintChildren(if (role.isDanger) style.dangerColor else style.contentColor)
-                if (rebuildBackground) row.background = buildRowBackground(role.isDanger)
+                if (rebuildBackground) row.background = buildItemBackground(role)
             }
             RowRole.Header -> {
                 (row as ViewGroup).tintChildren(style.contentColor)
@@ -534,6 +539,10 @@ internal class MenuPanelBuilder(
      * is correctly confined to the row's bounds. This is the standard Android pattern for
      * custom bounded ripples.
      */
+    /** An item row's background: [buildRowBackground]'s press feedback, or the plain fill alone for a disabled item. */
+    private fun buildItemBackground(item: MenuItem): android.graphics.drawable.Drawable =
+        if (item.isEnabled) buildRowBackground(item.isDanger) else style.itemBackgroundColor.toDrawable()
+
     private fun buildRowBackground(danger: Boolean): android.graphics.drawable.Drawable {
         return if (danger) {
             val rippleColor = ColorStateList.valueOf(
@@ -552,6 +561,9 @@ internal class MenuPanelBuilder(
         }
     }
 }
+
+/** How faint a disabled item reads beside the items it sits among: Material's disabled content alpha. */
+private const val DISABLED_ITEM_ALPHA = 0.38f
 
 /** The rows that are not a [MenuItem] - which is itself the tag of an item row. */
 private enum class RowRole { Header, Spacer, Text }

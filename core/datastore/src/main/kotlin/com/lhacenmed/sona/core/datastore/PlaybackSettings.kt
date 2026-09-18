@@ -7,7 +7,10 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.lhacenmed.sona.core.common.di.ApplicationScope
+import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.RepeatMode
+import com.lhacenmed.sona.core.model.playbackParentOf
+import com.lhacenmed.sona.core.model.toStorageKey
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -21,6 +24,7 @@ private val HEADSET_AUTOPLAY = booleanPreferencesKey("headset_autoplay")
 private val SHUFFLE_ENABLED = booleanPreferencesKey("shuffle_enabled")
 private val REPEAT_MODE = stringPreferencesKey("repeat_mode")
 private val STOP_AFTER_CURRENT_ENABLED = booleanPreferencesKey("stop_after_current_enabled")
+private val PLAYBACK_PARENT = stringPreferencesKey("playback_parent")
 
 /**
  * Audio-playback behavior settings (ported from Auxio's `PlaybackSettings`) plus restart-only
@@ -70,6 +74,19 @@ class PlaybackSettings @Inject constructor(
 
     suspend fun setShuffleEnabled(enabled: Boolean) {
         dataStore.edit { it[SHUFFLE_ENABLED] = enabled }
+    }
+
+    /**
+     * The collection the saved queue was played from, so the list playing when the app was last
+     * closed is still the list marked as playing when it opens - Auxio persists its parent with the
+     * queue for the same reason.
+     */
+    val playbackParent: Setting<PlaybackParent?> = cache.setting { it[PLAYBACK_PARENT]?.let(::playbackParentOf) }
+
+    suspend fun setPlaybackParent(parent: PlaybackParent?) {
+        dataStore.edit {
+            if (parent == null) it.remove(PLAYBACK_PARENT) else it[PLAYBACK_PARENT] = parent.toStorageKey()
+        }
     }
 
     val repeatMode: Setting<RepeatMode> = cache.setting { it.readRepeatMode() }

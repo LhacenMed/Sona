@@ -7,6 +7,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.library.options.GenreOptionsContext
+import com.lhacenmed.sona.feature.library.options.OptionsTarget
 
 data class GenreDetailScreen(val genreId: Long) : Screen {
 
@@ -25,6 +27,7 @@ data class GenreDetailScreen(val genreId: Long) : Screen {
             onBack = navigator::back,
             viewModel = viewModel,
             emptyMessage = "This genre has no tracks.",
+            collection = genre?.let { OptionsTarget.ForGenre(it, GenreOptionsContext.FROM_DETAIL) },
         )
     }
 }

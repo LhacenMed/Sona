@@ -11,6 +11,7 @@ import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.database.stableIdOf
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.model.UnknownNames
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
@@ -88,10 +89,10 @@ class MediaStoreQuerier @Inject constructor(
 
                 val mediaStoreId = cursor.long(MediaStore.Audio.Media._ID)
                 val durationMs = cursor.long(MediaStore.Audio.Media.DURATION)
-                val artist = cursor.stringOrNull(MediaStore.Audio.Media.ARTIST) ?: MediaStore.UNKNOWN_STRING
+                val artist = cursor.stringOrNull(MediaStore.Audio.Media.ARTIST).orUnknown(UnknownNames.ARTIST)
                 val folderPath = File(path).parent.orEmpty()
                 val album = cursor.stringOrNull(MediaStore.Audio.Media.ALBUM)
-                    ?: folderPath.substringAfterLast('/').ifEmpty { MediaStore.UNKNOWN_STRING }
+                    .orUnknown(folderPath.substringAfterLast('/').ifEmpty { UnknownNames.ALBUM })
                 val albumId = cursor.long(MediaStore.Audio.Media.ALBUM_ID)
                 val artistId = cursor.long(MediaStore.Audio.Media.ARTIST_ID)
                 val year = cursor.int(MediaStore.Audio.Media.YEAR).takeIf { it > 0 }
@@ -162,11 +163,11 @@ class MediaStoreQuerier @Inject constructor(
         context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
             while (cursor.moveToNext()) {
                 val id = cursor.long(MediaStore.Audio.Artists._ID)
-                val name = cursor.stringOrNull(MediaStore.Audio.Artists.ARTIST) ?: MediaStore.UNKNOWN_STRING
+                val name = cursor.stringOrNull(MediaStore.Audio.Artists.ARTIST).orUnknown(UnknownNames.ARTIST)
                 val trackCount = cursor.int(MediaStore.Audio.Artists.NUMBER_OF_TRACKS)
                 val albumCount = cursor.int(MediaStore.Audio.Artists.NUMBER_OF_ALBUMS)
                 if (trackCount > 0 && albumCount > 0) {
-                    artists += Artist(id = id, name = name, trackCount = trackCount, albumCount = albumCount, coverArtUri = null)
+                    artists += Artist(id = id, name = name, trackCount = trackCount, albumCount = albumCount, coverArtUris = emptyList())
                 }
             }
         }
@@ -194,8 +195,8 @@ class MediaStoreQuerier @Inject constructor(
                 if (trackCount <= 0) continue
 
                 val id = cursor.long(MediaStore.Audio.Albums._ID)
-                val artistName = cursor.stringOrNull(MediaStore.Audio.Albums.ARTIST) ?: MediaStore.UNKNOWN_STRING
-                val title = cursor.stringOrNull(MediaStore.Audio.Albums.ALBUM) ?: MediaStore.UNKNOWN_STRING
+                val artistName = cursor.stringOrNull(MediaStore.Audio.Albums.ARTIST).orUnknown(UnknownNames.ARTIST)
+                val title = cursor.stringOrNull(MediaStore.Audio.Albums.ALBUM).orUnknown(UnknownNames.ALBUM)
                 val year = cursor.int(MediaStore.Audio.Albums.FIRST_YEAR).takeIf { it > 0 }
                 val coverArtUri = ContentUris.withAppendedId(ALBUM_ART_URI, id).toString()
 
@@ -233,7 +234,7 @@ class MediaStoreQuerier @Inject constructor(
                 val id = cursor.long(MediaStore.Audio.Genres._ID)
                 val name = cursor.stringOrNull(MediaStore.Audio.Genres.NAME)
                 if (!name.isNullOrEmpty()) {
-                    genres += Genre(id = id, name = name, trackCount = 0, coverArtUri = null)
+                    genres += Genre(id = id, name = name, trackCount = 0, artistCount = 0, coverArtUris = emptyList())
                 }
             }
         }
@@ -263,6 +264,13 @@ class MediaStoreQuerier @Inject constructor(
         return result
     }
 }
+
+/**
+ * [placeholder] wherever the file named nothing: a missing value, and MediaStore's own `<unknown>`,
+ * which it substitutes for one.
+ */
+private fun String?.orUnknown(placeholder: String): String =
+    if (isNullOrEmpty() || this == MediaStore.UNKNOWN_STRING) placeholder else this
 
 private fun Cursor.stringOrNull(column: String): String? {
     val index = getColumnIndex(column)

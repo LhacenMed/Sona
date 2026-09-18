@@ -1,22 +1,21 @@
 package com.lhacenmed.sona.feature.library
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AudioFile
-import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.lhacenmed.sona.core.common.storage.documentPathOrNull
 import com.lhacenmed.sona.core.data.itemsOrEmpty
-import com.lhacenmed.sona.core.designsystem.component.TopBarAction
-import com.lhacenmed.sona.core.model.sort.SortCriterion
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.library.options.OptionsTarget
+import com.lhacenmed.sona.feature.library.options.PlaylistOptionsContext
 
-/** One playlist's tracks, in the order they were arranged. Favorites arrives here too. */
+/**
+ * One playlist's tracks, in the order they were arranged. Favorites arrives here too.
+ *
+ * Its menu is the playlist's own options, the ones its row's sheet offers - adding tracks, playing,
+ * editing, importing, exporting and deleting - so the two can never disagree.
+ */
 data class PlaylistDetailScreen(val playlistId: Long) : Screen {
 
     @Composable
@@ -27,22 +26,6 @@ data class PlaylistDetailScreen(val playlistId: Long) : Screen {
         )
         val playlist by viewModel.playlist.collectAsStateWithLifecycle()
         val tracks by viewModel.tracks.collectAsStateWithLifecycle()
-        val sortOrder by viewModel.sort.order.collectAsStateWithLifecycle()
-
-        val addFileLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.OpenDocument(),
-        ) { uri ->
-            if (uri != null) {
-                documentPathOrNull(uri, isTree = false)?.let(viewModel::addFile)
-            }
-        }
-        val addFolderLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.OpenDocumentTree(),
-        ) { uri ->
-            if (uri != null) {
-                documentPathOrNull(uri, isTree = true)?.let(viewModel::addFolder)
-            }
-        }
 
         TrackListDetail(
             title = playlist?.name ?: "Playlist",
@@ -50,25 +33,12 @@ data class PlaylistDetailScreen(val playlistId: Long) : Screen {
             onBack = navigator::back,
             viewModel = viewModel,
             emptyMessage = "This playlist has no tracks yet.",
+            collection = playlist?.let { OptionsTarget.ForPlaylist(it, PlaylistOptionsContext.FROM_DETAIL) },
             // Only a playlist has an order of its own to rearrange, and membership to remove from.
-            // Dragging edits that arranged order, which only Custom shows - under any other sort a
-            // drop would save an order different from the one on screen.
-            onReorder = if (sortOrder.criterion == SortCriterion.CUSTOM) {
-                { reordered -> viewModel.setOrder(reordered.map { it.id }) }
-            } else {
-                null
-            },
-            onRemoveSelected = viewModel::removeFromPlaylist,
-            // Only a real playlist has membership to add to, so these two live here rather than in
-            // the shared detail screen - Recent and Most played get search and export only.
-            extraActions = listOf(
-                TopBarAction(label = "Add file to playlist", icon = Icons.Filled.AudioFile) {
-                    addFileLauncher.launch(arrayOf("audio/*"))
-                },
-                TopBarAction(label = "Add folder to playlist", icon = Icons.Filled.CreateNewFolder) {
-                    addFolderLauncher.launch(null)
-                },
-            ),
+            // Dragging works whatever the list is sorted by: the drop stores the order it ended on and
+            // puts the list in it, so what was dragged is what stays.
+            onReorder = { reordered -> viewModel.setOrder(reordered.map { it.id }) },
+            removeFromPlaylist = viewModel::removeFromPlaylist,
         )
     }
 }
@@ -88,6 +58,7 @@ object RecentlyPlayedScreen : Screen {
             onBack = navigator::back,
             viewModel = viewModel,
             emptyMessage = "Nothing has been played yet.",
+            collection = null,
         )
     }
 }
@@ -107,6 +78,7 @@ object MostPlayedScreen : Screen {
             onBack = navigator::back,
             viewModel = viewModel,
             emptyMessage = "Nothing has been played right through yet.",
+            collection = null,
         )
     }
 }

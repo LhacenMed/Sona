@@ -89,6 +89,7 @@ internal fun Queue(
     onBackgroundColor: Color,
     textBackgroundColor: Color,
     onMenuClick: (Track) -> Unit,
+    onShowLyrics: () -> Unit,
     viewModel: PlayerViewModel,
     modifier: Modifier = Modifier,
 ) {
@@ -176,9 +177,6 @@ internal fun Queue(
             showSleepTimerDialog = true
         }
     }
-    // Lyrics have no screen yet; the button keeps its place in every bar until they do.
-    val onShowLyrics = {}
-
     BottomSheet(
         state = state,
         backgroundColor = Color.Unspecified,

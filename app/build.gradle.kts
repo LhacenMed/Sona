@@ -132,6 +132,8 @@ android {
 
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        // Kuromoji ships these alongside other libraries that ship their own; none are read at runtime.
+        resources.excludes += listOf("META-INF/NOTICE.md", "META-INF/CONTRIBUTORS.md", "META-INF/LICENSE.md")
     }
 
     compileOptions {

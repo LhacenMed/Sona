@@ -1,6 +1,5 @@
 package com.lhacenmed.sona.core.designsystem.component
 
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -12,22 +11,19 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.lhacenmed.sona.core.designsystem.R
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 
 /**
- * The buttons at the foot of every dialog and sheet - Cancel, OK, Save and the like - answering each
- * other's presses the way [SonaIconButtonGroup]'s icons do.
+ * The buttons at the foot of every dialog and sheet - Cancel, OK, Save and the like.
  *
- * Holding one tightens its corners and widens it into the space its neighbour gives up, so the row's
- * width never changes and a dialog never reflows under the user's finger. A button with no neighbour
- * keeps its width and only its corners answer.
+ * Holding one only tightens its corners: no button widens into its neighbour, so the row's buttons
+ * never move under the user's finger.
  *
  * In an `AlertDialog` the whole group goes in `confirmButton`, with `dismissButton` left out: Material
- * lays those two slots out as unrelated buttons, and a press can only be shared inside one group.
+ * lays those two slots out as unrelated buttons, and this keeps them spaced as one row.
  *
  * Unlike [SonaIconButtonGroup] the minimum touch target is left alone: a text button is already wider
  * than it, so it only adds height, which never reaches the painted container.
@@ -47,15 +43,14 @@ fun SonaActionButtonGroup(
             )
         },
         modifier = modifier,
-        expandedRatio = SonaComponentStyle.PressedExpandedRatio,
         horizontalArrangement = Arrangement.spacedBy(SonaComponentStyle.ItemSpacing),
         content = content,
     )
 }
 
 /**
- * One button in a [SonaActionButtonGroup], sharing its press with the group so the button morphs
- * and the group widens it from the same touch. Declared in order: the way out first, the action last.
+ * One button in a [SonaActionButtonGroup], whose corners tighten while it is held. Declared in order:
+ * the way out first, the action last.
  */
 fun ButtonGroupScope.actionButton(
     label: String,
@@ -63,16 +58,13 @@ fun ButtonGroupScope.actionButton(
     enabled: Boolean = true,
 ) = customItem(
     buttonGroupContent = {
-        val interactionSource = remember { MutableInteractionSource() }
         TextButton(
             onClick = onClick,
             shapes = ButtonDefaults.shapes(
                 shape = CircleShape,
                 pressedShape = SonaComponentStyle.Shape,
             ),
-            modifier = Modifier.animateWidth(interactionSource),
             enabled = enabled,
-            interactionSource = interactionSource,
         ) {
             Text(label)
         }

@@ -524,9 +524,10 @@ class PopupMenu(
                     // Release on the same item → ripple completes, OnClickListener fires.
                     releaseItem(hit)
                 } else {
-                    // Lifted outside any item — close without selection.
                     cancelHoveredItem()
-                    dismiss()
+                    // Lifted on a disabled item — nothing happens, as a tap on it does nothing.
+                    // Lifted anywhere else outside an item — close without selection.
+                    if (!isDisabledItemAt(rawX, rawY)) dismiss()
                 }
                 hoveredIndex = -1
             }
@@ -549,17 +550,24 @@ class PopupMenu(
      * is narrower than [maxWidth]).
      */
     private fun findItemIndexAt(rawX: Float, rawY: Float): Int {
+        val row = rowIndexAt(rawX, rawY)
+        // Spacer, text-block and disabled item rows are non-interactive — skip them.
+        return if (row >= 0 && itemViews[row].isClickable) row else -1
+    }
+
+    /** Whether ([rawX], [rawY]) lies on an item row that is disabled. */
+    private fun isDisabledItemAt(rawX: Float, rawY: Float): Boolean {
+        val row = rowIndexAt(rawX, rawY)
+        return row >= 0 && (itemViews[row].tag as? MenuItem)?.isEnabled == false
+    }
+
+    /** The index of whichever row's cached screen bounds contain ([rawX], [rawY]), interactive or not, or -1. */
+    private fun rowIndexAt(rawX: Float, rawY: Float): Int {
         if (!boundsReady) return -1
         val x = rawX.toInt()
         val y = rawY.toInt()
         if (x < windowLeft || x >= windowRight) return -1
-        for (i in itemTops.indices) {
-            if (y >= itemTops[i] && y < itemBottoms[i]) {
-                // Spacer and text-block rows are non-interactive — skip them.
-                return if (itemViews[i].isClickable) i else -1
-            }
-        }
-        return -1
+        return itemTops.indices.firstOrNull { i -> y >= itemTops[i] && y < itemBottoms[i] } ?: -1
     }
 
     /**

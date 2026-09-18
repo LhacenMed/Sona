@@ -6,6 +6,7 @@ import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Folder
 import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.model.UnknownNames
 import com.lhacenmed.sona.core.model.sort.SortCriterion
 import com.lhacenmed.sona.core.model.sort.SortDirection
 import com.lhacenmed.sona.core.model.sort.SortOrder
@@ -35,9 +36,9 @@ internal object LibrarySortSpecs {
 
     // region Tracks
 
-    private val trackTitle = SortField.Name<Track> { it.title }
-    private val trackArtist = SortField.Name<Track> { it.artist }
-    private val trackAlbum = SortField.Name<Track> { it.album }
+    private val trackTitle = SortField.Name<Track>({ it.title })
+    private val trackArtist = SortField.Name<Track>({ it.artist }, { it.artist == UnknownNames.ARTIST })
+    private val trackAlbum = SortField.Name<Track>({ it.album }, { it.album == UnknownNames.ALBUM })
     private val trackYear = SortField.Number<Track> { it.year?.toLong() }
     private val trackDuration = SortField.Number<Track> { it.durationMs }
     private val trackDateAdded = SortField.Number<Track> { it.dateAddedSeconds }
@@ -138,7 +139,10 @@ internal object LibrarySortSpecs {
     /** The same track orderings, read through the entry that holds the track. */
     private fun List<SortField<Track>>.ofEntry(): List<SortField<PlaylistEntry>> = map { field ->
         when (field) {
-            is SortField.Name -> SortField.Name<PlaylistEntry> { entry -> field.read(entry.track) }
+            is SortField.Name -> SortField.Name<PlaylistEntry>(
+                { entry -> field.read(entry.track) },
+                { entry -> field.isPlaceholder(entry.track) },
+            )
             is SortField.Number -> SortField.Number<PlaylistEntry> { entry -> field.read(entry.track) }
         }
     }
@@ -147,7 +151,7 @@ internal object LibrarySortSpecs {
 
     // region Collections
 
-    private val albumTitle = SortField.Name<Album> { it.title }
+    private val albumTitle = SortField.Name<Album>({ it.title }, { it.title == UnknownNames.ALBUM })
 
     val albums = SortSpec(
         list = SortableList.ALBUMS,
@@ -155,7 +159,7 @@ internal object LibrarySortSpecs {
         orderings = mapOf(
             SortCriterion.NAME to listOf(albumTitle),
             SortCriterion.ARTIST to listOf(
-                SortField.Name<Album> { it.artistName },
+                SortField.Name<Album>({ it.artistName }, { it.artistName == UnknownNames.ARTIST }),
                 SortField.Number { it.year?.toLong() },
                 albumTitle,
             ),
@@ -165,7 +169,7 @@ internal object LibrarySortSpecs {
         ),
     )
 
-    private val artistName = SortField.Name<Artist> { it.name }
+    private val artistName = SortField.Name<Artist>({ it.name }, { it.name == UnknownNames.ARTIST })
 
     val artists = SortSpec(
         list = SortableList.ARTISTS,
@@ -177,7 +181,7 @@ internal object LibrarySortSpecs {
         ),
     )
 
-    private val genreName = SortField.Name<Genre> { it.name }
+    private val genreName = SortField.Name<Genre>({ it.name }, { it.name == UnknownNames.GENRE })
 
     val genres = SortSpec(
         list = SortableList.GENRES,
@@ -188,7 +192,7 @@ internal object LibrarySortSpecs {
         ),
     )
 
-    private val folderName = SortField.Name<Folder> { it.name }
+    private val folderName = SortField.Name<Folder>({ it.name })
 
     val folders = SortSpec(
         list = SortableList.FOLDERS,
@@ -199,7 +203,7 @@ internal object LibrarySortSpecs {
         ),
     )
 
-    private val playlistName = SortField.Name<PlaylistWithCount> { it.name }
+    private val playlistName = SortField.Name<PlaylistWithCount>({ it.name })
 
     /** "Date" is when the playlist last changed - made, renamed, or its tracks added, removed or moved. */
     val playlists = SortSpec(

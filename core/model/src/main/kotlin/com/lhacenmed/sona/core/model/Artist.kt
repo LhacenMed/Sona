@@ -5,5 +5,6 @@ data class Artist(
     val name: String,
     val trackCount: Int,
     val albumCount: Int,
-    val coverArtUri: String?,
+    /** Every distinct cover among the artist's tracks, the most shared first - what its cover is composed from. */
+    val coverArtUris: List<String>,
 )

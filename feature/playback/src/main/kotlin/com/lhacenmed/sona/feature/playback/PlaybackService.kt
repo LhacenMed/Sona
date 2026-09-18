@@ -134,6 +134,8 @@ class PlaybackService : MediaSessionService() {
                 .add(PlaybackSessionCommands.toggleFavoriteCommand)
                 .add(PlaybackSessionCommands.toggleShuffleCommand)
                 .add(PlaybackSessionCommands.toggleRepeatModeCommand)
+                .add(PlaybackSessionCommands.playNextCommand)
+                .add(PlaybackSessionCommands.addToQueueCommand)
                 .build()
             return MediaSession.ConnectionResult.accept(
                 sessionCommands,
@@ -155,6 +157,12 @@ class PlaybackService : MediaSessionService() {
                 PlaybackSessionCommands.ACTION_TOGGLE_SHUFFLE -> toggleShuffle()
 
                 PlaybackSessionCommands.ACTION_TOGGLE_REPEAT_MODE -> toggleRepeatMode()
+
+                PlaybackSessionCommands.ACTION_PLAY_NEXT ->
+                    enqueue(args.getLongArray(PlaybackSessionCommands.EXTRA_TRACK_IDS) ?: LongArray(0), playNext = true)
+
+                PlaybackSessionCommands.ACTION_ADD_TO_QUEUE ->
+                    enqueue(args.getLongArray(PlaybackSessionCommands.EXTRA_TRACK_IDS) ?: LongArray(0), playNext = false)
 
                 else -> return super.onCustomCommand(session, controller, customCommand, args)
             }
@@ -218,6 +226,7 @@ class PlaybackService : MediaSessionService() {
             .build()
             .apply {
                 shuffleModeEnabled = playbackSettings.shuffleEnabled.value
+                setShuffleOrder(QueueShuffleOrder())
                 addListener(playerListener)
             }
 
@@ -347,6 +356,48 @@ class PlaybackService : MediaSessionService() {
         val enabled = !exoPlayer.shuffleModeEnabled
         exoPlayer.shuffleModeEnabled = enabled
         serviceScope.launch { playbackSettings.setShuffleEnabled(enabled) }
+    }
+
+    /**
+     * Puts the tracks named by [trackIds] in the queue once each - right after the current track when
+     * [playNext], at the end otherwise - in the order given.
+     *
+     * A track already queued moves there rather than playing twice, wherever its copy was, played or
+     * not; the track playing now is left where it is. Done here, on the player itself, because only
+     * the player knows the shuffle order that decides what "next" is.
+     */
+    private fun enqueue(trackIds: LongArray, playNext: Boolean) {
+        val currentMediaId = exoPlayer.currentMediaItem?.mediaId
+        val tracksById = libraryRepository.tracksById.value
+        val tracks = trackIds.distinct()
+            .mapNotNull { tracksById[it] }
+            .filter { it.id.toString() != currentMediaId }
+        if (tracks.isEmpty()) return
+
+        val movingMediaIds = tracks.mapTo(HashSet()) { it.id.toString() }
+        fun isMoving(index: Int) =
+            index != exoPlayer.currentMediaItemIndex && exoPlayer.getMediaItemAt(index).mediaId in movingMediaIds
+        // Last to first, in runs, so each removal leaves the indices still to visit untouched.
+        var index = exoPlayer.mediaItemCount - 1
+        while (index >= 0) {
+            if (!isMoving(index)) {
+                index--
+                continue
+            }
+            val runEndExclusive = index + 1
+            while (index >= 0 && isMoving(index)) index--
+            exoPlayer.removeMediaItems(index + 1, runEndExclusive)
+        }
+
+        val insertionIndex = if (playNext) {
+            exoPlayer.currentTimeline
+                .getNextWindowIndex(exoPlayer.currentMediaItemIndex, Player.REPEAT_MODE_OFF, exoPlayer.shuffleModeEnabled)
+                .takeUnless { it == C.INDEX_UNSET }
+                ?: exoPlayer.mediaItemCount
+        } else {
+            exoPlayer.mediaItemCount
+        }
+        exoPlayer.addMediaItems(insertionIndex, tracks.map { it.toMediaItem() })
     }
 
     private fun toggleRepeatMode() {

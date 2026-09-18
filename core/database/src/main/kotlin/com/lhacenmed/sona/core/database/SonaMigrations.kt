@@ -149,6 +149,71 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
 }
 
 /**
+ * Artists and genres keep every cover among their tracks rather than one, and genres how many artists
+ * they span - what Auxio composes their covers from and shows beneath their names.
+ *
+ * Both tables are only ever what a scan found, so they are rebuilt rather than altered: SQLite cannot
+ * drop the old single-cover column on every version this app supports. A row keeps the cover it had
+ * until the rescan the scanner's schema version forces fills in the rest, and a genre's artist count
+ * is already known from its tracks.
+ */
+val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE `artists_new` (`id` INTEGER NOT NULL, `name` TEXT NOT NULL, " +
+                "`trackCount` INTEGER NOT NULL, `albumCount` INTEGER NOT NULL, " +
+                "`coverArtUris` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        )
+        db.execSQL(
+            "INSERT INTO `artists_new` (`id`, `name`, `trackCount`, `albumCount`, `coverArtUris`) " +
+                "SELECT `id`, `name`, `trackCount`, `albumCount`, IFNULL(`coverArtUri`, '') FROM `artists`",
+        )
+        db.execSQL("DROP TABLE `artists`")
+        db.execSQL("ALTER TABLE `artists_new` RENAME TO `artists`")
+
+        db.execSQL(
+            "CREATE TABLE `genres_new` (`id` INTEGER NOT NULL, `name` TEXT NOT NULL, " +
+                "`trackCount` INTEGER NOT NULL, `artistCount` INTEGER NOT NULL, " +
+                "`coverArtUris` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        )
+        db.execSQL(
+            """
+            INSERT INTO `genres_new` (`id`, `name`, `trackCount`, `artistCount`, `coverArtUris`)
+            SELECT `id`, `name`, `trackCount`,
+                (SELECT COUNT(DISTINCT `artistId`) FROM `tracks` WHERE `tracks`.`genreId` = `genres`.`id`),
+                IFNULL(`coverArtUri`, '')
+            FROM `genres`
+            """.trimIndent(),
+        )
+        db.execSQL("DROP TABLE `genres`")
+        db.execSQL("ALTER TABLE `genres_new` RENAME TO `genres`")
+    }
+}
+
+/**
+ * Lyrics, read from each track's tags or typed in by the user.
+ *
+ * A new table and nothing else, so existing rows are untouched. Written rather than left to the
+ * destructive fallback, which would throw away the playlists and play counts earlier migrations kept.
+ */
+val MIGRATION_8_9 = object : Migration(8, 9) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `lyrics` (
+                `trackId` INTEGER NOT NULL,
+                `lyrics` TEXT NOT NULL,
+                `source` TEXT NOT NULL,
+                `updatedAt` INTEGER NOT NULL,
+                PRIMARY KEY(`trackId`),
+                FOREIGN KEY(`trackId`) REFERENCES `tracks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent(),
+        )
+    }
+}
+
+/**
  * Makes sure Favorites exists, every time the database is opened.
  *
  * On open rather than on create, because creation is only one of the ways this database comes to
