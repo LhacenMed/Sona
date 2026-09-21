@@ -29,7 +29,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,9 +36,7 @@ import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -103,17 +100,14 @@ internal fun CurrentSongHeader(
     isFavorite: Boolean,
     repeatMode: RepeatMode,
     shuffleEnabled: Boolean,
-    locked: Boolean,
-    songCount: Int,
-    queueDurationMs: Long,
+    // Whether the queue is open for reordering, which the header offers the way out of.
+    isReordering: Boolean,
     backgroundColor: Color,
     onBackgroundColor: Color,
     onToggleFavorite: () -> Unit,
-    onMenuClick: () -> Unit,
-    onClearQueueClick: () -> Unit,
+    onExitReorder: () -> Unit,
     onRepeatClick: () -> Unit,
     onShuffleClick: () -> Unit,
-    onLockClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val view = LocalView.current
@@ -124,189 +118,148 @@ internal fun CurrentSongHeader(
                 .fillMaxWidth()
                 .background(backgroundColor)
                 .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
-                .bottomSheetDraggable(sheetState)
-                .padding(horizontal = 16.dp)
-                .padding(top = 20.dp, bottom = 8.dp),
+                .bottomSheetDraggable(sheetState),
     ) {
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-            contentAlignment = Alignment.Center,
-        ) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp).padding(top = 20.dp)) {
             Box(
                 modifier =
                     Modifier
-                        .width(48.dp)
-                        .height(5.dp)
-                        .clip(RoundedCornerShape(2.5.dp))
-                        .background(onBackgroundColor.copy(alpha = 0.4f)),
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            SonaCoverImage(
-                coverArtUri = track?.coverArtUri,
-                contentDescription = null,
-                cornerRadius = 12.dp,
-                modifier = Modifier.size(64.dp),
-            )
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = track?.title.orEmpty(),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = onBackgroundColor,
-                )
-                Text(
-                    text = track?.artist.orEmpty(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = onBackgroundColor.copy(alpha = 0.6f),
+                Box(
+                    modifier =
+                        Modifier
+                            .width(48.dp)
+                            .height(5.dp)
+                            .clip(RoundedCornerShape(2.5.dp))
+                            .background(onBackgroundColor.copy(alpha = 0.4f)),
                 )
             }
 
-            IconButton(
-                onClick = onToggleFavorite,
-                modifier = Modifier.size(44.dp),
-                colors =
-                    IconButtonDefaults.iconButtonColors(
-                        contentColor = if (isFavorite) MaterialTheme.colorScheme.primary else onBackgroundColor,
-                    ),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                Icon(
-                    painter = painterResource(favoriteIconRes(isFavorite)),
-                    contentDescription = stringResource(R.string.player_like),
-                    modifier = Modifier.size(26.dp),
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(onBackgroundColor.copy(alpha = 0.06f))
-                    .padding(horizontal = 6.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(
-                    onClick = onLockClick,
-                    modifier = Modifier.size(40.dp),
-                    colors = IconButtonDefaults.iconButtonColors(contentColor = onBackgroundColor.copy(alpha = 0.7f)),
-                ) {
-                    Icon(
-                        painter = painterResource(if (locked) R.drawable.lock else R.drawable.lock_open),
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-                IconButton(
-                    onClick = onMenuClick,
-                    modifier = Modifier.size(40.dp),
-                    colors = IconButtonDefaults.iconButtonColors(contentColor = onBackgroundColor.copy(alpha = 0.7f)),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.more_vert),
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-                IconButton(
-                    onClick = onClearQueueClick,
-                    modifier = Modifier.size(40.dp),
-                    colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.delete),
-                        contentDescription = stringResource(R.string.player_clear),
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-            }
-
-            Text(
-                text =
-                    pluralStringResource(R.plurals.player_n_song, songCount, songCount) +
-                        "  •  " + makeTimeString(queueDurationMs),
-                style = MaterialTheme.typography.labelMedium,
-                color = onBackgroundColor.copy(alpha = 0.55f),
-                modifier = Modifier.padding(end = 14.dp),
-            )
-        }
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            val uncheckedColors =
-                ToggleButtonDefaults.colors(
-                    containerColor = onBackgroundColor.copy(alpha = 0.12f),
-                    contentColor = onBackgroundColor,
-                )
-            val checkedColors =
-                ToggleButtonDefaults.colors(
-                    checkedContainerColor = onBackgroundColor.copy(alpha = 0.22f),
-                    checkedContentColor = onBackgroundColor,
-                )
-            val repeatEnabled = repeatMode != RepeatMode.OFF
-
-            ToggleButton(
-                checked = shuffleEnabled,
-                onCheckedChange = {
-                    view.performContextClick()
-                    onShuffleClick()
-                },
-                modifier = Modifier.weight(1f).size(48.dp),
-                shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
-                colors = if (shuffleEnabled) checkedColors else uncheckedColors,
-            ) {
-                Icon(
-                    painter = painterResource(PlaybackR.drawable.shuffle),
-                    contentDescription = stringResource(R.string.player_shuffle_on),
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-
-            ToggleButton(
-                checked = repeatEnabled,
-                onCheckedChange = {
-                    view.performContextClick()
-                    onRepeatClick()
-                },
-                modifier = Modifier.weight(1f).size(48.dp),
-                shapes = ButtonGroupDefaults.connectedTrailingButtonShapes(),
-                colors = if (repeatEnabled) checkedColors else uncheckedColors,
-            ) {
-                Icon(
-                    painter = painterResource(repeatMode.queueHeaderIconRes()),
+                SonaCoverImage(
+                    coverArtUri = track?.coverArtUri,
                     contentDescription = null,
-                    modifier = Modifier.size(22.dp),
+                    cornerRadius = 12.dp,
+                    modifier = Modifier.size(64.dp),
                 )
-            }
-        }
 
-        Spacer(modifier = Modifier.height(14.dp))
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text(
+                        text = track?.title.orEmpty(),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = onBackgroundColor,
+                    )
+                    Text(
+                        text = track?.artist.orEmpty(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = onBackgroundColor.copy(alpha = 0.6f),
+                    )
+                }
+
+                // The way out of reordering, beside the button it borrows its size from - the same
+                // exit system back gives, for a mode a gesture opened and nothing else announces.
+                if (isReordering) {
+                    IconButton(
+                        onClick = onExitReorder,
+                        modifier = Modifier.size(44.dp),
+                        colors = IconButtonDefaults.iconButtonColors(contentColor = onBackgroundColor),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.close),
+                            contentDescription = stringResource(R.string.player_close),
+                            modifier = Modifier.size(26.dp),
+                        )
+                    }
+                }
+
+                IconButton(
+                    onClick = onToggleFavorite,
+                    modifier = Modifier.size(44.dp),
+                    colors =
+                        IconButtonDefaults.iconButtonColors(
+                            contentColor = if (isFavorite) MaterialTheme.colorScheme.primary else onBackgroundColor,
+                        ),
+                ) {
+                    Icon(
+                        painter = painterResource(favoriteIconRes(isFavorite)),
+                        contentDescription = stringResource(R.string.player_like),
+                        modifier = Modifier.size(26.dp),
+                    )
+                }
+            }
+
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                val uncheckedColors =
+                    ToggleButtonDefaults.colors(
+                        containerColor = onBackgroundColor.copy(alpha = 0.12f),
+                        contentColor = onBackgroundColor,
+                    )
+                val checkedColors =
+                    ToggleButtonDefaults.colors(
+                        checkedContainerColor = onBackgroundColor.copy(alpha = 0.22f),
+                        checkedContentColor = onBackgroundColor,
+                    )
+                val repeatEnabled = repeatMode != RepeatMode.OFF
+
+                ToggleButton(
+                    checked = shuffleEnabled,
+                    onCheckedChange = {
+                        view.performContextClick()
+                        onShuffleClick()
+                    },
+                    modifier = Modifier.weight(1f).size(48.dp),
+                    shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
+                    colors = if (shuffleEnabled) checkedColors else uncheckedColors,
+                ) {
+                    Icon(
+                        painter = painterResource(PlaybackR.drawable.shuffle),
+                        contentDescription = stringResource(R.string.player_shuffle_on),
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+
+                ToggleButton(
+                    checked = repeatEnabled,
+                    onCheckedChange = {
+                        view.performContextClick()
+                        onRepeatClick()
+                    },
+                    modifier = Modifier.weight(1f).size(48.dp),
+                    shapes = ButtonGroupDefaults.connectedTrailingButtonShapes(),
+                    colors = if (repeatEnabled) checkedColors else uncheckedColors,
+                ) {
+                    Icon(
+                        painter = painterResource(repeatMode.queueHeaderIconRes()),
+                        contentDescription = null,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+        }
 
         HorizontalDivider(
             color = onBackgroundColor.copy(alpha = 0.08f),
@@ -1132,153 +1085,5 @@ internal fun EditorialQueueBar(
                 }
             }
         }
-    }
-}
-
-/** One row of the queue: cover with its playing indicator, title, artist and length. Stands in for ArchiveTune's `MediaMetadataListItem`. */
-@Composable
-internal fun QueueTrackItem(
-    track: Track,
-    isSelected: Boolean,
-    isActive: Boolean,
-    isPlaying: Boolean,
-    trailingContent: @Composable RowScope.() -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    val titleColor = if (isActive) colorScheme.onSecondaryContainer else colorScheme.onSurface
-    val subtitleColor = if (isActive) colorScheme.onSecondaryContainer.copy(alpha = 0.7f) else colorScheme.onSurfaceVariant
-    val trailingContentColor = if (isActive) colorScheme.onSecondaryContainer else colorScheme.onSurfaceVariant
-
-    Row(
-        modifier =
-            modifier
-                .height(QueueItemHeight)
-                .padding(horizontal = 8.dp)
-                .then(
-                    if (isActive) {
-                        Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(colorScheme.secondaryContainer)
-                    } else {
-                        Modifier
-                    },
-                ),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(Modifier.padding(8.dp), contentAlignment = Alignment.Center) {
-            SonaCoverArt(
-                coverArtUri = track.coverArtUri,
-                contentDescription = null,
-                isCurrent = isActive,
-                isPlaying = isPlaying,
-                isSelected = isSelected,
-            )
-        }
-        Column(
-            modifier =
-                Modifier
-                    .weight(1f)
-                    .padding(horizontal = 6.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Text(
-                text = track.title,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = titleColor,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = "${track.artist} • ${makeTimeString(track.durationMs)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = subtitleColor,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        CompositionLocalProvider(LocalContentColor provides trailingContentColor) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                content = trailingContent,
-            )
-        }
-    }
-}
-
-@Composable
-internal fun QueueSelectionFloatingToolbar(
-    allSelected: Boolean,
-    onClose: () -> Unit,
-    onToggleSelectAll: () -> Unit,
-    onDelete: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colorScheme = MaterialTheme.colorScheme
-
-    HorizontalFloatingToolbar(
-        expanded = true,
-        modifier = modifier.widthIn(max = 420.dp),
-        floatingActionButton = {
-            FloatingToolbarDefaults.VibrantFloatingActionButton(
-                onClick = onClose,
-                containerColor = colorScheme.surfaceContainerHighest,
-                contentColor = colorScheme.onSurface,
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.close),
-                    contentDescription = stringResource(R.string.player_close),
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-        },
-        colors =
-            FloatingToolbarDefaults.standardFloatingToolbarColors(
-                toolbarContainerColor = colorScheme.surfaceContainerHigh,
-            ),
-    ) {
-        Row(
-            modifier =
-                Modifier
-                    .heightIn(min = 56.dp)
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            QueueSelectionToolbarAction(
-                icon = if (allSelected) R.drawable.deselect else R.drawable.select_all,
-                contentDescription = null,
-                tint = colorScheme.onSurface,
-                onClick = onToggleSelectAll,
-            )
-
-            QueueSelectionToolbarAction(
-                icon = R.drawable.delete,
-                contentDescription = stringResource(R.string.player_delete),
-                tint = colorScheme.error,
-                onClick = onDelete,
-            )
-        }
-    }
-}
-
-@Composable
-private fun QueueSelectionToolbarAction(
-    @DrawableRes icon: Int,
-    contentDescription: String?,
-    tint: Color,
-    onClick: () -> Unit,
-) {
-    IconButton(
-        onClick = onClick,
-        modifier = Modifier.size(48.dp),
-    ) {
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = contentDescription,
-            modifier = Modifier.size(22.dp),
-            tint = tint,
-        )
     }
 }

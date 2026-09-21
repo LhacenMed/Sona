@@ -46,10 +46,10 @@ dependencies {
     ksp(libs.hilt.compiler)
 
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.reorderable)
 
     implementation(libs.coil.compose)
     implementation(libs.androidx.palette)
-    implementation(libs.reorderable)
 }
 
 kotlin {

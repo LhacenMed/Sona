@@ -30,8 +30,12 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 
 ## Priority 2 — Critical: Core Playback & List Interaction Bugs
 
-- [ ] **2.1 Fix queue-list scroll conflicting with bottom-sheet drag**
-  The queue list sits inside a bottom sheet. Scrolling to the end of the list currently overlaps/conflicts with the gesture used to drag the sheet closed.
+- [x] **2.1 Fix queue-list scroll conflicting with bottom-sheet drag**
+  The sheet was driven by two independent gesture owners at once: a raw `detectVerticalDragGestures` covering the whole sheet, and the list's `preUpPostDownNestedScrollConnection`. Over the list both were live, so which one took a swipe came down to a touch-slop race and to whether the list happened to be able to scroll in that direction at that instant — and each kept its own `VelocityTracker` and called `performFling` separately, so the owner could change mid-gesture.
+  - `BottomSheet` now takes `isContentDraggable`. The collapsed bar is always draggable; the expanded content only when it holds nothing that scrolls.
+  - The queue sheet passes `false`: the list owns every gesture over it and hands the sheet only what it cannot scroll, and the sheet is dragged by its header handle.
+  - Present in ArchiveTune too (unfixed upstream), so this is a deliberate divergence from the clone rather than a port.
+  - The stutter under a reorder drag was a second, separate cause: `PlaybackUiState` carries `positionMs`, which the controller polls every 500ms, and `PlayerViewModel.uiState` passed it straight through. Every tick produced a new `PlayerUiState` instance, and under strong skipping an unstable parameter is compared by identity — so `Queue` could never skip and rebuilt every visible row twice a second, including mid-drag. The position is now dropped before the state is built (`steadyPlaybackState`), which nothing shows: the seek bar and the lyrics poll the player directly through `currentPositionMs()`.
 
 - [ ] **2.2 Stabilize skip-next / skip-previous controls**
   The player's skip-next and skip-previous behavior is currently unstable/unreliable and needs to be made consistent.
@@ -88,11 +92,12 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 - [ ] **4.4 Recolor the favorite button to follow the app theme**
   The favorite/like button is a fixed pink color and should instead follow the app's theme color.
 
-- [ ] **4.5 Change the "more options" icon**
-  It should be a horizontal ellipsis (•••) rather than its current style.
+- [x] **4.5 Change the "more options" icon**
+  Every row now draws its overflow button through `SonaListRow`, whose glyph is the horizontal ellipsis - so the queue's rows changed with the library's rather than separately.
 
-- [ ] **4.6 Reposition the drag handle in queue items**
-  When the queue is unlocked (reordering enabled) and items are draggable, the drag handle should sit on the left side of the item, positioned relative to the more-options button.
+- [x] **4.6 Reposition the drag handle in queue items**
+  The queue's rows are `SonaTrackRow`s now, which take the handle from `LocalDragHandle` and draw it to the left of the overflow button - the same place, on the same keylines, as a reorderable library list.
+  - Reordering is reached by long-pressing a row, and left by system back or the close button beside the header's favourite button. The lock toggle, the selection and its floating toolbar (select all, delete) are gone: the queue has one mode, and a row is played, dragged or swiped away.
 
 - [ ] **4.7 Verify the player works correctly in floating-window mode**
   Beyond the specific white-section bug above, test and confirm the app — and the player specifically — behaves correctly while running in floating/freeform window mode.
