@@ -24,9 +24,14 @@ import com.lhacenmed.sona.feature.scanner.hasScannerPermission
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
@@ -68,11 +73,43 @@ class LibraryViewModel @Inject constructor(
     sortOrders: LibrarySortOrders,
 ) : ViewModel() {
 
-    val tracks: StateFlow<LibraryContent<Track>> = repository.tracks
-    val albums: StateFlow<LibraryContent<Album>> = repository.albums
-    val artists: StateFlow<LibraryContent<Artist>> = repository.artists
-    val genres: StateFlow<LibraryContent<Genre>> = repository.genres
-    val folders: StateFlow<LibraryContent<Folder>> = repository.folders
+    private val _searchQuery = MutableStateFlow<String?>(null)
+
+    /** What the bar is being searched for, or null while its search is closed. */
+    val searchQuery: StateFlow<String?> = _searchQuery.asStateFlow()
+
+    val tracks: StateFlow<LibraryContent<Track>> =
+        repository.tracks.narrowedBySearch { track, query -> matchesSearch(query, track.title, track.artist) }
+    val albums: StateFlow<LibraryContent<Album>> =
+        repository.albums.narrowedBySearch { album, query -> matchesSearch(query, album.title, album.artistName) }
+    val artists: StateFlow<LibraryContent<Artist>> =
+        repository.artists.narrowedBySearch { artist, query -> matchesSearch(query, artist.name) }
+    val genres: StateFlow<LibraryContent<Genre>> =
+        repository.genres.narrowedBySearch { genre, query -> matchesSearch(query, genre.name) }
+    val folders: StateFlow<LibraryContent<Folder>> =
+        repository.folders.narrowedBySearch { folder, query -> matchesSearch(query, folder.name) }
+
+    /**
+     * A tab's rows as the search leaves them.
+     *
+     * One query narrows every tab at once, so swiping across them shows the same search answered five
+     * ways. The lists are already in memory and pre-sorted, so this is a filter rather than a query -
+     * which is what lets a tab keep its own order while being searched, and what makes every tab
+     * answer a keystroke on the same frame.
+     *
+     * Because the tabs read these rather than the repository's, everything downstream follows the
+     * search for free: what a row plays from, and what Select all selects.
+     */
+    private fun <T> StateFlow<LibraryContent<T>>.narrowedBySearch(
+        matches: (T, String?) -> Boolean,
+    ): StateFlow<LibraryContent<T>> = combine(this, _searchQuery) { content, query ->
+        if (query.isNullOrBlank()) content else content.filterItems { matches(it, query) }
+    }
+        // Off the main thread: a large library is tens of thousands of rows, and a keystroke narrows
+        // every tab at once. The initial value is still read synchronously, so the first frame is
+        // unaffected.
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), value)
 
     private val tabSorts: Map<LibraryTab, SortControl> =
         LibraryTab.entries.associateWith { tab -> sortOrders.control(tab.sortableList()) }
@@ -127,6 +164,11 @@ class LibraryViewModel @Inject constructor(
     /** An explicit user-initiated rescan, which bypasses the unchanged-library skip. */
     fun onRescan() {
         mediaScanner.requestScan(force = true)
+    }
+
+    /** Opens the bar's search with an empty query, narrows it, or - with null - closes it. */
+    fun onSearchQueryChange(query: String?) {
+        _searchQuery.value = query
     }
 
     /**

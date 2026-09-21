@@ -288,6 +288,9 @@ class MenuFlipper(
         val expandInterp = anim.entryExpandInterpolator
         val slideInterp = DecelerateInterpolator(anim.itemSlideDeceleration)
         val itemCount = itemViews.size
+        // The alpha each row was built to rest at - faded, for a disabled one - so the cascade
+        // fades it in to that rather than to full opacity.
+        val restingAlphas = itemViews.map { it.alpha }
 
         // Expand from the top-right corner: right edge fixed (pivotX = width), top edge
         // fixed (pivotY = 0). The card grows downward, toward the content.
@@ -328,7 +331,7 @@ class MenuFlipper(
                     val progress =
                         ((elapsed - i * anim.cascadeStaggerMs) / anim.cascadeItemDurationMs)
                             .coerceIn(0f, 1f)
-                    v.alpha = progress
+                    v.alpha = progress * restingAlphas[i]
                     v.translationY =
                         (1f - slideInterp.getInterpolation(progress)) *
                                 -context.dp(anim.itemSlideDistanceDp)

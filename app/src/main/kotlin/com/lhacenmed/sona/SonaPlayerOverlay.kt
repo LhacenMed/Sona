@@ -5,6 +5,8 @@ import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.PlayerOverlay
 import com.lhacenmed.sona.feature.library.AlbumDetailScreen
 import com.lhacenmed.sona.feature.library.ArtistDetailScreen
+import com.lhacenmed.sona.feature.library.options.OptionsSheet
+import com.lhacenmed.sona.feature.library.options.OptionsTarget
 import com.lhacenmed.sona.feature.player.BottomSheetPlayerHost
 import dagger.Binds
 import dagger.Module
@@ -21,6 +23,14 @@ class SonaPlayerOverlay @Inject constructor() : PlayerOverlay {
         BottomSheetPlayerHost(
             onGoToAlbum = { albumId -> navigator.go(AlbumDetailScreen(albumId)) },
             onGoToArtist = { artistId -> navigator.go(ArtistDetailScreen(artistId)) },
+            // The player and its queue open the same options sheet every track row in the library
+            // opens - the app is where the two features are introduced to each other.
+            trackOptionsSheet = { track, onDismissRequest ->
+                OptionsSheet(
+                    target = OptionsTarget.ForTrack(track),
+                    onDismissRequest = onDismissRequest,
+                )
+            },
         )
     }
 }

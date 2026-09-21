@@ -3,18 +3,11 @@
 package com.lhacenmed.sona.feature.player
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.add
@@ -30,8 +23,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -41,6 +32,7 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -49,7 +41,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Alignment
@@ -59,8 +50,9 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.component.LocalDragHandle
+import com.lhacenmed.sona.core.designsystem.component.SonaTrackRow
 import com.lhacenmed.sona.core.datastore.PlayerStyle
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.SleepTimerState
@@ -73,8 +65,8 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 
 /**
  * The queue: a bar along the bottom of the full player - queue, sleep timer and lyrics, in the player
- * style's own shape - that expands into the queue itself, where rows play, reorder, swipe away and select.
- * Ported from ArchiveTune's `Queue`.
+ * style's own shape - that expands into the queue itself, where rows play, and, once a long press has
+ * opened the queue for reordering, drag and swipe away. Ported from ArchiveTune's `Queue`.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -98,50 +90,38 @@ internal fun Queue(
     val playback = uiState.playback
     val currentTrack = uiState.currentTrack
 
-    val selectedItems = remember { mutableStateListOf<QueueTrack>() }
-    var selection by remember { mutableStateOf(false) }
+    // Whether the queue is open for reordering: a long press on a row opens it, and system back or
+    // the header's close button is the way out. It is the only mode the queue has - a row is played,
+    // dragged or swiped away, never gathered into a selection.
+    var reordering by remember { mutableStateOf(false) }
 
-    fun clearSelection() {
-        selection = false
-        selectedItems.clear()
-    }
-
-    if (selection) {
+    if (reordering) {
         BackHandler {
-            clearSelection()
+            reordering = false
         }
     }
-
-    var locked by rememberSaveable { mutableStateOf(true) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     var dismissJob: Job? by remember { mutableStateOf(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    val onRemoveMultipleWithUndo: (List<QueueTrack>) -> Unit = { items ->
-        if (items.isNotEmpty()) {
-            viewModel.onRemoveQueueItems(items)
-            dismissJob?.cancel()
-            dismissJob =
-                coroutineScope.launch {
-                    val snackbarResult =
-                        snackbarHostState.showSnackbar(
-                            message =
-                                if (items.size == 1) {
-                                    context.getString(R.string.player_removed_song_from_queue, items.first().track.title)
-                                } else {
-                                    context.getString(R.string.player_removed_n_songs_from_queue, items.size)
-                                },
-                            actionLabel = context.getString(R.string.player_undo),
-                            duration = SnackbarDuration.Short,
-                        )
-                    if (snackbarResult == SnackbarResult.ActionPerformed) {
-                        viewModel.onRestoreQueueItems(items)
-                    }
+    val onRemoveWithUndo: (QueueTrack) -> Unit = { item ->
+        val items = listOf(item)
+        viewModel.onRemoveQueueItems(items)
+        dismissJob?.cancel()
+        dismissJob =
+            coroutineScope.launch {
+                val snackbarResult =
+                    snackbarHostState.showSnackbar(
+                        message = context.getString(R.string.player_removed_song_from_queue, item.track.title),
+                        actionLabel = context.getString(R.string.player_undo),
+                        duration = SnackbarDuration.Short,
+                    )
+                if (snackbarResult == SnackbarResult.ActionPerformed) {
+                    viewModel.onRestoreQueueItems(items)
                 }
-        }
+            }
     }
-    val onRemoveWithUndo: (QueueTrack) -> Unit = { item -> onRemoveMultipleWithUndo(listOf(item)) }
 
     var showSleepTimerDialog by remember { mutableStateOf(false) }
     val sleepTimerEnabled = sleepTimer.isActive
@@ -182,6 +162,9 @@ internal fun Queue(
         backgroundColor = Color.Unspecified,
         modifier = modifier,
         onCollapsedContentClick = openQueue,
+        // The queue list owns every gesture over it, handing the sheet only what it cannot scroll;
+        // the header below is what the sheet itself is dragged by.
+        isContentDraggable = false,
         collapsedContent = {
             when (playerStyle) {
                 PlayerStyle.MINIMAL -> {
@@ -260,24 +243,40 @@ internal fun Queue(
         },
     ) {
         val queue = uiState.queue
-        val mutableQueue =
+        // The order the rows are drawn in, which a drag rearranges at once - the player is only told
+        // once the finger lifts, and the queue it sends back takes over again here.
+        val stagedQueue =
             remember {
-                mutableStateListOf<QueueTrack>().apply {
-                    addAll(queue)
-                }
+                mutableStateListOf<QueueTrack>().apply { addAll(queue) }
             }
-        val queueDurationMs = remember(queue) { queue.sumOf { it.track.durationMs } }
 
-        val headerItems = 1
         val lazyListState = rememberLazyListState()
-        var dragInfo by remember { mutableStateOf<QueueDragInfo?>(null) }
+        // A drag down with the list already at its top closes the sheet, wherever on the list it
+        // starts and whether or not the queue is unlocked - swiping a row away is a horizontal
+        // gesture, so it can never claim a vertical drag of the list first.
+        val sheetScrollConnection =
+            remember(state, lazyListState) {
+                state.nestedScrollConnection { !lazyListState.canScrollBackward }
+            }
 
         val currentPlayingKey =
             remember(uiState.currentQueueIndex, queue) {
                 queue.getOrNull(uiState.currentQueueIndex)?.entry?.key
             }
-        // A reorder moves items in the player's own order, which is the order shown only while not shuffling.
-        val canReorder = !locked && !playback.shuffleEnabled
+
+        var dragInfo by remember { mutableStateOf<QueueDragInfo?>(null) }
+
+        // Rows are only draggable once reordering has been opened, so nothing on an ordinary queue
+        // listens for a drag and nothing can take one from the list or the sheet. A reorder moves items
+        // in the player's own order, which is the order shown only while not shuffling - so a shuffled
+        // queue cannot be reordered, and a long press over one does not pretend otherwise.
+        val canOpenReorder = !playback.shuffleEnabled
+        val canReorder = reordering && canOpenReorder
+
+        // Shuffle turned on while reordering leaves a mode with nothing to drag; close it.
+        LaunchedEffect(canOpenReorder) {
+            if (!canOpenReorder) reordering = false
+        }
 
         val reorderableState =
             rememberReorderableLazyListState(
@@ -288,20 +287,20 @@ internal fun Queue(
                         .add(WindowInsets(bottom = QueueItemHeight))
                         .asPaddingValues(),
             ) onMove@{ from, to ->
-                val fromQueueIndex = from.index - headerItems
-                val toQueueIndex = to.index - headerItems
+                val fromQueueIndex = from.index
+                val toQueueIndex = to.index
                 if (
-                    fromQueueIndex !in mutableQueue.indices ||
-                    toQueueIndex !in mutableQueue.indices
+                    fromQueueIndex !in stagedQueue.indices ||
+                    toQueueIndex !in stagedQueue.indices
                 ) {
                     return@onMove
                 }
 
-                val draggedItemKey = dragInfo?.draggedItemKey ?: mutableQueue[fromQueueIndex].entry.key
-                val actualFromQueueIndex = mutableQueue.indexOfFirst { it.entry.key == draggedItemKey }
+                val draggedItemKey = dragInfo?.draggedItemKey ?: stagedQueue[fromQueueIndex].entry.key
+                val actualFromQueueIndex = stagedQueue.indexOfFirst { it.entry.key == draggedItemKey }
                 if (actualFromQueueIndex == -1) return@onMove
 
-                mutableQueue.add(toQueueIndex, mutableQueue.removeAt(actualFromQueueIndex))
+                stagedQueue.add(toQueueIndex, stagedQueue.removeAt(actualFromQueueIndex))
                 dragInfo =
                     QueueDragInfo(
                         draggedItemKey = draggedItemKey,
@@ -309,11 +308,12 @@ internal fun Queue(
                             if (toQueueIndex == 0) {
                                 QueueDragDestination.Start
                             } else {
-                                QueueDragDestination.After(itemKey = mutableQueue[toQueueIndex - 1].entry.key)
+                                QueueDragDestination.After(itemKey = stagedQueue[toQueueIndex - 1].entry.key)
                             },
                     )
             }
 
+        // A finished drag is sent to the player; anything else that changed the queue is taken as it is.
         LaunchedEffect(queue, reorderableState.isAnyItemDragging) {
             if (reorderableState.isAnyItemDragging) return@LaunchedEffect
 
@@ -334,26 +334,16 @@ internal fun Queue(
             }
 
             Snapshot.withMutableSnapshot {
-                mutableQueue.clear()
-                mutableQueue.addAll(queue)
+                stagedQueue.clear()
+                stagedQueue.addAll(queue)
             }
         }
 
-        LaunchedEffect(
-            state.isCollapsed,
-            scrollToCurrentRequested,
-            currentPlayingKey,
-            reorderableState.isAnyItemDragging,
-        ) {
-            if (
-                !state.isCollapsed &&
-                scrollToCurrentRequested &&
-                currentPlayingKey != null &&
-                !reorderableState.isAnyItemDragging
-            ) {
-                val indexInMutableList = mutableQueue.indexOfFirst { it.entry.key == currentPlayingKey }
-                if (indexInMutableList != -1) {
-                    lazyListState.scrollToItem(indexInMutableList + headerItems)
+        LaunchedEffect(state.isCollapsed, scrollToCurrentRequested, currentPlayingKey) {
+            if (!state.isCollapsed && scrollToCurrentRequested && currentPlayingKey != null) {
+                val index = stagedQueue.indexOfFirst { it.entry.key == currentPlayingKey }
+                if (index != -1) {
+                    lazyListState.scrollToItem(index)
                     scrollToCurrentRequested = false
                 }
             }
@@ -372,60 +362,32 @@ internal fun Queue(
                     isFavorite = uiState.isCurrentTrackFavorite,
                     repeatMode = playback.repeatMode,
                     shuffleEnabled = playback.shuffleEnabled,
-                    locked = locked,
-                    songCount = queue.size,
-                    queueDurationMs = queueDurationMs,
+                    isReordering = canReorder,
                     backgroundColor = backgroundColor,
                     onBackgroundColor = onBackgroundColor,
                     onToggleFavorite = viewModel::onToggleFavorite,
-                    onMenuClick = { currentTrack?.let(onMenuClick) },
-                    onClearQueueClick = {
-                        val itemsToRemove =
-                            if (uiState.currentQueueIndex in queue.indices) {
-                                queue.filterIndexed { index, _ -> index != uiState.currentQueueIndex }
-                            } else {
-                                emptyList()
-                            }
-
-                        if (itemsToRemove.isNotEmpty()) {
-                            onRemoveMultipleWithUndo(itemsToRemove)
-                            clearSelection()
-                        }
-                    },
+                    onExitReorder = { reordering = false },
                     onRepeatClick = viewModel::onCycleRepeatMode,
                     onShuffleClick = viewModel::onToggleShuffle,
-                    onLockClick = { locked = !locked },
                 )
 
                 LazyColumn(
                     state = lazyListState,
+                    // The gap under the divider is the list's own padding rather than a first row of
+                    // empty space, so it scrolls away with the rows and every row's index is its
+                    // place in the queue.
                     contentPadding =
                         WindowInsets.systemBars
                             .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)
-                            .add(
-                                WindowInsets(
-                                    bottom = QueueItemHeight + if (selection) 88.dp else 8.dp,
-                                ),
-                            ).asPaddingValues(),
+                            .add(WindowInsets(top = 8.dp, bottom = QueueItemHeight + 8.dp))
+                            .asPaddingValues(),
                     modifier =
                         Modifier
                             .weight(1f)
-                            .nestedScroll(state.preUpPostDownNestedScrollConnection),
+                            .nestedScroll(sheetScrollConnection),
                 ) {
-                    item(
-                        key = "queue_selection_spacer",
-                        contentType = "queue_selection_spacer",
-                    ) {
-                        Spacer(
-                            modifier =
-                                Modifier
-                                    .animateContentSize()
-                                    .height(if (selection) 48.dp else 0.dp),
-                        )
-                    }
-
                     items(
-                        items = mutableQueue,
+                        items = stagedQueue,
                         key = { item -> item.entry.key },
                         contentType = { "queue_item" },
                     ) { item ->
@@ -457,70 +419,49 @@ internal fun Queue(
                             }
 
                             val content: @Composable () -> Unit = {
-                                QueueTrackItem(
-                                    track = item.track,
-                                    isSelected = selection && item in selectedItems,
-                                    isActive = isActive,
-                                    isPlaying = playback.isPlaying && isActive,
-                                    trailingContent = {
-                                        IconButton(onClick = { onMenuClick(item.track) }) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.more_vert),
-                                                contentDescription = null,
-                                            )
-                                        }
-                                        if (canReorder) {
-                                            IconButton(
-                                                onClick = { },
-                                                modifier = Modifier.draggableHandle(),
-                                            ) {
-                                                Icon(
-                                                    painter = painterResource(R.drawable.drag_handle),
-                                                    contentDescription = null,
-                                                )
+                                // The handle reaches the row through the composition, the way every
+                                // reorderable list in the app hands it over.
+                                CompositionLocalProvider(
+                                    LocalDragHandle provides if (canReorder) Modifier.draggableHandle() else null,
+                                ) {
+                                    SonaTrackRow(
+                                        track = item.track,
+                                        isCurrent = { isActive },
+                                        isPlaying = { playback.isPlaying && isActive },
+                                        selection = null,
+                                        selectionKey = null,
+                                        // A tap plays, whatever mode the queue is in: the rows never
+                                        // stop being the queue.
+                                        onClick = {
+                                            if (isActive) {
+                                                viewModel.onTogglePlayPause()
+                                            } else {
+                                                viewModel.onPlayQueueItem(currentItem)
                                             }
-                                        }
-                                    },
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .background(backgroundColor)
-                                            .combinedClickable(
-                                                onClick = {
-                                                    if (selection) {
-                                                        if (currentItem in selectedItems) {
-                                                            selectedItems.remove(currentItem)
-                                                            if (selectedItems.isEmpty()) {
-                                                                selection = false
-                                                            }
-                                                        } else {
-                                                            selectedItems.add(currentItem)
-                                                        }
-                                                    } else if (isActive) {
-                                                        viewModel.onTogglePlayPause()
-                                                    } else {
-                                                        viewModel.onPlayQueueItem(currentItem)
-                                                    }
-                                                },
-                                                onLongClick = {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                    selection = true
-                                                    selectedItems.clear()
-                                                    selectedItems.add(currentItem)
-                                                },
-                                            ),
-                                )
+                                        },
+                                        onLongClick = {
+                                            if (canOpenReorder) {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                reordering = true
+                                            }
+                                        },
+                                        onOpenOptions = { onMenuClick(item.track) },
+                                        containerColor = backgroundColor,
+                                    )
+                                }
                             }
 
-                            if (locked) {
-                                content()
-                            } else {
+                            // A row is only swiped away once reordering has been opened, the same
+                            // moment it becomes draggable: an ordinary queue answers taps alone.
+                            if (canReorder) {
                                 SwipeToDismissBox(
                                     state = dismissBoxState,
                                     backgroundContent = {},
                                 ) {
                                     content()
                                 }
+                            } else {
+                                content()
                             }
                         }
                     }
@@ -534,38 +475,9 @@ internal fun Queue(
                     hostState = snackbarHostState,
                     modifier =
                         Modifier
-                            .padding(
-                                bottom = (if (selection) QueueItemHeight * 2 + 16.dp else QueueItemHeight) + bottomInset,
-                            ).align(Alignment.BottomCenter),
+                            .padding(bottom = QueueItemHeight + bottomInset)
+                            .align(Alignment.BottomCenter),
                 )
-
-                AnimatedVisibility(
-                    visible = selection,
-                    enter = fadeIn() + expandVertically(expandFrom = Alignment.Bottom),
-                    exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Bottom),
-                    modifier =
-                        Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = QueueItemHeight + bottomInset),
-                ) {
-                    QueueSelectionFloatingToolbar(
-                        allSelected = selectedItems.size == mutableQueue.size,
-                        onClose = ::clearSelection,
-                        onToggleSelectAll = {
-                            if (selectedItems.size == mutableQueue.size) {
-                                clearSelection()
-                            } else {
-                                selectedItems.clear()
-                                selectedItems.addAll(mutableQueue)
-                            }
-                        },
-                        onDelete = {
-                            onRemoveMultipleWithUndo(selectedItems.toList())
-                            clearSelection()
-                        },
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
-                }
             }
         }
     }

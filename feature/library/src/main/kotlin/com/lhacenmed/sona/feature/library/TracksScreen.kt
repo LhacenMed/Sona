@@ -25,6 +25,7 @@ fun TracksScreen(
     val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
     val hasPermission by viewModel.hasPermission.collectAsStateWithLifecycle()
     val playback by viewModel.playback.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     var optionsTarget by remember { mutableStateOf<OptionsTarget.ForTrack?>(null) }
 
     LibraryList(
@@ -32,7 +33,7 @@ fun TracksScreen(
         hasPermission = hasPermission,
         isScanning = isScanning,
         emptyTitle = "No tracks found",
-        emptyMessage = "Add some music to your device to see it here.",
+        emptyMessage = searchEmptyMessage(searchQuery),
         key = { it.id },
         modifier = modifier,
         listState = listState,

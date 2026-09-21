@@ -23,6 +23,7 @@ object PlaybackScreen : Screen {
         val secondsFormat = stringResource(R.string.seconds_format)
         val decibelsFormat = stringResource(R.string.decibels_format)
         val viewModel: PlaybackSettingsViewModel = hiltViewModel()
+        val rewindBeforeSkipBack by viewModel.rewindBeforeSkipBack.collectAsStateWithLifecycle()
         val stopAfterCurrentEnabled by viewModel.stopAfterCurrentEnabled.collectAsStateWithLifecycle()
 
         SettingsList {
@@ -42,7 +43,8 @@ object PlaybackScreen : Screen {
                 SettingsSwitchItem(
                     title = stringResource(R.string.rewind_before_skip_title),
                     summary = stringResource(R.string.rewind_before_skip_summary),
-                    initialValue = true,
+                    checked = rewindBeforeSkipBack,
+                    onCheckedChange = viewModel::setRewindBeforeSkipBack,
                 )
                 SettingsSliderItem(
                     title = stringResource(R.string.seek_amount_title),

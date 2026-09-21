@@ -8,10 +8,6 @@
         <item quantity="one">1 minute</item>
         <item quantity="other">%d minutes</item>
     </plurals>
-    <plurals name="player_n_song">
-        <item quantity="one">%d song</item>
-        <item quantity="other">%d songs</item>
-    </plurals>
     <string name="player_reset">Reset</string>
     <string name="player_more_options">More options</string>
     <string name="player_like">Like</string>
@@ -31,15 +27,10 @@
     <string name="player_seek_forward">+%1$d seconds forwards</string>
     <string name="player_seek_backward">-%1$d seconds backwards</string>
     <string name="player_removed_song_from_queue">Removed \"%s\" from queue</string>
-    <string name="player_removed_n_songs_from_queue">Removed %d songs from queue</string>
     <string name="player_undo">Undo</string>
-    <string name="player_clear">Clear</string>
-    <string name="player_delete">Delete</string>
     <string name="player_close">Close</string>
     <string name="player_copied_title">Copied Title</string>
     <string name="player_copied_artist">Copied Artist</string>
-    <string name="player_go_to_album">Go to album</string>
-    <string name="player_go_to_artist">Go to artist</string>
     <string name="player_lyrics_not_found">Lyrics not found</string>
     <string name="player_lyrics_resume">Resume</string>
     <string name="player_max_selection_limit">Up to %d lines can be selected</string>

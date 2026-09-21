@@ -16,6 +16,8 @@ import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.library.LibraryList
 import com.lhacenmed.sona.feature.library.TrackRow
 import com.lhacenmed.sona.feature.library.filterItems
+import com.lhacenmed.sona.feature.library.matchesSearch
+import com.lhacenmed.sona.feature.library.searchEmptyMessage
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 
 /** Picking tracks one by one from the whole library, to add to the playlist [playlistId]. */
@@ -43,7 +45,7 @@ data class AddTracksScreen(val playlistId: Long) : Screen {
                 hasPermission = true,
                 isScanning = false,
                 emptyTitle = "No tracks found",
-                emptyMessage = pickerEmptyMessage(searchQuery),
+                emptyMessage = searchEmptyMessage(searchQuery),
                 key = { it.id },
                 loadingIcon = SonaIcons.Song,
                 modifier = Modifier.weight(1f).fillMaxWidth(),

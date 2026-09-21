@@ -6,29 +6,36 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 
 ## Priority 1 — Critical: Data Integrity & Crash Risk
 
-- [ ] **1.1 Fix large-selection sharing before it fails**
-  When sharing more than 10 tracks, the current flow risks failure because it pushes many file references through the share mechanism at once.
-  - Sharing 1–10 tracks: keep current behavior unchanged.
-  - Sharing more than 10 tracks: the selection must be compressed into a single archive and shared as one file instead of many.
-  - Shared files (either mode) must be exposed through secure content references, not raw file paths.
-  - Memory usage while building the archive must stay flat regardless of how many tracks are included — it must not require holding all track data in memory at once.
-  - The user must see progress feedback (percentage + count) while the archive is being prepared.
-  - The estimated final archive size should be shown before the process starts.
-  - The user must be able to cancel archive preparation while it's in progress.
-  - The system share sheet must only open once the archive is fully ready, never before.
-  - ⚠️ **Conflict to resolve:** the pasted spec suggests a much higher, "tunable" cutoff (e.g. ~50 items, or based on total size) for switching to archive mode, while the direct instruction says the switch happens above 10 tracks. Needs confirmation before implementation.
+- [x] **1.1 Make large-selection sharing zero-copy and predictable**
+  Sharing many tracks must never copy audio into app storage. A track is shared as its own content reference, so a selection costs the same whether it holds three tracks or three hundred and the share sheet opens immediately.
+  - Shared files are exposed through secure content references, not raw file paths.
+  - The intent's parcel budget is counted before the intent is sent, rather than catching the overflow afterwards — an oversized intent usually fails on the far side of the transaction, where there is nothing to catch.
+  - A selection that loses manually scanned tracks (which have no address another app may open) says so, rather than quietly sharing fewer than were picked.
+  - **Resolved:** the archive was dropped. Compressing audio saves ~0–2% — zipping is pure repackaging — so it cost a full copy of the selection (~800&nbsp;MB for 100 tracks) to buy nothing but one URI instead of many. That also removed the 10-vs-50 threshold question, the progress feedback, the size estimate, the cancellation and the deferred share sheet, none of which are needed when nothing is built.
 
-- [ ] **1.2 Fix duplicated items in Artists collections**
-  Artist collections sometimes show duplicated entries — the same category of bug previously seen (and fixed) in Genre collections.
-  - Apply the same category of fix to Artists.
-  - Audit every other collection type (Albums, Genres, Playlists, Folders, etc.) to confirm none of them show the same duplication issue.
+- [x] **1.2 Fix duplicated items in Artists collections**
+  Artists and albums were identified by MediaStore's row id, while the filesystem walk that picks up files MediaStore has not indexed yet derives an id from the name instead. A newly downloaded track therefore arrived under two different artist and album rows — the walk's, then MediaStore's once it had indexed the file — and both were listed until the scan's final pass swept the first away.
+  - Artist and album ids are now derived from the name, the way a genre's already was, so both arrivals land on the same row and there is nothing to sweep.
+  - The manual walk and the MediaStore query now name artists and albums through one rule, so a tag's stray whitespace is not a second artist.
+  - `SCANNER_SCHEMA_VERSION` bumped, so an existing install actually rescans instead of skipping on an unchanged MediaStore signature.
+  - **Audited:** genres were already name-identified (which is why they never showed this). Folders are derived per distinct `tracks.folderPath`, so they cannot duplicate. Playlists are trimmed on insert under a unique name index. Albums had the same bug as artists and are fixed with them.
+
+- [ ] **1.3 Study Fossify Music's fast-load-with-background-fetch behavior**
+  Inspect the open-source Fossify Music project to extract its exact behavior/logic for showing already-saved library data instantly on app launch while resource and metadata tags, and any remaining track fetching, continue updating in the background. Use this as the reference behavior for how Sona should mount with previously saved data.
+
+- [ ] **1.4 Study and adopt Budget's live folder-watching mechanism for the library**
+  If access to inspect it is possible, examine the "Budget" project's WhatsApp-status-saver feature, which listens for live changes in a folder, and clone that mechanism literally. Merge it into Sona's own system so the app listens for live changes in any folder that is not excluded from scanning, rather than only picking up changes on a manual/triggered rescan. The resulting data tracking, saving, and restoring system must remain clean, maintainable, solid, stable, consistent, scalable, fast, and efficient.
 
 ---
 
 ## Priority 2 — Critical: Core Playback & List Interaction Bugs
 
-- [ ] **2.1 Fix queue-list scroll conflicting with bottom-sheet drag**
-  The queue list sits inside a bottom sheet. Scrolling to the end of the list currently overlaps/conflicts with the gesture used to drag the sheet closed.
+- [x] **2.1 Fix queue-list scroll conflicting with bottom-sheet drag**
+  The sheet was driven by two independent gesture owners at once: a raw `detectVerticalDragGestures` covering the whole sheet, and the list's `preUpPostDownNestedScrollConnection`. Over the list both were live, so which one took a swipe came down to a touch-slop race and to whether the list happened to be able to scroll in that direction at that instant — and each kept its own `VelocityTracker` and called `performFling` separately, so the owner could change mid-gesture.
+  - `BottomSheet` now takes `isContentDraggable`. The collapsed bar is always draggable; the expanded content only when it holds nothing that scrolls.
+  - The queue sheet passes `false`: the list owns every gesture over it and hands the sheet only what it cannot scroll, and the sheet is dragged by its header handle.
+  - Present in ArchiveTune too (unfixed upstream), so this is a deliberate divergence from the clone rather than a port.
+  - The stutter under a reorder drag was a second, separate cause: `PlaybackUiState` carries `positionMs`, which the controller polls every 500ms, and `PlayerViewModel.uiState` passed it straight through. Every tick produced a new `PlayerUiState` instance, and under strong skipping an unstable parameter is compared by identity — so `Queue` could never skip and rebuilt every visible row twice a second, including mid-drag. The position is now dropped before the state is built (`steadyPlaybackState`), which nothing shows: the seek bar and the lyrics poll the player directly through `currentPositionMs()`.
 
 - [ ] **2.2 Stabilize skip-next / skip-previous controls**
   The player's skip-next and skip-previous behavior is currently unstable/unreliable and needs to be made consistent.
@@ -36,11 +43,15 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 - [ ] **2.3 Fix lists hidden behind the mini player**
   When a track is playing, the mini player overlaps the bottom of content lists. There's no reserved blank space at the bottom, so the last item(s) can't be reached or seen.
 
-- [ ] **2.4 Fix "more options" in the player opening the wrong sheet**
-  The player's "more options" control should open the standard track-actions sheet, but currently doesn't trigger it correctly.
+- [x] **2.4 Fix "more options" in the player opening the wrong sheet**
+  The player opened a two-item sheet of its own (`PlayerMenuSheet`: go to album, go to artist), which is now deleted. The player and every queue row open the library's `OptionsSheet` instead.
+  - `feature:player` does not depend on `feature:library`. The player takes a `trackOptionsSheet` slot, and `SonaPlayerOverlay` in `:app` fills it with `OptionsSheet(OptionsTarget.ForTrack(track))` — the same seam that already supplies `onGoToAlbum`/`onGoToArtist`.
 
 - [ ] **2.5 Fix limited trigger area for revealing the queue sheet**
   Swiping up should reveal the queue bottom sheet from anywhere on the player screen. Currently it only works when the gesture starts specifically on the sheet's top handle.
+
+- [ ] **2.6 Fix mini player disappearing after returning to the app**
+  Sometimes the mini player disappears from an activity even though a track is still playing. This happens after leaving the app and coming back to it after a while, and currently requires closing and reopening the app to make the mini player reappear.
 
 ---
 
@@ -81,14 +92,18 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 - [ ] **4.4 Recolor the favorite button to follow the app theme**
   The favorite/like button is a fixed pink color and should instead follow the app's theme color.
 
-- [ ] **4.5 Change the "more options" icon**
-  It should be a horizontal ellipsis (•••) rather than its current style.
+- [x] **4.5 Change the "more options" icon**
+  Every row now draws its overflow button through `SonaListRow`, whose glyph is the horizontal ellipsis - so the queue's rows changed with the library's rather than separately.
 
-- [ ] **4.6 Reposition the drag handle in queue items**
-  When the queue is unlocked (reordering enabled) and items are draggable, the drag handle should sit on the left side of the item, positioned relative to the more-options button.
+- [x] **4.6 Reposition the drag handle in queue items**
+  The queue's rows are `SonaTrackRow`s now, which take the handle from `LocalDragHandle` and draw it to the left of the overflow button - the same place, on the same keylines, as a reorderable library list.
+  - Reordering is reached by long-pressing a row, and left by system back or the close button beside the header's favourite button. The lock toggle, the selection and its floating toolbar (select all, delete) are gone: the queue has one mode, and a row is played, dragged or swiped away.
 
 - [ ] **4.7 Verify the player works correctly in floating-window mode**
   Beyond the specific white-section bug above, test and confirm the app — and the player specifically — behaves correctly while running in floating/freeform window mode.
+
+- [x] **4.8 Fix disabled dropdown menu items not shown as disabled**
+  Dropdown menu items that are disabled are correctly non-selectable, but they aren't visually grayed out — they look identical to enabled items, which is misleading.
 
 ---
 
@@ -126,6 +141,11 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 - [ ] **6.8 Integrate a Khamah-style iOS swipe gesture**
   Bring in the same swipe gesture mechanics (same math/algorithm) used in the referenced app "Khamah," specifically the interaction used in its "Wird session reader" when opening a new session.
   *Note: the original request doesn't specify which screen in Sona this should apply to — needs clarification.*
+
+- [ ] **6.9 Expand the favorites system beyond tracks**
+  Currently only tracks can be liked/favorited. Extend favoriting to Artists, Albums, Genres, and Folders collections as well, alongside the existing liked-tracks feature.
+  - Add top tabs to the favorites area, similar to the tabs already used in the main activity, so each favorited collection type has its own tab.
+  - *Under consideration:* a grid-style listing for favorited Artists/Albums, similar to the grid layout used in the Samsung Music app — flagged as an idea to explore, not a firm requirement.
 
 ---
 
@@ -167,4 +187,4 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 
 ---
 
-**Total: 41 items** across bug fixes, flow fixes, visual fixes, player polish, and new features.
+**Total: 46 items** across bug fixes, flow fixes, visual fixes, player polish, and new features.

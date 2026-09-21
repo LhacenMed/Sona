@@ -4,7 +4,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
@@ -28,7 +27,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -44,6 +42,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.CookieShape
+import com.lhacenmed.sona.core.designsystem.component.LocalDragHandle
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
@@ -200,13 +199,6 @@ private fun KeepAtTopWhenRowsChange(listState: LazyListState, rows: List<*>) {
 /** How close to an edge a drag starts scrolling the list: one row's height, as the queue uses. */
 private val ReorderAutoScrollThreshold = 72.dp
 
-/**
- * The drag gesture for a row's handle, inside a list that can be reordered - null in every other list.
- *
- * Provided per row by [ReorderableColumn] rather than passed through [LibraryList]'s `row`, which every
- * list shares and only a reorderable one has any use for.
- */
-internal val LocalDragHandle = compositionLocalOf<Modifier?> { null }
 
 /**
  * A list whose rows can be dragged into a new order, on the same drag system as the player's queue.
@@ -286,30 +278,6 @@ private fun <T> ReorderableColumn(
     }
 }
 
-/**
- * Tap and long-press behaviour for any row that can be selected.
- *
- * Long-press starts a selection; once one is running an ordinary tap adds to it instead of opening
- * anything, which is what stops a stray tap from navigating away mid-selection. Every selectable
- * list in the app goes through this, so the gesture cannot drift between them.
- *
- * A row with no [selectionKey] cannot be selected - Auxio's empty collection: a long-press does
- * nothing, and while a selection runs neither does a tap.
- */
-@OptIn(ExperimentalFoundationApi::class)
-internal fun Modifier.selectableRow(
-    selection: SelectionState,
-    selectionKey: SelectionKey?,
-    onClick: () -> Unit,
-): Modifier = combinedClickable(
-    onClick = {
-        when {
-            !selection.isActive -> onClick()
-            selectionKey != null -> selection.toggle(selectionKey)
-        }
-    },
-    onLongClick = { selectionKey?.let(selection::toggle) },
-)
 
 /**
  * Auxio's empty-list cookie - the six-sided expressive shape with [icon] inside it - centred and
@@ -552,3 +520,11 @@ internal fun <T> LibraryContent<T>.filterItems(predicate: (T) -> Boolean): Libra
         is LibraryContent.Loading -> this
         is LibraryContent.Ready -> LibraryContent.Ready(items.filter(predicate))
     }
+
+/** Whether a row showing [texts] belongs on screen while [query] is being searched for. */
+internal fun matchesSearch(query: String?, vararg texts: String): Boolean =
+    query.isNullOrBlank() || texts.any { it.contains(query, ignoreCase = true) }
+
+/** What an empty list says - the library being empty, or the search matching nothing. */
+internal fun searchEmptyMessage(query: String?): String =
+    if (query.isNullOrBlank()) "Add some music to your device to see it here." else "Nothing matched \"$query\"."

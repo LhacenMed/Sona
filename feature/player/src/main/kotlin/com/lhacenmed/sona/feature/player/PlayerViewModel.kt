@@ -29,6 +29,7 @@ import kotlinx.coroutines.launch
  * in it, or -1 while nothing is playing.
  */
 data class PlayerUiState(
+    /** The playback state, save for its position - read that through [PlayerViewModel.currentPositionMs]. */
     val playback: PlaybackUiState = PlaybackUiState(),
     val currentTrack: Track? = null,
     val queue: List<QueueTrack> = emptyList(),
@@ -49,11 +50,18 @@ class PlayerViewModel @Inject constructor(
     playerStyleSettings: PlayerStyleSettings,
 ) : ViewModel() {
 
-    // The playback state ticks roughly twice a second while playing (it carries the position), so
-    // resolving the queue is narrowed to the queue itself - otherwise it is redone on every tick for a
-    // queue that has not changed.
+    // The position is the one part of the playback state that moves on its own, ticking twice a second
+    // while playing, and nothing drawn from this state shows it: the seek bar and the lyrics follow the
+    // player far closer than that, reading it straight through [currentPositionMs]. Carried in, every
+    // tick would rebuild the state and recompose the player and every row of the queue - under a
+    // reorder drag included, where a list rebuilt twice a second is what the drag stutters against.
+    private val steadyPlaybackState = playbackController.playbackState
+        .map { it.withoutPosition() }
+        .distinctUntilChanged()
+
+    // Narrowed to the queue itself, so it is not resolved again for a queue that has not changed.
     private val queue = combine(
-        playbackController.playbackState.map { it.queue }.distinctUntilChanged(),
+        steadyPlaybackState.map { it.queue }.distinctUntilChanged(),
         repository.tracksById,
         ::resolveQueue,
     )
@@ -61,7 +69,7 @@ class PlayerViewModel @Inject constructor(
     // Started from what is already in memory, so a screen opened mid-playback draws the player on its
     // first frame rather than one frame later.
     val uiState: StateFlow<PlayerUiState> = combine(
-        playbackController.playbackState,
+        steadyPlaybackState,
         queue,
         repository.tracksById,
         repository.favoriteTrackIds,
@@ -69,7 +77,7 @@ class PlayerViewModel @Inject constructor(
     ).stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
-        playbackController.playbackState.value.let { playback ->
+        playbackController.playbackState.value.withoutPosition().let { playback ->
             resolveUiState(
                 playback = playback,
                 queue = resolveQueue(playback.queue, repository.tracksById.value),
@@ -187,3 +195,6 @@ class PlayerViewModel @Inject constructor(
         )
     }
 }
+
+/** This playback state with its ticking position dropped - see [PlayerViewModel.steadyPlaybackState]. */
+private fun PlaybackUiState.withoutPosition(): PlaybackUiState = copy(positionMs = 0L)
