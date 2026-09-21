@@ -38,8 +38,6 @@
     <string name="player_close">Close</string>
     <string name="player_copied_title">Copied Title</string>
     <string name="player_copied_artist">Copied Artist</string>
-    <string name="player_go_to_album">Go to album</string>
-    <string name="player_go_to_artist">Go to artist</string>
     <string name="player_lyrics_not_found">Lyrics not found</string>
     <string name="player_lyrics_resume">Resume</string>
     <string name="player_max_selection_limit">Up to %d lines can be selected</string>

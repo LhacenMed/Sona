@@ -33,8 +33,9 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 - [ ] **2.3 Fix lists hidden behind the mini player**
   When a track is playing, the mini player overlaps the bottom of content lists. There's no reserved blank space at the bottom, so the last item(s) can't be reached or seen.
 
-- [ ] **2.4 Fix "more options" in the player opening the wrong sheet**
-  The player's "more options" control should open the standard track-actions sheet, but currently doesn't trigger it correctly.
+- [x] **2.4 Fix "more options" in the player opening the wrong sheet**
+  The player opened a two-item sheet of its own (`PlayerMenuSheet`: go to album, go to artist), which is now deleted. The player and every queue row open the library's `OptionsSheet` instead.
+  - `feature:player` does not depend on `feature:library`. The player takes a `trackOptionsSheet` slot, and `SonaPlayerOverlay` in `:app` fills it with `OptionsSheet(OptionsTarget.ForTrack(track))` — the same seam that already supplies `onGoToAlbum`/`onGoToArtist`.
 
 - [ ] **2.5 Fix limited trigger area for revealing the queue sheet**
   Swiping up should reveal the queue bottom sheet from anywhere on the player screen. Currently it only works when the gesture starts specifically on the sheet's top handle.

@@ -113,6 +113,7 @@ internal fun BottomSheetPlayer(
     viewModel: PlayerViewModel,
     onGoToAlbum: (Long) -> Unit,
     onGoToArtist: (Long) -> Unit,
+    trackOptionsSheet: @Composable (track: Track, onDismissRequest: () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -680,18 +681,7 @@ internal fun BottomSheetPlayer(
     }
 
     menuTrack?.let { menuFor ->
-        PlayerMenuSheet(
-            track = menuFor,
-            onDismissRequest = { menuTrack = null },
-            onGoToAlbum = {
-                state.collapseSoft()
-                onGoToAlbum(menuFor.albumId)
-            },
-            onGoToArtist = {
-                state.collapseSoft()
-                onGoToArtist(menuFor.artistId)
-            },
-        )
+        trackOptionsSheet(menuFor) { menuTrack = null }
     }
 }
 
