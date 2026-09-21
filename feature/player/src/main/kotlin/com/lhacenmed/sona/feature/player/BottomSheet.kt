@@ -18,7 +18,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -49,6 +52,12 @@ import kotlinx.coroutines.launch
 /**
  * Bottom Sheet
  * Modified from [ViMusic](https://github.com/vfsfitvnm/ViMusic), by way of ArchiveTune.
+ *
+ * The sheet is dragged from wherever nothing else claims the gesture: its collapsed bar always, and
+ * its expanded content when [isContentDraggable]. A sheet whose content scrolls passes `false` and
+ * moves the sheet through [BottomSheetState.nestedScrollConnection] instead - a list
+ * under a drag detector would leave the two racing for the same swipe, each with its own velocity,
+ * and which one won would depend on whether the list happened to be able to scroll at that instant.
  */
 @Composable
 internal fun BottomSheet(
@@ -58,60 +67,69 @@ internal fun BottomSheet(
     modifier: Modifier = Modifier,
     onDismiss: (() -> Unit)? = null,
     onCollapsedContentClick: (() -> Unit)? = null,
+    isContentDraggable: Boolean = true,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    Box(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .offset {
-                    val y =
-                        (state.expandedBound - state.value)
-                            .roundToPx()
-                            .coerceAtLeast(0)
-                    IntOffset(x = 0, y = y)
-                }.bottomSheetDraggable(state, onDismiss)
-                .clip(
-                    RoundedCornerShape(
-                        topStart = if (!state.isExpanded) 16.dp else 0.dp,
-                        topEnd = if (!state.isExpanded) 16.dp else 0.dp,
+    // Material puts a content colour on every surface it draws; this sheet is a Box and draws its own,
+    // so it has to say. Left unsaid it is Color.Black - the default of the composition local every
+    // icon button, text and press ripple in here reads - which is why they came out black on a dark
+    // sheet. Everything the player, the queue and the lyrics draw sits under this.
+    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+        Box(
+            modifier =
+                modifier
+                    .fillMaxSize()
+                    .offset {
+                        val y =
+                            (state.expandedBound - state.value)
+                                .roundToPx()
+                                .coerceAtLeast(0)
+                        IntOffset(x = 0, y = y)
+                    }.clip(
+                        RoundedCornerShape(
+                            topStart = if (!state.isExpanded) 16.dp else 0.dp,
+                            topEnd = if (!state.isExpanded) 16.dp else 0.dp,
+                        ),
+                    ).background(
+                        backgroundColor.copy(
+                            alpha = backgroundColor.alpha * state.progress.coerceIn(0f, 1f),
+                        ),
                     ),
-                ).background(
-                    backgroundColor.copy(
-                        alpha = backgroundColor.alpha * state.progress.coerceIn(0f, 1f),
-                    ),
-                ),
-    ) {
-        if (state.isExpandedOrExpanding) {
-            BackHandler(onBack = state::collapseSoft)
-        }
+        ) {
+            if (state.isExpandedOrExpanding) {
+                BackHandler(onBack = state::collapseSoft)
+            }
 
-        if (!state.isCollapsed) {
-            BoxWithConstraints(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            alpha = ((state.progress - 0.25f) * 4).coerceIn(0f, 1f)
-                        },
-                content = content,
-            )
-        }
+            if (!state.isCollapsed) {
+                BoxWithConstraints(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .then(
+                                if (isContentDraggable) Modifier.bottomSheetDraggable(state, onDismiss) else Modifier,
+                            ).graphicsLayer {
+                                alpha = ((state.progress - 0.25f) * 4).coerceIn(0f, 1f)
+                            },
+                    content = content,
+                )
+            }
 
-        if (!state.isExpanded && (onDismiss == null || !state.isDismissed)) {
-            Box(
-                modifier =
-                    Modifier
-                        .graphicsLayer {
-                            alpha = 1f - (state.progress * 4).coerceAtMost(1f)
-                        }.clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = onCollapsedContentClick ?: state::expandSoft,
-                        ).fillMaxWidth()
-                        .height(state.collapsedBound),
-                content = collapsedContent,
-            )
+            if (!state.isExpanded && (onDismiss == null || !state.isDismissed)) {
+                Box(
+                    modifier =
+                        Modifier
+                            .graphicsLayer {
+                                alpha = 1f - (state.progress * 4).coerceAtMost(1f)
+                            }.bottomSheetDraggable(state, onDismiss)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = onCollapsedContentClick ?: state::expandSoft,
+                            ).fillMaxWidth()
+                            .height(state.collapsedBound),
+                    content = collapsedContent,
+                )
+            }
         }
     }
 }
@@ -232,62 +250,68 @@ internal class BottomSheetState(
         }
     }
 
-    val preUpPostDownNestedScrollConnection
-        get() =
-            object : NestedScrollConnection {
-                var isTopReached = false
+    /**
+     * The connection a scrolling child hands the sheet, so one drag can run out of list and carry on
+     * into the sheet without the finger lifting.
+     *
+     * Where the child sits is asked outright through [isAtTop] rather than inferred from what it just
+     * consumed: a drag down that begins with the list already at its top is the sheet's from its very
+     * first move, so pulling the sheet closed works anywhere on it and needs no scroll spent finding
+     * out the list had nowhere to go. A drag up is the sheet's too for as long as it sits below its
+     * full height - it is put back before the list scrolls again - and the list's from then on.
+     *
+     * Nothing is remembered between gestures: what the sheet takes is decided from where the sheet and
+     * the list are at that moment, so no gesture can leave the next one primed to move the sheet.
+     */
+    fun nestedScrollConnection(isAtTop: () -> Boolean): NestedScrollConnection =
+        object : NestedScrollConnection {
+            /**
+             * Whether the sheet sits below its full height with the list at its top - which only a
+             * drag down over the list puts it in, so it is this gesture that has been moving it and
+             * this gesture that has to put it back or let it go. A sheet still animating open over a
+             * list scrolled somewhere else is not this, and nothing here disturbs it.
+             */
+            private val isSheetPartlyClosed: Boolean
+                get() = !isExpanded && isAtTop()
 
-                override fun onPreScroll(
-                    available: Offset,
-                    source: NestedScrollSource,
-                ): Offset {
-                    if (isExpanded && available.y < 0) {
-                        isTopReached = false
+            override fun onPreScroll(
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                if (source != NestedScrollSource.UserInput) return Offset.Zero
+                val belongsToSheet =
+                    when {
+                        available.y > 0f -> isAtTop()
+                        available.y < 0f -> isSheetPartlyClosed
+                        else -> false
                     }
-
-                    return if (isTopReached && available.y < 0 && source == NestedScrollSource.UserInput) {
-                        dispatchRawDelta(available.y)
-                        available
-                    } else {
-                        Offset.Zero
-                    }
-                }
-
-                override fun onPostScroll(
-                    consumed: Offset,
-                    available: Offset,
-                    source: NestedScrollSource,
-                ): Offset {
-                    if (!isTopReached) {
-                        isTopReached = consumed.y == 0f && available.y > 0
-                    }
-
-                    return if (isTopReached && source == NestedScrollSource.UserInput) {
-                        dispatchRawDelta(available.y)
-                        available
-                    } else {
-                        Offset.Zero
-                    }
-                }
-
-                override suspend fun onPreFling(available: Velocity): Velocity =
-                    if (isTopReached) {
-                        val velocity = -available.y
-                        performFling(velocity, null)
-
-                        available
-                    } else {
-                        Velocity.Zero
-                    }
-
-                override suspend fun onPostFling(
-                    consumed: Velocity,
-                    available: Velocity,
-                ): Velocity {
-                    isTopReached = false
-                    return Velocity.Zero
-                }
+                if (!belongsToSheet) return Offset.Zero
+                dispatchRawDelta(available.y)
+                return available
             }
+
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                // Whatever downward drag the list had no room for, when it ran out part-way through
+                // this one event - so the hand-over lands on the same frame the list stops moving.
+                if (source != NestedScrollSource.UserInput || available.y <= 0f) return Offset.Zero
+                dispatchRawDelta(available.y)
+                return available
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity =
+                if (isSheetPartlyClosed) {
+                    // This gesture moved the sheet, so it settles on an anchor rather than being
+                    // left wherever the finger happened to leave it.
+                    performFling(-available.y, null)
+                    available
+                } else {
+                    Velocity.Zero
+                }
+        }
 }
 
 internal const val EXPANDED_ANCHOR = 2
