@@ -14,9 +14,6 @@ interface GenreDao {
     @Query("SELECT * FROM genres WHERE id = :id")
     fun observeById(id: Long): Flow<GenreEntity?>
 
-    @Query("SELECT * FROM genres WHERE name LIKE '%' || :query || '%' ORDER BY name COLLATE NOCASE ASC LIMIT :limit")
-    fun search(query: String, limit: Int): Flow<List<GenreEntity>>
-
     /** Full rows, for the scanner to diff this scan's result against what is already stored. */
     @Query("SELECT * FROM genres")
     suspend fun getAll(): List<GenreEntity>

@@ -25,6 +25,7 @@ fun GenresScreen(
     val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
     val hasPermission by viewModel.hasPermission.collectAsStateWithLifecycle()
     val playback by viewModel.playback.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val navigator = LocalNavigator.current
     var optionsTarget by remember { mutableStateOf<OptionsTarget.ForGenre?>(null) }
 
@@ -33,7 +34,7 @@ fun GenresScreen(
         hasPermission = hasPermission,
         isScanning = isScanning,
         emptyTitle = "No genres found",
-        emptyMessage = "Add some music to your device to see it here.",
+        emptyMessage = searchEmptyMessage(searchQuery),
         key = { it.id },
         loadingIcon = SonaIcons.Genre,
         modifier = modifier,

@@ -25,6 +25,7 @@ fun AlbumsScreen(
     val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
     val hasPermission by viewModel.hasPermission.collectAsStateWithLifecycle()
     val playback by viewModel.playback.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val navigator = LocalNavigator.current
     var optionsTarget by remember { mutableStateOf<OptionsTarget.ForAlbum?>(null) }
 
@@ -33,7 +34,7 @@ fun AlbumsScreen(
         hasPermission = hasPermission,
         isScanning = isScanning,
         emptyTitle = "No albums found",
-        emptyMessage = "Add some music to your device to see it here.",
+        emptyMessage = searchEmptyMessage(searchQuery),
         key = { it.id },
         loadingIcon = SonaIcons.Album,
         modifier = modifier,

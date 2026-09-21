@@ -520,3 +520,11 @@ internal fun <T> LibraryContent<T>.filterItems(predicate: (T) -> Boolean): Libra
         is LibraryContent.Loading -> this
         is LibraryContent.Ready -> LibraryContent.Ready(items.filter(predicate))
     }
+
+/** Whether a row showing [texts] belongs on screen while [query] is being searched for. */
+internal fun matchesSearch(query: String?, vararg texts: String): Boolean =
+    query.isNullOrBlank() || texts.any { it.contains(query, ignoreCase = true) }
+
+/** What an empty list says - the library being empty, or the search matching nothing. */
+internal fun searchEmptyMessage(query: String?): String =
+    if (query.isNullOrBlank()) "Add some music to your device to see it here." else "Nothing matched \"$query\"."
