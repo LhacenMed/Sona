@@ -20,6 +20,12 @@ Ordered from most to least critical. Every entry describes **what** is broken or
   - `SCANNER_SCHEMA_VERSION` bumped, so an existing install actually rescans instead of skipping on an unchanged MediaStore signature.
   - **Audited:** genres were already name-identified (which is why they never showed this). Folders are derived per distinct `tracks.folderPath`, so they cannot duplicate. Playlists are trimmed on insert under a unique name index. Albums had the same bug as artists and are fixed with them.
 
+- [ ] **1.3 Study Fossify Music's fast-load-with-background-fetch behavior**
+  Inspect the open-source Fossify Music project to extract its exact behavior/logic for showing already-saved library data instantly on app launch while resource and metadata tags, and any remaining track fetching, continue updating in the background. Use this as the reference behavior for how Sona should mount with previously saved data.
+
+- [ ] **1.4 Study and adopt Budget's live folder-watching mechanism for the library**
+  If access to inspect it is possible, examine the "Budget" project's WhatsApp-status-saver feature, which listens for live changes in a folder, and clone that mechanism literally. Merge it into Sona's own system so the app listens for live changes in any folder that is not excluded from scanning, rather than only picking up changes on a manual/triggered rescan. The resulting data tracking, saving, and restoring system must remain clean, maintainable, solid, stable, consistent, scalable, fast, and efficient.
+
 ---
 
 ## Priority 2 — Critical: Core Playback & List Interaction Bugs
@@ -176,4 +182,4 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 
 ---
 
-**Total: 44 items** across bug fixes, flow fixes, visual fixes, player polish, and new features.
+**Total: 46 items** across bug fixes, flow fixes, visual fixes, player polish, and new features.
