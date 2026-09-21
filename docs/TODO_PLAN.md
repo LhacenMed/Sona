@@ -42,6 +42,9 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 - [ ] **2.5 Fix limited trigger area for revealing the queue sheet**
   Swiping up should reveal the queue bottom sheet from anywhere on the player screen. Currently it only works when the gesture starts specifically on the sheet's top handle.
 
+- [ ] **2.6 Fix mini player disappearing after returning to the app**
+  Sometimes the mini player disappears from an activity even though a track is still playing. This happens after leaving the app and coming back to it after a while, and currently requires closing and reopening the app to make the mini player reappear.
+
 ---
 
 ## Priority 3 — Add-to-Collection Flow Fixes
@@ -90,6 +93,9 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 - [ ] **4.7 Verify the player works correctly in floating-window mode**
   Beyond the specific white-section bug above, test and confirm the app — and the player specifically — behaves correctly while running in floating/freeform window mode.
 
+- [ ] **4.8 Fix disabled dropdown menu items not shown as disabled**
+  Dropdown menu items that are disabled are correctly non-selectable, but they aren't visually grayed out — they look identical to enabled items, which is misleading.
+
 ---
 
 ## Priority 5 — Player UI Consolidation & Polish
@@ -126,6 +132,11 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 - [ ] **6.8 Integrate a Khamah-style iOS swipe gesture**
   Bring in the same swipe gesture mechanics (same math/algorithm) used in the referenced app "Khamah," specifically the interaction used in its "Wird session reader" when opening a new session.
   *Note: the original request doesn't specify which screen in Sona this should apply to — needs clarification.*
+
+- [ ] **6.9 Expand the favorites system beyond tracks**
+  Currently only tracks can be liked/favorited. Extend favoriting to Artists, Albums, Genres, and Folders collections as well, alongside the existing liked-tracks feature.
+  - Add top tabs to the favorites area, similar to the tabs already used in the main activity, so each favorited collection type has its own tab.
+  - *Under consideration:* a grid-style listing for favorited Artists/Albums, similar to the grid layout used in the Samsung Music app — flagged as an idea to explore, not a firm requirement.
 
 ---
 
@@ -167,4 +178,4 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 
 ---
 
-**Total: 41 items** across bug fixes, flow fixes, visual fixes, player polish, and new features.
+**Total: 44 items** across bug fixes, flow fixes, visual fixes, player polish, and new features.
