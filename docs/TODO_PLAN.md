@@ -13,10 +13,12 @@ Ordered from most to least critical. Every entry describes **what** is broken or
   - A selection that loses manually scanned tracks (which have no address another app may open) says so, rather than quietly sharing fewer than were picked.
   - **Resolved:** the archive was dropped. Compressing audio saves ~0–2% — zipping is pure repackaging — so it cost a full copy of the selection (~800&nbsp;MB for 100 tracks) to buy nothing but one URI instead of many. That also removed the 10-vs-50 threshold question, the progress feedback, the size estimate, the cancellation and the deferred share sheet, none of which are needed when nothing is built.
 
-- [ ] **1.2 Fix duplicated items in Artists collections**
-  Artist collections sometimes show duplicated entries — the same category of bug previously seen (and fixed) in Genre collections.
-  - Apply the same category of fix to Artists.
-  - Audit every other collection type (Albums, Genres, Playlists, Folders, etc.) to confirm none of them show the same duplication issue.
+- [x] **1.2 Fix duplicated items in Artists collections**
+  Artists and albums were identified by MediaStore's row id, while the filesystem walk that picks up files MediaStore has not indexed yet derives an id from the name instead. A newly downloaded track therefore arrived under two different artist and album rows — the walk's, then MediaStore's once it had indexed the file — and both were listed until the scan's final pass swept the first away.
+  - Artist and album ids are now derived from the name, the way a genre's already was, so both arrivals land on the same row and there is nothing to sweep.
+  - The manual walk and the MediaStore query now name artists and albums through one rule, so a tag's stray whitespace is not a second artist.
+  - `SCANNER_SCHEMA_VERSION` bumped, so an existing install actually rescans instead of skipping on an unchanged MediaStore signature.
+  - **Audited:** genres were already name-identified (which is why they never showed this). Folders are derived per distinct `tracks.folderPath`, so they cannot duplicate. Playlists are trimmed on insert under a unique name index. Albums had the same bug as artists and are fixed with them.
 
 ---
 
