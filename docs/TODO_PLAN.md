@@ -93,7 +93,7 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 - [ ] **4.7 Verify the player works correctly in floating-window mode**
   Beyond the specific white-section bug above, test and confirm the app — and the player specifically — behaves correctly while running in floating/freeform window mode.
 
-- [ ] **4.8 Fix disabled dropdown menu items not shown as disabled**
+- [x] **4.8 Fix disabled dropdown menu items not shown as disabled**
   Dropdown menu items that are disabled are correctly non-selectable, but they aren't visually grayed out — they look identical to enabled items, which is misleading.
 
 ---
