@@ -6,17 +6,12 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 
 ## Priority 1 — Critical: Data Integrity & Crash Risk
 
-- [ ] **1.1 Fix large-selection sharing before it fails**
-  When sharing more than 10 tracks, the current flow risks failure because it pushes many file references through the share mechanism at once.
-  - Sharing 1–10 tracks: keep current behavior unchanged.
-  - Sharing more than 10 tracks: the selection must be compressed into a single archive and shared as one file instead of many.
-  - Shared files (either mode) must be exposed through secure content references, not raw file paths.
-  - Memory usage while building the archive must stay flat regardless of how many tracks are included — it must not require holding all track data in memory at once.
-  - The user must see progress feedback (percentage + count) while the archive is being prepared.
-  - The estimated final archive size should be shown before the process starts.
-  - The user must be able to cancel archive preparation while it's in progress.
-  - The system share sheet must only open once the archive is fully ready, never before.
-  - ⚠️ **Conflict to resolve:** the pasted spec suggests a much higher, "tunable" cutoff (e.g. ~50 items, or based on total size) for switching to archive mode, while the direct instruction says the switch happens above 10 tracks. Needs confirmation before implementation.
+- [x] **1.1 Make large-selection sharing zero-copy and predictable**
+  Sharing many tracks must never copy audio into app storage. A track is shared as its own content reference, so a selection costs the same whether it holds three tracks or three hundred and the share sheet opens immediately.
+  - Shared files are exposed through secure content references, not raw file paths.
+  - The intent's parcel budget is counted before the intent is sent, rather than catching the overflow afterwards — an oversized intent usually fails on the far side of the transaction, where there is nothing to catch.
+  - A selection that loses manually scanned tracks (which have no address another app may open) says so, rather than quietly sharing fewer than were picked.
+  - **Resolved:** the archive was dropped. Compressing audio saves ~0–2% — zipping is pure repackaging — so it cost a full copy of the selection (~800&nbsp;MB for 100 tracks) to buy nothing but one URI instead of many. That also removed the 10-vs-50 threshold question, the progress feedback, the size estimate, the cancellation and the deferred share sheet, none of which are needed when nothing is built.
 
 - [ ] **1.2 Fix duplicated items in Artists collections**
   Artist collections sometimes show duplicated entries — the same category of bug previously seen (and fixed) in Genre collections.
