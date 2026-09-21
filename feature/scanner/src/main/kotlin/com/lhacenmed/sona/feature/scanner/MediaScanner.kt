@@ -154,8 +154,13 @@ class MediaScanner @Inject constructor(
         // From here on every track names exactly one genre, and every genre is one row per name.
         tracks = canonicalGenreTracks(tracks, mediaStoreResult.genres)
 
-        var albums = recomputeAlbums(mediaStoreResult.albums, tracks)
-        var artists = recomputeArtists(mediaStoreResult.artists, albums, tracks)
+        // And exactly one artist and one album, each of them a row per name rather than per
+        // MediaStore id - see canonicalArtistTracks.
+        val canonicalAlbums = canonicalAlbumsByMediaStoreId(mediaStoreResult.albums)
+        tracks = canonicalAlbumTracks(canonicalArtistTracks(tracks), canonicalAlbums)
+
+        var albums = recomputeAlbums(canonicalAlbums.values.distinctBy { it.id }, tracks)
+        var artists = recomputeArtists(artistsOf(tracks, albums), albums, tracks)
         var genres = recomputeGenres(genresOf(tracks), tracks)
 
         // Stage 1: publish MediaStore's fast, already-indexed results right away, without
@@ -210,6 +215,62 @@ class MediaScanner @Inject constructor(
             track.copy(genre = name, genreId = stableIdOf("genre", name))
         }
     }
+
+    /**
+     * Every track pointed at the one artist for its name, and named after it.
+     *
+     * MediaStore keys artists by an id of its own, and a file it has not indexed yet has no such id -
+     * so [mergeManualTracks] derives one from the name instead. A newly downloaded track therefore
+     * arrives under two different artist rows: the walk's, and then MediaStore's once it has indexed
+     * the file. Until the scan's final pass sweeps the first one away, both are listed, which is what
+     * showed an artist twice. Deriving the id from the name, the way a genre's already is, makes the
+     * two arrivals the same row and leaves nothing to sweep.
+     */
+    private fun canonicalArtistTracks(tracks: List<Track>): List<Track> =
+        tracks.map { track ->
+            val name = track.artist.orUnknownName(UnknownNames.ARTIST)
+            track.copy(artist = name, artistId = artistIdOf(name))
+        }
+
+    /**
+     * Each of [albums] under the id derived from its artist and title rather than MediaStore's own,
+     * for the same reason as [canonicalArtistTracks], kept under the MediaStore id it arrived with so
+     * a track can be repointed from one to the other.
+     *
+     * The cover MediaStore found for the album rides along: it is a URI the row already holds, not
+     * something read back from the id.
+     */
+    private fun canonicalAlbumsByMediaStoreId(albums: List<Album>): Map<Long, Album> =
+        albums.associate { album ->
+            val artistName = album.artistName.orUnknownName(UnknownNames.ARTIST)
+            val title = album.title.orUnknownName(UnknownNames.ALBUM)
+            album.id to album.copy(
+                id = albumIdOf(artistName, title),
+                title = title,
+                artistName = artistName,
+                artistId = artistIdOf(artistName),
+            )
+        }
+
+    /** Every track pointed at the one album for its artist and title, and named after it. */
+    private fun canonicalAlbumTracks(tracks: List<Track>, albums: Map<Long, Album>): List<Track> =
+        tracks.map { track ->
+            // Orphaned tracks are already filtered out, so every track's album is one of these.
+            val album = albums.getValue(track.albumId)
+            track.copy(album = album.title, albumId = album.id)
+        }
+
+    /** The artists [tracks] and [albums] name, one row per name - as [genresOf] is for genres. */
+    private fun artistsOf(tracks: List<Track>, albums: List<Album>): List<Artist> =
+        (tracks.map { it.artist } + albums.map { it.artistName }).distinct().map { name ->
+            Artist(
+                id = artistIdOf(name),
+                name = name,
+                trackCount = 0,
+                albumCount = 0,
+                coverArtUris = emptyList(),
+            )
+        }
 
     /** The genres [tracks] name, one row per name - the only genres that can exist after the pass above. */
     private fun genresOf(tracks: List<Track>): List<Genre> =
@@ -308,22 +369,27 @@ class MediaScanner @Inject constructor(
         val newGenres = mutableListOf<Genre>()
 
         val resolvedTracks = manualTracks.map { track ->
-            val artistId = artistByName.getOrPut(track.artist) {
+            // Named the way a MediaStore track is, so the row this joins is the one that already
+            // holds it - a tag's stray whitespace is not a second artist.
+            val artistName = track.artist.orUnknownName(UnknownNames.ARTIST)
+            val albumTitle = track.album.orUnknownName(UnknownNames.ALBUM)
+
+            val artistId = artistByName.getOrPut(artistName) {
                 Artist(
-                    id = stableIdOf("artist", track.artist),
-                    name = track.artist,
+                    id = artistIdOf(artistName),
+                    name = artistName,
                     trackCount = 0,
                     albumCount = 0,
                     coverArtUris = emptyList(),
                 ).also { newArtists += it }
             }.id
 
-            val albumId = albumByKey.getOrPut(track.artist to track.album) {
+            val albumId = albumByKey.getOrPut(artistName to albumTitle) {
                 Album(
-                    id = stableIdOf("album", track.artist, track.album),
-                    title = track.album,
+                    id = albumIdOf(artistName, albumTitle),
+                    title = albumTitle,
                     artistId = artistId,
-                    artistName = track.artist,
+                    artistName = artistName,
                     coverArtUri = null,
                     year = track.year,
                     trackCount = 0,
@@ -343,7 +409,14 @@ class MediaScanner @Inject constructor(
                 ).also { newGenres += it }
             }.id
 
-            track.copy(artistId = artistId, albumId = albumId, genre = genreName, genreId = genreId)
+            track.copy(
+                artist = artistName,
+                artistId = artistId,
+                album = albumTitle,
+                albumId = albumId,
+                genre = genreName,
+                genreId = genreId,
+            )
         }
 
         val allTracks = existingTracks + resolvedTracks
@@ -354,3 +427,19 @@ class MediaScanner @Inject constructor(
         return MergedResult(allTracks, allAlbums, allArtists, allGenres)
     }
 }
+
+/**
+ * The name a row goes under: what the file said, trimmed - or [unknown], when it said nothing.
+ *
+ * MediaStore normalises the names it reports; a file read straight off the disk by
+ * [ManualFileWalker] is reported exactly as it was tagged. Both pass through here, so the two
+ * cannot name the same artist or album differently and end up as two rows.
+ */
+private fun String?.orUnknownName(unknown: String): String =
+    this?.trim()?.takeIf { it.isNotEmpty() } ?: unknown
+
+/** An artist's id, derived from its name - the one place it is worked out. */
+private fun artistIdOf(name: String): Long = stableIdOf("artist", name)
+
+/** An album's id, derived from the artist and title that tell it apart from every other album. */
+private fun albumIdOf(artistName: String, title: String): Long = stableIdOf("album", artistName, title)

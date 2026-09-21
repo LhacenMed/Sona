@@ -106,11 +106,3 @@ internal fun PlaylistTrackPicker(
 
 /** What tapping a picker's row does: picks or unpicks it - nothing, for a row that cannot be picked. */
 internal fun SelectionState.pickerClick(key: SelectionKey?): () -> Unit = { key?.let(::toggle) }
-
-/** Whether a row showing [texts] belongs on screen while [query] is being searched for. */
-internal fun matchesSearch(query: String?, vararg texts: String): Boolean =
-    query.isNullOrBlank() || texts.any { it.contains(query, ignoreCase = true) }
-
-/** What an empty picker list says - the library being empty, or the search matching nothing. */
-internal fun pickerEmptyMessage(query: String?): String =
-    if (query.isNullOrBlank()) "Add some music to your device to see it here." else "Nothing matched \"$query\"."

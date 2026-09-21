@@ -10,6 +10,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.model.Track
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
@@ -25,6 +26,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 fun BottomSheetPlayerHost(
     onGoToAlbum: (Long) -> Unit,
     onGoToArtist: (Long) -> Unit,
+    trackOptionsSheet: @Composable (track: Track, onDismissRequest: () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PlayerViewModel = hiltViewModel(),
 ) {
@@ -61,6 +63,7 @@ fun BottomSheetPlayerHost(
             viewModel = viewModel,
             onGoToAlbum = onGoToAlbum,
             onGoToArtist = onGoToArtist,
+            trackOptionsSheet = trackOptionsSheet,
         )
     }
 }

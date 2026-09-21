@@ -25,6 +25,7 @@ fun FoldersScreen(
     val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
     val hasPermission by viewModel.hasPermission.collectAsStateWithLifecycle()
     val playback by viewModel.playback.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val navigator = LocalNavigator.current
     var optionsTarget by remember { mutableStateOf<OptionsTarget.ForFolder?>(null) }
 
@@ -33,7 +34,7 @@ fun FoldersScreen(
         hasPermission = hasPermission,
         isScanning = isScanning,
         emptyTitle = "No folders found",
-        emptyMessage = "Add some music to your device to see it here.",
+        emptyMessage = searchEmptyMessage(searchQuery),
         key = { it.path },
         loadingIcon = SonaIcons.Folder,
         modifier = modifier,

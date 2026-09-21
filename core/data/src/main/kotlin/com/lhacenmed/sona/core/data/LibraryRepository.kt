@@ -165,19 +165,6 @@ class LibraryRepository @Inject constructor(
             .sortedFor(LibrarySortSpecs.folderTracks, folderPath) { rows -> rows.map { it.toDomain() } }
             .asContent()
 
-    /** Search runs as four `LIKE … LIMIT` queries rather than scanning the library in memory. */
-    fun searchTracks(query: String, limit: Int): Flow<List<Track>> =
-        trackDao.search(query, limit).map { entities -> entities.map { it.toDomain() } }
-
-    fun searchAlbums(query: String, limit: Int): Flow<List<Album>> =
-        albumDao.search(query, limit).map { entities -> entities.map { it.toDomain() } }
-
-    fun searchArtists(query: String, limit: Int): Flow<List<Artist>> =
-        artistDao.search(query, limit).map { entities -> entities.map { it.toDomain() } }
-
-    fun searchGenres(query: String, limit: Int): Flow<List<Genre>> =
-        genreDao.search(query, limit).map { entities -> entities.map { it.toDomain() } }
-
     /** Resolves persisted queue ids to tracks, in the order given. */
     suspend fun tracksByIds(ids: List<Long>): List<Track> {
         if (ids.isEmpty()) return emptyList()

@@ -3,7 +3,7 @@ package com.lhacenmed.sona.feature.library.options
 import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
-import android.os.TransactionTooLargeException
+import android.net.Uri
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -36,6 +36,7 @@ import com.lhacenmed.sona.feature.library.operation.ExcludeFoldersDialog
 import com.lhacenmed.sona.feature.library.playlist.AddCollectionsScreen
 import com.lhacenmed.sona.feature.library.playlist.AddTracksScreen
 import com.lhacenmed.sona.feature.library.playlist.EditPlaylistScreen
+import com.lhacenmed.sona.feature.library.pluralCount
 
 /**
  * A dialog or file picker a chosen action is waiting on, for [target]. Until it ends the action is still
@@ -264,8 +265,13 @@ private fun Context.shareTrack(track: Track) {
  * Offers every one of [tracks]' audio files to another app at once - Auxio's `Context.share` for a
  * selection.
  *
- * Manually scanned tracks are left out, having no address another app may open. A selection large
- * enough to overflow the share intent is reported rather than crashing, as Auxio reports it.
+ * Nothing is copied: a track is shared as its own address in the library, which the receiving app is
+ * granted a read of. So a selection costs the same whether it holds three tracks or three hundred,
+ * and the chooser opens on the same frame it is asked for.
+ *
+ * Manually scanned tracks are left out, having no address another app may open, and a selection that
+ * loses any of them says so rather than quietly sharing fewer than were picked. A selection too large
+ * for the intent to carry is turned down before it is sent - see [shareIntentCostBytes].
  */
 private fun Context.shareTracks(tracks: List<Track>) {
     val streams = tracks.filterNot(Track::isManuallyScanned).map(Track::contentUri)
@@ -273,16 +279,44 @@ private fun Context.shareTracks(tracks: List<Track>) {
         toast("Unable to share this")
         return
     }
+    if (streams.shareIntentCostBytes() > SHARE_INTENT_BUDGET_BYTES) {
+        toast("Too many tracks to share at once")
+        return
+    }
+    val leftOutCount = tracks.size - streams.size
+    if (leftOutCount > 0) toast("${pluralCount(leftOutCount, "track")} cannot be shared")
+
     val intent = if (streams.size == 1) {
         Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_STREAM, streams.single())
     } else {
         Intent(Intent.ACTION_SEND_MULTIPLE).putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(streams))
     }
     intent.setType("audio/*").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    runCatching { startActivity(Intent.createChooser(intent, null)) }.onFailure { error ->
-        val isTooLarge = error is TransactionTooLargeException || error.cause is TransactionTooLargeException
-        toast(if (isTooLarge) "This is too large to share" else "Unable to share this")
-    }
+    startActivity(Intent.createChooser(intent, null))
 }
+
+/**
+ * How much of the intent these streams will take up.
+ *
+ * A URI is parcelled as its characters in UTF-16, with a few bytes of type and length around them -
+ * and twice over, because the system copies `EXTRA_STREAM` into the ClipData it grants the read from
+ * before the intent is sent.
+ */
+private fun List<Uri>.shareIntentCostBytes(): Int =
+    sumOf { (it.toString().length * 2 + URI_PARCEL_OVERHEAD_BYTES) * 2 }
+
+/** The type and length a parcelled URI carries besides its characters. */
+private const val URI_PARCEL_OVERHEAD_BYTES = 16
+
+/**
+ * How large a share intent may grow. A Binder transaction has about a megabyte for everything in
+ * flight; half of it is the streams', leaving room for the rest of the intent and for the chooser's
+ * own reply.
+ *
+ * Counted before the intent is sent rather than caught afterwards: an intent over the limit usually
+ * fails on the far side of the transaction, in the system or in the app receiving it, so there is
+ * often nothing to catch here.
+ */
+private const val SHARE_INTENT_BUDGET_BYTES = 512 * 1024
 
 private fun Track.contentUri() = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, mediaStoreId)

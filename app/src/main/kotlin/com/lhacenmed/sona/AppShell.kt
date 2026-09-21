@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Equalizer
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -17,7 +16,6 @@ import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.PlayerOverlay
 import com.lhacenmed.sona.feature.equalizer.EqualizerScreen
 import com.lhacenmed.sona.feature.library.LibraryPagerScreen
-import com.lhacenmed.sona.feature.library.SearchScreen
 import com.lhacenmed.sona.feature.settings.SettingsScreen
 
 @Composable
@@ -29,7 +27,6 @@ fun AppShell(playerOverlay: PlayerOverlay, modifier: Modifier = Modifier) {
     // are the actions the shell itself contributes.
     val libraryActions = remember(navigator) {
         listOf(
-            TopBarAction(label = "Search", icon = Icons.Filled.Search) { navigator.go(SearchScreen) },
             TopBarAction(label = "Equalizer", icon = Icons.Filled.Equalizer) { navigator.go(EqualizerScreen) },
             TopBarAction(label = "Settings", icon = Icons.Filled.Settings) { navigator.go(SettingsScreen) },
         )

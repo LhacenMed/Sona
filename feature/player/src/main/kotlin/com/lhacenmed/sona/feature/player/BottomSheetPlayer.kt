@@ -59,7 +59,6 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -113,6 +112,7 @@ internal fun BottomSheetPlayer(
     viewModel: PlayerViewModel,
     onGoToAlbum: (Long) -> Unit,
     onGoToArtist: (Long) -> Unit,
+    trackOptionsSheet: @Composable (track: Track, onDismissRequest: () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -485,7 +485,7 @@ internal fun BottomSheetPlayer(
                                                 WindowInsetsSides.Horizontal
                                             },
                                         ),
-                                    ).nestedScroll(state.preUpPostDownNestedScrollConnection),
+                                    ),
                         ) {
                             ImmersiveControlsContent(
                                 track = track,
@@ -636,7 +636,6 @@ internal fun BottomSheetPlayer(
                                     textBackgroundColor = textBackgroundColor,
                                     isPlayerExpanded = state.isExpanded,
                                     viewModel = viewModel,
-                                    modifier = Modifier.nestedScroll(state.preUpPostDownNestedScrollConnection),
                                 )
                             }
 
@@ -680,18 +679,7 @@ internal fun BottomSheetPlayer(
     }
 
     menuTrack?.let { menuFor ->
-        PlayerMenuSheet(
-            track = menuFor,
-            onDismissRequest = { menuTrack = null },
-            onGoToAlbum = {
-                state.collapseSoft()
-                onGoToAlbum(menuFor.albumId)
-            },
-            onGoToArtist = {
-                state.collapseSoft()
-                onGoToArtist(menuFor.artistId)
-            },
-        )
+        trackOptionsSheet(menuFor) { menuTrack = null }
     }
 }
 
@@ -712,7 +700,7 @@ private fun Modifier.playerContentPadding(
                     WindowInsetsSides.Top + WindowInsetsSides.Horizontal
                 },
             ),
-        ).nestedScroll(state.preUpPostDownNestedScrollConnection)
+        )
 
 /** Blurs below API 31 would need a bitmap blur ArchiveTune ships separately; there the backdrop is drawn unblurred. */
 private val canBlur: Boolean

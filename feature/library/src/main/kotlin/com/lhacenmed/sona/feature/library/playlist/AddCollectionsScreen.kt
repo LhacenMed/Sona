@@ -35,6 +35,8 @@ import com.lhacenmed.sona.feature.library.GenreRow
 import com.lhacenmed.sona.feature.library.LibraryList
 import com.lhacenmed.sona.feature.library.PlaylistRow
 import com.lhacenmed.sona.feature.library.filterItems
+import com.lhacenmed.sona.feature.library.matchesSearch
+import com.lhacenmed.sona.feature.library.searchEmptyMessage
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import kotlinx.coroutines.launch
 
@@ -122,7 +124,7 @@ data class AddCollectionsScreen(val playlistId: Long) : Screen {
                     tab = CollectionTab.entries[page],
                     visible = visible,
                     selection = selection,
-                    emptyMessage = pickerEmptyMessage(searchQuery),
+                    emptyMessage = searchEmptyMessage(searchQuery),
                 )
             }
         }

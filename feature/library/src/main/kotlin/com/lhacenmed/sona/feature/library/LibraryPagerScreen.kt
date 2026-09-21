@@ -15,6 +15,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,6 +35,7 @@ import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.component.SonaTabRow
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
+import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.feature.library.operation.ExcludeFoldersDialog
@@ -71,6 +73,7 @@ fun LibraryPagerScreen(
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
     val visibleTabs by viewModel.visibleTabs.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     if (visibleTabs.isEmpty()) return
 
     // Keying on the tab set (not just its size) fully resets the pager whenever it changes - a
@@ -176,11 +179,27 @@ fun LibraryPagerScreen(
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.surface),
             ) {
+                val sortTabAction = sortAction { sortingTab = selectedTab }
                 SonaTopAppBar(
                     title = "Sona",
-                    // First, so it is always one of the actions drawn as an icon: sorting belongs to the
-                    // tab on screen, and the shell's actions are the ones that can fold into the menu.
-                    actions = listOf(sortAction { sortingTab = selectedTab }) + actions,
+                    // The library's own two first, so they are the ones always drawn as icons: both act
+                    // on the tab on screen, while the shell's actions are the ones that can fold into
+                    // the menu.
+                    actions = listOf(
+                        TopBarAction(label = "Search", icon = Icons.Filled.Search) {
+                            viewModel.onSearchQueryChange("")
+                        },
+                        sortAction { sortingTab = selectedTab },
+                    ) + actions,
+                    // Sorting stays beside the field: a search narrows a tab, it does not reorder it.
+                    search = searchQuery?.let { query ->
+                        TopBarSearch(
+                            query = query,
+                            onQueryChange = { viewModel.onSearchQueryChange(it) },
+                            onClose = { viewModel.onSearchQueryChange(null) },
+                            actions = listOf(sortTabAction),
+                        )
+                    },
                     selection = selection.toLibraryTopBarSelection(
                         listKeys = { viewModel.selectableKeys(selectedTab) },
                         actions = excludeFolderActions(selection) { excludingFolders = it },

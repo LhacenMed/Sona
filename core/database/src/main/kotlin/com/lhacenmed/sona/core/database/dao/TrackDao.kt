@@ -57,9 +57,6 @@ interface TrackDao {
     @Query("SELECT COUNT(*) FROM tracks")
     suspend fun count(): Int
 
-    @Query("SELECT * FROM tracks WHERE title LIKE '%' || :query || '%' ORDER BY title COLLATE NOCASE ASC LIMIT :limit")
-    fun search(query: String, limit: Int): Flow<List<TrackEntity>>
-
     /** Full rows, for the scanner to diff this scan's result against what is already stored. */
     @Query("SELECT * FROM tracks")
     suspend fun getAll(): List<TrackEntity>
