@@ -60,8 +60,12 @@ Ordered from most to least critical. Every entry describes **what** is broken or
   The player opened a two-item sheet of its own (`PlayerMenuSheet`: go to album, go to artist), which is now deleted. The player and every queue row open the library's `OptionsSheet` instead.
   - `feature:player` does not depend on `feature:library`. The player takes a `trackOptionsSheet` slot, and `SonaPlayerOverlay` in `:app` fills it with `OptionsSheet(OptionsTarget.ForTrack(track))` — the same seam that already supplies `onGoToAlbum`/`onGoToArtist`.
 
-- [ ] **2.5 Fix limited trigger area for revealing the queue sheet**
+- [x] **2.5 Fix limited trigger area for revealing the queue sheet**
   Swiping up should reveal the queue bottom sheet from anywhere on the player screen. Currently it only works when the gesture starts specifically on the sheet's top handle.
+  - The whole open player was already covered by one drag detector - the player sheet's own. A swipe up there went to the player, which is already at full height, so it moved nothing; only the queue's bar had a detector for the queue.
+  - `BottomSheet` takes `swipeUpSheet`, and the player passes its queue. The same detector decides which sheet a drag moves from its first movement: up while the player is expanded raises the queue, anything else moves the player as before (a swipe down still closes it). The choice holds until release, and the release flings the sheet that was dragged.
+  - One detector, one velocity tracker, one owner per gesture - the rule 2.1 set - rather than a second detector over the player racing the first. Taps, the seek bar and the artwork's sideways swipe are untouched: none of them claims a vertical drag.
+  - Present in ArchiveTune too (the queue opens only from its bar), so this is a deliberate divergence from the clone.
 
 - [ ] **2.6 Fix mini player disappearing after returning to the app**
   Sometimes the mini player disappears from an activity even though a track is still playing. This happens after leaving the app and coming back to it after a while, and currently requires closing and reopening the app to make the mini player reappear.

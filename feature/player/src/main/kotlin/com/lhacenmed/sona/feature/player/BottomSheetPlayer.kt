@@ -357,6 +357,8 @@ internal fun BottomSheetPlayer(
 
     BottomSheet(
         state = state,
+        // A swipe up anywhere on the open player raises the queue, not only one begun on its bar.
+        swipeUpSheet = queueSheetState,
         modifier =
             modifier
                 .focusRequester(focusRequester)
