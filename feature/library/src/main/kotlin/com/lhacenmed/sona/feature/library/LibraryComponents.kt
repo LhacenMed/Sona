@@ -42,6 +42,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.CookieShape
+import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.LocalDragHandle
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
@@ -158,7 +159,11 @@ internal fun <T> LibraryList(
             return@LibraryListContent
         }
         KeepAtTopWhenRowsChange(listState = listState, rows = items)
-        LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+        ) {
             items(
                 items = items,
                 key = key,
@@ -224,9 +229,14 @@ private fun <T> ReorderableColumn(
     var hasDropToWrite by remember { mutableStateOf(false) }
     var writtenOrder by remember { mutableStateOf<List<Any>?>(null) }
 
+    val bottomContentPadding = LocalBottomContentPadding.current
     val reorderableState = rememberReorderableLazyListState(
         lazyListState = listState,
-        scrollThresholdPadding = PaddingValues(vertical = ReorderAutoScrollThreshold),
+        // The list's bottom lies under the mini player, so the edge a drag scrolls from is its top.
+        scrollThresholdPadding = PaddingValues(
+            top = ReorderAutoScrollThreshold,
+            bottom = ReorderAutoScrollThreshold + bottomContentPadding,
+        ),
     ) { from, to ->
         if (from.index in orderedRows.indices && to.index in orderedRows.indices) {
             orderedRows.add(to.index, orderedRows.removeAt(from.index))
@@ -262,7 +272,11 @@ private fun <T> ReorderableColumn(
         }
     }
 
-    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+    LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = bottomContentPadding),
+    ) {
         items(
             items = orderedRows,
             key = key,

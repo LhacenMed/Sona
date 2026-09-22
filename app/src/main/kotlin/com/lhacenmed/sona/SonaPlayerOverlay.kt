@@ -18,7 +18,7 @@ import javax.inject.Inject
 class SonaPlayerOverlay @Inject constructor() : PlayerOverlay {
 
     @Composable
-    override fun Content() {
+    override fun Content(content: @Composable () -> Unit) {
         val navigator = LocalNavigator.current
         BottomSheetPlayerHost(
             onGoToAlbum = { albumId -> navigator.go(AlbumDetailScreen(albumId)) },
@@ -31,6 +31,7 @@ class SonaPlayerOverlay @Inject constructor() : PlayerOverlay {
                     onDismissRequest = onDismissRequest,
                 )
             },
+            content = content,
         )
     }
 }

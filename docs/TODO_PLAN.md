@@ -48,8 +48,13 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 - [ ] **2.2 Stabilize skip-next / skip-previous controls**
   The player's skip-next and skip-previous behavior is currently unstable/unreliable and needs to be made consistent.
 
-- [ ] **2.3 Fix lists hidden behind the mini player**
+- [x] **2.3 Fix lists hidden behind the mini player**
   When a track is playing, the mini player overlaps the bottom of content lists. There's no reserved blank space at the bottom, so the last item(s) can't be reached or seen.
+  - Nothing reserved any bottom space: the player was drawn *beside* each activity's content, so no screen could know it was there. Untitled screens didn't even clear the navigation bar.
+  - `PlayerOverlay.Content` now wraps the activity's content, and the player host provides `LocalBottomContentPadding` (`core:designsystem`) — exactly the mini player's top edge: navigation bar + spacing + height, the same value as the sheet's collapsed bound. It is ArchiveTune's `LocalPlayerAwareWindowInsets`, narrowed to the one side Sona needs.
+  - Reserved persistently, whether or not a track is loaded, so a list's end never jumps under the player as it comes and goes.
+  - Every scrolling container reads it once, at its shared root: `LibraryList` (every tab, detail screen and picker), the playlists tab, `SettingsList` (every settings screen), tab visibility, excluded folders (whose bottom add button is lifted with it) and the equalizer. Rows still scroll behind the bar; only the end is held clear. A reorder drag starts auto-scrolling above the mini player, not under it.
+  - Titled hosted screens no longer inset the bottom in `HostActivity`'s Scaffold, which would have counted the navigation bar twice.
 
 - [x] **2.4 Fix "more options" in the player opening the wrong sheet**
   The player opened a two-item sheet of its own (`PlayerMenuSheet`: go to album, go to artist), which is now deleted. The player and every queue row open the library's `OptionsSheet` instead.

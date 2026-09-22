@@ -7,8 +7,11 @@ import androidx.compose.runtime.Composable
  *
  * Declared here because [HostActivity] draws it but cannot see the player, which lives in a feature
  * module. The app binds the one implementation, so every activity draws the same player.
+ *
+ * It wraps the activity's [content] rather than sitting beside it, so it can tell the screen how much
+ * of its bottom it covers - which every scrolling list keeps clear at its end.
  */
 interface PlayerOverlay {
     @Composable
-    fun Content()
+    fun Content(content: @Composable () -> Unit)
 }

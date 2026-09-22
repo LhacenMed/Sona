@@ -12,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 
 /**
  * The body every settings screen has: its rows, in order, scrolling as one.
@@ -25,7 +26,8 @@ fun SettingsList(content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
+            .verticalScroll(rememberScrollState())
+            .padding(bottom = LocalBottomContentPadding.current),
         content = content,
     )
 }
