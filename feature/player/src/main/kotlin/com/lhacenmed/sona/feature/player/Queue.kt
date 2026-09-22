@@ -56,6 +56,7 @@ import com.lhacenmed.sona.core.designsystem.component.SonaTrackRow
 import com.lhacenmed.sona.core.datastore.PlayerStyle
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.SleepTimerState
+import com.lhacenmed.sona.feature.player.style.QueueBar
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -79,7 +80,6 @@ internal fun Queue(
     durationMs: Long,
     backgroundColor: Color,
     onBackgroundColor: Color,
-    textBackgroundColor: Color,
     onMenuClick: (Track) -> Unit,
     onShowLyrics: () -> Unit,
     viewModel: PlayerViewModel,
@@ -166,66 +166,13 @@ internal fun Queue(
         // the header below is what the sheet itself is dragged by.
         isContentDraggable = false,
         collapsedContent = {
-            when (playerStyle) {
-                PlayerStyle.MINIMAL -> {
-                    MinimalQueueBar(
-                        textBackgroundColor = textBackgroundColor,
-                        sleepTimerEnabled = sleepTimerEnabled,
-                        sleepTimerTimeLeft = sleepTimerTimeLeft,
-                        onExpandQueue = openQueue,
-                        onSleepTimerClick = onSleepTimerClick,
-                        onShowLyrics = onShowLyrics,
-                        onMenuClick = { currentTrack?.let(onMenuClick) },
-                    )
-                }
-
-                PlayerStyle.CINEMATIC -> {
-                    CinematicQueueBar(
-                        textBackgroundColor = textBackgroundColor,
-                        sleepTimerEnabled = sleepTimerEnabled,
-                        sleepTimerTimeLeft = sleepTimerTimeLeft,
-                        onExpandQueue = openQueue,
-                        onSleepTimerClick = onSleepTimerClick,
-                        onShowLyrics = onShowLyrics,
-                    )
-                }
-
-                PlayerStyle.CLASSIC -> {
-                    ClassicQueueBar(
-                        textBackgroundColor = textBackgroundColor,
-                        sleepTimerEnabled = sleepTimerEnabled,
-                        sleepTimerTimeLeft = sleepTimerTimeLeft,
-                        onExpandQueue = openQueue,
-                        onSleepTimerClick = onSleepTimerClick,
-                        onShowLyrics = onShowLyrics,
-                    )
-                }
-
-                PlayerStyle.EDITORIAL -> {
-                    EditorialQueueBar(
-                        textBackgroundColor = textBackgroundColor,
-                        sleepTimerEnabled = sleepTimerEnabled,
-                        sleepTimerTimeLeft = sleepTimerTimeLeft,
-                        shuffleEnabled = playback.shuffleEnabled,
-                        repeatMode = playback.repeatMode,
-                        onShuffleClick = viewModel::onToggleShuffle,
-                        onRepeatModeClick = viewModel::onCycleRepeatMode,
-                        onMenuClick = { currentTrack?.let(onMenuClick) },
-                        onSleepTimerClick = onSleepTimerClick,
-                    )
-                }
-
-                PlayerStyle.IMMERSIVE, PlayerStyle.IMMERSIVE_EXTENDED -> {
-                    ImmersiveQueueBar(
-                        textBackgroundColor = textBackgroundColor,
-                        sleepTimerEnabled = sleepTimerEnabled,
-                        sleepTimerTimeLeft = sleepTimerTimeLeft,
-                        onExpandQueue = openQueue,
-                        onShowLyrics = onShowLyrics,
-                        onSleepTimerClick = onSleepTimerClick,
-                    )
-                }
-            }
+            playerStyle.QueueBar(
+                sleepTimerEnabled = sleepTimerEnabled,
+                sleepTimerTimeLeft = sleepTimerTimeLeft,
+                onExpandQueue = openQueue,
+                onSleepTimerClick = onSleepTimerClick,
+                onShowLyrics = onShowLyrics,
+            )
 
             if (showSleepTimerDialog) {
                 SleepTimerDialog(

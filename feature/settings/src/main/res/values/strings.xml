@@ -53,12 +53,7 @@
     <string name="font_rounded">Rounded</string>
     <string name="appearance_player_section">Player</string>
     <string name="player_style_title">Player style</string>
-    <string name="player_style_classic">Classic</string>
-    <string name="player_style_minimal">Minimal</string>
-    <string name="player_style_cinematic">Cinematic</string>
-    <string name="player_style_immersive">Immersive</string>
-    <string name="player_style_immersive_extended">Immersive Extended</string>
-    <string name="player_style_editorial">Editorial</string>
+    <string name="player_style_default">Default</string>
     <string name="player_slider_style_title">Seek bar style</string>
     <string name="player_slider_style_standard">Standard</string>
     <string name="player_slider_style_circular">Circular</string>

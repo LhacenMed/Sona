@@ -11,13 +11,7 @@
     <string name="player_reset">Reset</string>
     <string name="player_more_options">More options</string>
     <string name="player_like">Like</string>
-    <string name="player_remove_like">Remove like</string>
-    <string name="player_shuffle">Shuffle</string>
     <string name="player_shuffle_on">Shuffle on</string>
-    <string name="player_shuffle_off">Shuffle off</string>
-    <string name="player_repeat_off">Repeat mode off</string>
-    <string name="player_repeat_one">Repeat current song</string>
-    <string name="player_repeat_all">Repeat queue</string>
     <string name="player_play">Play</string>
     <string name="player_pause">Pause</string>
     <string name="player_previous">Previous</string>

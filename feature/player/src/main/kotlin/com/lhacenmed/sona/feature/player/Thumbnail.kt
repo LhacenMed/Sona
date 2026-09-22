@@ -65,7 +65,7 @@ private data class ThumbnailPage(
 )
 
 /**
- * The Classic, Minimal and Cinematic players' artwork: the previous, current and next covers side by side,
+ * The player's artwork: the previous, current and next covers side by side,
  * swiped to change track and double-tapped on either half to seek. Ported from ArchiveTune's `Thumbnail`.
  */
 @OptIn(ExperimentalFoundationApi::class)
