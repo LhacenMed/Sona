@@ -8,6 +8,7 @@ import com.lhacenmed.sona.core.common.di.IoDispatcher
 import com.lhacenmed.sona.core.data.LibraryWriter
 import com.lhacenmed.sona.core.data.SyncStats
 import com.lhacenmed.sona.core.database.dao.TrackDao
+import com.lhacenmed.sona.core.database.entity.toDomain
 import com.lhacenmed.sona.core.database.stableIdOf
 import com.lhacenmed.sona.core.datastore.LibrarySettings
 import com.lhacenmed.sona.core.datastore.ScanSettings
@@ -17,22 +18,48 @@ import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.UnknownNames
 import com.lhacenmed.sona.feature.scanner.filesystem.ManualFileWalker
+import com.lhacenmed.sona.feature.scanner.mediastore.MediaStoreChangeObserver
 import com.lhacenmed.sona.feature.scanner.mediastore.MediaStoreQuerier
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.File
+import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+
+/**
+ * How long MediaStore must stay quiet before a change is acted on. It reports a single download
+ * several times over (inserted pending, then scanned, then published) and an album as dozens of
+ * files; waiting for the burst to settle turns all of it into one refresh.
+ */
+private const val CHANGE_SETTLE_MS = 500L
+
+/** How much of the pipeline a scan runs, ordered narrowest first so two requests merge as the wider. */
+private enum class ScanKind {
+    /** MediaStore reported a change: re-read it, keeping what the last storage walk found. */
+    REFRESH,
+
+    /** MediaStore and the storage walk - skipped when the device reports nothing changed. */
+    FULL,
+
+    /** [FULL], even when the device reports nothing changed. */
+    FORCED,
+}
 
 /**
  * Scans the device's audio library and reconciles it into Room.
@@ -51,9 +78,16 @@ import kotlinx.coroutines.withContext
  * nothing invalidates, nothing re-emits and nothing repaints. Previously every launch rewrote every
  * row, which is exactly what the UI was reacting to.
  *
- * Scans are serialised by a [Mutex] and launched on the [ApplicationScope], so a rotation or a
- * finished activity can neither start a second concurrent scan nor cancel one in flight.
+ * Once the first scan is requested, the library also follows the device live: every change
+ * MediaStore reports ([MediaStoreChangeObserver]) is a [ScanKind.REFRESH] - MediaStore re-read and
+ * diffed, without walking storage again - so a download appears without a relaunch or a rescan.
+ *
+ * Requests are queued, not dropped: one arriving mid-scan runs once that scan ends, and any number
+ * arriving meanwhile collapse into that one, as the widest of them. Scans are serialised by a
+ * [Mutex] and run on the [ApplicationScope], so a rotation or a finished activity can neither start
+ * a second concurrent scan nor cancel one in flight.
  */
+@OptIn(FlowPreview::class)
 @Singleton
 class MediaScanner @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -63,6 +97,7 @@ class MediaScanner @Inject constructor(
     private val trackDao: TrackDao,
     private val librarySettings: LibrarySettings,
     private val scanSettings: ScanSettings,
+    mediaStoreChangeObserver: MediaStoreChangeObserver,
     @ApplicationScope private val appScope: CoroutineScope,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
@@ -76,21 +111,40 @@ class MediaScanner @Inject constructor(
     val isScanning: StateFlow<Boolean> = _isScanning.asStateFlow()
 
     private val scanMutex = Mutex()
-    private var scanJob: Job? = null
+
+    /** The widest scan asked for since the queue last took one; null when nothing is waiting. */
+    private val pendingScan = AtomicReference<ScanKind?>(null)
+
+    /** Wakes the queue. Conflated, since [pendingScan] already holds everything a wake-up means. */
+    private val scanWakeups = Channel<Unit>(Channel.CONFLATED)
+
+    /**
+     * Follows MediaStore for as long as the process lives. Lazy, because watching - like scanning -
+     * needs the permission the first [requestScan] is only ever made with.
+     */
+    private val changeWatch = appScope.launch(start = CoroutineStart.LAZY) {
+        mediaStoreChangeObserver.changes
+            .debounce(CHANGE_SETTLE_MS)
+            .collect { enqueue(ScanKind.REFRESH) }
+    }
+
+    init {
+        appScope.launch {
+            scanWakeups.consumeEach { pendingScan.getAndSet(null)?.let { scan(it) } }
+        }
+    }
 
     /**
      * Requests a scan and returns immediately.
      *
      * This is what launch should call. It runs on the application scope, so it is not tied to the
      * activity that asked for it - the previous code launched it from `lifecycleScope` in
-     * `onCreate`, which restarted the whole scan on every configuration change.
+     * `onCreate`, which restarted the whole scan on every configuration change. [force] skips the
+     * unchanged-library check (an explicit "rescan", where the user's intent overrides it).
      */
     fun requestScan(force: Boolean = false) {
-        if (scanJob?.isActive == true && !force) return
-        scanJob = appScope.launch {
-            val excluded = librarySettings.excludedFolders.value
-            scan(excludedFolders = excluded, force = force)
-        }
+        changeWatch.start()
+        enqueue(if (force) ScanKind.FORCED else ScanKind.FULL)
     }
 
     /**
@@ -101,22 +155,24 @@ class MediaScanner @Inject constructor(
      * cannot leave the library half-rewritten; only the waiting belongs to the caller. A failure is
      * thrown here, to the caller that is waiting on it.
      */
-    suspend fun rescan(): SyncStats =
-        appScope.async { scan(excludedFolders = librarySettings.excludedFolders.value) }.await()
+    suspend fun rescan(): SyncStats = appScope.async { scan(ScanKind.FULL) }.await()
 
-    /**
-     * Runs a scan, awaiting its completion. [force] skips the unchanged-library check (used by an
-     * explicit "rescan" action, where the user's intent overrides the optimisation).
-     */
-    suspend fun scan(excludedFolders: Set<String> = emptySet(), force: Boolean = false): SyncStats =
+    private fun enqueue(kind: ScanKind) {
+        pendingScan.getAndUpdate { pending -> if (pending == null || kind > pending) kind else pending }
+        scanWakeups.trySend(Unit)
+    }
+
+    /** Runs a scan with the current exclusions, awaiting its completion. */
+    private suspend fun scan(kind: ScanKind): SyncStats =
         scanMutex.withLock {
             withContext(ioDispatcher) {
+                val excludedFolders = librarySettings.excludedFolders.value
                 val signature = scanSignatureOf(context, excludedFolders)
-                if (!force && canSkip(signature)) return@withContext SyncStats()
+                if (kind != ScanKind.FORCED && canSkip(signature)) return@withContext SyncStats()
 
                 _isScanning.value = true
                 try {
-                    val stats = runScan(excludedFolders)
+                    val stats = runScan(excludedFolders, walksStorage = kind != ScanKind.REFRESH)
                     scanSettings.setLastScanSignature(signature)
                     stats
                 } finally {
@@ -136,7 +192,7 @@ class MediaScanner @Inject constructor(
         return trackDao.count() > 0
     }
 
-    private suspend fun runScan(excludedFolders: Set<String>): SyncStats {
+    private suspend fun runScan(excludedFolders: Set<String>, walksStorage: Boolean): SyncStats {
         val mediaStoreResult = mediaStoreQuerier.query()
 
         val albumIds = mediaStoreResult.albums.mapTo(HashSet()) { it.id }
@@ -163,35 +219,57 @@ class MediaScanner @Inject constructor(
         var artists = recomputeArtists(artistsOf(tracks, albums), albums, tracks)
         var genres = recomputeGenres(genresOf(tracks), tracks)
 
-        // Stage 1: publish MediaStore's fast, already-indexed results right away, without
-        // deletions - on a first run this is what paints the library, and the slow filesystem walk
-        // below never gets to delay it. Because it is a diff, on any later scan it writes nothing.
-        var stats = libraryWriter.sync(tracks, albums, artists, genres, deleteMissing = false)
+        var stats = SyncStats()
+        val manualTracks = if (walksStorage) {
+            // Stage 1: publish MediaStore's fast, already-indexed results right away, without
+            // deletions - on a first run this is what paints the library, and the slow filesystem
+            // walk below never gets to delay it. Because it is a diff, on any later scan it writes
+            // nothing.
+            stats = libraryWriter.sync(tracks, albums, artists, genres, deleteMissing = false)
+            // Stage 2: pick up files MediaStore hasn't indexed yet.
+            findUnindexedTracks(tracks, excludedFolders)
+        } else {
+            // A refresh: MediaStore is all that changed, so what the last walk found is kept as is.
+            storedUnindexedTracks(tracks)
+        }
 
-        // Stage 2 (Q+ only): pick up files MediaStore hasn't indexed yet.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val pathsToSkip = tracks.mapTo(HashSet()) { it.path }.apply { addAll(excludedFolders) }
-            val manualTracks = manualFileWalker.findTracks(pathsToSkip)
-
-            if (manualTracks.isNotEmpty()) {
-                val merged = mergeManualTracks(
-                    manualTracks = manualTracks,
-                    existingTracks = tracks,
-                    existingAlbums = albums,
-                    existingArtists = artists,
-                    existingGenres = genres,
-                )
-                tracks = merged.tracks
-                albums = merged.albums
-                artists = merged.artists
-                genres = merged.genres
-            }
+        if (manualTracks.isNotEmpty()) {
+            val merged = mergeManualTracks(
+                manualTracks = manualTracks,
+                existingTracks = tracks,
+                existingAlbums = albums,
+                existingArtists = artists,
+                existingGenres = genres,
+            )
+            tracks = merged.tracks
+            albums = merged.albums
+            artists = merged.artists
+            genres = merged.genres
         }
 
         // Final pass: the authoritative one, and the only one allowed to delete. When stage 1
         // already stored exactly this, it opens no transaction at all.
         stats += libraryWriter.sync(tracks, albums, artists, genres)
         return stats
+    }
+
+    /** Audio files on storage that MediaStore has not indexed, found by walking it (Q+ only). */
+    private fun findUnindexedTracks(indexedTracks: List<Track>, excludedFolders: Set<String>): List<Track> {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return emptyList()
+        val pathsToSkip = indexedTracks.mapTo(HashSet()) { it.path }.apply { addAll(excludedFolders) }
+        return manualFileWalker.findTracks(pathsToSkip)
+    }
+
+    /**
+     * What the last walk found and MediaStore still has not indexed, less any file since deleted -
+     * the walk's result, carried into a refresh without walking again. A file MediaStore has indexed
+     * since is left to MediaStore's row, which shares its path-derived id.
+     */
+    private suspend fun storedUnindexedTracks(indexedTracks: List<Track>): List<Track> {
+        val indexedPaths = indexedTracks.mapTo(HashSet()) { it.path }
+        return trackDao.getManuallyScanned()
+            .filter { it.path !in indexedPaths && File(it.path).exists() }
+            .map { it.toDomain() }
     }
 
     // Grouping once up front turns what used to be an O(entities * tracks) scan (each album/

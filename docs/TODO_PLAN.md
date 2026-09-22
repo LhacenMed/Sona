@@ -26,8 +26,13 @@ Ordered from most to least critical. Every entry describes **what** is broken or
   - Where Sona goes further: the scan is skipped outright when MediaStore's version and generation are unchanged, and when it runs it writes a diff, so an unchanged relaunch writes nothing and repaints nothing. Fossify rewrites every row on every launch; its fragments re-read on callbacks rather than observing, which is the only reason that does not flicker there.
   - Nothing ported. The research is in `docs/research/research_fossify_fast_load_and_permission_ux.md`.
 
-- [ ] **1.4 Study and adopt Budget's live folder-watching mechanism for the library**
+- [x] **1.4 Study and adopt Budget's live folder-watching mechanism for the library**
   If access to inspect it is possible, examine the "Budget" project's WhatsApp-status-saver feature, which listens for live changes in a folder, and clone that mechanism literally. Merge it into Sona's own system so the app listens for live changes in any folder that is not excluded from scanning, rather than only picking up changes on a manual/triggered rescan. The resulting data tracking, saving, and restoring system must remain clean, maintainable, solid, stable, consistent, scalable, fast, and efficient.
+  - **Adopted in shape, not in source.** Budget watches two known, flat folders with `FileObserver` (inotify). inotify is not recursive: covering every folder of the library would take a watch per directory on the whole device, re-registered for each new one, against a per-app watch limit. Budget's per-file `Added`/`Removed` patches don't fit either: Sona's albums, artists and genres are derived from the tracks, so a change has to be re-derived and diffed, not patched.
+  - `MediaStoreChangeObserver` keeps Budget's structure — a cold `callbackFlow` that registers on collection and unregisters in `awaitClose`, debounced 500&nbsp;ms like Budget's recheck — but observes MediaStore's audio collection. One registration covers every indexed folder, which is exactly the set the scanner reads. Files written through shared storage are indexed by the system on Android 11+, so that is every file a download lands.
+  - A change is a *refresh*: MediaStore re-read and diffed, without walking storage again. What the last walk found is carried from the database (minus files since indexed or deleted). A refresh costs one MediaStore query and, for a change outside the library (an excluded folder), writes nothing. Launch and an explicit rescan still walk.
+  - Watching starts with the first scan request — only ever made with the permission granted — and lasts the process.
+  - Scan requests are queued instead of dropped: one made mid-scan used to vanish (excluding a folder during the launch scan did nothing until the next launch); now it runs once the current scan ends, and any made meanwhile merge into it as the widest asked for.
 
 ---
 
