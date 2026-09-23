@@ -27,6 +27,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -181,7 +183,9 @@ fun LibraryPagerScreen(
             ) {
                 val sortTabAction = sortAction { sortingTab = selectedTab }
                 SonaTopAppBar(
-                    title = "Sona",
+                    // The app's own label, so the bar reads exactly what the launcher does - "Sona Debug"
+                    // on a debug build, which :app sets per build type.
+                    title = stringResource(LocalContext.current.applicationInfo.labelRes),
                     // The library's own two first, so they are the ones always drawn as icons: both act
                     // on the tab on screen, while the shell's actions are the ones that can fold into
                     // the menu.

@@ -8,6 +8,8 @@ import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupScope
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonColors
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -81,7 +83,8 @@ fun SonaIconButtonGroup(
  * joins it to its neighbours: the press has to be visible both to the button, which morphs, and to
  * the group, which widens it, so the two are given one interaction source to share. [label]
  * describes the button and is also what it says for itself if it ever has to fall back into the
- * overflow menu. [modifier] is applied to the button beneath the group's width animation.
+ * overflow menu. [modifier] is applied to the button beneath the group's width animation, and
+ * [colors] is [SonaIconButton]'s: a tonal or filled button presses as part of the row like the rest.
  */
 fun ButtonGroupScope.iconButton(
     icon: ImageVector,
@@ -89,6 +92,7 @@ fun ButtonGroupScope.iconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    colors: IconButtonColors? = null,
 ) = customItem(
     buttonGroupContent = {
         val interactionSource = remember { MutableInteractionSource() }
@@ -100,6 +104,7 @@ fun ButtonGroupScope.iconButton(
             // leave the press with nothing to grow into.
             modifier = modifier.animateWidth(interactionSource),
             enabled = enabled,
+            colors = colors ?: IconButtonDefaults.iconButtonColors(),
             interactionSource = interactionSource,
         )
     },

@@ -5,6 +5,10 @@ import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.itemsOrEmpty
+import com.lhacenmed.sona.core.common.cover.rankedCoverArtUris
+import com.lhacenmed.sona.core.designsystem.component.CoverArtDefaults
+import com.lhacenmed.sona.core.designsystem.component.SonaPlaylistCover
+import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
@@ -29,7 +33,19 @@ data class PlaylistDetailScreen(val playlistId: Long) : Screen {
 
         TrackListDetail(
             title = playlist?.name ?: "Playlist",
-            subtitle = "${tracks.itemsOrEmpty.size} tracks",
+            header = DetailHeaderContent(
+                type = "Playlist",
+                subhead = null,
+                info = trackCountAndDuration(tracks.itemsOrEmpty),
+                cover = {
+                    SonaPlaylistCover(
+                        coverArtUris = playlist?.coverArtUris.orEmpty(),
+                        seed = playlistId.hashCode(),
+                        size = CoverArtDefaults.DetailHeaderSize,
+                        cornerRadius = CoverArtDefaults.DetailHeaderCornerRadius,
+                    )
+                },
+            ),
             onBack = navigator::back,
             viewModel = viewModel,
             emptyMessage = "This playlist has no tracks yet.",
@@ -54,7 +70,7 @@ object RecentlyPlayedScreen : Screen {
 
         TrackListDetail(
             title = "Recently played",
-            subtitle = "${tracks.itemsOrEmpty.size} tracks",
+            header = listeningHistoryHeader(tracks.itemsOrEmpty, seed = "recent"),
             onBack = navigator::back,
             viewModel = viewModel,
             emptyMessage = "Nothing has been played yet.",
@@ -74,7 +90,7 @@ object MostPlayedScreen : Screen {
 
         TrackListDetail(
             title = "Most played",
-            subtitle = "${tracks.itemsOrEmpty.size} tracks",
+            header = listeningHistoryHeader(tracks.itemsOrEmpty, seed = "mostPlayed"),
             onBack = navigator::back,
             viewModel = viewModel,
             emptyMessage = "Nothing has been played right through yet.",
@@ -82,3 +98,21 @@ object MostPlayedScreen : Screen {
         )
     }
 }
+
+/**
+ * Recent's and Most played's header: no collection of the library's own, so named for what they are,
+ * with a cover stacked from the tracks they hold - as the playlists tab draws their rows.
+ */
+private fun listeningHistoryHeader(tracks: List<Track>, seed: String) = DetailHeaderContent(
+    type = "Listening history",
+    subhead = null,
+    info = trackCountAndDuration(tracks),
+    cover = {
+        SonaPlaylistCover(
+            coverArtUris = rankedCoverArtUris(tracks.map { it.coverArtUri }),
+            seed = seed.hashCode(),
+            size = CoverArtDefaults.DetailHeaderSize,
+            cornerRadius = CoverArtDefaults.DetailHeaderCornerRadius,
+        )
+    },
+)

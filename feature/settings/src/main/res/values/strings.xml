@@ -53,12 +53,7 @@
     <string name="font_rounded">Rounded</string>
     <string name="appearance_player_section">Player</string>
     <string name="player_style_title">Player style</string>
-    <string name="player_style_classic">Classic</string>
-    <string name="player_style_minimal">Minimal</string>
-    <string name="player_style_cinematic">Cinematic</string>
-    <string name="player_style_immersive">Immersive</string>
-    <string name="player_style_immersive_extended">Immersive Extended</string>
-    <string name="player_style_editorial">Editorial</string>
+    <string name="player_style_default">Default</string>
     <string name="player_slider_style_title">Seek bar style</string>
     <string name="player_slider_style_standard">Standard</string>
     <string name="player_slider_style_circular">Circular</string>
@@ -158,8 +153,10 @@
     <string name="lyrics_cache_section">Cache</string>
     <string name="lyrics_clear_cache_title">Clear lyrics cache</string>
     <string name="lyrics_clear_cache_summary">Forget stored and edited lyrics; they are read again from each file</string>
-    <string name="lyrics_clear_cache_confirm">Are you sure you want to clear all lyrics cache?</string>
+    <string name="lyrics_clear_cache_confirm">Stored and edited lyrics are forgotten. They are read again from each file.</string>
     <string name="lyrics_clear_cache_action">Clear</string>
+    <string name="lyrics_clear_cache_done">Lyrics cache cleared</string>
+    <string name="lyrics_clear_cache_failed">Could not clear lyrics cache</string>
     <string name="lyrics_animation_tuning_section">Animation tuning</string>
     <string name="lyrics_line_bounce_title">Line bounce effect</string>
     <string name="lyrics_line_bounce_summary">Enable bounce animation for line-synced (LRC) lyrics</string>
@@ -274,10 +271,12 @@
 
     <!-- Updates -->
     <string name="updates_section">Updates</string>
-    <string name="updates_automatic_check_title">Check automatically</string>
-    <string name="updates_automatic_check_summary">Look for a new version when the app starts</string>
+    <string name="updates_automatic_check_title">Update alerts</string>
+    <string name="updates_automatic_check_summary">Announce a new version as soon as it is found</string>
     <string name="updates_check_now_title">Check now</string>
     <string name="updates_check_now_summary">Look for a new version straight away</string>
+    <string name="updates_checking">Checking…</string>
+    <string name="updates_up_to_date">Up to date</string>
     <string name="updates_installed_version_title">Installed version</string>
     <string name="updates_placeholder_version">1.0.0</string>
 

@@ -27,10 +27,10 @@ class PlayerStyleSettings @Inject constructor(
 
     internal suspend fun awaitLoaded() = cache.awaitLoaded()
 
-    /** Cinematic unless changed, as ArchiveTune's player starts. */
+    /** [PlayerStyle.DEFAULT] unless changed - and for a style no longer offered, such as the ones dropped. */
     val playerStyle: Setting<PlayerStyle> = cache.setting { preferences ->
         preferences[PLAYER_STYLE]?.let { name -> runCatching { PlayerStyle.valueOf(name) }.getOrNull() }
-            ?: PlayerStyle.CINEMATIC
+            ?: PlayerStyle.DEFAULT
     }
 
     suspend fun setPlayerStyle(style: PlayerStyle) {

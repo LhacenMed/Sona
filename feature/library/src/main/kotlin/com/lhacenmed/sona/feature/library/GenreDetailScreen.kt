@@ -5,6 +5,8 @@ import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.itemsOrEmpty
+import com.lhacenmed.sona.core.designsystem.component.CoverArtDefaults
+import com.lhacenmed.sona.core.designsystem.component.SonaGenreCover
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.library.options.GenreOptionsContext
@@ -23,7 +25,22 @@ data class GenreDetailScreen(val genreId: Long) : Screen {
 
         TrackListDetail(
             title = genre?.name ?: "Genre",
-            subtitle = "${tracks.itemsOrEmpty.size} tracks",
+            header = DetailHeaderContent(
+                type = "Genre",
+                subhead = null,
+                info = listOf(
+                    pluralCount(genre?.artistCount ?: 0, "artist"),
+                    trackCountLabel(tracks.itemsOrEmpty.size),
+                ).joinToString(DETAIL_INFO_SEPARATOR),
+                cover = {
+                    SonaGenreCover(
+                        coverArtUris = genre?.coverArtUris.orEmpty(),
+                        seed = genreId.hashCode(),
+                        size = CoverArtDefaults.DetailHeaderSize,
+                        cornerRadius = CoverArtDefaults.DetailHeaderCornerRadius,
+                    )
+                },
+            ),
             onBack = navigator::back,
             viewModel = viewModel,
             emptyMessage = "This genre has no tracks.",

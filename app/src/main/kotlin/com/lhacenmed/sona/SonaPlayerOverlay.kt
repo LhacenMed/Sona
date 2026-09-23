@@ -3,6 +3,7 @@ package com.lhacenmed.sona
 import androidx.compose.runtime.Composable
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.PlayerOverlay
+import com.lhacenmed.sona.feature.equalizer.EqualizerScreen
 import com.lhacenmed.sona.feature.library.AlbumDetailScreen
 import com.lhacenmed.sona.feature.library.ArtistDetailScreen
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
@@ -18,11 +19,12 @@ import javax.inject.Inject
 class SonaPlayerOverlay @Inject constructor() : PlayerOverlay {
 
     @Composable
-    override fun Content() {
+    override fun Content(content: @Composable () -> Unit) {
         val navigator = LocalNavigator.current
         BottomSheetPlayerHost(
             onGoToAlbum = { albumId -> navigator.go(AlbumDetailScreen(albumId)) },
             onGoToArtist = { artistId -> navigator.go(ArtistDetailScreen(artistId)) },
+            onOpenEqualizer = { navigator.go(EqualizerScreen) },
             // The player and its queue open the same options sheet every track row in the library
             // opens - the app is where the two features are introduced to each other.
             trackOptionsSheet = { track, onDismissRequest ->
@@ -31,6 +33,7 @@ class SonaPlayerOverlay @Inject constructor() : PlayerOverlay {
                     onDismissRequest = onDismissRequest,
                 )
             },
+            content = content,
         )
     }
 }

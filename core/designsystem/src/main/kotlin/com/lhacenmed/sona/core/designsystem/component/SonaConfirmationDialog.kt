@@ -1,5 +1,6 @@
-package com.lhacenmed.sona.feature.library.operation
+package com.lhacenmed.sona.core.designsystem.component
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -7,7 +8,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -16,32 +16,30 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.lhacenmed.sona.core.designsystem.component.SonaActionButtonGroup
-import com.lhacenmed.sona.core.designsystem.component.actionButton
-import com.lhacenmed.sona.feature.library.options.toast
+import com.lhacenmed.sona.core.designsystem.R
 
 /** A progress bar's own height: the slot held for it before it appears. */
 private val ProgressSlotHeight = 4.dp
 
 /**
- * Asks before a change that cannot be taken back, then stays over it until it has finished - the one
- * shape every destructive library change takes: excluding folders, deleting playlists, removing
- * tracks from a playlist.
+ * The one confirmation dialog in the app: it asks before a change, then stays over it until it has
+ * finished - excluding folders, deleting playlists, adding or removing a playlist's tracks, clearing
+ * the lyrics cache.
  *
- * [total] says how much will change - "3 folders" - rather than listing it. Confirming starts
- * [operation], which reports back whether it succeeded. Until it does, an indeterminate progress bar
- * runs - none of these changes can tell how far along it is - both buttons are held and the dialog
- * cannot be dismissed, so nothing reads as done before it is. Once it reports, a toast says how it went
- * and the dialog closes.
+ * [title] names the change and how much it touches - "Remove 3 tracks" - so [message] only says what
+ * follows from it. Confirming starts [operation], which reports back whether it succeeded. Until it
+ * does, an indeterminate progress bar runs - none of these changes can tell how far along it is - both
+ * buttons are held and the dialog cannot be dismissed, so nothing reads as done before it is. Once it
+ * reports, a toast says how it went and the dialog closes.
  *
  * The progress bar's slot is held from the first frame, so confirming moves nothing in the dialog.
  */
 @Composable
-internal fun ConfirmedOperationDialog(
+fun SonaConfirmationDialog(
     title: String,
     message: String,
-    total: String,
     confirmLabel: String,
     successMessage: String,
     failureMessage: String,
@@ -57,12 +55,6 @@ internal fun ConfirmedOperationDialog(
         text = {
             Column {
                 Text(message)
-                Text(
-                    text = "Total: $total",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 12.dp),
-                )
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -74,14 +66,17 @@ internal fun ConfirmedOperationDialog(
             }
         },
         confirmButton = {
+            // Read here rather than inside the group: a group builds its items outside composition.
+            val cancelLabel = stringResource(R.string.confirmation_dialog_cancel)
             SonaActionButtonGroup {
-                actionButton(label = "Cancel", onClick = onDismiss, enabled = !isRunning)
+                actionButton(label = cancelLabel, onClick = onDismiss, enabled = !isRunning)
                 actionButton(
                     label = confirmLabel,
                     onClick = {
                         isRunning = true
                         operation { succeeded ->
-                            context.toast(if (succeeded) successMessage else failureMessage)
+                            val outcome = if (succeeded) successMessage else failureMessage
+                            Toast.makeText(context.applicationContext, outcome, Toast.LENGTH_SHORT).show()
                             onDismiss()
                         }
                     },

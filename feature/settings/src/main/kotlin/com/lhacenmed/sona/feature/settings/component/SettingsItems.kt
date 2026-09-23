@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
@@ -64,20 +65,29 @@ fun SettingsActionItem(
     )
 }
 
-/** A row that does something when pressed. */
+/**
+ * A row that does something when pressed. A disabled one keeps its place, faded and inert, so the
+ * screen keeps one shape whether or not it can be pressed right now.
+ */
 @Composable
 fun SettingsActionItem(
     title: String,
     summary: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     ListItem(
         headlineContent = { Text(title) },
         supportingContent = { Text(summary) },
-        modifier = modifier.clickable(onClick = onClick),
+        modifier = modifier
+            .clickable(enabled = enabled, onClick = onClick)
+            .alpha(if (enabled) 1f else DISABLED_ROW_ALPHA),
     )
 }
+
+/** Material's opacity for disabled content. */
+private const val DISABLED_ROW_ALPHA = 0.38f
 
 /** A row that only reports something - a version, a size, a total. Not a control, so not clickable. */
 @Composable

@@ -25,6 +25,7 @@ class SettingsLoader @Inject constructor(
     private val imageSettings: ImageSettings,
     private val playerStyleSettings: PlayerStyleSettings,
     private val lyricsSettings: LyricsSettings,
+    private val updateSettings: UpdateSettings,
 ) {
     suspend fun load() {
         librarySettings.awaitLoaded()
@@ -35,5 +36,6 @@ class SettingsLoader @Inject constructor(
         imageSettings.awaitLoaded()
         playerStyleSettings.awaitLoaded()
         lyricsSettings.awaitLoaded()
+        updateSettings.awaitLoaded()
     }
 }

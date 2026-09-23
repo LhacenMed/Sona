@@ -13,6 +13,12 @@ interface AppNavigator {
     fun go(screen: Screen)
     fun back()
 
+    /**
+     * Leaves this screen outright, whatever it is showing - unlike [back], which an open search or a
+     * selection answers first. For a screen whose work is done.
+     */
+    fun close()
+
     /** Calls [listener] each time [go] opens another screen, until it is removed. */
     fun addOnNavigateListener(listener: () -> Unit)
 
@@ -51,6 +57,10 @@ class IntentNavigator(private val activity: ComponentActivity) : AppNavigator {
 
     override fun back() {
         activity.onBackPressedDispatcher.onBackPressed()
+    }
+
+    override fun close() {
+        activity.finish()
     }
 
     override fun addOnNavigateListener(listener: () -> Unit) {
