@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
+import com.lhacenmed.sona.core.model.FastScrollTouchArea
 
 private const val ThemeTransitionDurationMillis = 350
 
@@ -42,13 +43,15 @@ private const val ThemeTransitionDurationMillis = 350
  * Every change of scheme - a new cover, the wallpaper colours returning, light and dark - is animated
  * by [animateColorSchemeAsState], so the whole app moves between schemes as one.
  *
- * [coverStyle] is provided alongside the colours, so every cover in the app is drawn the same way.
+ * [coverStyle] is provided alongside the colours, so every cover in the app is drawn the same way,
+ * and [fastScrollTouchArea] so every list's fast scroller grabs its thumb the same way.
  */
 @Composable
 fun SonaTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     themeColor: Color = DefaultThemeColor,
     coverStyle: CoverStyle,
+    fastScrollTouchArea: FastScrollTouchArea,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -72,7 +75,11 @@ fun SonaTheme(
     SystemBarsFollowing(darkTheme)
 
     MaterialTheme(colorScheme = animateColorSchemeAsState(targetColorScheme)) {
-        CompositionLocalProvider(LocalCoverStyle provides coverStyle, content = content)
+        CompositionLocalProvider(
+            LocalCoverStyle provides coverStyle,
+            LocalFastScrollTouchArea provides fastScrollTouchArea,
+            content = content,
+        )
     }
 }
 

@@ -25,6 +25,8 @@ android {
 
 dependencies {
     implementation(project(":core:designsystem"))
+    // The fast scroll touch area the host hands to SonaTheme is a model type.
+    implementation(project(":core:model"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

@@ -1,7 +1,11 @@
 package com.lhacenmed.sona.feature.settings.screen
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.model.FastScrollTouchArea
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
@@ -21,6 +25,8 @@ object BehaviorScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.current
+        val viewModel: BehaviorSettingsViewModel = hiltViewModel()
+        val fastScrollTouchArea by viewModel.fastScrollTouchArea.collectAsStateWithLifecycle()
 
         SettingsList {
             SettingsSection(stringResource(R.string.behavior_display_section)) {
@@ -46,6 +52,12 @@ object BehaviorScreen : Screen {
                         stringResource(R.string.playback_bar_action_favorite),
                         stringResource(R.string.playback_bar_action_none),
                     ),
+                )
+                SettingsChoiceItem(
+                    title = stringResource(R.string.fast_scroll_touch_area_title),
+                    options = FastScrollTouchArea.entries.map { fastScrollTouchAreaLabel(it) },
+                    selectedIndex = fastScrollTouchArea.ordinal,
+                    onSelect = { viewModel.setFastScrollTouchArea(FastScrollTouchArea.entries[it]) },
                 )
             }
 
@@ -109,3 +121,11 @@ object BehaviorScreen : Screen {
         }
     }
 }
+
+@Composable
+private fun fastScrollTouchAreaLabel(touchArea: FastScrollTouchArea): String =
+    when (touchArea) {
+        FastScrollTouchArea.NARROW -> stringResource(R.string.fast_scroll_touch_area_narrow)
+        FastScrollTouchArea.STANDARD -> stringResource(R.string.fast_scroll_touch_area_standard)
+        FastScrollTouchArea.WIDE -> stringResource(R.string.fast_scroll_touch_area_wide)
+    }
