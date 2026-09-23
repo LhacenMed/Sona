@@ -8,9 +8,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.lhacenmed.sona.core.data.LibraryRepository
+import com.lhacenmed.sona.core.datastore.UpdateSettings
 import com.lhacenmed.sona.core.designsystem.SonaActivity
 import com.lhacenmed.sona.core.designsystem.theme.AppCoverStyle
 import com.lhacenmed.sona.core.designsystem.theme.AppThemeSeed
@@ -21,6 +24,12 @@ import com.lhacenmed.sona.core.navigation.PlayerOverlay
 import com.lhacenmed.sona.feature.scanner.MediaScanner
 import com.lhacenmed.sona.feature.scanner.hasScannerPermission
 import com.lhacenmed.sona.feature.scanner.scannerRequiredPermission
+import com.lhacenmed.sona.feature.update.NetworkMonitor
+import com.lhacenmed.sona.feature.update.UpdateChecker
+import com.lhacenmed.sona.feature.update.UpdateRegistry
+import com.lhacenmed.sona.feature.update.UpdateState
+import com.lhacenmed.sona.feature.update.UpdateStore
+import com.lhacenmed.sona.feature.update.ui.UpdateGate
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
@@ -54,6 +63,9 @@ class MainActivity : SonaActivity() {
 
     @Inject
     lateinit var playerOverlay: PlayerOverlay
+
+    @Inject
+    lateinit var updateSettings: UpdateSettings
 
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -92,14 +104,43 @@ class MainActivity : SonaActivity() {
             requestPermissionLauncher.launch(scannerRequiredPermission())
         }
 
+        checkForUpdate()
+
         setContent {
             val themeColor by themeSeed.color.collectAsStateWithLifecycle()
             val coverStyle by appCoverStyle.style.collectAsStateWithLifecycle()
+            val autoPromptUpdates by updateSettings.autoPrompt.flow
+                .collectAsStateWithLifecycle(updateSettings.autoPrompt.value)
 
             SonaTheme(themeColor = themeColor, coverStyle = coverStyle) {
                 val navigator = remember { IntentNavigator(this) }
                 CompositionLocalProvider(LocalNavigator provides navigator) {
                     AppShell(playerOverlay = playerOverlay)
+                    UpdateGate(autoPrompt = autoPromptUpdates)
+                }
+            }
+        }
+    }
+
+    /**
+     * Connectivity-driven update check; populates [UpdateRegistry] (and persists via [UpdateStore])
+     * so [UpdateGate] can prompt — now and on any later launch, even offline. Runs whenever the
+     * device is online: at launch if already connected, and again the moment connectivity returns
+     * for a user who opened the app offline. Skips re-checking while a download is mid-flight or a
+     * finished APK is awaiting install. Skipped for debug builds, whose `.debug` applicationId would
+     * side-load the release APK as a separate app rather than update in place.
+     */
+    private fun checkForUpdate() {
+        if (BuildConfig.DEBUG) return
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                NetworkMonitor.online(applicationContext).collect { online ->
+                    if (!online || UpdateRegistry.isActive) return@collect
+                    if (UpdateRegistry.stateOf() is UpdateState.Downloaded) return@collect
+                    UpdateChecker.check(applicationContext)?.let {
+                        UpdateStore.save(applicationContext, it)
+                        UpdateRegistry.setAvailable(it)
+                    }
                 }
             }
         }

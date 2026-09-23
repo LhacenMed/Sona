@@ -1,12 +1,10 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.ksp)
-    alias(libs.plugins.hilt)
 }
 
 android {
-    namespace = "com.lhacenmed.sona.feature.settings"
+    namespace = "com.lhacenmed.sona.feature.update"
     compileSdk = 37
 
     defaultConfig {
@@ -24,28 +22,15 @@ android {
 }
 
 dependencies {
-    implementation(project(":core:navigation"))
-    implementation(project(":core:datastore"))
-    implementation(project(":core:data"))
-    implementation(project(":core:common"))
     implementation(project(":core:designsystem"))
-    implementation(project(":feature:scanner"))
-    implementation(project(":feature:player"))
-    implementation(project(":feature:update"))
+
+    implementation(libs.androidx.core.ktx)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.material.icons.extended)
 
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation(libs.androidx.hilt.navigation.compose)
-
-    implementation(libs.hilt.android)
-    ksp(libs.hilt.compiler)
 
     implementation(libs.kotlinx.coroutines.android)
 }

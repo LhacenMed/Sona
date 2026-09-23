@@ -19,6 +19,22 @@ sealed class Version(
 ) {
     abstract fun toVersionName(): String
 
+    /**
+     * A code higher than every earlier release's, whatever changed - so the in-app updater, which
+     * compares codes, sees pre-release builds too. Major, minor and patch come first, then the stage
+     * (alpha < beta < rc < stable, so 1.0.0 outranks 1.0.0-rc.3), then the pre-release build, which
+     * must stay under 200. The last digit is left free for the per-ABI offset added to split APKs.
+     */
+    fun toVersionCode(): Int {
+        val stage = when (this) {
+            is Alpha -> 100
+            is Beta -> 300
+            is ReleaseCandidate -> 500
+            is Stable -> 900
+        }
+        return (((versionMajor * 100 + versionMinor) * 100 + versionPatch) * 1000 + stage + versionBuild) * 10
+    }
+
     class Alpha(
         versionMajor: Int, versionMinor: Int, versionPatch: Int, versionBuild: Int,
     ) : Version(versionMajor, versionMinor, versionPatch, versionBuild) {
@@ -86,7 +102,7 @@ android {
         applicationId = "com.lhacenmed.sona"
         minSdk = 26
         targetSdk = 36
-        versionCode = currentVersion.run { versionMajor * 10000 + versionMinor * 100 + versionPatch }
+        versionCode = currentVersion.toVersionCode()
         versionName = currentVersion.toVersionName()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -183,6 +199,7 @@ dependencies {
     implementation(project(":feature:player"))
     implementation(project(":feature:settings"))
     implementation(project(":feature:equalizer"))
+    implementation(project(":feature:update"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

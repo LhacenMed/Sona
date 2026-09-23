@@ -271,10 +271,12 @@
 
     <!-- Updates -->
     <string name="updates_section">Updates</string>
-    <string name="updates_automatic_check_title">Check automatically</string>
-    <string name="updates_automatic_check_summary">Look for a new version when the app starts</string>
+    <string name="updates_automatic_check_title">Update alerts</string>
+    <string name="updates_automatic_check_summary">Announce a new version as soon as it is found</string>
     <string name="updates_check_now_title">Check now</string>
     <string name="updates_check_now_summary">Look for a new version straight away</string>
+    <string name="updates_checking">Checking…</string>
+    <string name="updates_up_to_date">Up to date</string>
     <string name="updates_installed_version_title">Installed version</string>
     <string name="updates_placeholder_version">1.0.0</string>
 
