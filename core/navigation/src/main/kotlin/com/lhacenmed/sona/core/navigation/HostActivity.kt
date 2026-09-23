@@ -19,6 +19,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.SonaActivity
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.theme.AppCoverStyle
+import com.lhacenmed.sona.core.designsystem.theme.AppFastScrollTouchArea
 import com.lhacenmed.sona.core.designsystem.theme.AppThemeSeed
 import com.lhacenmed.sona.core.designsystem.theme.SonaTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -51,6 +52,10 @@ class HostActivity : SonaActivity() {
     @Inject
     lateinit var appCoverStyle: AppCoverStyle
 
+    /** The same process-wide fast scroll touch area, so a pushed screen's lists grab their thumb as the library's do. */
+    @Inject
+    lateinit var appFastScrollTouchArea: AppFastScrollTouchArea
+
     /** The same player the main activity lays over its content, so every pushed screen has it too. */
     @Inject
     lateinit var playerOverlay: PlayerOverlay
@@ -67,8 +72,13 @@ class HostActivity : SonaActivity() {
         setContent {
             val themeColor by themeSeed.color.collectAsStateWithLifecycle()
             val coverStyle by appCoverStyle.style.collectAsStateWithLifecycle()
+            val fastScrollTouchArea by appFastScrollTouchArea.touchArea.collectAsStateWithLifecycle()
 
-            SonaTheme(themeColor = themeColor, coverStyle = coverStyle) {
+            SonaTheme(
+                themeColor = themeColor,
+                coverStyle = coverStyle,
+                fastScrollTouchArea = fastScrollTouchArea,
+            ) {
                 val navigator = remember { IntentNavigator(this) }
                 // Only screens that named a title get a bar from the host; the rest draw their own,
                 // because a title alone cannot express a selection or an action.

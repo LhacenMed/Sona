@@ -39,9 +39,9 @@ internal object LibrarySortSpecs {
     private val trackTitle = SortField.Name<Track>({ it.title })
     private val trackArtist = SortField.Name<Track>({ it.artist }, { it.artist == UnknownNames.ARTIST })
     private val trackAlbum = SortField.Name<Track>({ it.album }, { it.album == UnknownNames.ALBUM })
-    private val trackYear = SortField.Number<Track> { it.year?.toLong() }
-    private val trackDuration = SortField.Number<Track> { it.durationMs }
-    private val trackDateAdded = SortField.Number<Track> { it.dateAddedSeconds }
+    private val trackYear = SortField.Number<Track>(NumberSection) { it.year?.toLong() }
+    private val trackDuration = SortField.Number<Track>(::durationSection) { it.durationMs }
+    private val trackDateAdded = SortField.Number<Track>(::yearOfEpochSecondsSection) { it.dateAddedSeconds }
     private val trackDisc = SortField.Number<Track> { it.discNumber?.toLong() }
     private val trackNumber = SortField.Number<Track> { it.trackNumber?.toLong() }
 
@@ -163,9 +163,11 @@ internal object LibrarySortSpecs {
                 SortField.Number { it.year?.toLong() },
                 albumTitle,
             ),
-            SortCriterion.YEAR to listOf(SortField.Number<Album> { it.year?.toLong() }, albumTitle),
-            SortCriterion.TRACK_COUNT to listOf(SortField.Number<Album> { it.trackCount.toLong() }, albumTitle),
-            SortCriterion.DATE_ADDED to listOf(SortField.Number<Album> { it.dateAddedSeconds }, albumTitle),
+            SortCriterion.YEAR to listOf(SortField.Number<Album>(NumberSection) { it.year?.toLong() }, albumTitle),
+            SortCriterion.TRACK_COUNT to
+                listOf(SortField.Number<Album>(NumberSection) { it.trackCount.toLong() }, albumTitle),
+            SortCriterion.DATE_ADDED to
+                listOf(SortField.Number<Album>(::yearOfEpochSecondsSection) { it.dateAddedSeconds }, albumTitle),
         ),
     )
 
@@ -176,8 +178,10 @@ internal object LibrarySortSpecs {
         default = nameAscending,
         orderings = mapOf(
             SortCriterion.NAME to listOf(artistName),
-            SortCriterion.ALBUM_COUNT to listOf(SortField.Number<Artist> { it.albumCount.toLong() }, artistName),
-            SortCriterion.TRACK_COUNT to listOf(SortField.Number<Artist> { it.trackCount.toLong() }, artistName),
+            SortCriterion.ALBUM_COUNT to
+                listOf(SortField.Number<Artist>(NumberSection) { it.albumCount.toLong() }, artistName),
+            SortCriterion.TRACK_COUNT to
+                listOf(SortField.Number<Artist>(NumberSection) { it.trackCount.toLong() }, artistName),
         ),
     )
 
@@ -188,7 +192,8 @@ internal object LibrarySortSpecs {
         default = nameAscending,
         orderings = mapOf(
             SortCriterion.NAME to listOf(genreName),
-            SortCriterion.TRACK_COUNT to listOf(SortField.Number<Genre> { it.trackCount.toLong() }, genreName),
+            SortCriterion.TRACK_COUNT to
+                listOf(SortField.Number<Genre>(NumberSection) { it.trackCount.toLong() }, genreName),
         ),
     )
 
@@ -199,7 +204,8 @@ internal object LibrarySortSpecs {
         default = nameAscending,
         orderings = mapOf(
             SortCriterion.NAME to listOf(folderName),
-            SortCriterion.TRACK_COUNT to listOf(SortField.Number<Folder> { it.trackCount.toLong() }, folderName),
+            SortCriterion.TRACK_COUNT to
+                listOf(SortField.Number<Folder>(NumberSection) { it.trackCount.toLong() }, folderName),
         ),
     )
 

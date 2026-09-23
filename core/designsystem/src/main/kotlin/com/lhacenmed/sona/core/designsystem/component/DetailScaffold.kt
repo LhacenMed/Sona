@@ -36,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -270,12 +271,18 @@ fun DetailScaffold(
                 },
                 { HorizontalDivider() },
                 {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.nestedScroll(state.nestedScrollConnection),
-                        contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
-                        content = content,
-                    )
+                    // Fast scrolling only once the header has collapsed, as Auxio's detail list allows it:
+                    // the thumb moves the list directly, past the header's collapse, which would leave
+                    // the header standing open over a list scrolled somewhere else.
+                    val isCollapsed by remember(state) { derivedStateOf { state.collapse == 1f } }
+                    FastScroller(listState = listState, enabled = isCollapsed) {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.nestedScroll(state.nestedScrollConnection),
+                            contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+                            content = content,
+                        )
+                    }
                 },
             ),
         ) { (headerMeasurables, dividerMeasurables, listMeasurables), constraints ->

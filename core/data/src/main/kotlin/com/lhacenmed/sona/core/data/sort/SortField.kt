@@ -22,7 +22,14 @@ internal sealed interface SortField<in T> {
         val isPlaceholder: (T) -> Boolean = { false },
     ) : SortField<T>
 
-    class Number<in T>(val read: (T) -> Long?) : SortField<T>
+    /**
+     * [section] names the section a value falls in when the list is sorted by it - a year, a count - or
+     * is null where the value has no section worth naming, like a position in a hand-made order.
+     */
+    class Number<in T>(
+        val section: ((Long) -> String)? = null,
+        val read: (T) -> Long?,
+    ) : SortField<T>
 }
 
 /**

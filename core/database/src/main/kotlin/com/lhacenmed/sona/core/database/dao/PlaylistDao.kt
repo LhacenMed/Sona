@@ -6,18 +6,26 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import com.lhacenmed.sona.core.database.entity.PlaylistCoverSource
 import com.lhacenmed.sona.core.database.entity.PlaylistEntity
 import com.lhacenmed.sona.core.database.entity.PlaylistTrackEntity
 import com.lhacenmed.sona.core.database.entity.TrackEntity
 import kotlinx.coroutines.flow.Flow
 
-/** A playlist plus what the list screen shows and sorts it by beyond its name. */
+/**
+ * A playlist plus what the list screen shows and sorts it by beyond its name - and its cover choice,
+ * with [coverTrackArtUri] the chosen track's cover, or null when that track is not in the library.
+ */
 data class PlaylistWithCount(
     val id: Long,
     val name: String,
     val isBuiltIn: Boolean,
     val trackCount: Int,
     val modifiedAt: Long,
+    val coverSource: PlaylistCoverSource,
+    val coverTrackId: Long?,
+    val coverImageUri: String?,
+    val coverTrackArtUri: String?,
 )
 
 /** How many of a playlist's tracks share one cover, which is what ranks a playlist's composed cover. */
@@ -36,17 +44,27 @@ data class PlaylistTrackRow(
 @Dao
 interface PlaylistDao {
 
-    /** Every playlist, unordered: the repository sorts them the way the user chose. */
+    /**
+     * Every playlist, unordered: the repository sorts them the way the user chose. A cover chosen from
+     * one track is read here with the rest, so it arrives in the same emission as its playlist.
+     */
     @Query(
         """
         SELECT p.id AS id, p.name AS name, p.isBuiltIn AS isBuiltIn, p.modifiedAt AS modifiedAt,
+               p.coverSource AS coverSource, p.coverTrackId AS coverTrackId,
+               p.coverImageUri AS coverImageUri, ct.coverArtUri AS coverTrackArtUri,
                COUNT(pt.trackId) AS trackCount
         FROM playlists p
         LEFT JOIN playlist_tracks pt ON pt.playlistId = p.id
+        LEFT JOIN tracks ct ON ct.id = p.coverTrackId
         GROUP BY p.id
         """,
     )
     fun observeAll(): Flow<List<PlaylistWithCount>>
+
+    /** The playlists whose cover is their first or last track, which only their sorted tracks can say. */
+    @Query("SELECT id FROM playlists WHERE coverSource IN ('FIRST_TRACK', 'LAST_TRACK')")
+    fun observeIdsCoveredBySortedTrack(): Flow<List<Long>>
 
     /**
      * How many tracks in each playlist share each cover, which is what a playlist row composes its
@@ -87,7 +105,39 @@ interface PlaylistDao {
 
     /** Built-in playlists are excluded here rather than in the caller, so nothing can delete them. */
     @Query("DELETE FROM playlists WHERE id = :playlistId AND isBuiltIn = 0")
-    suspend fun delete(playlistId: Long)
+    suspend fun delete(playlistId: Long): Int
+
+    @Query("SELECT coverImageUri FROM playlists WHERE id = :playlistId")
+    suspend fun coverImageUri(playlistId: Long): String?
+
+    @Query(
+        "UPDATE playlists SET coverSource = :source, coverTrackId = :trackId, coverImageUri = :imageUri, " +
+            "modifiedAt = :modifiedAt WHERE id = :playlistId",
+    )
+    suspend fun setCover(
+        playlistId: Long,
+        source: PlaylistCoverSource,
+        trackId: Long?,
+        imageUri: String?,
+        modifiedAt: Long,
+    )
+
+    /**
+     * Renames a playlist and sets its cover as one change. A built-in playlist keeps its name - see
+     * [rename] - and takes the cover all the same.
+     */
+    @Transaction
+    suspend fun edit(
+        playlistId: Long,
+        name: String,
+        coverSource: PlaylistCoverSource,
+        coverTrackId: Long?,
+        coverImageUri: String?,
+        editedAt: Long,
+    ) {
+        rename(playlistId, name, editedAt)
+        setCover(playlistId, coverSource, coverTrackId, coverImageUri, editedAt)
+    }
 
     @Query("UPDATE playlists SET modifiedAt = :modifiedAt WHERE id = :playlistId")
     suspend fun setModifiedAt(playlistId: Long, modifiedAt: Long)

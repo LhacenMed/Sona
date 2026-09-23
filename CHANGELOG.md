@@ -6,6 +6,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-23
+
+### Added
+
+- Playlist editor for a playlist's name and cover: stacked track covers, its first or last track, any track in the library, or an image from the photo picker. Favorites can take a cover too.
+- Fast scroller on every library list, with a popup naming the current section as the sort defines it and a haptic tick as it changes.
+- Fast scroll touch area setting (Narrow, Standard or Wide) under Behavior › Display.
+- Rubber-band swipe on the mini player: it follows the finger to the skip point, ticks, then resists; towards a side with no track it resists from the start.
+- Rubber-band stretch on the player's cover when swiping past the first or last track, instead of not moving at all.
+
+### Changed
+
+- The mini player now floats with an even gap above the end of every list.
+
+### Fixed
+
+- A mini player swipe can be undone before release on the first and last track, and pulling out and snapping back no longer skips.
+
 ## [1.0.0] - 2026-09-23
 
 First stable release.
@@ -28,5 +46,6 @@ First stable release.
 - Artwork-based dynamic colours, light and dark themes, composed collection covers, animated launch screen and edge-to-edge layout.
 - In-app updates from GitHub Releases, with an option to check only on request.
 
-[Unreleased]: https://github.com/LhacenMed/Sona/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/LhacenMed/Sona/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/LhacenMed/Sona/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/LhacenMed/Sona/releases/tag/v1.0.0

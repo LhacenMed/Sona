@@ -26,6 +26,7 @@ fun AlbumsScreen(
     val hasPermission by viewModel.hasPermission.collectAsStateWithLifecycle()
     val playback by viewModel.playback.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val albumSections by viewModel.albumSections.collectAsStateWithLifecycle()
     val navigator = LocalNavigator.current
     var optionsTarget by remember { mutableStateOf<OptionsTarget.ForAlbum?>(null) }
 
@@ -37,6 +38,7 @@ fun AlbumsScreen(
         emptyMessage = searchEmptyMessage(searchQuery),
         key = { it.id },
         loadingIcon = SonaIcons.Album,
+        sectionOf = albumSections,
         modifier = modifier,
         listState = listState,
     ) { album ->
