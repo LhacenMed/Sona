@@ -34,6 +34,8 @@ dependencies {
     implementation(project(":feature:scanner"))
 
     implementation(libs.androidx.core.ktx)
+    // The system photo picker a playlist's cover image is chosen with.
+    implementation(libs.androidx.activity.compose)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

@@ -3,6 +3,10 @@ package com.lhacenmed.sona.core.data
 import com.lhacenmed.sona.core.common.cover.rankedCoverArtUris
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.common.di.DefaultDispatcher
+import com.lhacenmed.sona.core.data.playlist.PlaylistCoverImages
+import com.lhacenmed.sona.core.data.playlist.cover
+import com.lhacenmed.sona.core.data.playlist.coverArtUris
+import com.lhacenmed.sona.core.data.playlist.source
 import com.lhacenmed.sona.core.data.sort.LibrarySortOrders
 import com.lhacenmed.sona.core.data.sort.LibrarySortSpecs
 import com.lhacenmed.sona.core.data.sort.PlaylistEntry
@@ -22,18 +26,22 @@ import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Folder
 import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.Playlist
+import com.lhacenmed.sona.core.model.PlaylistCover
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.sort.SortTarget
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -70,6 +78,7 @@ class LibraryRepository @Inject constructor(
     private val genreDao: GenreDao,
     private val playlistDao: PlaylistDao,
     private val playStatsDao: PlayStatsDao,
+    private val playlistCoverImages: PlaylistCoverImages,
     private val sortOrders: LibrarySortOrders,
     librarySettings: LibrarySettings,
     @ApplicationScope private val scope: CoroutineScope,
@@ -172,27 +181,51 @@ class LibraryRepository @Inject constructor(
         return ids.mapNotNull { byId[it] }
     }
 
-    /** Every playlist in the chosen order, Favorites first, with the count and covers each row shows. */
-    val playlists: StateFlow<LibraryContent<Playlist>> = playlistDao.observeAll()
-        .sortedFor(LibrarySortSpecs.playlists) { rows -> rows }
-        .combine(playlistDao.observeCoverArt()) { rows, coverRows ->
-            val coversByPlaylist = coverRows.groupBy { it.playlistId }
-            rows
-                // Stable, so the chosen order holds among the rest. Favorites is the one playlist
-                // every user has, and it keeps the top whatever playlists are sorted by.
-                .sortedByDescending { it.isBuiltIn }
-                .map { row ->
-                    Playlist(
-                        id = row.id,
-                        name = row.name,
-                        isBuiltIn = row.isBuiltIn,
-                        trackCount = row.trackCount,
-                        coverArtUris = rankedCoverArtUris(
+    /**
+     * The tracks, in their current sort, of every playlist whose cover is its first or last track - of
+     * those alone, so a playlist with any other cover never has its tracks read to draw it.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val tracksOfPlaylistsCoveredBySortedTrack: Flow<Map<Long, List<Track>>> =
+        playlistDao.observeIdsCoveredBySortedTrack()
+            .distinctUntilChanged()
+            .flatMapLatest { playlistIds ->
+                if (playlistIds.isEmpty()) {
+                    flowOf(emptyMap())
+                } else {
+                    combine(playlistIds.map { id -> playlistTracks(id).map { id to it.itemsOrEmpty } }) { it.toMap() }
+                }
+            }
+
+    /** Every playlist in the chosen order, Favorites first, with the count and cover each row shows. */
+    val playlists: StateFlow<LibraryContent<Playlist>> = combine(
+        playlistDao.observeAll().sortedFor(LibrarySortSpecs.playlists) { rows -> rows },
+        playlistDao.observeCoverArt(),
+        tracksOfPlaylistsCoveredBySortedTrack,
+    ) { rows, coverRows, sortedTracksByPlaylist ->
+        val coversByPlaylist = coverRows.groupBy { it.playlistId }
+        rows
+            // Stable, so the chosen order holds among the rest. Favorites is the one playlist
+            // every user has, and it keeps the top whatever playlists are sorted by.
+            .sortedByDescending { it.isBuiltIn }
+            .map { row ->
+                val cover = row.cover()
+                Playlist(
+                    id = row.id,
+                    name = row.name,
+                    isBuiltIn = row.isBuiltIn,
+                    trackCount = row.trackCount,
+                    cover = cover,
+                    coverArtUris = cover.coverArtUris(
+                        stackedCoverArtUris = rankedCoverArtUris(
                             coversByPlaylist[row.id].orEmpty().associate { it.coverArtUri to it.trackCount },
                         ),
-                    )
-                }
-        }
+                        sortedTracks = sortedTracksByPlaylist[row.id].orEmpty(),
+                        chosenTrackCoverArtUri = row.coverTrackArtUri,
+                    ),
+                )
+            }
+    }
         .shareContent()
 
     /** How many tracks each derived list would show, for the playlists tab's subtitles. */
@@ -241,9 +274,41 @@ class LibraryRepository @Inject constructor(
         playlistDao.rename(playlistId, name.trim(), System.currentTimeMillis())
     }
 
-    /** Deletes a playlist and its membership. The tracks themselves are untouched. */
+    /**
+     * Renames a playlist and sets its cover, as one change - or throws, leaving it as it was, when the
+     * name is taken or a picked image cannot be read. A built-in playlist keeps its name and takes the cover.
+     *
+     * A picked image is copied in only here, on saving, so an edit given up on leaves no copy behind;
+     * the copy it replaces is deleted once the change is stored.
+     */
+    suspend fun editPlaylist(playlistId: Long, name: String, cover: PlaylistCover) {
+        val previousImageUri = playlistDao.coverImageUri(playlistId)
+        val storedCover = if (cover is PlaylistCover.Image && !playlistCoverImages.isOwned(cover.uri)) {
+            PlaylistCover.Image(playlistCoverImages.import(cover.uri))
+        } else {
+            cover
+        }
+        val imageUri = (storedCover as? PlaylistCover.Image)?.uri
+        try {
+            playlistDao.edit(
+                playlistId = playlistId,
+                name = name.trim(),
+                coverSource = storedCover.source,
+                coverTrackId = (storedCover as? PlaylistCover.OfTrack)?.trackId,
+                coverImageUri = imageUri,
+                editedAt = System.currentTimeMillis(),
+            )
+        } catch (failure: Exception) {
+            if (imageUri != null && imageUri != previousImageUri) playlistCoverImages.delete(imageUri)
+            throw failure
+        }
+        if (previousImageUri != null && previousImageUri != imageUri) playlistCoverImages.delete(previousImageUri)
+    }
+
+    /** Deletes a playlist, its membership and its cover image. The tracks themselves are untouched. */
     suspend fun deletePlaylist(playlistId: Long) {
-        playlistDao.delete(playlistId)
+        val imageUri = playlistDao.coverImageUri(playlistId)
+        if (playlistDao.delete(playlistId) > 0 && imageUri != null) playlistCoverImages.delete(imageUri)
     }
 
     suspend fun removeTracksFromPlaylist(playlistId: Long, trackIds: List<Long>) {
