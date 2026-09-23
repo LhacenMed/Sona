@@ -24,11 +24,11 @@ Save them in docs/media/screenshots/ with the file names used here.
 
 | Library | Player | Queue | Lyrics |
 |:---:|:---:|:---:|:---:|
-| <img src="docs/media/screenshots/library.png" width="200" alt="Library"> | <img src="docs/media/screenshots/player.png" width="200" alt="Player"> | <img src="docs/media/screenshots/queue.png" width="200" alt="Queue"> | <img src="docs/media/screenshots/lyrics.png" width="200" alt="Lyrics"> |
+| <img src="docs/media/screenshots/library.jpg" width="200" alt="Library"> | <img src="docs/media/screenshots/player.jpg" width="200" alt="Player"> | <img src="docs/media/screenshots/queue.jpg" width="200" alt="Queue"> | <img src="docs/media/screenshots/lyrics.jpg" width="200" alt="Lyrics"> |
 
 | Album | Playlists | Selection | Settings |
 |:---:|:---:|:---:|:---:|
-| <img src="docs/media/screenshots/album.png" width="200" alt="Album detail"> | <img src="docs/media/screenshots/playlists.png" width="200" alt="Playlists"> | <img src="docs/media/screenshots/selection.png" width="200" alt="Multi-select"> | <img src="docs/media/screenshots/settings.png" width="200" alt="Settings"> |
+| <img src="docs/media/screenshots/album.jpg" width="200" alt="Album detail"> | <img src="docs/media/screenshots/playlists.jpg" width="200" alt="Playlists"> | <img src="docs/media/screenshots/selection.jpg" width="200" alt="Multi-select"> | <img src="docs/media/screenshots/settings.jpg" width="200" alt="Settings"> |
 
 <!-- PLACEHOLDER (optional): a short screen recording as GIF or MP4, ≤ 10 MB, saved as docs/media/demo.gif -->
 
