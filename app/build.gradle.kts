@@ -62,7 +62,7 @@ sealed class Version(
 
 val currentVersion: Version = Version.Stable(
     versionMajor = 1,
-    versionMinor = 0,
+    versionMinor = 1,
     versionPatch = 0,
 )
 
