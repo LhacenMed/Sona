@@ -1,0 +1,78 @@
+name: Bug report
+description: Something in Sona does not work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check that you are on the [latest release](https://github.com/LhacenMed/Sona/releases/latest) and that the bug is not [already reported](https://github.com/LhacenMed/Sona/issues?q=is%3Aissue).
+        Security problems: do not report them here. Follow [SECURITY.md](https://github.com/LhacenMed/Sona/blob/main/SECURITY.md).
+
+  - type: input
+    id: version
+    attributes:
+      label: Sona version
+      description: Settings › Updates › Installed version.
+      placeholder: 1.0.0
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+      placeholder: Pixel 8, Android 15
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Start from opening the app. One action per line.
+      placeholder: |
+        1. Open the Albums tab
+        2. Long-press an album
+        3. Tap "Add to playlist"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: What happened instead. Include any error message word for word.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: How often does it happen?
+      options:
+        - Every time
+        - Sometimes
+        - Once
+    validations:
+      required: true
+
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshots or recording
+      description: Drag files here. Required for visual bugs.
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        For crashes. With USB debugging enabled, run `adb logcat -d > sona-log.txt` right after the crash and attach the file, or paste the part mentioning `com.lhacenmed.sona`.
+      render: text
