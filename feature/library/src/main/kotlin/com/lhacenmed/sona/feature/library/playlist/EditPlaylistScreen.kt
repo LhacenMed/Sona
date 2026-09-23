@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -43,6 +44,7 @@ import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.playlist.coverArtUris
 import com.lhacenmed.sona.core.designsystem.component.CoverArtDefaults
 import com.lhacenmed.sona.core.designsystem.component.DetailSectionHeader
+import com.lhacenmed.sona.core.designsystem.component.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.SonaPlaylistCover
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
@@ -274,6 +276,7 @@ private fun CoverTrackChooser(
     onBack: () -> Unit,
 ) {
     var searchQuery by rememberSaveable { mutableStateOf<String?>(null) }
+    val listState = rememberLazyListState()
     BackHandler(onBack = onBack)
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -298,20 +301,23 @@ private fun CoverTrackChooser(
                 .weight(1f)
                 .fillMaxWidth(),
         ) { visibleLibraryTracks ->
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
-            ) {
-                if (visiblePlaylistTracks.isNotEmpty()) {
-                    item(key = "playlist-header") { DetailSectionHeader(title = "In this playlist") }
-                    items(items = visiblePlaylistTracks, key = { "playlist-${it.id}" }) { track ->
+            FastScroller(listState = listState, modifier = Modifier.fillMaxSize()) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+                ) {
+                    if (visiblePlaylistTracks.isNotEmpty()) {
+                        item(key = "playlist-header") { DetailSectionHeader(title = "In this playlist") }
+                        items(items = visiblePlaylistTracks, key = { "playlist-${it.id}" }) { track ->
+                            CoverTrackRow(track = track, onClick = { onTrackChosen(track) })
+                        }
+                        item(key = "library-header") { DetailSectionHeader(title = "All tracks") }
+                    }
+                    items(items = visibleLibraryTracks, key = { "library-${it.id}" }) { track ->
                         CoverTrackRow(track = track, onClick = { onTrackChosen(track) })
                     }
-                    item(key = "library-header") { DetailSectionHeader(title = "All tracks") }
-                }
-                items(items = visibleLibraryTracks, key = { "library-${it.id}" }) { track ->
-                    CoverTrackRow(track = track, onClick = { onTrackChosen(track) })
-                }
+            }
             }
         }
     }

@@ -67,6 +67,21 @@ fun <T> List<T>.sortedByName(
         .map { it.first }
 }
 
+/**
+ * The letter [name] sorts under - Auxio's `Name.thumb`: its first token's first character, or "#" when
+ * that token is a number. Read off the same tokens the sort compares, so a name the intelligent sort
+ * files without its article - "The Beatles" - sits under "B", exactly where the sort put it.
+ */
+fun sectionInitial(name: String, intelligentSortingEnabled: Boolean): String {
+    val tokens = if (intelligentSortingEnabled) intelligentTokens(name) else simpleTokens(name)
+    val firstToken = tokens.firstOrNull()?.collationKey?.sourceString
+    return when {
+        firstToken.isNullOrEmpty() -> "?"
+        firstToken.all(Char::isDigit) -> "#"
+        else -> firstToken.first().uppercase()
+    }
+}
+
 // region Shared collation
 
 // java.text.Collator is explicitly documented as not thread-safe, and sorting now runs off the main

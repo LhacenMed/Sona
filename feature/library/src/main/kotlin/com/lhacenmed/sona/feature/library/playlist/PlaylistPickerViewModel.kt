@@ -40,6 +40,13 @@ class PlaylistPickerViewModel @Inject constructor(
     val folders: StateFlow<LibraryContent<Folder>> = repository.folders
     val playlists: StateFlow<LibraryContent<Playlist>> = repository.playlists
 
+    /** The section each list's rows sit in under its library tab's sort - what the fast scroller's popup names. */
+    val trackSections: StateFlow<(Track) -> String?> = repository.trackSections
+    val albumSections: StateFlow<(Album) -> String?> = repository.albumSections
+    val artistSections: StateFlow<(Artist) -> String?> = repository.artistSections
+    val genreSections: StateFlow<(Genre) -> String?> = repository.genreSections
+    val folderSections: StateFlow<(Folder) -> String?> = repository.folderSections
+
     /** What the rows mark as playing - see [LibraryPlayback]. */
     val playback: StateFlow<LibraryPlayback> = libraryPlayback(playbackController, repository)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryPlayback())

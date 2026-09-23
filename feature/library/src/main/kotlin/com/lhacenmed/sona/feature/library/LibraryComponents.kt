@@ -42,6 +42,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.CookieShape
+import com.lhacenmed.sona.core.designsystem.component.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.LocalDragHandle
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
@@ -133,6 +134,9 @@ internal fun <T> LibraryListContent(
  * layouts fall back to item *position*, so when the library changes every row is treated as a
  * different row: scroll position jumps, and nothing can be reused. With one, a rescan that reorders
  * or inserts a few tracks moves the existing rows instead of rebuilding the list.
+ *
+ * Every list has the fast scroller; one given [sectionOf] - the section its sort puts a row in - also
+ * names that section in the scroller's popup.
  */
 @Composable
 internal fun <T> LibraryList(
@@ -146,6 +150,7 @@ internal fun <T> LibraryList(
     modifier: Modifier = Modifier,
     listState: LazyListState = rememberLazyListState(),
     onReorder: ((List<T>) -> Unit)? = null,
+    sectionOf: ((T) -> String?)? = null,
     row: @Composable (T) -> Unit,
 ) {
     LibraryListContent(
@@ -157,31 +162,37 @@ internal fun <T> LibraryList(
         loadingIcon = loadingIcon,
         modifier = modifier,
     ) { items ->
-        if (onReorder != null) {
-            // The same list state as the plain list below, so the rows keep their place when handles
-            // appear and again when they go: a list state belongs to the list, not to one of its modes.
-            ReorderableColumn(
-                items = items,
-                key = key,
-                listState = listState,
-                onReorder = onReorder,
-                row = row,
-            )
-            return@LibraryListContent
-        }
-        KeepAtTopWhenRowsChange(listState = listState, rows = items)
-        LazyColumn(
-            state = listState,
+        FastScroller(
+            listState = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+            sectionAt = sectionOf?.let { section -> { index -> items.getOrNull(index)?.let(section) } },
         ) {
-            items(
-                items = items,
-                key = key,
-                // Every row in these lists is the same composable shape, so telling Compose that
-                // lets it reuse a scrolled-off row's slot table wholesale instead of rebuilding it.
-                contentType = { LIST_ROW_CONTENT_TYPE },
-            ) { item -> row(item) }
+            if (onReorder != null) {
+                // The same list state as the plain list below, so the rows keep their place when handles
+                // appear and again when they go: a list state belongs to the list, not to one of its modes.
+                ReorderableColumn(
+                    items = items,
+                    key = key,
+                    listState = listState,
+                    onReorder = onReorder,
+                    row = row,
+                )
+                return@FastScroller
+            }
+            KeepAtTopWhenRowsChange(listState = listState, rows = items)
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+            ) {
+                items(
+                    items = items,
+                    key = key,
+                    // Every row in these lists is the same composable shape, so telling Compose that
+                    // lets it reuse a scrolled-off row's slot table wholesale instead of rebuilding it.
+                    contentType = { LIST_ROW_CONTENT_TYPE },
+                ) { item -> row(item) }
+            }
         }
     }
 }

@@ -30,6 +30,7 @@ data class AddTracksScreen(val playlistId: Long) : Screen {
         val viewModel: PlaylistPickerViewModel = hiltViewModel()
         val tracks by viewModel.tracks.collectAsStateWithLifecycle()
         val playback by viewModel.playback.collectAsStateWithLifecycle()
+        val trackSections by viewModel.trackSections.collectAsStateWithLifecycle()
         val selection = rememberSelectionState()
         var searchQuery by remember { mutableStateOf<String?>(null) }
         var optionsTarget by remember { mutableStateOf<OptionsTarget.ForTrack?>(null) }
@@ -52,6 +53,7 @@ data class AddTracksScreen(val playlistId: Long) : Screen {
                 emptyMessage = searchEmptyMessage(searchQuery),
                 key = { it.id },
                 loadingIcon = SonaIcons.Song,
+                sectionOf = trackSections,
                 modifier = Modifier.weight(1f).fillMaxWidth(),
             ) { track ->
                 TrackRow(
