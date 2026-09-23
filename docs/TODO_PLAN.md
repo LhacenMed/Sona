@@ -18,6 +18,7 @@ Ordered from most to least critical. Every entry describes **what** is broken or
   - Artist and album ids are now derived from the name, the way a genre's already was, so both arrivals land on the same row and there is nothing to sweep.
   - The manual walk and the MediaStore query now name artists and albums through one rule, so a tag's stray whitespace is not a second artist.
   - `SCANNER_SCHEMA_VERSION` bumped, so an existing install actually rescans instead of skipping on an unchanged MediaStore signature.
+  - Names are compared whatever their case, as Auxio's `MusicGraph` clusters them (`rawName.lowercase()`): "5 Seconds of Summer" and "5 Seconds Of Summer" are one artist. Ids are derived from the lowercased name, and every track, album and artist row takes the spelling most tracks use (ties broken alphabetically, so each scan picks the same) - Auxio melds a cluster into its most popular vertex. Albums are keyed on artist and title alike; files the storage walk finds join the row their name already has. `SCANNER_SCHEMA_VERSION` 6.
   - **Audited:** genres were already name-identified (which is why they never showed this). Folders are derived per distinct `tracks.folderPath`, so they cannot duplicate. Playlists are trimmed on insert under a unique name index. Albums had the same bug as artists and are fixed with them.
 
 - [x] **1.3 Study Fossify Music's fast-load-with-background-fetch behavior**
