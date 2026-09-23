@@ -110,7 +110,7 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 
 ## Priority 4 — Visual, Theming & Floating-Window Bugs
 
-- [ ] **4.1 Fix white bottom section in floating-window mode**
+- [x] **4.1 Fix white bottom section in floating-window mode**
   Running the app in Android's floating/freeform window mode leaves the bottom portion of the window white/blank for an unknown reason.
   - Likely fixed with 4.2, to confirm in a floating window: no activity was edge-to-edge of its own accord, so the navigation bar's area was left to the window theme to fill - a colour and an idea of light or dark of its own - rather than drawn by the app. `SonaActivity` now draws every screen edge to edge from its first frame, and the bars are styled from the Compose theme.
 
