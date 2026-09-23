@@ -56,5 +56,5 @@ fun ColumnScope.SettingsSection(
 /** The line between two [SettingsSection]s. */
 @Composable
 fun SettingsSectionDivider() {
-    HorizontalDivider(modifier = Modifier.padding(top = 16.dp))
+    HorizontalDivider()
 }
