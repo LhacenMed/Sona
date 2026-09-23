@@ -214,6 +214,18 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
 }
 
 /**
+ * A cover each playlist can be given in its editor. Every existing playlist keeps the stacked cover it
+ * already had.
+ */
+val MIGRATION_9_10 = object : Migration(9, 10) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `playlists` ADD COLUMN `coverSource` TEXT NOT NULL DEFAULT 'STACKED'")
+        db.execSQL("ALTER TABLE `playlists` ADD COLUMN `coverTrackId` INTEGER")
+        db.execSQL("ALTER TABLE `playlists` ADD COLUMN `coverImageUri` TEXT")
+    }
+}
+
+/**
  * Makes sure Favorites exists, every time the database is opened.
  *
  * On open rather than on create, because creation is only one of the ways this database comes to

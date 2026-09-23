@@ -189,12 +189,16 @@ Ordered from most to least critical. Every entry describes **what** is broken or
   - Swipe left → queue the track to play next.
   - Swipe right → add the track to a playlist.
 
-- [ ] **7.2 Build a playlist cover & name editor**
+- [x] **7.2 Build a playlist cover & name editor**
   Let the user set a custom playlist cover instead of the default stacked-covers image, choosing from:
   - The cover art of the top- or bottom-sorted track (per current sort order).
   - Any specific track's cover art, from within the playlist or elsewhere in the library.
   - A custom image from the device's media/gallery library.
   - Also allow editing the playlist's name from the same place.
+  - **Resolved:** `EditPlaylistScreen` edits the name and the cover as a draft, previewed live and saved together in one transaction; back discards both. `PlaylistCover` is stacked (the default), the first or last track, one track, or an image - and a playlist's `coverArtUris` is its resolved cover, so every place a playlist is drawn shows the choice without knowing about it. One rule (`PlaylistCover.coverArtUris`) resolves it for the list and for the editor's preview alike.
+  - First and last track follow the playlist's current sort live, as the Favorites card already did: only playlists with that cover have their sorted tracks read. A chosen track is read in the playlists query itself, and falls back to the stack while it is not in the library.
+  - An image comes from the system photo picker and is copied into app storage only on Save, sampled down to 1024&nbsp;px, so an abandoned edit leaves nothing behind; the copy it replaces, and a deleted playlist's, are removed.
+  - Favorites takes a cover but keeps its name, and its shortcut card shows the cover it is given. Schema 10 (`MIGRATION_9_10`); the column default keeps Favorites' raw-SQL seed working on a fresh install.
 
 ---
 
