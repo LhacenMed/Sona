@@ -36,7 +36,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
@@ -57,7 +56,6 @@ import com.lhacenmed.sona.feature.player.R
 import com.lhacenmed.sona.feature.player.Thumbnail
 import com.lhacenmed.sona.feature.player.favoriteIconRes
 import com.lhacenmed.sona.feature.player.playPauseIconRes
-import com.lhacenmed.sona.feature.player.shareTrack
 import com.lhacenmed.sona.feature.player.transportIconRes
 import com.lhacenmed.sona.feature.playback.R as PlaybackR
 
@@ -213,7 +211,6 @@ private fun DefaultPlayerControls(
         Spacer(modifier = Modifier.width(12.dp))
 
         DefaultTrackActions(
-            track = track,
             contentColor = contentColor,
             isFavorite = isFavorite,
             onToggleFavorite = viewModel::onToggleFavorite,
@@ -254,40 +251,21 @@ private fun DefaultPlayerControls(
     )
 }
 
-/** Share, favourite and more, as glass cards beside the title. */
+/**
+ * Favourite and more, as glass cards beside the title. Sharing is in the track's options sheet, which
+ * more opens, so the title keeps the room a third card would take.
+ */
 @Composable
 private fun DefaultTrackActions(
-    track: Track,
     contentColor: Color,
     isFavorite: Boolean,
     onToggleFavorite: () -> Unit,
     onMenuClick: () -> Unit,
 ) {
-    val context = LocalContext.current
-
     Row(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Surface(
-            onClick = { context.shareTrack(track) },
-            shape = RoundedCornerShape(14.dp),
-            color = contentColor.copy(alpha = 0.12f),
-            modifier =
-                Modifier
-                    .height(44.dp)
-                    .width(44.dp),
-        ) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                Icon(
-                    painter = painterResource(R.drawable.share),
-                    contentDescription = null,
-                    tint = contentColor,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-        }
-
         Surface(
             onClick = onToggleFavorite,
             shape = RoundedCornerShape(14.dp),

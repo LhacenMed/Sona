@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.feature.player.swiper.QueueCoverPager
 import kotlinx.coroutines.delay
 
@@ -54,10 +55,11 @@ internal fun Thumbnail(
     viewModel: PlayerViewModel,
     modifier: Modifier = Modifier,
 ) {
-    val currentTrack = uiState.currentTrack ?: return
+    uiState.currentTrack ?: return
     val context = LocalContext.current
     val view = LocalView.current
     val latestDurationMs by rememberUpdatedState(durationMs)
+    val playingFrom by viewModel.playingFrom.collectAsStateWithLifecycle()
 
     // Seek on double tap
     var showSeekEffect by remember { mutableStateOf(false) }
@@ -82,16 +84,16 @@ internal fun Thumbnail(
                     style = MaterialTheme.typography.titleMedium,
                     color = textBackgroundColor,
                 )
-                if (currentTrack.album.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = currentTrack.album,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = textBackgroundColor.copy(alpha = 0.8f),
-                        maxLines = 1,
-                        modifier = Modifier.basicMarquee(),
-                    )
-                }
+                // What the queue plays from. Always laid out, so the cover below sits in the same place
+                // whether or not the line has a name to show.
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = playingFrom?.label().orEmpty(),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = textBackgroundColor.copy(alpha = 0.8f),
+                    maxLines = 1,
+                    modifier = Modifier.basicMarquee(),
+                )
             }
 
             // Thumbnail content
