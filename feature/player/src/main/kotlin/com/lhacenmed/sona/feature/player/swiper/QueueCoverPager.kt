@@ -42,6 +42,8 @@ internal class QueueCoverPager(
 
     private val coverAdapter = CoverPagerAdapter(cornerRadius) { isBackward -> onDoubleTap(isBackward) }
     private val pager = ViewPager2(context)
+    private val carousel = CarouselTransformer()
+    private val overscroll = CoverOverscroll(pager, carousel)
 
     /** The queue the player plays, and where in it the player says it is. */
     private var playerQueue: List<QueueTrack> = emptyList()
@@ -81,18 +83,22 @@ internal class QueueCoverPager(
                     }
                 },
             )
-            setPageTransformer(CarouselTransformer())
+            setPageTransformer(carousel)
             recycler().apply {
                 // Make it possible to collapse the bottom sheet from the ViewPager's touch area.
                 isNestedScrollingEnabled = false
-                // Visual effect consistency
-                overScrollMode = View.OVER_SCROLL_NEVER
+                // A drag past the queue's ends reaches the band, whose edge effect draws no glow.
+                overScrollMode = View.OVER_SCROLL_ALWAYS
+                edgeEffectFactory = CoverOverscrollEdgeEffectFactory(overscroll)
+                addOnItemTouchListener(overscroll)
             }
             // Make it easier to collapse the bottom sheet
             dampen()
             offscreenPageLimit = 1
         }
         addView(pager, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        // Whatever the player reported while the band held the cover, shown now.
+        overscroll.onSettle = { turnToPlayer(animate = true) }
     }
 
     /** Whether a swipe changes track - off while the player is collapsed to its mini bar. */
@@ -142,7 +148,7 @@ internal class QueueCoverPager(
 
     private fun turnToPlayer(animate: Boolean) {
         if (playerIndex !in 0 until coverAdapter.itemCount) return
-        if (isUserSwiping) return
+        if (isUserSwiping || overscroll.isHolding) return
         swipedIndex?.let { swiped ->
             // Still on its way to the track a swipe asked for: anything before it is out of date.
             if (playerIndex != swiped) return

@@ -19,7 +19,6 @@ internal class CarouselTransformer : ViewPager2.PageTransformer {
         // drafted by codex mostly due to the insane complexity of abusing a viewpager2
         // into a m3 carousel like thing
         // cleaned/rewritten/documented by me for cognitive ownership
-        val maskable = page as MaskableFrameLayout
         val width = page.width.toFloat()
         val height = page.height.toFloat()
 
@@ -40,6 +39,19 @@ internal class CarouselTransformer : ViewPager2.PageTransformer {
         page.isInvisible = position <= -1f || position >= 1f
 
         page.alpha = 1f
+
+        shape(page, position)
+    }
+
+    /**
+     * Masks [page] and drifts its cover as a swipe [position] away from rest has them - the carousel
+     * without the pinning, for a page held at [position] with the pager itself not scrolled, as
+     * [CoverOverscroll] holds the cover past the queue's ends.
+     */
+    fun shape(page: View, position: Float) {
+        val maskable = page as MaskableFrameLayout
+        val width = page.width.toFloat()
+        val height = page.height.toFloat()
 
         val p =
             when {
