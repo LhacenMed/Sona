@@ -31,6 +31,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 fun BottomSheetPlayerHost(
     onGoToAlbum: (Long) -> Unit,
     onGoToArtist: (Long) -> Unit,
+    onOpenEqualizer: () -> Unit,
     trackOptionsSheet: @Composable (track: Track, onDismissRequest: () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PlayerViewModel = hiltViewModel(),
@@ -76,6 +77,7 @@ fun BottomSheetPlayerHost(
             viewModel = viewModel,
             onGoToAlbum = onGoToAlbum,
             onGoToArtist = onGoToArtist,
+            onOpenEqualizer = onOpenEqualizer,
             trackOptionsSheet = trackOptionsSheet,
         )
     }

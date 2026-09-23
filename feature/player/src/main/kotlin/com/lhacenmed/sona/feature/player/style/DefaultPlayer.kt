@@ -85,6 +85,8 @@ internal fun DefaultPlayer(
     queueBarHeight: Dp,
     titleActions: PlayerTitleActions,
     onMenuClick: () -> Unit,
+    onCollapse: () -> Unit,
+    onOpenEqualizer: () -> Unit,
     viewModel: PlayerViewModel,
     onSliderValueChange: (Long) -> Unit,
     onSliderValueChangeFinished: () -> Unit,
@@ -127,6 +129,8 @@ internal fun DefaultPlayer(
                     durationMs = duration,
                     textBackgroundColor = contentColor,
                     isPlayerExpanded = isPlayerExpanded,
+                    onCollapse = onCollapse,
+                    onOpenEqualizer = onOpenEqualizer,
                     viewModel = viewModel,
                     modifier = Modifier.size(thumbnailSize),
                 )
@@ -162,6 +166,8 @@ internal fun DefaultPlayer(
                     durationMs = duration,
                     textBackgroundColor = contentColor,
                     isPlayerExpanded = isPlayerExpanded,
+                    onCollapse = onCollapse,
+                    onOpenEqualizer = onOpenEqualizer,
                     viewModel = viewModel,
                 )
             }

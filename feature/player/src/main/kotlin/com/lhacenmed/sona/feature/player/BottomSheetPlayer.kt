@@ -61,6 +61,7 @@ internal fun BottomSheetPlayer(
     viewModel: PlayerViewModel,
     onGoToAlbum: (Long) -> Unit,
     onGoToArtist: (Long) -> Unit,
+    onOpenEqualizer: () -> Unit,
     trackOptionsSheet: @Composable (track: Track, onDismissRequest: () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -260,6 +261,12 @@ internal fun BottomSheetPlayer(
                 queueBarHeight = queueSheetState.collapsedBound,
                 titleActions = titleActions,
                 onMenuClick = onMenuClick,
+                onCollapse = state::collapseSoft,
+                // Collapsed on the way, as going to the album or the artist is.
+                onOpenEqualizer = {
+                    state.collapseSoft()
+                    onOpenEqualizer()
+                },
                 viewModel = viewModel,
                 onSliderValueChange = onSliderValueChange,
                 onSliderValueChangeFinished = onSliderValueChangeFinished,

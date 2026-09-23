@@ -39,6 +39,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -117,9 +118,6 @@ private val RevealRise = 8.dp
 /** How much of [TopBarCollapse.progress] the bar has revealed: none over its first half, all by its end. */
 private fun TopBarCollapse.revealed(): Float = ((progress() - 0.5f) * 2).coerceIn(0f, 1f)
 
-/** How many actions are drawn as icons before the rest collapse into the overflow menu. */
-private const val MAX_VISIBLE_ACTIONS = 2
-
 private const val ENTER_SCALE = 0.92f
 private const val EXIT_SCALE = 0.92f
 private const val TRANSITION_MILLIS = 180
@@ -158,10 +156,11 @@ private sealed interface BarContent {
  * while searching, the context bar is what the user needs to see. Every mode keeps the same
  * background, so changing mode never repaints the top of the screen a different colour.
  *
- * Taking [actions] as data rather than as a slot is what lets the bar overflow: it draws the first
- * few as icons and folds the remainder into a dropdown, the way a platform action bar does. A screen
- * that grows a sixth action needs no layout work to accommodate it. [menuActions] always go in that
- * dropdown, after any that overflowed, for a screen that wants its icons kept for a few actions alone.
+ * Taking [actions] as data rather than as a slot is what lets the bar overflow: it draws as many as
+ * icons as a platform action bar would on this screen, and folds the remainder into a dropdown only
+ * when there is a remainder - see [visibleActionCount]. A screen that grows a sixth action needs no
+ * layout work to accommodate it. [menuActions] always go in that dropdown, after any that overflowed,
+ * for a screen that wants its icons kept for a few actions alone.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -304,6 +303,38 @@ private fun Modifier.revealedBy(collapse: TopBarCollapse?): Modifier =
     }
 
 /**
+ * How many of a bar's [actionCount] actions it shows as buttons, the rest going into the overflow
+ * menu - a native action bar's `showAsAction="ifRoom"`, worked out as the platform works it out.
+ *
+ * The bar holds as many buttons as `ActionBarPolicy.getMaxActionButtons` allows for the screen, and
+ * the overflow button is one of them only when something overflows (`ActionMenuPresenter`): actions
+ * that all fit are all shown, with no menu. [hasMenuActions] - actions that only ever belong in the
+ * menu, `showAsAction="never"` - always need one. A collapsing header's Play and Shuffle keep their
+ * two places whether or not they are showing yet, so nothing moves in or out of the menu as the
+ * header collapses.
+ */
+@Composable
+private fun visibleActionCount(actionCount: Int, hasMenuActions: Boolean, collapse: TopBarCollapse?): Int {
+    val buttonCount = maxActionButtons() - if (collapse != null) 2 else 0
+    val overflows = hasMenuActions || actionCount > buttonCount
+    return if (overflows) (buttonCount - 1).coerceIn(0, actionCount) else actionCount
+}
+
+/** The platform's `ActionBarPolicy.getMaxActionButtons`: how many buttons a bar holds on this screen. */
+@Composable
+private fun maxActionButtons(): Int {
+    val configuration = LocalConfiguration.current
+    val width = configuration.screenWidthDp
+    val height = configuration.screenHeightDp
+    return when {
+        configuration.smallestScreenWidthDp > 600 || (width > 960 && height > 720) || (width > 720 && height > 960) -> 5
+        width >= 500 || (width > 640 && height > 480) || (width > 480 && height > 640) -> 4
+        width >= 360 -> 3
+        else -> 2
+    }
+}
+
+/**
  * A selection's actions, every one an icon, then the more options button - the same group [BarActions]
  * draws, but with no menu to fold into: the selection's options sheet is where everything else lives.
  */
@@ -384,7 +415,8 @@ private fun BarActions(
     menuActions: List<TopBarAction>,
     collapse: TopBarCollapse? = null,
 ) {
-    val overflowed = actions.drop(MAX_VISIBLE_ACTIONS) + menuActions
+    val visibleCount = visibleActionCount(actions.size, hasMenuActions = menuActions.isNotEmpty(), collapse = collapse)
+    val overflowed = actions.drop(visibleCount) + menuActions
     // Read here rather than inside the group: a group builds its items outside composition, so it
     // cannot reach a resource itself.
     val moreActionsLabel = stringResource(R.string.top_bar_more_actions)
@@ -412,7 +444,7 @@ private fun BarActions(
                     )
                 }
             }
-            actions.take(MAX_VISIBLE_ACTIONS).forEach { action ->
+            actions.take(visibleCount).forEach { action ->
                 iconButton(
                     icon = action.icon,
                     label = action.label,

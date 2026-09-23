@@ -8,13 +8,18 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Equalizer
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.designsystem.component.SonaIconButton
 import com.lhacenmed.sona.feature.player.swiper.QueueCoverPager
 import kotlinx.coroutines.delay
 
@@ -52,6 +58,8 @@ internal fun Thumbnail(
     durationMs: Long,
     textBackgroundColor: Color,
     isPlayerExpanded: Boolean,
+    onCollapse: () -> Unit,
+    onOpenEqualizer: () -> Unit,
     viewModel: PlayerViewModel,
     modifier: Modifier = Modifier,
 ) {
@@ -74,25 +82,44 @@ internal fun Thumbnail(
                     .statusBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Now Playing header
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(horizontal = 32.dp, vertical = 16.dp),
+            // Now Playing header, between the way back down to the mini player and the equalizer -
+            // Auxio's playback toolbar. The row ends 4dp from each edge, which puts each button's glyph
+            // on the content keyline, as a top bar's do.
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp, vertical = 16.dp),
             ) {
-                Text(
-                    text = stringResource(R.string.player_now_playing),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = textBackgroundColor,
+                SonaIconButton(
+                    onClick = onCollapse,
+                    icon = Icons.Filled.KeyboardArrowDown,
+                    contentDescription = stringResource(R.string.player_collapse),
                 )
-                // What the queue plays from. Always laid out, so the cover below sits in the same place
-                // whether or not the line has a name to show.
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = playingFrom?.label().orEmpty(),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = textBackgroundColor.copy(alpha = 0.8f),
-                    maxLines = 1,
-                    modifier = Modifier.basicMarquee(),
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        text = stringResource(R.string.player_now_playing),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = textBackgroundColor,
+                    )
+                    // What the queue plays from. Always laid out, so the cover below sits in the same
+                    // place whether or not the line has a name to show.
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = playingFrom?.label().orEmpty(),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = textBackgroundColor.copy(alpha = 0.8f),
+                        maxLines = 1,
+                        modifier = Modifier.basicMarquee(),
+                    )
+                }
+                SonaIconButton(
+                    onClick = onOpenEqualizer,
+                    icon = Icons.Filled.Equalizer,
+                    contentDescription = stringResource(R.string.player_equalizer),
                 )
             }
 
