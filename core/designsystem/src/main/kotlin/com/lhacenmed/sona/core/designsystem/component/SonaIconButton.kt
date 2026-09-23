@@ -4,6 +4,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonColors
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -25,6 +26,10 @@ import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
  *
  * [interactionSource] is here for [SonaIconButtonGroup], which has to watch the same press this
  * button is reacting to. On its own the button has no use for it and lets Material make one.
+ *
+ * [colors] gives the button a container - `IconButtonDefaults.filledTonalIconButtonColors()` or
+ * `filledIconButtonColors()` - for one that has to stand out. It changes the paint alone: a filled
+ * button morphs, and widens in a group, exactly as a plain one does.
  */
 @Composable
 fun SonaIconButton(
@@ -33,6 +38,7 @@ fun SonaIconButton(
     contentDescription: String?,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    colors: IconButtonColors = IconButtonDefaults.iconButtonColors(),
     interactionSource: MutableInteractionSource? = null,
 ) {
     IconButton(
@@ -43,6 +49,7 @@ fun SonaIconButton(
         ),
         modifier = modifier,
         enabled = enabled,
+        colors = colors,
         interactionSource = interactionSource,
     ) {
         Icon(imageVector = icon, contentDescription = contentDescription)

@@ -58,6 +58,11 @@ import kotlinx.coroutines.launch
  * moves the sheet through [BottomSheetState.nestedScrollConnection] instead - a list
  * under a drag detector would leave the two racing for the same swipe, each with its own velocity,
  * and which one won would depend on whether the list happened to be able to scroll at that instant.
+ *
+ * [swipeUpSheet] is the sheet nested in this one that an upward swipe over the expanded content raises
+ * instead - the queue in the player. Expanded, this sheet is as tall as it goes, so the swipe would
+ * otherwise move nothing; downward, the swipe still closes this one. The same detector serves both, so
+ * the swipe still has a single owner.
  */
 @Composable
 internal fun BottomSheet(
@@ -68,6 +73,7 @@ internal fun BottomSheet(
     onDismiss: (() -> Unit)? = null,
     onCollapsedContentClick: (() -> Unit)? = null,
     isContentDraggable: Boolean = true,
+    swipeUpSheet: BottomSheetState? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     // Material puts a content colour on every surface it draws; this sheet is a Box and draws its own,
@@ -106,7 +112,11 @@ internal fun BottomSheet(
                         Modifier
                             .fillMaxSize()
                             .then(
-                                if (isContentDraggable) Modifier.bottomSheetDraggable(state, onDismiss) else Modifier,
+                                if (isContentDraggable) {
+                                    Modifier.bottomSheetDraggable(state, onDismiss, swipeUpSheet)
+                                } else {
+                                    Modifier
+                                },
                             ).graphicsLayer {
                                 alpha = ((state.progress - 0.25f) * 4).coerceIn(0f, 1f)
                             },
@@ -379,27 +389,41 @@ internal fun rememberBottomSheetState(
     }
 }
 
+/**
+ * Drags [state] - or, for a swipe up while [state] is expanded, [swipeUpSheet] when there is one.
+ *
+ * Which sheet a drag moves is settled by its first movement and kept to its end, so one gesture never
+ * hands over half-way, and it is that sheet the release flings.
+ */
 internal fun Modifier.bottomSheetDraggable(
     state: BottomSheetState,
     onDismiss: (() -> Unit)? = null,
+    swipeUpSheet: BottomSheetState? = null,
 ): Modifier =
-    this.pointerInput(state) {
+    this.pointerInput(state, swipeUpSheet) {
         val velocityTracker = VelocityTracker()
+        var draggedSheet: BottomSheetState? = null
+
+        fun settle() {
+            val sheet = draggedSheet ?: state
+            draggedSheet = null
+            val velocity = -velocityTracker.calculateVelocity().y
+            velocityTracker.resetTracking()
+            sheet.performFling(velocity, onDismiss.takeIf { sheet === state })
+        }
 
         detectVerticalDragGestures(
             onVerticalDrag = { change, dragAmount ->
                 velocityTracker.addPointerInputChange(change)
-                state.dispatchRawDelta(dragAmount)
+                val sheet =
+                    draggedSheet ?: when {
+                        dragAmount == 0f -> return@detectVerticalDragGestures
+                        dragAmount < 0f && swipeUpSheet != null && state.isExpanded -> swipeUpSheet
+                        else -> state
+                    }.also { draggedSheet = it }
+                sheet.dispatchRawDelta(dragAmount)
             },
-            onDragCancel = {
-                val velocity = -velocityTracker.calculateVelocity().y
-                velocityTracker.resetTracking()
-                state.performFling(velocity, onDismiss)
-            },
-            onDragEnd = {
-                val velocity = -velocityTracker.calculateVelocity().y
-                velocityTracker.resetTracking()
-                state.performFling(velocity, onDismiss)
-            },
+            onDragCancel = { settle() },
+            onDragEnd = { settle() },
         )
     }

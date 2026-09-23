@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_title">Update available</string>
+    <string name="update_message">A new version (%1$s) of Sona is available. Update now to get the latest features and fixes.</string>
+    <string name="update_download">Update</string>
+    <string name="update_install">Install</string>
+    <string name="update_retry">Retry</string>
+    <string name="update_later">Later</string>
+    <string name="update_offline">No internet connection. Connect to the internet to download the update.</string>
+    <string name="update_connecting">Connecting…</string>
+    <string name="update_stop">Stop</string>
+    <string name="update_notif_channel">App update</string>
+    <string name="update_notif_title">Downloading update</string>
+    <string name="update_notif_ready">Update downloaded — tap to install</string>
+</resources>

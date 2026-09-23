@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.common.storage.documentPathOrNull
+import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.navigation.Screen
 
 /** "Excluded Folders" screen: view/add/remove folders that the media scanner should skip. */
@@ -81,7 +82,12 @@ object ExcludedFoldersScreen : Screen {
                     }
                 }
             } else {
-                Column(modifier = Modifier.fillMaxSize()) {
+                // The add button stays put at the bottom, so the whole column ends above the mini player.
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = LocalBottomContentPadding.current),
+                ) {
                     LazyColumn(modifier = Modifier.weight(1f)) {
                         items(excludedFolders) { path ->
                             ListItem(

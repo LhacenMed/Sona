@@ -1,0 +1,92 @@
+<!--
+    The Android 12+ launch screen icon, animated the way Auxio's is.
+
+    A placeholder of the note is on screen from the first frame. The gradient note is under a
+    placeholder-coloured border that is drawn along its outline and kept inside it. The border
+    starts wide enough to hide the whole note and thins to nothing. That shows the note inset by
+    the same distance everywhere, filling out evenly until it matches the outline. The starting
+    width is the smallest that hides the note, so colour appears as soon as the animation starts.
+
+    The border has to be opaque to hide the note, so the placeholder is an opaque colour rather
+    than Auxio's translucent grey.
+-->
+<animated-vector xmlns:tools="http://schemas.android.com/tools"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt">
+    <aapt:attr name="android:drawable">
+        <vector
+            android:width="432dp"
+            android:height="432dp"
+            android:viewportWidth="432"
+            android:viewportHeight="432">
+            <group
+                android:name="bg"
+                android:pivotX="56"
+                android:pivotY="56">
+                <path
+                    android:fillColor="#00000000"
+                    android:strokeColor="#00000000"
+                    android:pathData="M 408,216
+A 192,192 0 0 1 216,408 192,192 0 0 1 24,216 192,192 0 0 1 216,24 192,192 0 0 1 408,216
+Z" />
+            </group>
+
+            <group
+                android:scaleX="7.2"
+                android:scaleY="7.2"
+                android:translateX="160.2"
+                android:translateY="148">
+                <path android:pathData="m10.747,0.015c-1.457,0 -2.587,0.55 -2.835,2.141 -0.254,1.627 -0.064,6.978 -0.064,6.978 0.006,2.878 -5.806,1.677 -7.46,5.006 -1.015,2.042 0.086,3.636 1.852,4.395 2.363,1.016 6.717,0.062 6.717,-5.408 0,-1.427 -0.001,-6.888 -0.001,-7.851 0,-0.964 1.796,-0.842 4.378,-2.078 1.466,-0.702 2.882,-3.197 1.742,-3.197 -1.15,0 -2.876,0.015 -4.329,0.015z">
+                    <aapt:attr name="android:fillColor">
+                        <gradient
+                            android:startX="7.7"
+                            android:startY="0"
+                            android:endX="7.7"
+                            android:endY="18.9"
+                            android:type="linear">
+                            <item android:offset="0" android:color="#FFFE664B" />
+                            <item android:offset="0.5" android:color="#FFFF4456" />
+                            <item android:offset="1" android:color="#FFFF2261" />
+                        </gradient>
+                    </aapt:attr>
+                </path>
+            </group>
+
+            <group
+                android:scaleX="7.2"
+                android:scaleY="7.2"
+                android:translateX="160.2"
+                android:translateY="148">
+                <clip-path android:pathData="m10.747,0.015c-1.457,0 -2.587,0.55 -2.835,2.141 -0.254,1.627 -0.064,6.978 -0.064,6.978 0.006,2.878 -5.806,1.677 -7.46,5.006 -1.015,2.042 0.086,3.636 1.852,4.395 2.363,1.016 6.717,0.062 6.717,-5.408 0,-1.427 -0.001,-6.888 -0.001,-7.851 0,-0.964 1.796,-0.842 4.378,-2.078 1.466,-0.702 2.882,-3.197 1.742,-3.197 -1.15,0 -2.876,0.015 -4.329,0.015z" />
+                <path
+                    android:name="placeholder"
+                    android:fillColor="@android:color/transparent"
+                    android:pathData="m10.747,0.015c-1.457,0 -2.587,0.55 -2.835,2.141 -0.254,1.627 -0.064,6.978 -0.064,6.978 0.006,2.878 -5.806,1.677 -7.46,5.006 -1.015,2.042 0.086,3.636 1.852,4.395 2.363,1.016 6.717,0.062 6.717,-5.408 0,-1.427 -0.001,-6.888 -0.001,-7.851 0,-0.964 1.796,-0.842 4.378,-2.078 1.466,-0.702 2.882,-3.197 1.742,-3.197 -1.15,0 -2.876,0.015 -4.329,0.015z"
+                    android:strokeColor="@color/splash_placeholder"
+                    android:strokeWidth="7.2"
+                    android:strokeLineCap="round"
+                    android:strokeLineJoin="round" />
+            </group>
+        </vector>
+    </aapt:attr>
+    <target android:name="bg">
+        <aapt:attr name="android:animation">
+            <set />
+        </aapt:attr>
+    </target>
+    <target android:name="placeholder">
+        <aapt:attr name="android:animation">
+            <set>
+                <objectAnimator
+                    android:duration="850"
+                    android:interpolator="@interpolator/m3_sys_motion_easing_emphasized_decelerate"
+                    android:propertyName="strokeWidth"
+                    android:startOffset="150"
+                    android:valueFrom="7.2"
+                    android:valueTo="0"
+                    android:valueType="floatType"
+                    tools:ignore="PrivateResource" />
+            </set>
+        </aapt:attr>
+    </target>
+</animated-vector>

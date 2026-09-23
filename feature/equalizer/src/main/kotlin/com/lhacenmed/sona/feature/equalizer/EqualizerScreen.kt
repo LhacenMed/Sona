@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.playback.CUSTOM_PRESET
 import com.lhacenmed.sona.feature.playback.EqualizerBand
@@ -97,7 +98,8 @@ private fun EqualizerCurve(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+            .padding(16.dp)
+            .padding(bottom = LocalBottomContentPadding.current),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         PresetPicker(

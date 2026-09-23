@@ -5,6 +5,8 @@ import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.itemsOrEmpty
+import com.lhacenmed.sona.core.designsystem.component.CoverArtDefaults
+import com.lhacenmed.sona.core.designsystem.component.SonaFolderCover
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.library.options.FolderOptionsContext
@@ -23,7 +25,19 @@ data class FolderDetailScreen(val folderPath: String) : Screen {
 
         TrackListDetail(
             title = viewModel.folderName,
-            subtitle = "${tracks.itemsOrEmpty.size} tracks",
+            header = DetailHeaderContent(
+                type = "Folder",
+                subhead = folderPath,
+                info = trackCountAndDuration(tracks.itemsOrEmpty),
+                cover = {
+                    SonaFolderCover(
+                        coverArtUris = folder?.coverArtUris.orEmpty(),
+                        seed = folderPath.hashCode(),
+                        size = CoverArtDefaults.DetailHeaderSize,
+                        cornerRadius = CoverArtDefaults.DetailHeaderCornerRadius,
+                    )
+                },
+            ),
             onBack = navigator::back,
             viewModel = viewModel,
             emptyMessage = "This folder has no tracks.",

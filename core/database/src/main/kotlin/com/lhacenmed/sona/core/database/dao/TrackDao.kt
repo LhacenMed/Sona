@@ -61,6 +61,10 @@ interface TrackDao {
     @Query("SELECT * FROM tracks")
     suspend fun getAll(): List<TrackEntity>
 
+    /** The tracks the storage walk found rather than MediaStore, for a refresh that does not walk. */
+    @Query("SELECT * FROM tracks WHERE isManuallyScanned = 1")
+    suspend fun getManuallyScanned(): List<TrackEntity>
+
     @Query("SELECT * FROM tracks WHERE id IN (:ids)")
     suspend fun getByIds(ids: List<Long>): List<TrackEntity>
 

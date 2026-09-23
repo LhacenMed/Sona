@@ -17,6 +17,8 @@ import com.lhacenmed.sona.feature.library.LibraryList
 import com.lhacenmed.sona.feature.library.TrackRow
 import com.lhacenmed.sona.feature.library.filterItems
 import com.lhacenmed.sona.feature.library.matchesSearch
+import com.lhacenmed.sona.feature.library.options.OptionsSheet
+import com.lhacenmed.sona.feature.library.options.OptionsTarget
 import com.lhacenmed.sona.feature.library.searchEmptyMessage
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 
@@ -27,8 +29,10 @@ data class AddTracksScreen(val playlistId: Long) : Screen {
     override fun Content() {
         val viewModel: PlaylistPickerViewModel = hiltViewModel()
         val tracks by viewModel.tracks.collectAsStateWithLifecycle()
+        val playback by viewModel.playback.collectAsStateWithLifecycle()
         val selection = rememberSelectionState()
         var searchQuery by remember { mutableStateOf<String?>(null) }
+        var optionsTarget by remember { mutableStateOf<OptionsTarget.ForTrack?>(null) }
         val visibleTracks = tracks.filterItems { matchesSearch(searchQuery, it.title, it.artist) }
 
         PlaylistTrackPicker(
@@ -52,13 +56,19 @@ data class AddTracksScreen(val playlistId: Long) : Screen {
             ) { track ->
                 TrackRow(
                     track = track,
-                    isCurrent = { false },
-                    isPlaying = { false },
+                    isCurrent = { playback.marks(track) },
+                    isPlaying = { playback.isPlaying },
                     selection = selection,
-                    onClick = selection.pickerClick(SelectionKey.Track(track.id)),
-                    onOpenOptions = null,
+                    onClick = { viewModel.onTrackClick(track, visibleTracks.itemsOrEmpty) },
+                    onOpenOptions = {
+                        optionsTarget = OptionsTarget.ForTrack(track, queueSource = visibleTracks.itemsOrEmpty)
+                    },
                 )
             }
+        }
+
+        optionsTarget?.let { target ->
+            OptionsSheet(target = target, onDismissRequest = { optionsTarget = null })
         }
     }
 }

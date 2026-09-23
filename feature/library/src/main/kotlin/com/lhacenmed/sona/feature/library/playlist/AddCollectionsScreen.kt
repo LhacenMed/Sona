@@ -27,15 +27,24 @@ import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Folder
 import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.Playlist
+import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.library.AlbumDetailScreen
 import com.lhacenmed.sona.feature.library.AlbumRow
+import com.lhacenmed.sona.feature.library.ArtistDetailScreen
 import com.lhacenmed.sona.feature.library.ArtistRow
+import com.lhacenmed.sona.feature.library.FolderDetailScreen
 import com.lhacenmed.sona.feature.library.FolderRow
+import com.lhacenmed.sona.feature.library.GenreDetailScreen
 import com.lhacenmed.sona.feature.library.GenreRow
 import com.lhacenmed.sona.feature.library.LibraryList
+import com.lhacenmed.sona.feature.library.LibraryPlayback
+import com.lhacenmed.sona.feature.library.PlaylistDetailScreen
 import com.lhacenmed.sona.feature.library.PlaylistRow
 import com.lhacenmed.sona.feature.library.filterItems
 import com.lhacenmed.sona.feature.library.matchesSearch
+import com.lhacenmed.sona.feature.library.options.OptionsSheet
+import com.lhacenmed.sona.feature.library.options.OptionsTarget
 import com.lhacenmed.sona.feature.library.searchEmptyMessage
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import kotlinx.coroutines.launch
@@ -85,10 +94,12 @@ data class AddCollectionsScreen(val playlistId: Long) : Screen {
         val genres by viewModel.genres.collectAsStateWithLifecycle()
         val folders by viewModel.folders.collectAsStateWithLifecycle()
         val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+        val playback by viewModel.playback.collectAsStateWithLifecycle()
         val selection = rememberSelectionState()
         var searchQuery by remember { mutableStateOf<String?>(null) }
         val pagerState = rememberPagerState(pageCount = { CollectionTab.entries.size })
         val scope = rememberCoroutineScope()
+        var optionsTarget by remember { mutableStateOf<OptionsTarget?>(null) }
 
         val visible = VisibleCollections(
             artists = artists.filterItems { matchesSearch(searchQuery, it.name) },
@@ -124,9 +135,15 @@ data class AddCollectionsScreen(val playlistId: Long) : Screen {
                     tab = CollectionTab.entries[page],
                     visible = visible,
                     selection = selection,
+                    playback = { playback },
                     emptyMessage = searchEmptyMessage(searchQuery),
+                    onOpenOptions = { optionsTarget = it },
                 )
             }
+        }
+
+        optionsTarget?.let { target ->
+            OptionsSheet(target = target, onDismissRequest = { optionsTarget = null })
         }
     }
 }
@@ -136,17 +153,20 @@ private fun CollectionPage(
     tab: CollectionTab,
     visible: VisibleCollections,
     selection: SelectionState,
+    playback: () -> LibraryPlayback,
     emptyMessage: String,
+    onOpenOptions: (OptionsTarget) -> Unit,
 ) {
+    val navigator = LocalNavigator.current
     when (tab) {
         CollectionTab.ARTISTS -> PickerList(visible.artists, "No artists found", emptyMessage, key = { it.id }) { artist ->
             ArtistRow(
                 artist = artist,
                 selection = selection,
-                isCurrent = { false },
-                isPlaying = { false },
-                onClick = selection.pickerClick(SelectionKey.Artist(artist.id).takeIf { artist.trackCount > 0 }),
-                onOpenOptions = null,
+                isCurrent = { playback().marks(artist) },
+                isPlaying = { playback().isPlaying },
+                onClick = { navigator.go(ArtistDetailScreen(artist.id)) },
+                onOpenOptions = { onOpenOptions(OptionsTarget.ForArtist(artist)) },
             )
         }
 
@@ -154,10 +174,10 @@ private fun CollectionPage(
             AlbumRow(
                 album = album,
                 selection = selection,
-                isCurrent = { false },
-                isPlaying = { false },
-                onClick = selection.pickerClick(SelectionKey.Album(album.id)),
-                onOpenOptions = null,
+                isCurrent = { playback().marks(album) },
+                isPlaying = { playback().isPlaying },
+                onClick = { navigator.go(AlbumDetailScreen(album.id)) },
+                onOpenOptions = { onOpenOptions(OptionsTarget.ForAlbum(album)) },
             )
         }
 
@@ -165,10 +185,10 @@ private fun CollectionPage(
             GenreRow(
                 genre = genre,
                 selection = selection,
-                isCurrent = { false },
-                isPlaying = { false },
-                onClick = selection.pickerClick(SelectionKey.Genre(genre.id)),
-                onOpenOptions = null,
+                isCurrent = { playback().marks(genre) },
+                isPlaying = { playback().isPlaying },
+                onClick = { navigator.go(GenreDetailScreen(genre.id)) },
+                onOpenOptions = { onOpenOptions(OptionsTarget.ForGenre(genre)) },
             )
         }
 
@@ -176,10 +196,10 @@ private fun CollectionPage(
             FolderRow(
                 folder = folder,
                 selection = selection,
-                isCurrent = { false },
-                isPlaying = { false },
-                onClick = selection.pickerClick(SelectionKey.Folder(folder.path)),
-                onOpenOptions = null,
+                isCurrent = { playback().marks(folder) },
+                isPlaying = { playback().isPlaying },
+                onClick = { navigator.go(FolderDetailScreen(folder.path)) },
+                onOpenOptions = { onOpenOptions(OptionsTarget.ForFolder(folder)) },
             )
         }
 
@@ -187,10 +207,10 @@ private fun CollectionPage(
             PlaylistRow(
                 playlist = playlist,
                 selection = selection,
-                isCurrent = { false },
-                isPlaying = { false },
-                onClick = selection.pickerClick(SelectionKey.Playlist(playlist.id).takeIf { playlist.trackCount > 0 }),
-                onOpenOptions = null,
+                isCurrent = { playback().marks(playlist) },
+                isPlaying = { playback().isPlaying },
+                onClick = { navigator.go(PlaylistDetailScreen(playlist.id)) },
+                onOpenOptions = { onOpenOptions(OptionsTarget.ForPlaylist(playlist)) },
             )
         }
     }

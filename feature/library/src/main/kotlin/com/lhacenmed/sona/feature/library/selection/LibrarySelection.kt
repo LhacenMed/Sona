@@ -21,10 +21,8 @@ import com.lhacenmed.sona.feature.library.options.OptionsTarget
 /**
  * The bar every library list shows while it has rows selected - Auxio's selection toolbar.
  *
- * Select all comes first and works on [listKeys], this list's own rows: it adds them after whatever
- * else is selected, so a selection gathered elsewhere survives it, and once every one of them is
- * selected it deselects them instead. The list's own [actions] follow, then the more options button,
- * which [onMoreOptions] answers with the selection's options sheet.
+ * [selectAllAction] over [listKeys], this list's own rows, comes first. The list's own [actions]
+ * follow, then the more options button, which [onMoreOptions] answers with the selection's options sheet.
  */
 internal fun SelectionState.toLibraryTopBarSelection(
     listKeys: () -> List<SelectionKey>,
@@ -32,14 +30,20 @@ internal fun SelectionState.toLibraryTopBarSelection(
     onMoreOptions: () -> Unit,
 ): TopBarSelection? {
     if (!isActive) return null
-    val keys = listKeys()
-    val selectAll = if (keys.isNotEmpty() && selectedKeys.containsAll(keys)) {
-        TopBarAction(label = "Deselect all", icon = Icons.Filled.Deselect) { deselectAll(keys) }
-    } else {
-        TopBarAction(label = "Select all", icon = Icons.Filled.SelectAll) { selectAll(keys) }
-    }
-    return toTopBarSelection(actions = listOf(selectAll) + actions, onMoreOptions = onMoreOptions)
+    return toTopBarSelection(actions = listOf(selectAllAction(listKeys())) + actions, onMoreOptions = onMoreOptions)
 }
+
+/**
+ * Select all over [listKeys], a list's own rows: it adds them after whatever else is selected, so a
+ * selection gathered elsewhere survives it, and once every one of them is selected it deselects them
+ * instead.
+ */
+internal fun SelectionState.selectAllAction(listKeys: List<SelectionKey>): TopBarAction =
+    if (listKeys.isNotEmpty() && selectedKeys.containsAll(listKeys)) {
+        TopBarAction(label = "Deselect all", icon = Icons.Filled.Deselect) { deselectAll(listKeys) }
+    } else {
+        TopBarAction(label = "Select all", icon = Icons.Filled.SelectAll) { selectAll(listKeys) }
+    }
 
 /**
  * What every selectable list shares beyond its rows and its bar: the options sheet its more options

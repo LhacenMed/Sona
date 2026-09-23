@@ -11,7 +11,7 @@ import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.library.readM3uTrackIds
 import com.lhacenmed.sona.feature.library.writeM3u
-import com.lhacenmed.sona.feature.library.operation.launchOperation
+import com.lhacenmed.sona.core.common.coroutines.launchOperation
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.selection.tracksOf
 import com.lhacenmed.sona.feature.playback.PlaybackController

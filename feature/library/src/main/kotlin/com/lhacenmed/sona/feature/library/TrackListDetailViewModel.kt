@@ -12,6 +12,7 @@ import com.lhacenmed.sona.feature.library.sort.SortControl
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import java.io.OutputStream
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -44,6 +45,9 @@ abstract class TrackListDetailViewModel(
      */
     abstract val playbackParent: PlaybackParent
 
+    /** What this screen lists above its tracks - see [DetailSection]. Nothing, for most of them. */
+    internal open val sections: StateFlow<List<DetailSection>> = MutableStateFlow(emptyList())
+
     /** What this list marks as playing - see [LibraryPlayback]. */
     val playback: StateFlow<LibraryPlayback> = libraryPlayback(playbackController, repository)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryPlayback())
@@ -60,6 +64,16 @@ abstract class TrackListDetailViewModel(
         val all = tracks.value.itemsOrEmpty
         val index = all.indexOfFirst { it.id == track.id }
         if (index >= 0) playbackController.playTracks(all, index, playbackParent)
+    }
+
+    /**
+     * Plays the whole list from its top - or, [shuffled], shuffled from a track picked at random - as
+     * the header's Play and Shuffle do, and the options sheet's.
+     */
+    fun onPlayAll(shuffled: Boolean) {
+        val all = tracks.value.itemsOrEmpty
+        if (all.isEmpty()) return
+        playbackController.playTracks(all, if (shuffled) all.indices.random() else 0, playbackParent, shuffled)
     }
 
     /** Every row's selection key, which is what the context bar's "select all" selects. */

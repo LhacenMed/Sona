@@ -192,6 +192,8 @@ fun SonaTrackRow(
     onClick: () -> Unit,
     onOpenOptions: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    // Null for the usual "artist - album"; a list whose rows share one of the two names the other.
+    subtitle: String? = null,
     onLongClick: (() -> Unit)? = null,
     containerColor: Color = MaterialTheme.colorScheme.surface,
     contentColor: Color = LocalContentColor.current,
@@ -199,7 +201,7 @@ fun SonaTrackRow(
     val current = isCurrent()
     SonaListRow(
         title = track.title,
-        subtitle = "${track.artist} - ${track.album}",
+        subtitle = subtitle ?: "${track.artist} - ${track.album}",
         selection = selection,
         selectionKey = selectionKey,
         onClick = onClick,

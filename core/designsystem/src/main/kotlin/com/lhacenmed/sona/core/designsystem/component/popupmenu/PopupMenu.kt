@@ -474,6 +474,11 @@ class PopupMenu(
      *
      * This correctly rejects touches in the invisible left portion of the popup window when
      * the current level is narrower than [maxWidth], preventing phantom item highlights.
+     *
+     * Each item is placed where it is laid out, not where it is drawn: the bounds are taken while the
+     * entry animation still has the card scaled almost flat from its top, and read off the screen then,
+     * every row would sit in a sliver at the top - leaving only the first one under a dragging finger,
+     * for good, as nothing takes the bounds again once the card has grown.
      */
     private fun recalculateBoundsImmediate() {
         val views = itemViews
@@ -486,11 +491,25 @@ class PopupMenu(
         windowLeft = loc[0] + contentView.width - currentLevelWidth
         windowRight = loc[0] + contentView.width
         views.forEachIndexed { i, view ->
-            view.getLocationOnScreen(loc)
-            itemTops[i] = loc[1]
-            itemBottoms[i] = loc[1] + view.height
+            itemTops[i] = loc[1] + laidOutTopIn(contentView, view)
+            itemBottoms[i] = itemTops[i] + view.height
         }
         boundsReady = true
+    }
+
+    /**
+     * How far below [ancestor]'s top [view] is laid out - through each parent's scroll, but none of
+     * the translation or scale an animation draws it with.
+     */
+    private fun laidOutTopIn(ancestor: View, view: View): Int {
+        var top = 0
+        var current = view
+        while (current !== ancestor) {
+            val parent = current.parent as View
+            top += current.top - parent.scrollY
+            current = parent
+        }
+        return top
     }
 
     // ── Touch forwarding ──────────────────────────────────────────────────────────────────

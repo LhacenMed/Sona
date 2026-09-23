@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
@@ -72,7 +74,7 @@ class HostActivity : SonaActivity() {
                 // because a title alone cannot express a selection or an action.
                 val hostedTitle = screen.title(LocalContext.current)
                 CompositionLocalProvider(LocalNavigator provides navigator) {
-                    Box {
+                    playerOverlay.Content {
                         Scaffold(
                             topBar = {
                                 if (hostedTitle != null) {
@@ -80,19 +82,20 @@ class HostActivity : SonaActivity() {
                                 }
                             },
                             // A screen drawing its own bar consumes the status bar inset there; letting the
-                            // Scaffold add it as well would inset the screen twice.
+                            // Scaffold add it as well would inset the screen twice. The bottom is never
+                            // inset here: the screen's lists end clear of the navigation bar themselves,
+                            // along with the mini player over it.
                             contentWindowInsets = if (hostedTitle == null) {
                                 WindowInsets(0, 0, 0, 0)
                             } else {
                                 ScaffoldDefaults.contentWindowInsets
+                                    .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
                             },
                         ) { innerPadding ->
                             Box(modifier = Modifier.padding(innerPadding)) {
                                 screen.Content()
                             }
                         }
-
-                        playerOverlay.Content()
                     }
                 }
             }

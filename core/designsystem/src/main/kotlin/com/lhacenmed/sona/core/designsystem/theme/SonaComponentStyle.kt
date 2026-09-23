@@ -3,7 +3,11 @@ package com.lhacenmed.sona.core.designsystem.theme
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonShapes
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
@@ -41,6 +45,15 @@ object SonaComponentStyle {
     /** How much wider a held item grows within its row, as a share of its width. Its neighbours give it up. */
     const val PressedExpandedRatio = 0.08f
 }
+
+/**
+ * The shapes every labelled button presses with: round at rest, tightening to [SonaComponentStyle.Shape]
+ * while held - what an icon button's `IconButtonDefaults.shapes` does, for a button with a label.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun buttonPressShapes(): ButtonShapes =
+    ButtonDefaults.shapes(shape = CircleShape, pressedShape = SonaComponentStyle.Shape)
 
 /** The corners of something [pressFraction] of the way from resting to fully held. */
 fun pressedCornerRadius(pressFraction: Float): Dp =

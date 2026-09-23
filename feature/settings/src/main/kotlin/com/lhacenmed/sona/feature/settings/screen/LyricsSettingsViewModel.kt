@@ -2,6 +2,7 @@ package com.lhacenmed.sona.feature.settings.screen
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lhacenmed.sona.core.common.coroutines.launchOperation
 import com.lhacenmed.sona.core.data.lyrics.LyricsRepository
 import com.lhacenmed.sona.core.datastore.LyricsBackgroundStyle
 import com.lhacenmed.sona.core.datastore.LyricsSettings
@@ -58,8 +59,9 @@ class LyricsSettingsViewModel @Inject constructor(
     fun setPreloadQueueLyricsEnabled(enabled: Boolean) = write { setPreloadQueueLyricsEnabled(enabled) }
     fun setQueueLyricsPreloadCount(count: Int) = write { setQueueLyricsPreloadCount(count) }
 
-    fun clearLyricsCache() {
-        viewModelScope.launch { lyricsRepository.clearLyrics() }
+    /** Forgets every stored and edited lyric, reporting how it went to [onFinished]. */
+    fun clearLyricsCache(onFinished: (succeeded: Boolean) -> Unit) {
+        viewModelScope.launchOperation(onFinished) { lyricsRepository.clearLyrics() }
     }
 
     private fun write(change: suspend LyricsSettings.() -> Unit) {

@@ -1,14 +1,11 @@
 package com.lhacenmed.sona.feature.library.playlist
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Deselect
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -17,29 +14,35 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
+import com.lhacenmed.sona.core.designsystem.component.SonaConfirmationDialog
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.feature.library.options.toast
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
+import com.lhacenmed.sona.feature.library.selection.SelectionOptionsHost
+import com.lhacenmed.sona.feature.library.selection.selectAllAction
+import com.lhacenmed.sona.feature.library.selection.toLibraryTopBarSelection
 
 /**
- * The shape both of a playlist's pickers share: a bar naming what is being picked and how many are
- * picked so far, then [content]'s rows, each picked with a tap.
+ * The shape both of a playlist's pickers share: a bar naming what is being picked, then [content]'s
+ * rows - ordinary library rows, which play or open with a tap, offer their options sheet, and start a
+ * selection with a long press, exactly as they do in the library.
  *
- * The bar keeps its icons for Add alone, which appears once anything is picked; Search and Select all
- * live in its menu. Searching turns the bar into the search field, [searchQuery] being null while it is
- * closed, and Add and Select all stay reachable beside it. Select all works on [visibleKeys] - the rows
- * on screen, narrowed by any search - and once every one of them is picked it deselects them instead.
+ * Once rows are selected the bar is the library's selection bar, with Add beside Select all. An open
+ * search keeps its field on screen instead, so the query can still be changed with rows picked, and
+ * Add and Select all stay reachable beside it. Select all works on [visibleKeys] - the rows on screen,
+ * narrowed by any search.
  *
- * Back, by gesture or by the bar's arrow, first drops whatever is picked, then closes the search, and
- * only then leaves - so nothing picked is ever lost to one press.
+ * That same order is what back follows: it first closes the search, then drops whatever is picked, and
+ * only then leaves - so nothing picked is lost to a search being closed.
  *
- * Add leaves only after the tracks are in [playlistId], in the order they were picked, with a toast
- * saying how it went. The count sits in the bar from the first frame, so picking the first row moves
- * nothing.
+ * Add first works out what the picks would really add - each track once, none the playlist already
+ * holds - and asks to confirm that many. The screen leaves only after the tracks are in [playlistId].
  */
 @Composable
 internal fun PlaylistTrackPicker(
@@ -54,55 +57,65 @@ internal fun PlaylistTrackPicker(
     val navigator = LocalNavigator.current
     val context = LocalContext.current
     val viewModel: PlaylistPickerViewModel = hiltViewModel()
-    var isAdding by remember { mutableStateOf(false) }
+    val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+    // The tracks Add worked out, waiting on the user to confirm adding them.
+    var confirmingTrackIds by remember { mutableStateOf<List<Long>>(emptyList()) }
 
-    val addActions = if (selection.isActive && !isAdding) {
-        listOf(
-            TopBarAction(label = "Add", icon = Icons.Filled.Check) {
-                isAdding = true
-                viewModel.addToPlaylist(playlistId, selection.selectedKeys.filterIsInstance<SelectionKey>()) { succeeded ->
-                    isAdding = false
-                    context.toast(if (succeeded) "Added to playlist" else "Could not add to playlist")
-                    if (succeeded) navigator.back()
+    val addAction = TopBarAction(label = "Add to playlist", icon = Icons.Filled.Check) {
+        viewModel.resolveAddition(playlistId, selection.selectedKeys.filterIsInstance<SelectionKey>()) { trackIds ->
+            if (trackIds.isEmpty()) context.toast("Already in this playlist") else confirmingTrackIds = trackIds
+        }
+    }
+
+    SelectionOptionsHost(selection) { openSelectionOptions ->
+        Column(modifier = Modifier.fillMaxSize()) {
+            SonaTopAppBar(
+                title = title,
+                onNavigateBack = navigator::back,
+                actions = listOf(TopBarAction(label = "Search", icon = Icons.Filled.Search) { onSearchQueryChange("") }),
+                search = searchQuery?.let { query ->
+                    TopBarSearch(
+                        query = query,
+                        onQueryChange = onSearchQueryChange,
+                        onClose = { onSearchQueryChange(null) },
+                        actions = if (selection.isActive) listOf(addAction) else emptyList(),
+                        menuActions = if (selection.isActive) listOf(selection.selectAllAction(visibleKeys())) else emptyList(),
+                    )
+                },
+                // Left out while searching, so the field outranks the selection bar - and so the bar's
+                // back handling closes the search before it drops the picks.
+                selection = if (searchQuery == null) {
+                    selection.toLibraryTopBarSelection(
+                        listKeys = visibleKeys,
+                        actions = listOf(addAction),
+                        onMoreOptions = openSelectionOptions,
+                    )
+                } else {
+                    null
+                },
+            )
+            content()
+        }
+    }
+
+    if (confirmingTrackIds.isNotEmpty()) {
+        val trackIds = confirmingTrackIds
+        val isSingle = trackIds.size == 1
+        val playlistName = playlists.itemsOrEmpty.find { it.id == playlistId }?.name ?: "the playlist"
+        SonaConfirmationDialog(
+            title = if (isSingle) "Add track" else "Add ${trackIds.size} tracks",
+            message = if (isSingle) "It goes at the end of $playlistName." else "They go at the end of $playlistName.",
+            confirmLabel = "Add",
+            successMessage = if (isSingle) "Track added" else "${trackIds.size} tracks added",
+            failureMessage = if (isSingle) "Could not add track" else "Could not add tracks",
+            onDismiss = { confirmingTrackIds = emptyList() },
+            operation = { onFinished ->
+                viewModel.addToPlaylist(playlistId, trackIds) { succeeded ->
+                    onFinished(succeeded)
+                    // Closed rather than backed out of: back would only close the search or the selection.
+                    if (succeeded) navigator.close()
                 }
             },
         )
-    } else {
-        emptyList()
     }
-    val keys = visibleKeys()
-    val selectAllAction = if (keys.isNotEmpty() && selection.selectedKeys.containsAll(keys)) {
-        TopBarAction(label = "Deselect all", icon = Icons.Filled.Deselect) { selection.deselectAll(keys) }
-    } else {
-        TopBarAction(label = "Select all", icon = Icons.Filled.SelectAll) { selection.selectAll(keys) }
-    }
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        SonaTopAppBar(
-            title = title,
-            subtitle = "${selection.count} selected",
-            onNavigateBack = { if (selection.isActive) selection.clear() else navigator.back() },
-            actions = addActions,
-            menuActions = listOf(
-                TopBarAction(label = "Search", icon = Icons.Filled.Search) { onSearchQueryChange("") },
-                selectAllAction,
-            ),
-            search = searchQuery?.let { query ->
-                TopBarSearch(
-                    query = query,
-                    onQueryChange = { onSearchQueryChange(it) },
-                    onClose = { if (selection.isActive) selection.clear() else onSearchQueryChange(null) },
-                    actions = addActions,
-                    menuActions = listOf(selectAllAction),
-                )
-            },
-        )
-        content()
-    }
-
-    // Composed after the bar, so it outranks the search's own back handling: a press drops the picks first.
-    BackHandler(enabled = selection.isActive) { selection.clear() }
 }
-
-/** What tapping a picker's row does: picks or unpicks it - nothing, for a row that cannot be picked. */
-internal fun SelectionState.pickerClick(key: SelectionKey?): () -> Unit = { key?.let(::toggle) }

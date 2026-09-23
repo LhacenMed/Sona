@@ -1,6 +1,10 @@
 package com.lhacenmed.sona.core.designsystem.theme
 
 import android.os.Build
+import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.compose.LocalActivity
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -10,6 +14,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -63,6 +68,8 @@ fun SonaTheme(
         // content sits in bands of another shade. One colour for both, here, keeps every screen whole.
         scheme.copy(background = scheme.surface, onBackground = scheme.onSurface)
     }
+
+    SystemBarsFollowing(darkTheme)
 
     MaterialTheme(colorScheme = animateColorSchemeAsState(targetColorScheme)) {
         CompositionLocalProvider(LocalCoverStyle provides coverStyle, content = content)
@@ -150,3 +157,32 @@ private fun ColorScheme.lerp(to: ColorScheme, fraction: Float) = ColorScheme(
     onTertiaryFixed = lerp(onTertiaryFixed, to.onTertiaryFixed, fraction),
     onTertiaryFixedVariant = lerp(onTertiaryFixedVariant, to.onTertiaryFixedVariant, fraction),
 )
+
+/** The platform's own navigation bar scrims - `ComponentActivity`'s defaults - over 3-button navigation. */
+private val LightNavigationBarScrim = android.graphics.Color.argb(0xe6, 0xFF, 0xFF, 0xFF)
+private val DarkNavigationBarScrim = android.graphics.Color.argb(0x80, 0x1b, 0x1b, 0x1b)
+
+/**
+ * Draws the system bars' icons for [darkTheme]: dark over a light theme, light over a dark one.
+ *
+ * The screens are drawn behind the bars (`SonaActivity`), so it is the theme drawn there, not the
+ * window's, that the icons have to read against - and [darkTheme] is what decides that theme. Left to
+ * the window, the bars followed its own idea of light and dark instead, which could leave icons the
+ * same colour as the screen behind them. The status bar stays clear; over 3-button navigation the
+ * navigation bar keeps the platform's translucent scrim, in the theme's tone, and gesture navigation
+ * stays clear.
+ */
+@Composable
+private fun SystemBarsFollowing(darkTheme: Boolean) {
+    val activity = LocalActivity.current as? ComponentActivity ?: return
+    DisposableEffect(activity, darkTheme) {
+        activity.enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.auto(
+                android.graphics.Color.TRANSPARENT,
+                android.graphics.Color.TRANSPARENT,
+            ) { darkTheme },
+            navigationBarStyle = SystemBarStyle.auto(LightNavigationBarScrim, DarkNavigationBarScrim) { darkTheme },
+        )
+        onDispose {}
+    }
+}

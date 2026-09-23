@@ -11,6 +11,8 @@ android {
 
     defaultConfig {
         minSdk = 26
+        // The cover swiper reflects into ViewPager2 and RecyclerView; consumer-rules.pro keeps what it reads.
+        consumerProguardFiles("consumer-rules.pro")
     }
 
     buildFeatures {
@@ -49,6 +51,9 @@ dependencies {
     implementation(libs.reorderable)
 
     implementation(libs.coil.compose)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.viewpager2)
+    implementation(libs.google.material)
     implementation(libs.androidx.palette)
 }
 

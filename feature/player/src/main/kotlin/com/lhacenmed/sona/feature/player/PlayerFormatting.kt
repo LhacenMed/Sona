@@ -1,12 +1,7 @@
 package com.lhacenmed.sona.feature.player
 
-import android.content.ContentUris
-import android.content.Context
-import android.content.Intent
-import android.provider.MediaStore
 import android.view.HapticFeedbackConstants
 import android.view.View
-import com.lhacenmed.sona.core.model.Track
 import java.util.Locale
 
 /** "m:ss", or "h:mm:ss" from the hour on - ArchiveTune's `makeTimeString`. */
@@ -26,27 +21,4 @@ internal fun makeTimeString(durationMs: Long): String {
 @Suppress("DEPRECATION")
 internal fun View.performContextClick() {
     performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING)
-}
-
-/**
- * Offers [track]'s audio to another app.
- *
- * A manually scanned track has only a file path, which another app is not allowed to open, so its title
- * and artist are shared instead.
- */
-internal fun Context.shareTrack(track: Track) {
-    val intent = Intent(Intent.ACTION_SEND).apply {
-        if (track.isManuallyScanned) {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, "${track.title} - ${track.artist}")
-        } else {
-            type = "audio/*"
-            putExtra(
-                Intent.EXTRA_STREAM,
-                ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, track.mediaStoreId),
-            )
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-    }
-    startActivity(Intent.createChooser(intent, null))
 }

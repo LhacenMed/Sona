@@ -2,10 +2,18 @@ package com.lhacenmed.sona.feature.player
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
+import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.datastore.PlayerSliderStyle
 import com.lhacenmed.sona.core.datastore.PlayerStyle
 import com.lhacenmed.sona.core.datastore.PlayerStyleSettings
+import com.lhacenmed.sona.core.model.Album
+import com.lhacenmed.sona.core.model.Artist
+import com.lhacenmed.sona.core.model.Folder
+import com.lhacenmed.sona.core.model.Genre
+import com.lhacenmed.sona.core.model.PlaybackParent
+import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
@@ -85,6 +93,31 @@ class PlayerViewModel @Inject constructor(
                 favoriteTrackIds = repository.favoriteTrackIds.value,
             )
         },
+    )
+
+    /**
+     * What the queue is playing from, for the line under "Now Playing" - renamed as its collection is.
+     * Started from the library already in memory, so the line is right on the player's first frame.
+     */
+    internal val playingFrom: StateFlow<PlayingFrom?> = combine(
+        playbackController.playbackState.map { it.parent }.distinctUntilChanged(),
+        repository.albums,
+        repository.artists,
+        repository.genres,
+        combine(repository.playlists, repository.folders, ::Pair),
+    ) { parent, albums, artists, genres, (playlists, folders) ->
+        resolvePlayingFrom(parent, albums, artists, genres, playlists, folders)
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        resolvePlayingFrom(
+            parent = playbackController.playbackState.value.parent,
+            albums = repository.albums.value,
+            artists = repository.artists.value,
+            genres = repository.genres.value,
+            playlists = repository.playlists.value,
+            folders = repository.folders.value,
+        ),
     )
 
     val playerStyle: StateFlow<PlayerStyle> = playerStyleSettings.playerStyle.flow
@@ -177,6 +210,23 @@ class PlayerViewModel @Inject constructor(
 
     private fun resolveQueue(entries: List<QueueEntry>, tracksById: Map<Long, Track>): List<QueueTrack> =
         entries.mapNotNull { entry -> tracksById[entry.trackId]?.let { track -> QueueTrack(entry, track) } }
+
+    private fun resolvePlayingFrom(
+        parent: PlaybackParent?,
+        albums: LibraryContent<Album>,
+        artists: LibraryContent<Artist>,
+        genres: LibraryContent<Genre>,
+        playlists: LibraryContent<Playlist>,
+        folders: LibraryContent<Folder>,
+    ): PlayingFrom? =
+        playingFromOf(
+            parent = parent,
+            albums = albums.itemsOrEmpty,
+            artists = artists.itemsOrEmpty,
+            genres = genres.itemsOrEmpty,
+            playlists = playlists.itemsOrEmpty,
+            folders = folders.itemsOrEmpty,
+        )
 
     private fun resolveUiState(
         playback: PlaybackUiState,

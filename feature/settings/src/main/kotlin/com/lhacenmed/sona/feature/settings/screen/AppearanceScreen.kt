@@ -72,17 +72,11 @@ object AppearanceScreen : Screen {
             SettingsSectionDivider()
 
             SettingsSection(stringResource(R.string.appearance_player_section)) {
-                // Options in PlayerStyle's order, so an option's index is the style it names.
+                // Listed straight from PlayerStyle, so an option's index is the style it names and a new
+                // style is offered here the moment it exists.
                 SettingsChoiceItem(
                     title = stringResource(R.string.player_style_title),
-                    options = listOf(
-                        stringResource(R.string.player_style_classic),
-                        stringResource(R.string.player_style_minimal),
-                        stringResource(R.string.player_style_cinematic),
-                        stringResource(R.string.player_style_immersive),
-                        stringResource(R.string.player_style_immersive_extended),
-                        stringResource(R.string.player_style_editorial),
-                    ),
+                    options = PlayerStyle.entries.map { playerStyleLabel(it) },
                     selectedIndex = playerStyle.ordinal,
                     onSelect = { viewModel.setPlayerStyle(PlayerStyle.entries[it]) },
                 )
@@ -146,3 +140,9 @@ object AppearanceScreen : Screen {
         }
     }
 }
+
+@Composable
+private fun playerStyleLabel(style: PlayerStyle): String =
+    when (style) {
+        PlayerStyle.DEFAULT -> stringResource(R.string.player_style_default)
+    }
