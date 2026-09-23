@@ -42,16 +42,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -65,6 +63,7 @@ import kotlin.math.abs
 import kotlin.math.absoluteValue
 import kotlin.math.exp
 import kotlin.math.roundToInt
+import kotlin.math.sign
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -100,8 +99,6 @@ internal fun SwipeableMiniPlayerBox(
     content: @Composable (Float) -> Unit,
 ) {
     val offsetXAnimatable = remember { Animatable(0f) }
-    var dragStartTime by remember { mutableLongStateOf(0L) }
-    var totalDragDistance by remember { mutableFloatStateOf(0f) }
 
     val view = LocalView.current
     // The gesture handler outlives compositions, so it reads these as they are when it runs.
@@ -133,63 +130,60 @@ internal fun SwipeableMiniPlayerBox(
                     .height(MiniPlayerHeight)
                     .padding(horizontal = MiniPlayerHorizontalPadding)
                     .pointerInput(Unit) {
+                        // Where this gesture has put the player, and how fast it is moving. Held here rather
+                        // than read back from the animation, whose snaps are launched and may not have landed
+                        // yet - so the release judges the drag exactly as the finger left it.
+                        var dragOffset = 0f
+                        val velocityTracker = VelocityTracker()
+                        val directionSign = if (layoutDirection == LayoutDirection.Rtl) -1f else 1f
+
+                        fun settle() {
+                            coroutineScope.launch {
+                                offsetXAnimatable.animateTo(targetValue = 0f, animationSpec = animationSpec)
+                            }
+                        }
+
                         detectHorizontalDragGestures(
                             onDragStart = {
-                                dragStartTime = System.currentTimeMillis()
-                                totalDragDistance = 0f
+                                // Taken up where a settle still under way has it, so a grab never jumps.
+                                dragOffset = offsetXAnimatable.value
+                                velocityTracker.resetTracking()
                             },
-                            onDragCancel = {
-                                coroutineScope.launch {
-                                    offsetXAnimatable.animateTo(
-                                        targetValue = 0f,
-                                        animationSpec = animationSpec,
-                                    )
-                                }
-                            },
-                            onHorizontalDrag = { _, dragAmount ->
-                                val adjustedDragAmount =
-                                    if (layoutDirection == LayoutDirection.Rtl) -dragAmount else dragAmount
-                                val allowLeft = adjustedDragAmount < 0 && latestHasNextTrack
-                                val allowRight = adjustedDragAmount > 0 && latestHasPreviousTrack
-                                if (allowLeft || allowRight) {
-                                    totalDragDistance += abs(adjustedDragAmount)
-                                    coroutineScope.launch {
-                                        offsetXAnimatable.snapTo(offsetXAnimatable.value + adjustedDragAmount)
-                                    }
-                                }
+                            onDragCancel = { settle() },
+                            onHorizontalDrag = { change, dragAmount ->
+                                velocityTracker.addPosition(change.uptimeMillis, change.position)
+                                // The player can be pulled out only towards a track that is there to change
+                                // to, but always back to rest: it is where it ends up that is limited, never
+                                // which way it moves - so a swipe begun can always be undone before release.
+                                dragOffset = (dragOffset + dragAmount * directionSign).coerceIn(
+                                    minimumValue = if (latestHasNextTrack) Float.NEGATIVE_INFINITY else 0f,
+                                    maximumValue = if (latestHasPreviousTrack) Float.POSITIVE_INFINITY else 0f,
+                                )
+                                val targetOffset = dragOffset
+                                coroutineScope.launch { offsetXAnimatable.snapTo(targetOffset) }
                             },
                             onDragEnd = {
-                                val dragDuration = System.currentTimeMillis() - dragStartTime
-                                val velocity = if (dragDuration > 0) totalDragDistance / dragDuration else 0f
-                                val currentOffset = offsetXAnimatable.value
-
+                                // In pixels a millisecond, the speed the finger left at - away from rest is
+                                // positive, so moving back towards it never counts as a swipe.
+                                val outwardVelocity =
+                                    velocityTracker.calculateVelocity().x * directionSign / 1000f * dragOffset.sign
                                 val minDistanceThreshold = 50f
                                 val velocityThreshold = (SwipeSensitivity * -8.25f) + 8.5f
 
                                 val shouldChangeSong =
-                                    (
-                                        abs(currentOffset) > minDistanceThreshold &&
-                                            velocity > velocityThreshold
-                                    ) || (abs(currentOffset) > autoSwipeThreshold)
+                                    (abs(dragOffset) > minDistanceThreshold && outwardVelocity > velocityThreshold) ||
+                                        abs(dragOffset) > autoSwipeThreshold
 
                                 if (shouldChangeSong) {
-                                    val isRightSwipe = currentOffset > 0
-
-                                    if (isRightSwipe && latestHasPreviousTrack) {
+                                    if (dragOffset > 0 && latestHasPreviousTrack) {
                                         view.performContextClick()
                                         latestOnSwipeToPrevious()
-                                    } else if (!isRightSwipe && latestHasNextTrack) {
+                                    } else if (dragOffset < 0 && latestHasNextTrack) {
                                         view.performContextClick()
                                         latestOnSwipeToNext()
                                     }
                                 }
-
-                                coroutineScope.launch {
-                                    offsetXAnimatable.animateTo(
-                                        targetValue = 0f,
-                                        animationSpec = animationSpec,
-                                    )
-                                }
+                                settle()
                             },
                         )
                     },
