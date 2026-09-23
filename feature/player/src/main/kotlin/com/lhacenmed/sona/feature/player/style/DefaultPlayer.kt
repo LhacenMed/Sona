@@ -277,7 +277,7 @@ private fun DefaultTrackActions(
             shape = RoundedCornerShape(14.dp),
             color =
                 if (isFavorite) {
-                    MaterialTheme.colorScheme.error.copy(alpha = 0.25f)
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
                 } else {
                     contentColor.copy(alpha = 0.12f)
                 },
@@ -290,7 +290,8 @@ private fun DefaultTrackActions(
                 Icon(
                     painter = painterResource(favoriteIconRes(isFavorite)),
                     contentDescription = null,
-                    tint = if (isFavorite) MaterialTheme.colorScheme.error else contentColor,
+                    // The theme's own colour, as the queue's favourite button marks a favourite.
+                    tint = if (isFavorite) MaterialTheme.colorScheme.primary else contentColor,
                     modifier = Modifier.size(22.dp),
                 )
             }

@@ -108,15 +108,18 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 
 - [ ] **4.1 Fix white bottom section in floating-window mode**
   Running the app in Android's floating/freeform window mode leaves the bottom portion of the window white/blank for an unknown reason.
+  - Likely fixed with 4.2, to confirm in a floating window: no activity was edge-to-edge of its own accord, so the navigation bar's area was left to the window theme to fill - a colour and an idea of light or dark of its own - rather than drawn by the app. `SonaActivity` now draws every screen edge to edge from its first frame, and the bars are styled from the Compose theme.
 
-- [ ] **4.2 Fix status bar not following light/dark theme**
+- [x] **4.2 Fix status bar not following light/dark theme**
   The system status bar doesn't update its appearance when the app switches between light and dark mode.
+  - Nothing set how the system bars look: the app draws its screens behind them, but their icons were left to the window theme's own light or dark, a second source of truth beside the Compose theme the screens are drawn in. `SonaActivity` calls `enableEdgeToEdge()` before any content, and `SonaTheme` re-applies it with `SystemBarStyle.auto { darkTheme }` whenever its `darkTheme` changes - dark icons over a light theme, light over a dark one, the platform's translucent scrim over 3-button navigation - so the bars follow exactly what every screen is drawn in (Now in Android's arrangement).
 
 - [x] **4.3 Remove ripple on the player's seek-slider thumb**
   The draggable thumb on the wavy timeline slider currently shows a ripple effect on touch; it should not.
 
-- [ ] **4.4 Recolor the favorite button to follow the app theme**
+- [x] **4.4 Recolor the favorite button to follow the app theme**
   The favorite/like button is a fixed pink color and should instead follow the app's theme color.
+  - The Default player marked a favourite with `colorScheme.error`; it now uses `primary`, as the queue's favourite button already did - the icon and its card's tint alike.
 
 - [x] **4.5 Change the "more options" icon**
   Every row now draws its overflow button through `SonaListRow`, whose glyph is the horizontal ellipsis - so the queue's rows changed with the library's rather than separately.
