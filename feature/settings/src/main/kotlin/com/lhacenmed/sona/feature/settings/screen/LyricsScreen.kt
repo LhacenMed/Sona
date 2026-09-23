@@ -1,7 +1,5 @@
 package com.lhacenmed.sona.feature.settings.screen
 
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -11,8 +9,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.datastore.LyricsBackgroundStyle
-import com.lhacenmed.sona.core.designsystem.component.SonaActionButtonGroup
-import com.lhacenmed.sona.core.designsystem.component.actionButton
+import com.lhacenmed.sona.core.designsystem.component.SonaConfirmationDialog
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
@@ -56,12 +53,14 @@ object LyricsScreen : Screen {
         val preloadOff = stringResource(R.string.lyrics_preload_count_off)
 
         if (showClearLyricsDialog) {
-            ClearLyricsCacheDialog(
+            SonaConfirmationDialog(
+                title = stringResource(R.string.lyrics_clear_cache_title),
+                message = stringResource(R.string.lyrics_clear_cache_confirm),
+                confirmLabel = stringResource(R.string.lyrics_clear_cache_action),
+                successMessage = stringResource(R.string.lyrics_clear_cache_done),
+                failureMessage = stringResource(R.string.lyrics_clear_cache_failed),
                 onDismiss = { showClearLyricsDialog = false },
-                onConfirm = {
-                    viewModel.clearLyricsCache()
-                    showClearLyricsDialog = false
-                },
+                operation = viewModel::clearLyricsCache,
             )
         }
 
@@ -192,24 +191,4 @@ object LyricsScreen : Screen {
             }
         }
     }
-}
-
-@Composable
-private fun ClearLyricsCacheDialog(
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.lyrics_clear_cache_title)) },
-        text = { Text(stringResource(R.string.lyrics_clear_cache_confirm)) },
-        confirmButton = {
-            val cancelLabel = stringResource(R.string.dialog_cancel)
-            val clearLabel = stringResource(R.string.lyrics_clear_cache_action)
-            SonaActionButtonGroup {
-                actionButton(label = cancelLabel, onClick = onDismiss)
-                actionButton(label = clearLabel, onClick = onConfirm)
-            }
-        },
-    )
 }

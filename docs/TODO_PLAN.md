@@ -85,22 +85,26 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 
 *Affects the "Add Tracks" and "Add to Collections" activities.*
 
-- [ ] **3.1 Fix back-navigation during search + selection**
+- [x] **3.1 Fix back-navigation during search + selection**
   With an active search and selected tracks, pressing back should first close the search; only a subsequent back press should clear the current selection. Currently this sequencing is wrong.
+  - **Resolved:** while a search is open the bar keeps its field (with Add and Select all beside it) instead of the selection bar, so the bar's own back handling closes the search first; the picker's extra handler that dropped the picks first is gone.
 
-- [ ] **3.2 Remove forced selection mode on entry**
+- [x] **3.2 Remove forced selection mode on entry**
   - These activities should open into a normal (non-selection) list, like any other list in the app.
   - Selection/contextual mode should only begin via long-press on a track, matching standard behavior elsewhere.
   - Since items are shown normally, they should keep their usual bottom-sheet action menus and other standard interactions.
+  - **Resolved:** rows are the library's own - a tap plays a track or opens a collection, the overflow opens its options sheet, and rows show what is playing. A selection brings the library's selection bar, with Add beside Select all.
 
-- [ ] **3.3 Show a confirmation dialog with total count**
+- [x] **3.3 Show a confirmation dialog with total count**
   Pressing the confirm/add button should show a confirmation dialog stating the total number of tracks about to be added.
+  - **Resolved:** the count is what will really be added - each track once, none the playlist already holds - so it never overstates. The screen now closes after adding; before, its back press only cleared the selection.
 
-- [ ] **3.4 Remove redundant counter from the confirmation dialog**
+- [x] **3.4 Remove redundant counter from the confirmation dialog**
   The dialog currently repeats a "Total: …" line in its body even though the count already appears in the title — remove the duplicate.
 
-- [ ] **3.5 Keep confirmation dialogs consistent app-wide**
+- [x] **3.5 Keep confirmation dialogs consistent app-wide**
   Beyond this dialog, all confirmation dialogs across the app should be simple, visually consistent, and well designed.
+  - **Resolved:** one `SonaConfirmationDialog` in the design system backs every confirmation - excluding folders, deleting playlists, adding or removing a playlist's tracks, clearing the lyrics cache - each titled with what it changes, held with a progress bar until done, then confirmed by a toast.
 
 ---
 
@@ -138,15 +142,15 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 
 ## Priority 5 — Player UI Consolidation & Polish
 
-- [ ] **5.1 Add and consolidate the equalizer entry point**
+- [x] **5.1 Add and consolidate the equalizer entry point**
   - Add an equalizer button to the cinematic player, in the queue bottom-sheet header, next to the existing lyrics and sleep-timer controls.
   - This becomes the single default way to reach the equalizer.
   - All other existing equalizer entry points should be removed.
 
-- [ ] **5.2 Remove the duplicate share button from the player**
+- [x] **5.2 Remove the duplicate share button from the player**
   Sharing is already available from the track's action/options sheet; the player's separate share button should be removed.
 
-- [ ] **5.3 Rebuild the swipeable cover-art section to match Auxio exactly**
+- [x] **5.3 Rebuild the swipeable cover-art section to match Auxio exactly**
   The player's swipeable album-cover area should match Auxio's version exactly — showing only the artwork, with no extra color styling applied. (Auxio's version is XML-based; rebuild in Compose if feasible.)
 
 - [ ] **5.4 Apply Material "expressive" animated styling to player buttons**

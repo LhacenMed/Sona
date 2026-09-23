@@ -153,8 +153,10 @@
     <string name="lyrics_cache_section">Cache</string>
     <string name="lyrics_clear_cache_title">Clear lyrics cache</string>
     <string name="lyrics_clear_cache_summary">Forget stored and edited lyrics; they are read again from each file</string>
-    <string name="lyrics_clear_cache_confirm">Are you sure you want to clear all lyrics cache?</string>
+    <string name="lyrics_clear_cache_confirm">Stored and edited lyrics are forgotten. They are read again from each file.</string>
     <string name="lyrics_clear_cache_action">Clear</string>
+    <string name="lyrics_clear_cache_done">Lyrics cache cleared</string>
+    <string name="lyrics_clear_cache_failed">Could not clear lyrics cache</string>
     <string name="lyrics_animation_tuning_section">Animation tuning</string>
     <string name="lyrics_line_bounce_title">Line bounce effect</string>
     <string name="lyrics_line_bounce_summary">Enable bounce animation for line-synced (LRC) lyrics</string>

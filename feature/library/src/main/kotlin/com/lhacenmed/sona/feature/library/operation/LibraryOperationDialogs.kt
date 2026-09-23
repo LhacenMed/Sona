@@ -2,8 +2,8 @@ package com.lhacenmed.sona.feature.library.operation
 
 import androidx.compose.runtime.Composable
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.lhacenmed.sona.core.designsystem.component.SonaConfirmationDialog
 import com.lhacenmed.sona.core.model.Playlist
-import com.lhacenmed.sona.feature.library.pluralCount
 import com.lhacenmed.sona.feature.library.options.OptionsActionsViewModel
 
 /*
@@ -26,14 +26,13 @@ internal fun ExcludeFoldersDialog(
 ) {
     val actionsViewModel: OptionsActionsViewModel = hiltViewModel()
     val isSingle = folderPaths.size == 1
-    ConfirmedOperationDialog(
+    SonaConfirmationDialog(
         title = if (isSingle) "Exclude folder" else "Exclude ${folderPaths.size} folders",
         message = if (isSingle) {
             "Its tracks leave your library. The files themselves are not deleted."
         } else {
             "Their tracks leave your library. The files themselves are not deleted."
         },
-        total = pluralCount(folderPaths.size, "folder"),
         confirmLabel = "Exclude",
         successMessage = if (isSingle) "Folder excluded" else "${folderPaths.size} folders excluded",
         failureMessage = if (isSingle) "Could not exclude folder" else "Could not exclude folders",
@@ -58,10 +57,9 @@ internal fun DeletePlaylistsDialog(
 ) {
     val actionsViewModel: OptionsActionsViewModel = hiltViewModel()
     val isSingle = playlists.size == 1
-    ConfirmedOperationDialog(
+    SonaConfirmationDialog(
         title = if (isSingle) "Delete playlist" else "Delete ${playlists.size} playlists",
         message = "The tracks themselves are not deleted.",
-        total = pluralCount(playlists.size, "playlist"),
         confirmLabel = "Delete",
         successMessage = if (isSingle) "Playlist deleted" else "${playlists.size} playlists deleted",
         failureMessage = if (isSingle) "Could not delete playlist" else "Could not delete playlists",

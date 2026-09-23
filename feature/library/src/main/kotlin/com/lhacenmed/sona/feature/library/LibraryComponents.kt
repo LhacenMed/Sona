@@ -56,13 +56,13 @@ import androidx.compose.material3.HorizontalDivider
 import com.lhacenmed.sona.core.designsystem.component.DetailHeader
 import com.lhacenmed.sona.core.designsystem.component.DetailScaffold
 import com.lhacenmed.sona.core.designsystem.component.DetailSectionHeader
+import com.lhacenmed.sona.core.designsystem.component.SonaConfirmationDialog
 import com.lhacenmed.sona.core.designsystem.component.SonaIconButtonGroup
 import com.lhacenmed.sona.core.designsystem.component.TopBarCollapse
 import com.lhacenmed.sona.core.designsystem.component.iconButton
 import com.lhacenmed.sona.core.designsystem.component.rememberDetailHeaderState
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.feature.library.options.formatDurationMs
-import com.lhacenmed.sona.feature.library.operation.ConfirmedOperationDialog
 import com.lhacenmed.sona.feature.library.options.OptionsFollowUps
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
@@ -686,10 +686,9 @@ internal fun TrackListDetail(
 
     if (removeFromPlaylist != null && removingTracks.isNotEmpty()) {
         val isSingle = removingTracks.size == 1
-        ConfirmedOperationDialog(
+        SonaConfirmationDialog(
             title = if (isSingle) "Remove track" else "Remove ${removingTracks.size} tracks",
             message = "From $title. The files themselves are not deleted.",
-            total = pluralCount(removingTracks.size, "track"),
             confirmLabel = "Remove",
             successMessage = if (isSingle) "Track removed" else "${removingTracks.size} tracks removed",
             failureMessage = if (isSingle) "Could not remove track" else "Could not remove tracks",
