@@ -48,9 +48,12 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.lhacenmed.sona.core.designsystem.theme.LocalFastScrollTouchArea
+import com.lhacenmed.sona.core.model.FastScrollTouchArea
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -70,7 +73,10 @@ private val ThumbHeight = 56.dp
 private val ThumbBarWidth = 4.dp
 private val ThumbBarInset = 4.dp
 
-/** The least a touch on the thumb is given, and the gap between it and the popup: Auxio's `size_touchable_small`. */
+/**
+ * Auxio's `size_touchable_small`: the gap between the thumb and the popup, and how far in from the edge
+ * a touch reaches the thumb with the standard touch area.
+ */
 private val MinTouchTargetSize = 48.dp
 
 /** Auxio's `size_fast_scroll_popup`, and the popup's padding around its text. */
@@ -93,10 +99,11 @@ private const val POPUP_BASE_ROTATION_DEGREES = 14f
  * [sectionAt] of that row's index, "?" where it has none - with a tick of haptics each time that
  * changes. Without [sectionAt] there is no popup.
  *
- * Touches are Auxio's: the thumb takes any touch within a touch target's width of the edge, and a
- * touch on the edge's outermost sliver takes the thumb straight to the finger. A vertical drag
- * starting anywhere in that width does the same once it passes the touch slop. The thumb stays clear
- * of [LocalBottomContentPadding], so it never slides under the mini player.
+ * Touches are Auxio's: the thumb takes any touch within the edge's width of it, and a touch on the
+ * edge's outermost sliver takes the thumb straight to the finger. A vertical drag starting anywhere
+ * in that width does the same once it passes the touch slop. How wide the edge is follows
+ * [LocalFastScrollTouchArea]. The thumb stays clear of [LocalBottomContentPadding], so it never
+ * slides under the mini player.
  *
  * Only while [enabled], and only for a list with somewhere to scroll.
  */
@@ -119,6 +126,7 @@ fun FastScroller(
     val density = LocalDensity.current
     val bottomPaddingPx = with(density) { LocalBottomContentPadding.current.toPx() }
     val thumbHeightPx = with(density) { ThumbHeight.toPx() }
+    val edgeWidth = LocalFastScrollTouchArea.current.edgeWidth
 
     // Shown by the list moving under a scroll of its own - a finger, a fling - never by a relayout.
     LaunchedEffect(state, isActive) {
@@ -132,18 +140,18 @@ fun FastScroller(
     }
 
     Box(
-        modifier = modifier.pointerInput(state, isActive, isRtl, bottomPaddingPx) {
+        modifier = modifier.pointerInput(state, isActive, isRtl, bottomPaddingPx, edgeWidth) {
             if (!isActive) return@pointerInput
             val thumbWidthPx = ThumbWidth.toPx()
-            val minTouchTargetPx = MinTouchTargetSize.toPx()
+            val edgeWidthPx = max(edgeWidth.toPx(), thumbWidthPx)
             fun thumbRangePx() = thumbRangePx(size.height, bottomPaddingPx, thumbHeightPx)
             fun thumbTopPx() = listState.scrollFraction() * thumbRangePx()
-            // The thumb's column, and the touch target around it - as wide as a touch target, kept
-            // within the list: Auxio's `isUnder`. The thumb is taller than a touch target already.
+            // The thumb's column, and the edge that reaches for it - never narrower than the column, and
+            // kept within the list: Auxio's `isUnder`. The thumb is taller than a touch target already.
             val columnStart = if (isRtl) 0f else size.width - thumbWidthPx
-            val targetStart = if (isRtl) 0f else size.width - max(minTouchTargetPx, thumbWidthPx)
+            val targetStart = if (isRtl) 0f else size.width - edgeWidthPx
             fun isInColumn(x: Float) = x >= columnStart && x < columnStart + thumbWidthPx
-            fun isInTarget(x: Float) = x >= targetStart && x < targetStart + max(minTouchTargetPx, thumbWidthPx)
+            fun isInTarget(x: Float) = x >= targetStart && x < targetStart + edgeWidthPx
             fun isOnThumb(x: Float, y: Float) = isInTarget(x) && y >= thumbTopPx() && y < thumbTopPx() + thumbHeightPx
             // The column's outermost quarter, where a touch takes the thumb straight to the finger.
             fun isAtOuterEdge(x: Float) = if (isRtl) x < thumbWidthPx / 4 else x > size.width - thumbWidthPx / 4
@@ -305,6 +313,17 @@ private fun FastScrollPopup(section: String, rotationDegrees: () -> Float) {
         )
     }
 }
+
+/**
+ * How far in from the edge a touch reaches the thumb: Auxio's touch target when standard, half of it
+ * when narrow, and half again more when wide.
+ */
+private val FastScrollTouchArea.edgeWidth: Dp
+    get() = when (this) {
+        FastScrollTouchArea.NARROW -> MinTouchTargetSize / 2
+        FastScrollTouchArea.STANDARD -> MinTouchTargetSize
+        FastScrollTouchArea.WIDE -> MinTouchTargetSize * 1.5f
+    }
 
 /** Whether the thumb is out and whether it is being dragged - Auxio's `showingThumb` and `dragging`. */
 @Stable
