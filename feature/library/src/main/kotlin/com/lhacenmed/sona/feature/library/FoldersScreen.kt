@@ -26,6 +26,7 @@ fun FoldersScreen(
     val hasPermission by viewModel.hasPermission.collectAsStateWithLifecycle()
     val playback by viewModel.playback.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val folderSections by viewModel.folderSections.collectAsStateWithLifecycle()
     val navigator = LocalNavigator.current
     var optionsTarget by remember { mutableStateOf<OptionsTarget.ForFolder?>(null) }
 
@@ -37,6 +38,7 @@ fun FoldersScreen(
         emptyMessage = searchEmptyMessage(searchQuery),
         key = { it.path },
         loadingIcon = SonaIcons.Folder,
+        sectionOf = folderSections,
         modifier = modifier,
         listState = listState,
     ) { folder ->

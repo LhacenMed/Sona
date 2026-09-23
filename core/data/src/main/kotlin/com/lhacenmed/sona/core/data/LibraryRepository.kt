@@ -28,6 +28,7 @@ import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.PlaylistCover
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.model.sort.SortOrder
 import com.lhacenmed.sona.core.model.sort.SortTarget
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -132,6 +133,16 @@ class LibraryRepository @Inject constructor(
     val tracksById: StateFlow<Map<Long, Track>> = tracks
         .map { content -> content.itemsOrEmpty.associateBy { it.id } }
         .stateIn(scope, SharingStarted.Eagerly, emptyMap())
+
+    /**
+     * The section each row of a library tab sits in under that tab's current sort - what a fast
+     * scroller's popup names it by. Kept in step with the sort the list itself is in.
+     */
+    val trackSections: StateFlow<(Track) -> String?> = sectionsOf(LibrarySortSpecs.tracks)
+    val albumSections: StateFlow<(Album) -> String?> = sectionsOf(LibrarySortSpecs.albums)
+    val artistSections: StateFlow<(Artist) -> String?> = sectionsOf(LibrarySortSpecs.artists)
+    val genreSections: StateFlow<(Genre) -> String?> = sectionsOf(LibrarySortSpecs.genres)
+    val folderSections: StateFlow<(Folder) -> String?> = sectionsOf(LibrarySortSpecs.folders)
 
     /** `true` once the library has been read from disk - the app's first-paint gate. */
     val isReady: StateFlow<Boolean> = tracks
@@ -382,6 +393,15 @@ class LibraryRepository @Inject constructor(
         ) { rows, order, intelligent ->
             spec.sort(toItems(rows), order, intelligent)
         }
+
+    /** [spec]'s sections under its list's current order, starting from the order already in memory. */
+    private fun <T> sectionsOf(spec: SortSpec<T>): StateFlow<(T) -> String?> {
+        val target = SortTarget(spec.list, null)
+        fun sectionsFor(order: SortOrder, intelligent: Boolean): (T) -> String? =
+            { item -> spec.section(item, order, intelligent) }
+        return combine(sortOrders.order(target), intelligentSorting, ::sectionsFor)
+            .stateIn(scope, SharingStarted.Eagerly, sectionsFor(sortOrders.currentOrder(target), intelligentSorting.value))
+    }
 
     private fun <T> Flow<List<T>>.shareContent(): StateFlow<LibraryContent<T>> =
         map { LibraryContent.Ready(it) as LibraryContent<T> }

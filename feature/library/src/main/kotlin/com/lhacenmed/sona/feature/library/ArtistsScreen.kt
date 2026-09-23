@@ -26,6 +26,7 @@ fun ArtistsScreen(
     val hasPermission by viewModel.hasPermission.collectAsStateWithLifecycle()
     val playback by viewModel.playback.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val artistSections by viewModel.artistSections.collectAsStateWithLifecycle()
     val navigator = LocalNavigator.current
     var optionsTarget by remember { mutableStateOf<OptionsTarget.ForArtist?>(null) }
 
@@ -37,6 +38,7 @@ fun ArtistsScreen(
         emptyMessage = searchEmptyMessage(searchQuery),
         key = { it.id },
         loadingIcon = SonaIcons.Artist,
+        sectionOf = artistSections,
         modifier = modifier,
         listState = listState,
     ) { artist ->
