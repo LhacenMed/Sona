@@ -5,7 +5,8 @@ import androidx.compose.ui.unit.Dp
 
 /**
  * The space a screen's scrolling content ends with, so its last row can scroll clear of what is laid
- * over the bottom of every screen: the navigation bar, and the mini player above it.
+ * over the bottom of every screen - the navigation bar, and the mini player above it - and come to rest
+ * a small gap above the player rather than against it.
  *
  * Provided by the player that covers the screen, which is the one thing that knows how much it
  * covers, and read by each scrolling container - a list as its bottom content padding, a scrolling

@@ -25,7 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
  * when the queue is emptied.
  *
  * [content] is the screen it lays itself over, told through [LocalBottomContentPadding] how much of its
- * bottom the mini player covers.
+ * bottom the mini player covers, and the gap to keep above it.
  */
 @Composable
 fun BottomSheetPlayerHost(
@@ -64,7 +64,7 @@ fun BottomSheetPlayerHost(
 
         // Held clear whether or not a track is loaded, so a list's end stays where it is as the mini
         // player comes and goes rather than jumping under it.
-        CompositionLocalProvider(LocalBottomContentPadding provides miniPlayerClearance) {
+        CompositionLocalProvider(LocalBottomContentPadding provides miniPlayerClearance + MiniPlayerContentSpacing) {
             content()
         }
 
