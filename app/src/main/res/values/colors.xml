@@ -1,2 +1,4 @@
 <resources>
+    <!-- The launch screen's placeholder note, before the gradient fills it. -->
+    <color name="splash_placeholder">#FFC4C4C4</color>
 </resources>

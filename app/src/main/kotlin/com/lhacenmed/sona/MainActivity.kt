@@ -1,12 +1,13 @@
 package com.lhacenmed.sona
 
 import android.os.Bundle
+import android.view.View
+import android.view.ViewTreeObserver
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.lhacenmed.sona.core.data.LibraryRepository
@@ -62,13 +63,23 @@ class MainActivity : SonaActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Held until the library is in memory, so the first frame the user sees is a populated
-        // list rather than an empty one that fills in a moment later.
+        // The first frame is held until the library is in memory, so the first thing the user sees
+        // is a populated list rather than an empty one that fills in a moment later. On Android 12+
+        // the system launch screen stays up for as long as the frame is held.
         var isLibraryPending = true
-        installSplashScreen().setKeepOnScreenCondition { isLibraryPending }
+        val content = findViewById<View>(android.R.id.content)
+        content.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
+            override fun onPreDraw(): Boolean {
+                if (isLibraryPending) return false
+                content.viewTreeObserver.removeOnPreDrawListener(this)
+                return true
+            }
+        })
         lifecycleScope.launch {
             withTimeoutOrNull(MAX_SPLASH_WAIT_MS) { libraryRepository.isReady.first { it } }
             isLibraryPending = false
+            // A held frame never draws, so nothing else asks for the next one.
+            content.invalidate()
         }
 
         if (hasScannerPermission()) {

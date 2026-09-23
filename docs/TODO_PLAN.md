@@ -112,7 +112,7 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 - [ ] **4.2 Fix status bar not following light/dark theme**
   The system status bar doesn't update its appearance when the app switches between light and dark mode.
 
-- [ ] **4.3 Remove ripple on the player's seek-slider thumb**
+- [x] **4.3 Remove ripple on the player's seek-slider thumb**
   The draggable thumb on the wavy timeline slider currently shows a ripple effect on touch; it should not.
 
 - [ ] **4.4 Recolor the favorite button to follow the app theme**

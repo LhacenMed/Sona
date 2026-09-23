@@ -1,0 +1,13 @@
+<resources>
+    <!--
+        The system launch screen, on the dynamic-colour surface. That is also what the app opens on
+        by default, so the launch screen hands over to the app without a colour change. The
+        background is set explicitly so the system never works one out itself (from a saved copy
+        or the launcher icon).
+    -->
+    <style name="Theme.Sona.V31" parent="Theme.Material3.DynamicColors.DayNight.NoActionBar">
+        <item name="android:windowSplashScreenBackground">?attr/colorSurface</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_anim</item>
+        <item name="android:windowSplashScreenAnimationDuration">1000</item>
+    </style>
+</resources>
