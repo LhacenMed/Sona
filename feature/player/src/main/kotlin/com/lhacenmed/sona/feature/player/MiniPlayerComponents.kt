@@ -80,8 +80,7 @@ private const val SwipeSensitivity = 0.73f
 private const val SkipArmFraction = 0.15f
 private const val SkipStretchMaxFraction = 0.27f
 
-private const val SettleDurationMillis = 240
-private val SettleEasing = Easing(DecelerateInterpolator(1.6f)::getInterpolation)
+private val SettleEasing = Easing(DecelerateInterpolator(RubberBandSettleTension)::getInterpolation)
 
 private val MiniPlayerTransportButtonSpacing = 4.dp
 
@@ -121,7 +120,7 @@ internal fun SwipeableMiniPlayerBox(
     val latestOnSwipeToNext by rememberUpdatedState(onSwipeToNext)
 
     // The player falling back to rest - Khatmah's page falling back over an unfinished wall.
-    val animationSpec = tween<Float>(durationMillis = SettleDurationMillis, easing = SettleEasing)
+    val animationSpec = tween<Float>(durationMillis = RubberBandSettleDurationMillis, easing = SettleEasing)
 
     // Read by the gesture handler as it runs, so it always measures against the player's current width.
     var playerWidth by remember { mutableIntStateOf(0) }

@@ -34,3 +34,10 @@ internal fun rubberBandPull(offset: Float, arm: Float, limit: Float): Float {
 }
 
 private const val FullStretch = 0.99f
+
+/**
+ * How a released band falls back to rest: this long, decelerating with this tension - Khatmah's page
+ * falling back over an unfinished wall.
+ */
+internal const val RubberBandSettleDurationMillis = 240
+internal const val RubberBandSettleTension = 1.6f
