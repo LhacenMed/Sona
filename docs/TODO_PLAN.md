@@ -192,11 +192,15 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 
 ## Priority 8 — Collection Detail Screen Feature
 
-- [ ] **8.1 Add a collapsible header to collection detail screens**
+- [x] **8.1 Add a collapsible header to collection detail screens**
   Applies to Albums, Artists, Playlists, Genres, and similar detail screens, placed above the item list, matching Auxio's exact style:
   - Shows cover art, collection type, name, track count, and total duration.
   - Includes two action buttons: Play and Shuffle.
   - On scroll, the header collapses into the top app bar, and the Play/Shuffle actions move into the top app bar's action area.
+  - **Done** as Auxio's `fragment_detail` (its tall-phone `layout-h480dp`), rebuilt as one list: `DetailScaffold` (`core:designsystem`) makes the header the list's first item and pins the bar over it. The collapse is worked out from the list's scroll, with Auxio's `onOffsetChanged` numbers - parallax 0.85, the header shrinking by 0.12 and fading over the first half, the title and the round Play (tonal) and Shuffle (filled) buttons fading and rising 8&nbsp;dp into the bar over the second half, the buttons laid out only once they start to show. It settles open or collapsed on release (`exitUntilCollapsed|snap`), and the bar lifts to `surfaceContainer` once the list scrolls under it. Everything is read while drawing, so scrolling recomposes nothing. The header is laid out as Auxio's `AppBarLayout` is, outside the list: it collapses by taking the scroll before the list does (a nested scroll connection, `exitUntilCollapsed`), so it collapses the same over one row as over a thousand, and the list sits below it at the height of the screen under the collapsed bar - a collapse only moves things. The header can be dragged itself, carrying on into the list once collapsed (`ContinuousAppBarLayoutBehavior`). The settle runs in a job of its own that any touch cancels, so interrupting it never stops the next one. Searching holds the header collapsed with its results from the top, and closing the search puts the header and the list back exactly where they were.
+  - `SonaTopAppBar` takes a `TopBarCollapse` for this; selection and search modes are unchanged. The header is `DetailHeader`: a 256&nbsp;dp cover (28&nbsp;dp corners, round for an artist), type, name, subhead, info, and Play/Shuffle in an expressive button group.
+  - The list is in sections, as Auxio's `DetailGenerator` builds it: an artist lists its Albums (newest first) and those it Appears on, then Tracks; a genre, its Artists, then Tracks; an album groups its tracks by disc once there is more than one. Section headings are Auxio's `item_header`, with the sort button on the Tracks heading, and dividers between sections. An artist's albums show their year and its tracks their album.
+  - Search moved into the ⋮ menu beside the collection's actions; searching lays the results straight under the bar. Sona reads no release types, so an artist's own albums are one section rather than Auxio's albums, EPs, singles and so on. Playlist dragging now shares one drag system with the library lists (`rememberReorderableRows`).
 
 ---
 

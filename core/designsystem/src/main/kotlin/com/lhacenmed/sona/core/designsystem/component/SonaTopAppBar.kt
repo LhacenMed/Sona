@@ -3,13 +3,13 @@ package com.lhacenmed.sona.core.designsystem.component
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,6 +19,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -28,11 +29,16 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -88,6 +94,28 @@ data class TopBarSearch(
     val actions: List<TopBarAction> = emptyList(),
     val menuActions: List<TopBarAction> = emptyList(),
 )
+
+/**
+ * A bar over a header that collapses into it - a detail screen's, Auxio's collapsing toolbar.
+ *
+ * [progress] is how far the header has collapsed, 0 to 1, and is read while drawing so the bar follows
+ * the scroll without recomposing. Over the second half of it the title, and [play] and [shuffle] as
+ * round buttons, fade in and rise into place: what the header showed moves up into the bar. [isLifted]
+ * is whether the list has scrolled on under the bar, which tints it as Material's lift-on-scroll does.
+ */
+@Immutable
+data class TopBarCollapse(
+    val progress: () -> Float,
+    val isLifted: () -> Boolean,
+    val play: TopBarAction,
+    val shuffle: TopBarAction,
+)
+
+/** How far below its place a revealed title or button starts - Auxio's `spacing_small`. */
+private val RevealRise = 8.dp
+
+/** How much of [TopBarCollapse.progress] the bar has revealed: none over its first half, all by its end. */
+private fun TopBarCollapse.revealed(): Float = ((progress() - 0.5f) * 2).coerceIn(0f, 1f)
 
 /** How many actions are drawn as icons before the rest collapse into the overflow menu. */
 private const val MAX_VISIBLE_ACTIONS = 2
@@ -146,6 +174,7 @@ fun SonaTopAppBar(
     menuActions: List<TopBarAction> = emptyList(),
     selection: TopBarSelection? = null,
     search: TopBarSearch? = null,
+    collapse: TopBarCollapse? = null,
 ) {
     val content: BarContent = when {
         selection != null -> BarContent.Selecting(selection)
@@ -171,9 +200,19 @@ fun SonaTopAppBar(
         scrolledContainerColor = Color.Transparent,
     )
 
+    // Only how lifted the bar is animates - never the colours themselves. The two are mixed from the
+    // theme as it is on each frame, so a theme change repaints the bar on the same frame as the rest of
+    // the screen; animating the colour would have chased every step of the theme's own transition, a
+    // beat behind it.
+    val isLifted by remember(collapse) { derivedStateOf { collapse?.isLifted?.invoke() == true } }
+    val liftFraction by animateFloatAsState(targetValue = if (isLifted) 1f else 0f, label = "topAppBarLift")
+    val colorScheme = MaterialTheme.colorScheme
+
     AnimatedContent(
         targetState = content,
-        modifier = modifier.background(MaterialTheme.colorScheme.surface),
+        modifier = modifier.drawBehind {
+            drawRect(lerp(colorScheme.surface, colorScheme.surfaceContainer, liftFraction))
+        },
         // Keyed on the *mode*, not the value: typing a letter or picking another row must re-render
         // the bar it is already in, not animate a fresh one in over it.
         contentKey = { it::class },
@@ -189,7 +228,11 @@ fun SonaTopAppBar(
     ) { activeContent ->
         when (activeContent) {
             is BarContent.Browsing -> TopAppBar(
-                title = { BarTitle(title = activeContent.title, subtitle = activeContent.subtitle) },
+                title = {
+                    Box(modifier = Modifier.revealedBy(collapse)) {
+                        BarTitle(title = activeContent.title, subtitle = activeContent.subtitle)
+                    }
+                },
                 colors = barColors,
                 navigationIcon = {
                     if (onNavigateBack != null) {
@@ -200,7 +243,13 @@ fun SonaTopAppBar(
                         )
                     }
                 },
-                actions = { BarActions(actions = activeContent.actions, menuActions = activeContent.menuActions) },
+                actions = {
+                    BarActions(
+                        actions = activeContent.actions,
+                        menuActions = activeContent.menuActions,
+                        collapse = collapse,
+                    )
+                },
             )
 
             is BarContent.Searching -> TopAppBar(
@@ -241,6 +290,18 @@ fun SonaTopAppBar(
         }
     }
 }
+
+/** Fades and raises the content in as [collapse] reveals it; leaves it be on a bar with no header. */
+private fun Modifier.revealedBy(collapse: TopBarCollapse?): Modifier =
+    if (collapse == null) {
+        this
+    } else {
+        graphicsLayer {
+            val revealed = collapse.revealed()
+            alpha = revealed
+            translationY = RevealRise.toPx() * (1 - revealed)
+        }
+    }
 
 /**
  * A selection's actions, every one an icon, then the more options button - the same group [BarActions]
@@ -309,14 +370,28 @@ private fun BarTitle(title: String, subtitle: String?) {
  * The group is laid out inside a [Box] so the overflow menu has something to hang from that does not
  * itself take part in the row: an item of the group would be compressed by its neighbours, and the
  * menu would move with it.
+ *
+ * Over a collapsing header, [collapse]'s Play and Shuffle lead the row once the header has collapsed
+ * far enough to reveal them: a tonal and a filled button, Auxio's `IconButton.Style.Small.Secondary`
+ * and `.Primary`, fading and rising in. They are buttons of the same group, so they press, and give
+ * way to a press, exactly as every other button in a bar does. Until the reveal starts they are left
+ * out of the row altogether - Auxio's `GONE` - taking no room and no press while the header still
+ * shows its own.
  */
 @Composable
-private fun BarActions(actions: List<TopBarAction>, menuActions: List<TopBarAction>) {
+private fun BarActions(
+    actions: List<TopBarAction>,
+    menuActions: List<TopBarAction>,
+    collapse: TopBarCollapse? = null,
+) {
     val overflowed = actions.drop(MAX_VISIBLE_ACTIONS) + menuActions
     // Read here rather than inside the group: a group builds its items outside composition, so it
     // cannot reach a resource itself.
     val moreActionsLabel = stringResource(R.string.top_bar_more_actions)
     val overflowMenu = rememberTopBarOverflowMenu(overflowed)
+    val isRevealingPlayback by remember(collapse) { derivedStateOf { collapse != null && collapse.revealed() > 0f } }
+    val tonalColors = IconButtonDefaults.filledTonalIconButtonColors()
+    val filledColors = IconButtonDefaults.filledIconButtonColors()
 
     // The bar ends its actions 4dp from the edge, which puts an ordinary 48dp button's glyph on the
     // content keyline. A grouped button is only its 40dp container, holding the glyph 4dp nearer the
@@ -325,6 +400,18 @@ private fun BarActions(actions: List<TopBarAction>, menuActions: List<TopBarActi
         // Beneath the group, so every press lands on a button rather than on the anchor.
         OverflowMenuAnchor(menu = overflowMenu, modifier = Modifier.matchParentSize())
         SonaIconButtonGroup {
+            if (collapse != null && isRevealingPlayback) {
+                listOf(collapse.play to tonalColors, collapse.shuffle to filledColors).forEach { (action, colors) ->
+                    iconButton(
+                        icon = action.icon,
+                        label = action.label,
+                        onClick = action.onClick,
+                        enabled = action.enabled,
+                        colors = colors,
+                        modifier = Modifier.revealedBy(collapse),
+                    )
+                }
+            }
             actions.take(MAX_VISIBLE_ACTIONS).forEach { action ->
                 iconButton(
                     icon = action.icon,

@@ -82,6 +82,7 @@ internal fun TrackRow(
     onClick: () -> Unit,
     onOpenOptions: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    subtitle: String? = null,
 ) {
     SonaTrackRow(
         track = track,
@@ -92,10 +93,11 @@ internal fun TrackRow(
         onClick = onClick,
         onOpenOptions = onOpenOptions,
         modifier = modifier,
+        subtitle = subtitle,
     )
 }
 
-/** An album row: its cover, title over its artist. */
+/** An album row: its cover, title over its artist - or over [subtitle], where every row shares the artist. */
 @Composable
 internal fun AlbumRow(
     album: Album,
@@ -106,11 +108,12 @@ internal fun AlbumRow(
     onClick: () -> Unit,
     onOpenOptions: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    subtitle: String = album.artistName,
 ) {
     val current = isCurrent()
     SonaListRow(
         title = album.title,
-        subtitle = album.artistName,
+        subtitle = subtitle,
         selection = selection,
         selectionKey = SelectionKey.Album(album.id),
         onClick = onClick,

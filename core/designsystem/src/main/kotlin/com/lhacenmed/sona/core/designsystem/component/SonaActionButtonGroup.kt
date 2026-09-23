@@ -1,10 +1,8 @@
 package com.lhacenmed.sona.core.designsystem.component
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupScope
 import androidx.compose.material3.DropdownMenuItem
@@ -15,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.lhacenmed.sona.core.designsystem.R
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
+import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 
 /**
  * The buttons at the foot of every dialog and sheet - Cancel, OK, Save and the like.
@@ -60,10 +59,7 @@ fun ButtonGroupScope.actionButton(
     buttonGroupContent = {
         TextButton(
             onClick = onClick,
-            shapes = ButtonDefaults.shapes(
-                shape = CircleShape,
-                pressedShape = SonaComponentStyle.Shape,
-            ),
+            shapes = buttonPressShapes(),
             enabled = enabled,
         ) {
             Text(label)
