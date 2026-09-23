@@ -2,11 +2,13 @@
 
 package com.lhacenmed.sona.feature.player
 
+import android.view.HapticFeedbackConstants
+import android.view.animation.DecelerateInterpolator
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -42,8 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -52,6 +53,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -63,13 +66,21 @@ import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
 import kotlin.math.abs
 import kotlin.math.absoluteValue
-import kotlin.math.exp
-import kotlin.math.roundToInt
+import kotlin.math.sign
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 /** How readily a sideways swipe changes track - ArchiveTune's default `SwipeSensitivity`. */
 private const val SwipeSensitivity = 0.73f
+
+/**
+ * Where a swipe stops following the finger and releasing skips, and the ceiling the player can never pass
+ * - both as a share of its width, as Khatmah's wird wall is of its page.
+ */
+private const val SkipArmFraction = 0.15f
+private const val SkipStretchMaxFraction = 0.27f
+
+private val SettleEasing = Easing(DecelerateInterpolator(RubberBandSettleTension)::getInterpolation)
 
 private val MiniPlayerTransportButtonSpacing = 4.dp
 
@@ -100,8 +111,6 @@ internal fun SwipeableMiniPlayerBox(
     content: @Composable (Float) -> Unit,
 ) {
     val offsetXAnimatable = remember { Animatable(0f) }
-    var dragStartTime by remember { mutableLongStateOf(0L) }
-    var totalDragDistance by remember { mutableFloatStateOf(0f) }
 
     val view = LocalView.current
     // The gesture handler outlives compositions, so it reads these as they are when it runs.
@@ -110,13 +119,12 @@ internal fun SwipeableMiniPlayerBox(
     val latestOnSwipeToPrevious by rememberUpdatedState(onSwipeToPrevious)
     val latestOnSwipeToNext by rememberUpdatedState(onSwipeToNext)
 
-    val animationSpec =
-        spring<Float>(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessLow,
-        )
+    // The player falling back to rest - Khatmah's page falling back over an unfinished wall.
+    val animationSpec = tween<Float>(durationMillis = RubberBandSettleDurationMillis, easing = SettleEasing)
 
-    val autoSwipeThreshold = (600 / (1f + exp(-(-11.44748 * SwipeSensitivity + 9.04945)))).roundToInt()
+    // Read by the gesture handler as it runs, so it always measures against the player's current width.
+    var playerWidth by remember { mutableIntStateOf(0) }
+    val skipArm = playerWidth * SkipArmFraction
 
     Box(
         modifier =
@@ -132,71 +140,90 @@ internal fun SwipeableMiniPlayerBox(
                     .fillMaxWidth()
                     .height(MiniPlayerHeight)
                     .padding(horizontal = MiniPlayerHorizontalPadding)
+                    .onSizeChanged { playerWidth = it.width }
                     .pointerInput(Unit) {
+                        // Where this gesture has put the player, and how fast it is moving. Held here rather
+                        // than read back from the animation, whose snaps are launched and may not have landed
+                        // yet - so the release judges the drag exactly as the finger left it.
+                        var dragOffset = 0f
+                        // The finger's travel, before the rubber band takes its share of it.
+                        var dragPull = 0f
+                        // Past the skip threshold, towards a track: releasing now changes to it.
+                        var isArmed = false
+                        val velocityTracker = VelocityTracker()
+                        val directionSign = if (layoutDirection == LayoutDirection.Rtl) -1f else 1f
+
+                        // Towards a track the player follows the finger up to the skip threshold and resists
+                        // past it; towards none it resists from the start, showing there is nothing there.
+                        fun armFor(pull: Float): Float {
+                            val hasTrack = if (pull > 0) latestHasPreviousTrack else latestHasNextTrack
+                            return if (hasTrack) playerWidth * SkipArmFraction else 0f
+                        }
+
+                        fun stretchLimit() = playerWidth * (SkipStretchMaxFraction - SkipArmFraction)
+
+                        // Khatmah's tick: CLOCK_TICK is felt where the lighter CONTEXT_CLICK often is not.
+                        fun tick() = view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+
+                        fun settle() {
+                            coroutineScope.launch {
+                                offsetXAnimatable.animateTo(targetValue = 0f, animationSpec = animationSpec)
+                            }
+                        }
+
                         detectHorizontalDragGestures(
                             onDragStart = {
-                                dragStartTime = System.currentTimeMillis()
-                                totalDragDistance = 0f
+                                // Taken up where a settle still under way has it, so a grab never jumps.
+                                dragOffset = offsetXAnimatable.value
+                                dragPull = rubberBandPull(dragOffset, armFor(dragOffset), stretchLimit())
+                                // Unarmed even if grabbed past the threshold, so the tick confirms every skip.
+                                isArmed = false
+                                velocityTracker.resetTracking()
                             },
-                            onDragCancel = {
-                                coroutineScope.launch {
-                                    offsetXAnimatable.animateTo(
-                                        targetValue = 0f,
-                                        animationSpec = animationSpec,
-                                    )
-                                }
-                            },
-                            onHorizontalDrag = { _, dragAmount ->
-                                val adjustedDragAmount =
-                                    if (layoutDirection == LayoutDirection.Rtl) -dragAmount else dragAmount
-                                val allowLeft = adjustedDragAmount < 0 && latestHasNextTrack
-                                val allowRight = adjustedDragAmount > 0 && latestHasPreviousTrack
-                                if (allowLeft || allowRight) {
-                                    totalDragDistance += abs(adjustedDragAmount)
-                                    coroutineScope.launch {
-                                        offsetXAnimatable.snapTo(offsetXAnimatable.value + adjustedDragAmount)
-                                    }
-                                }
+                            onDragCancel = { settle() },
+                            onHorizontalDrag = { change, dragAmount ->
+                                velocityTracker.addPosition(change.uptimeMillis, change.position)
+                                dragPull += dragAmount * directionSign
+                                val arm = armFor(dragPull)
+                                dragOffset = rubberBandOffset(dragPull, arm, stretchLimit())
+                                val reachedArm = arm > 0f && abs(dragOffset) >= arm
+                                if (reachedArm && !isArmed) tick()
+                                isArmed = reachedArm
+                                val targetOffset = dragOffset
+                                coroutineScope.launch { offsetXAnimatable.snapTo(targetOffset) }
                             },
                             onDragEnd = {
-                                val dragDuration = System.currentTimeMillis() - dragStartTime
-                                val velocity = if (dragDuration > 0) totalDragDistance / dragDuration else 0f
-                                val currentOffset = offsetXAnimatable.value
-
+                                // In pixels a millisecond, the speed the finger left at - away from rest is
+                                // positive, so moving back towards it never counts as a swipe.
+                                val outwardVelocity =
+                                    velocityTracker.calculateVelocity().x * directionSign / 1000f * dragOffset.sign
                                 val minDistanceThreshold = 50f
                                 val velocityThreshold = (SwipeSensitivity * -8.25f) + 8.5f
 
                                 val shouldChangeSong =
-                                    (
-                                        abs(currentOffset) > minDistanceThreshold &&
-                                            velocity > velocityThreshold
-                                    ) || (abs(currentOffset) > autoSwipeThreshold)
+                                    (abs(dragOffset) > minDistanceThreshold && outwardVelocity > velocityThreshold) ||
+                                        isArmed
 
                                 if (shouldChangeSong) {
-                                    val isRightSwipe = currentOffset > 0
-
-                                    if (isRightSwipe && latestHasPreviousTrack) {
-                                        view.performContextClick()
+                                    // An armed skip has already ticked; a fling that never armed ticks now.
+                                    if (dragOffset > 0 && latestHasPreviousTrack) {
+                                        if (!isArmed) tick()
                                         latestOnSwipeToPrevious()
-                                    } else if (!isRightSwipe && latestHasNextTrack) {
-                                        view.performContextClick()
+                                    } else if (dragOffset < 0 && latestHasNextTrack) {
+                                        if (!isArmed) tick()
                                         latestOnSwipeToNext()
                                     }
                                 }
-
-                                coroutineScope.launch {
-                                    offsetXAnimatable.animateTo(
-                                        targetValue = 0f,
-                                        animationSpec = animationSpec,
-                                    )
-                                }
+                                settle()
                             },
                         )
                     },
         ) {
             content(offsetXAnimatable.value)
 
-            if (offsetXAnimatable.value.absoluteValue > 50f) {
+            // No skip hint towards a missing track: the pull there only shows there is nothing to change to.
+            val hasTrackTowardsOffset = if (offsetXAnimatable.value > 0) hasPreviousTrack else hasNextTrack
+            if (hasTrackTowardsOffset && offsetXAnimatable.value.absoluteValue > 50f) {
                 Box(
                     modifier =
                         Modifier
@@ -211,7 +238,7 @@ internal fun SwipeableMiniPlayerBox(
                         contentDescription = null,
                         tint =
                             MaterialTheme.colorScheme.primary.copy(
-                                alpha = (offsetXAnimatable.value.absoluteValue / autoSwipeThreshold).coerceIn(0f, 1f),
+                                alpha = (offsetXAnimatable.value.absoluteValue / skipArm).coerceIn(0f, 1f),
                             ),
                         modifier = Modifier.size(24.dp),
                     )

@@ -26,6 +26,7 @@ fun TracksScreen(
     val hasPermission by viewModel.hasPermission.collectAsStateWithLifecycle()
     val playback by viewModel.playback.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val trackSections by viewModel.trackSections.collectAsStateWithLifecycle()
     var optionsTarget by remember { mutableStateOf<OptionsTarget.ForTrack?>(null) }
 
     LibraryList(
@@ -38,6 +39,7 @@ fun TracksScreen(
         modifier = modifier,
         listState = listState,
         loadingIcon = SonaIcons.Song,
+        sectionOf = trackSections,
     ) { track ->
         TrackRow(
             track = track,

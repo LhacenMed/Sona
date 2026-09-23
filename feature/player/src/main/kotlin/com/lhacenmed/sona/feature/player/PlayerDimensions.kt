@@ -10,6 +10,13 @@ import androidx.compose.ui.unit.dp
 internal val MiniPlayerHeight = 70.dp
 internal val MiniPlayerBottomSpacing = 4.dp
 internal val MiniPlayerHorizontalPadding = 12.dp
+
+/**
+ * The gap kept between the end of a screen's content and the mini player: the same as the player's gap
+ * to the screen's sides, so it floats evenly clear of everything around it rather than meeting the last row.
+ */
+internal val MiniPlayerContentSpacing = MiniPlayerHorizontalPadding
+
 internal val QueuePeekHeight = 64.dp
 internal val QueueItemHeight = 72.dp
 internal val PlayerHorizontalPadding = 32.dp

@@ -89,6 +89,13 @@ class LibraryViewModel @Inject constructor(
     val folders: StateFlow<LibraryContent<Folder>> =
         repository.folders.narrowedBySearch { folder, query -> matchesSearch(query, folder.name) }
 
+    /** The section each tab's rows sit in under its sort - what the fast scroller's popup names. */
+    val trackSections: StateFlow<(Track) -> String?> = repository.trackSections
+    val albumSections: StateFlow<(Album) -> String?> = repository.albumSections
+    val artistSections: StateFlow<(Artist) -> String?> = repository.artistSections
+    val genreSections: StateFlow<(Genre) -> String?> = repository.genreSections
+    val folderSections: StateFlow<(Folder) -> String?> = repository.folderSections
+
     /**
      * A tab's rows as the search leaves them.
      *

@@ -16,6 +16,7 @@ import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.datastore.UpdateSettings
 import com.lhacenmed.sona.core.designsystem.SonaActivity
 import com.lhacenmed.sona.core.designsystem.theme.AppCoverStyle
+import com.lhacenmed.sona.core.designsystem.theme.AppFastScrollTouchArea
 import com.lhacenmed.sona.core.designsystem.theme.AppThemeSeed
 import com.lhacenmed.sona.core.designsystem.theme.SonaTheme
 import com.lhacenmed.sona.core.navigation.IntentNavigator
@@ -60,6 +61,9 @@ class MainActivity : SonaActivity() {
 
     @Inject
     lateinit var appCoverStyle: AppCoverStyle
+
+    @Inject
+    lateinit var appFastScrollTouchArea: AppFastScrollTouchArea
 
     @Inject
     lateinit var playerOverlay: PlayerOverlay
@@ -109,10 +113,15 @@ class MainActivity : SonaActivity() {
         setContent {
             val themeColor by themeSeed.color.collectAsStateWithLifecycle()
             val coverStyle by appCoverStyle.style.collectAsStateWithLifecycle()
+            val fastScrollTouchArea by appFastScrollTouchArea.touchArea.collectAsStateWithLifecycle()
             val autoPromptUpdates by updateSettings.autoPrompt.flow
                 .collectAsStateWithLifecycle(updateSettings.autoPrompt.value)
 
-            SonaTheme(themeColor = themeColor, coverStyle = coverStyle) {
+            SonaTheme(
+                themeColor = themeColor,
+                coverStyle = coverStyle,
+                fastScrollTouchArea = fastScrollTouchArea,
+            ) {
                 val navigator = remember { IntentNavigator(this) }
                 CompositionLocalProvider(LocalNavigator provides navigator) {
                     AppShell(playerOverlay = playerOverlay)

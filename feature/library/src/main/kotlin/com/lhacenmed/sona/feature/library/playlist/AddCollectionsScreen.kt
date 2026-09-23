@@ -65,6 +65,11 @@ private class VisibleCollections(
     val genres: LibraryContent<Genre>,
     val folders: LibraryContent<Folder>,
     val playlists: LibraryContent<Playlist>,
+    /** The section each tab's rows sit in, as their library tab sorts them - what its fast scroller names. */
+    val artistSections: (Artist) -> String?,
+    val albumSections: (Album) -> String?,
+    val genreSections: (Genre) -> String?,
+    val folderSections: (Folder) -> String?,
 ) {
     /** The keys of [tab]'s rows that can be picked - what its Select all selects. */
     fun selectableKeys(tab: CollectionTab): List<SelectionKey> = when (tab) {
@@ -95,6 +100,10 @@ data class AddCollectionsScreen(val playlistId: Long) : Screen {
         val folders by viewModel.folders.collectAsStateWithLifecycle()
         val playlists by viewModel.playlists.collectAsStateWithLifecycle()
         val playback by viewModel.playback.collectAsStateWithLifecycle()
+        val artistSections by viewModel.artistSections.collectAsStateWithLifecycle()
+        val albumSections by viewModel.albumSections.collectAsStateWithLifecycle()
+        val genreSections by viewModel.genreSections.collectAsStateWithLifecycle()
+        val folderSections by viewModel.folderSections.collectAsStateWithLifecycle()
         val selection = rememberSelectionState()
         var searchQuery by remember { mutableStateOf<String?>(null) }
         val pagerState = rememberPagerState(pageCount = { CollectionTab.entries.size })
@@ -107,6 +116,10 @@ data class AddCollectionsScreen(val playlistId: Long) : Screen {
             genres = genres.filterItems { matchesSearch(searchQuery, it.name) },
             folders = folders.filterItems { matchesSearch(searchQuery, it.name) },
             playlists = playlists.filterItems { it.id != playlistId && matchesSearch(searchQuery, it.name) },
+            artistSections = artistSections,
+            albumSections = albumSections,
+            genreSections = genreSections,
+            folderSections = folderSections,
         )
 
         PlaylistTrackPicker(
@@ -159,7 +172,7 @@ private fun CollectionPage(
 ) {
     val navigator = LocalNavigator.current
     when (tab) {
-        CollectionTab.ARTISTS -> PickerList(visible.artists, "No artists found", emptyMessage, key = { it.id }) { artist ->
+        CollectionTab.ARTISTS -> PickerList(visible.artists, "No artists found", emptyMessage, key = { it.id }, visible.artistSections) { artist ->
             ArtistRow(
                 artist = artist,
                 selection = selection,
@@ -170,7 +183,7 @@ private fun CollectionPage(
             )
         }
 
-        CollectionTab.ALBUMS -> PickerList(visible.albums, "No albums found", emptyMessage, key = { it.id }) { album ->
+        CollectionTab.ALBUMS -> PickerList(visible.albums, "No albums found", emptyMessage, key = { it.id }, visible.albumSections) { album ->
             AlbumRow(
                 album = album,
                 selection = selection,
@@ -181,7 +194,7 @@ private fun CollectionPage(
             )
         }
 
-        CollectionTab.GENRES -> PickerList(visible.genres, "No genres found", emptyMessage, key = { it.id }) { genre ->
+        CollectionTab.GENRES -> PickerList(visible.genres, "No genres found", emptyMessage, key = { it.id }, visible.genreSections) { genre ->
             GenreRow(
                 genre = genre,
                 selection = selection,
@@ -192,7 +205,7 @@ private fun CollectionPage(
             )
         }
 
-        CollectionTab.FOLDERS -> PickerList(visible.folders, "No folders found", emptyMessage, key = { it.path }) { folder ->
+        CollectionTab.FOLDERS -> PickerList(visible.folders, "No folders found", emptyMessage, key = { it.path }, visible.folderSections) { folder ->
             FolderRow(
                 folder = folder,
                 selection = selection,
@@ -223,6 +236,7 @@ private fun <T> PickerList(
     emptyTitle: String,
     emptyMessage: String,
     key: (T) -> Any,
+    sectionOf: ((T) -> String?)? = null,
     row: @Composable (T) -> Unit,
 ) {
     LibraryList(
@@ -234,6 +248,7 @@ private fun <T> PickerList(
         key = key,
         loadingIcon = SonaIcons.Playlist,
         modifier = Modifier.fillMaxSize(),
+        sectionOf = sectionOf,
         row = row,
     )
 }

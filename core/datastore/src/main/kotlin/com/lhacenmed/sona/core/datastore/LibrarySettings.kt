@@ -3,9 +3,11 @@ package com.lhacenmed.sona.core.datastore
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.lhacenmed.sona.core.common.di.ApplicationScope
+import com.lhacenmed.sona.core.model.FastScrollTouchArea
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -20,6 +22,8 @@ private val EXCLUDED_FOLDERS = stringSetPreferencesKey("excluded_folders")
 private val HIDDEN_TABS = stringSetPreferencesKey("hidden_tabs")
 
 private val INTELLIGENT_SORTING_ENABLED = booleanPreferencesKey("intelligent_sorting_enabled")
+
+private val FAST_SCROLL_TOUCH_AREA = stringPreferencesKey("fast_scroll_touch_area")
 
 @Singleton
 class LibrarySettings @Inject constructor(
@@ -62,5 +66,15 @@ class LibrarySettings @Inject constructor(
 
     suspend fun setIntelligentSortingEnabled(enabled: Boolean) {
         dataStore.edit { it[INTELLIGENT_SORTING_ENABLED] = enabled }
+    }
+
+    val fastScrollTouchArea: Setting<FastScrollTouchArea> = cache.setting { preferences ->
+        preferences[FAST_SCROLL_TOUCH_AREA]
+            ?.let { name -> runCatching { FastScrollTouchArea.valueOf(name) }.getOrNull() }
+            ?: FastScrollTouchArea.STANDARD
+    }
+
+    suspend fun setFastScrollTouchArea(touchArea: FastScrollTouchArea) {
+        dataStore.edit { it[FAST_SCROLL_TOUCH_AREA] = touchArea.name }
     }
 }
