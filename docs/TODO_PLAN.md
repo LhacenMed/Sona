@@ -167,7 +167,7 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 - [ ] **6.1 Add a shuffle FAB**
 - [ ] **6.2 Add a scroll-to-top FAB**
 - [ ] **6.3 Add fast-play / swipe action for playlist items** — scoped only to the Playlists activity.
-- [ ] **6.4 Add an Auxio-style fast-scroll list control**
+- [x] **6.4 Add an Auxio-style fast-scroll list control**
   A draggable scroll indicator/thumb for sorted lists that shows the current section/order position while dragging, with adjustable sensitivity near the screen edges — matching Auxio's exact behavior.
 - [ ] **6.5 Add pull-to-refresh to trigger a library rescan**
   For lists inside collection tabs, pulling down should trigger a rescan.
