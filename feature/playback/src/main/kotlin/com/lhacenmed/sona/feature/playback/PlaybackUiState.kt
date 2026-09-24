@@ -7,6 +7,11 @@ import com.lhacenmed.sona.core.model.RepeatMode
  * Snapshot of playback state exposed to the UI layer.
  */
 data class PlaybackUiState(
+    /**
+     * Whether the session has connected and any saved queue has been put back, so a null
+     * [currentTrackId] means nothing is loaded rather than that it is not known yet.
+     */
+    val isReady: Boolean = false,
     /** Whether playback is on - including while the current track buffers - which is what play/pause shows. */
     val isPlaying: Boolean = false,
     /** Whether the current track is waiting for data, which the player shows as a spinner. */

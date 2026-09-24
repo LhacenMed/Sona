@@ -178,6 +178,9 @@ internal class BottomSheetState(
     val isExpandedOrExpanding: Boolean
         get() = targetAnchor == EXPANDED_ANCHOR
 
+    val isDismissedOrDismissing: Boolean
+        get() = targetAnchor == DISMISSED_ANCHOR
+
     val progress by derivedStateOf {
         1f - (animatable.upperBound!! - animatable.value) / (animatable.upperBound!! - collapsedBound)
     }

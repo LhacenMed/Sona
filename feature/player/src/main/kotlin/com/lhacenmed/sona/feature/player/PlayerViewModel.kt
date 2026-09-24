@@ -43,6 +43,11 @@ data class PlayerUiState(
     val queue: List<QueueTrack> = emptyList(),
     val currentQueueIndex: Int = -1,
     val isCurrentTrackFavorite: Boolean = false,
+    /**
+     * Whether the playback and the library have both loaded, so a null [currentTrack] means nothing is
+     * playing rather than that it is not known yet.
+     */
+    val isResolved: Boolean = false,
 )
 
 /** A slot of the queue with the track it holds. */
@@ -81,6 +86,7 @@ class PlayerViewModel @Inject constructor(
         queue,
         repository.tracksById,
         repository.favoriteTrackIds,
+        repository.isReady,
         ::resolveUiState,
     ).stateIn(
         viewModelScope,
@@ -91,6 +97,7 @@ class PlayerViewModel @Inject constructor(
                 queue = resolveQueue(playback.queue, repository.tracksById.value),
                 tracksById = repository.tracksById.value,
                 favoriteTrackIds = repository.favoriteTrackIds.value,
+                isLibraryReady = repository.isReady.value,
             )
         },
     )
@@ -233,6 +240,7 @@ class PlayerViewModel @Inject constructor(
         queue: List<QueueTrack>,
         tracksById: Map<Long, Track>,
         favoriteTrackIds: Set<Long>,
+        isLibraryReady: Boolean,
     ): PlayerUiState {
         val track = playback.currentTrackId?.let(tracksById::get)
         val currentEntryKey = playback.queue.getOrNull(playback.currentQueueIndex)?.key
@@ -242,6 +250,7 @@ class PlayerViewModel @Inject constructor(
             queue = queue,
             currentQueueIndex = queue.indexOfFirst { it.entry.key == currentEntryKey },
             isCurrentTrackFavorite = track != null && track.id in favoriteTrackIds,
+            isResolved = playback.isReady && isLibraryReady,
         )
     }
 }
