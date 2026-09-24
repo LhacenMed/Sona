@@ -83,8 +83,8 @@ data class TopBarSelection(
  * already does - so intercepting back to call [onClose] would have the bar answer a back press by
  * pressing back, without end. Leaving it unhandled lets the press do what it was going to do.
  *
- * [actions] and [menuActions] are what stays reachable while searching, laid out as the ordinary bar
- * lays out its own - none, for a screen whose search needs nothing beside the field.
+ * [actions] are what stays reachable while searching, laid out as the ordinary bar lays out its own -
+ * none, for a screen whose search needs nothing beside the field.
  */
 @Immutable
 data class TopBarSearch(
@@ -93,7 +93,6 @@ data class TopBarSearch(
     val onClose: () -> Unit,
     val closesWithBack: Boolean = true,
     val actions: List<TopBarAction> = emptyList(),
-    val menuActions: List<TopBarAction> = emptyList(),
 )
 
 /**
@@ -135,7 +134,6 @@ private sealed interface BarContent {
         val title: String,
         val subtitle: String?,
         val actions: List<TopBarAction>,
-        val menuActions: List<TopBarAction>,
     ) : BarContent
 
     data class Searching(val search: TopBarSearch) : BarContent
@@ -159,8 +157,8 @@ private sealed interface BarContent {
  * Taking [actions] as data rather than as a slot is what lets the bar overflow: it draws as many as
  * icons as a platform action bar would on this screen, and folds the remainder into a dropdown only
  * when there is a remainder - see [visibleActionCount]. A screen that grows a sixth action needs no
- * layout work to accommodate it. [menuActions] always go in that dropdown, after any that overflowed,
- * for a screen that wants its icons kept for a few actions alone.
+ * layout work to accommodate it, and a screen never decides for itself that an action belongs in the
+ * menu: three actions on a bar with room for three are three icons.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -170,7 +168,6 @@ fun SonaTopAppBar(
     subtitle: String? = null,
     onNavigateBack: (() -> Unit)? = null,
     actions: List<TopBarAction> = emptyList(),
-    menuActions: List<TopBarAction> = emptyList(),
     selection: TopBarSelection? = null,
     search: TopBarSearch? = null,
     collapse: TopBarCollapse? = null,
@@ -178,7 +175,7 @@ fun SonaTopAppBar(
     val content: BarContent = when {
         selection != null -> BarContent.Selecting(selection)
         search != null -> BarContent.Searching(search)
-        else -> BarContent.Browsing(title, subtitle, actions, menuActions)
+        else -> BarContent.Browsing(title, subtitle, actions)
     }
 
     // Back leaves the mode rather than the screen, which is what both a context bar and a search
@@ -243,11 +240,7 @@ fun SonaTopAppBar(
                     }
                 },
                 actions = {
-                    BarActions(
-                        actions = activeContent.actions,
-                        menuActions = activeContent.menuActions,
-                        collapse = collapse,
-                    )
+                    BarActions(actions = activeContent.actions, collapse = collapse)
                 },
             )
 
@@ -262,7 +255,7 @@ fun SonaTopAppBar(
                     )
                 },
                 actions = {
-                    BarActions(actions = activeContent.search.actions, menuActions = activeContent.search.menuActions)
+                    BarActions(actions = activeContent.search.actions)
                 },
             )
 
@@ -308,15 +301,14 @@ private fun Modifier.revealedBy(collapse: TopBarCollapse?): Modifier =
  *
  * The bar holds as many buttons as `ActionBarPolicy.getMaxActionButtons` allows for the screen, and
  * the overflow button is one of them only when something overflows (`ActionMenuPresenter`): actions
- * that all fit are all shown, with no menu. [hasMenuActions] - actions that only ever belong in the
- * menu, `showAsAction="never"` - always need one. A collapsing header's Play and Shuffle keep their
- * two places whether or not they are showing yet, so nothing moves in or out of the menu as the
- * header collapses.
+ * that all fit are all shown, with no menu. A collapsing header's Play and Shuffle keep their two
+ * places whether or not they are showing yet, so nothing moves in or out of the menu as the header
+ * collapses.
  */
 @Composable
-private fun visibleActionCount(actionCount: Int, hasMenuActions: Boolean, collapse: TopBarCollapse?): Int {
+private fun visibleActionCount(actionCount: Int, collapse: TopBarCollapse?): Int {
     val buttonCount = maxActionButtons() - if (collapse != null) 2 else 0
-    val overflows = hasMenuActions || actionCount > buttonCount
+    val overflows = actionCount > buttonCount
     return if (overflows) (buttonCount - 1).coerceIn(0, actionCount) else actionCount
 }
 
@@ -412,11 +404,10 @@ private fun BarTitle(title: String, subtitle: String?) {
 @Composable
 private fun BarActions(
     actions: List<TopBarAction>,
-    menuActions: List<TopBarAction>,
     collapse: TopBarCollapse? = null,
 ) {
-    val visibleCount = visibleActionCount(actions.size, hasMenuActions = menuActions.isNotEmpty(), collapse = collapse)
-    val overflowed = actions.drop(visibleCount) + menuActions
+    val visibleCount = visibleActionCount(actions.size, collapse = collapse)
+    val overflowed = actions.drop(visibleCount)
     // Read here rather than inside the group: a group builds its items outside composition, so it
     // cannot reach a resource itself.
     val moreActionsLabel = stringResource(R.string.top_bar_more_actions)

@@ -549,7 +549,7 @@ internal fun TrackListDetail(
                 SonaTopAppBar(
                     title = title,
                     onNavigateBack = onBack,
-                    menuActions = buildList {
+                    actions = buildList {
                         if (collection == null) {
                             add(
                                 TopBarAction(label = "Export", icon = SonaIcons.Export) {
