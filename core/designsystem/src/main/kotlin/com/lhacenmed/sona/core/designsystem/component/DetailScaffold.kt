@@ -89,23 +89,41 @@ class DetailHeaderState internal constructor(
     internal var headerHeightPx by mutableIntStateOf(0)
     internal var barHeightPx by mutableIntStateOf(0)
 
-    /** How far the header has collapsed, 0 when open. Kept within [collapseRangePx] when read. */
+    /** How far scrolling has collapsed the header, 0 when open. Kept within [collapseRangePx] when read. */
     private var collapsedPx by mutableFloatStateOf(0f)
+
+    /**
+     * How far the header has stepped aside for a search, 0 in place and 1 collapsed out of the way -
+     * apart from [collapsedPx], so stepping aside never changes what scrolling did.
+     */
+    private var asideFraction by mutableFloatStateOf(0f)
 
     /** The header's height less the bar's: how far it collapses before the list moves. */
     internal val collapseRangePx: Float
         get() = (headerHeightPx - barHeightPx).coerceAtLeast(0).toFloat()
 
-    internal val collapsedOffsetPx: Float
+    private val scrollCollapsedPx: Float
         get() = collapsedPx.coerceIn(0f, collapseRangePx)
 
-    /** 0 with the header open, 1 once it has collapsed into the bar. */
-    val collapse: Float
+    /** How far the header is shown collapsed: as far as scrolling took it, or further while stepping aside. */
+    internal val collapsedOffsetPx: Float
+        get() = (1 - asideFraction) * scrollCollapsedPx + asideFraction * collapseRangePx
+
+    /** [collapsedOffsetPx] as a fraction: 0 with the header shown open, 1 once it is out of the way. */
+    internal val shownCollapse: Float
         get() = if (collapseRangePx == 0f) 0f else collapsedOffsetPx / collapseRangePx
+
+    /**
+     * How far scrolling has collapsed the header into the bar, 0 when open and 1 when collapsed - what
+     * the bar reveals Play and Shuffle by. A search setting the header aside leaves it as it was: the bar
+     * turns into the search as the header goes, and one on its way out must not reveal them in passing.
+     */
+    val collapse: Float
+        get() = if (collapseRangePx == 0f) 0f else scrollCollapsedPx / collapseRangePx
 
     /** Whether the list has scrolled on under the bar once the header was out of the way. */
     val isLifted: Boolean
-        get() = collapse >= 1f && listState.canScrollBackward
+        get() = shownCollapse >= 1f && listState.canScrollBackward
 
     /** Whether the header is held collapsed out of the way - see [DetailScaffold]'s `isHeaderAside`. */
     internal var isHeaderAside = false
@@ -119,7 +137,7 @@ class DetailHeaderState internal constructor(
      */
     internal fun collapseBy(delta: Float): Float {
         settleJob?.cancel()
-        val before = collapsedOffsetPx
+        val before = scrollCollapsedPx
         collapsedPx = (before - delta).coerceIn(0f, collapseRangePx)
         return before - collapsedPx
     }
@@ -131,7 +149,7 @@ class DetailHeaderState internal constructor(
      * never runs the settle itself, so interrupting one can never stop the next.
      */
     internal fun settle() {
-        val from = collapsedOffsetPx
+        val from = scrollCollapsedPx
         val range = collapseRangePx
         if (from <= 0f || from >= range) return
         val target = if (from < range / 2) 0f else range
@@ -151,22 +169,28 @@ class DetailHeaderState internal constructor(
         }
     }
 
-    /** Where the header and the list stood when the header was set aside, to be put back after. */
-    private var positionBeforeAside: Triple<Float, Int, Int>? = null
+    /** Where the list stood when the header was set aside, to be put back after. */
+    private var listPositionBeforeAside: Pair<Int, Int>? = null
 
+    private var asideJob: Job? = null
+
+    /**
+     * Slides the header out of the way or back, the way a settle moves it. Only the list jumps: to its
+     * top as the header goes, and back to where it was as the header returns.
+     */
     internal fun updateHeaderAside(isAside: Boolean) {
         if (isAside == isHeaderAside) return
         isHeaderAside = isAside
-        settleJob?.cancel()
+        asideJob?.cancel()
+        asideJob = scope.launch {
+            animate(asideFraction, if (isAside) 1f else 0f) { value, _ -> asideFraction = value }
+        }
         if (isAside) {
-            positionBeforeAside =
-                Triple(collapsedOffsetPx, listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset)
-            collapsedPx = collapseRangePx
+            listPositionBeforeAside = listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
             listState.requestScrollToItem(0)
         } else {
-            val (collapsed, index, offset) = positionBeforeAside ?: return
-            positionBeforeAside = null
-            collapsedPx = collapsed
+            val (index, offset) = listPositionBeforeAside ?: return
+            listPositionBeforeAside = null
             listState.requestScrollToItem(index, offset)
         }
     }
@@ -197,9 +221,9 @@ private const val HeaderShrink = 0.12f
  * header can be dragged itself, and a drag that collapses it all the way carries on into the list,
  * as Auxio's `ContinuousAppBarLayoutBehavior` makes it.
  *
- * While [isHeaderAside] - a screen being searched - the header is collapsed out of the way and stays
- * so, with the list from its top straight under the bar. When it comes back, so do the header and the
- * list, exactly where they were.
+ * While [isHeaderAside] - a screen being searched - the header slides collapsed out of the way and stays
+ * so, with the list from its top straight under the bar. When it comes back, the header slides back to
+ * where scrolling had left it and the list is put back exactly where it was.
  *
  * [contentKey] is what the list shows. A screen opens at its top, and a list at its top stays there as
  * its rows arrive or change - see the note in the body.
@@ -264,7 +288,7 @@ fun DetailScaffold(
                             // itself by the toolbar's height.
                             .padding(top = barHeight)
                             .graphicsLayer {
-                                val out = min(state.collapse * 2, 1f)
+                                val out = min(state.shownCollapse * 2, 1f)
                                 scaleX = 1 - HeaderShrink * out
                                 scaleY = 1 - HeaderShrink * out
                                 alpha = 1 - out
@@ -278,7 +302,7 @@ fun DetailScaffold(
                     // Fast scrolling only once the header has collapsed, as Auxio's detail list allows it:
                     // the thumb moves the list directly, past the header's collapse, which would leave
                     // the header standing open over a list scrolled somewhere else.
-                    val isCollapsed by remember(state) { derivedStateOf { state.collapse == 1f } }
+                    val isCollapsed by remember(state) { derivedStateOf { state.shownCollapse == 1f } }
                     FastScroller(listState = listState, enabled = isCollapsed) {
                         CompositionLocalProvider(LocalDragSelection provides dragSelection) {
                             LazyColumn(
