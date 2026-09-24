@@ -76,8 +76,12 @@ Ordered from most to least critical. Every entry describes **what** is broken or
   - One detector, one velocity tracker, one owner per gesture - the rule 2.1 set - rather than a second detector over the player racing the first. Taps, the seek bar and the artwork's sideways swipe are untouched: none of them claims a vertical drag.
   - Present in ArchiveTune too (the queue opens only from its bar), so this is a deliberate divergence from the clone.
 
-- [ ] **2.6 Fix mini player disappearing after returning to the app**
+- [x] **2.6 Fix mini player disappearing after returning to the app**
   Sometimes the mini player disappears from an activity even though a track is still playing. This happens after leaving the app and coming back to it after a while, and currently requires closing and reopening the app to make the mini player reappear.
+  - **Cause:** after a while in the background the system kills the process. The media notification stays, and its play button starts a new process and resumes the saved queue. Opening the app restores the activity, and its saved sheet anchor puts the mini player back. For a moment, though, the new process knows of no track: the controller hasn't connected, the saved queue hasn't been read back and the library hasn't loaded. The host took that as "no track" and started dismissing the sheet. The track arrived while the sheet was still sliding away, and the host checked where the sheet *was* (`isDismissed`: not yet) rather than where it was *going*, so it never brought the sheet back. The sheet then stayed dismissed for the rest of that process.
+  - The host now reads the target (`isDismissedOrDismissing`, alongside `isExpandedOrExpanding`), as Auxio's `tryShowSheets`/`tryHideAllSheets` read `targetState`. So a track that arrives mid-slide always brings the sheet back.
+  - "Not known yet" is no longer read as "none". `PlaybackUiState.isReady` turns true once the controller has connected and any saved queue is back. `PlayerUiState.isResolved` also waits for the library. Until both are loaded the sheet stays where the restored activity left it, so there's no dismiss-and-return flicker.
+  - The mini player is still dismissed only when the queue is emptied: by swiping it down (stop and clear) or by the player dropping the queue. Auxio behaves the same way. Its bar hides only when the song becomes null, and dragging can't hide it (`isHideableWhenDragging() = false`).
 
 ---
 

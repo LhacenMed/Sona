@@ -22,7 +22,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
  *
  * Every activity has its own sheet, all following the one playback state. A screen opened while a track
  * is loaded starts with the mini player already in place; the sheet rises when a track arrives and goes
- * when the queue is emptied.
+ * when the queue is emptied - and holds still while neither is known yet.
  *
  * [content] is the screen it lays itself over, told through [LocalBottomContentPadding] how much of its
  * bottom the mini player covers, and the gap to keep above it.
@@ -41,7 +41,10 @@ fun BottomSheetPlayerHost(
     val playerStyle by viewModel.playerStyle.collectAsStateWithLifecycle()
     val sliderStyle by viewModel.sliderStyle.collectAsStateWithLifecycle()
     val sleepTimer by viewModel.sleepTimer.collectAsStateWithLifecycle()
-    val hasTrack = uiState.currentTrack != null
+    // Null until the playback and the library have both loaded: a process started again by the system
+    // knows of no track for its first moments, and taking that as none would dismiss the sheet the
+    // restored activity put back.
+    val hasTrack = if (uiState.isResolved) uiState.currentTrack != null else null
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val bottomInset = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
@@ -51,14 +54,16 @@ fun BottomSheetPlayerHost(
                 dismissedBound = 0.dp,
                 collapsedBound = miniPlayerClearance,
                 expandedBound = maxHeight,
-                initialAnchor = if (hasTrack) COLLAPSED_ANCHOR else DISMISSED_ANCHOR,
+                initialAnchor = if (hasTrack == true) COLLAPSED_ANCHOR else DISMISSED_ANCHOR,
             )
 
+        // Read from where the sheet is going rather than where it is, so a track arriving while the sheet
+        // is still sliding away brings it back instead of being missed.
         LaunchedEffect(hasTrack) {
-            if (hasTrack) {
-                if (state.isDismissed) state.collapseSoft()
-            } else if (!state.isDismissed) {
-                state.dismiss()
+            when (hasTrack) {
+                true -> if (state.isDismissedOrDismissing) state.collapseSoft()
+                false -> if (!state.isDismissedOrDismissing) state.dismiss()
+                null -> Unit
             }
         }
 

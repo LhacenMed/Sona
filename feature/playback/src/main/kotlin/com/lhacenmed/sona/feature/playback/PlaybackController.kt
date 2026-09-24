@@ -83,6 +83,9 @@ class PlaybackController @Inject constructor(
     private var countedTrackId: Long? = null
     private val hasRestoredQueue = AtomicBoolean(false)
 
+    /** Whether the queue is known - see [PlaybackUiState.isReady]. */
+    private var isQueueSettled = false
+
     private val _playbackState = MutableStateFlow(PlaybackUiState())
     val playbackState: StateFlow<PlaybackUiState> = _playbackState.asStateFlow()
 
@@ -306,6 +309,7 @@ class PlaybackController @Inject constructor(
         val currentMediaItemIndex = mediaController.currentMediaItemIndex
         _playbackState.update {
             it.copy(
+                isReady = isQueueSettled,
                 // Playing as the user asked for it rather than as heard: a newly chosen track stays
                 // playing while it buffers, instead of passing through a moment of pause.
                 isPlaying = !Util.shouldShowPlayButton(mediaController),
@@ -420,27 +424,40 @@ class PlaybackController @Inject constructor(
     // MediaController to connect, guarded so it only ever runs once per process and only when
     // nothing is already loaded (e.g. the service survived and already has a queue).
     private fun restoreQueueIfNeeded(mediaController: MediaController) {
-        if (mediaController.currentMediaItem != null) return
-        if (!hasRestoredQueue.compareAndSet(false, true)) return
-        scope.launch {
-            val items = withContext(Dispatchers.IO) { queueItemDao.getAll() }
-            if (items.isEmpty()) return@launch
-            // Track ids are derived from file paths and so survive a rescan. Before that, a scan
-            // reassigned every id, and a restored queue silently resolved to nothing after the
-            // first relaunch.
-            val tracksById = withContext(Dispatchers.IO) {
-                repository.tracksByIds(items.map { it.trackId }).associateBy { it.id }
-            }
-            val restored = items.mapNotNull { queueItem ->
-                tracksById[queueItem.trackId]?.let { track -> queueItem to track }
-            }
-            if (restored.isEmpty()) return@launch
-            val currentIndex = restored.indexOfFirst { it.first.isCurrent }.takeIf { it >= 0 } ?: 0
-            val startPositionMs = restored[currentIndex].first.lastPositionMs
-            val mediaItems = restored.map { it.second.toMediaItem() }
-            mediaController.setMediaItems(mediaItems, currentIndex, startPositionMs)
-            mediaController.prepare()
+        if (mediaController.currentMediaItem != null || !hasRestoredQueue.compareAndSet(false, true)) {
+            settleQueue(mediaController)
+            return
         }
+        scope.launch {
+            restoreSavedQueue(mediaController)
+            settleQueue(mediaController)
+        }
+    }
+
+    private suspend fun restoreSavedQueue(mediaController: MediaController) {
+        val items = withContext(Dispatchers.IO) { queueItemDao.getAll() }
+        if (items.isEmpty()) return
+        // Track ids are derived from file paths and so survive a rescan. Before that, a scan
+        // reassigned every id, and a restored queue silently resolved to nothing after the
+        // first relaunch.
+        val tracksById = withContext(Dispatchers.IO) {
+            repository.tracksByIds(items.map { it.trackId }).associateBy { it.id }
+        }
+        val restored = items.mapNotNull { queueItem ->
+            tracksById[queueItem.trackId]?.let { track -> queueItem to track }
+        }
+        if (restored.isEmpty()) return
+        val currentIndex = restored.indexOfFirst { it.first.isCurrent }.takeIf { it >= 0 } ?: 0
+        val startPositionMs = restored[currentIndex].first.lastPositionMs
+        val mediaItems = restored.map { it.second.toMediaItem() }
+        mediaController.setMediaItems(mediaItems, currentIndex, startPositionMs)
+        mediaController.prepare()
+    }
+
+    /** Marks the queue known and publishes it, whether or not anything was restored. */
+    private fun settleQueue(mediaController: MediaController) {
+        isQueueSettled = true
+        updateUiState(mediaController)
     }
 
     private fun currentDurationMsOrElse(fallback: Long): Long {
