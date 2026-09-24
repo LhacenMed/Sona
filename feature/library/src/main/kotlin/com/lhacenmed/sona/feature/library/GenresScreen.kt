@@ -35,6 +35,7 @@ fun GenresScreen(
 
     LibraryList(
         content = genres,
+        selection = selection,
         hasPermission = hasPermission,
         isScanning = isScanning,
         emptyTitle = "No genres found",

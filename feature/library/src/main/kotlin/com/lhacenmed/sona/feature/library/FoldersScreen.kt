@@ -35,6 +35,7 @@ fun FoldersScreen(
 
     LibraryList(
         content = folders,
+        selection = selection,
         hasPermission = hasPermission,
         isScanning = isScanning,
         emptyTitle = "No folders found",

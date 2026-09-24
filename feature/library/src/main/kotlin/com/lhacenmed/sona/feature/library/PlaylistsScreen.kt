@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,9 +31,12 @@ import com.lhacenmed.sona.core.common.storage.documentPathOrNull
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
+import com.lhacenmed.sona.core.designsystem.component.LocalDragSelection
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
+import com.lhacenmed.sona.core.designsystem.component.dragSelection
+import com.lhacenmed.sona.core.designsystem.component.rememberDragSelection
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.model.PlaybackParent
@@ -44,6 +48,7 @@ import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.selection.SelectionOptionsHost
+import com.lhacenmed.sona.feature.library.selection.selectionKeyOf
 import com.lhacenmed.sona.feature.library.selection.toLibraryTopBarSelection
 import com.lhacenmed.sona.feature.library.sort.SortSheet
 import com.lhacenmed.sona.feature.library.sort.sortAction
@@ -188,47 +193,53 @@ object PlaylistsScreen : Screen {
                     loadingIcon = SonaIcons.Playlist,
                     modifier = Modifier.fillMaxSize(),
                 ) { items ->
+                    val selectableKeys = remember(items) { items.mapNotNull(::selectionKeyOf) }
+                    val dragSelection = rememberDragSelection(selection, listState, selectableKeys)
                     FastScroller(listState = listState, modifier = Modifier.fillMaxSize()) {
-                        LazyColumn(
-                            state = listState,
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
-                        ) {
-                            if (matchesQuery(RECENT_TITLE)) {
-                                item(key = "recently-played") {
-                                    TrackCollectionRow(
-                                        title = RECENT_TITLE,
-                                        trackCount = recentlyPlayedCount,
-                                        coverArtUris = recentlyPlayedCoverArtUris,
-                                        isCurrent = { playback.marks(PlaybackParent.RecentlyPlayed) },
+                        CompositionLocalProvider(LocalDragSelection provides dragSelection) {
+                            LazyColumn(
+                                state = listState,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .dragSelection(dragSelection),
+                                contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+                            ) {
+                                if (matchesQuery(RECENT_TITLE)) {
+                                    item(key = "recently-played") {
+                                        TrackCollectionRow(
+                                            title = RECENT_TITLE,
+                                            trackCount = recentlyPlayedCount,
+                                            coverArtUris = recentlyPlayedCoverArtUris,
+                                            isCurrent = { playback.marks(PlaybackParent.RecentlyPlayed) },
+                                            isPlaying = { playback.isPlaying },
+                                            onClick = { navigator.go(RecentlyPlayedScreen) },
+                                        )
+                                    }
+                                }
+                                if (matchesQuery(MOST_PLAYED_TITLE)) {
+                                    item(key = "most-played") {
+                                        TrackCollectionRow(
+                                            title = MOST_PLAYED_TITLE,
+                                            trackCount = mostPlayedCount,
+                                            coverArtUris = mostPlayedCoverArtUris,
+                                            isCurrent = { playback.marks(PlaybackParent.MostPlayed) },
+                                            isPlaying = { playback.isPlaying },
+                                            onClick = { navigator.go(MostPlayedScreen) },
+                                        )
+                                    }
+                                }
+                                items(items = items, key = { "playlist-${it.id}" }) { playlist ->
+                                    PlaylistRow(
+                                        playlist = playlist,
+                                        selection = selection,
+                                        isCurrent = { playback.marks(playlist) },
                                         isPlaying = { playback.isPlaying },
-                                        onClick = { navigator.go(RecentlyPlayedScreen) },
+                                        onClick = { navigator.go(PlaylistDetailScreen(playlist.id)) },
+                                        onOpenOptions = { optionsTarget = OptionsTarget.ForPlaylist(playlist) },
                                     )
                                 }
                             }
-                            if (matchesQuery(MOST_PLAYED_TITLE)) {
-                                item(key = "most-played") {
-                                    TrackCollectionRow(
-                                        title = MOST_PLAYED_TITLE,
-                                        trackCount = mostPlayedCount,
-                                        coverArtUris = mostPlayedCoverArtUris,
-                                        isCurrent = { playback.marks(PlaybackParent.MostPlayed) },
-                                        isPlaying = { playback.isPlaying },
-                                        onClick = { navigator.go(MostPlayedScreen) },
-                                    )
-                                }
-                            }
-                            items(items = items, key = { "playlist-${it.id}" }) { playlist ->
-                                PlaylistRow(
-                                    playlist = playlist,
-                                    selection = selection,
-                                    isCurrent = { playback.marks(playlist) },
-                                    isPlaying = { playback.isPlaying },
-                                    onClick = { navigator.go(PlaylistDetailScreen(playlist.id)) },
-                                    onOpenOptions = { optionsTarget = OptionsTarget.ForPlaylist(playlist) },
-                                )
-                            }
-                    }
+                        }
                     }
                 }
             }

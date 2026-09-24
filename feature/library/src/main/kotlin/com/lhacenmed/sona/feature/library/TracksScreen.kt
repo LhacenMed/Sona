@@ -34,6 +34,7 @@ fun TracksScreen(
 
     LibraryList(
         content = tracks,
+        selection = selection,
         hasPermission = hasPermission,
         isScanning = isScanning,
         emptyTitle = "No tracks found",

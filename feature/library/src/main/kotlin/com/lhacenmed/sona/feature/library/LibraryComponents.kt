@@ -46,10 +46,13 @@ import com.lhacenmed.sona.core.designsystem.component.CookieShape
 import com.lhacenmed.sona.core.designsystem.component.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.LocalDragHandle
+import com.lhacenmed.sona.core.designsystem.component.LocalDragSelection
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
+import com.lhacenmed.sona.core.designsystem.component.dragSelection
+import com.lhacenmed.sona.core.designsystem.component.rememberDragSelection
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.component.shimmer
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
@@ -74,6 +77,7 @@ import com.lhacenmed.sona.feature.library.options.disabledActions
 import com.lhacenmed.sona.feature.library.options.rememberOptionsActions
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.selection.SelectionOptionsHost
+import com.lhacenmed.sona.feature.library.selection.selectionKeyOf
 import com.lhacenmed.sona.feature.library.selection.toLibraryTopBarSelection
 import com.lhacenmed.sona.feature.library.sort.SortSheet
 import com.lhacenmed.sona.feature.library.sort.sortAction
@@ -141,10 +145,13 @@ internal fun <T> LibraryListContent(
  *
  * [extraBottomPadding] is kept clear at the list's end on top of the player's, so its last row can
  * scroll out from under a button floating over it.
+ *
+ * Its rows join [selection], and a long press drags across them - see [DragSelection].
  */
 @Composable
 internal fun <T> LibraryList(
     content: LibraryContent<T>,
+    selection: SelectionState,
     hasPermission: Boolean,
     isScanning: Boolean,
     emptyTitle: String,
@@ -188,18 +195,24 @@ internal fun <T> LibraryList(
                 return@FastScroller
             }
             KeepAtTopWhenRowsChange(listState = listState, rows = items)
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current + extraBottomPadding),
-            ) {
-                items(
-                    items = items,
-                    key = key,
-                    // Every row in these lists is the same composable shape, so telling Compose that
-                    // lets it reuse a scrolled-off row's slot table wholesale instead of rebuilding it.
-                    contentType = { LIST_ROW_CONTENT_TYPE },
-                ) { item -> row(item) }
+            val selectableKeys = remember(items) { items.mapNotNull(::selectionKeyOf) }
+            val dragSelection = rememberDragSelection(selection, listState, selectableKeys)
+            CompositionLocalProvider(LocalDragSelection provides dragSelection) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .dragSelection(dragSelection),
+                    contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current + extraBottomPadding),
+                ) {
+                    items(
+                        items = items,
+                        key = key,
+                        // Every row in these lists is the same composable shape, so telling Compose that
+                        // lets it reuse a scrolled-off row's slot table wholesale instead of rebuilding it.
+                        contentType = { LIST_ROW_CONTENT_TYPE },
+                    ) { item -> row(item) }
+                }
             }
         }
     }
@@ -617,6 +630,11 @@ internal fun TrackListDetail(
             },
             isHeaderAside = searchQuery != null,
             contentKey = sections to visibleTracks,
+            dragSelection = rememberDragSelection(
+                selection = selection,
+                listState = headerState.listState,
+                orderedKeys = remember(visibleTracks) { visibleTracks.itemsOrEmpty.map { SelectionKey.Track(it.id) } },
+            ),
         ) {
             if (searchQuery == null) {
                 sections.forEachIndexed { index, section ->

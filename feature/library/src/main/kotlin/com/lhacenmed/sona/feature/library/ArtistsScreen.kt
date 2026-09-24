@@ -35,6 +35,7 @@ fun ArtistsScreen(
 
     LibraryList(
         content = artists,
+        selection = selection,
         hasPermission = hasPermission,
         isScanning = isScanning,
         emptyTitle = "No artists found",

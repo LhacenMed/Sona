@@ -39,7 +39,7 @@ import com.lhacenmed.sona.core.model.Folder
 import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
-import com.lhacenmed.sona.feature.library.selection.SelectionKey
+import com.lhacenmed.sona.feature.library.selection.selectionKeyOf
 
 /*
  * The rows of the library's lists, laid out as Auxio's: a track as its `item_song`, and an album,
@@ -89,7 +89,7 @@ internal fun TrackRow(
         isCurrent = isCurrent,
         isPlaying = isPlaying,
         selection = selection,
-        selectionKey = SelectionKey.Track(track.id),
+        selectionKey = selectionKeyOf(track),
         onClick = onClick,
         onOpenOptions = onOpenOptions,
         modifier = modifier,
@@ -115,7 +115,7 @@ internal fun AlbumRow(
         title = album.title,
         subtitle = subtitle,
         selection = selection,
-        selectionKey = SelectionKey.Album(album.id),
+        selectionKey = selectionKeyOf(album),
         onClick = onClick,
         onOpenOptions = onOpenOptions,
         modifier = modifier,
@@ -147,7 +147,7 @@ internal fun ArtistRow(
         subtitle = pluralCount(artist.albumCount, "album") + COUNTS_SEPARATOR +
             pluralCount(artist.trackCount, "track"),
         selection = selection,
-        selectionKey = SelectionKey.Artist(artist.id).takeIf { artist.trackCount > 0 },
+        selectionKey = selectionKeyOf(artist),
         onClick = onClick,
         onOpenOptions = onOpenOptions,
         modifier = modifier,
@@ -180,7 +180,7 @@ internal fun GenreRow(
         subtitle = pluralCount(genre.artistCount, "artist") + COUNTS_SEPARATOR +
             pluralCount(genre.trackCount, "track"),
         selection = selection,
-        selectionKey = SelectionKey.Genre(genre.id),
+        selectionKey = selectionKeyOf(genre),
         onClick = onClick,
         onOpenOptions = onOpenOptions,
         modifier = modifier,
@@ -212,7 +212,7 @@ internal fun PlaylistRow(
         title = playlist.name,
         subtitle = trackCountLabel(playlist.trackCount),
         selection = selection,
-        selectionKey = SelectionKey.Playlist(playlist.id).takeIf { playlist.trackCount > 0 },
+        selectionKey = selectionKeyOf(playlist),
         onClick = onClick,
         onOpenOptions = onOpenOptions,
         modifier = modifier,
@@ -244,7 +244,7 @@ internal fun FolderRow(
         title = folder.name,
         subtitle = trackCountLabel(folder.trackCount),
         selection = selection,
-        selectionKey = SelectionKey.Folder(folder.path),
+        selectionKey = selectionKeyOf(folder),
         onClick = onClick,
         onOpenOptions = onOpenOptions,
         modifier = modifier,
