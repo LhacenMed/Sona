@@ -12,9 +12,16 @@ import androidx.media3.exoplayer.source.ShuffleOrder
  * were added, just before the item they were inserted in front of: inserted before the next item to
  * play, they play next; appended, they play last. A whole new queue starts on the item playback
  * starts from, with the rest shuffled after it, so shuffling from a chosen track plays that track first.
+ *
+ * An empty order can be armed with [restoring] a saved one: the next queue set on the player takes that
+ * order instead of a new one, provided it is the same length - which is how a queue comes back after the
+ * app was closed still playing in the order it was.
  */
 @UnstableApi
-internal class QueueShuffleOrder private constructor(private val shuffled: IntArray) : ShuffleOrder {
+internal class QueueShuffleOrder private constructor(
+    private val shuffled: IntArray,
+    private val restoredOrder: IntArray? = null,
+) : ShuffleOrder {
 
     /** Where each timeline index sits in [shuffled]. */
     private val positions = IntArray(shuffled.size).also { positions ->
@@ -33,17 +40,12 @@ internal class QueueShuffleOrder private constructor(private val shuffled: IntAr
 
     override fun getFirstIndex(): Int = shuffled.firstOrNull() ?: C.INDEX_UNSET
 
-    override fun cloneAndSet(insertionCount: Int, startIndex: Int): ShuffleOrder {
-        val order = (0 until insertionCount).shuffled().toMutableList()
-        if (startIndex in order) {
-            order.remove(startIndex)
-            order.add(0, startIndex)
-        }
-        return QueueShuffleOrder(order.toIntArray())
-    }
+    override fun cloneAndSet(insertionCount: Int, startIndex: Int): ShuffleOrder =
+        restoredOrder?.takeIf { it.size == insertionCount }?.let(::QueueShuffleOrder)
+            ?: startingFrom(insertionCount, startIndex)
 
     override fun cloneAndInsert(insertionIndex: Int, insertionCount: Int): ShuffleOrder {
-        if (shuffled.isEmpty()) return cloneAndSet(insertionCount, C.INDEX_UNSET)
+        if (shuffled.isEmpty()) return startingFrom(insertionCount, C.INDEX_UNSET)
         val pivot = if (insertionIndex < shuffled.size) positions[insertionIndex] else shuffled.size
         val shifted = shuffled.map { if (it >= insertionIndex) it + insertionCount else it }
         val inserted = (insertionIndex until insertionIndex + insertionCount).toList()
@@ -61,4 +63,22 @@ internal class QueueShuffleOrder private constructor(private val shuffled: IntAr
     }
 
     override fun cloneAndClear(): ShuffleOrder = QueueShuffleOrder()
+
+    companion object {
+        /**
+         * A new order over [count] items, [startIndex] first and the rest in random order - the one
+         * place a shuffle is dealt, whether a queue is set shuffled or shuffle is turned on mid-queue.
+         */
+        fun startingFrom(count: Int, startIndex: Int): QueueShuffleOrder {
+            val order = (0 until count).shuffled().toMutableList()
+            if (startIndex in order) {
+                order.remove(startIndex)
+                order.add(0, startIndex)
+            }
+            return QueueShuffleOrder(order.toIntArray())
+        }
+
+        /** An empty order that hands [order] to the next queue of the same length set on the player. */
+        fun restoring(order: IntArray): QueueShuffleOrder = QueueShuffleOrder(IntArray(0), restoredOrder = order)
+    }
 }

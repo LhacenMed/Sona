@@ -11,6 +11,9 @@ import androidx.room.PrimaryKey
  * Deviation from Fossify: `lastPositionMs` is stored directly in milliseconds (a `Long`) rather
  * than Fossify's whole-seconds `Int`, since Room/Kotlin has no reason to round-trip through second
  * precision here - there is no legacy column format to stay compatible with.
+ *
+ * [shufflePosition] is where the row plays in the shuffled order - Auxio's `QueueShuffledMappingItem`
+ * - so a shuffled queue comes back playing in the order it was.
  */
 @Entity(tableName = "queue_items")
 data class QueueItemEntity(
@@ -19,4 +22,5 @@ data class QueueItemEntity(
     val trackOrder: Int,
     val isCurrent: Boolean,
     val lastPositionMs: Long,
+    val shufflePosition: Int,
 )

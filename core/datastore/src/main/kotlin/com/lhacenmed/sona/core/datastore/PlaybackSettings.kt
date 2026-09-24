@@ -16,19 +16,19 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 
-private val Context.playbackDataStore by preferencesDataStore(name = "playback_settings")
+/** Shared with [ShuffleSettings], so whether shuffle is on stays stored where it always was. */
+internal val Context.playbackDataStore by preferencesDataStore(name = "playback_settings")
 
 private val REMEMBER_PAUSE = booleanPreferencesKey("remember_pause")
 private val REWIND_BEFORE_SKIP_BACK = booleanPreferencesKey("rewind_before_skip_back")
 private val HEADSET_AUTOPLAY = booleanPreferencesKey("headset_autoplay")
-private val SHUFFLE_ENABLED = booleanPreferencesKey("shuffle_enabled")
 private val REPEAT_MODE = stringPreferencesKey("repeat_mode")
 private val STOP_AFTER_CURRENT_ENABLED = booleanPreferencesKey("stop_after_current_enabled")
 private val PLAYBACK_PARENT = stringPreferencesKey("playback_parent")
 
 /**
  * Audio-playback behavior settings (ported from Auxio's `PlaybackSettings`) plus restart-only
- * shuffle/repeat persistence (ported from Fossify's `Config.isShuffleEnabled`/`playbackSetting`).
+ * repeat persistence (ported from Fossify's `playbackSetting`). Shuffle has its own [ShuffleSettings].
  *
  * Auxio itself backs these with plain `SharedPreferences`; here they're stored via DataStore
  * Preferences to match the rest of Sona's settings (see [LibrarySettings] for the same pattern).
@@ -67,13 +67,6 @@ class PlaybackSettings @Inject constructor(
 
     suspend fun setHeadsetAutoplay(enabled: Boolean) {
         dataStore.edit { it[HEADSET_AUTOPLAY] = enabled }
-    }
-
-    /** Restart-persistence only - not the "remember shuffle across songs" personalize behavior. */
-    val shuffleEnabled: Setting<Boolean> = cache.setting { it[SHUFFLE_ENABLED] ?: false }
-
-    suspend fun setShuffleEnabled(enabled: Boolean) {
-        dataStore.edit { it[SHUFFLE_ENABLED] = enabled }
     }
 
     /**

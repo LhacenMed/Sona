@@ -22,6 +22,7 @@ import com.lhacenmed.sona.core.designsystem.theme.SonaTheme
 import com.lhacenmed.sona.core.navigation.IntentNavigator
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.PlayerOverlay
+import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.scanner.MediaScanner
 import com.lhacenmed.sona.feature.scanner.hasScannerPermission
 import com.lhacenmed.sona.feature.scanner.scannerRequiredPermission
@@ -71,6 +72,9 @@ class MainActivity : SonaActivity() {
     @Inject
     lateinit var updateSettings: UpdateSettings
 
+    @Inject
+    lateinit var playbackController: PlaybackController
+
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) mediaScanner.requestScan()
@@ -109,6 +113,12 @@ class MainActivity : SonaActivity() {
         }
 
         checkForUpdate()
+
+        // Only as the activity is first created: one recreated after a rotation or a process death
+        // still carries the intent it was opened with, and must not shuffle a second time.
+        if (savedInstanceState == null && intent.action == ShuffleAllShortcut.ACTION) {
+            playbackController.shuffleAll()
+        }
 
         setContent {
             val themeColor by themeSeed.color.collectAsStateWithLifecycle()

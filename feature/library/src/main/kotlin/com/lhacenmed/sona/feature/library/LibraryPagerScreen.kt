@@ -6,6 +6,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.interaction.DragInteraction
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -26,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -33,6 +35,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.datastore.LibraryTab
+import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
+import com.lhacenmed.sona.core.designsystem.component.LocalPlayerSheetRaised
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.component.SonaTabRow
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
@@ -76,6 +80,8 @@ fun LibraryPagerScreen(
 ) {
     val visibleTabs by viewModel.visibleTabs.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val showShuffleAllButton by viewModel.showShuffleAllButton.collectAsStateWithLifecycle()
+    val hasTracks by viewModel.hasTracks.collectAsStateWithLifecycle()
     if (visibleTabs.isEmpty()) return
 
     // Keying on the tab set (not just its size) fully resets the pager whenever it changes - a
@@ -103,6 +109,13 @@ fun LibraryPagerScreen(
 
         // The selected folders waiting on the user to confirm excluding them.
         var excludingFolders by remember { mutableStateOf<List<String>?>(null) }
+
+        // Whether a tab's fast scroller thumb is being dragged, which hides the shuffle-all button so
+        // the scroller's popup never meets it - Auxio's `isFastScrolling`.
+        var isFastScrolling by remember { mutableStateOf(false) }
+        // Kept whether or not the button is showing at the moment, so a list's end never jumps as it
+        // comes and goes - only turning the button off in settings gives the room back.
+        val listExtraBottomPadding = if (showShuffleAllButton) ShuffleAllButtonListSpace else 0.dp
 
         // Where the pill sits while a tap is being carried out. The pager cannot be asked to slide
         // the whole way across a long move - it teleports to a page near the target first - so the
@@ -176,96 +189,119 @@ fun LibraryPagerScreen(
             // Painted here rather than left to whatever hosts the screen: the bar and every row are
             // `surface`, while a Scaffold fills with `background` - the same colour on most devices, but
             // not on all, where the shortcuts and the tab strip would sit on a band of a different shade.
-            Column(
+            Box(
                 modifier = modifier
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.surface),
             ) {
-                val sortTabAction = sortAction { sortingTab = selectedTab }
-                SonaTopAppBar(
-                    // The app's own label, so the bar reads exactly what the launcher does - "Sona Debug"
-                    // on a debug build, which :app sets per build type.
-                    title = stringResource(LocalContext.current.applicationInfo.labelRes),
-                    // The library's own two first, so they are the ones always drawn as icons: both act
-                    // on the tab on screen, while the shell's actions are the ones that can fold into
-                    // the menu.
-                    actions = listOf(
-                        TopBarAction(label = "Search", icon = Icons.Filled.Search) {
-                            viewModel.onSearchQueryChange("")
+                Column(modifier = Modifier.fillMaxSize()) {
+                    val sortTabAction = sortAction { sortingTab = selectedTab }
+                    SonaTopAppBar(
+                        // The app's own label, so the bar reads exactly what the launcher does - "Sona Debug"
+                        // on a debug build, which :app sets per build type.
+                        title = stringResource(LocalContext.current.applicationInfo.labelRes),
+                        // The library's own two first, so they are the ones always drawn as icons: both act
+                        // on the tab on screen, while the shell's actions are the ones that can fold into
+                        // the menu.
+                        actions = listOf(
+                            TopBarAction(label = "Search", icon = Icons.Filled.Search) {
+                                viewModel.onSearchQueryChange("")
+                            },
+                            sortAction { sortingTab = selectedTab },
+                        ) + actions,
+                        // Sorting stays beside the field: a search narrows a tab, it does not reorder it.
+                        search = searchQuery?.let { query ->
+                            TopBarSearch(
+                                query = query,
+                                onQueryChange = { viewModel.onSearchQueryChange(it) },
+                                onClose = { viewModel.onSearchQueryChange(null) },
+                                actions = listOf(sortTabAction),
+                            )
                         },
-                        sortAction { sortingTab = selectedTab },
-                    ) + actions,
-                    // Sorting stays beside the field: a search narrows a tab, it does not reorder it.
-                    search = searchQuery?.let { query ->
-                        TopBarSearch(
-                            query = query,
-                            onQueryChange = { viewModel.onSearchQueryChange(it) },
-                            onClose = { viewModel.onSearchQueryChange(null) },
-                            actions = listOf(sortTabAction),
-                        )
-                    },
-                    selection = selection.toLibraryTopBarSelection(
-                        listKeys = { viewModel.selectableKeys(selectedTab) },
-                        actions = excludeFolderActions(selection) { excludingFolders = it },
-                        onMoreOptions = openSelectionOptions,
-                    ),
-                )
-
-                LibraryShortcuts(
-                    modifier = Modifier.padding(horizontal = SonaComponentStyle.ContentHorizontalPadding),
-                )
-
-                if (visibleTabs.size > 1) {
-                    SonaTabRow(
-                        tabTitles = tabTitles,
-                        // Passed as a lambda so the swipe position is read inside the tab row, not
-                        // here - otherwise every frame of a swipe would recompose the pager below.
-                        selectedPosition = {
-                            if (pillLeads) {
-                                pillPosition.value
-                            } else {
-                                pagerState.currentPage + pagerState.currentPageOffsetFraction
-                            }
-                        },
-                        // Tapping the tab already chosen takes its list back to the top instead.
-                        onTabClick = { page ->
-                            if (page == destinationPage) {
-                                scope.launch { listStates.getValue(visibleTabs[page]).glideToTop() }
-                            } else {
-                                requestedPage = page
-                            }
-                        },
-                        modifier = Modifier.padding(
-                            horizontal = SonaComponentStyle.ContentHorizontalPadding,
-                            vertical = 8.dp,
+                        selection = selection.toLibraryTopBarSelection(
+                            listKeys = { viewModel.selectableKeys(selectedTab) },
+                            actions = excludeFolderActions(selection) { excludingFolders = it },
+                            onMoreOptions = openSelectionOptions,
                         ),
                     )
-                }
 
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier.fillMaxSize(),
-                    // Enough to hold every tab, so none is ever disposed while the library is open.
-                    // Disposing one cancels whatever its list was doing: leave a tab mid-fling and it
-                    // would freeze where it stood, then reappear stopped dead when you came back.
-                    // Kept alive, it keeps flinging and settles exactly where it would have. The whole
-                    // library is already in memory, so an off-screen tab costs composition and nothing
-                    // else - the same reason all five can be built on the launch frame.
-                    beyondViewportPageCount = visibleTabs.size - 1,
-                    // Stable page keys, so a tab keeps its scroll position and composition when the
-                    // visible set is unchanged but the pager recomposes.
-                    key = { page -> visibleTabs[page].name },
-                ) { page ->
-                    val tab = visibleTabs[page]
-                    val listState = listStates.getValue(tab)
-                    when (tab) {
-                        LibraryTab.TRACKS -> TracksScreen(viewModel, selection, listState)
-                        LibraryTab.ARTISTS -> ArtistsScreen(viewModel, selection, listState)
-                        LibraryTab.ALBUMS -> AlbumsScreen(viewModel, selection, listState)
-                        LibraryTab.GENRES -> GenresScreen(viewModel, selection, listState)
-                        LibraryTab.FOLDERS -> FoldersScreen(viewModel, selection, listState)
+                    LibraryShortcuts(
+                        modifier = Modifier.padding(horizontal = SonaComponentStyle.ContentHorizontalPadding),
+                    )
+
+                    if (visibleTabs.size > 1) {
+                        SonaTabRow(
+                            tabTitles = tabTitles,
+                            // Passed as a lambda so the swipe position is read inside the tab row, not
+                            // here - otherwise every frame of a swipe would recompose the pager below.
+                            selectedPosition = {
+                                if (pillLeads) {
+                                    pillPosition.value
+                                } else {
+                                    pagerState.currentPage + pagerState.currentPageOffsetFraction
+                                }
+                            },
+                            // Tapping the tab already chosen takes its list back to the top instead.
+                            onTabClick = { page ->
+                                if (page == destinationPage) {
+                                    scope.launch { listStates.getValue(visibleTabs[page]).glideToTop() }
+                                } else {
+                                    requestedPage = page
+                                }
+                            },
+                            modifier = Modifier.padding(
+                                horizontal = SonaComponentStyle.ContentHorizontalPadding,
+                                vertical = 8.dp,
+                            ),
+                        )
+                    }
+
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize(),
+                        // Enough to hold every tab, so none is ever disposed while the library is open.
+                        // Disposing one cancels whatever its list was doing: leave a tab mid-fling and it
+                        // would freeze where it stood, then reappear stopped dead when you came back.
+                        // Kept alive, it keeps flinging and settles exactly where it would have. The whole
+                        // library is already in memory, so an off-screen tab costs composition and nothing
+                        // else - the same reason all five can be built on the launch frame.
+                        beyondViewportPageCount = visibleTabs.size - 1,
+                        // Stable page keys, so a tab keeps its scroll position and composition when the
+                        // visible set is unchanged but the pager recomposes.
+                        key = { page -> visibleTabs[page].name },
+                    ) { page ->
+                        val tab = visibleTabs[page]
+                        val listState = listStates.getValue(tab)
+                        val onFastScrollingChange: (Boolean) -> Unit = { isFastScrolling = it }
+                        when (tab) {
+                            LibraryTab.TRACKS ->
+                                TracksScreen(viewModel, selection, listState, listExtraBottomPadding, onFastScrollingChange)
+                            LibraryTab.ARTISTS ->
+                                ArtistsScreen(viewModel, selection, listState, listExtraBottomPadding, onFastScrollingChange)
+                            LibraryTab.ALBUMS ->
+                                AlbumsScreen(viewModel, selection, listState, listExtraBottomPadding, onFastScrollingChange)
+                            LibraryTab.GENRES ->
+                                GenresScreen(viewModel, selection, listState, listExtraBottomPadding, onFastScrollingChange)
+                            LibraryTab.FOLDERS ->
+                                FoldersScreen(viewModel, selection, listState, listExtraBottomPadding, onFastScrollingChange)
+                        }
                     }
                 }
+
+                // Auxio's rules for its shuffle button: only over a library with tracks in it, on the library
+                // itself rather than its search, and out of the way while a list is fast scrolled or the
+                // player rises over it.
+                ShuffleAllButton(
+                    visible = showShuffleAllButton && hasTracks && searchQuery == null &&
+                        !isFastScrolling && !LocalPlayerSheetRaised.current,
+                    onClick = viewModel::onShuffleAll,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(
+                            end = SonaComponentStyle.ContentHorizontalPadding,
+                            bottom = LocalBottomContentPadding.current,
+                        ),
+                )
             }
         }
 

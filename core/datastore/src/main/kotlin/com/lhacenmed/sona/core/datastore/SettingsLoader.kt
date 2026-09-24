@@ -19,6 +19,7 @@ import javax.inject.Singleton
 class SettingsLoader @Inject constructor(
     private val librarySettings: LibrarySettings,
     private val playbackSettings: PlaybackSettings,
+    private val shuffleSettings: ShuffleSettings,
     private val themeSettings: ThemeSettings,
     private val equalizerSettings: EqualizerSettings,
     private val sortSettings: SortSettings,
@@ -30,6 +31,7 @@ class SettingsLoader @Inject constructor(
     suspend fun load() {
         librarySettings.awaitLoaded()
         playbackSettings.awaitLoaded()
+        shuffleSettings.awaitLoaded()
         themeSettings.awaitLoaded()
         equalizerSettings.awaitLoaded()
         sortSettings.awaitLoaded()

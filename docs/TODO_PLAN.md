@@ -164,7 +164,12 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 
 ## Priority 6 — Browsing & List Navigation Features
 
-- [ ] **6.1 Add a shuffle FAB**
+- [x] **6.1 Add a shuffle FAB**
+  - **Resolved, as one shuffle system** built from Auxio, ArchiveTune and Fossify Music. The library shows Auxio's shuffle button on every tab. It hides with Auxio's rules: when the library is empty, while the search is open, while a fast scroller thumb is dragged, and while the player rises over it. Lists keep room at their end so the last row scrolls clear of it. The launcher's "Shuffle all" shortcut uses the same `PlaybackController.shuffleAll()`, which waits for the library and the restored queue so a cold start neither loses nor overwrites it.
+  - Turning shuffle on mid-queue keeps the order the queue was dealt when it was set, so off-and-on brings back the same order, as Sona always did. **Reshuffle each time** (off by default) deals a new order from the playing track instead, for every source (player, notification, other controller), as all three references do.
+  - `QueueShuffleOrder.startingFrom` is the one place an order is dealt, so a smarter pick later replaces one function.
+  - `ShuffleSettings` holds every shuffle option, in the playback settings file where the on/off state always lived, and Playback › Shuffle exposes them: **Keep shuffle** (Auxio's `keepShuffle`; ArchiveTune's "permanent shuffle"), **Reshuffle each time**, **Remember shuffle order** and **Shuffle all button**.
+  - The shuffled order is saved with the queue (`queue_items.shufflePosition`, `MIGRATION_10_11`, Auxio's `QueueShuffledMappingItem`) and comes back when the app is reopened or a media button wakes the service, whether or not shuffle is on, so the kept order survives a restart too. Both restore paths now read `loadSavedQueue`. The saved order is armed on the empty player *before* the queue is set, because media3 runs custom commands at once but queues player commands, so an order sent after the queue could arrive first.
 - [ ] **6.2 Add a scroll-to-top FAB**
 - [ ] **6.3 Add fast-play / swipe action for playlist items** — scoped only to the Playlists activity.
 - [x] **6.4 Add an Auxio-style fast-scroll list control**

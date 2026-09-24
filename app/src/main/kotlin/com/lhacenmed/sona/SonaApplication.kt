@@ -41,5 +41,7 @@ class SonaApplication : Application() {
         // Whatever the last session left of an update - a found version, a finished download - is
         // put back, so its prompt is there again even offline. Off the main thread: it reads disk.
         applicationScope.launch { UpdateManager.restore(this@SonaApplication) }
+        // A call to the system's shortcut service, so off the main thread as well.
+        applicationScope.launch { ShuffleAllShortcut.publish(this@SonaApplication) }
     }
 }
