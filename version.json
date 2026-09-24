@@ -1,6 +1,6 @@
 {
-  "versionCode": 101009002,
-  "versionName": "1.1.0",
-  "apkUrl": "https://github.com/LhacenMed/Sona/releases/download/v1.1.0/sona-1.1.0-release-universal.apk",
-  "notes": "# Sona 1.1\n\nYour playlists get a face of their own, long lists become quick to cross, and the player's swipes now answer your finger.\n\n## 🎨 Playlist covers and names\n\n- **Edit any playlist's name and cover** from its menu, with a live preview before you save.\n- Pick a cover: the **stacked covers** of its tracks, its **first or last track** (following your sort), **any track** in your library, or **an image from your photos**.\n- **Favorites** can take a cover too.\n\n## ⚡ Fast scrolling\n\n- A **fast scroller** on every library list: grab the thumb along the edge and fly through thousands of tracks.\n- A popup shows **where you are** — the letter, year or count your list is sorted by — with a light tick as it changes.\n- Choose how wide the grab area is in **Settings › Behavior › Display**: Narrow, Standard or Wide.\n\n## 🎧 A player that answers your touch\n\n- **Mini player swipes** now follow your finger to the skip point, tick when a skip is ready, then gently resist. Let go to change track.\n- Swipe towards a side with **no track to go to** and the mini player and the cover **stretch and spring back**, so you can feel there is nothing there instead of nothing happening.\n- The mini player now **floats with an even gap** above the end of every list.\n\n## 🐛 Fixes\n\n- A mini player swipe on the first or last track can now be **taken back before letting go**, and pulling out and snapping back no longer skips by accident."
+  "versionCode": 101019002,
+  "versionName": "1.1.1",
+  "apkUrl": "https://github.com/LhacenMed/Sona/releases/download/v1.1.1/sona-1.1.1-release-universal.apk",
+  "notes": "Bug fixes."
 }
