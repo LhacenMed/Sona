@@ -62,6 +62,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverImage
+import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
 import kotlin.math.abs
@@ -376,7 +377,7 @@ private fun MiniPlayerTransportButton(
     if (isPrimary) {
         FilledIconButton(
             onClick = handleClick,
-            shapes = IconButtonDefaults.shapes(),
+            shapes = iconButtonPressShapes(),
             modifier = modifier.size(48.dp),
             enabled = enabled,
             colors = buttonColors,
@@ -385,7 +386,7 @@ private fun MiniPlayerTransportButton(
     } else {
         IconButton(
             onClick = handleClick,
-            shapes = IconButtonDefaults.shapes(),
+            shapes = iconButtonPressShapes(),
             modifier = modifier.size(48.dp),
             enabled = enabled,
             colors = buttonColors,

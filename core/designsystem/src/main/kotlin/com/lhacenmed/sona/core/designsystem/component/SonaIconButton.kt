@@ -1,7 +1,6 @@
 package com.lhacenmed.sona.core.designsystem.component
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonColors
@@ -10,12 +9,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
+import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 
 /**
  * Every icon button in the app.
  *
- * The only thing this adds to Material's [IconButton] is [IconButtonDefaults.shapes], which is what
- * makes the container morph from a circle to [SonaComponentStyle.Shape] for as long as it is held. Material's
+ * The only thing this adds to Material's [IconButton] is [iconButtonPressShapes], which is what
+ * makes the container morph from a circle to [SonaComponentStyle.PressedShape] for as long as it is held. Material's
  * other overload takes a single static shape instead, so a plain `IconButton` quietly opts out of
  * the press behaviour - and since nothing flags that, having one named button that always passes the
  * shapes is what keeps every icon in the app pressing the same way, rather than leaving each call
@@ -43,10 +43,7 @@ fun SonaIconButton(
 ) {
     IconButton(
         onClick = onClick,
-        shapes = IconButtonDefaults.shapes(
-            shape = CircleShape,
-            pressedShape = SonaComponentStyle.Shape,
-        ),
+        shapes = iconButtonPressShapes(),
         modifier = modifier,
         enabled = enabled,
         colors = colors,

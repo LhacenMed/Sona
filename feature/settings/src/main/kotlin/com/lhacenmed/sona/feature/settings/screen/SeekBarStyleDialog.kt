@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialogDefaults
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.lhacenmed.sona.core.datastore.PlayerSliderStyle
+import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.feature.player.StyledPlaybackSlider
 import com.lhacenmed.sona.feature.settings.R
 
@@ -61,7 +61,7 @@ internal fun SeekBarStyleDialog(
         buttons = {
             TextButton(
                 onClick = onDismiss,
-                shapes = ButtonDefaults.shapes(),
+                shapes = buttonPressShapes(),
             ) {
                 Text(text = stringResource(android.R.string.cancel))
             }
