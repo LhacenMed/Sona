@@ -29,6 +29,7 @@ import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
 import com.lhacenmed.sona.core.datastore.ImageSettings
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
+import com.lhacenmed.sona.core.datastore.ShuffleSettings
 import com.lhacenmed.sona.core.model.RepeatMode
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -38,7 +39,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * Foreground [MediaSessionService] that owns the [ExoPlayer] instance and its [MediaSession].
@@ -62,6 +62,9 @@ class PlaybackService : MediaSessionService() {
 
     @Inject
     lateinit var playbackSettings: PlaybackSettings
+
+    @Inject
+    lateinit var shuffleSettings: ShuffleSettings
 
     @Inject
     lateinit var imageSettings: ImageSettings
@@ -98,7 +101,16 @@ class PlaybackService : MediaSessionService() {
     private var initialHeadsetPlugEventHandled = false
 
     private val playerListener = object : Player.Listener {
+        // Every way of turning shuffle on - the player, the notification, another controller - arrives
+        // here. Left alone, the queue plays the order it was dealt when it was set, the same one each
+        // time shuffle comes back on. When the user reshuffles each time, a new order is dealt from the
+        // track playing instead, as all three reference players do.
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+            if (shuffleModeEnabled && shuffleSettings.reshuffleEachTime.value) {
+                exoPlayer.setShuffleOrder(
+                    QueueShuffleOrder.startingFrom(exoPlayer.mediaItemCount, exoPlayer.currentMediaItemIndex),
+                )
+            }
             updateNotification()
         }
 
@@ -136,6 +148,7 @@ class PlaybackService : MediaSessionService() {
                 .add(PlaybackSessionCommands.toggleRepeatModeCommand)
                 .add(PlaybackSessionCommands.playNextCommand)
                 .add(PlaybackSessionCommands.addToQueueCommand)
+                .add(PlaybackSessionCommands.restoreShuffleOrderCommand)
                 .build()
             return MediaSession.ConnectionResult.accept(
                 sessionCommands,
@@ -164,6 +177,9 @@ class PlaybackService : MediaSessionService() {
                 PlaybackSessionCommands.ACTION_ADD_TO_QUEUE ->
                     enqueue(args.getLongArray(PlaybackSessionCommands.EXTRA_TRACK_IDS) ?: LongArray(0), playNext = false)
 
+                PlaybackSessionCommands.ACTION_RESTORE_SHUFFLE_ORDER ->
+                    restoreShuffleOrder(args.getIntArray(PlaybackSessionCommands.EXTRA_SHUFFLE_ORDER))
+
                 else -> return super.onCustomCommand(session, controller, customCommand, args)
             }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
@@ -180,21 +196,19 @@ class PlaybackService : MediaSessionService() {
         ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
             val future = SettableFuture.create<MediaSession.MediaItemsWithStartPosition>()
             serviceScope.launch {
-                val items = withContext(Dispatchers.IO) { queueItemDao.getAll() }
-                val tracksById = withContext(Dispatchers.IO) {
-                    libraryRepository.tracksByIds(items.map { it.trackId }).associateBy { it.id }
-                }
-                val restored = items.mapNotNull { queueItem ->
-                    tracksById[queueItem.trackId]?.let { track -> queueItem to track }
-                }
-                if (restored.isEmpty()) {
+                val savedQueue = loadSavedQueue(queueItemDao, libraryRepository)
+                if (savedQueue == null) {
                     future.setException(UnsupportedOperationException())
                     return@launch
                 }
-                val currentIndex = restored.indexOfFirst { it.first.isCurrent }.takeIf { it >= 0 } ?: 0
-                val startPositionMs = restored[currentIndex].first.lastPositionMs
-                val mediaItems = restored.map { it.second.toMediaItem() }
-                future.set(MediaSession.MediaItemsWithStartPosition(mediaItems, currentIndex, startPositionMs))
+                restoreShuffleOrder(savedQueue.shuffleOrder)
+                future.set(
+                    MediaSession.MediaItemsWithStartPosition(
+                        savedQueue.mediaItems,
+                        savedQueue.currentIndex,
+                        savedQueue.startPositionMs,
+                    ),
+                )
             }
             return future
         }
@@ -225,7 +239,7 @@ class PlaybackService : MediaSessionService() {
             .setWakeMode(C.WAKE_MODE_LOCAL)
             .build()
             .apply {
-                shuffleModeEnabled = playbackSettings.shuffleEnabled.value
+                shuffleModeEnabled = shuffleSettings.enabled.value
                 setShuffleOrder(QueueShuffleOrder())
                 addListener(playerListener)
             }
@@ -355,7 +369,21 @@ class PlaybackService : MediaSessionService() {
     private fun toggleShuffle() {
         val enabled = !exoPlayer.shuffleModeEnabled
         exoPlayer.shuffleModeEnabled = enabled
-        serviceScope.launch { playbackSettings.setShuffleEnabled(enabled) }
+        serviceScope.launch { shuffleSettings.setEnabled(enabled) }
+    }
+
+    /**
+     * Has the saved queue about to be set on the empty player play in [order], the order it was
+     * shuffled in when the app closed - when the user keeps that order. Restored whether or not
+     * shuffle is on, so turning it on later still brings back the order the queue had.
+     *
+     * Sent ahead of the queue rather than after it: media3 runs a custom command at once but queues
+     * player commands behind each other, so an order sent after the queue could arrive before it.
+     */
+    private fun restoreShuffleOrder(order: IntArray?) {
+        if (order == null || !shuffleSettings.rememberOrder.value) return
+        if (exoPlayer.mediaItemCount != 0) return
+        exoPlayer.setShuffleOrder(QueueShuffleOrder.restoring(order))
     }
 
     /**

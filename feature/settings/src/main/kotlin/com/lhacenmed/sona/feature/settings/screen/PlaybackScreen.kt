@@ -14,7 +14,7 @@ import com.lhacenmed.sona.feature.settings.component.SettingsSectionDivider
 import com.lhacenmed.sona.feature.settings.component.SettingsSliderItem
 import com.lhacenmed.sona.feature.settings.component.SettingsSwitchItem
 
-/** How playback behaves, how tracks join onto each other, and how loud they come out. */
+/** How playback behaves, how shuffle works, how tracks join onto each other, and how loud they come out. */
 object PlaybackScreen : Screen {
     override val titleRes: Int get() = R.string.playback_title
 
@@ -25,6 +25,10 @@ object PlaybackScreen : Screen {
         val viewModel: PlaybackSettingsViewModel = hiltViewModel()
         val rewindBeforeSkipBack by viewModel.rewindBeforeSkipBack.collectAsStateWithLifecycle()
         val stopAfterCurrentEnabled by viewModel.stopAfterCurrentEnabled.collectAsStateWithLifecycle()
+        val keepShuffle by viewModel.keepShuffle.collectAsStateWithLifecycle()
+        val reshuffleEachTime by viewModel.reshuffleEachTime.collectAsStateWithLifecycle()
+        val rememberShuffleOrder by viewModel.rememberShuffleOrder.collectAsStateWithLifecycle()
+        val shuffleAllButton by viewModel.shuffleAllButton.collectAsStateWithLifecycle()
 
         SettingsList {
             SettingsSection(stringResource(R.string.playback_controls_section)) {
@@ -116,15 +120,39 @@ object PlaybackScreen : Screen {
 
             SettingsSectionDivider()
 
+            SettingsSection(stringResource(R.string.playback_shuffle_section)) {
+                SettingsSwitchItem(
+                    title = stringResource(R.string.keep_shuffle_title),
+                    summary = stringResource(R.string.keep_shuffle_summary),
+                    checked = keepShuffle,
+                    onCheckedChange = viewModel::setKeepShuffle,
+                )
+                SettingsSwitchItem(
+                    title = stringResource(R.string.reshuffle_each_time_title),
+                    summary = stringResource(R.string.reshuffle_each_time_summary),
+                    checked = reshuffleEachTime,
+                    onCheckedChange = viewModel::setReshuffleEachTime,
+                )
+                SettingsSwitchItem(
+                    title = stringResource(R.string.remember_shuffle_order_title),
+                    summary = stringResource(R.string.remember_shuffle_order_summary),
+                    checked = rememberShuffleOrder,
+                    onCheckedChange = viewModel::setRememberShuffleOrder,
+                )
+                SettingsSwitchItem(
+                    title = stringResource(R.string.shuffle_all_button_title),
+                    summary = stringResource(R.string.shuffle_all_button_summary),
+                    checked = shuffleAllButton,
+                    onCheckedChange = viewModel::setShuffleAllButton,
+                )
+            }
+
+            SettingsSectionDivider()
+
             SettingsSection(stringResource(R.string.playback_queue_section)) {
                 SettingsSwitchItem(
                     title = stringResource(R.string.persistent_queue_title),
                     summary = stringResource(R.string.persistent_queue_summary),
-                    initialValue = true,
-                )
-                SettingsSwitchItem(
-                    title = stringResource(R.string.remember_shuffle_title),
-                    summary = stringResource(R.string.remember_shuffle_summary),
                     initialValue = true,
                 )
                 SettingsSwitchItem(

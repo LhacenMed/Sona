@@ -15,11 +15,14 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
 import com.lhacenmed.sona.core.data.LibraryRepository
+import com.lhacenmed.sona.core.data.isLoading
+import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.data.lyrics.LyricsPreloadManager
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
 import com.lhacenmed.sona.core.database.entity.QueueItemEntity
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
+import com.lhacenmed.sona.core.datastore.ShuffleSettings
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
@@ -35,6 +38,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -62,6 +66,7 @@ class PlaybackController @Inject constructor(
     private val playStatsDao: PlayStatsDao,
     private val repository: LibraryRepository,
     private val playbackSettings: PlaybackSettings,
+    private val shuffleSettings: ShuffleSettings,
     private val lyricsPreloadManager: LyricsPreloadManager,
 ) {
 
@@ -184,18 +189,36 @@ class PlaybackController @Inject constructor(
      * next launch.
      *
      * [shuffled] turns shuffle on or off for the new queue - Auxio's explicit Play and Shuffle - or,
-     * when null, leaves it as it was, the way tapping a row does. Shuffled, [startIndex] still plays
-     * first and the rest follow in random order; the queue itself keeps the order it was given.
+     * when null, the way tapping a row does: shuffle stays as it was while the user keeps shuffle, and
+     * is turned off otherwise - Auxio's implicit shuffle. Shuffled, [startIndex] still plays first and
+     * the rest follow in random order; the queue itself keeps the order it was given.
      */
     fun playTracks(tracks: List<Track>, startIndex: Int, parent: PlaybackParent? = null, shuffled: Boolean? = null) {
         val mediaController = controller ?: return
         scope.launch { playbackSettings.setPlaybackParent(parent) }
+        val shuffle = shuffled ?: (shuffleSettings.keepShuffle.value && mediaController.shuffleModeEnabled)
         // Before the items, so the player builds the new shuffle order around startIndex.
-        shuffled?.let(::setShuffleEnabled)
+        if (shuffle != mediaController.shuffleModeEnabled) setShuffleEnabled(shuffle)
         val mediaItems = tracks.map(Track::toMediaItem)
         mediaController.setMediaItems(mediaItems, startIndex, 0L)
         mediaController.prepare()
         mediaController.play()
+    }
+
+    /**
+     * Shuffles every track in the library, in the order the Tracks tab lists them, from one picked at
+     * random - Auxio's `shuffleAll`. As playing from that tab does, it marks no collection as playing.
+     *
+     * Waits for the library and for the saved queue to be back, so asked for as the app opens - from
+     * the launcher shortcut - it is neither lost nor overwritten by the queue being restored.
+     */
+    fun shuffleAll() {
+        scope.launch {
+            val tracks = repository.tracks.first { !it.isLoading }.itemsOrEmpty
+            if (tracks.isEmpty()) return@launch
+            playbackState.first { it.isReady }
+            playTracks(tracks, tracks.indices.random(), parent = null, shuffled = true)
+        }
     }
 
     /** Pauses or plays by what the play/pause button shows, so a press always does what it says. */
@@ -294,7 +317,7 @@ class PlaybackController @Inject constructor(
 
     fun setShuffleEnabled(enabled: Boolean) {
         controller?.shuffleModeEnabled = enabled
-        scope.launch { playbackSettings.setShuffleEnabled(enabled) }
+        scope.launch { shuffleSettings.setEnabled(enabled) }
     }
 
     // Only the stored mode is written; PlaybackService puts it on the player and the notification,
@@ -406,6 +429,12 @@ class PlaybackController @Inject constructor(
         if (timeline.isEmpty) return
         val position = mediaController.currentPosition
         val window = Timeline.Window()
+        val shufflePositions = IntArray(timeline.windowCount)
+        var shuffledIndex = timeline.getFirstWindowIndex(true)
+        for (shufflePosition in shufflePositions.indices) {
+            shufflePositions[shuffledIndex] = shufflePosition
+            shuffledIndex = timeline.getNextWindowIndex(shuffledIndex, Player.REPEAT_MODE_OFF, true)
+        }
         val items = (0 until timeline.windowCount).mapNotNull { index ->
             val id = timeline.getWindow(index, window).mediaItem.mediaId.toLongOrNull()
                 ?: return@mapNotNull null
@@ -414,6 +443,7 @@ class PlaybackController @Inject constructor(
                 trackOrder = index,
                 isCurrent = id == currentId,
                 lastPositionMs = if (id == currentId) position else 0L,
+                shufflePosition = shufflePositions[index],
             )
         }
         if (items.isEmpty()) return
@@ -435,22 +465,13 @@ class PlaybackController @Inject constructor(
     }
 
     private suspend fun restoreSavedQueue(mediaController: MediaController) {
-        val items = withContext(Dispatchers.IO) { queueItemDao.getAll() }
-        if (items.isEmpty()) return
-        // Track ids are derived from file paths and so survive a rescan. Before that, a scan
-        // reassigned every id, and a restored queue silently resolved to nothing after the
-        // first relaunch.
-        val tracksById = withContext(Dispatchers.IO) {
-            repository.tracksByIds(items.map { it.trackId }).associateBy { it.id }
+        val savedQueue = loadSavedQueue(queueItemDao, repository) ?: return
+        // Ahead of the items, so the order is waiting on the player when they arrive.
+        savedQueue.shuffleOrder?.let { order ->
+            val args = Bundle().apply { putIntArray(PlaybackSessionCommands.EXTRA_SHUFFLE_ORDER, order) }
+            mediaController.sendCustomCommand(PlaybackSessionCommands.restoreShuffleOrderCommand, args)
         }
-        val restored = items.mapNotNull { queueItem ->
-            tracksById[queueItem.trackId]?.let { track -> queueItem to track }
-        }
-        if (restored.isEmpty()) return
-        val currentIndex = restored.indexOfFirst { it.first.isCurrent }.takeIf { it >= 0 } ?: 0
-        val startPositionMs = restored[currentIndex].first.lastPositionMs
-        val mediaItems = restored.map { it.second.toMediaItem() }
-        mediaController.setMediaItems(mediaItems, currentIndex, startPositionMs)
+        mediaController.setMediaItems(savedQueue.mediaItems, savedQueue.currentIndex, savedQueue.startPositionMs)
         mediaController.prepare()
     }
 

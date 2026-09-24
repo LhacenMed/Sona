@@ -33,7 +33,7 @@ import com.lhacenmed.sona.core.database.entity.TrackEntity
         PlayStatsEntity::class,
         LyricsEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true,
 )
 @TypeConverters(CoverArtUrisConverter::class)

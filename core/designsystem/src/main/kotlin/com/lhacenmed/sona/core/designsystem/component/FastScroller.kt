@@ -105,6 +105,9 @@ private const val POPUP_BASE_ROTATION_DEGREES = 14f
  * [LocalFastScrollTouchArea]. The thumb stays clear of [LocalBottomContentPadding], so it never
  * slides under the mini player.
  *
+ * [onFastScrollingChange] hears when the thumb starts and stops being dragged - Auxio's
+ * `isFastScrolling`, which its home screen hides the shuffle button by.
+ *
  * Only while [enabled], and only for a list with somewhere to scroll.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -114,10 +117,20 @@ fun FastScroller(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     sectionAt: ((index: Int) -> String?)? = null,
+    onFastScrollingChange: (Boolean) -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val state = remember(listState, scope) { FastScrollerState(listState, scope) }
+    val latestOnFastScrollingChange by rememberUpdatedState(onFastScrollingChange)
+    LaunchedEffect(state) {
+        try {
+            snapshotFlow { state.isDragging }.drop(1).collect { latestOnFastScrollingChange(it) }
+        } finally {
+            // A list taken away mid-drag never lets go of the thumb, so the drag is ended for it.
+            if (state.isDragging) latestOnFastScrollingChange(false)
+        }
+    }
     val canFastScroll by remember(listState) {
         derivedStateOf { listState.canScrollForward || listState.canScrollBackward }
     }

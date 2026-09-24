@@ -226,6 +226,16 @@ val MIGRATION_9_10 = object : Migration(9, 10) {
 }
 
 /**
+ * Where each queued track plays in the shuffled order. A queue saved before this has no order to
+ * give back, so its rows share one position and it is dealt again when restored.
+ */
+val MIGRATION_10_11 = object : Migration(10, 11) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `queue_items` ADD COLUMN `shufflePosition` INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
+/**
  * Makes sure Favorites exists, every time the database is opened.
  *
  * On open rather than on create, because creation is only one of the ways this database comes to

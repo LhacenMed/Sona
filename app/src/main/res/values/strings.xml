@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Sona</string>
+    <string name="shuffle_all_shortcut_short">Shuffle</string>
+    <string name="shuffle_all_shortcut_long">Shuffle all</string>
 </resources>

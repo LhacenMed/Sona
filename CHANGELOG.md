@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- Shuffle all button on the library tabs, and a "Shuffle all" launcher shortcut.
+- Shuffle settings under Playback › Shuffle: Keep shuffle, Reshuffle each time, Remember shuffle order and Shuffle all button.
+- A shuffled queue comes back in the same order after the app is closed.
+
 ## [1.1.0] - 2026-09-23
 
 ### Added

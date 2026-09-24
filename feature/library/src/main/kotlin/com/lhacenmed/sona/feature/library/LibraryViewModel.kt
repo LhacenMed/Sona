@@ -9,6 +9,7 @@ import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.data.sort.LibrarySortOrders
 import com.lhacenmed.sona.core.datastore.LibrarySettings
 import com.lhacenmed.sona.core.datastore.LibraryTab
+import com.lhacenmed.sona.core.datastore.ShuffleSettings
 import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Folder
@@ -68,6 +69,7 @@ class LibraryViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val repository: LibraryRepository,
     private val librarySettings: LibrarySettings,
+    shuffleSettings: ShuffleSettings,
     private val mediaScanner: MediaScanner,
     private val playbackController: PlaybackController,
     sortOrders: LibrarySortOrders,
@@ -135,6 +137,19 @@ class LibraryViewModel @Inject constructor(
 
     val isScanning: StateFlow<Boolean> = mediaScanner.isScanning
 
+    /** Whether the user shows the button for shuffling every track. */
+    val showShuffleAllButton: StateFlow<Boolean> = shuffleSettings.shuffleAllButton.flow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, shuffleSettings.shuffleAllButton.value)
+
+    /**
+     * Whether the library holds any track to shuffle - whatever a search narrows the tab to. A flag
+     * rather than the list, so the pager that reads it is not recomposed by every library change.
+     */
+    val hasTracks: StateFlow<Boolean> = repository.tracks
+        .map { it.itemsOrEmpty.isNotEmpty() }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, repository.tracks.value.itemsOrEmpty.isNotEmpty())
+
     /** What every tab marks as playing - see [LibraryPlayback]. */
     val playback: StateFlow<LibraryPlayback> = libraryPlayback(playbackController, repository)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryPlayback())
@@ -166,6 +181,11 @@ class LibraryViewModel @Inject constructor(
         val all = tracks.value.itemsOrEmpty
         val index = all.indexOfFirst { it.id == track.id }
         if (index >= 0) playbackController.playTracks(all, index)
+    }
+
+    /** Shuffles every track in the library - see [PlaybackController.shuffleAll]. */
+    fun onShuffleAll() {
+        playbackController.shuffleAll()
     }
 
     /** An explicit user-initiated rescan, which bypasses the unchanged-library skip. */
