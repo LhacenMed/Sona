@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialogDefaults
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -65,6 +64,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverArt
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverImage
+import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
+import com.lhacenmed.sona.core.designsystem.theme.connectedLeadingButtonPressShapes
+import com.lhacenmed.sona.core.designsystem.theme.connectedTrailingButtonPressShapes
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.R as PlaybackR
@@ -222,7 +224,7 @@ internal fun CurrentSongHeader(
                         onShuffleClick()
                     },
                     modifier = Modifier.weight(1f).size(48.dp),
-                    shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
+                    shapes = connectedLeadingButtonPressShapes(),
                     colors = if (shuffleEnabled) checkedColors else uncheckedColors,
                 ) {
                     Icon(
@@ -239,7 +241,7 @@ internal fun CurrentSongHeader(
                         onRepeatClick()
                     },
                     modifier = Modifier.weight(1f).size(48.dp),
-                    shapes = ButtonGroupDefaults.connectedTrailingButtonShapes(),
+                    shapes = connectedTrailingButtonPressShapes(),
                     colors = if (repeatEnabled) checkedColors else uncheckedColors,
                 ) {
                     Icon(
@@ -311,7 +313,7 @@ internal fun SleepTimerDialog(
 
                 Spacer(Modifier.height(8.dp))
 
-                OutlinedButton(onClick = onEndOfSong, shapes = ButtonDefaults.shapes()) {
+                OutlinedButton(onClick = onEndOfSong, shapes = buttonPressShapes()) {
                     Text(stringResource(R.string.player_end_of_song))
                 }
             }
@@ -365,7 +367,7 @@ private fun ActionPromptDialog(
                         Row(modifier = Modifier.weight(1f)) {
                             TextButton(
                                 onClick = onReset,
-                                shapes = ButtonDefaults.shapes(),
+                                shapes = buttonPressShapes(),
                             ) {
                                 Text(stringResource(R.string.player_reset))
                             }
@@ -373,14 +375,14 @@ private fun ActionPromptDialog(
 
                         TextButton(
                             onClick = onCancel,
-                            shapes = ButtonDefaults.shapes(),
+                            shapes = buttonPressShapes(),
                         ) {
                             Text(stringResource(android.R.string.cancel))
                         }
 
                         TextButton(
                             onClick = onConfirm,
-                            shapes = ButtonDefaults.shapes(),
+                            shapes = buttonPressShapes(),
                         ) {
                             Text(stringResource(android.R.string.ok))
                         }

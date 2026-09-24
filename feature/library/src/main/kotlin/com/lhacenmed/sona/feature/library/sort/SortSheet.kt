@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.component.SonaActionButtonGroup
 import com.lhacenmed.sona.core.designsystem.component.SonaBottomSheet
 import com.lhacenmed.sona.core.designsystem.component.actionButton
+import com.lhacenmed.sona.core.designsystem.theme.connectedLeadingButtonPressShapes
+import com.lhacenmed.sona.core.designsystem.theme.connectedTrailingButtonPressShapes
 import com.lhacenmed.sona.core.model.sort.SortCriterion
 import com.lhacenmed.sona.core.model.sort.SortDirection
 import com.lhacenmed.sona.core.model.sort.SortOrder
@@ -89,9 +91,9 @@ internal fun SortSheet(
                     onCheckedChange = { direction = option },
                     enabled = criterion.hasDirection,
                     shapes = if (index == 0) {
-                        ButtonGroupDefaults.connectedLeadingButtonShapes()
+                        connectedLeadingButtonPressShapes()
                     } else {
-                        ButtonGroupDefaults.connectedTrailingButtonShapes()
+                        connectedTrailingButtonPressShapes()
                     },
                     modifier = Modifier
                         .weight(1f)
@@ -122,9 +124,9 @@ internal fun SortSheet(
                         checked = option == scope,
                         onCheckedChange = { scope = option },
                         shapes = if (index == 0) {
-                            ButtonGroupDefaults.connectedLeadingButtonShapes()
+                            connectedLeadingButtonPressShapes()
                         } else {
-                            ButtonGroupDefaults.connectedTrailingButtonShapes()
+                            connectedTrailingButtonPressShapes()
                         },
                         modifier = Modifier
                             .weight(1f)

@@ -38,7 +38,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -106,6 +105,7 @@ import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.shouldRomanizeLyricsLine
 import com.lhacenmed.sona.core.data.lyrics.WordTimestamp
 import com.lhacenmed.sona.core.database.entity.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import com.lhacenmed.sona.core.designsystem.component.shimmer
+import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.model.Track
 import java.text.BreakIterator
 import java.util.Locale
@@ -861,7 +861,7 @@ internal fun LyricsV2(
                     Modifier
                         .align(Alignment.BottomCenter)
                         .padding(bottom = 16.dp),
-                shapes = ButtonDefaults.shapes(),
+                shapes = buttonPressShapes(),
             ) {
                 Text(
                     text = stringResource(R.string.player_lyrics_resume),
