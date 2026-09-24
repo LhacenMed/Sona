@@ -37,7 +37,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.LibraryContent
@@ -143,9 +142,6 @@ internal fun <T> LibraryListContent(
  * Every list has the fast scroller; one given [sectionOf] - the section its sort puts a row in - also
  * names that section in the scroller's popup. [onFastScrollingChange] hears when its thumb is dragged.
  *
- * [extraBottomPadding] is kept clear at the list's end on top of the player's, so its last row can
- * scroll out from under a button floating over it.
- *
  * Its rows join [selection], and a long press drags across them - see [DragSelection].
  */
 @Composable
@@ -162,7 +158,6 @@ internal fun <T> LibraryList(
     listState: LazyListState = rememberLazyListState(),
     onReorder: ((List<T>) -> Unit)? = null,
     sectionOf: ((T) -> String?)? = null,
-    extraBottomPadding: Dp = 0.dp,
     onFastScrollingChange: (Boolean) -> Unit = {},
     row: @Composable (T) -> Unit,
 ) {
@@ -189,7 +184,6 @@ internal fun <T> LibraryList(
                     key = key,
                     listState = listState,
                     onReorder = onReorder,
-                    extraBottomPadding = extraBottomPadding,
                     row = row,
                 )
                 return@FastScroller
@@ -203,7 +197,7 @@ internal fun <T> LibraryList(
                     modifier = Modifier
                         .fillMaxSize()
                         .dragSelection(dragSelection),
-                    contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current + extraBottomPadding),
+                    contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
                 ) {
                     items(
                         items = items,
@@ -260,7 +254,6 @@ private fun <T> ReorderableColumn(
     key: (T) -> Any,
     listState: LazyListState,
     onReorder: (List<T>) -> Unit,
-    extraBottomPadding: Dp,
     row: @Composable (T) -> Unit,
 ) {
     KeepAtTopWhenRowsChange(listState = listState, rows = items)
@@ -269,7 +262,7 @@ private fun <T> ReorderableColumn(
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current + extraBottomPadding),
+        contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
     ) {
         reorderableRows(reorderableRows, key, row)
     }

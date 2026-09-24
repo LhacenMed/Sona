@@ -7,7 +7,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
@@ -20,7 +19,6 @@ fun GenresScreen(
     viewModel: LibraryViewModel,
     selection: SelectionState,
     listState: LazyListState,
-    extraBottomPadding: Dp,
     onFastScrollingChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -45,7 +43,6 @@ fun GenresScreen(
         sectionOf = genreSections,
         modifier = modifier,
         listState = listState,
-        extraBottomPadding = extraBottomPadding,
         onFastScrollingChange = onFastScrollingChange,
     ) { genre ->
         GenreRow(
