@@ -35,6 +35,7 @@ fun AlbumsScreen(
 
     LibraryList(
         content = albums,
+        selection = selection,
         hasPermission = hasPermission,
         isScanning = isScanning,
         emptyTitle = "No albums found",

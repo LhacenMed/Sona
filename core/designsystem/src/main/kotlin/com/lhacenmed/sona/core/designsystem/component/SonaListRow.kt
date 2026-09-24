@@ -47,19 +47,34 @@ private val DragHandleTouchSize = 48.dp
  */
 val LocalDragHandle = compositionLocalOf<Modifier?> { null }
 
-/** A row that joins whatever selection is running: once one is, tapping it selects rather than opens. */
+/**
+ * A row that joins whatever selection is running: once one is, tapping it selects rather than opens.
+ *
+ * In a list with a [DragSelection], a long press selects the row and starts a drag across its
+ * neighbours, and the row tells the list where it is laid out; elsewhere a long press toggles it.
+ */
 fun Modifier.selectableRow(
     selection: SelectionState,
     selectionKey: Any?,
+    dragSelection: DragSelection?,
     onClick: () -> Unit,
 ): Modifier = combinedClickable(
     onClick = {
+        dragSelection?.onRowTap()
         when {
             !selection.isActive -> onClick()
             selectionKey != null -> selection.toggle(selectionKey)
         }
     },
-    onLongClick = { selectionKey?.let(selection::toggle) },
+    onLongClick = {
+        when {
+            selectionKey == null -> Unit
+            dragSelection != null -> dragSelection.onRowLongPress(selectionKey)
+            else -> selection.toggle(selectionKey)
+        }
+    },
+).then(
+    if (dragSelection != null && selectionKey != null) Modifier.dragSelectableRow(dragSelection, selectionKey) else Modifier,
 )
 
 /**
@@ -102,6 +117,7 @@ fun SonaListRow(
     )
     val selectedTint = MaterialTheme.colorScheme.primary
     val dragHandle = LocalDragHandle.current
+    val dragSelection = LocalDragSelection.current
     CompositionLocalProvider(LocalContentColor provides contentColor) {
         Row(
             modifier = modifier
@@ -114,7 +130,7 @@ fun SonaListRow(
                     if (selection == null) {
                         Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
                     } else {
-                        Modifier.selectableRow(selection, selectionKey, onClick)
+                        Modifier.selectableRow(selection, selectionKey, dragSelection, onClick)
                     },
                 )
                 .padding(

@@ -46,6 +46,7 @@ data class AddTracksScreen(val playlistId: Long) : Screen {
         ) {
             LibraryList(
                 content = visibleTracks,
+                selection = selection,
                 // Reached from a playlist, so the library has already loaded and been permitted.
                 hasPermission = true,
                 isScanning = false,

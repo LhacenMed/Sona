@@ -11,6 +11,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Shuffle all button on the library tabs, and a "Shuffle all" launcher shortcut.
 - Shuffle settings under Playback › Shuffle: Keep shuffle, Reshuffle each time, Remember shuffle order and Shuffle all button.
 - A shuffled queue comes back in the same order after the app is closed.
+- Drag to select, as in a file browser: long press a row and drag across the list to select a range, scrolling at its edges; long press a second row to select everything between the two.
+
+### Changed
+
+- A long press now selects a row rather than toggling it, so it can start a drag.
 
 ## [1.1.0] - 2026-09-23
 

@@ -34,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
@@ -202,6 +203,8 @@ private const val HeaderShrink = 0.12f
  *
  * [contentKey] is what the list shows. A screen opens at its top, and a list at its top stays there as
  * its rows arrive or change - see the note in the body.
+ *
+ * [dragSelection], where the list's rows can be selected, lets a long press drag across them.
  */
 @Composable
 fun DetailScaffold(
@@ -211,6 +214,7 @@ fun DetailScaffold(
     isHeaderAside: Boolean,
     contentKey: Any?,
     modifier: Modifier = Modifier,
+    dragSelection: DragSelection? = null,
     content: LazyListScope.() -> Unit,
 ) {
     val listState = state.listState
@@ -276,12 +280,16 @@ fun DetailScaffold(
                     // the header standing open over a list scrolled somewhere else.
                     val isCollapsed by remember(state) { derivedStateOf { state.collapse == 1f } }
                     FastScroller(listState = listState, enabled = isCollapsed) {
-                        LazyColumn(
-                            state = listState,
-                            modifier = Modifier.nestedScroll(state.nestedScrollConnection),
-                            contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
-                            content = content,
-                        )
+                        CompositionLocalProvider(LocalDragSelection provides dragSelection) {
+                            LazyColumn(
+                                state = listState,
+                                modifier = Modifier
+                                    .then(dragSelection?.let(Modifier::dragSelection) ?: Modifier)
+                                    .nestedScroll(state.nestedScrollConnection),
+                                contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+                                content = content,
+                            )
+                        }
                     }
                 },
             ),
