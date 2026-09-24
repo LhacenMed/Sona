@@ -1,6 +1,5 @@
 <div align="center">
 
-<!-- PLACEHOLDER: app icon, 128×128 PNG. Save as docs/media/icon.png -->
 <img src="docs/media/icon.png" alt="Sona icon" width="128" height="128">
 
 # Sona
@@ -17,11 +16,6 @@ Sona plays the music stored on your device. It has no accounts, no streaming, no
 
 ## Screenshots
 
-<!--
-PLACEHOLDER: replace each image below. Recommended: PNG, 1080×2400 (phone portrait), same device and theme for all.
-Save them in docs/media/screenshots/ with the file names used here.
--->
-
 | Library | Player | Queue | Lyrics |
 |:---:|:---:|:---:|:---:|
 | <img src="docs/media/screenshots/library.jpg" width="200" alt="Library"> | <img src="docs/media/screenshots/player.jpg" width="200" alt="Player"> | <img src="docs/media/screenshots/queue.jpg" width="200" alt="Queue"> | <img src="docs/media/screenshots/lyrics.jpg" width="200" alt="Lyrics"> |
@@ -29,8 +23,6 @@ Save them in docs/media/screenshots/ with the file names used here.
 | Album | Playlists | Selection | Settings |
 |:---:|:---:|:---:|:---:|
 | <img src="docs/media/screenshots/album.jpg" width="200" alt="Album detail"> | <img src="docs/media/screenshots/playlists.jpg" width="200" alt="Playlists"> | <img src="docs/media/screenshots/selection.jpg" width="200" alt="Multi-select"> | <img src="docs/media/screenshots/settings.jpg" width="200" alt="Settings"> |
-
-<!-- PLACEHOLDER (optional): a short screen recording as GIF or MP4, ≤ 10 MB, saved as docs/media/demo.gif -->
 
 ## Features
 
@@ -143,7 +135,7 @@ On Windows, use `gradlew.bat` instead of `./gradlew`.
 `./gradlew :app:assembleRelease` produces per-ABI APKs plus a universal APK. They are signed only if a `keystore.properties` file exists in the project root:
 
 ```properties
-storeFile=../your-key.jks
+storeFile=../sona-release-key.jks
 storePassword=...
 keyAlias=...
 keyPassword=...
