@@ -5,6 +5,7 @@ import android.icu.util.Measure
 import android.icu.util.MeasureUnit
 import java.time.Instant
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /*
@@ -27,6 +28,14 @@ internal fun durationSection(durationMs: Long): String {
     }
 }
 
-/** The year a moment given in seconds since the epoch falls in - how Auxio names a date-added section. */
-internal fun yearOfEpochSecondsSection(epochSeconds: Long): String =
-    Instant.ofEpochSecond(epochSeconds).atZone(ZoneId.systemDefault()).year.toString()
+/**
+ * The month a moment given in seconds since the epoch falls in, over its year - "Aug" above "2026" -
+ * which is how a date-added section is named. Auxio names it by the year alone, which puts a whole
+ * year of additions under one label. Two lines rather than one, so the popup can show both large; the
+ * month is abbreviated the way the user's locale abbreviates it standing on its own.
+ */
+internal fun monthOfEpochSecondsSection(epochSeconds: Long): String {
+    val date = Instant.ofEpochSecond(epochSeconds).atZone(ZoneId.systemDefault())
+    val month = DateTimeFormatter.ofPattern("LLL", Locale.getDefault()).format(date)
+    return "$month\n${date.year}"
+}

@@ -41,7 +41,7 @@ internal object LibrarySortSpecs {
     private val trackAlbum = SortField.Name<Track>({ it.album }, { it.album == UnknownNames.ALBUM })
     private val trackYear = SortField.Number<Track>(NumberSection) { it.year?.toLong() }
     private val trackDuration = SortField.Number<Track>(::durationSection) { it.durationMs }
-    private val trackDateAdded = SortField.Number<Track>(::yearOfEpochSecondsSection) { it.dateAddedSeconds }
+    private val trackDateAdded = SortField.Number<Track>(::monthOfEpochSecondsSection) { it.dateAddedSeconds }
     private val trackDisc = SortField.Number<Track> { it.discNumber?.toLong() }
     private val trackNumber = SortField.Number<Track> { it.trackNumber?.toLong() }
 
@@ -167,7 +167,7 @@ internal object LibrarySortSpecs {
             SortCriterion.TRACK_COUNT to
                 listOf(SortField.Number<Album>(NumberSection) { it.trackCount.toLong() }, albumTitle),
             SortCriterion.DATE_ADDED to
-                listOf(SortField.Number<Album>(::yearOfEpochSecondsSection) { it.dateAddedSeconds }, albumTitle),
+                listOf(SortField.Number<Album>(::monthOfEpochSecondsSection) { it.dateAddedSeconds }, albumTitle),
         ),
     )
 
