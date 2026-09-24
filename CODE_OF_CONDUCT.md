@@ -25,6 +25,6 @@ The maintainer may edit or remove comments, lock threads, close issues and pull 
 
 ## Reporting
 
-Report conduct problems privately to **[CONDUCT CONTACT EMAIL]**. Include links to the comments or threads involved. Reports are kept confidential.
+Report conduct problems privately to **[sona.app.contact@gmail.com](mailto:sona.app.contact@gmail.com)**. Include links to the comments or threads involved. Reports are kept confidential.
 
 For a single abusive comment you can also use GitHub's **Report content** option in the comment's `···` menu.
