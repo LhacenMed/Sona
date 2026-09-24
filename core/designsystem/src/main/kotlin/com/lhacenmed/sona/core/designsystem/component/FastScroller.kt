@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.lhacenmed.sona.core.designsystem.theme.LocalFastScrollTouchArea
 import com.lhacenmed.sona.core.model.FastScrollTouchArea
@@ -315,12 +316,17 @@ private fun FastScrollPopup(section: String, rotationDegrees: () -> Float) {
                 .graphicsLayer { rotationZ = POPUP_BASE_ROTATION_DEGREES + rotationDegrees() }
                 .background(MaterialTheme.colorScheme.secondary, burstShape),
         )
+        val textStyle = MaterialTheme.typography.headlineMediumEmphasized
         Text(
             text = section,
             color = MaterialTheme.colorScheme.onSecondary,
-            style = MaterialTheme.typography.headlineMediumEmphasized,
+            // The line height in proportion to the text, as the style has it, rather than fixed: auto-size
+            // shrinks only the font, so a fixed line height would keep two lines as tall as ever and they
+            // would shrink to nothing trying to fit.
+            style = textStyle.copy(lineHeight = (textStyle.lineHeight.value / textStyle.fontSize.value).em),
             textAlign = TextAlign.Center,
-            maxLines = 1,
+            // A section breaks its own lines - a month above its year - and is otherwise one line.
+            maxLines = section.lines().size,
             autoSize = TextAutoSize.StepBased(minFontSize = 1.sp, maxFontSize = 32.sp),
             modifier = Modifier.padding(horizontal = PopupHorizontalPadding, vertical = PopupVerticalPadding),
         )
