@@ -7,7 +7,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
@@ -20,7 +19,6 @@ fun TracksScreen(
     viewModel: LibraryViewModel,
     selection: SelectionState,
     listState: LazyListState,
-    extraBottomPadding: Dp,
     onFastScrollingChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -42,7 +40,6 @@ fun TracksScreen(
         key = { it.id },
         modifier = modifier,
         listState = listState,
-        extraBottomPadding = extraBottomPadding,
         onFastScrollingChange = onFastScrollingChange,
         loadingIcon = SonaIcons.Song,
         sectionOf = trackSections,

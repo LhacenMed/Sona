@@ -113,9 +113,6 @@ fun LibraryPagerScreen(
         // Whether a tab's fast scroller thumb is being dragged, which hides the shuffle-all button so
         // the scroller's popup never meets it - Auxio's `isFastScrolling`.
         var isFastScrolling by remember { mutableStateOf(false) }
-        // Kept whether or not the button is showing at the moment, so a list's end never jumps as it
-        // comes and goes - only turning the button off in settings gives the room back.
-        val listExtraBottomPadding = if (showShuffleAllButton) ShuffleAllButtonListSpace else 0.dp
 
         // Where the pill sits while a tap is being carried out. The pager cannot be asked to slide
         // the whole way across a long move - it teleports to a page near the target first - so the
@@ -274,26 +271,25 @@ fun LibraryPagerScreen(
                         val listState = listStates.getValue(tab)
                         val onFastScrollingChange: (Boolean) -> Unit = { isFastScrolling = it }
                         when (tab) {
-                            LibraryTab.TRACKS ->
-                                TracksScreen(viewModel, selection, listState, listExtraBottomPadding, onFastScrollingChange)
-                            LibraryTab.ARTISTS ->
-                                ArtistsScreen(viewModel, selection, listState, listExtraBottomPadding, onFastScrollingChange)
-                            LibraryTab.ALBUMS ->
-                                AlbumsScreen(viewModel, selection, listState, listExtraBottomPadding, onFastScrollingChange)
-                            LibraryTab.GENRES ->
-                                GenresScreen(viewModel, selection, listState, listExtraBottomPadding, onFastScrollingChange)
-                            LibraryTab.FOLDERS ->
-                                FoldersScreen(viewModel, selection, listState, listExtraBottomPadding, onFastScrollingChange)
+                            LibraryTab.TRACKS -> TracksScreen(viewModel, selection, listState, onFastScrollingChange)
+                            LibraryTab.ARTISTS -> ArtistsScreen(viewModel, selection, listState, onFastScrollingChange)
+                            LibraryTab.ALBUMS -> AlbumsScreen(viewModel, selection, listState, onFastScrollingChange)
+                            LibraryTab.GENRES -> GenresScreen(viewModel, selection, listState, onFastScrollingChange)
+                            LibraryTab.FOLDERS -> FoldersScreen(viewModel, selection, listState, onFastScrollingChange)
                         }
                     }
                 }
 
                 // Auxio's rules for its shuffle button: only over a library with tracks in it, on the library
                 // itself rather than its search, and out of the way while a list is fast scrolled or the
-                // player rises over it.
+                // player rises over it - and, as lists keep no room for it, while the list on screen has
+                // its last row down where the button sits.
+                val lastRowReachesButton by rememberLastRowReachesShuffleAllButton(
+                    listStates.getValue(visibleTabs[pagerState.currentPage]),
+                )
                 ShuffleAllButton(
                     visible = showShuffleAllButton && hasTracks && searchQuery == null &&
-                        !isFastScrolling && !LocalPlayerSheetRaised.current,
+                        !isFastScrolling && !LocalPlayerSheetRaised.current && !lastRowReachesButton,
                     onClick = viewModel::onShuffleAll,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
