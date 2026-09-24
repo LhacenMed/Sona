@@ -78,8 +78,11 @@ internal fun PlaylistTrackPicker(
                         query = query,
                         onQueryChange = onSearchQueryChange,
                         onClose = { onSearchQueryChange(null) },
-                        actions = if (selection.isActive) listOf(addAction) else emptyList(),
-                        menuActions = if (selection.isActive) listOf(selection.selectAllAction(visibleKeys())) else emptyList(),
+                        actions = if (selection.isActive) {
+                            listOf(addAction, selection.selectAllAction(visibleKeys()))
+                        } else {
+                            emptyList()
+                        },
                     )
                 },
                 // Left out while searching, so the field outranks the selection bar - and so the bar's
