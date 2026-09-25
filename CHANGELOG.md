@@ -6,6 +6,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-09-25
+
+### Added
+
+- Shuffle all can play one collection instead of every track: Favorites, or any playlist, artist, album, genre or folder. The launcher's Shuffle all shortcut plays the same.
+- Long press the shuffle button for a menu of All tracks, Favorites, the collection you chose and Other. Picking one makes it the button's source and shuffles it at once.
+- Settings › Playback › Shuffle all plays, choosing All tracks or opening a searchable picker of your playlists, artists, albums, genres or folders. Other in the shuffle menu opens the settings scrolled to it, and highlights it.
+- A scroll to top button on every list: the library tabs, Playlists, every album, artist, genre, folder and playlist screen, the pickers, the settings and the equalizer. On a detail screen it opens the header again as it goes.
+
+### Changed
+
+- The shuffle button is larger, and springs as it shows, hides and opens.
+- The floating buttons stand just above the mini player, or above the navigation bar without one, and move with it as it slides in and out.
+- The floating buttons step aside together while the player is raised, while a list is fast scrolled, and as a list reaches its end.
+
 ## [1.3.0] - 2026-09-25
 
 ### Added
@@ -102,7 +117,8 @@ First stable release.
 - Artwork-based dynamic colours, light and dark themes, composed collection covers, animated launch screen and edge-to-edge layout.
 - In-app updates from GitHub Releases, with an option to check only on request.
 
-[Unreleased]: https://github.com/LhacenMed/Sona/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/LhacenMed/Sona/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/LhacenMed/Sona/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/LhacenMed/Sona/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/LhacenMed/Sona/compare/v1.1.1...v1.2.0
 [1.1.0]: https://github.com/LhacenMed/Sona/compare/v1.0.0...v1.1.0
