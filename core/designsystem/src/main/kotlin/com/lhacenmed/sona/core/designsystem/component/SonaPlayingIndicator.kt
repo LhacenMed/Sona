@@ -21,6 +21,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.theme.roundedRadius
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.random.Random
@@ -86,6 +87,8 @@ private fun PlayingIndicatorBars(
         }
     }
 
+    val barCornerRadius = roundedRadius(BarCornerRadius)
+
     Row(
         horizontalArrangement = Arrangement.spacedBy(BarSpacing),
         verticalAlignment = Alignment.Bottom,
@@ -102,7 +105,7 @@ private fun PlayingIndicatorBars(
                     color = color,
                     topLeft = Offset(x = 0f, y = size.height * (1 - animatable.value)),
                     size = size.copy(height = animatable.value * size.height),
-                    cornerRadius = CornerRadius(BarCornerRadius.toPx()),
+                    cornerRadius = CornerRadius(barCornerRadius.toPx()),
                 )
             }
         }

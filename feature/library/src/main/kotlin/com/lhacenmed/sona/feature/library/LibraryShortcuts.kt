@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
@@ -48,6 +47,7 @@ import com.lhacenmed.sona.core.designsystem.component.SonaIconButton
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.designsystem.theme.pressedCornerRadius
 import com.lhacenmed.sona.core.designsystem.theme.rememberPressFraction
+import com.lhacenmed.sona.core.designsystem.theme.roundedShape
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 
 private const val SHORTCUT_COUNT = 3
@@ -158,7 +158,7 @@ private fun ButtonGroupScope.shortcutCard(
                     role = Role.Button,
                     onClick = onClick,
                 ),
-            shape = RoundedCornerShape(pressedCornerRadius(pressFraction)),
+            shape = roundedShape(pressedCornerRadius(pressFraction)),
             color = containerColor,
         ) {
             Box {

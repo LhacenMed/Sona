@@ -20,8 +20,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -34,6 +32,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.theme.pillShape
+import com.lhacenmed.sona.core.designsystem.theme.roundedShape
 import com.lhacenmed.sona.feature.player.R
 import com.lhacenmed.sona.feature.player.makeTimeString
 
@@ -75,7 +75,7 @@ internal fun DefaultQueueBar(
                     Modifier
                         .height(buttonSize)
                         .weight(1f)
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(roundedShape(16.dp))
                         .background(contentColor.copy(alpha = 0.1f))
                         .clickable { onExpandQueue() },
                 contentAlignment = Alignment.Center,
@@ -108,7 +108,7 @@ internal fun DefaultQueueBar(
                 modifier =
                     Modifier
                         .size(buttonSize)
-                        .clip(CircleShape)
+                        .clip(pillShape)
                         .background(contentColor.copy(alpha = if (sleepTimerEnabled) 0.2f else 0.1f))
                         .clickable { onSleepTimerClick() },
                 contentAlignment = Alignment.Center,
@@ -149,7 +149,7 @@ internal fun DefaultQueueBar(
                     Modifier
                         .height(buttonSize)
                         .weight(1f)
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(roundedShape(16.dp))
                         .background(contentColor.copy(alpha = 0.1f))
                         .clickable { onShowLyrics() },
                 contentAlignment = Alignment.Center,

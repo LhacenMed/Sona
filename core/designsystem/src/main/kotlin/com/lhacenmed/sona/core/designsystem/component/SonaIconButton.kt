@@ -15,7 +15,7 @@ import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
  * Every icon button in the app.
  *
  * The only thing this adds to Material's [IconButton] is [iconButtonPressShapes], which is what
- * makes the container morph from a circle to [SonaComponentStyle.PressedShape] for as long as it is held. Material's
+ * makes the container morph from a circle to [SonaComponentStyle.PressedCornerRadius] for as long as it is held. Material's
  * other overload takes a single static shape instead, so a plain `IconButton` quietly opts out of
  * the press behaviour - and since nothing flags that, having one named button that always passes the
  * shapes is what keeps every icon in the app pressing the same way, rather than leaving each call

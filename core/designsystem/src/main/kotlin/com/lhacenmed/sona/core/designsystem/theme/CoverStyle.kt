@@ -19,7 +19,10 @@ data class CoverStyle(
     val maxResolutionPx: Int?,
     /** Crop covers to a square instead of fitting the whole image inside one. */
     val isForcedSquare: Boolean,
-    /** Round the corners of covers; square when false. */
+    /**
+     * Round mode: round the corners of covers - and, through [SonaTheme], of every shape in the app;
+     * square when false. See [LocalIsRounded].
+     */
     val isRounded: Boolean,
 )
 

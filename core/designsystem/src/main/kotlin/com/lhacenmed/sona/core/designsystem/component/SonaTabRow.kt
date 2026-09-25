@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.theme.LocalIsRounded
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.designsystem.theme.pressedCornerRadius
 import com.lhacenmed.sona.core.designsystem.theme.rememberPressFraction
@@ -70,6 +71,8 @@ fun SonaTabRow(
     // so a press animates without recomposing anything.
     val pressFractions = interactionSources.map { rememberPressFraction(it) }
     val thumbColor = MaterialTheme.colorScheme.secondaryContainer
+    // Read here for the draw phase below, which cannot read the composition: square while round mode is off.
+    val isRounded = LocalIsRounded.current
 
     BoxWithConstraints(
         modifier = modifier
@@ -86,7 +89,7 @@ fun SonaTabRow(
             content = {
                 Box(
                     modifier = Modifier.drawBehind {
-                        val cornerRadius = lerpAtPosition(selectedPosition(), tabCount) { tab ->
+                        val cornerRadius = if (!isRounded) 0f else lerpAtPosition(selectedPosition(), tabCount) { tab ->
                             pressedCornerRadius(pressFractions[tab].value).toPx()
                         }
                         drawRoundRect(color = thumbColor, cornerRadius = CornerRadius(cornerRadius))
@@ -157,12 +160,13 @@ private fun TabLabel(
     // phase. Lerping a color instead would have to be read during composition, which meant every
     // label re-laying out its text on every frame of a swipe - the one per-frame cost in the strip.
     val activeFraction = { (1f - abs(index - selectedPosition())).coerceIn(0f, 1f) }
+    val isRounded = LocalIsRounded.current
 
     Box(
         modifier = Modifier
             // Clipped before `clickable` so the press ripple stays inside the tab's animated shape.
             .graphicsLayer {
-                shape = RoundedCornerShape(pressedCornerRadius(pressFraction.value))
+                shape = RoundedCornerShape(if (isRounded) pressedCornerRadius(pressFraction.value) else 0.dp)
                 clip = true
             }
             .clickable(interactionSource = interactionSource, indication = ripple(), onClick = onClick),

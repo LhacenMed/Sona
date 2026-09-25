@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.datastore.PlayerSliderStyle
 import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
+import com.lhacenmed.sona.core.designsystem.theme.roundedShape
 import com.lhacenmed.sona.feature.player.StyledPlaybackSlider
 import com.lhacenmed.sona.feature.settings.R
 
@@ -98,11 +98,11 @@ private fun SliderStyleOptionCard(
         modifier =
             modifier
                 .aspectRatio(1f)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(roundedShape(16.dp))
                 .border(
                     1.dp,
                     if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-                    RoundedCornerShape(16.dp),
+                    roundedShape(16.dp),
                 ).clickable(onClick = onClick)
                 .padding(16.dp),
     ) {

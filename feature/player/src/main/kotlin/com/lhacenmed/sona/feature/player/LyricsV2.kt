@@ -36,7 +36,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
@@ -106,6 +105,8 @@ import com.lhacenmed.sona.core.data.lyrics.WordTimestamp
 import com.lhacenmed.sona.core.database.entity.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import com.lhacenmed.sona.core.designsystem.component.shimmer
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
+import com.lhacenmed.sona.core.designsystem.theme.pillShape
+import com.lhacenmed.sona.core.designsystem.theme.roundedShape
 import com.lhacenmed.sona.core.model.Track
 import java.text.BreakIterator
 import java.util.Locale
@@ -700,7 +701,7 @@ internal fun LyricsV2(
                                         } else {
                                             Color.Transparent
                                         },
-                                    shape = RoundedCornerShape(8.dp),
+                                    shape = roundedShape(8.dp),
                                 ).padding(
                                     start = if (isAllBackground) 24.dp else 12.dp,
                                     end = 12.dp,
@@ -887,7 +888,7 @@ internal fun LyricsV2(
                                 .size(48.dp)
                                 .background(
                                     color = Color.Black.copy(alpha = 0.3f),
-                                    shape = CircleShape,
+                                    shape = pillShape,
                                 ).clickable {
                                     isSelectionModeActive = false
                                     selectedIndices.clear()
@@ -912,7 +913,7 @@ internal fun LyricsV2(
                                         } else {
                                             Color.White.copy(alpha = 0.5f)
                                         },
-                                    shape = RoundedCornerShape(24.dp),
+                                    shape = roundedShape(24.dp),
                                 ).clickable(enabled = selectedIndices.isNotEmpty()) {
                                     val selectedLyricsText =
                                         selectedIndices
