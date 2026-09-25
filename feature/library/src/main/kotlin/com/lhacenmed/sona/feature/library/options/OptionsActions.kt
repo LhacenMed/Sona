@@ -31,8 +31,10 @@ import com.lhacenmed.sona.feature.library.M3U_MIME_TYPE
 import com.lhacenmed.sona.feature.library.M3U_PICKER_MIME_TYPES
 import com.lhacenmed.sona.feature.library.PlaylistDetailScreen
 import com.lhacenmed.sona.feature.library.PlaylistNameDialog
+import com.lhacenmed.sona.feature.library.operation.DeleteFromDeviceDialog
 import com.lhacenmed.sona.feature.library.operation.DeletePlaylistsDialog
 import com.lhacenmed.sona.feature.library.operation.ExcludeFoldersDialog
+import com.lhacenmed.sona.feature.library.operation.RemoveFromPlaylistDialog
 import com.lhacenmed.sona.feature.library.playlist.AddCollectionsScreen
 import com.lhacenmed.sona.feature.library.playlist.AddTracksScreen
 import com.lhacenmed.sona.feature.library.playlist.EditPlaylistScreen
@@ -49,6 +51,8 @@ internal sealed interface FollowUp {
     data class Properties(override val target: OptionsTarget.ForTrack) : FollowUp
     data class ExcludeFolder(override val target: OptionsTarget.ForFolder) : FollowUp
     data class DeletePlaylist(override val target: OptionsTarget.ForPlaylist) : FollowUp
+    data class RemoveFromPlaylist(override val target: OptionsTarget.ForTrack) : FollowUp
+    data class DeleteFromDevice(override val target: OptionsTarget) : FollowUp
     data class ImportFile(override val target: OptionsTarget.ForPlaylist) : FollowUp
     data class ExportFile(override val target: OptionsTarget) : FollowUp
 }
@@ -59,7 +63,7 @@ internal sealed interface FollowUp {
  * it is chosen.
  *
  * Most actions happen at once. The rest - picking a playlist, a track's properties, confirming an
- * exclusion or a deletion, picking a file to import or to export to - open a [followUp], which
+ * exclusion, a removal or a deletion, picking a file to import or to export to - open a [followUp], which
  * [OptionsFollowUps] draws until it ends.
  */
 @Stable
@@ -97,6 +101,8 @@ internal class OptionsActions(
             OptionsAction.IMPORT -> followUp = FollowUp.ImportFile(playlistOf(target))
             OptionsAction.EXPORT -> followUp = FollowUp.ExportFile(target)
             OptionsAction.DELETE -> followUp = FollowUp.DeletePlaylist(playlistOf(target))
+            OptionsAction.REMOVE_FROM_PLAYLIST -> followUp = FollowUp.RemoveFromPlaylist(target as OptionsTarget.ForTrack)
+            OptionsAction.DELETE_FROM_DEVICE -> followUp = FollowUp.DeleteFromDevice(target)
             OptionsAction.EXCLUDE -> followUp = FollowUp.ExcludeFolder(target as OptionsTarget.ForFolder)
             OptionsAction.SHARE -> if (target is OptionsTarget.ForTrack) {
                 context.shareTrack(target.track)
@@ -121,14 +127,15 @@ internal fun rememberOptionsActions(): OptionsActions {
 
 /**
  * Whatever dialog or file picker [actions] is waiting on. [onFinished] hears when it ends, whichever way;
- * [onPlaylistDeleted] hears when a deletion went through - how a playlist's own screen leaves once the
- * playlist it shows is gone.
+ * [onCollectionDeleted] hears when a collection is gone - a playlist deleted, or every track of an album,
+ * artist, genre or folder deleted from the device - which is how its own screen leaves once there is
+ * nothing left to show.
  */
 @Composable
 internal fun OptionsFollowUps(
     actions: OptionsActions,
     onFinished: () -> Unit = {},
-    onPlaylistDeleted: () -> Unit = {},
+    onCollectionDeleted: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val viewModel = actions.viewModel
@@ -185,8 +192,33 @@ internal fun OptionsFollowUps(
         is FollowUp.DeletePlaylist -> DeletePlaylistsDialog(
             playlists = listOf(followUp.target.playlist),
             onDismiss = finish,
-            onDeleted = onPlaylistDeleted,
+            onDeleted = onCollectionDeleted,
         )
+
+        is FollowUp.RemoveFromPlaylist -> RemoveFromPlaylistDialog(
+            playlist = checkNotNull(followUp.target.playlist),
+            trackIds = listOf(followUp.target.track.id),
+            onDismiss = finish,
+        )
+
+        is FollowUp.DeleteFromDevice -> {
+            // A collection's tracks are read first; the dialog opens on them once they are known.
+            var tracks by remember(followUp) { mutableStateOf<List<Track>?>(null) }
+            LaunchedEffect(followUp) {
+                viewModel.loadTracks(followUp.target) { loaded -> if (loaded.isEmpty()) finish() else tracks = loaded }
+            }
+            tracks?.let { loaded ->
+                DeleteFromDeviceDialog(
+                    tracks = loaded,
+                    onDismiss = finish,
+                    onDeleted = {
+                        if (followUp.target !is OptionsTarget.ForTrack && followUp.target !is OptionsTarget.ForSelection) {
+                            onCollectionDeleted()
+                        }
+                    },
+                )
+            }
+        }
 
         is FollowUp.ImportFile -> {
             val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -319,4 +351,4 @@ private const val URI_PARCEL_OVERHEAD_BYTES = 16
  */
 private const val SHARE_INTENT_BUDGET_BYTES = 512 * 1024
 
-private fun Track.contentUri() = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, mediaStoreId)
+internal fun Track.contentUri() = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, mediaStoreId)

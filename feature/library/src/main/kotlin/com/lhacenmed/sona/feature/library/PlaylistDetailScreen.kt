@@ -50,11 +50,10 @@ data class PlaylistDetailScreen(val playlistId: Long) : Screen {
             viewModel = viewModel,
             emptyMessage = "This playlist has no tracks yet.",
             collection = playlist?.let { OptionsTarget.ForPlaylist(it, PlaylistOptionsContext.FROM_DETAIL) },
-            // Only a playlist has an order of its own to rearrange, and membership to remove from.
+            // Only a playlist has an order of its own to rearrange.
             // Dragging works whatever the list is sorted by: the drop stores the order it ended on and
             // puts the list in it, so what was dragged is what stays.
             onReorder = { reordered -> viewModel.setOrder(reordered.map { it.id }) },
-            removeFromPlaylist = viewModel::removeFromPlaylist,
         )
     }
 }

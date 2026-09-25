@@ -121,6 +121,16 @@ class LibraryWriter @Inject constructor(
         stats
     }
 
+    /**
+     * Takes the tracks [trackIds] name out at once - their files just deleted - rather than waiting for
+     * a scan to find them gone: every list follows the table, so they leave it on the next frame, and
+     * their playlist entries, play counts and lyrics go with them. Their albums, artists and genres are
+     * left to the next [sync], which is the one that derives them.
+     */
+    suspend fun deleteTracks(trackIds: Collection<Long>) = withContext(ioDispatcher) {
+        database.withTransaction { trackIds.chunked(MAX_BIND_ARGS).forEach { trackDao.deleteByIds(it) } }
+    }
+
     private class Diff<E>(
         val upserts: List<E>,
         val deleted: List<Long>,

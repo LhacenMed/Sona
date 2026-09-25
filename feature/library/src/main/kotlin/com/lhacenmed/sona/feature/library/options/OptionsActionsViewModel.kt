@@ -1,5 +1,7 @@
 package com.lhacenmed.sona.feature.library.options
 
+import android.content.Context
+import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.LibraryContent
@@ -17,6 +19,8 @@ import com.lhacenmed.sona.feature.library.selection.tracksOf
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.scanner.MediaScanner
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
 import javax.inject.Inject
@@ -29,7 +33,8 @@ import kotlinx.coroutines.withContext
 
 /**
  * What an options sheet's rows do - playing, queueing, adding to a playlist, sharing, and the changes
- * that cannot be taken back: excluding folders and deleting playlists. Shared by every entity's sheet
+ * that cannot be taken back: excluding folders, removing tracks from a playlist, deleting playlists and
+ * deleting tracks' files from the device. Shared by every entity's sheet
  * and every selection bar, so a track, an album, an artist, a genre, a folder and a playlist all reach
  * the queue, the playlist table and the library the same way.
  *
@@ -38,6 +43,7 @@ import kotlinx.coroutines.withContext
  */
 @HiltViewModel
 class OptionsActionsViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val repository: LibraryRepository,
     private val playbackController: PlaybackController,
     private val librarySettings: LibrarySettings,
@@ -105,6 +111,51 @@ class OptionsActionsViewModel @Inject constructor(
             folderPaths.forEach { librarySettings.addExcludedFolder(it) }
             mediaScanner.rescan()
         }
+    }
+
+    /** Drops [trackIds] out of the playlist [playlistId]. The files themselves are untouched. */
+    fun removeFromPlaylist(playlistId: Long, trackIds: List<Long>, onFinished: (succeeded: Boolean) -> Unit) {
+        viewModelScope.launchOperation(onFinished) { repository.removeTracksFromPlaylist(playlistId, trackIds) }
+    }
+
+    /**
+     * Deletes [tracks]' files itself - with the storage permission below Android 11, or with access to
+     * manage all files from 11 on, as a file manager deletes - then lets go of them as
+     * [forgetDeletedTracks] does. It fails if any file is still there afterwards; one already gone counts
+     * as deleted.
+     *
+     * From Android 11 on a file and its MediaStore row are one: deleting the file removes the row. Below
+     * it they are apart, so the row is deleted as well, or the next refresh would bring the track back.
+     */
+    fun deleteTracks(tracks: List<Track>, onFinished: (succeeded: Boolean) -> Unit) {
+        viewModelScope.launchOperation(onFinished) {
+            withContext(Dispatchers.IO) {
+                tracks.forEach { track ->
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R && !track.isManuallyScanned) {
+                        context.contentResolver.delete(track.contentUri(), null, null)
+                    }
+                    val file = File(track.path)
+                    file.delete()
+                    check(!file.exists()) { "${track.path} could not be deleted" }
+                }
+            }
+            settleDeletedTracks(tracks)
+        }
+    }
+
+    /**
+     * Lets go of [tracks] once their files are deleted - by Android's own request, or by [deleteTracks]:
+     * out of the queue and out of the library at once, so [onFinished] is told as they leave every list,
+     * playlists included.
+     */
+    fun forgetDeletedTracks(tracks: List<Track>, onFinished: (succeeded: Boolean) -> Unit) {
+        viewModelScope.launchOperation(onFinished) { settleDeletedTracks(tracks) }
+    }
+
+    private suspend fun settleDeletedTracks(tracks: List<Track>) {
+        val trackIds = tracks.mapTo(HashSet()) { it.id }
+        playbackController.removeFromQueue(trackIds)
+        mediaScanner.forgetTracks(trackIds)
     }
 
     /** Deletes the playlists [playlistIds] name. The tracks they hold are untouched. */

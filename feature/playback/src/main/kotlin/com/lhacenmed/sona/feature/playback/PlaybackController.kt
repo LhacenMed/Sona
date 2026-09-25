@@ -262,6 +262,20 @@ class PlaybackController @Inject constructor(
         controller?.removeMediaItem(mediaItemIndex)
     }
 
+    /**
+     * Takes every copy of the tracks [trackIds] name out of the queue - what deleting their files needs,
+     * so the player never reaches a file that is gone. Last to first, so each removal leaves the indices
+     * still to visit where they were.
+     */
+    fun removeFromQueue(trackIds: Set<Long>) {
+        val mediaController = controller ?: return
+        for (index in mediaController.mediaItemCount - 1 downTo 0) {
+            if (mediaController.getMediaItemAt(index).mediaId.toLongOrNull() in trackIds) {
+                mediaController.removeMediaItem(index)
+            }
+        }
+    }
+
     fun insertQueueItem(mediaItemIndex: Int, track: Track) {
         controller?.addMediaItem(mediaItemIndex, track.toMediaItem())
     }
