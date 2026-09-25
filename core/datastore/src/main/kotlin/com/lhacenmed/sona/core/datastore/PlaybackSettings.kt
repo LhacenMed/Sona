@@ -56,7 +56,7 @@ class PlaybackSettings @Inject constructor(
      * ~3s threshold) before jumping to the previous item; when false, skip-back always jumps to
      * the literal previous item.
      */
-    val rewindBeforeSkipBack: Setting<Boolean> = cache.setting { it[REWIND_BEFORE_SKIP_BACK] ?: true }
+    val rewindBeforeSkipBack: Setting<Boolean> = cache.setting { it[REWIND_BEFORE_SKIP_BACK] ?: false }
 
     suspend fun setRewindBeforeSkipBack(enabled: Boolean) {
         dataStore.edit { it[REWIND_BEFORE_SKIP_BACK] = enabled }
@@ -115,4 +115,4 @@ private fun Preferences.readRepeatMode(): RepeatMode =
     this[REPEAT_MODE]?.let { name -> runCatching { RepeatMode.valueOf(name) }.getOrNull() }
         ?: RepeatMode.OFF
 
-private fun Preferences.readStopAfterCurrentEnabled(): Boolean = this[STOP_AFTER_CURRENT_ENABLED] ?: true
+private fun Preferences.readStopAfterCurrentEnabled(): Boolean = this[STOP_AFTER_CURRENT_ENABLED] ?: false

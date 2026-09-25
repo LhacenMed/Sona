@@ -38,7 +38,7 @@ class ImageSettings @Inject constructor(
     }
 
     /** Whether every cover is cropped to a 1:1 aspect ratio. */
-    val forceSquareCovers: Setting<Boolean> = cache.setting { it[FORCE_SQUARE_COVERS] ?: false }
+    val forceSquareCovers: Setting<Boolean> = cache.setting { it[FORCE_SQUARE_COVERS] ?: true }
 
     suspend fun setForceSquareCovers(enabled: Boolean) {
         dataStore.edit { it[FORCE_SQUARE_COVERS] = enabled }

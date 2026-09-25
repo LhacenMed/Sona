@@ -71,7 +71,7 @@ class LibrarySettings @Inject constructor(
     val fastScrollTouchArea: Setting<FastScrollTouchArea> = cache.setting { preferences ->
         preferences[FAST_SCROLL_TOUCH_AREA]
             ?.let { name -> runCatching { FastScrollTouchArea.valueOf(name) }.getOrNull() }
-            ?: FastScrollTouchArea.STANDARD
+            ?: FastScrollTouchArea.NARROW
     }
 
     suspend fun setFastScrollTouchArea(touchArea: FastScrollTouchArea) {

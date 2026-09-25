@@ -57,7 +57,7 @@ internal object LibrarySortSpecs {
 
     val tracks = SortSpec(
         list = SortableList.TRACKS,
-        default = nameAscending,
+        default = SortOrder(SortCriterion.DATE_ADDED, SortDirection.DESCENDING),
         orderings = mapOf(
             SortCriterion.NAME to tracksByTitle,
             SortCriterion.ARTIST to tracksByArtist,
@@ -123,7 +123,7 @@ internal object LibrarySortSpecs {
      */
     val playlistTracks = SortSpec(
         list = SortableList.PLAYLIST_TRACKS,
-        default = SortOrder(SortCriterion.CUSTOM, SortDirection.ASCENDING),
+        default = SortOrder(SortCriterion.DATE_ADDED, SortDirection.DESCENDING),
         orderings = mapOf(
             SortCriterion.CUSTOM to listOf(SortField.Number<PlaylistEntry> { it.position.toLong() }),
             SortCriterion.NAME to tracksByTitle.ofEntry(),
@@ -214,7 +214,7 @@ internal object LibrarySortSpecs {
     /** "Date" is when the playlist last changed - made, renamed, or its tracks added, removed or moved. */
     val playlists = SortSpec(
         list = SortableList.PLAYLISTS,
-        default = nameAscending,
+        default = SortOrder(SortCriterion.DATE, SortDirection.DESCENDING),
         orderings = mapOf(
             SortCriterion.NAME to listOf(playlistName),
             SortCriterion.TRACK_COUNT to
