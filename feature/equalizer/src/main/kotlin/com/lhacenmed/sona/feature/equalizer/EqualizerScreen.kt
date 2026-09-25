@@ -55,7 +55,7 @@ private val GainLabelWidth = 56.dp
  * Nothing here decides what an equalizer looks like - band count, centre frequencies, the gain range
  * and the presets are all read off the device, exactly as the reference app does it.
  */
-object EqualizerScreen : Screen {
+data object EqualizerScreen : Screen {
     override val titleRes: Int get() = R.string.equalizer_title
 
     @Composable

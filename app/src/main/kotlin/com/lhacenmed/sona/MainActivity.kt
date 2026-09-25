@@ -140,7 +140,8 @@ class MainActivity : SonaActivity() {
                 coverStyle = coverStyle,
                 fastScrollTouchArea = fastScrollTouchArea,
             ) {
-                val navigator = remember { IntentNavigator(this) }
+                // The library is no screen of its own, so every screen is one it can go to.
+                val navigator = remember { IntentNavigator(this, currentScreen = null) }
                 CompositionLocalProvider(LocalNavigator provides navigator) {
                     AppShell(playerOverlay = playerOverlay)
                     UpdateGate(autoPrompt = autoPromptUpdates)

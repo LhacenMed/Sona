@@ -15,7 +15,7 @@ import com.lhacenmed.sona.feature.settings.component.SettingsSliderItem
 import com.lhacenmed.sona.feature.settings.component.SettingsSwitchItem
 
 /** How playback behaves, how shuffle works, how tracks join onto each other, and how loud they come out. */
-object PlaybackScreen : Screen {
+data object PlaybackScreen : Screen {
     override val titleRes: Int get() = R.string.playback_title
 
     @Composable

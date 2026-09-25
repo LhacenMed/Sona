@@ -37,7 +37,7 @@ import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.navigation.Screen
 
 /** "Excluded Folders" screen: view/add/remove folders that the media scanner should skip. */
-object ExcludedFoldersScreen : Screen {
+data object ExcludedFoldersScreen : Screen {
     override val titleRes: Int get() = R.string.excluded_folders_title
 
     @Composable

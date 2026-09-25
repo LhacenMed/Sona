@@ -19,7 +19,7 @@ import com.lhacenmed.sona.feature.settings.component.SettingsTextFieldItem
 import com.lhacenmed.sona.feature.settings.manage.ExcludedFoldersScreen
 
 /** Where the library comes from, what it is called, and what it is allowed to look like. */
-object ContentScreen : Screen {
+data object ContentScreen : Screen {
     override val titleRes: Int get() = R.string.content_title
 
     @Composable

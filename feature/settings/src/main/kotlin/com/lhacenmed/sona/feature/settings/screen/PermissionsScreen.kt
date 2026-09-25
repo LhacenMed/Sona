@@ -27,7 +27,7 @@ import com.lhacenmed.sona.feature.settings.component.SettingsSection
  * otherwise on the page where it is granted - its special-access page, or the app's details for a
  * permission the user declined for good. A granted row opens that page, where it can be taken back.
  */
-object PermissionsScreen : Screen {
+data object PermissionsScreen : Screen {
     override val titleRes: Int get() = R.string.permissions_title
 
     @Composable

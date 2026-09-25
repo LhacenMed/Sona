@@ -24,7 +24,7 @@ import com.lhacenmed.sona.feature.update.ui.UpdateGate
  * live while they are off. Its answer, when there is one, is the update dialog - opened here, over
  * this screen, rather than on the library behind it.
  */
-object UpdatesScreen : Screen {
+data object UpdatesScreen : Screen {
     override val titleRes: Int get() = R.string.updates_title
 
     @Composable

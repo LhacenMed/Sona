@@ -59,7 +59,7 @@ data class PlaylistDetailScreen(val playlistId: Long) : Screen {
 }
 
 /** Everything ever played, most recent first. */
-object RecentlyPlayedScreen : Screen {
+data object RecentlyPlayedScreen : Screen {
 
     @Composable
     override fun Content() {
@@ -79,7 +79,7 @@ object RecentlyPlayedScreen : Screen {
 }
 
 /** The tracks listened to right through, most often first. */
-object MostPlayedScreen : Screen {
+data object MostPlayedScreen : Screen {
 
     @Composable
     override fun Content() {

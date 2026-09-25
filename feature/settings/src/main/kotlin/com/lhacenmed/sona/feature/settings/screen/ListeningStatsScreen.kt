@@ -18,7 +18,7 @@ import com.lhacenmed.sona.feature.settings.component.SettingsSectionDivider
  * whether a library has been played for a year or was added this morning - and so an empty
  * statistic is a zero in its place rather than a hole in the layout.
  */
-object ListeningStatsScreen : Screen {
+data object ListeningStatsScreen : Screen {
     override val titleRes: Int get() = R.string.listening_stats_title
 
     @Composable

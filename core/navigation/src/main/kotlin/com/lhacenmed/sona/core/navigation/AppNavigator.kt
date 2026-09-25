@@ -7,6 +7,8 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 
 /** Navigation surface exposed to every screen composable, regardless of which Activity hosts it. */
 interface AppNavigator {
@@ -44,11 +46,31 @@ fun NavigateAwayEffect(onNavigate: () -> Unit) {
     }
 }
 
-/** Pushes [Screen]s as new [HostActivity] instances, relying on the platform's Activity back stack. */
-class IntentNavigator(private val activity: ComponentActivity) : AppNavigator {
+/**
+ * Pushes [Screen]s as new [HostActivity] instances, relying on the platform's Activity back stack.
+ *
+ * It knows the [currentScreen] its activity shows - null for the library, which is no [Screen] - so
+ * going to that screen again stays where it is rather than stacking a copy of it. And once it has
+ * opened a screen it opens no other until its activity is back in front: a second tap, landing before
+ * the first screen has appeared, would otherwise open a second one on top of it.
+ */
+class IntentNavigator(
+    private val activity: ComponentActivity,
+    private val currentScreen: Screen?,
+) : AppNavigator {
     private val onNavigateListeners = mutableListOf<() -> Unit>()
 
+    private var isOpeningScreen = false
+
+    init {
+        activity.lifecycle.addObserver(
+            LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) isOpeningScreen = false },
+        )
+    }
+
     override fun go(screen: Screen) {
+        if (screen == currentScreen || isOpeningScreen) return
+        isOpeningScreen = true
         onNavigateListeners.toList().forEach { it() }
         activity.startActivity(
             Intent(activity, HostActivity::class.java).putExtra(HostActivity.EXTRA_SCREEN, screen),

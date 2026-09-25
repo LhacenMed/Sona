@@ -19,7 +19,7 @@ import com.lhacenmed.sona.feature.settings.component.SettingsSectionDivider
  * manage - what it stores is the artwork and the lyrics it has decoded, and either can be thrown
  * away without losing anything the user put there.
  */
-object StorageScreen : Screen {
+data object StorageScreen : Screen {
     override val titleRes: Int get() = R.string.storage_title
 
     @Composable
