@@ -4,7 +4,8 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -13,7 +14,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
@@ -72,6 +72,8 @@ internal fun rememberPlayerTitleActions(
 /**
  * The artist line under a player's title, tapped to open the artist - ArchiveTune's `ClickableArtists`,
  * for Sona's one artist per track.
+ *
+ * Clicked as the title is, so a long press answers with the same haptic.
  */
 @Composable
 internal fun ClickableArtist(
@@ -83,9 +85,6 @@ internal fun ClickableArtist(
     textAlign: TextAlign? = null,
     onLongClick: (() -> Unit)? = null,
 ) {
-    val latestOnArtistClick by rememberUpdatedState(onArtistClick)
-    val latestOnLongClick by rememberUpdatedState(onLongClick)
-
     Text(
         text = artist,
         style = style,
@@ -94,15 +93,11 @@ internal fun ClickableArtist(
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         modifier =
-            modifier.pointerInput(onLongClick != null) {
-                detectTapGestures(
-                    onTap = { latestOnArtistClick() },
-                    onLongPress = if (onLongClick != null) {
-                        { latestOnLongClick?.invoke() }
-                    } else {
-                        null
-                    },
-                )
-            },
+            modifier.combinedClickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() },
+                onClick = onArtistClick,
+                onLongClick = onLongClick,
+            ),
     )
 }
