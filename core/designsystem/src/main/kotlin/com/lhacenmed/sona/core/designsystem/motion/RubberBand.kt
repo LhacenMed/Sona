@@ -1,5 +1,7 @@
-package com.lhacenmed.sona.feature.player
+package com.lhacenmed.sona.core.designsystem.motion
 
+import android.view.animation.DecelerateInterpolator
+import androidx.compose.animation.core.Easing
 import kotlin.math.abs
 import kotlin.math.sign
 
@@ -14,7 +16,7 @@ import kotlin.math.sign
  * it has given half of [limit] by `over = limit`, and only approaches `arm + limit`, so no pull however
  * long takes it further. An [arm] of 0 resists from the first pixel.
  */
-internal fun rubberBandOffset(pull: Float, arm: Float, limit: Float): Float {
+fun rubberBandOffset(pull: Float, arm: Float, limit: Float): Float {
     val distance = abs(pull)
     if (distance <= arm) return pull
     val over = distance - arm
@@ -26,7 +28,7 @@ internal fun rubberBandOffset(pull: Float, arm: Float, limit: Float): Float {
  * up wherever a settle has left it. An offset the band cannot reach (left by a settle begun under a
  * longer [arm]) is taken as the band at full stretch.
  */
-internal fun rubberBandPull(offset: Float, arm: Float, limit: Float): Float {
+fun rubberBandPull(offset: Float, arm: Float, limit: Float): Float {
     val distance = abs(offset)
     if (distance <= arm) return offset
     val stretch = (distance - arm).coerceAtMost(limit * FullStretch)
@@ -39,5 +41,16 @@ private const val FullStretch = 0.99f
  * How a released band falls back to rest: this long, decelerating with this tension - Khatmah's page
  * falling back over an unfinished wall.
  */
-internal const val RubberBandSettleDurationMillis = 240
-internal const val RubberBandSettleTension = 1.6f
+const val RubberBandSettleDurationMillis = 240
+const val RubberBandSettleTension = 1.6f
+
+/** [RubberBandSettleTension] as a Compose easing, for a band settled by a Compose animation. */
+val RubberBandSettleEasing = Easing(DecelerateInterpolator(RubberBandSettleTension)::getInterpolation)
+
+/**
+ * Where a sideways swipe - the mini player's, a list row's - stops following the finger and releasing it
+ * acts, and the ceiling it can never pass, both as a share of the width swiped: Khatmah's wird wall, as
+ * it is of its page.
+ */
+const val SwipeArmFraction = 0.15f
+const val SwipeStretchMaxFraction = 0.27f
