@@ -9,6 +9,7 @@ import android.widget.EdgeEffect
 import androidx.core.animation.doOnEnd
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
+import com.lhacenmed.sona.core.designsystem.effect.SonaEffects
 import com.lhacenmed.sona.core.designsystem.motion.RubberBandSettleDurationMillis
 import com.lhacenmed.sona.core.designsystem.motion.RubberBandSettleTension
 import com.lhacenmed.sona.core.designsystem.motion.rubberBandOffset
@@ -215,7 +216,7 @@ internal class CoverOverscroll(
             return
         }
         spring = ValueAnimator.ofFloat(from, 0f).apply {
-            duration = RubberBandSettleDurationMillis.toLong()
+            duration = SonaEffects.animationDuration(RubberBandSettleDurationMillis.toLong())
             interpolator = DecelerateInterpolator(RubberBandSettleTension)
             addUpdateListener { apply(it.animatedValue as Float) }
             doOnEnd {

@@ -9,6 +9,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.datastore.PlayerStyle
+import com.lhacenmed.sona.core.designsystem.effect.isHighRefreshRate
+import com.lhacenmed.sona.core.designsystem.effect.rememberSupportedHighestFps
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
 import com.lhacenmed.sona.feature.settings.component.SettingsChoiceItem
@@ -18,6 +20,7 @@ import com.lhacenmed.sona.feature.settings.component.SettingsSection
 import com.lhacenmed.sona.feature.settings.component.SettingsSectionDivider
 import com.lhacenmed.sona.feature.settings.component.SettingsSliderItem
 import com.lhacenmed.sona.feature.settings.component.SettingsSwitchItem
+import kotlin.math.roundToInt
 
 /** How the app looks: its theme, the colours it draws itself in, and the shape of the player. */
 data object AppearanceScreen : Screen {
@@ -29,6 +32,8 @@ data object AppearanceScreen : Screen {
         val roundMode by viewModel.roundMode.collectAsStateWithLifecycle()
         val playerStyle by viewModel.playerStyle.collectAsStateWithLifecycle()
         val sliderStyle by viewModel.sliderStyle.collectAsStateWithLifecycle()
+        val disableAnimations by viewModel.disableAnimations.collectAsStateWithLifecycle()
+        val forceHighRefreshRate by viewModel.forceHighRefreshRate.collectAsStateWithLifecycle()
         var showSeekBarStyleDialog by rememberSaveable { mutableStateOf(false) }
 
         SettingsList {
@@ -123,10 +128,18 @@ data object AppearanceScreen : Screen {
                 SettingsSwitchItem(
                     title = stringResource(R.string.disable_animations_title),
                     summary = stringResource(R.string.disable_animations_summary),
+                    checked = disableAnimations,
+                    onCheckedChange = viewModel::setDisableAnimations,
                 )
+                // ArchiveTune's row: the fastest rate this display offers, and nothing to force on a
+                // display with none above the standard one.
+                val supportedHighestFps = rememberSupportedHighestFps()
                 SettingsSwitchItem(
                     title = stringResource(R.string.high_refresh_rate_title),
-                    summary = stringResource(R.string.high_refresh_rate_summary),
+                    summary = stringResource(R.string.high_refresh_rate_summary, supportedHighestFps.roundToInt()),
+                    checked = forceHighRefreshRate,
+                    onCheckedChange = viewModel::setForceHighRefreshRate,
+                    enabled = isHighRefreshRate(supportedHighestFps),
                 )
             }
         }

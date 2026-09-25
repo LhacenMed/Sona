@@ -10,6 +10,7 @@ import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.view.animation.DecelerateInterpolator
 import android.widget.PopupWindow
 import androidx.annotation.RequiresApi
+import com.lhacenmed.sona.core.designsystem.effect.SonaEffects
 
 /**
  * A [PopupWindow] that supports unlimited cascading sub-menus by sliding panels in and
@@ -384,7 +385,7 @@ class PopupMenu(
                 menuFlipper.animate()
                     .alpha(0f)
                     .translationY(-ctx.dp(animConfig.exitSlideDistanceDp))
-                    .setDuration(80L)
+                    .setDuration(SonaEffects.animationDuration(80L))
                     .setInterpolator(DecelerateInterpolator())
                     .withEndAction { dismiss() }
                     .start()
@@ -395,7 +396,7 @@ class PopupMenu(
                 menuFlipper.animate()
                     .alpha(1f)
                     .translationY(0f)
-                    .setDuration(150L)
+                    .setDuration(SonaEffects.animationDuration(150L))
                     .setInterpolator(DecelerateInterpolator())
                     .start()
             }

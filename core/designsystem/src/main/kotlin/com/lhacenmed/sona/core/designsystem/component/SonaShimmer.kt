@@ -2,6 +2,7 @@ package com.lhacenmed.sona.core.designsystem.component
 
 import android.graphics.Matrix
 import androidx.compose.animation.core.withInfiniteAnimationFrameMillis
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
@@ -16,6 +17,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.node.DrawModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.node.invalidateDraw
+import com.lhacenmed.sona.core.designsystem.effect.SonaEffects
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlin.math.tan
 
@@ -66,12 +69,21 @@ private class ShimmerNode : Modifier.Node(), DrawModifierNode {
 
     override fun onAttach() {
         coroutineScope.launch {
-            val startMillis = withInfiniteAnimationFrameMillis { it }
-            while (true) {
-                withInfiniteAnimationFrameMillis { frameMillis ->
-                    progress = (frameMillis - startMillis) % SHIMMER_DURATION_MILLIS / SHIMMER_DURATION_MILLIS.toFloat()
+            // It sweeps on frame time, which no animation pace reaches, so it asks itself: with nothing
+            // moving on its own, the highlight rests off the edge and the content stays dimmed, still.
+            snapshotFlow { SonaEffects.shouldAnimate }.collectLatest { shouldAnimate ->
+                if (!shouldAnimate) {
+                    progress = 0f
+                    invalidateDraw()
+                    return@collectLatest
                 }
-                invalidateDraw()
+                val startMillis = withInfiniteAnimationFrameMillis { it }
+                while (true) {
+                    withInfiniteAnimationFrameMillis { frameMillis ->
+                        progress = (frameMillis - startMillis) % SHIMMER_DURATION_MILLIS / SHIMMER_DURATION_MILLIS.toFloat()
+                    }
+                    invalidateDraw()
+                }
             }
         }
     }

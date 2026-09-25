@@ -2,6 +2,7 @@ package com.lhacenmed.sona.feature.player
 
 import android.view.HapticFeedbackConstants
 import android.view.View
+import com.lhacenmed.sona.core.designsystem.effect.performSonaHaptic
 import java.util.Locale
 
 /** "m:ss", or "h:mm:ss" from the hour on - ArchiveTune's `makeTimeString`. */
@@ -20,5 +21,5 @@ internal fun makeTimeString(durationMs: Long): String {
 /** The light tick ArchiveTune's player controls answer a press with. */
 @Suppress("DEPRECATION")
 internal fun View.performContextClick() {
-    performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING)
+    performSonaHaptic(HapticFeedbackConstants.CONTEXT_CLICK, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING)
 }

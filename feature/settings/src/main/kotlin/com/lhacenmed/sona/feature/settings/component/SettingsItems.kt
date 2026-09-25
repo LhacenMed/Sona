@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -129,16 +130,27 @@ fun SettingsSwitchItem(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    // False for a setting this device has nothing to do with: shown, as Material shows it disabled.
+    enabled: Boolean = true,
 ) {
+    val disabledColor = MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_CONTENT_ALPHA)
     ListItem(
         headlineContent = { Text(title) },
         supportingContent = { Text(summary) },
-        trailingContent = { Switch(checked = checked, onCheckedChange = onCheckedChange) },
+        trailingContent = { Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled) },
+        colors = if (enabled) {
+            ListItemDefaults.colors()
+        } else {
+            ListItemDefaults.colors(headlineColor = disabledColor, supportingColor = disabledColor)
+        },
         // The whole row, not just the switch: a settings row is one target, and hitting the text
         // expecting it to toggle is the commonest way to miss.
-        modifier = modifier.clickable { onCheckedChange(!checked) },
+        modifier = modifier.clickable(enabled = enabled) { onCheckedChange(!checked) },
     )
 }
+
+/** Material's disabled content: the surface's text at this much of its colour. */
+private const val DISABLED_CONTENT_ALPHA = 0.38f
 
 /**
  * A row whose value is one of a fixed set, shown beneath the title and picked from a dialog.

@@ -21,6 +21,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.effect.SonaEffects
 import com.lhacenmed.sona.core.designsystem.theme.roundedRadius
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -39,6 +40,9 @@ private val BarsHeight = 24.dp
 
 /** The height a bar rests at while its track is not playing, as a share of the bars' full height. */
 private const val RESTING_HEIGHT_FRACTION = 0.1f
+
+/** The pose the bars hold while their track plays with animations disabled: playing, but still. */
+private val StillPlayingHeightFractions = listOf(0.6f, 1f, 0.8f)
 
 /** How long the indicator takes to fade in as its track becomes the current one, and out as it stops being it. */
 private const val FADE_MILLIS = 500
@@ -67,13 +71,19 @@ private fun PlayingIndicatorBars(
             }
         }
 
+    // Nothing moving on its own, the bars hold a pose instead of leaping: with every animation ending on its
+    // first frame, each leap would land at once and the bars would flicker between random heights.
+    val shouldAnimate = SonaEffects.shouldAnimate
+
     // Restarted on every change: cancelling the effect it replaces stops each bar where it is, and the
     // new one carries on from there - or, once inactive, leaves it there.
-    LaunchedEffect(isActive, isPlaying) {
+    LaunchedEffect(isActive, isPlaying, shouldAnimate) {
         if (!isActive) return@LaunchedEffect
-        animatables.forEach { animatable ->
+        animatables.forEachIndexed { index, animatable ->
             launch {
-                if (isPlaying) {
+                if (!shouldAnimate) {
+                    animatable.snapTo(if (isPlaying) StillPlayingHeightFractions[index] else RESTING_HEIGHT_FRACTION)
+                } else if (isPlaying) {
                     while (true) {
                         animatable.animateTo(
                             Random.nextFloat() * (1f - RESTING_HEIGHT_FRACTION) + RESTING_HEIGHT_FRACTION,
