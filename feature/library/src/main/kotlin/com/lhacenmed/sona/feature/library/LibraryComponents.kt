@@ -55,6 +55,7 @@ import com.lhacenmed.sona.core.designsystem.component.dragSelection
 import com.lhacenmed.sona.core.designsystem.component.rememberDragSelection
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.component.shimmer
+import com.lhacenmed.sona.core.designsystem.component.swipe.LocalSwipeActions
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.model.Track
 import androidx.compose.material3.HorizontalDivider
@@ -75,6 +76,7 @@ import com.lhacenmed.sona.feature.library.options.TrackOptionsContext
 import com.lhacenmed.sona.feature.library.options.actions
 import com.lhacenmed.sona.feature.library.options.disabledActions
 import com.lhacenmed.sona.feature.library.options.rememberOptionsActions
+import com.lhacenmed.sona.feature.library.options.rememberQueueSwipeActions
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.selection.SelectionOptionsHost
 import com.lhacenmed.sona.feature.library.selection.selectionKeyOf
@@ -538,24 +540,29 @@ internal fun TrackListDetail(
         )
     }
 
+    // Every row swipes to play next or join the queue - see [rememberQueueSwipeActions].
     val trackRow: @Composable (Track) -> Unit = { track ->
-        TrackRow(
-            track = track,
-            isCurrent = { playback.marks(track) },
-            isPlaying = { playback.isPlaying },
-            selection = selection,
-            onClick = { viewModel.onTrackClick(track) },
-            onOpenOptions = {
-                optionsTarget = OptionsTarget.ForTrack(
-                    track = track,
-                    context = trackOptionsContext,
-                    queueSource = tracks.itemsOrEmpty,
-                    queueParent = viewModel.playbackParent,
-                    playlist = playlist,
-                )
-            },
-            subtitle = trackSubtitle?.invoke(track),
-        )
+        CompositionLocalProvider(
+            LocalSwipeActions provides rememberQueueSwipeActions(collectionActions, OptionsTarget.ForTrack(track)),
+        ) {
+            TrackRow(
+                track = track,
+                isCurrent = { playback.marks(track) },
+                isPlaying = { playback.isPlaying },
+                selection = selection,
+                onClick = { viewModel.onTrackClick(track) },
+                onOpenOptions = {
+                    optionsTarget = OptionsTarget.ForTrack(
+                        track = track,
+                        context = trackOptionsContext,
+                        queueSource = tracks.itemsOrEmpty,
+                        queueParent = viewModel.playbackParent,
+                        playlist = playlist,
+                    )
+                },
+                subtitle = trackSubtitle?.invoke(track),
+            )
+        }
     }
 
     SelectionOptionsHost(selection) { openSelectionOptions ->
@@ -637,26 +644,34 @@ internal fun TrackListDetail(
                     item(key = "heading-${section.title}") { DetailSectionHeader(title = section.title) }
                     when (section) {
                         is DetailSection.Albums -> items(section.albums, key = { "album-${it.id}" }) { album ->
-                            AlbumRow(
-                                album = album,
-                                selection = null,
-                                isCurrent = { playback.marks(album) },
-                                isPlaying = { playback.isPlaying },
-                                onClick = { navigator.go(AlbumDetailScreen(album.id)) },
-                                onOpenOptions = { optionsTarget = OptionsTarget.ForAlbum(album) },
-                                // Every album here is the artist's, so it is told apart by when it came out.
-                                subtitle = album.year?.toString() ?: "No date",
-                            )
+                            CompositionLocalProvider(
+                                LocalSwipeActions provides rememberQueueSwipeActions(collectionActions, OptionsTarget.ForAlbum(album)),
+                            ) {
+                                AlbumRow(
+                                    album = album,
+                                    selection = null,
+                                    isCurrent = { playback.marks(album) },
+                                    isPlaying = { playback.isPlaying },
+                                    onClick = { navigator.go(AlbumDetailScreen(album.id)) },
+                                    onOpenOptions = { optionsTarget = OptionsTarget.ForAlbum(album) },
+                                    // Every album here is the artist's, so it is told apart by when it came out.
+                                    subtitle = album.year?.toString() ?: "No date",
+                                )
+                            }
                         }
                         is DetailSection.Artists -> items(section.artists, key = { "artist-${it.id}" }) { artist ->
-                            ArtistRow(
-                                artist = artist,
-                                selection = null,
-                                isCurrent = { playback.marks(artist) },
-                                isPlaying = { playback.isPlaying },
-                                onClick = { navigator.go(ArtistDetailScreen(artist.id)) },
-                                onOpenOptions = { optionsTarget = OptionsTarget.ForArtist(artist) },
-                            )
+                            CompositionLocalProvider(
+                                LocalSwipeActions provides rememberQueueSwipeActions(collectionActions, OptionsTarget.ForArtist(artist)),
+                            ) {
+                                ArtistRow(
+                                    artist = artist,
+                                    selection = null,
+                                    isCurrent = { playback.marks(artist) },
+                                    isPlaying = { playback.isPlaying },
+                                    onClick = { navigator.go(ArtistDetailScreen(artist.id)) },
+                                    onOpenOptions = { optionsTarget = OptionsTarget.ForArtist(artist) },
+                                )
+                            }
                         }
                     }
                 }

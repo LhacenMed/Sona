@@ -193,7 +193,7 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 
 ## Priority 7 — Track & Playlist Interaction Features
 
-- [ ] **7.1 Add swipe actions on track items across all collections**
+- [x] **7.1 Add swipe actions on track items across all collections**
   Applies to Playlists, Artists, Albums, Genres, Folders, and any other collection listing:
   - Swipe left → queue the track to play next.
   - Swipe right → add the track to a playlist.
