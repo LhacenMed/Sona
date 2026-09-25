@@ -11,7 +11,6 @@ import androidx.compose.foundation.gestures.DraggableState
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.verticalDrag
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -50,6 +49,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.gesture.awaitSteepDragSlop
+import com.lhacenmed.sona.core.designsystem.gesture.dragUntilRelease
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
@@ -420,10 +420,11 @@ internal fun Modifier.bottomSheetDraggable(
             val sheet = if (slopDrag < 0f && swipeUpSheet != null && state.isExpanded) swipeUpSheet else state
             val velocityTracker = VelocityTracker()
             try {
-                verticalDrag(down.id) { change ->
+                // Every movement is the sheet's until the finger lifts - a sideways one too, so nothing
+                // under a sheet being dragged swipes along with it.
+                dragUntilRelease(down.id) { change ->
                     velocityTracker.addPointerInputChange(change)
                     sheet.dispatchRawDelta(change.positionChange().y)
-                    change.consume()
                 }
             } finally {
                 sheet.performFling(-velocityTracker.calculateVelocity().y, onDismiss.takeIf { sheet === state })
