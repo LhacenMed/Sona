@@ -1,12 +1,10 @@
 package com.lhacenmed.sona.feature.update.ui
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,8 +20,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.lhacenmed.sona.core.designsystem.component.SonaActionButtonGroup
 import com.lhacenmed.sona.core.designsystem.component.actionButton
+import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.feature.update.NetworkMonitor
 import com.lhacenmed.sona.feature.update.R
 import com.lhacenmed.sona.feature.update.UpdateInstaller
@@ -92,73 +90,68 @@ fun UpdateGate(autoPrompt: Boolean) {
         }
     }
 
-    AlertDialog(
+    // Read here rather than inside the group: a group builds its items outside composition.
+    val laterLabel = stringResource(R.string.update_later)
+    val installLabel = stringResource(R.string.update_install)
+    val retryLabel = stringResource(R.string.update_retry)
+    val downloadLabel = stringResource(R.string.update_download)
+
+    SonaDialog(
         // A download in flight is non-cancelable from the scrim; the buttons drive it instead.
         onDismissRequest = { if (!downloading) dismiss() },
-        title = { Text(stringResource(R.string.update_title)) },
-        text = {
-            Column {
-                Text(stringResource(R.string.update_message, available.versionName))
-                if (available.notes.isNotBlank()) {
-                    // Bounded and scrollable: notes run to several lines, and a long one would
-                    // otherwise push the buttons off the bottom of the dialog.
-                    ReleaseNotes(
-                        markdown = available.notes,
-                        modifier = Modifier
-                            .padding(top = 8.dp)
-                            .heightIn(max = 240.dp)
-                            .verticalScroll(rememberScrollState()),
+        title = stringResource(R.string.update_title),
+        // A download in flight holds its buttons, which stay where they are: the notification's Stop is
+        // how it is cancelled.
+        buttons = {
+            actionButton(label = laterLabel, onClick = dismiss, enabled = !downloading)
+            when (val s = state) {
+                is UpdateState.Downloaded -> actionButton(label = installLabel, onClick = {
+                    // Grant present → launch the installer; otherwise send the user to grant it once.
+                    if (UpdateInstaller.canInstall(context)) {
+                        context.startActivity(UpdateInstaller.installIntent(context, s.apk))
+                    } else {
+                        context.startActivity(UpdateInstaller.requestPermissionIntent(context))
+                    }
+                })
+
+                is UpdateState.Error -> actionButton(label = retryLabel, onClick = startDownload)
+
+                else -> actionButton(label = downloadLabel, onClick = startDownload, enabled = !downloading)
+            }
+        },
+    ) {
+        Text(stringResource(R.string.update_message, available.versionName))
+        if (available.notes.isNotBlank()) {
+            // Bounded and scrollable of its own: notes run to several lines, and a long one would
+            // otherwise take the whole dialog's scroll away from the progress under it.
+            ReleaseNotes(
+                markdown = available.notes,
+                modifier = Modifier
+                    .padding(top = 8.dp)
+                    .heightIn(max = 240.dp)
+                    .verticalScroll(rememberScrollState()),
+            )
+        }
+        when (val s = state) {
+            is UpdateState.Downloading -> {
+                val p = s.progress
+                if (p != null) {
+                    LinearProgressIndicator(
+                        progress = { p },
+                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                     )
+                } else {
+                    LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 16.dp))
                 }
-                when (val s = state) {
-                    is UpdateState.Downloading -> {
-                        val p = s.progress
-                        if (p != null) {
-                            LinearProgressIndicator(
-                                progress = { p },
-                                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                            )
-                        } else {
-                            LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 16.dp))
-                        }
-                        Text(s.log, style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 8.dp))
-                    }
-                    UpdateState.Connecting ->
-                        LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 16.dp))
-                    is UpdateState.Error ->
-                        Text(s.message, color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(top = 12.dp))
-                    else -> Unit
-                }
+                Text(s.log, style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 8.dp))
             }
-        },
-        confirmButton = {
-            // Read here rather than inside the group: a group builds its items outside composition.
-            val laterLabel = stringResource(R.string.update_later)
-            val installLabel = stringResource(R.string.update_install)
-            val retryLabel = stringResource(R.string.update_retry)
-            val downloadLabel = stringResource(R.string.update_download)
-            // A download in flight has no buttons: the notification's Stop is how it is cancelled.
-            if (!downloading) {
-                SonaActionButtonGroup {
-                    actionButton(label = laterLabel, onClick = dismiss)
-                    when (val s = state) {
-                        is UpdateState.Downloaded -> actionButton(label = installLabel, onClick = {
-                            // Grant present → launch the installer; otherwise send the user to grant it once.
-                            if (UpdateInstaller.canInstall(context)) {
-                                context.startActivity(UpdateInstaller.installIntent(context, s.apk))
-                            } else {
-                                context.startActivity(UpdateInstaller.requestPermissionIntent(context))
-                            }
-                        })
-
-                        is UpdateState.Error -> actionButton(label = retryLabel, onClick = startDownload)
-
-                        else -> actionButton(label = downloadLabel, onClick = startDownload)
-                    }
-                }
-            }
-        },
-    )
+            UpdateState.Connecting ->
+                LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 16.dp))
+            is UpdateState.Error ->
+                Text(s.message, color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 12.dp))
+            else -> Unit
+        }
+    }
 }

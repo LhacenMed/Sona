@@ -1,34 +1,24 @@
 package com.lhacenmed.sona.feature.settings.component
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
-import com.lhacenmed.sona.core.designsystem.component.SonaActionButtonGroup
 import com.lhacenmed.sona.core.designsystem.component.actionButton
+import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
+import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialogOption
 import com.lhacenmed.sona.feature.settings.R
 
 /**
  * The chooser behind a [SettingsChoiceItem].
  *
- * Picking an option is the whole interaction, so there is no confirm button - only a way out. The
- * options scroll, because a chooser is not allowed to be taller than the screen it opened over.
+ * Picking an option is the whole interaction, so there is no confirm button - only a way out.
  */
 @Composable
 internal fun SettingsChoiceDialog(
@@ -38,39 +28,20 @@ internal fun SettingsChoiceDialog(
     onSelect: (Int) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    // Read here rather than inside the group: a group builds its items outside composition.
+    val cancelLabel = stringResource(R.string.dialog_cancel)
+
+    SonaDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            Column(
-                modifier = Modifier
-                    .verticalScroll(rememberScrollState())
-                    .selectableGroup(),
-            ) {
-                options.forEachIndexed { index, option ->
-                    androidx.compose.foundation.layout.Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .selectable(
-                                selected = index == selectedIndex,
-                                onClick = { onSelect(index) },
-                            )
-                            .padding(vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        RadioButton(selected = index == selectedIndex, onClick = null)
-                        Text(text = option, modifier = Modifier.padding(start = 16.dp))
-                    }
-                }
+        title = title,
+        buttons = { actionButton(label = cancelLabel, onClick = onDismiss) },
+    ) {
+        Column(modifier = Modifier.selectableGroup()) {
+            options.forEachIndexed { index, option ->
+                SonaDialogOption(label = option, selected = index == selectedIndex, onClick = { onSelect(index) })
             }
-        },
-        confirmButton = {
-            val cancelLabel = stringResource(R.string.dialog_cancel)
-            SonaActionButtonGroup {
-                actionButton(label = cancelLabel, onClick = onDismiss)
-            }
-        },
-    )
+        }
+    }
 }
 
 /** The editor behind a [SettingsTextFieldItem]. */
@@ -82,24 +53,21 @@ internal fun SettingsTextFieldDialog(
     onDismiss: () -> Unit,
 ) {
     var value by remember { mutableStateOf(initialValue) }
+    val cancelLabel = stringResource(R.string.dialog_cancel)
+    val saveLabel = stringResource(R.string.dialog_save)
 
-    AlertDialog(
+    SonaDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            OutlinedTextField(
-                value = value,
-                onValueChange = { value = it },
-                singleLine = true,
-            )
+        title = title,
+        buttons = {
+            actionButton(label = cancelLabel, onClick = onDismiss)
+            actionButton(label = saveLabel, onClick = { onConfirm(value) })
         },
-        confirmButton = {
-            val cancelLabel = stringResource(R.string.dialog_cancel)
-            val saveLabel = stringResource(R.string.dialog_save)
-            SonaActionButtonGroup {
-                actionButton(label = cancelLabel, onClick = onDismiss)
-                actionButton(label = saveLabel, onClick = { onConfirm(value) })
-            }
-        },
-    )
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = { value = it },
+            singleLine = true,
+        )
+    }
 }

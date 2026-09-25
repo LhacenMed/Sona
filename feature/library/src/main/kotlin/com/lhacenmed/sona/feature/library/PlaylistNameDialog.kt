@@ -1,6 +1,5 @@
 package com.lhacenmed.sona.feature.library
 
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -8,8 +7,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import com.lhacenmed.sona.core.designsystem.component.SonaActionButtonGroup
 import com.lhacenmed.sona.core.designsystem.component.actionButton
+import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 
 /**
  * Asks for a playlist's name, whether it is being created or renamed.
@@ -39,27 +38,24 @@ internal fun PlaylistNameDialog(
     val isTaken = isPlaylistNameTaken(trimmed, takenNames)
     val error = if (isTaken) PLAYLIST_NAME_TAKEN_MESSAGE else null
 
-    AlertDialog(
+    SonaDialog(
         onDismissRequest = onDismiss,
-        title = { Text(dialogTitle) },
-        text = {
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                singleLine = true,
-                isError = error != null,
-                supportingText = error?.let { { Text(it) } },
+        title = dialogTitle,
+        buttons = {
+            actionButton(label = "Cancel", onClick = onDismiss)
+            actionButton(
+                label = confirmLabel,
+                onClick = { onConfirm(trimmed) },
+                enabled = trimmed.isNotEmpty() && !isTaken,
             )
         },
-        confirmButton = {
-            SonaActionButtonGroup {
-                actionButton(label = "Cancel", onClick = onDismiss)
-                actionButton(
-                    label = confirmLabel,
-                    onClick = { onConfirm(trimmed) },
-                    enabled = trimmed.isNotEmpty() && !isTaken,
-                )
-            }
-        },
-    )
+    ) {
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it },
+            singleLine = true,
+            isError = error != null,
+            supportingText = error?.let { { Text(it) } },
+        )
+    }
 }

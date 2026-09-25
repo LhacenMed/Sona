@@ -5,20 +5,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -26,23 +19,18 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -60,10 +48,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverArt
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverImage
+import com.lhacenmed.sona.core.designsystem.component.actionButton
+import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.connectedLeadingButtonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.connectedTrailingButtonPressShapes
@@ -270,124 +258,48 @@ internal fun SleepTimerDialog(
     onEndOfSong: () -> Unit,
 ) {
     var sleepTimerValue by remember { mutableFloatStateOf(DefaultSleepTimerMinutes) }
+    // Read here rather than inside the group: a group builds its items outside composition.
+    val cancelLabel = stringResource(R.string.player_cancel)
+    val okLabel = stringResource(R.string.player_ok)
 
-    ActionPromptDialog(
-        titleBar = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    text = stringResource(R.string.player_sleep_timer),
-                    overflow = TextOverflow.Ellipsis,
-                    maxLines = 1,
-                    style = MaterialTheme.typography.headlineSmall,
-                )
-            }
-        },
-        onDismiss = onDismiss,
-        onConfirm = { onConfirm(sleepTimerValue.roundToInt()) },
-        onCancel = onDismiss,
-        onReset = { sleepTimerValue = DefaultSleepTimerMinutes },
-        content = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text =
-                        pluralStringResource(
-                            R.plurals.player_minute,
-                            sleepTimerValue.roundToInt(),
-                            sleepTimerValue.roundToInt(),
-                        ),
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-
-                Spacer(Modifier.height(16.dp))
-
-                Slider(
-                    value = sleepTimerValue,
-                    onValueChange = { sleepTimerValue = it },
-                    valueRange = 5f..120f,
-                    steps = (120 - 5) / 5 - 1,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-                Spacer(Modifier.height(8.dp))
-
-                OutlinedButton(onClick = onEndOfSong, shapes = buttonPressShapes()) {
-                    Text(stringResource(R.string.player_end_of_song))
-                }
-            }
-        },
-    )
-}
-
-@Composable
-private fun ActionPromptDialog(
-    titleBar: @Composable RowScope.() -> Unit,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-    onReset: () -> Unit,
-    onCancel: () -> Unit,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Dialog(
+    SonaDialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
+        title = stringResource(R.string.player_sleep_timer),
+        icon = { Icon(painterResource(R.drawable.bedtime), contentDescription = null) },
+        onReset = { sleepTimerValue = DefaultSleepTimerMinutes },
+        buttons = {
+            actionButton(label = cancelLabel, onClick = onDismiss)
+            actionButton(label = okLabel, onClick = { onConfirm(sleepTimerValue.roundToInt()) })
+        },
     ) {
-        BoxWithConstraints(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(24.dp)
-                    .imePadding()
-                    .navigationBarsPadding(),
-            contentAlignment = Alignment.Center,
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            Surface(
-                modifier = Modifier.heightIn(max = maxHeight),
-                shape = AlertDialogDefaults.shape,
-                color = AlertDialogDefaults.containerColor,
-                tonalElevation = AlertDialogDefaults.TonalElevation,
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Row {
-                            titleBar()
-                        }
+            Text(
+                text =
+                    pluralStringResource(
+                        R.plurals.player_minute,
+                        sleepTimerValue.roundToInt(),
+                        sleepTimerValue.roundToInt(),
+                    ),
+                style = MaterialTheme.typography.bodyLarge,
+            )
 
-                        content()
-                    }
+            Spacer(Modifier.height(16.dp))
 
-                    Row(
-                        horizontalArrangement = Arrangement.End,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Row(modifier = Modifier.weight(1f)) {
-                            TextButton(
-                                onClick = onReset,
-                                shapes = buttonPressShapes(),
-                            ) {
-                                Text(stringResource(R.string.player_reset))
-                            }
-                        }
+            Slider(
+                value = sleepTimerValue,
+                onValueChange = { sleepTimerValue = it },
+                valueRange = 5f..120f,
+                steps = (120 - 5) / 5 - 1,
+                modifier = Modifier.fillMaxWidth(),
+            )
 
-                        TextButton(
-                            onClick = onCancel,
-                            shapes = buttonPressShapes(),
-                        ) {
-                            Text(stringResource(android.R.string.cancel))
-                        }
+            Spacer(Modifier.height(8.dp))
 
-                        TextButton(
-                            onClick = onConfirm,
-                            shapes = buttonPressShapes(),
-                        ) {
-                            Text(stringResource(android.R.string.ok))
-                        }
-                    }
-                }
+            OutlinedButton(onClick = onEndOfSong, shapes = buttonPressShapes()) {
+                Text(stringResource(R.string.player_end_of_song))
             }
         }
     }

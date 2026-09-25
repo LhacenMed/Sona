@@ -20,7 +20,6 @@
         <item quantity="one">1 minute</item>
         <item quantity="other">%d minutes</item>
     </plurals>
-    <string name="player_reset">Reset</string>
     <string name="player_more_options">More options</string>
     <string name="player_like">Like</string>
     <string name="player_shuffle_on">Shuffle on</string>

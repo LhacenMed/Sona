@@ -14,7 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.lhacenmed.sona.core.common.permission.AppPermission
-import com.lhacenmed.sona.core.designsystem.component.SonaConfirmationDialog
+import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDialog
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.library.options.OptionsActionsViewModel

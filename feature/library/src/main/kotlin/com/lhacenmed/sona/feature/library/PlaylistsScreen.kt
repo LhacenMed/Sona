@@ -280,7 +280,8 @@ object PlaylistsScreen : Screen {
         importSource?.let { source ->
             val openSource = { context.contentResolver.openInputStream(source) }
 
-            ImportDestinationDialog(
+            PlaylistPickerDialog(
+                title = "Import into",
                 playlists = playlists.itemsOrEmpty,
                 onDismiss = {
                     importSource = null
@@ -290,7 +291,7 @@ object PlaylistsScreen : Screen {
                     importSource = null
                     viewModel.importIntoPlaylist(playlist.id, openSource, ::showImportResult)
                 },
-                onCreateNewSelected = { isNamingNewPlaylist = true },
+                onNewPlaylistSelected = { isNamingNewPlaylist = true },
             )
 
             if (isNamingNewPlaylist) {
