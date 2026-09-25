@@ -3,6 +3,8 @@ package com.lhacenmed.sona.feature.library.options
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.LibraryAdd
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -35,8 +37,8 @@ enum class OptionsAction(val icon: ImageVector, val label: String) {
     ADD_TRACKS(Icons.AutoMirrored.Filled.PlaylistAdd, "Add tracks"),
     ADD_COLLECTIONS(Icons.Filled.LibraryAdd, "Add from collections"),
     EDIT(SonaIcons.Edit, "Edit"),
-    IMPORT(SonaIcons.Import, "Import"),
-    EXPORT(SonaIcons.Export, "Export"),
+    IMPORT(Icons.Filled.FileDownload, "Import"),
+    EXPORT(Icons.Filled.FileUpload, "Export"),
     DELETE(SonaIcons.Delete, "Delete"),
     REMOVE_FROM_PLAYLIST(Icons.Filled.RemoveCircleOutline, "Remove from playlist"),
     DELETE_FROM_DEVICE(SonaIcons.Delete, "Delete from device"),

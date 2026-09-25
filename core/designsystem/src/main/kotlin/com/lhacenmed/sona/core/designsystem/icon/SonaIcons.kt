@@ -1,8 +1,5 @@
 package com.lhacenmed.sona.core.designsystem.icon
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Input
-import androidx.compose.material.icons.filled.Output
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -164,12 +161,6 @@ object SonaIcons {
             pathData = "M200,760L256,760L601,415L545,359L200,704L200,760ZM772,357L602,189L715,76L884,245L772,357ZM120,840L120,670L544,246L714,416L290,840L120,840ZM573,387L545,359L545,359L601,415L601,415L573,387Z",
         )
     }
-
-    /** Material's `input`: an arrow entering a box - bringing a playlist in from a file. */
-    val Import: ImageVector get() = Icons.AutoMirrored.Filled.Input
-
-    /** Material's `output`: an arrow leaving a box - writing a playlist or tracks out to a file. */
-    val Export: ImageVector get() = Icons.Filled.Output
 
     /** Auxio's `ic_delete_24`. */
     val Delete: ImageVector by lazy {
