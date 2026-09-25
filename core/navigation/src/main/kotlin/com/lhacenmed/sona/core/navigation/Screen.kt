@@ -10,6 +10,10 @@ import java.io.Serializable
  * implementations (a `data object`/`data class` per screen) rather than a single shared sealed
  * class, since `:core:navigation` cannot depend on feature modules.
  *
+ * A data object or data class because a screen is compared by what it shows: [IntentNavigator] stays
+ * put when asked for the screen already showing. The screen reaches [HostActivity] serialized, and only
+ * a data object comes back from that as the same object - a plain `object` comes back as a copy.
+ *
  * Leave [titleRes] null to have the screen render full-bleed and draw its own top bar; set it to
  * let [HostActivity] show a shared toolbar (with an automatic back button) instead.
  */

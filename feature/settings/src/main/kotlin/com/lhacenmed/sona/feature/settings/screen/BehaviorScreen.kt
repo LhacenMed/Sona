@@ -19,7 +19,7 @@ import com.lhacenmed.sona.feature.settings.component.SettingsSwitchItem
 import com.lhacenmed.sona.feature.settings.manage.TabVisibilityScreen
 
 /** What the app shows, what it remembers, and what it does when the user reaches for it. */
-object BehaviorScreen : Screen {
+data object BehaviorScreen : Screen {
     override val titleRes: Int get() = R.string.behavior_title
 
     @Composable

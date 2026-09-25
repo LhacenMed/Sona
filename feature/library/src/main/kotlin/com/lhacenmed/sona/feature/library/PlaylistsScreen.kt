@@ -71,7 +71,7 @@ private sealed interface NamePrompt {
  * Reached from the Playlists shortcut rather than a tab - the tabs browse the library by one of its
  * own dimensions, and a playlist is not one of those, it is something the user made.
  */
-object PlaylistsScreen : Screen {
+data object PlaylistsScreen : Screen {
 
     @Composable
     override fun Content() {

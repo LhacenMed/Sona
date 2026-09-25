@@ -16,7 +16,7 @@ import com.lhacenmed.sona.feature.settings.component.SettingsSectionDivider
  * data, and this only decides what a category looks like. Categories rather than one long list of
  * settings, because the list is long enough that finding anything in it would mean reading all of it.
  */
-object SettingsScreen : Screen {
+data object SettingsScreen : Screen {
     override val titleRes: Int get() = R.string.settings_title
 
     @Composable

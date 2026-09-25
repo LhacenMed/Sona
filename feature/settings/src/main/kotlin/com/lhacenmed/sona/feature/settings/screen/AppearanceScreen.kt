@@ -20,7 +20,7 @@ import com.lhacenmed.sona.feature.settings.component.SettingsSliderItem
 import com.lhacenmed.sona.feature.settings.component.SettingsSwitchItem
 
 /** How the app looks: its theme, the colours it draws itself in, and the shape of the player. */
-object AppearanceScreen : Screen {
+data object AppearanceScreen : Screen {
     override val titleRes: Int get() = R.string.appearance_title
 
     @Composable

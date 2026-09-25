@@ -25,7 +25,7 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 /** How lyrics read, what they are romanized into, and what is kept of them. Ported from ArchiveTune's `LyricsSettings`. */
-object LyricsScreen : Screen {
+data object LyricsScreen : Screen {
     override val titleRes: Int get() = R.string.lyrics_title
 
     @Composable

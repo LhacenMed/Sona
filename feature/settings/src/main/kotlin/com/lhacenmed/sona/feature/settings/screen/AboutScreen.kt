@@ -11,7 +11,7 @@ import com.lhacenmed.sona.feature.settings.component.SettingsSection
 import com.lhacenmed.sona.feature.settings.component.SettingsSectionDivider
 
 /** What this app is, and where the rest of it can be found. */
-object AboutScreen : Screen {
+data object AboutScreen : Screen {
     override val titleRes: Int get() = R.string.about_title
 
     @Composable

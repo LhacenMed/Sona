@@ -79,7 +79,7 @@ class HostActivity : SonaActivity() {
                 coverStyle = coverStyle,
                 fastScrollTouchArea = fastScrollTouchArea,
             ) {
-                val navigator = remember { IntentNavigator(this) }
+                val navigator = remember { IntentNavigator(this, currentScreen = screen) }
                 // Only screens that named a title get a bar from the host; the rest draw their own,
                 // because a title alone cannot express a selection or an action.
                 val hostedTitle = screen.title(LocalContext.current)

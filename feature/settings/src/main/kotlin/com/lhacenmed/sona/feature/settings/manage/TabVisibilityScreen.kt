@@ -19,7 +19,7 @@ import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.navigation.Screen
 
 /** "Manage Tabs" screen: toggle which library tabs show up in the main bottom navigation. */
-object TabVisibilityScreen : Screen {
+data object TabVisibilityScreen : Screen {
     override val titleRes: Int get() = R.string.manage_tabs_title
 
     @Composable

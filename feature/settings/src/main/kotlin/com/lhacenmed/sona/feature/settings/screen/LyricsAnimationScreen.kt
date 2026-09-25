@@ -13,7 +13,7 @@ import com.lhacenmed.sona.feature.settings.component.SettingsSliderItem
 import com.lhacenmed.sona.feature.settings.component.SettingsSwitchItem
 
 /** How sung words and lines move: ArchiveTune's `LyricsAnimationSettings`. */
-object LyricsAnimationScreen : Screen {
+data object LyricsAnimationScreen : Screen {
     override val titleRes: Int get() = R.string.lyrics_animation_style_title
 
     @Composable
