@@ -16,11 +16,16 @@ import androidx.media3.exoplayer.source.ShuffleOrder
  * An empty order can be armed with [restoring] a saved one: the next queue set on the player takes that
  * order instead of a new one, provided it is the same length - which is how a queue comes back after the
  * app was closed still playing in the order it was.
+ *
+ * An order can likewise be armed with [insertingAt] a place in it: the next item added to the queue plays
+ * there, wherever its index puts it - which is how a track taken out of a shuffled queue goes back to
+ * exactly where it played.
  */
 @UnstableApi
 internal class QueueShuffleOrder private constructor(
     private val shuffled: IntArray,
     private val restoredOrder: IntArray? = null,
+    private val insertionPosition: Int? = null,
 ) : ShuffleOrder {
 
     /** Where each timeline index sits in [shuffled]. */
@@ -46,7 +51,8 @@ internal class QueueShuffleOrder private constructor(
 
     override fun cloneAndInsert(insertionIndex: Int, insertionCount: Int): ShuffleOrder {
         if (shuffled.isEmpty()) return startingFrom(insertionCount, C.INDEX_UNSET)
-        val pivot = if (insertionIndex < shuffled.size) positions[insertionIndex] else shuffled.size
+        val pivot = insertionPosition?.coerceIn(0, shuffled.size)
+            ?: if (insertionIndex < shuffled.size) positions[insertionIndex] else shuffled.size
         val shifted = shuffled.map { if (it >= insertionIndex) it + insertionCount else it }
         val inserted = (insertionIndex until insertionIndex + insertionCount).toList()
         return QueueShuffleOrder((shifted.subList(0, pivot) + inserted + shifted.subList(pivot, shifted.size)).toIntArray())
@@ -77,6 +83,13 @@ internal class QueueShuffleOrder private constructor(
             }
             return QueueShuffleOrder(order.toIntArray())
         }
+
+        /** An order that plays the queue's items as [order] lists them - how a shuffled queue is rearranged. */
+        fun of(order: IntArray): QueueShuffleOrder = QueueShuffleOrder(order)
+
+        /** [order] as it plays, with the next item added to the queue playing at [playPosition] in it. */
+        fun insertingAt(order: IntArray, playPosition: Int): QueueShuffleOrder =
+            QueueShuffleOrder(order, insertionPosition = playPosition)
 
         /** An empty order that hands [order] to the next queue of the same length set on the player. */
         fun restoring(order: IntArray): QueueShuffleOrder = QueueShuffleOrder(IntArray(0), restoredOrder = order)

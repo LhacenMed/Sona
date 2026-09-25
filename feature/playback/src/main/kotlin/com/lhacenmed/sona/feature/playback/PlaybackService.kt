@@ -149,6 +149,10 @@ class PlaybackService : MediaSessionService() {
                 .add(PlaybackSessionCommands.playNextCommand)
                 .add(PlaybackSessionCommands.addToQueueCommand)
                 .add(PlaybackSessionCommands.restoreShuffleOrderCommand)
+                .add(PlaybackSessionCommands.moveQueueItemCommand)
+                .add(PlaybackSessionCommands.restoreQueueItemCommand)
+                .add(PlaybackSessionCommands.removeQueueItemCommand)
+                .add(PlaybackSessionCommands.removeTracksCommand)
                 .build()
             return MediaSession.ConnectionResult.accept(
                 sessionCommands,
@@ -179,6 +183,25 @@ class PlaybackService : MediaSessionService() {
 
                 PlaybackSessionCommands.ACTION_RESTORE_SHUFFLE_ORDER ->
                     restoreShuffleOrder(args.getIntArray(PlaybackSessionCommands.EXTRA_SHUFFLE_ORDER))
+
+                PlaybackSessionCommands.ACTION_MOVE_QUEUE_ITEM ->
+                    moveQueueItem(
+                        fromPosition = args.getInt(PlaybackSessionCommands.EXTRA_FROM_POSITION),
+                        toPosition = args.getInt(PlaybackSessionCommands.EXTRA_TO_POSITION),
+                    )
+
+                PlaybackSessionCommands.ACTION_RESTORE_QUEUE_ITEM ->
+                    restoreQueueItem(
+                        trackId = args.getLong(PlaybackSessionCommands.EXTRA_TRACK_ID),
+                        mediaItemIndex = args.getInt(PlaybackSessionCommands.EXTRA_MEDIA_ITEM_INDEX),
+                        playPosition = args.getInt(PlaybackSessionCommands.EXTRA_PLAY_POSITION),
+                    )
+
+                PlaybackSessionCommands.ACTION_REMOVE_QUEUE_ITEM ->
+                    removeQueueItem(args.getInt(PlaybackSessionCommands.EXTRA_MEDIA_ITEM_INDEX))
+
+                PlaybackSessionCommands.ACTION_REMOVE_TRACKS ->
+                    removeTracks(args.getLongArray(PlaybackSessionCommands.EXTRA_TRACK_IDS) ?: LongArray(0))
 
                 else -> return super.onCustomCommand(session, controller, customCommand, args)
             }
@@ -384,6 +407,67 @@ class PlaybackService : MediaSessionService() {
         if (order == null || !shuffleSettings.rememberOrder.value) return
         if (exoPlayer.mediaItemCount != 0) return
         exoPlayer.setShuffleOrder(QueueShuffleOrder.restoring(order))
+    }
+
+    /**
+     * Moves the track at [fromPosition] of the queue, in the order it plays, to [toPosition] - what the
+     * queue's list shows, shuffled or not. Unshuffled, that order is the player's own; shuffled, it is the
+     * shuffle order, rearranged, and the player's own order stays as it was.
+     */
+    private fun moveQueueItem(fromPosition: Int, toPosition: Int) {
+        val count = exoPlayer.mediaItemCount
+        if (fromPosition !in 0 until count || toPosition !in 0 until count) return
+        if (!exoPlayer.shuffleModeEnabled) {
+            exoPlayer.moveMediaItem(fromPosition, toPosition)
+            return
+        }
+        val order = playOrder()
+        order.add(toPosition, order.removeAt(fromPosition))
+        exoPlayer.setShuffleOrder(QueueShuffleOrder.of(order.toIntArray()))
+    }
+
+    /**
+     * Puts the track [trackId] names back exactly where it was taken from: at [mediaItemIndex] in the
+     * player's own order and, shuffled, at [playPosition] in the order the queue plays - where adding it
+     * alone would file it beside whichever track now follows its index.
+     *
+     * Shuffled, the order is armed with that place before the track is added, so the queue changes once,
+     * with the track already where it belongs - arming it changes nothing that plays.
+     */
+    private fun restoreQueueItem(trackId: Long, mediaItemIndex: Int, playPosition: Int) {
+        val track = libraryRepository.tracksById.value[trackId] ?: return
+        if (exoPlayer.shuffleModeEnabled) {
+            exoPlayer.setShuffleOrder(QueueShuffleOrder.insertingAt(playOrder().toIntArray(), playPosition))
+        }
+        exoPlayer.addMediaItem(mediaItemIndex.coerceIn(0, exoPlayer.mediaItemCount), track.toMediaItem())
+    }
+
+    private fun removeQueueItem(mediaItemIndex: Int) {
+        if (mediaItemIndex in 0 until exoPlayer.mediaItemCount) exoPlayer.removeMediaItem(mediaItemIndex)
+    }
+
+    /**
+     * Takes every copy of the tracks [trackIds] name out of the queue - last to first, so each removal
+     * leaves the indices still to visit where they were.
+     */
+    private fun removeTracks(trackIds: LongArray) {
+        for (index in exoPlayer.mediaItemCount - 1 downTo 0) {
+            val trackId = exoPlayer.getMediaItemAt(index).mediaId.toLongOrNull() ?: continue
+            if (trackId in trackIds) exoPlayer.removeMediaItem(index)
+        }
+    }
+
+    /** The queue's indices in the order it plays - the shuffle order while shuffling. */
+    private fun playOrder(): MutableList<Int> {
+        val timeline = exoPlayer.currentTimeline
+        val shuffled = exoPlayer.shuffleModeEnabled
+        val order = ArrayList<Int>(timeline.windowCount)
+        var index = timeline.getFirstWindowIndex(shuffled)
+        while (index != C.INDEX_UNSET) {
+            order += index
+            index = timeline.getNextWindowIndex(index, Player.REPEAT_MODE_OFF, shuffled)
+        }
+        return order
     }
 
     /**

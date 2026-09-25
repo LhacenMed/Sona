@@ -82,12 +82,9 @@ internal fun CurrentSongHeader(
     isFavorite: Boolean,
     repeatMode: RepeatMode,
     shuffleEnabled: Boolean,
-    // Whether the queue is open for reordering, which the header offers the way out of.
-    isReordering: Boolean,
     backgroundColor: Color,
     onBackgroundColor: Color,
     onToggleFavorite: () -> Unit,
-    onExitReorder: () -> Unit,
     onRepeatClick: () -> Unit,
     onShuffleClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -151,22 +148,6 @@ internal fun CurrentSongHeader(
                         overflow = TextOverflow.Ellipsis,
                         color = onBackgroundColor.copy(alpha = 0.6f),
                     )
-                }
-
-                // The way out of reordering, beside the button it borrows its size from - the same
-                // exit system back gives, for a mode a gesture opened and nothing else announces.
-                if (isReordering) {
-                    IconButton(
-                        onClick = onExitReorder,
-                        modifier = Modifier.size(44.dp),
-                        colors = IconButtonDefaults.iconButtonColors(contentColor = onBackgroundColor),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.close),
-                            contentDescription = stringResource(R.string.player_close),
-                            modifier = Modifier.size(26.dp),
-                        )
-                    }
                 }
 
                 IconButton(

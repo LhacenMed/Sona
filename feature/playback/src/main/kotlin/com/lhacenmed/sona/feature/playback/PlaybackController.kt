@@ -254,30 +254,49 @@ class PlaybackController @Inject constructor(
         mediaController.play()
     }
 
-    fun moveQueueItem(fromMediaItemIndex: Int, toMediaItemIndex: Int) {
-        controller?.moveMediaItem(fromMediaItemIndex, toMediaItemIndex)
+    /**
+     * Moves the track at [fromPosition] of the queue to [toPosition] - places in the order it plays, which
+     * is the shuffle order while shuffling. Done on the player itself, which alone holds that order.
+     */
+    fun moveQueueItem(fromPosition: Int, toPosition: Int) {
+        val args = Bundle().apply {
+            putInt(PlaybackSessionCommands.EXTRA_FROM_POSITION, fromPosition)
+            putInt(PlaybackSessionCommands.EXTRA_TO_POSITION, toPosition)
+        }
+        controller?.sendCustomCommand(PlaybackSessionCommands.moveQueueItemCommand, args)
     }
 
+    /**
+     * Takes the item at [mediaItemIndex] out of the queue - on the player itself, as every change to what
+     * the queue holds is made. A controller removing it would show the queue at once as it guesses it will
+     * be, and media3 guesses without the shuffle order: while shuffling, the queue would be shown in its
+     * unshuffled order for a moment before the player's own answer put it back.
+     */
     fun removeQueueItem(mediaItemIndex: Int) {
-        controller?.removeMediaItem(mediaItemIndex)
+        val args = Bundle().apply { putInt(PlaybackSessionCommands.EXTRA_MEDIA_ITEM_INDEX, mediaItemIndex) }
+        controller?.sendCustomCommand(PlaybackSessionCommands.removeQueueItemCommand, args)
     }
 
     /**
      * Takes every copy of the tracks [trackIds] name out of the queue - what deleting their files needs,
-     * so the player never reaches a file that is gone. Last to first, so each removal leaves the indices
-     * still to visit where they were.
+     * so the player never reaches a file that is gone. On the player itself, as [removeQueueItem] is.
      */
     fun removeFromQueue(trackIds: Set<Long>) {
-        val mediaController = controller ?: return
-        for (index in mediaController.mediaItemCount - 1 downTo 0) {
-            if (mediaController.getMediaItemAt(index).mediaId.toLongOrNull() in trackIds) {
-                mediaController.removeMediaItem(index)
-            }
-        }
+        val args = Bundle().apply { putLongArray(PlaybackSessionCommands.EXTRA_TRACK_IDS, trackIds.toLongArray()) }
+        controller?.sendCustomCommand(PlaybackSessionCommands.removeTracksCommand, args)
     }
 
-    fun insertQueueItem(mediaItemIndex: Int, track: Track) {
-        controller?.addMediaItem(mediaItemIndex, track.toMediaItem())
+    /**
+     * Puts [track] back where it was taken from the queue: at [mediaItemIndex] in the player's own order
+     * and at [playPosition] in the order it plays - both, so it is back in place shuffled or not.
+     */
+    fun restoreQueueItem(track: Track, mediaItemIndex: Int, playPosition: Int) {
+        val args = Bundle().apply {
+            putLong(PlaybackSessionCommands.EXTRA_TRACK_ID, track.id)
+            putInt(PlaybackSessionCommands.EXTRA_MEDIA_ITEM_INDEX, mediaItemIndex)
+            putInt(PlaybackSessionCommands.EXTRA_PLAY_POSITION, playPosition)
+        }
+        controller?.sendCustomCommand(PlaybackSessionCommands.restoreQueueItemCommand, args)
     }
 
     /**
