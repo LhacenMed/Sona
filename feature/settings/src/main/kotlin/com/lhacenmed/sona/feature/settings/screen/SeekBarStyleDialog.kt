@@ -1,36 +1,18 @@
-@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
-
 package com.lhacenmed.sona.feature.settings.screen
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialogDefaults
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ProvideTextStyle
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -40,10 +22,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.lhacenmed.sona.core.datastore.PlayerSliderStyle
-import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
+import com.lhacenmed.sona.core.designsystem.component.actionButton
+import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.feature.player.StyledPlaybackSlider
 import com.lhacenmed.sona.feature.settings.R
 
@@ -57,16 +38,13 @@ internal fun SeekBarStyleDialog(
     onSelect: (PlayerSliderStyle) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    DefaultDialog(
-        buttons = {
-            TextButton(
-                onClick = onDismiss,
-                shapes = buttonPressShapes(),
-            ) {
-                Text(text = stringResource(android.R.string.cancel))
-            }
-        },
-        onDismiss = onDismiss,
+    // Read here rather than inside the group: a group builds its items outside composition.
+    val cancelLabel = stringResource(R.string.dialog_cancel)
+
+    SonaDialog(
+        onDismissRequest = onDismiss,
+        title = stringResource(R.string.player_slider_style_title),
+        buttons = { actionButton(label = cancelLabel, onClick = onDismiss) },
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -146,60 +124,5 @@ private fun SliderStyleOptionCard(
             text = seekBarStyleLabel(sliderStyle),
             style = MaterialTheme.typography.labelLarge,
         )
-    }
-}
-
-/** ArchiveTune's `DefaultDialog`, as this dialog uses it: a content column above a row of buttons. */
-@Composable
-private fun DefaultDialog(
-    onDismiss: () -> Unit,
-    buttons: @Composable RowScope.() -> Unit,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        BoxWithConstraints(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(24.dp)
-                    .imePadding()
-                    .navigationBarsPadding(),
-            contentAlignment = Alignment.Center,
-        ) {
-            Surface(
-                modifier = Modifier.heightIn(max = maxHeight),
-                shape = AlertDialogDefaults.shape,
-                color = AlertDialogDefaults.containerColor,
-                tonalElevation = AlertDialogDefaults.TonalElevation,
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        content()
-                    }
-
-                    Spacer(Modifier.height(24.dp))
-
-                    FlowRow(
-                        horizontalArrangement = Arrangement.End,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) flowRowScope@{
-                        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.primary) {
-                            ProvideTextStyle(
-                                value = MaterialTheme.typography.labelLarge,
-                            ) {
-                                this@flowRowScope.buttons()
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 }

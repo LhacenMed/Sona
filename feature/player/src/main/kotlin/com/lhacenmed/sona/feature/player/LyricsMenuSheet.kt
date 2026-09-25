@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -27,9 +26,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.database.entity.LyricsEntity
-import com.lhacenmed.sona.core.designsystem.component.SonaActionButtonGroup
 import com.lhacenmed.sona.core.designsystem.component.SonaBottomSheet
 import com.lhacenmed.sona.core.designsystem.component.actionButton
+import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.core.model.Track
 import kotlin.math.roundToInt
 
@@ -104,27 +103,25 @@ private fun LyricsEditDialog(
     onDone: (String) -> Unit,
 ) {
     var value by rememberSaveable { mutableStateOf(initialLyrics) }
+    // Read here rather than inside the group: a group builds its items outside composition.
+    val cancelLabel = stringResource(R.string.player_cancel)
+    val saveLabel = stringResource(R.string.player_save)
 
-    AlertDialog(
+    SonaDialog(
         onDismissRequest = onDismiss,
+        title = title,
         icon = { Icon(Icons.Filled.Edit, contentDescription = null) },
-        title = { Text(title) },
-        text = {
-            OutlinedTextField(
-                value = value,
-                onValueChange = { value = it },
-                modifier = Modifier.fillMaxWidth(),
-            )
+        buttons = {
+            actionButton(label = cancelLabel, onClick = onDismiss)
+            actionButton(label = saveLabel, onClick = { onDone(value) })
         },
-        confirmButton = {
-            val cancelLabel = stringResource(R.string.player_cancel)
-            val saveLabel = stringResource(R.string.player_save)
-            SonaActionButtonGroup {
-                actionButton(label = cancelLabel, onClick = onDismiss)
-                actionButton(label = saveLabel, onClick = { onDone(value) })
-            }
-        },
-    )
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = { value = it },
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 }
 
 /** Shifts the lyrics against the audio by up to a second either way, in 25 ms steps. */
@@ -135,38 +132,38 @@ private fun LyricsSyncOffsetDialog(
     onConfirm: (Int) -> Unit,
 ) {
     var tempLyricsSyncOffset by remember { mutableFloatStateOf(lyricsSyncOffset.toFloat()) }
+    // Read here rather than inside the group: a group builds its items outside composition.
+    val cancelLabel = stringResource(R.string.player_cancel)
+    val okLabel = stringResource(R.string.player_ok)
 
-    AlertDialog(
+    SonaDialog(
         onDismissRequest = onDismiss,
+        title = stringResource(R.string.player_lyrics_sync_offset),
         icon = { Icon(Icons.Filled.Speed, contentDescription = null) },
-        title = { Text(stringResource(R.string.player_lyrics_sync_offset)) },
-        text = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = formatLyricsSyncOffset(tempLyricsSyncOffset.roundToInt()),
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(bottom = 16.dp),
-                )
-                Slider(
-                    value = tempLyricsSyncOffset,
-                    onValueChange = { tempLyricsSyncOffset = it },
-                    valueRange = -1000f..1000f,
-                    steps = 79,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
+        onReset = { tempLyricsSyncOffset = 0f },
+        buttons = {
+            actionButton(label = cancelLabel, onClick = onDismiss)
+            actionButton(label = okLabel, onClick = { onConfirm(tempLyricsSyncOffset.roundToInt()) })
         },
-        confirmButton = {
-            val resetLabel = stringResource(R.string.player_reset)
-            val cancelLabel = stringResource(R.string.player_cancel)
-            val okLabel = stringResource(R.string.player_ok)
-            SonaActionButtonGroup {
-                actionButton(label = resetLabel, onClick = { tempLyricsSyncOffset = 0f })
-                actionButton(label = cancelLabel, onClick = onDismiss)
-                actionButton(label = okLabel, onClick = { onConfirm(tempLyricsSyncOffset.roundToInt()) })
-            }
-        },
-    )
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                text = formatLyricsSyncOffset(tempLyricsSyncOffset.roundToInt()),
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(bottom = 16.dp),
+            )
+            Slider(
+                value = tempLyricsSyncOffset,
+                onValueChange = { tempLyricsSyncOffset = it },
+                valueRange = -1000f..1000f,
+                steps = 79,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
 }
 
 private fun formatLyricsSyncOffset(offsetMs: Int): String = if (offsetMs > 0) "+$offsetMs ms" else "$offsetMs ms"

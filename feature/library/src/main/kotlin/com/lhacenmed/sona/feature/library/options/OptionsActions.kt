@@ -31,6 +31,7 @@ import com.lhacenmed.sona.feature.library.M3U_MIME_TYPE
 import com.lhacenmed.sona.feature.library.M3U_PICKER_MIME_TYPES
 import com.lhacenmed.sona.feature.library.PlaylistDetailScreen
 import com.lhacenmed.sona.feature.library.PlaylistNameDialog
+import com.lhacenmed.sona.feature.library.PlaylistPickerDialog
 import com.lhacenmed.sona.feature.library.operation.DeleteFromDeviceDialog
 import com.lhacenmed.sona.feature.library.operation.DeletePlaylistsDialog
 import com.lhacenmed.sona.feature.library.operation.ExcludeFoldersDialog
@@ -155,7 +156,8 @@ internal fun OptionsFollowUps(
             // name goes back to the playlists that already exist, still holding the same tracks.
             var isNamingNewPlaylist by remember { mutableStateOf(false) }
             LaunchedEffect(target) { fullPlaylistIds = viewModel.playlistIdsHoldingAll(target) }
-            AddToPlaylistDialog(
+            PlaylistPickerDialog(
+                title = "Add to playlist",
                 playlists = playlists.itemsOrEmpty,
                 fullPlaylistIds = fullPlaylistIds,
                 onDismiss = finish,

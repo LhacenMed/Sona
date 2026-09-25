@@ -5,9 +5,6 @@ import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,8 +15,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.lhacenmed.sona.core.designsystem.component.SonaActionButtonGroup
 import com.lhacenmed.sona.core.designsystem.component.actionButton
+import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.core.model.Track
 import java.io.File
 import java.util.Locale
@@ -40,30 +37,25 @@ internal fun TrackPropertiesDialog(track: Track, onDismiss: () -> Unit) {
     var fileProperties by remember(track.path) { mutableStateOf<FileProperties?>(null) }
     LaunchedEffect(track.path) { fileProperties = readFileProperties(track.path) }
 
-    AlertDialog(
+    SonaDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Track properties") },
-        text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                PropertyRow("Name", track.title)
-                PropertyRow("Album", track.album)
-                PropertyRow("Artist", track.artist)
-                track.genre?.let { PropertyRow("Genre", it) }
-                track.year?.let { PropertyRow("Date", it.toString()) }
-                track.trackNumber?.let { PropertyRow("Track", it.toString()) }
-                track.discNumber?.let { PropertyRow("Disc", it.toString()) }
-                PropertyRow("Path", track.path)
-                fileProperties?.sizeBytes?.let { PropertyRow("Size", formatFileSize(it)) }
-                PropertyRow("Duration", formatDurationMs(track.durationMs))
-                fileProperties?.format?.let { PropertyRow("Format", it) }
-                fileProperties?.bitrateKbps?.let { PropertyRow("Bit rate", "$it kbps") }
-                fileProperties?.sampleRateHz?.let { PropertyRow("Sample rate", "$it Hz") }
-            }
-        },
-        confirmButton = {
-            SonaActionButtonGroup { actionButton(label = "OK", onClick = onDismiss) }
-        },
-    )
+        title = "Track properties",
+        buttons = { actionButton(label = "OK", onClick = onDismiss) },
+    ) {
+        PropertyRow("Name", track.title)
+        PropertyRow("Album", track.album)
+        PropertyRow("Artist", track.artist)
+        track.genre?.let { PropertyRow("Genre", it) }
+        track.year?.let { PropertyRow("Date", it.toString()) }
+        track.trackNumber?.let { PropertyRow("Track", it.toString()) }
+        track.discNumber?.let { PropertyRow("Disc", it.toString()) }
+        PropertyRow("Path", track.path)
+        fileProperties?.sizeBytes?.let { PropertyRow("Size", formatFileSize(it)) }
+        PropertyRow("Duration", formatDurationMs(track.durationMs))
+        fileProperties?.format?.let { PropertyRow("Format", it) }
+        fileProperties?.bitrateKbps?.let { PropertyRow("Bit rate", "$it kbps") }
+        fileProperties?.sampleRateHz?.let { PropertyRow("Sample rate", "$it Hz") }
+    }
 }
 
 /** One property, its name over its value - Auxio's `item_song_property`. */

@@ -1,12 +1,10 @@
-package com.lhacenmed.sona.core.designsystem.component
+package com.lhacenmed.sona.core.designsystem.component.dialog
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,6 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.R
+import com.lhacenmed.sona.core.designsystem.component.actionButton
 
 /** A progress bar's own height: the slot held for it before it appears. */
 private val ProgressSlotHeight = 4.dp
@@ -48,41 +47,36 @@ fun SonaConfirmationDialog(
 ) {
     val context = LocalContext.current
     var isRunning by remember { mutableStateOf(false) }
+    // Read here rather than inside the group: a group builds its items outside composition.
+    val cancelLabel = stringResource(R.string.confirmation_dialog_cancel)
 
-    AlertDialog(
+    SonaDialog(
         onDismissRequest = { if (!isRunning) onDismiss() },
-        title = { Text(title) },
-        text = {
-            Column {
-                Text(message)
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp)
-                        .heightIn(min = ProgressSlotHeight),
-                ) {
-                    if (isRunning) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                }
-            }
+        title = title,
+        buttons = {
+            actionButton(label = cancelLabel, onClick = onDismiss, enabled = !isRunning)
+            actionButton(
+                label = confirmLabel,
+                onClick = {
+                    isRunning = true
+                    operation { succeeded ->
+                        val outcome = if (succeeded) successMessage else failureMessage
+                        Toast.makeText(context.applicationContext, outcome, Toast.LENGTH_SHORT).show()
+                        onDismiss()
+                    }
+                },
+                enabled = !isRunning,
+            )
         },
-        confirmButton = {
-            // Read here rather than inside the group: a group builds its items outside composition.
-            val cancelLabel = stringResource(R.string.confirmation_dialog_cancel)
-            SonaActionButtonGroup {
-                actionButton(label = cancelLabel, onClick = onDismiss, enabled = !isRunning)
-                actionButton(
-                    label = confirmLabel,
-                    onClick = {
-                        isRunning = true
-                        operation { succeeded ->
-                            val outcome = if (succeeded) successMessage else failureMessage
-                            Toast.makeText(context.applicationContext, outcome, Toast.LENGTH_SHORT).show()
-                            onDismiss()
-                        }
-                    },
-                    enabled = !isRunning,
-                )
-            }
-        },
-    )
+    ) {
+        Text(message)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp)
+                .heightIn(min = ProgressSlotHeight),
+        ) {
+            if (isRunning) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
+    }
 }

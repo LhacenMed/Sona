@@ -7,4 +7,5 @@
     <string name="top_bar_close_search">Close search</string>
     <string name="top_bar_search_hint">Search</string>
     <string name="confirmation_dialog_cancel">Cancel</string>
+    <string name="dialog_reset">Reset</string>
 </resources>
