@@ -6,16 +6,33 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-25
+
 ### Added
 
 - Shuffle all button on the library tabs, and a "Shuffle all" launcher shortcut.
 - Shuffle settings under Playback › Shuffle: Keep shuffle, Reshuffle each time, Remember shuffle order and Shuffle all button.
 - A shuffled queue comes back in the same order after the app is closed.
 - Drag to select, as in a file browser: long press a row and drag across the list to select a range, scrolling at its edges; long press a second row to select everything between the two.
+- Delete from device, for a track, an album, artist, genre or folder, and a selection. With all-files access granted it deletes without Android asking each time; without it, Android's own request asks.
+- Remove from playlist in the menu of a track opened inside a playlist.
+- Settings › Permissions, listing every permission Sona uses, what it is for and whether it is allowed, with a tap to grant or change it.
 
 ### Changed
 
 - A long press now selects a row rather than toggling it, so it can start a drag.
+- Sorting by date added groups tracks and albums by month rather than by year, and the fast scroller's popup shows the month above the year.
+- Sona asks for music and notification access together, in one dialog, when it opens.
+- Every dialog shares one layout: the title and buttons stay in place while long content scrolls, and dialogs keep a sensible width on tablets and in landscape.
+- One picker for adding tracks to a playlist and for choosing where an imported playlist goes.
+- Buttons, icon buttons and connected button groups all tighten to the same corners while pressed, and the shuffle all button follows them.
+- New icons for Import and Export.
+
+### Fixed
+
+- The shuffle all button steps aside when a list's last row reaches it, instead of lists keeping empty room for it at their end.
+- Opening or closing search on a detail screen slides its header out of the way and back to where it was, and no longer flashes Play and Shuffle in the bar.
+- A quick double tap, or opening a screen that is already showing, no longer stacks a second copy of it.
 
 ## [1.1.0] - 2026-09-23
 
@@ -57,6 +74,7 @@ First stable release.
 - Artwork-based dynamic colours, light and dark themes, composed collection covers, animated launch screen and edge-to-edge layout.
 - In-app updates from GitHub Releases, with an option to check only on request.
 
-[Unreleased]: https://github.com/LhacenMed/Sona/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/LhacenMed/Sona/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/LhacenMed/Sona/compare/v1.1.1...v1.2.0
 [1.1.0]: https://github.com/LhacenMed/Sona/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/LhacenMed/Sona/releases/tag/v1.0.0
