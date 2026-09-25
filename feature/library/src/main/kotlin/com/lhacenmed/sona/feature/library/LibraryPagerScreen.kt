@@ -27,7 +27,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -35,8 +34,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.datastore.LibraryTab
-import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
-import com.lhacenmed.sona.core.designsystem.component.LocalPlayerSheetRaised
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.component.SonaTabRow
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
@@ -48,6 +45,7 @@ import com.lhacenmed.sona.feature.library.operation.ExcludeFoldersDialog
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.selection.SelectionOptionsHost
 import com.lhacenmed.sona.feature.library.selection.toLibraryTopBarSelection
+import com.lhacenmed.sona.feature.library.shuffle.ShuffleAllButton
 import com.lhacenmed.sona.feature.library.sort.SortSheet
 import com.lhacenmed.sona.feature.library.sort.sortAction
 import kotlinx.coroutines.coroutineScope
@@ -71,9 +69,12 @@ import kotlinx.coroutines.launch
  * [com.lhacenmed.sona.core.data.LibraryRepository] has already computed once for the whole process.
  * "Opening" a tab therefore costs a composition and nothing else - no query, no sort - which is why
  * they can all exist at once without competing for the launch frame.
+ *
+ * [onChooseShuffleSource] opens where the shuffle-all button's source is chosen, which the shell knows.
  */
 @Composable
 fun LibraryPagerScreen(
+    onChooseShuffleSource: () -> Unit,
     modifier: Modifier = Modifier,
     actions: List<TopBarAction> = emptyList(),
     viewModel: LibraryViewModel = hiltViewModel(),
@@ -81,6 +82,7 @@ fun LibraryPagerScreen(
     val visibleTabs by viewModel.visibleTabs.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val showShuffleAllButton by viewModel.showShuffleAllButton.collectAsStateWithLifecycle()
+    val shuffleAllSource by viewModel.shuffleAllSource.collectAsStateWithLifecycle()
     val hasTracks by viewModel.hasTracks.collectAsStateWithLifecycle()
     if (visibleTabs.isEmpty()) return
 
@@ -109,10 +111,6 @@ fun LibraryPagerScreen(
 
         // The selected folders waiting on the user to confirm excluding them.
         var excludingFolders by remember { mutableStateOf<List<String>?>(null) }
-
-        // Whether a tab's fast scroller thumb is being dragged, which hides the shuffle-all button so
-        // the scroller's popup never meets it - Auxio's `isFastScrolling`.
-        var isFastScrolling by remember { mutableStateOf(false) }
 
         // Where the pill sits while a tap is being carried out. The pager cannot be asked to slide
         // the whole way across a long move - it teleports to a page near the target first - so the
@@ -269,34 +267,26 @@ fun LibraryPagerScreen(
                     ) { page ->
                         val tab = visibleTabs[page]
                         val listState = listStates.getValue(tab)
-                        val onFastScrollingChange: (Boolean) -> Unit = { isFastScrolling = it }
                         when (tab) {
-                            LibraryTab.TRACKS -> TracksScreen(viewModel, selection, listState, onFastScrollingChange)
-                            LibraryTab.ARTISTS -> ArtistsScreen(viewModel, selection, listState, onFastScrollingChange)
-                            LibraryTab.ALBUMS -> AlbumsScreen(viewModel, selection, listState, onFastScrollingChange)
-                            LibraryTab.GENRES -> GenresScreen(viewModel, selection, listState, onFastScrollingChange)
-                            LibraryTab.FOLDERS -> FoldersScreen(viewModel, selection, listState, onFastScrollingChange)
+                            LibraryTab.TRACKS -> TracksScreen(viewModel, selection, listState)
+                            LibraryTab.ARTISTS -> ArtistsScreen(viewModel, selection, listState)
+                            LibraryTab.ALBUMS -> AlbumsScreen(viewModel, selection, listState)
+                            LibraryTab.GENRES -> GenresScreen(viewModel, selection, listState)
+                            LibraryTab.FOLDERS -> FoldersScreen(viewModel, selection, listState)
                         }
                     }
                 }
 
-                // Auxio's rules for its shuffle button: only over a library with tracks in it, on the library
-                // itself rather than its search, and out of the way while a list is fast scrolled or the
-                // player rises over it - and, as lists keep no room for it, while the list on screen has
-                // its last row down where the button sits.
-                val lastRowReachesButton by rememberLastRowReachesShuffleAllButton(
-                    listStates.getValue(visibleTabs[pagerState.currentPage]),
-                )
+                // Auxio's rules for its shuffle button: only over a library with tracks in it, and on the
+                // library itself rather than its search. Stepping aside for the player, a fast scroll or
+                // the list's end is the FAB stack's, as every FAB's is.
                 ShuffleAllButton(
-                    visible = showShuffleAllButton && hasTracks && searchQuery == null &&
-                        !isFastScrolling && !LocalPlayerSheetRaised.current && !lastRowReachesButton,
-                    onClick = viewModel::onShuffleAll,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(
-                            end = SonaComponentStyle.ContentHorizontalPadding,
-                            bottom = LocalBottomContentPadding.current,
-                        ),
+                    visible = showShuffleAllButton && hasTracks && searchQuery == null,
+                    source = shuffleAllSource,
+                    favoritesPlaylistId = viewModel.favoritesPlaylistId,
+                    onShuffle = viewModel::onShuffleAll,
+                    onShuffleFrom = viewModel::onShuffleFrom,
+                    onChooseOther = onChooseShuffleSource,
                 )
             }
         }

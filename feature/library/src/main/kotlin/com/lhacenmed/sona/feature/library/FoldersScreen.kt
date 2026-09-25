@@ -19,7 +19,6 @@ fun FoldersScreen(
     viewModel: LibraryViewModel,
     selection: SelectionState,
     listState: LazyListState,
-    onFastScrollingChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val folders by viewModel.folders.collectAsStateWithLifecycle()
@@ -43,7 +42,6 @@ fun FoldersScreen(
         sectionOf = folderSections,
         modifier = modifier,
         listState = listState,
-        onFastScrollingChange = onFastScrollingChange,
     ) { folder ->
         FolderRow(
             folder = folder,

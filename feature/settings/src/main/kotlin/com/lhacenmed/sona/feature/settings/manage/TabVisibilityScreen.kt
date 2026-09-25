@@ -1,11 +1,11 @@
 package com.lhacenmed.sona.feature.settings.manage
 
-import com.lhacenmed.sona.feature.settings.R
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -16,7 +16,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.datastore.LibraryTab
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
+import com.lhacenmed.sona.core.designsystem.component.fab.screenList
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.settings.R
 
 /** "Manage Tabs" screen: toggle which library tabs show up in the main bottom navigation. */
 data object TabVisibilityScreen : Screen {
@@ -28,8 +30,12 @@ data object TabVisibilityScreen : Screen {
         val tabs by viewModel.tabs.collectAsStateWithLifecycle()
         val visibleCount = tabs.count { it.second }
 
+        val listState = rememberLazyListState()
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            state = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .screenList(listState),
             contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
         ) {
             items(tabs, key = { it.first.name }) { (tab, isVisible) ->

@@ -19,7 +19,6 @@ fun ArtistsScreen(
     viewModel: LibraryViewModel,
     selection: SelectionState,
     listState: LazyListState,
-    onFastScrollingChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val artists by viewModel.artists.collectAsStateWithLifecycle()
@@ -43,7 +42,6 @@ fun ArtistsScreen(
         sectionOf = artistSections,
         modifier = modifier,
         listState = listState,
-        onFastScrollingChange = onFastScrollingChange,
     ) { artist ->
         ArtistRow(
             artist = artist,

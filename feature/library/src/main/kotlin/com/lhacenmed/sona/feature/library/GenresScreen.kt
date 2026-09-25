@@ -19,7 +19,6 @@ fun GenresScreen(
     viewModel: LibraryViewModel,
     selection: SelectionState,
     listState: LazyListState,
-    onFastScrollingChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val genres by viewModel.genres.collectAsStateWithLifecycle()
@@ -43,7 +42,6 @@ fun GenresScreen(
         sectionOf = genreSections,
         modifier = modifier,
         listState = listState,
-        onFastScrollingChange = onFastScrollingChange,
     ) { genre ->
         GenreRow(
             genre = genre,

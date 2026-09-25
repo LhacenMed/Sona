@@ -8,4 +8,7 @@
     <string name="top_bar_search_hint">Search</string>
     <string name="confirmation_dialog_cancel">Cancel</string>
     <string name="dialog_reset">Reset</string>
+    <string name="fab_menu_open">Show choices</string>
+    <string name="fab_menu_close">Close</string>
+    <string name="fab_scroll_to_top">Scroll to top</string>
 </resources>

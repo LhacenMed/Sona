@@ -10,6 +10,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -17,6 +18,8 @@ import androidx.core.content.IntentCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.SonaActivity
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
+import com.lhacenmed.sona.core.designsystem.component.WindowOverlayHost
+import com.lhacenmed.sona.core.designsystem.component.fab.FloatingActionButtonStack
 import com.lhacenmed.sona.core.designsystem.theme.AppCoverStyle
 import com.lhacenmed.sona.core.designsystem.theme.AppFastScrollTouchArea
 import com.lhacenmed.sona.core.designsystem.theme.AppThemeSeed
@@ -59,6 +62,14 @@ class HostActivity : SonaActivity() {
     @Inject
     lateinit var playerOverlay: PlayerOverlay
 
+    /** Whether this activity's enter animation is over - see [LocalScreenEntered]. */
+    private val hasEntered = mutableStateOf(false)
+
+    override fun onEnterAnimationComplete() {
+        super.onEnterAnimationComplete()
+        hasEntered.value = true
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -82,27 +93,33 @@ class HostActivity : SonaActivity() {
                 // Only screens that named a title get a bar from the host; the rest draw their own,
                 // because a title alone cannot express a selection or an action.
                 val hostedTitle = screen.title(LocalContext.current)
-                CompositionLocalProvider(LocalNavigator provides navigator) {
-                    playerOverlay.Content {
-                        Scaffold(
-                            topBar = {
-                                if (hostedTitle != null) {
-                                    SonaTopAppBar(title = hostedTitle, onNavigateBack = navigator::back)
+                CompositionLocalProvider(LocalNavigator provides navigator, LocalScreenEntered provides hasEntered) {
+                    // Over the player too, so a screen can lay something over the whole window.
+                    WindowOverlayHost {
+                        playerOverlay.Content {
+                            // Inside the player, so the screen's FABs stand clear of it.
+                            FloatingActionButtonStack {
+                                Scaffold(
+                                    topBar = {
+                                        if (hostedTitle != null) {
+                                            SonaTopAppBar(title = hostedTitle, onNavigateBack = navigator::back)
+                                        }
+                                    },
+                                    // A screen drawing its own bar consumes the status bar inset there; letting the
+                                    // Scaffold add it as well would inset the screen twice. The bottom is never
+                                    // inset here: the screen's lists end clear of the navigation bar themselves,
+                                    // along with the mini player over it.
+                                    contentWindowInsets = if (hostedTitle == null) {
+                                        WindowInsets(0, 0, 0, 0)
+                                    } else {
+                                        ScaffoldDefaults.contentWindowInsets
+                                            .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+                                    },
+                                ) { innerPadding ->
+                                    Box(modifier = Modifier.padding(innerPadding)) {
+                                        screen.Content()
+                                    }
                                 }
-                            },
-                            // A screen drawing its own bar consumes the status bar inset there; letting the
-                            // Scaffold add it as well would inset the screen twice. The bottom is never
-                            // inset here: the screen's lists end clear of the navigation bar themselves,
-                            // along with the mini player over it.
-                            contentWindowInsets = if (hostedTitle == null) {
-                                WindowInsets(0, 0, 0, 0)
-                            } else {
-                                ScaffoldDefaults.contentWindowInsets
-                                    .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
-                            },
-                        ) { innerPadding ->
-                            Box(modifier = Modifier.padding(innerPadding)) {
-                                screen.Content()
                             }
                         }
                     }

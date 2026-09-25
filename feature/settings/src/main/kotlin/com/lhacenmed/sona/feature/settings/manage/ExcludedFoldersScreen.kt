@@ -1,6 +1,5 @@
 package com.lhacenmed.sona.feature.settings.manage
 
-import com.lhacenmed.sona.feature.settings.R
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -14,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -34,9 +34,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.common.storage.documentPathOrNull
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
+import com.lhacenmed.sona.core.designsystem.component.fab.screenList
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.settings.R
 
 /** "Excluded Folders" screen: view/add/remove folders that the media scanner should skip. */
 data object ExcludedFoldersScreen : Screen {
@@ -91,7 +93,13 @@ data object ExcludedFoldersScreen : Screen {
                         .fillMaxSize()
                         .padding(bottom = LocalBottomContentPadding.current),
                 ) {
-                    LazyColumn(modifier = Modifier.weight(1f)) {
+                    val listState = rememberLazyListState()
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .weight(1f)
+                            .screenList(listState),
+                    ) {
                         items(excludedFolders) { path ->
                             ListItem(
                                 headlineContent = { Text(path) },

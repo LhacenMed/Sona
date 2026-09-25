@@ -153,7 +153,7 @@ internal fun <T> LibraryListContent(
  * or inserts a few tracks moves the existing rows instead of rebuilding the list.
  *
  * Every list has the fast scroller; one given [sectionOf] - the section its sort puts a row in - also
- * names that section in the scroller's popup. [onFastScrollingChange] hears when its thumb is dragged.
+ * names that section in the scroller's popup.
  *
  * Its rows join [selection], and a long press drags across them - see [DragSelection].
  */
@@ -171,7 +171,6 @@ internal fun <T> LibraryList(
     listState: LazyListState = rememberLazyListState(),
     onReorder: ((List<T>) -> Unit)? = null,
     sectionOf: ((T) -> String?)? = null,
-    onFastScrollingChange: (Boolean) -> Unit = {},
     row: @Composable (T) -> Unit,
 ) {
     LibraryListContent(
@@ -187,7 +186,6 @@ internal fun <T> LibraryList(
             listState = listState,
             modifier = Modifier.fillMaxSize(),
             sectionAt = sectionOf?.let { section -> { index -> items.getOrNull(index)?.let(section) } },
-            onFastScrollingChange = onFastScrollingChange,
         ) {
             if (onReorder != null) {
                 // The same list state as the plain list below, so the rows keep their place when handles

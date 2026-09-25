@@ -2,10 +2,16 @@ package com.lhacenmed.sona.feature.settings.screen
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.data.shuffle.ShuffleAllSource
+import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.library.shuffle.ShuffleSourceKind
+import com.lhacenmed.sona.feature.library.shuffle.ShuffleSourcePickerScreen
+import com.lhacenmed.sona.feature.library.shuffle.shuffleSourceKind
 import com.lhacenmed.sona.feature.settings.R
 import com.lhacenmed.sona.feature.settings.component.SettingsChoiceItem
 import com.lhacenmed.sona.feature.settings.component.SettingsList
@@ -13,9 +19,19 @@ import com.lhacenmed.sona.feature.settings.component.SettingsSection
 import com.lhacenmed.sona.feature.settings.component.SettingsSectionDivider
 import com.lhacenmed.sona.feature.settings.component.SettingsSliderItem
 import com.lhacenmed.sona.feature.settings.component.SettingsSwitchItem
+import com.lhacenmed.sona.feature.settings.component.settingsScrollTarget
 
-/** How playback behaves, how shuffle works, how tracks join onto each other, and how loud they come out. */
-data object PlaybackScreen : Screen {
+/** A row [PlaybackScreen] can be opened scrolled to. */
+enum class PlaybackSetting {
+    /** What shuffle-all plays - where the library's shuffle button sends its Other. */
+    SHUFFLE_ALL_SOURCE,
+}
+
+/**
+ * How playback behaves, how shuffle works, how tracks join onto each other, and how loud they come out -
+ * opened scrolled to [scrollTo], when given, as [SettingsList] does.
+ */
+data class PlaybackScreen(val scrollTo: PlaybackSetting? = null) : Screen {
     override val titleRes: Int get() = R.string.playback_title
 
     @Composable
@@ -29,8 +45,10 @@ data object PlaybackScreen : Screen {
         val reshuffleEachTime by viewModel.reshuffleEachTime.collectAsStateWithLifecycle()
         val rememberShuffleOrder by viewModel.rememberShuffleOrder.collectAsStateWithLifecycle()
         val shuffleAllButton by viewModel.shuffleAllButton.collectAsStateWithLifecycle()
+        val shuffleAllSource by viewModel.shuffleAllSource.collectAsStateWithLifecycle()
+        val navigator = LocalNavigator.current
 
-        SettingsList {
+        SettingsList(scrollTo = scrollTo) {
             SettingsSection(stringResource(R.string.playback_controls_section)) {
                 SettingsSwitchItem(
                     title = stringResource(R.string.headset_autoplay_title),
@@ -145,6 +163,12 @@ data object PlaybackScreen : Screen {
                     checked = shuffleAllButton,
                     onCheckedChange = viewModel::setShuffleAllButton,
                 )
+                ShuffleAllSourceItem(
+                    modifier = Modifier.settingsScrollTarget(PlaybackSetting.SHUFFLE_ALL_SOURCE),
+                    source = shuffleAllSource,
+                    onChooseAllTracks = viewModel::chooseAllTracksForShuffleAll,
+                    onChooseKind = { kind -> navigator.go(ShuffleSourcePickerScreen(kind)) },
+                )
             }
 
             SettingsSectionDivider()
@@ -168,3 +192,43 @@ data object PlaybackScreen : Screen {
         }
     }
 }
+
+/**
+ * What shuffle-all plays - the library's button and the launcher shortcut alike. Every track is chosen
+ * right here; a kind of collection opens its picker, where the one to play is chosen.
+ */
+@Composable
+private fun ShuffleAllSourceItem(
+    source: ShuffleAllSource,
+    onChooseAllTracks: () -> Unit,
+    onChooseKind: (ShuffleSourceKind) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val kinds = ShuffleSourceKind.entries
+    val options = listOf(stringResource(R.string.shuffle_source_all_tracks)) + kinds.map { it.label() }
+    val sourceKind = source.parent?.shuffleSourceKind
+    SettingsChoiceItem(
+        title = stringResource(R.string.shuffle_all_source_title),
+        options = options,
+        selectedIndex = sourceKind?.let { kinds.indexOf(it) + 1 } ?: 0,
+        onSelect = { index -> if (index == 0) onChooseAllTracks() else onChooseKind(kinds[index - 1]) },
+        modifier = modifier,
+        summary = when (source) {
+            ShuffleAllSource.AllTracks -> options.first()
+            is ShuffleAllSource.Collection ->
+                stringResource(R.string.shuffle_all_source_collection, sourceKind?.label().orEmpty(), source.name)
+        },
+    )
+}
+
+@Composable
+private fun ShuffleSourceKind.label(): String =
+    stringResource(
+        when (this) {
+            ShuffleSourceKind.PLAYLIST -> R.string.shuffle_source_playlist
+            ShuffleSourceKind.ARTIST -> R.string.shuffle_source_artist
+            ShuffleSourceKind.ALBUM -> R.string.shuffle_source_album
+            ShuffleSourceKind.GENRE -> R.string.shuffle_source_genre
+            ShuffleSourceKind.FOLDER -> R.string.shuffle_source_folder
+        },
+    )

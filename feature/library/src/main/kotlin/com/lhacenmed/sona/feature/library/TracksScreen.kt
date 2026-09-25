@@ -19,7 +19,6 @@ fun TracksScreen(
     viewModel: LibraryViewModel,
     selection: SelectionState,
     listState: LazyListState,
-    onFastScrollingChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val tracks by viewModel.tracks.collectAsStateWithLifecycle()
@@ -40,7 +39,6 @@ fun TracksScreen(
         key = { it.id },
         modifier = modifier,
         listState = listState,
-        onFastScrollingChange = onFastScrollingChange,
         loadingIcon = SonaIcons.Song,
         sectionOf = trackSections,
     ) { track ->

@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
+import com.lhacenmed.sona.core.designsystem.component.fab.screenList
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.playback.CUSTOM_PRESET
@@ -95,10 +96,12 @@ private fun EqualizerCurve(
     onBandLevelChange: (bandIndex: Int, levelMillibels: Int) -> Unit,
     onBandLevelSettled: () -> Unit,
 ) {
+    val scrollState = rememberScrollState()
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .screenList(scrollState)
+            .verticalScroll(scrollState)
             .padding(16.dp)
             .padding(bottom = LocalBottomContentPadding.current),
         verticalArrangement = Arrangement.spacedBy(8.dp),
