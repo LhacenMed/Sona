@@ -15,7 +15,8 @@ import com.lhacenmed.sona.feature.library.options.OptionsTarget
 import com.lhacenmed.sona.feature.library.options.PlaylistOptionsContext
 
 /**
- * One playlist's tracks, in the order they were arranged. Favorites arrives here too.
+ * One playlist's tracks, in the order they are sorted - the ones added last first, until the user picks
+ * another order or arranges them by hand. Favorites arrives here too.
  *
  * Its menu is the playlist's own options, the ones its row's sheet offers - adding tracks, playing,
  * editing, importing, exporting and deleting - so the two can never disagree.

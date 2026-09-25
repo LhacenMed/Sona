@@ -247,7 +247,7 @@ class LibraryRepository @Inject constructor(
         .stateIn(scope, SharingStarted.Eagerly, 0)
 
     /**
-     * A playlist's tracks, in the order they are sorted - the order the user arranged, by default.
+     * A playlist's tracks, in the order they are sorted - the ones added last first, by default.
      *
      * Sorting only changes what is shown. The arranged order is never rewritten by it: it stays the
      * Custom order, which is the one dragging edits.

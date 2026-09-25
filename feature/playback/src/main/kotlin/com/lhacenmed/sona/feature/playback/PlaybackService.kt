@@ -86,7 +86,7 @@ class PlaybackService : MediaSessionService() {
     // rather than read on every call.
     @Volatile private var forwardingSettings = PlaybackForwardingPlayer.Snapshot(
         rememberPause = false,
-        rewindBeforeSkipBack = true,
+        rewindBeforeSkipBack = false,
     )
 
     // The player's repeat int cannot tell RepeatMode.ONE from STOP_AFTER_CURRENT apart, so the

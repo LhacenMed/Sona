@@ -39,7 +39,7 @@ class PlayerStyleSettings @Inject constructor(
 
     val sliderStyle: Setting<PlayerSliderStyle> = cache.setting { preferences ->
         preferences[PLAYER_SLIDER_STYLE]?.let { name -> runCatching { PlayerSliderStyle.valueOf(name) }.getOrNull() }
-            ?: PlayerSliderStyle.STANDARD
+            ?: PlayerSliderStyle.CIRCULAR
     }
 
     suspend fun setSliderStyle(style: PlayerSliderStyle) {
