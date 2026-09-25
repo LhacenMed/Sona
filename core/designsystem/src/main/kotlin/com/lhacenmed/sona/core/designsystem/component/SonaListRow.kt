@@ -26,6 +26,8 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.component.swipe.LocalSwipeActions
+import com.lhacenmed.sona.core.designsystem.component.swipe.SwipeActionsBox
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.model.Track
 
@@ -118,72 +120,76 @@ fun SonaListRow(
     val selectedTint = MaterialTheme.colorScheme.primary
     val dragHandle = LocalDragHandle.current
     val dragSelection = LocalDragSelection.current
+    // A row being selected is not swiped: a sideways swipe over a selection would act on one row of it.
+    val swipeActions = LocalSwipeActions.current?.takeUnless { selection?.isActive == true }
     CompositionLocalProvider(LocalContentColor provides contentColor) {
-        Row(
-            modifier = modifier
-                .fillMaxWidth()
-                .background(containerColor)
-                .drawBehind {
-                    drawRect(selectedTint.copy(alpha = SELECTED_ROW_TINT_ALPHA * selectedFraction.value))
-                }
-                .then(
-                    if (selection == null) {
-                        Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
-                    } else {
-                        Modifier.selectableRow(selection, selectionKey, dragSelection, onClick)
-                    },
-                )
-                .padding(
-                    start = SonaComponentStyle.ContentHorizontalPadding,
-                    top = 12.dp,
-                    // The overflow glyph, not its 48dp touch target, ends on the keyline: the target
-                    // holds the glyph 12dp in from its edge.
-                    end = SonaComponentStyle.ContentHorizontalPadding - 12.dp,
-                    bottom = 12.dp,
-                ),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            cover(isSelected)
-            Column(
+        SwipeActionsBox(actions = swipeActions, modifier = modifier) {
+            Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 16.dp, end = 12.dp),
+                    .fillMaxWidth()
+                    .background(containerColor)
+                    .drawBehind {
+                        drawRect(selectedTint.copy(alpha = SELECTED_ROW_TINT_ALPHA * selectedFraction.value))
+                    }
+                    .then(
+                        if (selection == null) {
+                            Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                        } else {
+                            Modifier.selectableRow(selection, selectionKey, dragSelection, onClick)
+                        },
+                    )
+                    .padding(
+                        start = SonaComponentStyle.ContentHorizontalPadding,
+                        top = 12.dp,
+                        // The overflow glyph, not its 48dp touch target, ends on the keyline: the target
+                        // holds the glyph 12dp in from its edge.
+                        end = SonaComponentStyle.ContentHorizontalPadding - 12.dp,
+                        bottom = 12.dp,
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            if (dragHandle != null) {
-                Box(
+                cover(isSelected)
+                Column(
                     modifier = Modifier
-                        .size(DragHandleTouchSize)
-                        .then(dragHandle),
-                    contentAlignment = Alignment.Center,
+                        .weight(1f)
+                        .padding(start = 16.dp, end = 12.dp),
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.DragHandle,
-                        contentDescription = "Reorder",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
-            }
-            if (onOpenOptions != null) {
-                SonaIconButton(
-                    onClick = onOpenOptions,
-                    icon = Icons.Filled.MoreHoriz,
-                    contentDescription = "More options",
-                )
+                if (dragHandle != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(DragHandleTouchSize)
+                            .then(dragHandle),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.DragHandle,
+                            contentDescription = "Reorder",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                if (onOpenOptions != null) {
+                    SonaIconButton(
+                        onClick = onOpenOptions,
+                        icon = Icons.Filled.MoreHoriz,
+                        contentDescription = "More options",
+                    )
+                }
             }
         }
     }
