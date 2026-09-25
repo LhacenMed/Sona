@@ -9,10 +9,10 @@ import android.widget.EdgeEffect
 import androidx.core.animation.doOnEnd
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
-import com.lhacenmed.sona.feature.player.RubberBandSettleDurationMillis
-import com.lhacenmed.sona.feature.player.RubberBandSettleTension
-import com.lhacenmed.sona.feature.player.rubberBandOffset
-import com.lhacenmed.sona.feature.player.rubberBandPull
+import com.lhacenmed.sona.core.designsystem.motion.RubberBandSettleDurationMillis
+import com.lhacenmed.sona.core.designsystem.motion.RubberBandSettleTension
+import com.lhacenmed.sona.core.designsystem.motion.rubberBandOffset
+import com.lhacenmed.sona.core.designsystem.motion.rubberBandPull
 
 /**
  * How far into a swipe the band can take the cover, as a share of its width: past the carousel's gap

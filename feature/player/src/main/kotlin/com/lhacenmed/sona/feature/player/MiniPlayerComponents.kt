@@ -3,11 +3,9 @@
 package com.lhacenmed.sona.feature.player
 
 import android.view.HapticFeedbackConstants
-import android.view.animation.DecelerateInterpolator
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -62,6 +60,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverImage
+import com.lhacenmed.sona.core.designsystem.motion.RubberBandSettleDurationMillis
+import com.lhacenmed.sona.core.designsystem.motion.RubberBandSettleEasing
+import com.lhacenmed.sona.core.designsystem.motion.SwipeArmFraction
+import com.lhacenmed.sona.core.designsystem.motion.SwipeStretchMaxFraction
+import com.lhacenmed.sona.core.designsystem.motion.rubberBandOffset
+import com.lhacenmed.sona.core.designsystem.motion.rubberBandPull
 import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
@@ -73,15 +77,6 @@ import kotlinx.coroutines.launch
 
 /** How readily a sideways swipe changes track - ArchiveTune's default `SwipeSensitivity`. */
 private const val SwipeSensitivity = 0.73f
-
-/**
- * Where a swipe stops following the finger and releasing skips, and the ceiling the player can never pass
- * - both as a share of its width, as Khatmah's wird wall is of its page.
- */
-private const val SkipArmFraction = 0.15f
-private const val SkipStretchMaxFraction = 0.27f
-
-private val SettleEasing = Easing(DecelerateInterpolator(RubberBandSettleTension)::getInterpolation)
 
 private val MiniPlayerTransportButtonSpacing = 4.dp
 
@@ -121,11 +116,11 @@ internal fun SwipeableMiniPlayerBox(
     val latestOnSwipeToNext by rememberUpdatedState(onSwipeToNext)
 
     // The player falling back to rest - Khatmah's page falling back over an unfinished wall.
-    val animationSpec = tween<Float>(durationMillis = RubberBandSettleDurationMillis, easing = SettleEasing)
+    val animationSpec = tween<Float>(durationMillis = RubberBandSettleDurationMillis, easing = RubberBandSettleEasing)
 
     // Read by the gesture handler as it runs, so it always measures against the player's current width.
     var playerWidth by remember { mutableIntStateOf(0) }
-    val skipArm = playerWidth * SkipArmFraction
+    val skipArm = playerWidth * SwipeArmFraction
 
     Box(
         modifier =
@@ -158,10 +153,10 @@ internal fun SwipeableMiniPlayerBox(
                         // past it; towards none it resists from the start, showing there is nothing there.
                         fun armFor(pull: Float): Float {
                             val hasTrack = if (pull > 0) latestHasPreviousTrack else latestHasNextTrack
-                            return if (hasTrack) playerWidth * SkipArmFraction else 0f
+                            return if (hasTrack) playerWidth * SwipeArmFraction else 0f
                         }
 
-                        fun stretchLimit() = playerWidth * (SkipStretchMaxFraction - SkipArmFraction)
+                        fun stretchLimit() = playerWidth * (SwipeStretchMaxFraction - SwipeArmFraction)
 
                         // Khatmah's tick: CLOCK_TICK is felt where the lighter CONTEXT_CLICK often is not.
                         fun tick() = view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
