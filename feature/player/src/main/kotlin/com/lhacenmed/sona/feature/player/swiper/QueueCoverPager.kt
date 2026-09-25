@@ -56,30 +56,37 @@ internal class QueueCoverPager(
      * Whether a finger holds the pager - from the drag starting to the page coming to rest. Tracked
      * here rather than read from [ViewPager2.getScrollState], which a jump made with
      * `setCurrentItem(item, false)` can leave settling when the pager has nothing to scroll.
+     *
+     * Every drag is a finger's: the only fake drag is the band's, relaying a finger that swiped past an
+     * end and came back ([CoverOverscroll]) - a swipe like any other, so it turns the track too.
      */
     private var isUserSwiping = false
 
     init {
         pager.apply {
             adapter = coverAdapter
-            UserAwarePagerCallback(this) { position ->
-                val track = coverAdapter.currentList.getOrNull(position) ?: return@UserAwarePagerCallback
-                swipedIndex = position
-                // Posting the queue goto command prevents the seekbar pos from desyncing
-                // from the song's duration, which creates a visual flicker in the seekbar.
-                post { onSwipeToTrack(track) }
-            }.attach()
             registerOnPageChangeCallback(
                 object : ViewPager2.OnPageChangeCallback() {
                     override fun onPageScrollStateChanged(state: Int) {
                         when (state) {
-                            ViewPager2.SCROLL_STATE_DRAGGING -> isUserSwiping = !isFakeDragging
+                            ViewPager2.SCROLL_STATE_DRAGGING -> isUserSwiping = true
                             ViewPager2.SCROLL_STATE_IDLE -> {
                                 isUserSwiping = false
                                 // Whatever the player reported while a finger held the pager, shown now.
                                 turnToPlayer(animate = true)
                             }
                         }
+                    }
+
+                    // Only a swipe asks for a track: a page selected by the pager being turned after the
+                    // player is the player's own track already. Auxio's `UserAwarePagerCallback`.
+                    override fun onPageSelected(position: Int) {
+                        if (!isUserSwiping) return
+                        val track = coverAdapter.currentList.getOrNull(position) ?: return
+                        swipedIndex = position
+                        // Posting the queue goto command prevents the seekbar pos from desyncing
+                        // from the song's duration, which creates a visual flicker in the seekbar.
+                        post { onSwipeToTrack(track) }
                     }
                 },
             )
