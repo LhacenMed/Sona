@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -41,6 +40,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.theme.roundedShape
 import com.lhacenmed.sona.core.datastore.PlayerSliderStyle
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
@@ -274,7 +274,7 @@ private fun DefaultTrackActions(
     ) {
         Surface(
             onClick = onToggleFavorite,
-            shape = RoundedCornerShape(14.dp),
+            shape = roundedShape(14.dp),
             color =
                 if (isFavorite) {
                     MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
@@ -299,7 +299,7 @@ private fun DefaultTrackActions(
 
         Surface(
             onClick = onMenuClick,
-            shape = RoundedCornerShape(14.dp),
+            shape = roundedShape(14.dp),
             color = contentColor.copy(alpha = 0.12f),
             modifier =
                 Modifier
@@ -405,7 +405,7 @@ private fun DefaultTransportControls(
             ) {
                 Surface(
                     onClick = onShuffle,
-                    shape = RoundedCornerShape(smallRadius),
+                    shape = roundedShape(smallRadius),
                     color = contentColor.copy(alpha = if (shuffleEnabled) 0.2f else 0.08f),
                     modifier = Modifier.size(small),
                 ) {
@@ -427,7 +427,7 @@ private fun DefaultTransportControls(
                 Surface(
                     onClick = onPrevious,
                     enabled = canSkipPrevious,
-                    shape = RoundedCornerShape(largeRadius),
+                    shape = roundedShape(largeRadius),
                     color = contentColor.copy(alpha = 0.15f),
                     modifier = Modifier.size(large),
                 ) {
@@ -447,7 +447,7 @@ private fun DefaultTransportControls(
 
             Surface(
                 onClick = onPlayPause,
-                shape = RoundedCornerShape(playPauseCorner),
+                shape = roundedShape(playPauseCorner),
                 color = contentColor,
                 modifier =
                     Modifier
@@ -481,7 +481,7 @@ private fun DefaultTransportControls(
                 Surface(
                     onClick = onNext,
                     enabled = canSkipNext,
-                    shape = RoundedCornerShape(largeRadius),
+                    shape = roundedShape(largeRadius),
                     color = contentColor.copy(alpha = 0.15f),
                     modifier = Modifier.size(large),
                 ) {
@@ -502,7 +502,7 @@ private fun DefaultTransportControls(
 
                 Surface(
                     onClick = onRepeat,
-                    shape = RoundedCornerShape(smallRadius),
+                    shape = roundedShape(smallRadius),
                     color = contentColor.copy(alpha = if (repeatMode != RepeatMode.OFF) 0.2f else 0.08f),
                     modifier = Modifier.size(small),
                 ) {

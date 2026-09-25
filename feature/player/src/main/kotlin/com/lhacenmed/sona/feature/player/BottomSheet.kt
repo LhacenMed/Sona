@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.gesture.awaitSteepDragSlop
 import com.lhacenmed.sona.core.designsystem.gesture.dragUntilRelease
+import com.lhacenmed.sona.core.designsystem.theme.roundedRadius
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
@@ -85,6 +86,8 @@ internal fun BottomSheet(
     // so it has to say. Left unsaid it is Color.Black - the default of the composition local every
     // icon button, text and press ripple in here reads - which is why they came out black on a dark
     // sheet. Everything the player, the queue and the lyrics draw sits under this.
+    // The corners the sheet rests with above the screen - square while round mode is off.
+    val restingCornerRadius = roundedRadius(16.dp)
     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
         Box(
             modifier =
@@ -98,8 +101,8 @@ internal fun BottomSheet(
                         IntOffset(x = 0, y = y)
                     }.clip(
                         RoundedCornerShape(
-                            topStart = if (!state.isExpanded) 16.dp else 0.dp,
-                            topEnd = if (!state.isExpanded) 16.dp else 0.dp,
+                            topStart = if (!state.isExpanded) restingCornerRadius else 0.dp,
+                            topEnd = if (!state.isExpanded) restingCornerRadius else 0.dp,
                         ),
                     ).background(
                         backgroundColor.copy(

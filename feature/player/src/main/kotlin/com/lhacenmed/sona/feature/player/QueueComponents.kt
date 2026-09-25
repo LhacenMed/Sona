@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -55,6 +54,8 @@ import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.connectedLeadingButtonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.connectedTrailingButtonPressShapes
+import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
+import com.lhacenmed.sona.core.designsystem.theme.roundedShape
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.R as PlaybackR
@@ -112,7 +113,7 @@ internal fun CurrentSongHeader(
                         Modifier
                             .width(48.dp)
                             .height(5.dp)
-                            .clip(RoundedCornerShape(2.5.dp))
+                            .clip(roundedShape(2.5.dp))
                             .background(onBackgroundColor.copy(alpha = 0.4f)),
                 )
             }
@@ -152,6 +153,7 @@ internal fun CurrentSongHeader(
 
                 IconButton(
                     onClick = onToggleFavorite,
+                    shapes = iconButtonPressShapes(),
                     modifier = Modifier.size(44.dp),
                     colors =
                         IconButtonDefaults.iconButtonColors(

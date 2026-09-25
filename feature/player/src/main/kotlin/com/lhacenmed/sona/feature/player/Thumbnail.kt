@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -42,6 +41,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.SonaIconButton
+import com.lhacenmed.sona.core.designsystem.theme.LocalIsRounded
+import com.lhacenmed.sona.core.designsystem.theme.roundedShape
 import com.lhacenmed.sona.feature.player.swiper.QueueCoverPager
 import kotlinx.coroutines.delay
 
@@ -141,12 +142,14 @@ internal fun Thumbnail(
                     showSeekEffect = true
                 }
 
+                val isRounded = LocalIsRounded.current
                 AndroidView(
                     factory = { viewContext -> QueueCoverPager(viewContext, ThumbnailCornerRadius) },
                     update = { pager ->
                         pager.onSwipeToTrack = viewModel::onPlayQueueItem
                         pager.onDoubleTap = onDoubleTap
                         pager.isSwipeEnabled = isPlayerExpanded
+                        pager.isRounded = isRounded
                         pager.show(uiState.queue, uiState.currentQueueIndex)
                     },
                     modifier = Modifier.size(maxWidth - (PlayerHorizontalPadding * 2)),
@@ -176,7 +179,7 @@ internal fun Thumbnail(
                 textAlign = TextAlign.Center,
                 modifier =
                     Modifier
-                        .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
+                        .background(Color.Black.copy(alpha = 0.7f), roundedShape(8.dp))
                         .padding(8.dp),
             )
         }

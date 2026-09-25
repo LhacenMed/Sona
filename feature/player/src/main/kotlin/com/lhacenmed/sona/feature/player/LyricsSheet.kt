@@ -32,8 +32,6 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.CircularWavyProgressIndicator
@@ -84,6 +82,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.palette.graphics.Palette
+import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
+import com.lhacenmed.sona.core.designsystem.theme.pillShape
+import com.lhacenmed.sona.core.designsystem.theme.roundedShape
 import coil3.compose.AsyncImage
 import coil3.imageLoader
 import coil3.request.ImageRequest
@@ -157,7 +158,7 @@ internal fun LyricsSheetTransition(
                             this.scaleY = scaleY
                             this.alpha = alpha
                             translationY = size.height * 0.16f * (1f - boundedProgress)
-                        }.clip(RoundedCornerShape(cornerRadius))
+                        }.clip(roundedShape(cornerRadius))
                         .background(MaterialTheme.colorScheme.surface),
             ) {
                 LyricsSheet(
@@ -676,7 +677,7 @@ private fun AppleMusicTrackHeader(
             modifier =
                 Modifier
                     .size(58.dp)
-                    .clip(RoundedCornerShape(7.dp))
+                    .clip(roundedShape(7.dp))
                     .background(foregroundColor.copy(alpha = 0.18f)),
             contentAlignment = Alignment.Center,
         ) {
@@ -761,7 +762,7 @@ private fun AppleMusicHeaderIconButton(
             modifier =
                 Modifier
                     .size(36.dp)
-                    .clip(CircleShape)
+                    .clip(pillShape)
                     .background(foregroundColor.copy(alpha = 0.18f)),
             contentAlignment = Alignment.Center,
         ) {
@@ -849,6 +850,7 @@ private fun AppleMusicControls(
             )
             IconButton(
                 onClick = onPlayPauseClick,
+                shapes = iconButtonPressShapes(),
                 modifier = Modifier.size(74.dp),
             ) {
                 if (isLoading) {
@@ -928,6 +930,7 @@ private fun AppleMusicTransportButton(
 ) {
     IconButton(
         onClick = onClick,
+        shapes = iconButtonPressShapes(),
         modifier = modifier.size(touchSize),
     ) {
         Icon(

@@ -108,6 +108,13 @@ internal class QueueCoverPager(
         overscroll.onSettle = { turnToPlayer(animate = true) }
     }
 
+    /** Round mode, for the covers' masks - see [CoverPagerAdapter.isRounded]. */
+    var isRounded: Boolean
+        get() = coverAdapter.isRounded
+        set(value) {
+            coverAdapter.isRounded = value
+        }
+
     /** Whether a swipe changes track - off while the player is collapsed to its mini bar. */
     var isSwipeEnabled: Boolean
         get() = pager.isUserInputEnabled

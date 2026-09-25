@@ -44,7 +44,8 @@ private const val ThemeTransitionDurationMillis = 350
  * by [animateColorSchemeAsState], so the whole app moves between schemes as one.
  *
  * [coverStyle] is provided alongside the colours, so every cover in the app is drawn the same way,
- * and [fastScrollTouchArea] so every list's fast scroller grabs its thumb the same way.
+ * and [fastScrollTouchArea] so every list's fast scroller grabs its thumb the same way. The round mode
+ * [coverStyle] carries cuts every shape in the app, not only covers - see [LocalIsRounded].
  */
 @Composable
 fun SonaTheme(
@@ -74,8 +75,14 @@ fun SonaTheme(
 
     SystemBarsFollowing(darkTheme)
 
-    MaterialTheme(colorScheme = animateColorSchemeAsState(targetColorScheme)) {
+    // Round mode reaches every shape from here: Material's through the theme, Sona's own through
+    // [LocalIsRounded] - see `SonaShapes`.
+    MaterialTheme(
+        colorScheme = animateColorSchemeAsState(targetColorScheme),
+        shapes = if (coverStyle.isRounded) MaterialTheme.shapes else SquareShapes,
+    ) {
         CompositionLocalProvider(
+            LocalIsRounded provides coverStyle.isRounded,
             LocalCoverStyle provides coverStyle,
             LocalFastScrollTouchArea provides fastScrollTouchArea,
             content = content,

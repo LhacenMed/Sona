@@ -1,7 +1,6 @@
 package com.lhacenmed.sona.core.designsystem.component
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -16,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.designsystem.theme.pressedCornerRadius
 import com.lhacenmed.sona.core.designsystem.theme.rememberPressFraction
+import com.lhacenmed.sona.core.designsystem.theme.roundedShape
 
 /**
  * The corners a FAB rests with: Material's large corner - `m3_comp_fab_container_shape`, which Auxio's
@@ -48,7 +48,7 @@ fun SonaFloatingActionButton(
     FloatingActionButton(
         onClick = onClick,
         modifier = modifier.animateFloatingActionButton(visible = visible, alignment = Alignment.Center),
-        shape = RoundedCornerShape(pressedCornerRadius(pressFraction, restingRadius = RestingCornerRadius)),
+        shape = roundedShape(pressedCornerRadius(pressFraction, restingRadius = RestingCornerRadius)),
         interactionSource = interactionSource,
     ) {
         Icon(imageVector = icon, contentDescription = contentDescription)

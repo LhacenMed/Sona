@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
+import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.playback.CUSTOM_PRESET
 import com.lhacenmed.sona.feature.playback.EqualizerBand
@@ -137,6 +138,7 @@ private fun PresetPicker(
     Box {
         OutlinedButton(
             onClick = { isExpanded = true },
+            shapes = buttonPressShapes(),
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(text = presetNames.getOrNull(selectedPreset) ?: customLabel)

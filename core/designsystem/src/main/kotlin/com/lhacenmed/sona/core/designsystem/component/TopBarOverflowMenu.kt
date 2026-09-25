@@ -36,6 +36,7 @@ import com.lhacenmed.sona.core.designsystem.component.popupmenu.MenuItem
 import com.lhacenmed.sona.core.designsystem.component.popupmenu.PopupMenu
 import com.lhacenmed.sona.core.designsystem.component.popupmenu.PopupStyle
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
+import com.lhacenmed.sona.core.designsystem.theme.roundedRadius
 import kotlinx.coroutines.CancellationException
 
 /** How far a press must travel from where it landed on the overflow button before it drags the menu open. */
@@ -127,7 +128,7 @@ internal fun rememberTopBarOverflowMenu(actions: List<TopBarAction>): TopBarOver
             contentColor = colorScheme.onSurface.toArgb(),
             textSize = MaterialTheme.typography.labelLarge.fontSize.value,
             textTypeface = MenuLabelTypeface,
-            cornerRadiusDp = SonaComponentStyle.CornerRadius.value,
+            cornerRadiusDp = roundedRadius(SonaComponentStyle.CornerRadius).value,
             // Above Material's 112dp floor, on its 56dp menu width steps, so a menu of short labels is
             // not drawn tight around them.
             minWidthDp = 224f,

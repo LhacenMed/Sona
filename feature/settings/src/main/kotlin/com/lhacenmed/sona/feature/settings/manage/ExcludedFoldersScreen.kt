@@ -34,6 +34,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.common.storage.documentPathOrNull
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
+import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
+import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 import com.lhacenmed.sona.core.navigation.Screen
 
 /** "Excluded Folders" screen: view/add/remove folders that the media scanner should skip. */
@@ -75,6 +77,7 @@ data object ExcludedFoldersScreen : Screen {
                     )
                     Button(
                         onClick = { pickFolderLauncher.launch(null) },
+                        shapes = buttonPressShapes(),
                         modifier = Modifier.padding(top = 16.dp),
                     ) {
                         Icon(Icons.Filled.Add, contentDescription = null)
@@ -93,7 +96,7 @@ data object ExcludedFoldersScreen : Screen {
                             ListItem(
                                 headlineContent = { Text(path) },
                                 trailingContent = {
-                                    IconButton(onClick = { viewModel.removeFolder(path) }) {
+                                    IconButton(onClick = { viewModel.removeFolder(path) }, shapes = iconButtonPressShapes()) {
                                         Icon(
                                             imageVector = Icons.Filled.Delete,
                                             contentDescription = stringResource(R.string.excluded_folders_remove),
@@ -110,7 +113,7 @@ data object ExcludedFoldersScreen : Screen {
                             .padding(16.dp),
                         horizontalArrangement = Arrangement.Center,
                     ) {
-                        Button(onClick = { pickFolderLauncher.launch(null) }) {
+                        Button(onClick = { pickFolderLauncher.launch(null) }, shapes = buttonPressShapes()) {
                             Icon(Icons.Filled.Add, contentDescription = null)
                             Text(text = stringResource(R.string.excluded_folders_add), modifier = Modifier.padding(start = 8.dp))
                         }

@@ -66,6 +66,8 @@ import com.lhacenmed.sona.core.designsystem.component.SonaIconButtonGroup
 import com.lhacenmed.sona.core.designsystem.component.TopBarCollapse
 import com.lhacenmed.sona.core.designsystem.component.iconButton
 import com.lhacenmed.sona.core.designsystem.component.rememberDetailHeaderState
+import com.lhacenmed.sona.core.designsystem.theme.LocalIsRounded
+import com.lhacenmed.sona.core.designsystem.theme.SquareShape
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.feature.library.operation.RemoveFromPlaylistDialog
 import com.lhacenmed.sona.feature.library.options.formatDurationMs
@@ -386,7 +388,7 @@ private fun LoadingListPlaceholder(
             modifier = Modifier
                 .size(LoadingCookieSize)
                 .shimmer()
-                .background(MaterialTheme.colorScheme.surfaceVariant, CookieShape),
+                .background(MaterialTheme.colorScheme.surfaceVariant, if (LocalIsRounded.current) CookieShape else SquareShape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
