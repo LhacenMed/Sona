@@ -6,6 +6,34 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-09-25
+
+### Added
+
+- Swipe actions on library rows: in an album's, artist's or playlist's screen, swipe a track, album or artist one way to play it next and the other way to add it to the queue.
+- Queue rows swipe too: one way to play next, the other to remove, with an undo.
+- A swipe ticks as it reaches the point where letting go acts, and again if pulled back behind it.
+- Disable animations, Force high refresh rate and Haptics now work. Animations start off on low-memory devices, and the refresh rate row shows the display's fastest rate.
+- Most played is pinned at the top of Playlists once something has been played enough to count.
+- The Playlists shortcut card shows the cover of the playlist listed first.
+
+### Changed
+
+- The queue has no separate reorder mode: every row can be dragged by its handle at any time, shuffled or not, and an undone removal goes back exactly where it was.
+- Round mode now shapes the whole app, not only covers: turned off, every corner is square.
+- Playlists lists only the playlists you made. Favorites and Recent keep their own shortcut cards.
+- Creating a playlist is one New playlist button: start empty, from a folder or from a playlist file, then name it. An empty Playlists screen offers to create one.
+- New defaults, for settings not yet changed: tracks and a playlist's tracks sort newest added first, playlists by last changed, covers are cropped square, the fast scroller's touch area is Narrow, the seek bar is circular, and Rewind before skip back and Stop after current track are off.
+
+### Fixed
+
+- A slightly slanted sideways swipe on the cover or mini player no longer drags the player sheet, and a slanted scroll no longer swipes a list row.
+- A drag the list, sheet or cover has taken is no longer snatched part-way by a row or the sheet, and a claimed drag no longer moves what is underneath it.
+- Swiping past the first or last cover and back now turns to the neighbouring cover.
+- Long pressing the artist under the player's title gives the same haptic as the title.
+- Removing a track from a shuffled queue no longer flashes the queue in its unshuffled order.
+- Importing a playlist file that matches no tracks no longer leaves an empty playlist behind.
+
 ## [1.2.0] - 2026-09-25
 
 ### Added
@@ -74,7 +102,8 @@ First stable release.
 - Artwork-based dynamic colours, light and dark themes, composed collection covers, animated launch screen and edge-to-edge layout.
 - In-app updates from GitHub Releases, with an option to check only on request.
 
-[Unreleased]: https://github.com/LhacenMed/Sona/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/LhacenMed/Sona/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/LhacenMed/Sona/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/LhacenMed/Sona/compare/v1.1.1...v1.2.0
 [1.1.0]: https://github.com/LhacenMed/Sona/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/LhacenMed/Sona/releases/tag/v1.0.0
