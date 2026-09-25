@@ -52,9 +52,6 @@ interface PlayStatsDao {
     )
     fun observeMostPlayed(): Flow<List<TrackEntity>>
 
-    @Query("SELECT COUNT(*) FROM play_stats")
-    fun observeRecentlyPlayedCount(): Flow<Int>
-
     @Query("SELECT COUNT(*) FROM play_stats WHERE playCount > 0")
     fun observeMostPlayedCount(): Flow<Int>
 }

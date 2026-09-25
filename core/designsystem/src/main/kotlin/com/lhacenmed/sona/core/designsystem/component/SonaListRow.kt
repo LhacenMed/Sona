@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -38,8 +39,11 @@ private const val SELECTED_ROW_TINT_ALPHA = 0.12f
 private const val SELECTED_ROW_FADE_IN_MILLIS = 200
 private const val SELECTED_ROW_FADE_OUT_MILLIS = 100
 
-/** The touch target a drag handle is centred in: Auxio's `size_touchable_small`. */
-private val DragHandleTouchSize = 48.dp
+/**
+ * The slot a row's trailing glyph - a drag handle, a pin - is centred in: Auxio's `size_touchable_small`,
+ * the touch target the options button's glyph sits in too, so every trailing glyph lines up with it.
+ */
+private val TrailingSlotSize = 48.dp
 
 /**
  * The drag handle a reorderable list hands its rows, or null in a list whose rows do not move.
@@ -86,7 +90,8 @@ fun Modifier.selectableRow(
  *
  * [cover] draws whatever stands for the row, told whether it is selected. [onOpenOptions] is null for
  * a row with no options of its own, which then draws no options button; [selection] is null for a list
- * that cannot be selected from, whose rows are plainly clickable.
+ * that cannot be selected from, whose rows are plainly clickable. [isPinned] marks a row held at the top
+ * of its list, with a pin where an options button would be.
  *
  * [containerColor] is what the row is painted on - the surface of whatever is listing it, so a row in
  * a sheet sits on the sheet's own colour rather than cutting a hole in it. [contentColor] is what reads
@@ -102,6 +107,7 @@ fun SonaListRow(
     onOpenOptions: (() -> Unit)?,
     modifier: Modifier = Modifier,
     isCurrent: Boolean = false,
+    isPinned: Boolean = false,
     onLongClick: (() -> Unit)? = null,
     containerColor: Color = MaterialTheme.colorScheme.surface,
     contentColor: Color = LocalContentColor.current,
@@ -172,13 +178,22 @@ fun SonaListRow(
                 if (dragHandle != null) {
                     Box(
                         modifier = Modifier
-                            .size(DragHandleTouchSize)
+                            .size(TrailingSlotSize)
                             .then(dragHandle),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             imageVector = Icons.Filled.DragHandle,
                             contentDescription = "Reorder",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                if (isPinned) {
+                    Box(modifier = Modifier.size(TrailingSlotSize), contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Filled.PushPin,
+                            contentDescription = "Pinned",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }

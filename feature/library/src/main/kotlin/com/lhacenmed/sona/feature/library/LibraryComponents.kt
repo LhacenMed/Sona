@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
@@ -21,6 +23,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -57,6 +62,7 @@ import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.component.shimmer
 import com.lhacenmed.sona.core.designsystem.component.swipe.LocalSwipeActions
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.model.Track
 import androidx.compose.material3.HorizontalDivider
 import com.lhacenmed.sona.core.designsystem.component.DetailHeader
@@ -105,7 +111,8 @@ private val LoadingCookieSize = 96.dp
  * would be a lie) or blank space (which reads as a broken screen, and was the "empty for a second,
  * then everything appears at once" the library used to show on launch). The placeholder is centred
  * in the space the list will fill, and takes up none of its layout, so the real list simply replaces
- * it. [loadingIcon] is what the placeholder shows: the icon of what the list holds.
+ * it. [loadingIcon] is what the placeholder shows: the icon of what the list holds. [emptyAction] is
+ * what an empty list offers to fill it, if anything.
  */
 @Composable
 internal fun <T> LibraryListContent(
@@ -116,6 +123,7 @@ internal fun <T> LibraryListContent(
     emptyMessage: String,
     loadingIcon: ImageVector,
     modifier: Modifier = Modifier,
+    emptyAction: EmptyStateAction? = null,
     body: @Composable (List<T>) -> Unit,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -129,7 +137,7 @@ internal fun <T> LibraryListContent(
                     emptyTitle = emptyTitle,
                     emptyMessage = emptyMessage,
                 )
-                EmptyLibraryState(title = title, message = message)
+                EmptyLibraryState(title = title, message = message, action = emptyAction)
             }
             content is LibraryContent.Ready -> body(content.items)
         }
@@ -413,11 +421,13 @@ internal fun emptyLibraryStateContent(
     else -> emptyTitle to emptyMessage
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun EmptyLibraryState(
     title: String,
     message: String,
     modifier: Modifier = Modifier,
+    action: EmptyStateAction? = null,
 ) {
     Column(
         modifier = modifier
@@ -435,8 +445,22 @@ internal fun EmptyLibraryState(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (action != null) {
+            Button(
+                onClick = action.onClick,
+                shapes = buttonPressShapes(),
+                modifier = Modifier.padding(top = 16.dp),
+            ) {
+                Icon(action.icon, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                Text(action.label)
+            }
+        }
     }
 }
+
+/** A button an empty list offers, to fill it - the playlists' "Create playlist". */
+internal class EmptyStateAction(val label: String, val icon: ImageVector, val onClick: () -> Unit)
 
 /**
  * What a detail screen's header says about its collection - see [DetailHeader]. [cover] is drawn at

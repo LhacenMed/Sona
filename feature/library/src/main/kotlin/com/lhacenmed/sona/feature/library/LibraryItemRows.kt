@@ -261,11 +261,11 @@ internal fun FolderRow(
 }
 
 /**
- * A row for a list of tracks with no library row of its own: Recent and Most played.
+ * A row for a list of tracks with no library row of its own - Most played, pinned above the playlists.
  *
- * They sit among the playlists, so they are drawn as playlists are - the list keeps one rhythm, and
- * they mark themselves while playing like everything else. Not being playlists, they have no options
- * of their own, and so no options button.
+ * It sits among the playlists, so it is drawn as they are - the list keeps one rhythm, and it marks
+ * itself while playing like everything else. Not being a playlist, it has no options of its own: its
+ * pin stands where a playlist's options button would.
  */
 @Composable
 internal fun TrackCollectionRow(
@@ -288,6 +288,7 @@ internal fun TrackCollectionRow(
         onOpenOptions = null,
         modifier = modifier,
         isCurrent = current,
+        isPinned = true,
     ) { isSelected ->
         SonaPlaylistCover(
             coverArtUris = coverArtUris,
