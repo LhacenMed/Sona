@@ -9,10 +9,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
+import com.lhacenmed.sona.core.designsystem.component.WindowOverlayHost
+import com.lhacenmed.sona.core.designsystem.component.fab.FloatingActionButtonStack
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.PlayerOverlay
 import com.lhacenmed.sona.feature.library.LibraryPagerScreen
 import com.lhacenmed.sona.feature.settings.SettingsScreen
+import com.lhacenmed.sona.feature.settings.screen.PlaybackScreen
+import com.lhacenmed.sona.feature.settings.screen.PlaybackSetting
 
 @Composable
 fun AppShell(playerOverlay: PlayerOverlay, modifier: Modifier = Modifier) {
@@ -27,17 +31,24 @@ fun AppShell(playerOverlay: PlayerOverlay, modifier: Modifier = Modifier) {
         )
     }
 
-    // The expandable player overlays the whole screen - collapsed, it's just a mini-bar pinned to the
-    // bottom; expanded, it covers everything. Each list keeps its own end clear of it, rather than the
-    // screen being cut short above it, so rows still scroll behind the mini player.
-    playerOverlay.Content {
-        // No top bar slot and no content insets: the library's own bar handles the status bar
-        // inset, so letting the Scaffold add it too would pad the screen twice.
-        Scaffold(modifier = modifier, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { innerPadding ->
-            LibraryPagerScreen(
-                modifier = Modifier.padding(innerPadding),
-                actions = libraryActions,
-            )
+    // Over the player too, so a screen can lay something over the whole window - the shuffle button's menu.
+    WindowOverlayHost {
+        // The expandable player overlays the whole screen - collapsed, it's just a mini-bar pinned to the
+        // bottom; expanded, it covers everything. Each list keeps its own end clear of it, rather than the
+        // screen being cut short above it, so rows still scroll behind the mini player.
+        playerOverlay.Content {
+            // Inside the player, so the screen's FABs stand clear of it.
+            FloatingActionButtonStack {
+                // No top bar slot and no content insets: the library's own bar handles the status bar
+                // inset, so letting the Scaffold add it too would pad the screen twice.
+                Scaffold(modifier = modifier, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { innerPadding ->
+                    LibraryPagerScreen(
+                        onChooseShuffleSource = { navigator.go(PlaybackScreen(scrollTo = PlaybackSetting.SHUFFLE_ALL_SOURCE)) },
+                        modifier = Modifier.padding(innerPadding),
+                        actions = libraryActions,
+                    )
+                }
+            }
         }
     }
 }

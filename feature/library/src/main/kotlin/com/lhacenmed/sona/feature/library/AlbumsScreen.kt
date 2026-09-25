@@ -19,7 +19,6 @@ fun AlbumsScreen(
     viewModel: LibraryViewModel,
     selection: SelectionState,
     listState: LazyListState,
-    onFastScrollingChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val albums by viewModel.albums.collectAsStateWithLifecycle()
@@ -43,7 +42,6 @@ fun AlbumsScreen(
         sectionOf = albumSections,
         modifier = modifier,
         listState = listState,
-        onFastScrollingChange = onFastScrollingChange,
     ) { album ->
         AlbumRow(
             album = album,

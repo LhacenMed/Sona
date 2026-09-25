@@ -7,6 +7,8 @@ import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.itemsOrEmpty
+import com.lhacenmed.sona.core.data.shuffle.ShuffleAllSource
+import com.lhacenmed.sona.core.data.shuffle.ShuffleAllSourceRepository
 import com.lhacenmed.sona.core.data.sort.LibrarySortOrders
 import com.lhacenmed.sona.core.datastore.LibrarySettings
 import com.lhacenmed.sona.core.datastore.LibraryTab
@@ -15,6 +17,7 @@ import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Folder
 import com.lhacenmed.sona.core.model.Genre
+import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.sort.SortableList
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
@@ -70,6 +73,7 @@ class LibraryViewModel @Inject constructor(
     private val repository: LibraryRepository,
     private val librarySettings: LibrarySettings,
     shuffleSettings: ShuffleSettings,
+    private val shuffleAllSources: ShuffleAllSourceRepository,
     private val mediaScanner: MediaScanner,
     private val playbackController: PlaybackController,
     sortOrders: LibrarySortOrders,
@@ -141,6 +145,12 @@ class LibraryViewModel @Inject constructor(
     val showShuffleAllButton: StateFlow<Boolean> = shuffleSettings.shuffleAllButton.flow
         .stateIn(viewModelScope, SharingStarted.Eagerly, shuffleSettings.shuffleAllButton.value)
 
+    /** What the shuffle-all button plays, and marks in its menu. */
+    val shuffleAllSource: StateFlow<ShuffleAllSource> = shuffleAllSources.source
+
+    /** Favorites, which the shuffle-all button's menu always offers. */
+    val favoritesPlaylistId: Long get() = repository.favoritesPlaylistId
+
     /**
      * Whether the library holds any track to shuffle - whatever a search narrows the tab to. A flag
      * rather than the list, so the pager that reads it is not recomposed by every library change.
@@ -183,9 +193,15 @@ class LibraryViewModel @Inject constructor(
         if (index >= 0) playbackController.playTracks(all, index)
     }
 
-    /** Shuffles every track in the library - see [PlaybackController.shuffleAll]. */
+    /** Shuffles what shuffle-all is set to play - see [PlaybackController.shuffleAll]. */
     fun onShuffleAll() {
         playbackController.shuffleAll()
+    }
+
+    /** Makes [parent] - every track, while null - what shuffle-all plays, and shuffles it now. */
+    fun onShuffleFrom(parent: PlaybackParent?) {
+        shuffleAllSources.choose(parent)
+        playbackController.shuffle(parent)
     }
 
     /** An explicit user-initiated rescan, which bypasses the unchanged-library skip. */

@@ -53,6 +53,8 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import com.lhacenmed.sona.core.designsystem.component.fab.screenList
+import com.lhacenmed.sona.core.designsystem.component.fab.scrollBackToTop
 import com.lhacenmed.sona.core.designsystem.theme.LocalFastScrollTouchArea
 import com.lhacenmed.sona.core.model.FastScrollTouchArea
 import kotlin.math.abs
@@ -106,8 +108,9 @@ private const val POPUP_BASE_ROTATION_DEGREES = 14f
  * [LocalFastScrollTouchArea]. The thumb stays clear of [LocalBottomContentPadding], so it never
  * slides under the mini player.
  *
- * [onFastScrollingChange] hears when the thumb starts and stops being dragged - Auxio's
- * `isFastScrolling`, which its home screen hides the shuffle button by.
+ * The list is its screen's list - see [screenList] - so its screen's FABs follow it, stepping aside while
+ * the thumb is dragged, as Auxio's home hides its shuffle button while `isFastScrolling`. [scrollToTop]
+ * is what their way back to the top does.
  *
  * Only while [enabled], and only for a list with somewhere to scroll.
  */
@@ -118,20 +121,11 @@ fun FastScroller(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     sectionAt: ((index: Int) -> String?)? = null,
-    onFastScrollingChange: (Boolean) -> Unit = {},
+    scrollToTop: suspend () -> Unit = { listState.scrollBackToTop() },
     content: @Composable () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val state = remember(listState, scope) { FastScrollerState(listState, scope) }
-    val latestOnFastScrollingChange by rememberUpdatedState(onFastScrollingChange)
-    LaunchedEffect(state) {
-        try {
-            snapshotFlow { state.isDragging }.drop(1).collect { latestOnFastScrollingChange(it) }
-        } finally {
-            // A list taken away mid-drag never lets go of the thumb, so the drag is ended for it.
-            if (state.isDragging) latestOnFastScrollingChange(false)
-        }
-    }
     val canFastScroll by remember(listState) {
         derivedStateOf { listState.canScrollForward || listState.canScrollBackward }
     }
@@ -154,76 +148,78 @@ fun FastScroller(
     }
 
     Box(
-        modifier = modifier.pointerInput(state, isActive, isRtl, bottomPaddingPx, edgeWidth) {
-            if (!isActive) return@pointerInput
-            val thumbWidthPx = ThumbWidth.toPx()
-            val edgeWidthPx = max(edgeWidth.toPx(), thumbWidthPx)
-            fun thumbRangePx() = thumbRangePx(size.height, bottomPaddingPx, thumbHeightPx)
-            fun thumbTopPx() = listState.scrollFraction() * thumbRangePx()
-            // The thumb's column, and the edge that reaches for it - never narrower than the column, and
-            // kept within the list: Auxio's `isUnder`. The thumb is taller than a touch target already.
-            val columnStart = if (isRtl) 0f else size.width - thumbWidthPx
-            val targetStart = if (isRtl) 0f else size.width - edgeWidthPx
-            fun isInColumn(x: Float) = x >= columnStart && x < columnStart + thumbWidthPx
-            fun isInTarget(x: Float) = x >= targetStart && x < targetStart + edgeWidthPx
-            fun isOnThumb(x: Float, y: Float) = isInTarget(x) && y >= thumbTopPx() && y < thumbTopPx() + thumbHeightPx
-            // The column's outermost quarter, where a touch takes the thumb straight to the finger.
-            fun isAtOuterEdge(x: Float) = if (isRtl) x < thumbWidthPx / 4 else x > size.width - thumbWidthPx / 4
-            fun thumbTopUnder(y: Float) = y - thumbHeightPx / 2
+        modifier = modifier
+            .screenList(listState, isFastScrolling = { state.isDragging }, scrollToTop = scrollToTop)
+            .pointerInput(state, isActive, isRtl, bottomPaddingPx, edgeWidth) {
+                if (!isActive) return@pointerInput
+                val thumbWidthPx = ThumbWidth.toPx()
+                val edgeWidthPx = max(edgeWidth.toPx(), thumbWidthPx)
+                fun thumbRangePx() = thumbRangePx(size.height, bottomPaddingPx, thumbHeightPx)
+                fun thumbTopPx() = listState.scrollFraction() * thumbRangePx()
+                // The thumb's column, and the edge that reaches for it - never narrower than the column, and
+                // kept within the list: Auxio's `isUnder`. The thumb is taller than a touch target already.
+                val columnStart = if (isRtl) 0f else size.width - thumbWidthPx
+                val targetStart = if (isRtl) 0f else size.width - edgeWidthPx
+                fun isInColumn(x: Float) = x >= columnStart && x < columnStart + thumbWidthPx
+                fun isInTarget(x: Float) = x >= targetStart && x < targetStart + edgeWidthPx
+                fun isOnThumb(x: Float, y: Float) = isInTarget(x) && y >= thumbTopPx() && y < thumbTopPx() + thumbHeightPx
+                // The column's outermost quarter, where a touch takes the thumb straight to the finger.
+                fun isAtOuterEdge(x: Float) = if (isRtl) x < thumbWidthPx / 4 else x > size.width - thumbWidthPx / 4
+                fun thumbTopUnder(y: Float) = y - thumbHeightPx / 2
 
-            awaitEachGesture {
-                val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                var ownsGesture = false
-                var dragStartY = 0f
-                var dragStartThumbTop = 0f
-                fun startDragging(fromY: Float, fromThumbTop: Float) {
-                    dragStartY = fromY
-                    dragStartThumbTop = fromThumbTop
-                    ownsGesture = true
-                    state.startDragging()
-                }
-
-                val downX = down.position.x
-                val downY = down.position.y
-                if (isInColumn(downX)) {
-                    if (isOnThumb(downX, downY)) {
-                        startDragging(downY, thumbTopPx())
-                    } else if (isAtOuterEdge(downX)) {
-                        listState.scrollToThumbTop(thumbTopUnder(downY), thumbRangePx())
-                        startDragging(downY, thumbTopUnder(downY))
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    var ownsGesture = false
+                    var dragStartY = 0f
+                    var dragStartThumbTop = 0f
+                    fun startDragging(fromY: Float, fromThumbTop: Float) {
+                        dragStartY = fromY
+                        dragStartThumbTop = fromThumbTop
+                        ownsGesture = true
+                        state.startDragging()
                     }
-                }
-                if (ownsGesture) down.consume()
 
-                var lastY = downY
-                try {
-                    while (true) {
-                        val change = awaitPointerEvent(PointerEventPass.Initial).changes
-                            .firstOrNull { it.id == down.id } ?: break
-                        if (!change.pressed) {
-                            if (ownsGesture) change.consume()
-                            break
+                    val downX = down.position.x
+                    val downY = down.position.y
+                    if (isInColumn(downX)) {
+                        if (isOnThumb(downX, downY)) {
+                            startDragging(downY, thumbTopPx())
+                        } else if (isAtOuterEdge(downX)) {
+                            listState.scrollToThumbTop(thumbTopUnder(downY), thumbRangePx())
+                            startDragging(downY, thumbTopUnder(downY))
                         }
-                        val y = change.position.y
-                        if (!ownsGesture && isInTarget(downX) && abs(y - downY) > viewConfiguration.touchSlop) {
-                            if (isOnThumb(downX, downY)) {
-                                startDragging(lastY, thumbTopPx())
-                            } else {
-                                listState.scrollToThumbTop(thumbTopUnder(y), thumbRangePx())
-                                startDragging(y, thumbTopUnder(y))
+                    }
+                    if (ownsGesture) down.consume()
+
+                    var lastY = downY
+                    try {
+                        while (true) {
+                            val change = awaitPointerEvent(PointerEventPass.Initial).changes
+                                .firstOrNull { it.id == down.id } ?: break
+                            if (!change.pressed) {
+                                if (ownsGesture) change.consume()
+                                break
                             }
+                            val y = change.position.y
+                            if (!ownsGesture && isInTarget(downX) && abs(y - downY) > viewConfiguration.touchSlop) {
+                                if (isOnThumb(downX, downY)) {
+                                    startDragging(lastY, thumbTopPx())
+                                } else {
+                                    listState.scrollToThumbTop(thumbTopUnder(y), thumbRangePx())
+                                    startDragging(y, thumbTopUnder(y))
+                                }
+                            }
+                            if (ownsGesture) {
+                                listState.scrollToThumbTop(dragStartThumbTop + (y - dragStartY), thumbRangePx())
+                                change.consume()
+                            }
+                            lastY = y
                         }
-                        if (ownsGesture) {
-                            listState.scrollToThumbTop(dragStartThumbTop + (y - dragStartY), thumbRangePx())
-                            change.consume()
-                        }
-                        lastY = y
+                    } finally {
+                        if (ownsGesture) state.stopDragging()
                     }
-                } finally {
-                    if (ownsGesture) state.stopDragging()
                 }
-            }
-        },
+            },
     ) {
         content()
 

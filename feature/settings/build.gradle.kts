@@ -30,6 +30,7 @@ dependencies {
     implementation(project(":core:common"))
     implementation(project(":core:designsystem"))
     implementation(project(":feature:scanner"))
+    implementation(project(":feature:library"))
     implementation(project(":feature:player"))
     implementation(project(":feature:update"))
 

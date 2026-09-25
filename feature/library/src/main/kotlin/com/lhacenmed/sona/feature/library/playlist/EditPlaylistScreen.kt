@@ -51,6 +51,7 @@ import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.SonaTrackRow
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
+import com.lhacenmed.sona.core.designsystem.component.fab.screenList
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.model.PlaylistCover
 import com.lhacenmed.sona.core.model.Track
@@ -134,10 +135,12 @@ data class EditPlaylistScreen(val playlistId: Long) : Screen {
             )
             if (!viewModel.isDraftReady) return@Column
 
+            val scrollState = rememberScrollState()
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
+                    .screenList(scrollState)
+                    .verticalScroll(scrollState)
                     .padding(bottom = LocalBottomContentPadding.current),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {

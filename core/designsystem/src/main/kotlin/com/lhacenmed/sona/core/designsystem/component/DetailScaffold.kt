@@ -61,6 +61,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.component.fab.scrollBackToTop
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
@@ -68,6 +69,7 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
 /**
@@ -154,6 +156,19 @@ class DetailHeaderState internal constructor(
         if (from <= 0f || from >= range) return
         val target = if (from < range / 2) 0f else range
         settleJob = scope.launch { animate(from, target) { value, _ -> collapsedPx = value } }
+    }
+
+    /**
+     * Takes the list back to its first row with the header opening as it goes - the screen as it opened.
+     * A scroll made here passes no nested scroll to the header, so it is opened alongside; while set aside
+     * for a search, it stays aside.
+     */
+    internal suspend fun scrollToTop() = coroutineScope {
+        if (!isHeaderAside) {
+            settleJob?.cancel()
+            launch { animate(scrollCollapsedPx, 0f) { value, _ -> collapsedPx = value } }
+        }
+        listState.scrollBackToTop()
     }
 
     internal val nestedScrollConnection = object : NestedScrollConnection {
@@ -303,7 +318,7 @@ fun DetailScaffold(
                     // the thumb moves the list directly, past the header's collapse, which would leave
                     // the header standing open over a list scrolled somewhere else.
                     val isCollapsed by remember(state) { derivedStateOf { state.shownCollapse == 1f } }
-                    FastScroller(listState = listState, enabled = isCollapsed) {
+                    FastScroller(listState = listState, enabled = isCollapsed, scrollToTop = state::scrollToTop) {
                         CompositionLocalProvider(LocalDragSelection provides dragSelection) {
                             LazyColumn(
                                 state = listState,

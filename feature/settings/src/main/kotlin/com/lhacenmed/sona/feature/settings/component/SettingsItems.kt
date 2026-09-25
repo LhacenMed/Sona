@@ -190,7 +190,10 @@ fun SettingsChoiceItem(
     }
 }
 
-/** A row whose stored value is one of a fixed set, picked from a dialog. */
+/**
+ * A row whose stored value is one of a fixed set, picked from a dialog. [summary] says what it is set
+ * to, where the chosen option alone would say too little.
+ */
 @Composable
 fun SettingsChoiceItem(
     title: String,
@@ -198,12 +201,13 @@ fun SettingsChoiceItem(
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    summary: String = options[selectedIndex],
 ) {
     var isChoosing by remember { mutableStateOf(false) }
 
     ListItem(
         headlineContent = { Text(title) },
-        supportingContent = { Text(options[selectedIndex]) },
+        supportingContent = { Text(summary) },
         modifier = modifier.clickable { isChoosing = true },
     )
 

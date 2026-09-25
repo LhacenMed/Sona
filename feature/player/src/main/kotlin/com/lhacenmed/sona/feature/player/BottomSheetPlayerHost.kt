@@ -8,13 +8,13 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
-import com.lhacenmed.sona.core.designsystem.component.LocalPlayerSheetRaised
+import com.lhacenmed.sona.core.designsystem.component.LocalPlayerSheetHeight
+import com.lhacenmed.sona.core.designsystem.component.PlayerSheetHeight
 import com.lhacenmed.sona.core.model.Track
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -28,8 +28,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
  * when the queue is emptied - and holds still while neither is known yet.
  *
  * [content] is the screen it lays itself over, told through [LocalBottomContentPadding] how much of its
- * bottom the mini player covers, and the gap to keep above it, and through [LocalPlayerSheetRaised]
- * when the player is raised above it.
+ * bottom the mini player covers, and the gap to keep above it, and through [LocalPlayerSheetHeight]
+ * how high the player reaches up over it at every moment.
  */
 @Composable
 fun BottomSheetPlayerHost(
@@ -71,15 +71,14 @@ fun BottomSheetPlayerHost(
             }
         }
 
-        // Read through derived state, so the screen hears only the moment the sheet leaves or settles
-        // back on the mini player, not every frame of a drag.
-        val isRaised by remember(state) { derivedStateOf { state.value > state.collapsedBound } }
+        // Read by the screen where it lays out or draws, so following every frame of a drag recomposes nothing.
+        val sheetHeight = remember(state) { PlayerSheetHeight(current = { state.value }, collapsed = state.collapsedBound) }
 
         // Held clear whether or not a track is loaded, so a list's end stays where it is as the mini
         // player comes and goes rather than jumping under it.
         CompositionLocalProvider(
             LocalBottomContentPadding provides miniPlayerClearance + MiniPlayerContentSpacing,
-            LocalPlayerSheetRaised provides isRaised,
+            LocalPlayerSheetHeight provides sheetHeight,
         ) {
             content()
         }

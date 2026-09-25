@@ -10,6 +10,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
@@ -88,6 +89,15 @@ fun SonaTheme(
             content = content,
         )
     }
+}
+
+/**
+ * [content] moving on Material's expressive springs - which overshoot and settle - rather than the app's
+ * standard ones: whatever inside reads [MaterialTheme.motionScheme], Material's own components included.
+ */
+@Composable
+fun ExpressiveMotion(content: @Composable () -> Unit) {
+    MaterialTheme(motionScheme = MotionScheme.expressive(), content = content)
 }
 
 /** The two schemes a transition runs between, and how far along it is. */

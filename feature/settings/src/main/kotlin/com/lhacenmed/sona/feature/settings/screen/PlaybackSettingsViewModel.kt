@@ -2,6 +2,8 @@ package com.lhacenmed.sona.feature.settings.screen
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lhacenmed.sona.core.data.shuffle.ShuffleAllSource
+import com.lhacenmed.sona.core.data.shuffle.ShuffleAllSourceRepository
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.datastore.ShuffleSettings
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,6 +18,7 @@ import kotlinx.coroutines.launch
 class PlaybackSettingsViewModel @Inject constructor(
     private val playbackSettings: PlaybackSettings,
     private val shuffleSettings: ShuffleSettings,
+    private val shuffleAllSources: ShuffleAllSourceRepository,
 ) : ViewModel() {
 
     val rewindBeforeSkipBack: StateFlow<Boolean> = playbackSettings.rewindBeforeSkipBack.flow
@@ -35,6 +38,8 @@ class PlaybackSettingsViewModel @Inject constructor(
 
     val shuffleAllButton: StateFlow<Boolean> = shuffleSettings.shuffleAllButton.flow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), shuffleSettings.shuffleAllButton.value)
+
+    val shuffleAllSource: StateFlow<ShuffleAllSource> = shuffleAllSources.source
 
     fun setRewindBeforeSkipBack(enabled: Boolean) {
         viewModelScope.launch { playbackSettings.setRewindBeforeSkipBack(enabled) }
@@ -58,5 +63,10 @@ class PlaybackSettingsViewModel @Inject constructor(
 
     fun setShuffleAllButton(enabled: Boolean) {
         viewModelScope.launch { shuffleSettings.setShuffleAllButton(enabled) }
+    }
+
+    /** Makes shuffle-all play every track again; a collection is chosen on its own picker instead. */
+    fun chooseAllTracksForShuffleAll() {
+        shuffleAllSources.choose(null)
     }
 }

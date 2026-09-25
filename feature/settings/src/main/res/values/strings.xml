@@ -126,7 +126,15 @@
     <string name="remember_shuffle_order_title">Remember shuffle order</string>
     <string name="remember_shuffle_order_summary">Play on in the same order when the app reopens</string>
     <string name="shuffle_all_button_title">Shuffle all button</string>
-    <string name="shuffle_all_button_summary">Show a button that shuffles your whole library</string>
+    <string name="shuffle_all_button_summary">Show a button that shuffles your library</string>
+    <string name="shuffle_all_source_title">Shuffle all plays</string>
+    <string name="shuffle_all_source_collection">%1$s: %2$s</string>
+    <string name="shuffle_source_all_tracks">All tracks</string>
+    <string name="shuffle_source_playlist">Playlist</string>
+    <string name="shuffle_source_artist">Artist</string>
+    <string name="shuffle_source_album">Album</string>
+    <string name="shuffle_source_genre">Genre</string>
+    <string name="shuffle_source_folder">Folder</string>
     <string name="playback_queue_section">Queue</string>
     <string name="persistent_queue_title">Restore the queue</string>
     <string name="persistent_queue_summary">Bring the queue back when the app reopens</string>
