@@ -1,5 +1,8 @@
 package com.lhacenmed.sona.core.designsystem.icon
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Input
+import androidx.compose.material.icons.filled.Output
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -162,25 +165,11 @@ object SonaIcons {
         )
     }
 
-    /** Auxio's `ic_import_24`. */
-    val Import: ImageVector by lazy {
-        icon(
-            name = "Import",
-            size = 24.dp,
-            viewportSize = 960f,
-            pathData = "M440,760L520,760L520,593L584,657L640,600L480,440L320,600L377,656L440,593L440,760ZM240,880Q207,880 183.5,856.5Q160,833 160,800L160,160Q160,127 183.5,103.5Q207,80 240,80L560,80L800,320L800,800Q800,833 776.5,856.5Q753,880 720,880L240,880ZM520,360L520,160L240,160Q240,160 240,160Q240,160 240,160L240,800Q240,800 240,800Q240,800 240,800L720,800Q720,800 720,800Q720,800 720,800L720,360L520,360Z",
-        )
-    }
+    /** Material's `input`: an arrow entering a box - bringing a playlist in from a file. */
+    val Import: ImageVector get() = Icons.AutoMirrored.Filled.Input
 
-    /** Auxio's `ic_save_24`: export a playlist. */
-    val Export: ImageVector by lazy {
-        icon(
-            name = "Export",
-            size = 24.dp,
-            viewportSize = 960f,
-            pathData = "M840,280L840,840L120,840L120,120L680,120L840,280ZM760,314L646,200L200,200L200,760L760,760L760,314ZM480,720Q530,720 565,685Q600,650 600,600Q600,550 565,515Q530,480 480,480Q430,480 395,515Q360,550 360,600Q360,650 395,685Q430,720 480,720ZM240,400L600,400L600,240L240,240L240,400Z",
-        )
-    }
+    /** Material's `output`: an arrow leaving a box - writing a playlist or tracks out to a file. */
+    val Export: ImageVector get() = Icons.Filled.Output
 
     /** Auxio's `ic_delete_24`. */
     val Delete: ImageVector by lazy {
