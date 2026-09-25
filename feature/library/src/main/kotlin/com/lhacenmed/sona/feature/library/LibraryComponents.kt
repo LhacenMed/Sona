@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
@@ -568,7 +569,7 @@ internal fun TrackListDetail(
                     actions = buildList {
                         if (collection == null) {
                             add(
-                                TopBarAction(label = "Export", icon = SonaIcons.Export) {
+                                TopBarAction(label = "Export", icon = Icons.Filled.FileUpload) {
                                     exportLauncher.launch("$title.m3u")
                                 },
                             )
