@@ -15,9 +15,8 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
 import com.lhacenmed.sona.core.data.LibraryRepository
-import com.lhacenmed.sona.core.data.isLoading
-import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.data.lyrics.LyricsPreloadManager
+import com.lhacenmed.sona.core.data.shuffle.ShuffleAllSourceRepository
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
 import com.lhacenmed.sona.core.database.entity.QueueItemEntity
@@ -67,6 +66,7 @@ class PlaybackController @Inject constructor(
     private val repository: LibraryRepository,
     private val playbackSettings: PlaybackSettings,
     private val shuffleSettings: ShuffleSettings,
+    private val shuffleAllSources: ShuffleAllSourceRepository,
     private val lyricsPreloadManager: LyricsPreloadManager,
 ) {
 
@@ -206,19 +206,31 @@ class PlaybackController @Inject constructor(
     }
 
     /**
-     * Shuffles every track in the library, in the order the Tracks tab lists them, from one picked at
-     * random - Auxio's `shuffleAll`. As playing from that tab does, it marks no collection as playing.
-     *
-     * Waits for the library and for the saved queue to be back, so asked for as the app opens - from
-     * the launcher shortcut - it is neither lost nor overwritten by the queue being restored.
+     * Shuffles what shuffle-all is set to play - every track, or the one collection chosen instead; see
+     * [ShuffleAllSourceRepository]. The launcher shortcut and the library's button both come here.
      */
     fun shuffleAll() {
-        scope.launch {
-            val tracks = repository.tracks.first { !it.isLoading }.itemsOrEmpty
-            if (tracks.isEmpty()) return@launch
-            playbackState.first { it.isReady }
-            playTracks(tracks, tracks.indices.random(), parent = null, shuffled = true)
-        }
+        scope.launch { shuffleNow(shuffleAllSources.current().parent) }
+    }
+
+    /**
+     * Shuffles [parent]'s tracks - every track in the library while it is null - in the order its own list
+     * shows them, from one picked at random: Auxio's `shuffleAll`. It is what the queue plays from, so its
+     * list is marked as playing, and every track marks none - as playing from the Tracks tab does.
+     */
+    fun shuffle(parent: PlaybackParent?) {
+        scope.launch { shuffleNow(parent) }
+    }
+
+    /**
+     * Waits for the tracks and for the saved queue to be back, so asked for as the app opens - from the
+     * launcher shortcut - it is neither lost nor overwritten by the queue being restored.
+     */
+    private suspend fun shuffleNow(parent: PlaybackParent?) {
+        val tracks = shuffleAllSources.tracks(parent)
+        if (tracks.isEmpty()) return
+        playbackState.first { it.isReady }
+        playTracks(tracks, tracks.indices.random(), parent, shuffled = true)
     }
 
     /** Pauses or plays by what the play/pause button shows, so a press always does what it says. */

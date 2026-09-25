@@ -25,6 +25,7 @@ import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Folder
 import com.lhacenmed.sona.core.model.Genre
+import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.PlaylistCover
 import com.lhacenmed.sona.core.model.Track
@@ -45,6 +46,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.stateIn
 
 /**
@@ -344,6 +346,30 @@ class LibraryRepository @Inject constructor(
             LibraryContent.Ready(entities.map { it.toDomain() })
         }
 
+    /** [parent]'s tracks, in the order its own list shows them - what playing it from anywhere plays. */
+    fun collectionTracks(parent: PlaybackParent): Flow<LibraryContent<Track>> = when (parent) {
+        is PlaybackParent.Album -> albumTracks(parent.albumId)
+        is PlaybackParent.Artist -> artistTracks(parent.artistId)
+        is PlaybackParent.Genre -> genreTracks(parent.genreId)
+        is PlaybackParent.Playlist -> playlistTracks(parent.playlistId)
+        is PlaybackParent.Folder -> folderTracks(parent.folderPath)
+        PlaybackParent.RecentlyPlayed -> recentlyPlayedTracks()
+        PlaybackParent.MostPlayed -> mostPlayedTracks()
+    }
+
+    /**
+     * [parent]'s name as the library has it now, or null once it is no longer in the library - and for
+     * the two listening histories, which have no name of their own to give.
+     */
+    fun collectionName(parent: PlaybackParent): Flow<String?> = when (parent) {
+        is PlaybackParent.Album -> album(parent.albumId).map { it?.title }
+        is PlaybackParent.Artist -> artist(parent.artistId).map { it?.name }
+        is PlaybackParent.Genre -> genre(parent.genreId).map { it?.name }
+        is PlaybackParent.Playlist -> playlists.readyItems().map { all -> all.find { it.id == parent.playlistId }?.name }
+        is PlaybackParent.Folder -> folders.readyItems().map { all -> all.find { it.path == parent.folderPath }?.name }
+        PlaybackParent.RecentlyPlayed, PlaybackParent.MostPlayed -> flowOf(null)
+    }.distinctUntilChanged()
+
     /**
      * The ids in Favorites, for anything that only needs to know whether a track is one.
      *
@@ -396,6 +422,9 @@ class LibraryRepository @Inject constructor(
         return combine(sortOrders.order(target), intelligentSorting, ::sectionsFor)
             .stateIn(scope, SharingStarted.Eagerly, sectionsFor(sortOrders.currentOrder(target), intelligentSorting.value))
     }
+
+    /** The rows once read - a missing collection is then really missing, not merely not loaded yet. */
+    private fun <T> Flow<LibraryContent<T>>.readyItems(): Flow<List<T>> = mapNotNull { it.itemsOrNull }
 
     private fun <T> Flow<List<T>>.shareContent(): StateFlow<LibraryContent<T>> =
         map { LibraryContent.Ready(it) as LibraryContent<T> }

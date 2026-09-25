@@ -7,8 +7,8 @@ import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 
 /**
- * The launcher's "Shuffle all" shortcut - Auxio's. It opens the library and shuffles every track,
- * exactly as the library's shuffle-all button does.
+ * The launcher's "Shuffle all" shortcut - Auxio's. It opens the library and shuffles whatever
+ * shuffle-all is set to play - every track, or the collection chosen - exactly as the library's button does.
  *
  * Published by the app as it starts rather than declared in the manifest, which is what Auxio does
  * too: a declared shortcut names one package, while a published one opens whichever build published
