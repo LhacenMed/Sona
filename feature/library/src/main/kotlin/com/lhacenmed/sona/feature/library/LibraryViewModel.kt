@@ -3,6 +3,7 @@ package com.lhacenmed.sona.feature.library
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.itemsOrEmpty
@@ -21,7 +22,6 @@ import com.lhacenmed.sona.feature.library.sort.SortControl
 import com.lhacenmed.sona.feature.library.sort.control
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.scanner.MediaScanner
-import com.lhacenmed.sona.feature.scanner.hasScannerPermission
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -158,12 +158,12 @@ class LibraryViewModel @Inject constructor(
     // starts/stops (the moment it would actually change, since granting it is what unblocks the
     // first scan) is enough to avoid a stale "permission needed" message without any polling.
     val hasPermission: StateFlow<Boolean> = mediaScanner.isScanning
-        .map { context.hasScannerPermission() }
+        .map { AppPermission.AUDIO_LIBRARY.isGranted(context) }
         .distinctUntilChanged()
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),
-            context.hasScannerPermission(),
+            AppPermission.AUDIO_LIBRARY.isGranted(context),
         )
 
     /**

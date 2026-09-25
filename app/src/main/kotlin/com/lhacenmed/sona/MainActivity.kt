@@ -12,6 +12,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.datastore.UpdateSettings
 import com.lhacenmed.sona.core.designsystem.SonaActivity
@@ -24,8 +25,6 @@ import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.PlayerOverlay
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.scanner.MediaScanner
-import com.lhacenmed.sona.feature.scanner.hasScannerPermission
-import com.lhacenmed.sona.feature.scanner.scannerRequiredPermission
 import com.lhacenmed.sona.feature.update.NetworkMonitor
 import com.lhacenmed.sona.feature.update.UpdateChecker
 import com.lhacenmed.sona.feature.update.UpdateRegistry
@@ -75,9 +74,9 @@ class MainActivity : SonaActivity() {
     @Inject
     lateinit var playbackController: PlaybackController
 
-    private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (granted) mediaScanner.requestScan()
+    private val launchPermissionsLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+            if (AppPermission.AUDIO_LIBRARY.isGranted(this)) mediaScanner.requestScan()
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -102,14 +101,23 @@ class MainActivity : SonaActivity() {
             content.invalidate()
         }
 
-        if (hasScannerPermission()) {
+        if (AppPermission.AUDIO_LIBRARY.isGranted(this)) {
             // Fire-and-forget on the application scope: a scan is process-wide work, and tying it
             // to this activity meant every configuration change restarted it from the beginning.
             // It also no longer blocks anything - the library on screen comes from the database,
             // and the scan only reconciles what changed since last time (usually nothing).
             mediaScanner.requestScan()
-        } else {
-            requestPermissionLauncher.launch(scannerRequiredPermission())
+        }
+
+        // Every launch asks, in one dialog, for whatever the app is hardly usable without and has not
+        // been granted. Android stops showing it for a permission the user keeps declining, so this
+        // never nags; Settings > Permissions is where such a permission is granted after that. Not on
+        // a recreation, which would stack a second dialog over the first.
+        if (savedInstanceState == null) {
+            val missingPermissions = AppPermission.needed
+                .filter { it.isAskedAtLaunch && !it.isGranted(this) }
+                .mapNotNull { it.runtimePermission }
+            if (missingPermissions.isNotEmpty()) launchPermissionsLauncher.launch(missingPermissions.toTypedArray())
         }
 
         checkForUpdate()
