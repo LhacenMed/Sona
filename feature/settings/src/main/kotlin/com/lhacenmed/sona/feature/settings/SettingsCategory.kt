@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lyrics
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.TouchApp
@@ -18,6 +19,7 @@ import com.lhacenmed.sona.feature.settings.screen.BehaviorScreen
 import com.lhacenmed.sona.feature.settings.screen.ContentScreen
 import com.lhacenmed.sona.feature.settings.screen.ListeningStatsScreen
 import com.lhacenmed.sona.feature.settings.screen.LyricsScreen
+import com.lhacenmed.sona.feature.settings.screen.PermissionsScreen
 import com.lhacenmed.sona.feature.settings.screen.PlaybackScreen
 import com.lhacenmed.sona.feature.settings.screen.StorageScreen
 import com.lhacenmed.sona.feature.settings.screen.UpdatesScreen
@@ -84,6 +86,13 @@ enum class SettingsCategory(
         summaryRes = R.string.listening_stats_summary,
         icon = Icons.AutoMirrored.Filled.ShowChart,
         screen = ListeningStatsScreen,
+    ),
+    Permissions(
+        group = SettingsGroup.App,
+        titleRes = R.string.permissions_title,
+        summaryRes = R.string.permissions_summary,
+        icon = Icons.Filled.Security,
+        screen = PermissionsScreen,
     ),
     Storage(
         group = SettingsGroup.App,

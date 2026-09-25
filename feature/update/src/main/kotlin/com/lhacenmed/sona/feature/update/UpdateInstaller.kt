@@ -2,24 +2,19 @@ package com.lhacenmed.sona.feature.update
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
-import android.os.Build
-import android.provider.Settings
-import androidx.annotation.RequiresApi
 import androidx.core.content.FileProvider
+import com.lhacenmed.sona.core.common.permission.AppPermission
 import java.io.File
 
 /**
- * Launches the system package installer for a downloaded APK. On Android O+ the app must first hold
- * the user's "install unknown apps" grant — [canInstall] reports it and [requestPermissionIntent]
+ * Launches the system package installer for a downloaded APK. The app must first hold the user's
+ * "install unknown apps" grant, [AppPermission.APP_INSTALLS] — [canInstall] reports it and [requestPermissionIntent]
  * opens the settings screen where the user grants it once.
  */
 object UpdateInstaller {
 
-    /** True when the installer can be launched directly (pre-O, or the grant is already held). */
-    fun canInstall(context: Context): Boolean =
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
-            context.packageManager.canRequestPackageInstalls()
+    /** True when the installer can be launched directly - the grant is already held. */
+    fun canInstall(context: Context): Boolean = AppPermission.APP_INSTALLS.isGranted(context)
 
     /** ACTION_VIEW install intent for [apk], shared through the app's FileProvider. */
     fun installIntent(context: Context, apk: File): Intent {
@@ -31,8 +26,6 @@ object UpdateInstaller {
     }
 
     /** Settings screen where the user grants this app permission to install unknown apps. */
-    @RequiresApi(Build.VERSION_CODES.O)
     fun requestPermissionIntent(context: Context): Intent =
-        Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}"))
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        AppPermission.APP_INSTALLS.settingsIntent(context).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 }
