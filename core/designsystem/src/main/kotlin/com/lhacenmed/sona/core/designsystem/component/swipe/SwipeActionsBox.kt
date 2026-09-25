@@ -6,7 +6,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.horizontalDrag
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.runtime.Composable
@@ -32,6 +31,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.gesture.awaitSteepDragSlop
+import com.lhacenmed.sona.core.designsystem.gesture.dragUntilRelease
 import com.lhacenmed.sona.core.designsystem.motion.RubberBandSettleDurationMillis
 import com.lhacenmed.sona.core.designsystem.motion.RubberBandSettleEasing
 import com.lhacenmed.sona.core.designsystem.motion.SwipeArmFraction
@@ -132,10 +132,10 @@ fun SwipeActionsBox(
                     var isArmed = false
 
                     try {
-                        val isReleased = horizontalDrag(down.id) { change ->
-                            // Read before consuming: a consumed change reports no movement.
+                        // Every movement is the row's until the finger lifts - an upward or downward one too,
+                        // so the list never scrolls under a row being swiped.
+                        val isReleased = dragUntilRelease(down.id) { change ->
                             dragPull += change.positionChange().x
-                            change.consume()
                             val arm = armFor(dragPull)
                             dragOffset = rubberBandOffset(dragPull, arm, stretchLimit())
                             val reachedArm = arm > 0f && abs(dragOffset) >= arm

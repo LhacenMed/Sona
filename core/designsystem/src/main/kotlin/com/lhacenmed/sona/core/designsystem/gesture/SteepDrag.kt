@@ -3,7 +3,9 @@ package com.lhacenmed.sona.core.designsystem.gesture
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.AwaitPointerEventScope
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerId
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.positionChange
 import kotlin.math.abs
@@ -20,11 +22,12 @@ private const val SteepDragMinRatio = 2f
  * Watches [pointerId] a touch slop of movement at a time, and claims the gesture with the first stretch
  * that went steeply along [orientation] - [SteepDragMinRatio] times further along it than across -
  * returning how far that stretch went along it. A shallower stretch is let go and the next one measured
- * afresh, so a drag that turns steep part-way is claimed once it does, unless something else has taken
- * it first.
+ * afresh, so a drag that turns steep part-way is claimed once it does.
  *
- * Returns null, claiming nothing, for a pointer lifted, or taken first by whatever else is listening -
- * a list's scroll, a sheet, a pager.
+ * Returns null, claiming nothing, for a pointer lifted, or taken by whatever else is listening - a list's
+ * scroll, a sheet, a pager. What is laid out around this sees each movement after it does, so every
+ * movement not claimed here is let through to them first, and one they took ends the watch: the gesture
+ * is theirs, and is never taken back from them part-way.
  */
 suspend fun AwaitPointerEventScope.awaitSteepDragSlop(pointerId: PointerId, orientation: Orientation): Float? {
     val touchSlop = viewConfiguration.touchSlop
@@ -42,5 +45,28 @@ suspend fun AwaitPointerEventScope.awaitSteepDragSlop(pointerId: PointerId, orie
             }
             stretch = Offset.Zero
         }
+        awaitPointerEvent(PointerEventPass.Final)
+        if (change.isConsumed) return null
+    }
+}
+
+/**
+ * Follows [pointerId], once [awaitSteepDragSlop] has claimed it, to its release - handing [onDrag] each
+ * change before consuming it, and consuming every one, across the axis too: once a drag is claimed nothing
+ * else moves until the finger lifts. Returns whether it ended in the finger lifting, rather than the
+ * pointer being lost.
+ */
+suspend fun AwaitPointerEventScope.dragUntilRelease(
+    pointerId: PointerId,
+    onDrag: (PointerInputChange) -> Unit,
+): Boolean {
+    while (true) {
+        val change = awaitPointerEvent().changes.firstOrNull { it.id == pointerId } ?: return false
+        if (change.changedToUpIgnoreConsumed()) {
+            change.consume()
+            return true
+        }
+        onDrag(change)
+        change.consume()
     }
 }
