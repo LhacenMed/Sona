@@ -239,10 +239,7 @@ class LibraryRepository @Inject constructor(
     }
         .shareContent()
 
-    /** How many tracks each derived list would show, for the playlists tab's subtitles. */
-    val recentlyPlayedCount: StateFlow<Int> = playStatsDao.observeRecentlyPlayedCount()
-        .stateIn(scope, SharingStarted.Eagerly, 0)
-
+    /** How many tracks Most played would show - its row's subtitle, and whether it is listed at all. */
     val mostPlayedCount: StateFlow<Int> = playStatsDao.observeMostPlayedCount()
         .stateIn(scope, SharingStarted.Eagerly, 0)
 
@@ -335,9 +332,6 @@ class LibraryRepository @Inject constructor(
     suspend fun addTracksToPlaylist(playlistId: Long, trackIds: List<Long>) {
         playlistDao.addTracks(playlistId, trackIds, System.currentTimeMillis())
     }
-
-    /** The Favorites playlist's tracks. Its id lives here so no screen has to know it. */
-    fun favoriteTracks(): Flow<LibraryContent<Track>> = playlistTracks(FAVORITES_PLAYLIST_ID)
 
     /** "Recent" and "Most played" - ordered by the statistics, so likewise never re-sorted. */
     fun recentlyPlayedTracks(): Flow<LibraryContent<Track>> =

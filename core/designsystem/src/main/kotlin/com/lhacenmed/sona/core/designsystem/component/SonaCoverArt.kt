@@ -3,6 +3,7 @@ package com.lhacenmed.sona.core.designsystem.component
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -37,6 +38,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.max
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
@@ -105,7 +107,33 @@ fun SonaCoverBackdrop(
     coverArtUri: String?,
     modifier: Modifier = Modifier,
 ) {
-    val request = rememberCoverRequest(coverArtUri, LocalCoverStyle.current)
+    CoverBackdrop(request = rememberCoverRequest(coverArtUri, LocalCoverStyle.current), modifier = modifier)
+}
+
+/**
+ * A playlist's cover filling whatever it is laid over - [SonaCoverBackdrop] for a playlist: its covers
+ * stacked exactly as its row stacks them, [seed] keeping the pile the same, composed at the size it
+ * fills so it is as sharp there as a row's is.
+ */
+@Composable
+fun SonaPlaylistCoverBackdrop(
+    coverArtUris: List<String>,
+    seed: Int,
+    modifier: Modifier = Modifier,
+) {
+    BoxWithConstraints(modifier = modifier) {
+        CoverBackdrop(
+            request = rememberCompositionRequest(coverArtUris, CoverArrangement.Stack, seed, max(maxWidth, maxHeight)),
+            modifier = Modifier.matchParentSize(),
+        )
+    }
+}
+
+@Composable
+private fun CoverBackdrop(
+    request: ImageRequest?,
+    modifier: Modifier = Modifier,
+) {
     var isImageLoaded by remember(request) { mutableStateOf(false) }
     Box(
         modifier = modifier.background(MaterialTheme.colorScheme.surfaceContainer),

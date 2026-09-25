@@ -20,7 +20,6 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -40,36 +39,25 @@ class PlaylistsViewModel @Inject constructor(
     val playback: StateFlow<LibraryPlayback> = libraryPlayback(playbackController, repository)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryPlayback())
 
-    /** The covers Recent and Most played compose theirs from, ranked the way any collection's are. */
-    val recentlyPlayedCoverArtUris: StateFlow<List<String>> = repository.recentlyPlayedTracks().rankedCovers()
-
+    /** The covers Most played composes its own from, ranked the way any collection's are. */
     val mostPlayedCoverArtUris: StateFlow<List<String>> = repository.mostPlayedTracks().rankedCovers()
 
     val sort: SortControl = sortOrders.control(SortableList.PLAYLISTS)
 
-    val recentlyPlayedCount: StateFlow<Int> = repository.recentlyPlayedCount
     val mostPlayedCount: StateFlow<Int> = repository.mostPlayedCount
 
     val favoritesPlaylistId: Long get() = repository.favoritesPlaylistId
 
+    /** Favorites' own cover, as its row shows it - see [playlistCover]. */
+    val favoritesCover: StateFlow<ShortcutCover?> = playlistCover { it.id == favoritesPlaylistId }
+
     /**
-     * The cover Favorites was given in its editor - or, while it keeps the stacked cover a card cannot
-     * draw, the cover of the track it lists first in its current sort. Null when there is nothing to show.
-     * Follows the playlist's own sort, so re-sorting or reordering Favorites changes its shortcut card
-     * with it.
+     * The cover of the playlist the chosen sort puts first, as its row shows it - so re-sorting, or the
+     * top playlist changing, changes the Playlists card with it. Favorites is left out: it keeps the top
+     * whatever the sort, and has a card of its own. So are Recent and Most played, listening histories
+     * rather than playlists, which are not among [playlists] at all.
      */
-    val favoritesCover: StateFlow<ShortcutCover?> = combine(
-        repository.playlists.map { content -> content.itemsOrEmpty.firstOrNull { it.id == favoritesPlaylistId } },
-        repository.favoriteTracks(),
-    ) { favorites, tracks ->
-        if (favorites != null && favorites.cover != PlaylistCover.Stacked) {
-            favorites.coverArtUris.firstOrNull()?.let(::ShortcutCover)
-        } else {
-            tracks.itemsOrEmpty.firstOrNull()?.let { ShortcutCover(it.coverArtUri) }
-        }
-    }
-        .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    val playlistsCover: StateFlow<ShortcutCover?> = playlistCover { !it.isBuiltIn }
 
     /** The cover of the track played last, or null when nothing has been played. */
     val recentlyPlayedCover: StateFlow<ShortcutCover?> = repository.recentlyPlayedTracks().topCover()
@@ -87,29 +75,6 @@ class PlaylistsViewModel @Inject constructor(
         viewModelScope.launch {
             val playlistId = repository.createPlaylist(name) ?: return@launch
             repository.addTracksToPlaylist(playlistId, tracksUnder(folderPath))
-        }
-    }
-
-    /**
-     * Adds an M3U file's tracks to a playlist that already exists.
-     *
-     * [onResult] reports whether anything was imported, which is the only outcome the user is told
-     * about: a file that cannot be opened and one that names no music this device has both leave the
-     * playlist as it was.
-     */
-    fun importIntoPlaylist(
-        playlistId: Long,
-        openStream: () -> InputStream?,
-        onResult: (Boolean) -> Unit,
-    ) {
-        viewModelScope.launch {
-            val trackIds = readTrackIds(openStream)
-            if (trackIds.isEmpty()) {
-                onResult(false)
-                return@launch
-            }
-            repository.addTracksToPlaylist(playlistId, trackIds)
-            onResult(true)
         }
     }
 
@@ -156,6 +121,22 @@ class PlaylistsViewModel @Inject constructor(
             .filter { it.folderPath == folderPath || it.folderPath.startsWith("$folderPath/") }
             .map { it.id }
 
+    /**
+     * The shortcut cover of the first playlist [matches] picks - null while there is none, or it has
+     * nothing to show - kept current as the playlists change.
+     *
+     * Read from the playlists the library loads as the app starts, and started from the ones already in
+     * memory rather than from nothing, so a card whose cover is known draws it on its first frame: nothing
+     * waits on a query of its own, or on this being collected.
+     */
+    private fun playlistCover(matches: (Playlist) -> Boolean): StateFlow<ShortcutCover?> {
+        fun coverIn(content: LibraryContent<Playlist>) = content.itemsOrEmpty.firstOrNull(matches)?.shortcutCover()
+        return repository.playlists
+            .map(::coverIn)
+            .distinctUntilChanged()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), coverIn(repository.playlists.value))
+    }
+
     /** Every cover in the list, most shared first, kept current as the list changes. */
     private fun Flow<LibraryContent<Track>>.rankedCovers(): StateFlow<List<String>> =
         map { content -> rankedCoverArtUris(content.itemsOrEmpty.map { it.coverArtUri }) }
@@ -164,13 +145,29 @@ class PlaylistsViewModel @Inject constructor(
 
     /** The cover of whichever track a list shows first, kept current as the list changes. */
     private fun Flow<LibraryContent<Track>>.topCover(): StateFlow<ShortcutCover?> =
-        map { content -> content.itemsOrEmpty.firstOrNull()?.let { ShortcutCover(it.coverArtUri) } }
+        map { content -> content.itemsOrEmpty.firstOrNull()?.let { ShortcutCover.Track(it.coverArtUri) } }
             .distinctUntilChanged()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 }
 
 /**
- * What a shortcut card previews of its list: the cover of the track the list shows first. Held apart
- * from the list being empty, so a first track without artwork still previews the default cover.
+ * How a shortcut card previews this playlist, as its row shows its cover: stacked, when its cover is the
+ * stack, and otherwise the one cover it was given or its sort puts first. Null while it has none to show.
  */
-data class ShortcutCover(val coverArtUri: String?)
+private fun Playlist.shortcutCover(): ShortcutCover? = when {
+    coverArtUris.isEmpty() -> null
+    cover == PlaylistCover.Stacked -> ShortcutCover.Playlist(coverArtUris = coverArtUris, seed = id.hashCode())
+    else -> ShortcutCover.Track(coverArtUris.first())
+}
+
+/** What a shortcut card previews of its list. */
+sealed interface ShortcutCover {
+    /**
+     * The cover of the track the list shows first. Held apart from the list being empty, so a first
+     * track without artwork still previews the default cover.
+     */
+    data class Track(val coverArtUri: String?) : ShortcutCover
+
+    /** A playlist's own cover: [coverArtUris] stacked as its row stacks them, [seed] keeping the pile. */
+    data class Playlist(val coverArtUris: List<String>, val seed: Int) : ShortcutCover
+}

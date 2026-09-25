@@ -44,6 +44,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverBackdrop
 import com.lhacenmed.sona.core.designsystem.component.SonaIconButton
+import com.lhacenmed.sona.core.designsystem.component.SonaPlaylistCoverBackdrop
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.designsystem.theme.pressedCornerRadius
 import com.lhacenmed.sona.core.designsystem.theme.rememberPressFraction
@@ -63,9 +64,10 @@ private const val COVER_SCRIM_ALPHA = 0.6f
  *
  * No counts here. A count would have to be read before the row could be drawn, which would subscribe
  * the pager to library data it otherwise never touches; the destinations show their own counts. The
- * Favorites and Recent covers are different in kind: nothing waits for them - a card draws the same
- * with or without one - and they are read here, below the pager, so a new cover recomposes this row
- * alone.
+ * covers are different in kind: nothing waits for them - a card draws the same with or without one - and
+ * they are read here, below the pager, so a new cover recomposes this row alone. Favorites and Recent
+ * preview their first track's cover, and Playlists the cover of the playlist the chosen sort puts first,
+ * stacked as its row is - see [PlaylistsViewModel.playlistsCover].
  *
  * The cards are one button group, so holding a card widens it and its neighbours give up the width
  * it takes - the row itself never changes width, and nothing around it moves.
@@ -78,6 +80,7 @@ fun LibraryShortcuts(
 ) {
     val navigator = LocalNavigator.current
     val favoritesCover by viewModel.favoritesCover.collectAsStateWithLifecycle()
+    val playlistsCover by viewModel.playlistsCover.collectAsStateWithLifecycle()
     val recentlyPlayedCover by viewModel.recentlyPlayedCover.collectAsStateWithLifecycle()
 
     // The row's width is the one width a press never changes, so each card's width at rest is read
@@ -113,6 +116,7 @@ fun LibraryShortcuts(
             title = "Playlists",
             icon = Icons.Filled.LibraryMusic,
             restingWidthPx = restingCardWidthPx,
+            cover = playlistsCover,
             onClick = { navigator.go(PlaylistsScreen) },
         )
         shortcutCard(
@@ -176,10 +180,17 @@ private fun ButtonGroupScope.shortcutCard(
                                 .fillMaxSize()
                                 .stretchedFromWidth(restingWidthPx),
                         ) {
-                            SonaCoverBackdrop(
-                                coverArtUri = shownCover.coverArtUri,
-                                modifier = Modifier.matchParentSize(),
-                            )
+                            when (shownCover) {
+                                is ShortcutCover.Track -> SonaCoverBackdrop(
+                                    coverArtUri = shownCover.coverArtUri,
+                                    modifier = Modifier.matchParentSize(),
+                                )
+                                is ShortcutCover.Playlist -> SonaPlaylistCoverBackdrop(
+                                    coverArtUris = shownCover.coverArtUris,
+                                    seed = shownCover.seed,
+                                    modifier = Modifier.matchParentSize(),
+                                )
+                            }
                             // The card's own colour rather than black, so the icon and title keep their
                             // contrast in both themes without changing colour when a cover appears.
                             Box(
