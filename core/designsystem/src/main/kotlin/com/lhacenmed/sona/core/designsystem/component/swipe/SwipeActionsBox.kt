@@ -3,7 +3,10 @@ package com.lhacenmed.sona.core.designsystem.component.swipe
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.horizontalDrag
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.runtime.Composable
@@ -22,11 +25,13 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.gesture.awaitSteepDragSlop
 import com.lhacenmed.sona.core.designsystem.motion.RubberBandSettleDurationMillis
 import com.lhacenmed.sona.core.designsystem.motion.RubberBandSettleEasing
 import com.lhacenmed.sona.core.designsystem.motion.SwipeArmFraction
@@ -95,13 +100,6 @@ fun SwipeActionsBox(
             }
             .pointerInput(actions != null, isRtl) {
                 if (latestActions == null) return@pointerInput
-                // Where this gesture has put the row, in px rightwards - held here rather than read back
-                // from the animation, whose snaps are launched and may not have landed yet.
-                var dragOffset = 0f
-                // The finger's travel, before the rubber band takes its share of it.
-                var dragPull = 0f
-                // Past the arm, towards an action: letting go now runs it.
-                var isArmed = false
 
                 fun actionTowards(x: Float): SwipeAction? {
                     val current = latestActions ?: return null
@@ -118,32 +116,40 @@ fun SwipeActionsBox(
                     }
                 }
 
-                detectHorizontalDragGestures(
-                    onDragStart = {
-                        // Taken up where a settle still under way has it, so a grab never jumps.
-                        dragOffset = offset.value
-                        dragPull = rubberBandPull(dragOffset, armFor(dragOffset), stretchLimit())
-                        // Unarmed even if grabbed past the arm, so the tick confirms every action.
-                        isArmed = false
-                    },
-                    onDragEnd = {
-                        if (isArmed) actionTowards(dragOffset)?.onSwipe?.invoke()
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    // Only a near-level swipe moves the row; anything steeper is the list's to scroll.
+                    awaitSteepDragSlop(down.id, Orientation.Horizontal) ?: return@awaitEachGesture
+
+                    // Where this gesture has put the row, in px rightwards - held here rather than read
+                    // back from the animation, whose snaps are launched and may not have landed yet. Taken
+                    // up where a settle still under way has it, so a grab never jumps.
+                    var dragOffset = offset.value
+                    // The finger's travel, before the rubber band takes its share of it.
+                    var dragPull = rubberBandPull(dragOffset, armFor(dragOffset), stretchLimit())
+                    // Past the arm, towards an action: letting go now runs it. Unarmed even if grabbed
+                    // past the arm, so the tick confirms every action.
+                    var isArmed = false
+
+                    try {
+                        val isReleased = horizontalDrag(down.id) { change ->
+                            // Read before consuming: a consumed change reports no movement.
+                            dragPull += change.positionChange().x
+                            change.consume()
+                            val arm = armFor(dragPull)
+                            dragOffset = rubberBandOffset(dragPull, arm, stretchLimit())
+                            val reachedArm = arm > 0f && abs(dragOffset) >= arm
+                            // Khatmah's tick, as the mini player's: CLOCK_TICK is felt where lighter ones are not.
+                            if (reachedArm && !isArmed) view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                            isArmed = reachedArm
+                            val targetOffset = dragOffset
+                            scope.launch { offset.snapTo(targetOffset) }
+                        }
+                        if (isReleased && isArmed) actionTowards(dragOffset)?.onSwipe?.invoke()
+                    } finally {
                         settle()
-                    },
-                    onDragCancel = { settle() },
-                    onHorizontalDrag = { change, dragAmount ->
-                        change.consume()
-                        dragPull += dragAmount
-                        val arm = armFor(dragPull)
-                        dragOffset = rubberBandOffset(dragPull, arm, stretchLimit())
-                        val reachedArm = arm > 0f && abs(dragOffset) >= arm
-                        // Khatmah's tick, as the mini player's: CLOCK_TICK is felt where lighter ones are not.
-                        if (reachedArm && !isArmed) view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                        isArmed = reachedArm
-                        val targetOffset = dragOffset
-                        scope.launch { offset.snapTo(targetOffset) }
-                    },
-                )
+                    }
+                }
             },
     ) {
         Box(modifier = Modifier.absoluteOffset { IntOffset(offset.value.roundToInt(), 0) }) {
