@@ -8,7 +8,9 @@ import androidx.compose.animation.core.VectorConverter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.DraggableState
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.verticalDrag
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -37,7 +39,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.pointer.AwaitPointerEventScope
+import androidx.compose.ui.input.pointer.PointerId
+import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import androidx.compose.ui.platform.LocalDensity
@@ -45,6 +51,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import kotlin.math.abs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
@@ -393,7 +400,18 @@ internal fun rememberBottomSheetState(
 }
 
 /**
+ * How much more vertical than horizontal a swipe has to be for a sheet to take it - twice, so within
+ * about 27° of straight up or down.
+ */
+private const val SheetDragMinSteepness = 2f
+
+/**
  * Drags [state] - or, for a swipe up while [state] is expanded, [swipeUpSheet] when there is one.
+ *
+ * Only steep movement drags a sheet ([awaitSteepVerticalSlop]): the cover and the mini player swipe
+ * sideways under it, and a swipe across them is never quite level, so a sheet taking any swipe that
+ * went far enough up or down would take theirs too. A swipe that starts sideways and turns up or down
+ * still drags the sheet, unless the cover or the mini player took it first.
  *
  * Which sheet a drag moves is settled by its first movement and kept to its end, so one gesture never
  * hands over half-way, and it is that sheet the release flings.
@@ -404,29 +422,44 @@ internal fun Modifier.bottomSheetDraggable(
     swipeUpSheet: BottomSheetState? = null,
 ): Modifier =
     this.pointerInput(state, swipeUpSheet) {
-        val velocityTracker = VelocityTracker()
-        var draggedSheet: BottomSheetState? = null
-
-        fun settle() {
-            val sheet = draggedSheet ?: state
-            draggedSheet = null
-            val velocity = -velocityTracker.calculateVelocity().y
-            velocityTracker.resetTracking()
-            sheet.performFling(velocity, onDismiss.takeIf { sheet === state })
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false)
+            val slopDrag = awaitSteepVerticalSlop(down.id) ?: return@awaitEachGesture
+            val sheet = if (slopDrag < 0f && swipeUpSheet != null && state.isExpanded) swipeUpSheet else state
+            val velocityTracker = VelocityTracker()
+            try {
+                verticalDrag(down.id) { change ->
+                    velocityTracker.addPointerInputChange(change)
+                    sheet.dispatchRawDelta(change.positionChange().y)
+                    change.consume()
+                }
+            } finally {
+                sheet.performFling(-velocityTracker.calculateVelocity().y, onDismiss.takeIf { sheet === state })
+            }
         }
-
-        detectVerticalDragGestures(
-            onVerticalDrag = { change, dragAmount ->
-                velocityTracker.addPointerInputChange(change)
-                val sheet =
-                    draggedSheet ?: when {
-                        dragAmount == 0f -> return@detectVerticalDragGestures
-                        dragAmount < 0f && swipeUpSheet != null && state.isExpanded -> swipeUpSheet
-                        else -> state
-                    }.also { draggedSheet = it }
-                sheet.dispatchRawDelta(dragAmount)
-            },
-            onDragCancel = { settle() },
-            onDragEnd = { settle() },
-        )
     }
+
+/**
+ * Watches [pointerId] a touch slop of movement at a time, and claims the gesture with the first stretch
+ * that went steeply - [SheetDragMinSteepness] times more vertically than sideways - returning how far
+ * that stretch went vertically. A shallower stretch is let go and the next one measured afresh, so a
+ * swipe that turns vertical part-way is claimed once it does.
+ *
+ * Returns null, claiming nothing, for a pointer lifted, or taken first by what lies under the sheet.
+ */
+private suspend fun AwaitPointerEventScope.awaitSteepVerticalSlop(pointerId: PointerId): Float? {
+    val touchSlop = viewConfiguration.touchSlop
+    var stretch = Offset.Zero
+    while (true) {
+        val change = awaitPointerEvent().changes.firstOrNull { it.id == pointerId } ?: return null
+        if (change.changedToUpIgnoreConsumed() || change.isConsumed) return null
+        stretch += change.positionChange()
+        if (stretch.getDistance() >= touchSlop) {
+            if (abs(stretch.y) >= abs(stretch.x) * SheetDragMinSteepness) {
+                change.consume()
+                return stretch.y
+            }
+            stretch = Offset.Zero
+        }
+    }
+}
