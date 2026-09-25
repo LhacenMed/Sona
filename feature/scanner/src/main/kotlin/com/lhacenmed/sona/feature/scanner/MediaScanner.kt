@@ -158,6 +158,17 @@ class MediaScanner @Inject constructor(
      */
     suspend fun rescan(): SyncStats = appScope.async { scan(ScanKind.FULL) }.await()
 
+    /**
+     * Takes the tracks [trackIds] name out of the library the moment their files are deleted, then
+     * queues a [ScanKind.REFRESH] behind it to bring their albums, artists and genres up to date -
+     * MediaStore re-read without walking storage, which is all a deletion changes. Only the first part
+     * is waited on, so a deletion is gone from every list at once.
+     */
+    suspend fun forgetTracks(trackIds: Collection<Long>) {
+        libraryWriter.deleteTracks(trackIds)
+        enqueue(ScanKind.REFRESH)
+    }
+
     private fun enqueue(kind: ScanKind) {
         pendingScan.getAndUpdate { pending -> if (pending == null || kind > pending) kind else pending }
         scanWakeups.trySend(Unit)

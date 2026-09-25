@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.LibraryAdd
+import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
@@ -12,8 +13,12 @@ import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
  *
  * [VIEW_DETAILS] is a song's own "View properties" as much as an album's, artist's, genre's or
  * playlist's "View" - two labels over the one glyph, the way Auxio's `lbl_song_detail` and
- * `lbl_parent_detail` are. [ADD_TRACKS], [ADD_COLLECTIONS] and [EXCLUDE] are Sona's own, with no Auxio
- * glyph to draw, so they draw the Material glyphs the playlist's menu and the selection bar already use.
+ * `lbl_parent_detail` are. [ADD_TRACKS], [ADD_COLLECTIONS], [EXCLUDE] and [REMOVE_FROM_PLAYLIST] are
+ * Sona's own, with no Auxio glyph to draw, so they draw the Material glyphs the playlist's menu and the
+ * selection bar already use.
+ *
+ * [DELETE] deletes a playlist, and never a file; [DELETE_FROM_DEVICE] deletes tracks' files - Fossify's
+ * delete - so the two are told apart by name wherever both could be read.
  * Which [OptionsAction]s a sheet shows, and in what order, is [OptionsTarget]'s
  * to decide - this only says what each one looks like once chosen.
  */
@@ -33,6 +38,8 @@ enum class OptionsAction(val icon: ImageVector, val label: String) {
     IMPORT(SonaIcons.Import, "Import"),
     EXPORT(SonaIcons.Export, "Export"),
     DELETE(SonaIcons.Delete, "Delete"),
+    REMOVE_FROM_PLAYLIST(Icons.Filled.RemoveCircleOutline, "Remove from playlist"),
+    DELETE_FROM_DEVICE(SonaIcons.Delete, "Delete from device"),
     EXCLUDE(Icons.Filled.Block, "Exclude folder"),
     SHARE(SonaIcons.Share, "Share"),
 }

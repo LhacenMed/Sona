@@ -60,12 +60,12 @@ import androidx.compose.material3.HorizontalDivider
 import com.lhacenmed.sona.core.designsystem.component.DetailHeader
 import com.lhacenmed.sona.core.designsystem.component.DetailScaffold
 import com.lhacenmed.sona.core.designsystem.component.DetailSectionHeader
-import com.lhacenmed.sona.core.designsystem.component.SonaConfirmationDialog
 import com.lhacenmed.sona.core.designsystem.component.SonaIconButtonGroup
 import com.lhacenmed.sona.core.designsystem.component.TopBarCollapse
 import com.lhacenmed.sona.core.designsystem.component.iconButton
 import com.lhacenmed.sona.core.designsystem.component.rememberDetailHeaderState
 import com.lhacenmed.sona.core.navigation.LocalNavigator
+import com.lhacenmed.sona.feature.library.operation.RemoveFromPlaylistDialog
 import com.lhacenmed.sona.feature.library.options.formatDurationMs
 import com.lhacenmed.sona.feature.library.options.OptionsFollowUps
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
@@ -467,8 +467,8 @@ internal const val DETAIL_INFO_SEPARATOR = " • "
  * out; a screen that closes once its collection is deleted goes back. A list that is no collection of
  * its own - Recent, Most played - offers Export in their place. Searching narrows the tracks alone, in
  * a field in the bar with the results straight under it: the header and the other sections step
- * aside. [removeFromPlaylist] is given only by a real playlist, the one list with membership to remove
- * from; removing asks first and reports how it went.
+ * aside. A [collection] that is a playlist is the one list with membership to remove from: its tracks'
+ * sheets and its selection bar both offer removing, which asks first and reports how it went.
  */
 @Composable
 internal fun TrackListDetail(
@@ -480,7 +480,6 @@ internal fun TrackListDetail(
     collection: OptionsTarget?,
     modifier: Modifier = Modifier,
     onReorder: ((List<Track>) -> Unit)? = null,
-    removeFromPlaylist: ((trackIds: List<Long>, onFinished: (succeeded: Boolean) -> Unit) -> Unit)? = null,
     trackOptionsContext: TrackOptionsContext = TrackOptionsContext.LIST,
     groupsByDisc: Boolean = false,
     trackSubtitle: ((Track) -> String)? = null,
@@ -498,6 +497,7 @@ internal fun TrackListDetail(
     var optionsTarget by remember { mutableStateOf<OptionsTarget?>(null) }
     // The selected tracks waiting on the user to confirm removing them, in the order they were selected.
     var removingTracks by remember { mutableStateOf<List<Track>>(emptyList()) }
+    val playlist = (collection as? OptionsTarget.ForPlaylist)?.playlist
     val sort = viewModel.sort
     val hasTracks = tracks.itemsOrEmpty.isNotEmpty()
 
@@ -550,6 +550,7 @@ internal fun TrackListDetail(
                     context = trackOptionsContext,
                     queueSource = tracks.itemsOrEmpty,
                     queueParent = viewModel.playbackParent,
+                    playlist = playlist,
                 )
             },
             subtitle = trackSubtitle?.invoke(track),
@@ -594,7 +595,7 @@ internal fun TrackListDetail(
                         listKeys = viewModel::selectableKeys,
                         // Only a real playlist has membership to remove from.
                         actions = listOfNotNull(
-                            removeFromPlaylist?.let {
+                            playlist?.let {
                                 TopBarAction(label = "Remove from playlist", icon = Icons.Filled.RemoveCircleOutline) {
                                     val tracksById = tracks.itemsOrEmpty.associateBy { it.id }
                                     removingTracks = selection.selectedKeys.filterIsInstance<SelectionKey.Track>()
@@ -713,22 +714,15 @@ internal fun TrackListDetail(
     }
 
     // Nothing is left here to show once the collection this screen is showing has been deleted.
-    OptionsFollowUps(actions = collectionActions, onPlaylistDeleted = onBack)
+    OptionsFollowUps(actions = collectionActions, onCollectionDeleted = onBack)
 
-    if (removeFromPlaylist != null && removingTracks.isNotEmpty()) {
-        val isSingle = removingTracks.size == 1
-        SonaConfirmationDialog(
-            title = if (isSingle) "Remove track" else "Remove ${removingTracks.size} tracks",
-            message = "From $title. The files themselves are not deleted.",
-            confirmLabel = "Remove",
-            successMessage = if (isSingle) "Track removed" else "${removingTracks.size} tracks removed",
-            failureMessage = if (isSingle) "Could not remove track" else "Could not remove tracks",
+    if (playlist != null && removingTracks.isNotEmpty()) {
+        RemoveFromPlaylistDialog(
+            playlist = playlist,
+            trackIds = removingTracks.map { it.id },
             onDismiss = { removingTracks = emptyList() },
-            operation = { onFinished ->
-                // The selection ends once the removal is confirmed; cancelling leaves every row picked.
-                selection.clear()
-                removeFromPlaylist(removingTracks.map { it.id }, onFinished)
-            },
+            // The selection ends once the removal is confirmed; cancelling leaves every row picked.
+            onConfirmed = { selection.clear() },
         )
     }
 }

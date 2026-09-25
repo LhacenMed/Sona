@@ -12,6 +12,7 @@ import com.lhacenmed.sona.feature.library.options.OptionsAction.ADD_TRACKS
 import com.lhacenmed.sona.feature.library.options.OptionsAction.ALBUM_DETAILS
 import com.lhacenmed.sona.feature.library.options.OptionsAction.ARTIST_DETAILS
 import com.lhacenmed.sona.feature.library.options.OptionsAction.DELETE
+import com.lhacenmed.sona.feature.library.options.OptionsAction.DELETE_FROM_DEVICE
 import com.lhacenmed.sona.feature.library.options.OptionsAction.EDIT
 import com.lhacenmed.sona.feature.library.options.OptionsAction.EXCLUDE
 import com.lhacenmed.sona.feature.library.options.OptionsAction.EXPORT
@@ -20,6 +21,7 @@ import com.lhacenmed.sona.feature.library.options.OptionsAction.PLAY
 import com.lhacenmed.sona.feature.library.options.OptionsAction.PLAYLIST_ADD
 import com.lhacenmed.sona.feature.library.options.OptionsAction.PLAY_NEXT
 import com.lhacenmed.sona.feature.library.options.OptionsAction.QUEUE_ADD
+import com.lhacenmed.sona.feature.library.options.OptionsAction.REMOVE_FROM_PLAYLIST
 import com.lhacenmed.sona.feature.library.options.OptionsAction.SHARE
 import com.lhacenmed.sona.feature.library.options.OptionsAction.SHUFFLE
 import com.lhacenmed.sona.feature.library.options.OptionsAction.SONG_PROPERTIES
@@ -40,12 +42,16 @@ sealed interface OptionsTarget {
      * a bare list and no parent for a track with no list around it. Playing this track plays this
      * list from here, the same as tapping the row does; Play next, Add to queue and Add to playlist
      * only ever touch [track] itself, whatever list it came from.
+     *
+     * [playlist] is the playlist the track is listed in, when it was opened from one - what it can be
+     * removed from.
      */
     data class ForTrack(
         val track: Track,
         val context: TrackOptionsContext = TrackOptionsContext.LIST,
         val queueSource: List<Track> = listOf(track),
         val queueParent: PlaybackParent? = null,
+        val playlist: Playlist? = null,
     ) : OptionsTarget
 
     data class ForAlbum(
@@ -84,13 +90,19 @@ sealed interface OptionsTarget {
  * screen already showing, as Auxio's `detail_*` menus do.
  *
  * A collection is never shared as a whole: sharing is for tracks, one at a time or a selection of them.
+ *
+ * Deleting from the device comes last wherever it is offered, as the one action that cannot be taken
+ * back. A playlist does not offer it: its Delete is for the playlist, and its tracks' files are the
+ * library's, not the playlist's.
  */
-private val AlbumActions = listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ARTIST_DETAILS, EXPORT)
-private val ArtistActions = listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, EXPORT)
-private val GenreActions = listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, EXPORT)
+private val AlbumActions =
+    listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ARTIST_DETAILS, EXPORT, DELETE_FROM_DEVICE)
+private val ArtistActions = listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, EXPORT, DELETE_FROM_DEVICE)
+private val GenreActions = listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, EXPORT, DELETE_FROM_DEVICE)
 private val PlaylistActions =
     listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, ADD_TRACKS, ADD_COLLECTIONS, EDIT, IMPORT, EXPORT, DELETE)
-private val FolderActions = listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, EXPORT, EXCLUDE)
+private val FolderActions =
+    listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, EXPORT, EXCLUDE, DELETE_FROM_DEVICE)
 
 /** The rows an options sheet or a collection's menu lists, top to bottom - Auxio's inflated menu XML, chosen by target and context. */
 fun OptionsTarget.actions(): List<OptionsAction> = when (this) {
@@ -101,7 +113,7 @@ fun OptionsTarget.actions(): List<OptionsAction> = when (this) {
             listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ARTIST_DETAILS, SONG_PROPERTIES, SHARE)
         TrackOptionsContext.FROM_ARTIST ->
             listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ALBUM_DETAILS, SONG_PROPERTIES, SHARE)
-    }
+    } + listOfNotNull(REMOVE_FROM_PLAYLIST.takeIf { playlist != null }, DELETE_FROM_DEVICE)
 
     is OptionsTarget.ForAlbum -> when (context) {
         AlbumOptionsContext.LIST -> AlbumActions
@@ -129,7 +141,7 @@ fun OptionsTarget.actions(): List<OptionsAction> = when (this) {
         FolderOptionsContext.FROM_DETAIL -> FolderActions - VIEW_DETAILS
     }
 
-    is OptionsTarget.ForSelection -> listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, SHARE)
+    is OptionsTarget.ForSelection -> listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, SHARE, DELETE_FROM_DEVICE)
 }
 
 /**
@@ -142,7 +154,7 @@ fun OptionsTarget.actions(): List<OptionsAction> = when (this) {
  */
 fun OptionsTarget.disabledActions(): Set<OptionsAction> = when (this) {
     is OptionsTarget.ForArtist -> if (artist.trackCount == 0) {
-        setOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, EXPORT)
+        setOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, EXPORT, DELETE_FROM_DEVICE)
     } else {
         emptySet()
     }
