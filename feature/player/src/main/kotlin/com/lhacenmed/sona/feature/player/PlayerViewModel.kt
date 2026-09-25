@@ -180,23 +180,23 @@ class PlayerViewModel @Inject constructor(
         playbackController.playQueueItem(item.entry.mediaItemIndex)
     }
 
-    /** Moves [item] to the slot [target] holds. */
-    fun onMoveQueueItem(item: QueueTrack, target: QueueTrack) {
-        playbackController.moveQueueItem(item.entry.mediaItemIndex, target.entry.mediaItemIndex)
+    /** Moves the track at [fromPosition] of [PlayerUiState.queue] to [toPosition] - shuffled or not. */
+    fun onMoveQueueItem(fromPosition: Int, toPosition: Int) {
+        playbackController.moveQueueItem(fromPosition, toPosition)
     }
 
-    /** Taken out from the last slot back, so every slot still to go keeps the index it was given. */
-    fun onRemoveQueueItems(items: List<QueueTrack>) {
-        items.sortedByDescending { it.entry.mediaItemIndex }.forEach { item ->
-            playbackController.removeQueueItem(item.entry.mediaItemIndex)
-        }
+    /** Plays [item] right after the track playing now - moved there, not repeated. */
+    fun onPlayQueueItemNext(item: QueueTrack) {
+        playbackController.playNext(listOf(item.track))
     }
 
-    /** Put back from the first slot on, so each lands at the index it was taken from. */
-    fun onRestoreQueueItems(items: List<QueueTrack>) {
-        items.sortedBy { it.entry.mediaItemIndex }.forEach { item ->
-            playbackController.insertQueueItem(item.entry.mediaItemIndex, item.track)
-        }
+    fun onRemoveQueueItem(item: QueueTrack) {
+        playbackController.removeQueueItem(item.entry.mediaItemIndex)
+    }
+
+    /** Puts [item] back where it was removed from: at [playPosition] of [PlayerUiState.queue], shuffled or not. */
+    fun onRestoreQueueItem(item: QueueTrack, playPosition: Int) {
+        playbackController.restoreQueueItem(item.track, item.entry.mediaItemIndex, playPosition)
     }
 
     fun onStopAndClearQueue() {
