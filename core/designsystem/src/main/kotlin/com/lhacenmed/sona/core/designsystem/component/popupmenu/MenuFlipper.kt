@@ -21,6 +21,7 @@ import androidx.core.view.doOnLayout
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import com.lhacenmed.sona.core.designsystem.component.popupmenu.internal.ForcePaddingsDrawable
 import com.lhacenmed.sona.core.designsystem.component.popupmenu.internal.ViewFlipper2
+import com.lhacenmed.sona.core.designsystem.effect.SonaEffects
 
 /**
  * A [ViewFlipper2] that wraps its size to the currently displayed child and smoothly
@@ -237,14 +238,14 @@ class MenuFlipper(
                     it.translationX = if (forward) width.toFloat() else -(width.toFloat() * 0.25f)
                     it.animate()
                         .translationX(0f)
-                        .setDuration(anim.navigationDuration)
+                        .setDuration(SonaEffects.animationDuration(anim.navigationDuration))
                         .setInterpolator(navInterpolator)
                 },
                 outAnimator = {
                     it.translationX = 0f
                     it.animate()
                         .translationX(if (!forward) width.toFloat() else -(width.toFloat() * 0.25f))
-                        .setDuration(anim.navigationDuration)
+                        .setDuration(SonaEffects.animationDuration(anim.navigationDuration))
                         .setInterpolator(navInterpolator)
                 }
             )
@@ -312,7 +313,7 @@ class MenuFlipper(
 
         // Counter-scale content to prevent squishing during container expand.
         val counterScaleAnim = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = anim.entryExpandDuration
+            duration = SonaEffects.animationDuration(anim.entryExpandDuration)
             interpolator = expandInterp
             addUpdateListener {
                 val scale = it.animatedValue as Float
@@ -324,7 +325,7 @@ class MenuFlipper(
         val totalCascade =
             anim.cascadeStaggerMs * (itemCount - 1).coerceAtLeast(0) + anim.cascadeItemDurationMs
         val cascadeAnim = ValueAnimator.ofFloat(0f, totalCascade.toFloat()).apply {
-            duration = totalCascade
+            duration = SonaEffects.animationDuration(totalCascade)
             addUpdateListener {
                 val elapsed = it.animatedValue as Float
                 itemViews.forEachIndexed { i, v ->
@@ -342,10 +343,10 @@ class MenuFlipper(
         AnimatorSet().apply {
             playTogether(
                 ObjectAnimator.ofFloat(this@MenuFlipper, "scaleY", 0f, 1f).apply {
-                    duration = anim.entryExpandDuration; interpolator = expandInterp
+                    duration = SonaEffects.animationDuration(anim.entryExpandDuration); interpolator = expandInterp
                 },
                 ObjectAnimator.ofFloat(this@MenuFlipper, "alpha", 0f, 1f).apply {
-                    duration = anim.entryFadeDuration; interpolator = expandInterp
+                    duration = SonaEffects.animationDuration(anim.entryFadeDuration); interpolator = expandInterp
                 },
                 counterScaleAnim,
                 cascadeAnim
@@ -368,7 +369,7 @@ class MenuFlipper(
                     0f, -context.dp(anim.exitSlideDistanceDp)
                 )
             )
-            duration = anim.exitDuration
+            duration = SonaEffects.animationDuration(anim.exitDuration)
             interpolator = DecelerateInterpolator()
             addListener(object : android.animation.AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: android.animation.Animator) = onEnd()
@@ -392,7 +393,7 @@ class MenuFlipper(
     private fun animateSize(fromW: Int, toW: Int, fromH: Int, toH: Int, onEnd: () -> Unit) {
         sizeAnimator.cancel()
         sizeAnimator = ObjectAnimator.ofFloat(0f, 1f).apply {
-            duration = anim.navigationDuration
+            duration = SonaEffects.animationDuration(anim.navigationDuration)
             interpolator = FastOutSlowInInterpolator()
             addUpdateListener {
                 val t = it.animatedValue as Float
@@ -472,7 +473,7 @@ class MenuFlipper(
         val endAlpha = if (forward) anim.navOverlayAlpha else 0f
         scrimAlpha = startAlpha
         scrimAnimator = ValueAnimator.ofFloat(startAlpha, endAlpha).apply {
-            duration = anim.navigationDuration
+            duration = SonaEffects.animationDuration(anim.navigationDuration)
             interpolator = navInterpolator
             addUpdateListener { scrimAlpha = it.animatedValue as Float; invalidate() }
             doOnEnd { scrimAlpha = 0f; scrimTarget = null; invalidate() }

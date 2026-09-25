@@ -187,6 +187,9 @@ data class PopupStyle(
  *                                  [PorterDuff.Mode.MULTIPLY] so darkening is proportional to
  *                                  background luminance — the same relative effect on any theme.
  *                                  0 = no overlay, 1 = maximum darkening. Recommended range: 0.25–0.5.
+ *
+ * Every duration is run through [com.lhacenmed.sona.core.designsystem.effect.SonaEffects.animationDuration]:
+ * while animations are disabled the menu appears, moves between levels and goes at once.
  */
 data class AnimationConfig(
     val entryExpandDuration: Long = 300,

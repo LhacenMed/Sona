@@ -1,7 +1,6 @@
 package com.lhacenmed.sona.core.navigation
 
 import android.os.Bundle
-import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -69,7 +68,7 @@ class HostActivity : SonaActivity() {
             return
         }
 
-        setContent {
+        setSonaContent {
             val themeColor by themeSeed.color.collectAsStateWithLifecycle()
             val coverStyle by appCoverStyle.style.collectAsStateWithLifecycle()
             val fastScrollTouchArea by appFastScrollTouchArea.touchArea.collectAsStateWithLifecycle()

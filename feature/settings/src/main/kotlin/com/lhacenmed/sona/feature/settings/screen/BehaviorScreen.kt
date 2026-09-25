@@ -27,6 +27,7 @@ data object BehaviorScreen : Screen {
         val navigator = LocalNavigator.current
         val viewModel: BehaviorSettingsViewModel = hiltViewModel()
         val fastScrollTouchArea by viewModel.fastScrollTouchArea.collectAsStateWithLifecycle()
+        val hapticsEnabled by viewModel.hapticsEnabled.collectAsStateWithLifecycle()
 
         SettingsList {
             SettingsSection(stringResource(R.string.behavior_display_section)) {
@@ -111,7 +112,8 @@ data object BehaviorScreen : Screen {
                 SettingsSwitchItem(
                     title = stringResource(R.string.haptics_title),
                     summary = stringResource(R.string.haptics_summary),
-                    initialValue = true,
+                    checked = hapticsEnabled,
+                    onCheckedChange = viewModel::setHapticsEnabled,
                 )
                 SettingsSwitchItem(
                     title = stringResource(R.string.block_screenshots_title),

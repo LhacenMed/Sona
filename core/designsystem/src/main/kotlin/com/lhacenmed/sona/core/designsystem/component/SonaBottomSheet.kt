@@ -17,6 +17,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.effect.ProvideSonaHaptics
 import kotlinx.coroutines.launch
 
 /** What a sheet's content can do to the sheet it sits in. */
@@ -83,9 +84,12 @@ fun SonaBottomSheet(
         modifier = modifier,
         sheetState = sheetState,
     ) {
-        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-            header()
-            sheetScope.content()
+        // Its own window, with its own haptics: gated as every window's are.
+        ProvideSonaHaptics {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                header()
+                sheetScope.content()
+            }
         }
     }
 }

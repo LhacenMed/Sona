@@ -3,7 +3,6 @@ package com.lhacenmed.sona
 import android.os.Bundle
 import android.view.View
 import android.view.ViewTreeObserver
-import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -128,7 +127,7 @@ class MainActivity : SonaActivity() {
             playbackController.shuffleAll()
         }
 
-        setContent {
+        setSonaContent {
             val themeColor by themeSeed.color.collectAsStateWithLifecycle()
             val coverStyle by appCoverStyle.style.collectAsStateWithLifecycle()
             val fastScrollTouchArea by appFastScrollTouchArea.touchArea.collectAsStateWithLifecycle()

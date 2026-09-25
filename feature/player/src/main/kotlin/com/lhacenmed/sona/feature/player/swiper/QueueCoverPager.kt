@@ -6,6 +6,7 @@ import android.view.View
 import android.widget.FrameLayout
 import androidx.compose.ui.unit.Dp
 import androidx.viewpager2.widget.ViewPager2
+import com.lhacenmed.sona.core.designsystem.effect.SonaEffects
 import com.lhacenmed.sona.feature.player.QueueTrack
 import kotlin.math.abs
 
@@ -174,7 +175,8 @@ internal class QueueCoverPager(
             // user scroll, carry on
             return
         }
-        if (animate && abs(delta) == 1) {
+        // A slide is an animation like any other: none while animations are disabled, a jump instead.
+        if (animate && abs(delta) == 1 && SonaEffects.shouldAnimate) {
             pager.smoothScrollByPageTo(playerIndex, CoverSlideDurationMillis)
         } else {
             pager.setCurrentItem(playerIndex, false)

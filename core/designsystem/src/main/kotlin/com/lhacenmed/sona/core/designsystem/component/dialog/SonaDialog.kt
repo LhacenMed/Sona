@@ -35,6 +35,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.lhacenmed.sona.core.designsystem.R
 import com.lhacenmed.sona.core.designsystem.component.SonaActionButtonGroup
 import com.lhacenmed.sona.core.designsystem.component.actionButton
+import com.lhacenmed.sona.core.designsystem.effect.ProvideSonaHaptics
 
 /** Material's widest dialog, so one never stretches across a tablet or a landscape screen. */
 private val DialogMaxWidth = 560.dp
@@ -64,32 +65,35 @@ fun SonaDialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp)
-                .imePadding()
-                .navigationBarsPadding(),
-            contentAlignment = Alignment.Center,
-        ) {
-            Surface(
-                modifier = modifier.heightIn(max = maxHeight).widthIn(max = DialogMaxWidth),
-                shape = AlertDialogDefaults.shape,
-                color = AlertDialogDefaults.containerColor,
-                tonalElevation = AlertDialogDefaults.TonalElevation,
+        // Its own window, with its own haptics: gated as every window's are.
+        ProvideSonaHaptics {
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp)
+                    .imePadding()
+                    .navigationBarsPadding(),
+                contentAlignment = Alignment.Center,
             ) {
-                Column(modifier = Modifier.padding(24.dp)) {
-                    DialogHeader(title = title, icon = icon)
-                    Column(
-                        modifier = Modifier
-                            .weight(1f, fill = false)
-                            .verticalScroll(rememberScrollState()),
-                    ) {
-                        CompositionLocalProvider(LocalContentColor provides AlertDialogDefaults.textContentColor) {
-                            content()
+                Surface(
+                    modifier = modifier.heightIn(max = maxHeight).widthIn(max = DialogMaxWidth),
+                    shape = AlertDialogDefaults.shape,
+                    color = AlertDialogDefaults.containerColor,
+                    tonalElevation = AlertDialogDefaults.TonalElevation,
+                ) {
+                    Column(modifier = Modifier.padding(24.dp)) {
+                        DialogHeader(title = title, icon = icon)
+                        Column(
+                            modifier = Modifier
+                                .weight(1f, fill = false)
+                                .verticalScroll(rememberScrollState()),
+                        ) {
+                            CompositionLocalProvider(LocalContentColor provides AlertDialogDefaults.textContentColor) {
+                                content()
+                            }
                         }
+                        DialogButtons(buttons = buttons, onReset = onReset)
                     }
-                    DialogButtons(buttons = buttons, onReset = onReset)
                 }
             }
         }

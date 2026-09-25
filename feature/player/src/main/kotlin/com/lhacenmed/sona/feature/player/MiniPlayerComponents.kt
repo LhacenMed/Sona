@@ -60,6 +60,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverImage
+import com.lhacenmed.sona.core.designsystem.effect.performSonaHaptic
 import com.lhacenmed.sona.core.designsystem.motion.RubberBandSettleDurationMillis
 import com.lhacenmed.sona.core.designsystem.motion.RubberBandSettleEasing
 import com.lhacenmed.sona.core.designsystem.motion.SwipeArmFraction
@@ -160,7 +161,7 @@ internal fun SwipeableMiniPlayerBox(
                         fun stretchLimit() = playerWidth * (SwipeStretchMaxFraction - SwipeArmFraction)
 
                         // Khatmah's tick: CLOCK_TICK is felt where the lighter CONTEXT_CLICK often is not.
-                        fun tick() = view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                        fun tick() = view.performSonaHaptic(HapticFeedbackConstants.CLOCK_TICK)
 
                         fun settle() {
                             coroutineScope.launch {

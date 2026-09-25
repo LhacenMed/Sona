@@ -85,7 +85,7 @@
     <string name="disable_animations_title">Disable animations</string>
     <string name="disable_animations_summary">Cut transitions down to the minimum</string>
     <string name="high_refresh_rate_title">Force high refresh rate</string>
-    <string name="high_refresh_rate_summary">Ask the display for its fastest mode</string>
+    <string name="high_refresh_rate_summary">Max supported: %1$d Hz</string>
 
     <!-- Playback -->
     <string name="playback_controls_section">Controls</string>

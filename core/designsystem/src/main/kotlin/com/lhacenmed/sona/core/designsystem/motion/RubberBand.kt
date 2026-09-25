@@ -5,6 +5,7 @@ import android.view.HapticFeedbackConstants
 import android.view.View
 import android.view.animation.DecelerateInterpolator
 import androidx.compose.animation.core.Easing
+import com.lhacenmed.sona.core.designsystem.effect.performSonaHaptic
 import kotlin.math.abs
 import kotlin.math.sign
 
@@ -70,5 +71,5 @@ fun View.performSwipeArmHaptic(isArmed: Boolean) {
         isArmed -> HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE
         else -> HapticFeedbackConstants.GESTURE_THRESHOLD_DEACTIVATE
     }
-    performHapticFeedback(feedback)
+    performSonaHaptic(feedback)
 }

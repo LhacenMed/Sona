@@ -3,7 +3,9 @@ package com.lhacenmed.sona
 import android.app.Application
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.data.LibraryRepository
+import com.lhacenmed.sona.core.datastore.EffectSettings
 import com.lhacenmed.sona.core.datastore.SettingsLoader
+import com.lhacenmed.sona.core.designsystem.effect.SonaEffects
 import com.lhacenmed.sona.feature.update.UpdateManager
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -26,6 +28,9 @@ class SonaApplication : Application() {
     @ApplicationScope
     lateinit var applicationScope: CoroutineScope
 
+    @Inject
+    lateinit var effectSettings: EffectSettings
+
     override fun onCreate() {
         super.onCreate()
         // First, and blocking: every setting is in memory before the first activity, the playback
@@ -33,6 +38,7 @@ class SonaApplication : Application() {
         // already in place - the way it would start with defaults - instead of correcting itself
         // once they arrive. The files are small and load concurrently, once per process.
         runBlocking { settingsLoader.load() }
+        followEffectSettings()
         // Touching the repository here starts its eager database read at the earliest moment the
         // process has a Context - typically well before the first activity is created, and always
         // before the first frame. By the time anything asks for the track list, the query has
@@ -43,5 +49,18 @@ class SonaApplication : Application() {
         applicationScope.launch { UpdateManager.restore(this@SonaApplication) }
         // A call to the system's shortcut service, so off the main thread as well.
         applicationScope.launch { ShuffleAllShortcut.publish(this@SonaApplication) }
+    }
+
+    /**
+     * The one place the stored effect settings reach [SonaEffects], which every screen, animation and
+     * haptic reads: set before the first frame, then kept in step as the user changes them.
+     */
+    private fun followEffectSettings() {
+        SonaEffects.areAnimationsDisabled = effectSettings.disableAnimations.value
+        SonaEffects.isHighRefreshRateForced = effectSettings.forceHighRefreshRate.value
+        SonaEffects.areHapticsEnabled = effectSettings.hapticsEnabled.value
+        applicationScope.launch { effectSettings.disableAnimations.flow.collect { SonaEffects.areAnimationsDisabled = it } }
+        applicationScope.launch { effectSettings.forceHighRefreshRate.flow.collect { SonaEffects.isHighRefreshRateForced = it } }
+        applicationScope.launch { effectSettings.hapticsEnabled.flow.collect { SonaEffects.areHapticsEnabled = it } }
     }
 }
