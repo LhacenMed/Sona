@@ -1,5 +1,8 @@
 package com.lhacenmed.sona.core.designsystem.motion
 
+import android.os.Build
+import android.view.HapticFeedbackConstants
+import android.view.View
 import android.view.animation.DecelerateInterpolator
 import androidx.compose.animation.core.Easing
 import kotlin.math.abs
@@ -54,3 +57,18 @@ val RubberBandSettleEasing = Easing(DecelerateInterpolator(RubberBandSettleTensi
  */
 const val SwipeArmFraction = 0.15f
 const val SwipeStretchMaxFraction = 0.27f
+
+/**
+ * Felt as a swipe crosses its arm, either way - [isArmed] as it reaches it, so letting go now acts, and
+ * not as it falls back behind it, so letting go now will not - so the finger feels the range the action
+ * holds without the eye having to check. The platform's own threshold haptics where there are some, a
+ * distinct feel each way; Khatmah's CLOCK_TICK, felt where lighter ones are not, before them.
+ */
+fun View.performSwipeArmHaptic(isArmed: Boolean) {
+    val feedback = when {
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> HapticFeedbackConstants.CLOCK_TICK
+        isArmed -> HapticFeedbackConstants.GESTURE_THRESHOLD_ACTIVATE
+        else -> HapticFeedbackConstants.GESTURE_THRESHOLD_DEACTIVATE
+    }
+    performHapticFeedback(feedback)
+}

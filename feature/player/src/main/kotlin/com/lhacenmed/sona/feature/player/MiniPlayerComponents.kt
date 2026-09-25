@@ -64,6 +64,7 @@ import com.lhacenmed.sona.core.designsystem.motion.RubberBandSettleDurationMilli
 import com.lhacenmed.sona.core.designsystem.motion.RubberBandSettleEasing
 import com.lhacenmed.sona.core.designsystem.motion.SwipeArmFraction
 import com.lhacenmed.sona.core.designsystem.motion.SwipeStretchMaxFraction
+import com.lhacenmed.sona.core.designsystem.motion.performSwipeArmHaptic
 import com.lhacenmed.sona.core.designsystem.motion.rubberBandOffset
 import com.lhacenmed.sona.core.designsystem.motion.rubberBandPull
 import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
@@ -183,7 +184,8 @@ internal fun SwipeableMiniPlayerBox(
                                 val arm = armFor(dragPull)
                                 dragOffset = rubberBandOffset(dragPull, arm, stretchLimit())
                                 val reachedArm = arm > 0f && abs(dragOffset) >= arm
-                                if (reachedArm && !isArmed) tick()
+                                // Felt both ways across the arm: the skip is live, or no longer is.
+                                if (reachedArm != isArmed) view.performSwipeArmHaptic(reachedArm)
                                 isArmed = reachedArm
                                 val targetOffset = dragOffset
                                 coroutineScope.launch { offsetXAnimatable.snapTo(targetOffset) }

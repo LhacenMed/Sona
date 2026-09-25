@@ -1,6 +1,5 @@
 package com.lhacenmed.sona.core.designsystem.component.swipe
 
-import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.Orientation
@@ -36,6 +35,7 @@ import com.lhacenmed.sona.core.designsystem.motion.RubberBandSettleDurationMilli
 import com.lhacenmed.sona.core.designsystem.motion.RubberBandSettleEasing
 import com.lhacenmed.sona.core.designsystem.motion.SwipeArmFraction
 import com.lhacenmed.sona.core.designsystem.motion.SwipeStretchMaxFraction
+import com.lhacenmed.sona.core.designsystem.motion.performSwipeArmHaptic
 import com.lhacenmed.sona.core.designsystem.motion.rubberBandOffset
 import com.lhacenmed.sona.core.designsystem.motion.rubberBandPull
 import kotlin.math.abs
@@ -48,9 +48,9 @@ private val SwipeActionIconSize = 24.dp
 /**
  * [content] swiped sideways to act on it - the mini player's swipe, given to a row.
  *
- * Towards a side with an action the row follows the finger up to [SwipeArmFraction] of its width, ticks
- * once there, and resists past it on the rubber band up to [SwipeStretchMaxFraction]; let go past the arm,
- * it runs the action. Towards a side with none it resists from the first pixel, showing there is nothing
+ * Towards a side with an action the row follows the finger up to [SwipeArmFraction] of its width, and
+ * resists past it on the rubber band up to [SwipeStretchMaxFraction]; let go past the arm, it runs the
+ * action. Crossing the arm is felt both ways ([performSwipeArmHaptic]): the action is live, or no longer is. Towards a side with none it resists from the first pixel, showing there is nothing
  * there. Either way it falls back to rest, as the mini player does.
  *
  * What the row uncovers as it slides is the action's own: its tone's colour across the strip it has left,
@@ -139,8 +139,8 @@ fun SwipeActionsBox(
                             val arm = armFor(dragPull)
                             dragOffset = rubberBandOffset(dragPull, arm, stretchLimit())
                             val reachedArm = arm > 0f && abs(dragOffset) >= arm
-                            // Khatmah's tick, as the mini player's: CLOCK_TICK is felt where lighter ones are not.
-                            if (reachedArm && !isArmed) view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                            // Felt both ways across the arm: the action is live, or no longer is.
+                            if (reachedArm != isArmed) view.performSwipeArmHaptic(reachedArm)
                             isArmed = reachedArm
                             val targetOffset = dragOffset
                             scope.launch { offset.snapTo(targetOffset) }
