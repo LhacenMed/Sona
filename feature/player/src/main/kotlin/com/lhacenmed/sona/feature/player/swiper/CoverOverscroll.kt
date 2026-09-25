@@ -39,6 +39,12 @@ private const val CoverStretchReach = 0.3f
  * Engaged, the band claims the gesture from the pager's parents exactly as a scrolling pager does, so a
  * swipe past the ends is held against a vertical wobble the same as a swipe that turns a cover.
  *
+ * Having taken the gesture, the band keeps it to the finger lifting - RecyclerView has no way to take a
+ * gesture back - so it hands the pager whatever it cannot use itself. A finger that comes back through
+ * rest and carries on the other way turns the covers, through the pager's own fake drag, exactly as far
+ * as a swipe would; lifted, the pager settles as it settles any swipe. Turned back past rest, the band
+ * stretches again. One gesture moves the cover naturally both ways, however often it changes its mind.
+ *
  * The pull shapes the current cover, never the pager: transforming the scrolling view would shift the
  * coordinates its own touch handling reads back, so each frame of pull would distort the next.
  */
@@ -65,6 +71,12 @@ internal class CoverOverscroll(
 
     /** The pull the band stood at when engaged, so a grab mid-settle carries on from there. */
     private var engagedPull = 0f
+
+    /**
+     * How far the finger has taken the pager back from the end, in px of travel against [pullDirection] -
+     * the part of the gesture the band hands the pager as a fake drag.
+     */
+    private var handedToPagerPx = 0f
 
     /** How far the band holds the cover into a swipe, in px - positive towards the right. */
     private var stretchPx = 0f
@@ -128,16 +140,50 @@ internal class CoverOverscroll(
                 if (index < 0) return
                 lastX = e.getX(index)
                 if (pulling) {
-                    val pull = (engagedPull + (lastX - anchorX) * pullDirection).coerceAtLeast(0f)
-                    apply(pullDirection * rubberBandOffset(pull, 0f, stretchLimit()))
+                    // Past the end the travel stretches the band; back through rest it turns the covers.
+                    var travel = engagedPull + (lastX - anchorX) * pullDirection
+                    if (travel < 0f && handedToPagerPx == 0f && !pager.recycler().canScrollHorizontally(pullDirection.toInt())) {
+                        // No cover that way either - a queue of one: the band stretches that way instead.
+                        pullDirection = -pullDirection
+                        engagedPull = 0f
+                        anchorX = lastX + travel * pullDirection
+                        travel = -travel
+                    }
+                    // One of the two holds the cover at a time, and the one letting go does so first:
+                    // both shape the same cover, so either moving it under the other would fight it.
+                    if (travel >= 0f) {
+                        handToPager(0f)
+                        val stretch = pullDirection * rubberBandOffset(travel, 0f, stretchLimit())
+                        if (stretch != stretchPx) apply(stretch)
+                    } else {
+                        if (stretchPx != 0f) apply(0f)
+                        handToPager(travel)
+                    }
                 }
             }
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> if (pulling) {
                 pulling = false
+                handedToPagerPx = 0f
+                // Settled as any swipe is: flung on to the next cover, or snapped back to this one.
+                if (pager.isFakeDragging) pager.endFakeDrag()
                 springHome(stretchPx)
             }
         }
+    }
+
+    /**
+     * Turns the covers to [handed] px of travel back from the end (0 or less), by the finger's own
+     * movement since the last frame - a fake drag begun as the finger comes back through rest, and
+     * ended as it returns there: the band has the cover again, and a drag left open would hand a later
+     * release the velocity of this one.
+     */
+    private fun handToPager(handed: Float) {
+        if (handed == handedToPagerPx) return
+        if (!pager.isFakeDragging && !pager.beginFakeDrag()) return
+        pager.fakeDragBy((handed - handedToPagerPx) * pullDirection)
+        handedToPagerPx = handed
+        if (handed == 0f) pager.endFakeDrag()
     }
 
     /**
