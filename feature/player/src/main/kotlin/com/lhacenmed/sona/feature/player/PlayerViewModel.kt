@@ -5,9 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.itemsOrEmpty
-import com.lhacenmed.sona.core.datastore.PlayerSliderStyle
-import com.lhacenmed.sona.core.datastore.PlayerStyle
+import com.lhacenmed.sona.core.datastore.PlayerAppearance
 import com.lhacenmed.sona.core.datastore.PlayerStyleSettings
+import com.lhacenmed.sona.core.datastore.stateIn
 import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Folder
@@ -127,11 +127,7 @@ class PlayerViewModel @Inject constructor(
         ),
     )
 
-    val playerStyle: StateFlow<PlayerStyle> = playerStyleSettings.playerStyle.flow
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), playerStyleSettings.playerStyle.value)
-
-    val sliderStyle: StateFlow<PlayerSliderStyle> = playerStyleSettings.sliderStyle.flow
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), playerStyleSettings.sliderStyle.value)
+    val appearance: StateFlow<PlayerAppearance> = playerStyleSettings.appearance.stateIn(viewModelScope)
 
     val sleepTimer: StateFlow<SleepTimerState> = playbackController.sleepTimer
 

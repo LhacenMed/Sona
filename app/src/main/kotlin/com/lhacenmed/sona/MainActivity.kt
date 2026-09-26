@@ -17,7 +17,7 @@ import com.lhacenmed.sona.core.datastore.UpdateSettings
 import com.lhacenmed.sona.core.designsystem.SonaActivity
 import com.lhacenmed.sona.core.designsystem.theme.AppCoverStyle
 import com.lhacenmed.sona.core.designsystem.theme.AppFastScrollTouchArea
-import com.lhacenmed.sona.core.designsystem.theme.AppThemeSeed
+import com.lhacenmed.sona.core.designsystem.theme.AppTheme
 import com.lhacenmed.sona.core.designsystem.theme.SonaTheme
 import com.lhacenmed.sona.core.navigation.IntentNavigator
 import com.lhacenmed.sona.core.navigation.LocalNavigator
@@ -56,7 +56,7 @@ class MainActivity : SonaActivity() {
     lateinit var libraryRepository: LibraryRepository
 
     @Inject
-    lateinit var themeSeed: AppThemeSeed
+    lateinit var appTheme: AppTheme
 
     @Inject
     lateinit var appCoverStyle: AppCoverStyle
@@ -128,14 +128,14 @@ class MainActivity : SonaActivity() {
         }
 
         setSonaContent {
-            val themeColor by themeSeed.color.collectAsStateWithLifecycle()
+            val themeConfig by appTheme.config.collectAsStateWithLifecycle()
             val coverStyle by appCoverStyle.style.collectAsStateWithLifecycle()
             val fastScrollTouchArea by appFastScrollTouchArea.touchArea.collectAsStateWithLifecycle()
             val autoPromptUpdates by updateSettings.autoPrompt.flow
                 .collectAsStateWithLifecycle(updateSettings.autoPrompt.value)
 
             SonaTheme(
-                themeColor = themeColor,
+                config = themeConfig,
                 coverStyle = coverStyle,
                 fastScrollTouchArea = fastScrollTouchArea,
             ) {

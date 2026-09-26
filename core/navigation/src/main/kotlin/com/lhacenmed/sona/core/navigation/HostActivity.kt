@@ -22,7 +22,7 @@ import com.lhacenmed.sona.core.designsystem.component.WindowOverlayHost
 import com.lhacenmed.sona.core.designsystem.component.fab.FloatingActionButtonStack
 import com.lhacenmed.sona.core.designsystem.theme.AppCoverStyle
 import com.lhacenmed.sona.core.designsystem.theme.AppFastScrollTouchArea
-import com.lhacenmed.sona.core.designsystem.theme.AppThemeSeed
+import com.lhacenmed.sona.core.designsystem.theme.AppTheme
 import com.lhacenmed.sona.core.designsystem.theme.SonaTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -43,12 +43,9 @@ class HostActivity : SonaActivity() {
         const val EXTRA_SCREEN = "extra_screen"
     }
 
-    /**
-     * The same process-wide seed the main activity uses, so a pushed screen is coloured by the
-     * playing track's artwork exactly as the library behind it is.
-     */
+    /** The same process-wide theme the main activity uses, so a pushed screen is drawn exactly as the library behind it is. */
     @Inject
-    lateinit var themeSeed: AppThemeSeed
+    lateinit var appTheme: AppTheme
 
     /** The same process-wide cover style, so a pushed screen draws covers exactly as the library does. */
     @Inject
@@ -80,12 +77,12 @@ class HostActivity : SonaActivity() {
         }
 
         setSonaContent {
-            val themeColor by themeSeed.color.collectAsStateWithLifecycle()
+            val themeConfig by appTheme.config.collectAsStateWithLifecycle()
             val coverStyle by appCoverStyle.style.collectAsStateWithLifecycle()
             val fastScrollTouchArea by appFastScrollTouchArea.touchArea.collectAsStateWithLifecycle()
 
             SonaTheme(
-                themeColor = themeColor,
+                config = themeConfig,
                 coverStyle = coverStyle,
                 fastScrollTouchArea = fastScrollTouchArea,
             ) {

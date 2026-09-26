@@ -60,12 +60,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -81,23 +79,20 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.palette.graphics.Palette
 import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.pillShape
 import com.lhacenmed.sona.core.designsystem.theme.roundedShape
 import coil3.compose.AsyncImage
-import coil3.imageLoader
-import coil3.request.ImageRequest
-import coil3.request.allowHardware
-import coil3.toBitmap
+import com.lhacenmed.sona.core.datastore.CustomBackground
 import com.lhacenmed.sona.core.datastore.LyricsBackgroundStyle
+import com.lhacenmed.sona.core.datastore.PlayerAppearance
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
-import kotlin.coroutines.cancellation.CancellationException
-import kotlinx.coroutines.Dispatchers
+import com.lhacenmed.sona.feature.player.background.ColoringBackground
+import com.lhacenmed.sona.feature.player.background.CustomImageBackground
+import com.lhacenmed.sona.feature.player.background.rememberCoverGradientColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.withContext
 
 private val AppleMusicFallbackGradient =
     listOf(
@@ -117,6 +112,7 @@ internal fun LyricsSheetTransition(
     track: Track,
     playback: PlaybackUiState,
     durationMs: Long,
+    appearance: PlayerAppearance,
     lyricsSyncOffset: Int,
     onLyricsSyncOffsetChange: (Int) -> Unit,
     onDismiss: () -> Unit,
@@ -165,6 +161,7 @@ internal fun LyricsSheetTransition(
                     track = track,
                     playback = playback,
                     durationMs = durationMs,
+                    appearance = appearance,
                     lyricsSyncOffset = lyricsSyncOffset,
                     onLyricsSyncOffsetChange = onLyricsSyncOffsetChange,
                     onBackClick = onDismiss,
@@ -185,6 +182,7 @@ private fun LyricsSheet(
     track: Track,
     playback: PlaybackUiState,
     durationMs: Long,
+    appearance: PlayerAppearance,
     lyricsSyncOffset: Int,
     onLyricsSyncOffsetChange: (Int) -> Unit,
     onBackClick: () -> Unit,
@@ -192,7 +190,6 @@ private fun LyricsSheet(
     backHandlerEnabled: Boolean,
     lyricsViewModel: LyricsViewModel = hiltViewModel(),
 ) {
-    val context = LocalContext.current
     val view = LocalView.current
 
     val deviceMusicVolumeController = rememberDeviceMusicVolumeController()
@@ -206,7 +203,8 @@ private fun LyricsSheet(
         .collectAsStateWithLifecycle(initialValue = null)
     val lyrics = currentLyrics?.lyrics
 
-    val lyricsBackground by lyricsViewModel.lyricsBackgroundStyle.collectAsStateWithLifecycle()
+    val chosenLyricsBackground by lyricsViewModel.lyricsBackgroundStyle.collectAsStateWithLifecycle()
+    val lyricsBackground = chosenLyricsBackground.resolveFor(appearance.background)
     val foregroundColor =
         if (lyricsBackground == LyricsBackgroundStyle.FOLLOW_THEME) {
             MaterialTheme.colorScheme.onSurface
@@ -222,74 +220,10 @@ private fun LyricsSheet(
 
     var position by remember(track.id) { mutableLongStateOf(viewModel.currentPositionMs()) }
     var sliderPosition by remember(track.id) { mutableStateOf<Long?>(null) }
-    var gradientColors by remember(track.coverArtUri) { mutableStateOf(AppleMusicFallbackGradient) }
-
-    val gradientColorsCache =
-        remember {
-            object : LinkedHashMap<String, List<Color>>(20, 0.75f, true) {
-                override fun removeEldestEntry(eldest: Map.Entry<String, List<Color>>) = size > 20
-            }
-        }
-    val fallbackColor = remember { Color.Black.toArgb() }
-
-    LaunchedEffect(track.id, track.coverArtUri, lyricsBackground) {
-        if (lyricsBackground == LyricsBackgroundStyle.FOLLOW_THEME) {
-            gradientColors = AppleMusicFallbackGradient
-            return@LaunchedEffect
-        }
-        val coverArtUri = track.coverArtUri
-        if (coverArtUri == null) {
-            gradientColors = AppleMusicFallbackGradient
-            return@LaunchedEffect
-        }
-
-        gradientColorsCache[coverArtUri]?.let {
-            gradientColors = it
-            return@LaunchedEffect
-        }
-
-        gradientColors = AppleMusicFallbackGradient
-
-        val request =
-            ImageRequest
-                .Builder(context)
-                .data(coverArtUri)
-                .size(PlayerColorExtractor.Config.IMAGE_SIZE, PlayerColorExtractor.Config.IMAGE_SIZE)
-                .allowHardware(false)
-                .build()
-
-        val extractedColors =
-            try {
-                val image =
-                    withContext(Dispatchers.IO) {
-                        context.imageLoader.execute(request)
-                    }.image
-                if (image == null) {
-                    null
-                } else {
-                    val bitmap = image.toBitmap()
-                    val palette =
-                        withContext(Dispatchers.Default) {
-                            Palette
-                                .from(bitmap)
-                                .maximumColorCount(PlayerColorExtractor.Config.MAX_COLOR_COUNT)
-                                .resizeBitmapArea(PlayerColorExtractor.Config.BITMAP_AREA)
-                                .generate()
-                        }
-                    PlayerColorExtractor.extractGradientColors(
-                        palette = palette,
-                        fallbackColor = fallbackColor,
-                    )
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                null
-            }
-
-        gradientColors = extractedColors ?: AppleMusicFallbackGradient
-        gradientColorsCache[coverArtUri] = gradientColors
-    }
+    val gradientColors = rememberCoverGradientColors(
+        coverArtUri = track.coverArtUri,
+        enabled = lyricsBackground == LyricsBackgroundStyle.DEFAULT || lyricsBackground == LyricsBackgroundStyle.COLORING,
+    ).ifEmpty { AppleMusicFallbackGradient }
 
     // Followed only while the activity is started, as the player's own position is.
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -365,6 +299,7 @@ private fun LyricsSheet(
             style = lyricsBackground,
             coverArtUri = track.coverArtUri,
             gradientColors = gradientColors,
+            customBackground = appearance.customBackground,
         )
 
         Box(
@@ -470,6 +405,7 @@ private fun LyricsSheetBackground(
     style: LyricsBackgroundStyle,
     coverArtUri: String?,
     gradientColors: List<Color>,
+    customBackground: CustomBackground,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -494,9 +430,9 @@ private fun LyricsSheetBackground(
 
             LyricsBackgroundStyle.FOLLOW_THEME -> Unit
 
-            LyricsBackgroundStyle.COLORING -> {
-                ColoringBackground(gradientColors = gradientColors)
-            }
+            LyricsBackgroundStyle.COLORING -> ColoringBackground(gradientColors)
+
+            LyricsBackgroundStyle.CUSTOM -> CustomImageBackground(customBackground)
         }
     }
 }
@@ -571,73 +507,6 @@ private fun AppleMusicBackground(
                     .background(bottomScrim),
         )
     }
-}
-
-/** The artwork's dominant colour, darkened down the sheet - ArchiveTune's `COLORING` player background. */
-@Composable
-private fun ColoringBackground(gradientColors: List<Color>) {
-    AnimatedContent(
-        targetState = gradientColors,
-        transitionSpec = {
-            fadeIn(tween(1000)) togetherWith fadeOut(tween(1000))
-        },
-        label = "lyrics-coloring-background",
-    ) { colors ->
-        if (colors.isNotEmpty()) {
-            val baseColor = ensureComfortableColor(colors.first())
-            val gradientStops = buildColoringStops(baseColor)
-            Box(modifier = Modifier.fillMaxSize()) {
-                Box(modifier = Modifier.fillMaxSize().background(baseColor))
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .background(Brush.verticalGradient(colorStops = gradientStops)),
-                )
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.25f)),
-                )
-            }
-        }
-    }
-}
-
-private fun ensureComfortableColor(
-    color: Color,
-    minBrightness: Float = 0.15f,
-    maxBrightness: Float = 0.58f,
-    minSaturation: Float = 0.32f,
-): Color {
-    val hsv = FloatArray(3)
-    android.graphics.Color.colorToHSV(color.toArgb(), hsv)
-    hsv[1] = hsv[1].coerceAtLeast(minSaturation)
-    hsv[2] = hsv[2].coerceIn(minBrightness, maxBrightness)
-    return Color(android.graphics.Color.HSVToColor(hsv))
-}
-
-private fun darkenColor(
-    color: Color,
-    factor: Float,
-): Color {
-    val hsv = FloatArray(3)
-    android.graphics.Color.colorToHSV(color.toArgb(), hsv)
-    hsv[2] = (hsv[2] * factor).coerceAtLeast(0f)
-    return Color(android.graphics.Color.HSVToColor(hsv))
-}
-
-private fun buildColoringStops(baseColor: Color): Array<Pair<Float, Color>> {
-    val comfortable = ensureComfortableColor(baseColor, minBrightness = 0.18f, maxBrightness = 0.5f)
-    val mid = darkenColor(comfortable, 0.82f)
-    val deep = darkenColor(comfortable, 0.6f)
-    return arrayOf(
-        0f to comfortable.copy(alpha = 0.97f),
-        0.4f to mid.copy(alpha = 0.94f),
-        0.75f to deep.copy(alpha = 0.92f),
-        1f to Color.Black.copy(alpha = 0.88f),
-    )
 }
 
 @Composable

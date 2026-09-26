@@ -101,6 +101,8 @@ internal data class MiniPlayerContentColors(
 internal fun SwipeableMiniPlayerBox(
     hasPreviousTrack: Boolean,
     hasNextTrack: Boolean,
+    // Off, the player holds still under the finger - ArchiveTune's swipe-to-change-song switch.
+    swipeEnabled: Boolean,
     onSwipeToPrevious: () -> Unit,
     onSwipeToNext: () -> Unit,
     layoutDirection: LayoutDirection,
@@ -139,7 +141,8 @@ internal fun SwipeableMiniPlayerBox(
                     .height(MiniPlayerHeight)
                     .padding(horizontal = MiniPlayerHorizontalPadding)
                     .onSizeChanged { playerWidth = it.width }
-                    .pointerInput(Unit) {
+                    .pointerInput(swipeEnabled) {
+                        if (!swipeEnabled) return@pointerInput
                         // Where this gesture has put the player, and how fast it is moving. Held here rather
                         // than read back from the animation, whose snaps are launched and may not have landed
                         // yet - so the release judges the drag exactly as the finger left it.

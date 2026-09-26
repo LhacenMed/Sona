@@ -1,4 +1,4 @@
-package com.lhacenmed.sona.feature.settings.screen
+package com.lhacenmed.sona.feature.settings.appearance
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable

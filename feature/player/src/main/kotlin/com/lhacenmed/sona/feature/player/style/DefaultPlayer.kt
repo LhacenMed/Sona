@@ -41,6 +41,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.theme.roundedShape
+import com.lhacenmed.sona.core.datastore.PlayerAppearance
 import com.lhacenmed.sona.core.datastore.PlayerSliderStyle
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
@@ -54,18 +55,16 @@ import com.lhacenmed.sona.feature.player.PlayerUiState
 import com.lhacenmed.sona.feature.player.PlayerViewModel
 import com.lhacenmed.sona.feature.player.R
 import com.lhacenmed.sona.feature.player.Thumbnail
+import com.lhacenmed.sona.feature.player.background.PlayerColors
 import com.lhacenmed.sona.feature.player.favoriteIconRes
 import com.lhacenmed.sona.feature.player.playPauseIconRes
 import com.lhacenmed.sona.feature.player.transportIconRes
 import com.lhacenmed.sona.feature.playback.R as PlaybackR
 
-/** The Default player's colours: the app theme's own. */
+/** The sheet the Default player is drawn on: the app theme's own surface, black under a black theme. */
 internal object DefaultPlayerColors {
     val sheet: Color
         @Composable get() = MaterialTheme.colorScheme.surface
-
-    val content: Color
-        @Composable get() = MaterialTheme.colorScheme.onBackground
 }
 
 /**
@@ -76,7 +75,8 @@ internal object DefaultPlayerColors {
 internal fun DefaultPlayer(
     track: Track,
     uiState: PlayerUiState,
-    sliderStyle: PlayerSliderStyle,
+    appearance: PlayerAppearance,
+    colors: PlayerColors,
     isLoading: Boolean,
     isPlayerExpanded: Boolean,
     sliderPosition: Long?,
@@ -91,16 +91,15 @@ internal fun DefaultPlayer(
     onSliderValueChange: (Long) -> Unit,
     onSliderValueChangeFinished: () -> Unit,
 ) {
-    val contentColor = DefaultPlayerColors.content
+    val contentColor = colors.content
     val controls: @Composable () -> Unit = {
         DefaultPlayerControls(
             track = track,
-            sliderStyle = sliderStyle,
+            sliderStyle = appearance.sliderStyle,
             playback = uiState.playback,
             isLoading = isLoading,
             isFavorite = uiState.isCurrentTrackFavorite,
-            contentColor = contentColor,
-            onContentColor = DefaultPlayerColors.sheet,
+            colors = colors,
             sliderPosition = sliderPosition,
             position = position,
             duration = duration,
@@ -128,6 +127,8 @@ internal fun DefaultPlayer(
                     uiState = uiState,
                     durationMs = duration,
                     textBackgroundColor = contentColor,
+                    hideThumbnail = appearance.hideThumbnail,
+                    swipeToChangeTrack = appearance.swipeToChangeTrack,
                     isPlayerExpanded = isPlayerExpanded,
                     onCollapse = onCollapse,
                     onOpenEqualizer = onOpenEqualizer,
@@ -165,6 +166,8 @@ internal fun DefaultPlayer(
                     uiState = uiState,
                     durationMs = duration,
                     textBackgroundColor = contentColor,
+                    hideThumbnail = appearance.hideThumbnail,
+                    swipeToChangeTrack = appearance.swipeToChangeTrack,
                     isPlayerExpanded = isPlayerExpanded,
                     onCollapse = onCollapse,
                     onOpenEqualizer = onOpenEqualizer,
@@ -187,8 +190,7 @@ private fun DefaultPlayerControls(
     playback: PlaybackUiState,
     isLoading: Boolean,
     isFavorite: Boolean,
-    contentColor: Color,
-    onContentColor: Color,
+    colors: PlayerColors,
     sliderPosition: Long?,
     position: Long,
     duration: Long,
@@ -198,6 +200,7 @@ private fun DefaultPlayerControls(
     onSliderValueChange: (Long) -> Unit,
     onSliderValueChangeFinished: () -> Unit,
 ) {
+    val contentColor = colors.content
     Row(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
@@ -232,7 +235,7 @@ private fun DefaultPlayerControls(
         position = position,
         duration = duration,
         isPlaying = playback.isPlaying,
-        textButtonColor = contentColor,
+        textButtonColor = colors.button,
         onValueChange = onSliderValueChange,
         onValueChangeFinished = onSliderValueChangeFinished,
     )
@@ -251,8 +254,7 @@ private fun DefaultPlayerControls(
     DefaultTransportControls(
         playback = playback,
         isLoading = isLoading,
-        contentColor = contentColor,
-        onContentColor = onContentColor,
+        colors = colors,
         viewModel = viewModel,
     )
 }
@@ -326,10 +328,11 @@ private fun DefaultTrackActions(
 private fun DefaultTransportControls(
     playback: PlaybackUiState,
     isLoading: Boolean,
-    contentColor: Color,
-    onContentColor: Color,
+    colors: PlayerColors,
     viewModel: PlayerViewModel,
 ) {
+    val contentColor = colors.content
+    val onContentColor = colors.onContent
     val haptic = LocalHapticFeedback.current
     val view = LocalView.current
     val shuffleEnabled = playback.shuffleEnabled
@@ -448,7 +451,7 @@ private fun DefaultTransportControls(
             Surface(
                 onClick = onPlayPause,
                 shape = roundedShape(playPauseCorner),
-                color = contentColor,
+                color = colors.button,
                 modifier =
                     Modifier
                         .padding(horizontal = 20.dp)

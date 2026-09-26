@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.common.coroutines.launchOperation
 import com.lhacenmed.sona.core.data.lyrics.LyricsRepository
-import com.lhacenmed.sona.core.datastore.LyricsBackgroundStyle
 import com.lhacenmed.sona.core.datastore.LyricsSettings
 import com.lhacenmed.sona.core.datastore.Setting
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,7 +25,6 @@ class LyricsSettingsViewModel @Inject constructor(
     val lyricsLineBlur: StateFlow<Boolean> = lyricsSettings.lyricsLineBlur.state()
     val lyricsTextSize: StateFlow<Float> = lyricsSettings.lyricsTextSize.state()
     val lyricsLineSpacing: StateFlow<Float> = lyricsSettings.lyricsLineSpacing.state()
-    val lyricsBackgroundStyle: StateFlow<LyricsBackgroundStyle> = lyricsSettings.lyricsBackgroundStyle.state()
     val showLyricsPlayerControls: StateFlow<Boolean> = lyricsSettings.showLyricsPlayerControls.state()
     val lrcBounceEnabled: StateFlow<Boolean> = lyricsSettings.lrcBounceEnabled.state()
     val bounceFactor: StateFlow<Float> = lyricsSettings.bounceFactor.state()
@@ -45,7 +43,6 @@ class LyricsSettingsViewModel @Inject constructor(
     fun setLyricsLineBlur(enabled: Boolean) = write { setLyricsLineBlur(enabled) }
     fun setLyricsTextSize(size: Float) = write { setLyricsTextSize(size) }
     fun setLyricsLineSpacing(spacing: Float) = write { setLyricsLineSpacing(spacing) }
-    fun setLyricsBackgroundStyle(style: LyricsBackgroundStyle) = write { setLyricsBackgroundStyle(style) }
     fun setShowLyricsPlayerControls(enabled: Boolean) = write { setShowLyricsPlayerControls(enabled) }
     fun setLrcBounceEnabled(enabled: Boolean) = write { setLrcBounceEnabled(enabled) }
     fun setBounceFactor(factor: Float) = write { setBounceFactor(factor) }

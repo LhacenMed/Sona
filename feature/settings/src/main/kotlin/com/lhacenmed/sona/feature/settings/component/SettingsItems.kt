@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -30,7 +31,7 @@ import androidx.compose.ui.unit.dp
  * ViewModel instead - the row around it does not change.
  */
 
-/** A row that opens a screen of its own. */
+/** A row that opens a screen of its own - or, while not [enabled], stands faded and inert in its place. */
 @Composable
 fun SettingsNavigationItem(
     title: String,
@@ -38,12 +39,14 @@ fun SettingsNavigationItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
+    enabled: Boolean = true,
 ) {
     ListItem(
         headlineContent = { Text(title) },
         supportingContent = { Text(summary) },
         leadingContent = icon?.let { { Icon(it, contentDescription = null) } },
-        modifier = modifier.clickable(onClick = onClick),
+        colors = settingsRowColors(enabled),
+        modifier = modifier.clickable(enabled = enabled, onClick = onClick),
     )
 }
 
@@ -133,16 +136,11 @@ fun SettingsSwitchItem(
     // False for a setting this device has nothing to do with: shown, as Material shows it disabled.
     enabled: Boolean = true,
 ) {
-    val disabledColor = MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_CONTENT_ALPHA)
     ListItem(
         headlineContent = { Text(title) },
         supportingContent = { Text(summary) },
         trailingContent = { Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled) },
-        colors = if (enabled) {
-            ListItemDefaults.colors()
-        } else {
-            ListItemDefaults.colors(headlineColor = disabledColor, supportingColor = disabledColor)
-        },
+        colors = settingsRowColors(enabled),
         // The whole row, not just the switch: a settings row is one target, and hitting the text
         // expecting it to toggle is the commonest way to miss.
         modifier = modifier.clickable(enabled = enabled) { onCheckedChange(!checked) },
@@ -151,6 +149,18 @@ fun SettingsSwitchItem(
 
 /** Material's disabled content: the surface's text at this much of its colour. */
 private const val DISABLED_CONTENT_ALPHA = 0.38f
+
+/** A row's colours: Material's own, or its disabled text colour while the row is not [enabled]. */
+@Composable
+private fun settingsRowColors(enabled: Boolean): ListItemColors {
+    if (enabled) return ListItemDefaults.colors()
+    val disabledColor = MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_CONTENT_ALPHA)
+    return ListItemDefaults.colors(
+        headlineColor = disabledColor,
+        supportingColor = disabledColor,
+        leadingIconColor = disabledColor,
+    )
+}
 
 /**
  * A row whose value is one of a fixed set, shown beneath the title and picked from a dialog.
@@ -192,7 +202,8 @@ fun SettingsChoiceItem(
 
 /**
  * A row whose stored value is one of a fixed set, picked from a dialog. [summary] says what it is set
- * to, where the chosen option alone would say too little.
+ * to, where the chosen option alone would say too little. While not [enabled], it still says so, faded
+ * and inert.
  */
 @Composable
 fun SettingsChoiceItem(
@@ -202,13 +213,15 @@ fun SettingsChoiceItem(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
     summary: String = options[selectedIndex],
+    enabled: Boolean = true,
 ) {
     var isChoosing by remember { mutableStateOf(false) }
 
     ListItem(
         headlineContent = { Text(title) },
         supportingContent = { Text(summary) },
-        modifier = modifier.clickable { isChoosing = true },
+        colors = settingsRowColors(enabled),
+        modifier = modifier.clickable(enabled = enabled) { isChoosing = true },
     )
 
     if (isChoosing) {

@@ -2,6 +2,7 @@
     <string name="player_now_playing">Now Playing</string>
     <string name="player_collapse">Collapse player</string>
     <string name="player_equalizer">Equalizer</string>
+    <string name="player_hidden_thumbnail">Cover hidden</string>
     <!-- The line under "Now Playing": a collection's name, then what kind of collection it is. -->
     <string name="player_playing_from_collection">%1$s - %2$s</string>
     <string name="player_playing_from_all_tracks">All tracks</string>
