@@ -5,8 +5,10 @@ import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.datastore.EffectSettings
 import com.lhacenmed.sona.core.datastore.SettingsLoader
+import com.lhacenmed.sona.core.datastore.UpdateSettings
 import com.lhacenmed.sona.core.designsystem.effect.SonaEffects
 import com.lhacenmed.sona.feature.update.UpdateManager
+import com.lhacenmed.sona.feature.update.notification.UpdateNotifier
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 import javax.inject.Provider
@@ -31,6 +33,9 @@ class SonaApplication : Application() {
     @Inject
     lateinit var effectSettings: EffectSettings
 
+    @Inject
+    lateinit var updateSettings: UpdateSettings
+
     override fun onCreate() {
         super.onCreate()
         // First, and blocking: every setting is in memory before the first activity, the playback
@@ -46,7 +51,9 @@ class SonaApplication : Application() {
         libraryRepository.get()
         // Whatever the last session left of an update - a found version, a finished download - is
         // put back, so its prompt is there again even offline. Off the main thread: it reads disk.
-        applicationScope.launch { UpdateManager.restore(this@SonaApplication) }
+        applicationScope.launch { UpdateManager.restore(this@SonaApplication, updateSettings.channel.value) }
+        // The background update check runs exactly while its notifications are on.
+        applicationScope.launch { updateSettings.notifications.flow.collect { UpdateNotifier.follow(this@SonaApplication, it) } }
         // A call to the system's shortcut service, so off the main thread as well.
         applicationScope.launch { ShuffleAllShortcut.publish(this@SonaApplication) }
     }

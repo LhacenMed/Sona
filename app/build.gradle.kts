@@ -9,6 +9,8 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    // Writes every dependency's license into the app, for About's licenses list.
+    alias(libs.plugins.aboutlibraries)
 }
 
 sealed class Version(
