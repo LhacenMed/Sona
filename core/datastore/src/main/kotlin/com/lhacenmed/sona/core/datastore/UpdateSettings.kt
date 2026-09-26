@@ -3,6 +3,7 @@ package com.lhacenmed.sona.core.datastore
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -12,8 +13,10 @@ import kotlinx.coroutines.CoroutineScope
 
 private val Context.dataStore by preferencesDataStore(name = "update_settings")
 
-private val AUTO_PROMPT = booleanPreferencesKey("auto_prompt")
+private val CHANNEL = stringPreferencesKey("channel")
+private val NOTIFICATIONS = booleanPreferencesKey("notifications")
 
+/** How the app looks for updates - ArchiveTune's `UpdateChannelKey` and `EnableUpdateNotificationKey`. */
 @Singleton
 class UpdateSettings @Inject constructor(
     @ApplicationContext context: Context,
@@ -25,14 +28,16 @@ class UpdateSettings @Inject constructor(
 
     internal suspend fun awaitLoaded() = cache.awaitLoaded()
 
-    /**
-     * Whether a found update announces itself. This governs the prompt and nothing else: the check
-     * still runs, the manifest is still saved and a staged APK still resumes - turning it off only
-     * means the app waits to be asked, which is what the Updates screen's manual check is for.
-     */
-    val autoPrompt: Setting<Boolean> = cache.setting { it[AUTO_PROMPT] ?: true }
+    val channel: Setting<UpdateChannel> = cache.setting { it.enum(CHANNEL, UpdateChannel.STABLE) }
 
-    suspend fun setAutoPrompt(enabled: Boolean) {
-        dataStore.edit { it[AUTO_PROMPT] = enabled }
+    suspend fun setChannel(channel: UpdateChannel) {
+        dataStore.edit { it[CHANNEL] = channel.name }
+    }
+
+    /** Whether the app looks for updates in the background, and posts a notification when it finds one. */
+    val notifications: Setting<Boolean> = cache.setting { it[NOTIFICATIONS] ?: false }
+
+    suspend fun setNotifications(enabled: Boolean) {
+        dataStore.edit { it[NOTIFICATIONS] = enabled }
     }
 }

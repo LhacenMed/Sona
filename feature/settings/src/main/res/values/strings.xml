@@ -350,43 +350,80 @@
     <string name="stats_note">A track counts as played once it has been listened to for ten seconds.</string>
 
     <!-- Storage -->
-    <string name="storage_covers_section">Artwork</string>
-    <string name="storage_cover_cache_used_title">Cover cache</string>
-    <string name="storage_cover_cache_limit_title">Cover cache limit</string>
-    <string name="storage_limit_128">128 MB</string>
-    <string name="storage_limit_256">256 MB</string>
-    <string name="storage_limit_512">512 MB</string>
-    <string name="storage_limit_unlimited">Unlimited</string>
-    <string name="storage_clear_cover_cache_title">Clear cover cache</string>
-    <string name="storage_clear_cover_cache_summary">Artwork is decoded again the next time it is shown</string>
     <string name="storage_library_section">Library</string>
     <string name="storage_database_used_title">Library database</string>
     <string name="storage_rescan_title">Rescan the library</string>
     <string name="storage_rescan_summary">Read every folder again from scratch</string>
-    <string name="storage_placeholder_size">0 MB</string>
+    <string name="storage_rescanning">Rescanning…</string>
+    <string name="storage_image_cache_section">Image cache</string>
+    <string name="storage_image_cache_used_title">Images kept</string>
+    <string name="storage_clear_image_cache_title">Clear image cache</string>
+    <string name="storage_clear_image_cache_summary">Downloaded images are fetched again the next time they are shown</string>
+    <string name="storage_clear_image_cache_confirm">Delete every downloaded image? They are downloaded again when next shown.</string>
+    <string name="storage_clear_action">Clear</string>
+    <string name="storage_clear_image_cache_done">Image cache cleared</string>
+    <string name="storage_clear_image_cache_failed">Could not clear the image cache</string>
     <string name="storage_note">Clearing a cache never removes music. Only files the app made are deleted.</string>
 
     <!-- Updates -->
-    <string name="updates_section">Updates</string>
-    <string name="updates_automatic_check_title">Update alerts</string>
-    <string name="updates_automatic_check_summary">Announce a new version as soon as it is found</string>
-    <string name="updates_check_now_title">Check now</string>
-    <string name="updates_check_now_summary">Look for a new version straight away</string>
-    <string name="updates_checking">Checking…</string>
-    <string name="updates_up_to_date">Up to date</string>
-    <string name="updates_installed_version_title">Installed version</string>
-    <string name="updates_placeholder_version">1.0.0</string>
+    <string name="updates_subtitle_stable">Stable releases and release notes</string>
+    <string name="updates_subtitle_beta">Beta releases and recent development commits</string>
+    <string name="updates_current_version">Current version</string>
+    <string name="updates_latest_version">Latest: %1$s</string>
+    <string name="updates_status_checking">Checking for the latest release</string>
+    <string name="updates_status_current">You are on the latest available release</string>
+    <string name="updates_check_for_update">Check for update</string>
+    <string name="updates_view_changelog">View changelog</string>
+    <string name="updates_check_failed">Could not check for updates</string>
+    <string name="updates_error_unknown">Unknown error</string>
+    <string name="updates_notifications_title">Update notifications</string>
+    <string name="updates_notifications_summary">Get notified when a new release is available on the selected channel</string>
+    <string name="updates_channel_title">Update channel</string>
+    <string name="updates_channel_summary">Choose between tested releases and early builds.</string>
+    <string name="updates_channel_stable">Stable</string>
+    <string name="updates_channel_beta">Beta</string>
+    <string name="updates_recent_commits">Recent commits</string>
+    <string name="updates_loading_commits">Loading recent commits</string>
+    <string name="updates_recent_commits_count">%1$d recent commits</string>
+    <string name="updates_no_commits">No recent commits found</string>
+    <string name="updates_channel_warning_intro">Sona provides two channels for builds:</string>
+    <string name="updates_channel_warning_stable_title">Stable builds</string>
+    <string name="updates_channel_warning_stable_source">Distributed as GitHub releases.</string>
+    <string name="updates_channel_warning_stable_description">These versions are tested and recommended for most users.</string>
+    <string name="updates_channel_warning_beta_title">Beta builds</string>
+    <string name="updates_channel_warning_beta_source">Distributed as GitHub pre-releases: alpha, beta and release candidate builds.</string>
+    <string name="updates_channel_warning_beta_risk">Beta builds may include experimental features, unfinished changes, or temporary regressions.</string>
+    <string name="updates_channel_warning_beta_unstable">Beta builds are provided for testing and early access only.\nStability, compatibility, and functionality are not guaranteed.</string>
+    <string name="updates_channel_warning_acknowledgement">Note: updates are downloaded directly from GitHub.\nBy continuing, you acknowledge that Beta builds may be unstable and use them at your own risk.</string>
+    <string name="updates_beta_confirmation">Switch to the Beta channel to receive pre-releases as well as releases.\n\nBeta builds come before each release and may be unstable.\nNote: updates are downloaded directly from GitHub.</string>
+
+    <!-- Changelog -->
+    <string name="changelog_title">Changelog</string>
+    <string name="changelog_load_failed">Error loading changelog</string>
+    <string name="changelog_no_releases">No releases found</string>
+    <string name="retry">Retry</string>
 
     <!-- About -->
-    <string name="about_app_section">This app</string>
-    <string name="about_version_title">Version</string>
-    <string name="changelog_title">Changelog</string>
-    <string name="changelog_summary">What changed in each release</string>
-    <string name="about_project_section">Project</string>
-    <string name="about_source_title">Source code</string>
-    <string name="about_source_summary">Read and contribute on GitHub</string>
-    <string name="about_licenses_title">Open source licenses</string>
-    <string name="about_licenses_summary">The libraries this app is built on</string>
+    <string name="about_app_name">Sona</string>
+    <string name="about_build_release">Release</string>
+    <string name="about_build_debug">Debug</string>
+    <string name="about_link_github">GitHub</string>
+    <string name="about_link_releases">Releases</string>
+    <string name="about_link_issues">Report an issue</string>
+    <string name="about_licenses">Licenses</string>
+    <string name="about_license_unknown">Unknown license</string>
+    <string name="about_lead_developer">Lead developer</string>
+    <string name="about_role_lead_developer">Creator and maintainer</string>
+    <string name="about_built_on">Built on</string>
+    <string name="about_role_auxio">Library, playback and settings</string>
+    <string name="about_role_archivetune">Player, lyrics, themes and updates</string>
+    <string name="about_role_fossify">Scanning and a queue that survives restarts</string>
+    <string name="about_contributors">Contributors</string>
+    <string name="about_more">More</string>
+    <string name="about_loading">Loading</string>
+    <string name="about_no_results">No results found</string>
+    <string name="about_error">Could not load</string>
+    <string name="about_close">Close</string>
 
     <!-- Managed lists -->
     <string name="excluded_folders_title">Excluded Folders</string>

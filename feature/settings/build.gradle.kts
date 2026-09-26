@@ -54,6 +54,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.materialkolor)
     implementation(libs.androidsvg)
+    implementation(libs.aboutlibraries.core)
 }
 
 kotlin {
