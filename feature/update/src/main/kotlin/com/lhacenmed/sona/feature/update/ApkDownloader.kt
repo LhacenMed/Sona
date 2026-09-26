@@ -41,7 +41,8 @@ object ApkDownloader {
         return StagedApk(apk, code.toInt(), info?.versionName.orEmpty())
     }
 
-    fun download(context: Context, update: AppUpdate): Flow<UpdateState> = flow {
+    /** Streams the APK at [apkUrl] into [apkFile], as the [UpdateState]s it passes through. */
+    fun download(context: Context, apkUrl: String): Flow<UpdateState> = flow {
         val ctx = context.applicationContext
         val apk = apkFile(ctx)
         apk.delete()
@@ -50,7 +51,7 @@ object ApkDownloader {
 
         val speed = SpeedTracker()
         try {
-            val conn = openWithRedirects(update.apkUrl)
+            val conn = openWithRedirects(apkUrl)
             val totalBytes = conn.contentLengthLong.takeIf { it > 0 }
             var received = 0L
             try {

@@ -20,7 +20,8 @@ private const val BOLD  = "**"
 private const val BULLET = "- "
 
 /**
- * Release notes as the release pipeline writes them: markdown, already in the reader's language.
+ * Release notes as the release pipeline writes them: markdown, already in the reader's language - in the
+ * update sheet and the changelog alike.
  *
  * Only the marks release notes actually use are understood — a heading, a bullet, a run of bold —
  * because the alternative is carrying a markdown library to honour four rules. Anything else is
@@ -38,20 +39,20 @@ fun ReleaseNotes(markdown: String, modifier: Modifier = Modifier) {
                 // not a document with an outline to convey.
                 text.startsWith("#") -> Text(
                     text     = boldRuns(text.trimStart('#').trim()),
-                    style    = MaterialTheme.typography.labelLarge,
+                    style    = MaterialTheme.typography.titleSmall,
                     modifier = Modifier.padding(bottom = 2.dp),
                 )
 
                 text.startsWith(BULLET) -> Row {
-                    Text("•", style = MaterialTheme.typography.bodySmall)
+                    Text("•", style = MaterialTheme.typography.bodyMedium)
                     Text(
                         text     = boldRuns(text.removePrefix(BULLET)),
-                        style    = MaterialTheme.typography.bodySmall,
+                        style    = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(start = 8.dp),
                     )
                 }
 
-                else -> Text(text = boldRuns(text), style = MaterialTheme.typography.bodySmall)
+                else -> Text(text = boldRuns(text), style = MaterialTheme.typography.bodyMedium)
             }
         }
     }

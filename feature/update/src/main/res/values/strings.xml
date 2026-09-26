@@ -1,15 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="update_title">Update available</string>
-    <string name="update_message">A new version (%1$s) of Sona is available. Update now to get the latest features and fixes.</string>
-    <string name="update_download">Update</string>
+    <!-- The new-update sheet -->
+    <string name="update_new_available">New update available</string>
+    <string name="update_notes_unavailable">No release notes available</string>
+    <string name="update_action">Update</string>
+
+    <!-- The download and install dialogs -->
+    <string name="update_download_title">Sona %1$s</string>
+    <string name="update_download_title_beta">Sona Beta %1$s</string>
+    <string name="update_download_progress">%1$d%%</string>
+    <string name="update_downloaded">Downloaded and ready to install.</string>
     <string name="update_install">Install</string>
-    <string name="update_retry">Retry</string>
-    <string name="update_later">Later</string>
+    <string name="update_failed_title">Update failed</string>
+    <string name="update_no_apk">This release has no download for this device.</string>
     <string name="update_offline">No internet connection. Connect to the internet to download the update.</string>
+
+    <!-- The download notification -->
     <string name="update_connecting">Connecting…</string>
     <string name="update_stop">Stop</string>
     <string name="update_notif_channel">App update</string>
     <string name="update_notif_title">Downloading update</string>
     <string name="update_notif_ready">Update downloaded — tap to install</string>
+
+    <!-- The new-update notification -->
+    <string name="update_notification_channel_name">Update notifications</string>
+    <string name="update_notification_channel_description">Tells you when a new version of Sona is out</string>
+    <string name="update_notification_title">New update available</string>
+    <string name="update_notification_text">Version %1$s is available</string>
+    <string name="update_notification_download">Download</string>
 </resources>
