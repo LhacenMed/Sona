@@ -13,7 +13,7 @@ import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.lhacenmed.sona.core.navigation.Screen
-import com.lhacenmed.sona.feature.settings.screen.AboutScreen
+import com.lhacenmed.sona.feature.settings.about.AboutScreen
 import com.lhacenmed.sona.feature.settings.appearance.AppearanceScreen
 import com.lhacenmed.sona.feature.settings.screen.BehaviorScreen
 import com.lhacenmed.sona.feature.settings.screen.ContentScreen
@@ -22,7 +22,7 @@ import com.lhacenmed.sona.feature.settings.screen.LyricsScreen
 import com.lhacenmed.sona.feature.settings.screen.PermissionsScreen
 import com.lhacenmed.sona.feature.settings.screen.PlaybackScreen
 import com.lhacenmed.sona.feature.settings.screen.StorageScreen
-import com.lhacenmed.sona.feature.settings.screen.UpdatesScreen
+import com.lhacenmed.sona.feature.settings.updates.UpdatesScreen
 
 /** The bands the settings home groups its categories into. */
 enum class SettingsGroup(val titleRes: Int) {
