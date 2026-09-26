@@ -1,30 +1,32 @@
 package com.lhacenmed.sona.feature.update
 
 import android.content.Context
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.net.HttpURLConnection
-import java.net.URL
+import com.lhacenmed.sona.core.datastore.UpdateChannel
+import com.lhacenmed.sona.feature.update.github.Release
+import com.lhacenmed.sona.feature.update.github.Releases
 
 /**
- * Fetches the remote version manifest and decides whether a newer build exists. Best-effort: any
- * network or parse failure returns null so a launch is never blocked by a failed update check.
+ * Decides whether a newer build exists on a channel, and says so to [UpdateRegistry] - the one way every
+ * check goes: at launch, from the Updates screen, and in the background.
  */
 object UpdateChecker {
 
-    private const val MANIFEST_URL =
-        "https://raw.githubusercontent.com/LhacenMed/Sona/main/version.json"
-
-    /** Returns the available update when the manifest's versionCode exceeds the installed one. */
-    suspend fun check(context: Context): AppUpdate? = withContext(Dispatchers.IO) {
-        runCatching {
-            val conn = (URL(MANIFEST_URL).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 15_000
-                readTimeout    = 15_000
+    /**
+     * The newest release on [channel] - held in [UpdateRegistry] as the available update when it is newer
+     * than the running build, and let go when it is not, unless its download is already under way or done.
+     */
+    suspend fun check(context: Context, channel: UpdateChannel, forceRefresh: Boolean = false): Result<Release> =
+        Releases.latest(context, channel, forceRefresh).onSuccess { latest ->
+            when {
+                isNewer(context, latest) -> UpdateRegistry.setAvailable(latest)
+                !UpdateRegistry.holdsDownload -> UpdateRegistry.setAvailable(null)
             }
-            val json = try { conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) } }
-            finally { conn.disconnect() }
-            AppUpdate.fromJson(json).takeIf { it.versionCode > context.installedVersionCode() }
-        }.getOrNull()
+        }
+
+    /** Whether [release] is newer than the running build. */
+    fun isNewer(context: Context, release: Release): Boolean {
+        val installed = context.installedVersion() ?: return false
+        val candidate = release.version ?: return false
+        return candidate > installed
     }
 }
