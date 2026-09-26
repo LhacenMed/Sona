@@ -6,6 +6,34 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-09-26
+
+### Added
+
+- Theme: System, Light or Dark, and a Black theme while dark.
+- Dynamic colors, which follow the wallpaper recoloured by the playing cover. Turned off, Wallpaper colors, Cover colors and a Color palette can each be chosen instead.
+- A Color palette screen with 68 presets, and a Theme creator for your own palette from four seed colors. Themes can be imported and exported as files.
+- Font: Default (Poppins), System, Inter, or any .ttf you pick.
+- Player background styles: Follow theme, Gradient, Blur, Coloring, Blur gradient, Glow, Glow animated, and Custom, your own image with blur, contrast and brightness.
+- Mini player background styles: Follow theme, Gradient and Glow.
+- Player button colors, Hide player thumbnail, and Swipe to change song, which covers the mini player too.
+- An Updates screen with your version and the latest one, the changelog, and the development branch's recent commits.
+- Update channels: Stable, or Beta for pre-releases as well.
+- Update notifications: a check every few hours, and a notification whose Download starts the update.
+- An About screen with links, open-source licenses, credits and contributors.
+- Storage shows the library database and image cache sizes, rescans the library, and clears the image cache.
+
+### Changed
+
+- The default font is Poppins. System keeps the previous look.
+- Lyrics background style moves from Lyrics to Appearance, and the lyrics follow the player's custom image while it has one.
+- A new version is announced with a sheet showing its release notes, and downloads with a progress dialog.
+- Updates are found from GitHub releases, and download the APK made for your device instead of the universal one.
+
+### Removed
+
+- The Update alerts switch. A new version is announced once per session.
+
 ## [1.4.0] - 2026-09-25
 
 ### Added
