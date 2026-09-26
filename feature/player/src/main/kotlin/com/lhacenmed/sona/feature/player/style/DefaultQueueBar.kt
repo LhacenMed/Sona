@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -43,6 +44,7 @@ import com.lhacenmed.sona.feature.player.makeTimeString
  */
 @Composable
 internal fun DefaultQueueBar(
+    contentColor: Color,
     sleepTimerEnabled: Boolean,
     sleepTimerTimeLeft: Long,
     onExpandQueue: () -> Unit,
@@ -50,8 +52,6 @@ internal fun DefaultQueueBar(
     onShowLyrics: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val contentColor = DefaultPlayerColors.content
-
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             horizontalArrangement = Arrangement.SpaceBetween,

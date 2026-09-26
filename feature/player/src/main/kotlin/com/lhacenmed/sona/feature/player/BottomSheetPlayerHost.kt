@@ -42,8 +42,7 @@ fun BottomSheetPlayerHost(
     content: @Composable () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val playerStyle by viewModel.playerStyle.collectAsStateWithLifecycle()
-    val sliderStyle by viewModel.sliderStyle.collectAsStateWithLifecycle()
+    val appearance by viewModel.appearance.collectAsStateWithLifecycle()
     val sleepTimer by viewModel.sleepTimer.collectAsStateWithLifecycle()
     // Null until the playback and the library have both loaded: a process started again by the system
     // knows of no track for its first moments, and taking that as none would dismiss the sheet the
@@ -86,8 +85,7 @@ fun BottomSheetPlayerHost(
         BottomSheetPlayer(
             state = state,
             uiState = uiState,
-            playerStyle = playerStyle,
-            sliderStyle = sliderStyle,
+            appearance = appearance,
             sleepTimer = sleepTimer,
             viewModel = viewModel,
             onGoToAlbum = onGoToAlbum,

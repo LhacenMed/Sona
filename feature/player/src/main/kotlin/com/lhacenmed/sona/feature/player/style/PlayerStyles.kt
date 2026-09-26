@@ -3,12 +3,13 @@ package com.lhacenmed.sona.feature.player.style
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
-import com.lhacenmed.sona.core.datastore.PlayerSliderStyle
+import com.lhacenmed.sona.core.datastore.PlayerAppearance
 import com.lhacenmed.sona.core.datastore.PlayerStyle
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.player.PlayerTitleActions
 import com.lhacenmed.sona.feature.player.PlayerUiState
 import com.lhacenmed.sona.feature.player.PlayerViewModel
+import com.lhacenmed.sona.feature.player.background.PlayerColors
 
 // The one place a player style is looked up. Each style draws three things - the sheet behind it, the
 // expanded player, and the queue bar along its bottom - and the rest of the player (mini player,
@@ -27,7 +28,8 @@ internal fun PlayerStyle.sheetColor(): Color =
 internal fun PlayerStyle.ExpandedPlayer(
     track: Track,
     uiState: PlayerUiState,
-    sliderStyle: PlayerSliderStyle,
+    appearance: PlayerAppearance,
+    colors: PlayerColors,
     isLoading: Boolean,
     isPlayerExpanded: Boolean,
     sliderPosition: Long?,
@@ -47,7 +49,8 @@ internal fun PlayerStyle.ExpandedPlayer(
             DefaultPlayer(
                 track = track,
                 uiState = uiState,
-                sliderStyle = sliderStyle,
+                appearance = appearance,
+                colors = colors,
                 isLoading = isLoading,
                 isPlayerExpanded = isPlayerExpanded,
                 sliderPosition = sliderPosition,
@@ -68,6 +71,7 @@ internal fun PlayerStyle.ExpandedPlayer(
 /** The bar the queue sheet shows while collapsed: the way into the queue, the sleep timer and lyrics. */
 @Composable
 internal fun PlayerStyle.QueueBar(
+    contentColor: Color,
     sleepTimerEnabled: Boolean,
     sleepTimerTimeLeft: Long,
     onExpandQueue: () -> Unit,
@@ -77,6 +81,7 @@ internal fun PlayerStyle.QueueBar(
     when (this) {
         PlayerStyle.DEFAULT ->
             DefaultQueueBar(
+                contentColor = contentColor,
                 sleepTimerEnabled = sleepTimerEnabled,
                 sleepTimerTimeLeft = sleepTimerTimeLeft,
                 onExpandQueue = onExpandQueue,

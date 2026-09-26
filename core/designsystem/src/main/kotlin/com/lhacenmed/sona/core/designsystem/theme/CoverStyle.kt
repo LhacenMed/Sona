@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
  * and how they are cut.
  *
  * The cover settings are stored in `:core:datastore`, which this module cannot see, so the app turns
- * them into one of these - the same split as [AppThemeSeed].
+ * them into one of these - the same split as [AppTheme].
  */
 @Immutable
 data class CoverStyle(

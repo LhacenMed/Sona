@@ -23,6 +23,7 @@ material = "1.12.0"
 reorderable = "3.1.0"
 viewpager2 = "1.1.0"
 kuromojiIpadic = "0.9.0"
+androidsvg = "1.4"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -60,6 +61,7 @@ androidx-datastore-preferences = { group = "androidx.datastore", name = "datasto
 coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
 androidx-palette = { group = "androidx.palette", name = "palette-ktx", version.ref = "palette" }
 materialkolor = { group = "com.materialkolor", name = "material-kolor", version.ref = "materialKolor" }
+androidsvg = { group = "com.caverock", name = "androidsvg-aar", version.ref = "androidsvg" }
 reorderable = { group = "sh.calvin.reorderable", name = "reorderable", version.ref = "reorderable" }
 kuromoji-ipadic = { group = "com.atilika.kuromoji", name = "kuromoji-ipadic", version.ref = "kuromojiIpadic" }
 

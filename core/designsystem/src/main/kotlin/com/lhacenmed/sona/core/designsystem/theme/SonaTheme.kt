@@ -25,24 +25,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import com.lhacenmed.sona.core.model.FastScrollTouchArea
+import com.lhacenmed.sona.core.model.ThemeMode
 
 private const val ThemeTransitionDurationMillis = 350
 
 /**
- * Sona's Material3 theme.
+ * Sona's Material3 theme, drawn from a [ThemeConfig] - light or dark, its colours, black surfaces and
+ * its typeface - as ArchiveTune's `ArchiveTuneTheme` draws its preferences.
  *
- * By default, this behaves like a plain Material3 theme following the system light/dark setting.
- * Passing a non-default [themeColor] (e.g. extracted from the currently playing track's artwork)
- * switches to a materialkolor-generated dynamic scheme seeded from that color; leaving it as
- * [DefaultThemeColor] on Android 12+ instead uses the system's wallpaper-based dynamic color.
+ * This composable only draws the config - it does not know about playback, artwork or settings. The app
+ * layer works the config out, the playing cover's colour included, and hands it down here.
  *
- * This composable only builds the [androidx.compose.material3.ColorScheme] - it does not know
- * anything about playback, artwork loading, or color extraction. That pipeline lives in the app
- * layer, which observes the current track and calls [extractThemeColor] on its artwork before
- * passing the result down here.
- *
- * Every change of scheme - a new cover, the wallpaper colours returning, light and dark - is animated
- * by [animateColorSchemeAsState], so the whole app moves between schemes as one.
+ * Every change of scheme - a new cover, a new palette, light and dark - is animated by
+ * [animateColorSchemeAsState], so the whole app moves between schemes as one.
  *
  * [coverStyle] is provided alongside the colours, so every cover in the app is drawn the same way,
  * and [fastScrollTouchArea] so every list's fast scroller grabs its thumb the same way. The round mode
@@ -50,28 +45,39 @@ private const val ThemeTransitionDurationMillis = 350
  */
 @Composable
 fun SonaTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    themeColor: Color = DefaultThemeColor,
+    config: ThemeConfig,
     coverStyle: CoverStyle,
     fastScrollTouchArea: FastScrollTouchArea,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
+    val darkTheme = when (config.mode) {
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
 
     // Generated once per change rather than once per frame: an HCT scheme is dozens of tone solves,
     // and the transition below only ever needs its two ends.
-    val targetColorScheme = remember(themeColor, darkTheme) {
-        val useSystemDynamicColor =
-            themeColor == DefaultThemeColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-        val scheme = if (useSystemDynamicColor) {
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        } else {
-            materialKolorDynamicColorScheme(seedColor = themeColor, isDark = darkTheme)
+    val targetColorScheme = remember(config.colors, config.pureBlack, darkTheme) {
+        val scheme = when (val colors = config.colors) {
+            ThemeColors.Wallpaper ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+                } else {
+                    materialKolorDynamicColorScheme(seedColor = DefaultThemeColor, isDark = darkTheme)
+                }
+            is ThemeColors.Seed -> materialKolorDynamicColorScheme(seedColor = colors.color, isDark = darkTheme)
+            is ThemeColors.Palette -> paletteColorScheme(seeds = colors.seeds, isDark = darkTheme)
         }
         // Every bar, row and sheet is `surface`, while a Scaffold - and any screen that paints nothing
         // itself - shows `background`. The two match on most devices but not all, and where they differ
         // content sits in bands of another shade. One colour for both, here, keeps every screen whole.
-        scheme.copy(background = scheme.surface, onBackground = scheme.onSurface)
+        if (darkTheme && config.pureBlack) {
+            scheme.copy(surface = Color.Black, background = Color.Black, onBackground = scheme.onSurface)
+        } else {
+            scheme.copy(background = scheme.surface, onBackground = scheme.onSurface)
+        }
     }
 
     SystemBarsFollowing(darkTheme)
@@ -81,6 +87,7 @@ fun SonaTheme(
     MaterialTheme(
         colorScheme = animateColorSchemeAsState(targetColorScheme),
         shapes = if (coverStyle.isRounded) MaterialTheme.shapes else SquareShapes,
+        typography = rememberTypography(config.font, config.customFontUri),
     ) {
         CompositionLocalProvider(
             LocalIsRounded provides coverStyle.isRounded,

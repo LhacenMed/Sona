@@ -14,7 +14,7 @@ import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.screen.AboutScreen
-import com.lhacenmed.sona.feature.settings.screen.AppearanceScreen
+import com.lhacenmed.sona.feature.settings.appearance.AppearanceScreen
 import com.lhacenmed.sona.feature.settings.screen.BehaviorScreen
 import com.lhacenmed.sona.feature.settings.screen.ContentScreen
 import com.lhacenmed.sona.feature.settings.screen.ListeningStatsScreen

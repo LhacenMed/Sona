@@ -8,13 +8,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.lhacenmed.sona.core.datastore.LyricsBackgroundStyle
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDialog
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
 import com.lhacenmed.sona.feature.settings.component.SettingsActionItem
-import com.lhacenmed.sona.feature.settings.component.SettingsChoiceItem
 import com.lhacenmed.sona.feature.settings.component.SettingsList
 import com.lhacenmed.sona.feature.settings.component.SettingsNavigationItem
 import com.lhacenmed.sona.feature.settings.component.SettingsSection
@@ -37,7 +35,6 @@ data object LyricsScreen : Screen {
         val lyricsLineBlur by viewModel.lyricsLineBlur.collectAsStateWithLifecycle()
         val lyricsTextSize by viewModel.lyricsTextSize.collectAsStateWithLifecycle()
         val lyricsLineSpacing by viewModel.lyricsLineSpacing.collectAsStateWithLifecycle()
-        val lyricsBackgroundStyle by viewModel.lyricsBackgroundStyle.collectAsStateWithLifecycle()
         val showLyricsPlayerControls by viewModel.showLyricsPlayerControls.collectAsStateWithLifecycle()
         val romanizeJapanese by viewModel.romanizeJapanese.collectAsStateWithLifecycle()
         val romanizeKorean by viewModel.romanizeKorean.collectAsStateWithLifecycle()
@@ -104,17 +101,6 @@ data object LyricsScreen : Screen {
                     valueRange = 1.0f..2.0f,
                     steps = 19,
                     formatValue = { String.format(Locale.getDefault(), lineSpacingFormat, it) },
-                )
-                // Options in LyricsBackgroundStyle's order, so an option's index is the style it names.
-                SettingsChoiceItem(
-                    title = stringResource(R.string.lyrics_background_style_title),
-                    options = listOf(
-                        stringResource(R.string.lyrics_background_default),
-                        stringResource(R.string.lyrics_background_follow_theme),
-                        stringResource(R.string.lyrics_background_coloring),
-                    ),
-                    selectedIndex = lyricsBackgroundStyle.ordinal,
-                    onSelect = { viewModel.setLyricsBackgroundStyle(LyricsBackgroundStyle.entries[it]) },
                 )
                 SettingsSwitchItem(
                     title = stringResource(R.string.lyrics_show_player_controls_title),

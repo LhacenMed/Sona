@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,9 +32,11 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -45,19 +49,23 @@ import com.lhacenmed.sona.core.designsystem.theme.LocalIsRounded
 import com.lhacenmed.sona.core.designsystem.theme.roundedShape
 import com.lhacenmed.sona.feature.player.swiper.QueueCoverPager
 import kotlinx.coroutines.delay
+import com.lhacenmed.sona.feature.playback.R as PlaybackR
 
 private const val DoubleTapSeekStepMs = 5_000L
 private val ThumbnailCornerRadius = 16.dp
 
 /**
  * The player's artwork: the queue's covers in Auxio's carousel ([QueueCoverPager]), swiped to change
- * track and double-tapped on either half to seek. Ported from ArchiveTune's `Thumbnail`.
+ * track while [swipeToChangeTrack] allows it, and double-tapped on either half to seek - or, while
+ * [hideThumbnail], the app's logo in its place. Ported from ArchiveTune's `Thumbnail`.
  */
 @Composable
 internal fun Thumbnail(
     uiState: PlayerUiState,
     durationMs: Long,
     textBackgroundColor: Color,
+    hideThumbnail: Boolean,
+    swipeToChangeTrack: Boolean,
     isPlayerExpanded: Boolean,
     onCollapse: () -> Unit,
     onOpenEqualizer: () -> Unit,
@@ -74,6 +82,9 @@ internal fun Thumbnail(
     var showSeekEffect by remember { mutableStateOf(false) }
     var seekDirection by remember { mutableStateOf("") }
     val seekStepSeconds = (DoubleTapSeekStepMs / 1000).toInt()
+
+    // The header's buttons in the header's text colour, so they read over whatever the player is drawn on.
+    val headerButtonColors = IconButtonDefaults.iconButtonColors(contentColor = textBackgroundColor)
 
     Box(modifier = modifier) {
         Column(
@@ -96,6 +107,7 @@ internal fun Thumbnail(
                     onClick = onCollapse,
                     icon = Icons.Filled.KeyboardArrowDown,
                     contentDescription = stringResource(R.string.player_collapse),
+                    colors = headerButtonColors,
                 )
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -121,6 +133,7 @@ internal fun Thumbnail(
                     onClick = onOpenEqualizer,
                     icon = Icons.Filled.Equalizer,
                     contentDescription = stringResource(R.string.player_equalizer),
+                    colors = headerButtonColors,
                 )
             }
 
@@ -143,17 +156,35 @@ internal fun Thumbnail(
                 }
 
                 val isRounded = LocalIsRounded.current
-                AndroidView(
-                    factory = { viewContext -> QueueCoverPager(viewContext, ThumbnailCornerRadius) },
-                    update = { pager ->
-                        pager.onSwipeToTrack = viewModel::onPlayQueueItem
-                        pager.onDoubleTap = onDoubleTap
-                        pager.isSwipeEnabled = isPlayerExpanded
-                        pager.isRounded = isRounded
-                        pager.show(uiState.queue, uiState.currentQueueIndex)
-                    },
-                    modifier = Modifier.size(maxWidth - (PlayerHorizontalPadding * 2)),
-                )
+                val artworkSize = maxWidth - (PlayerHorizontalPadding * 2)
+                if (hideThumbnail) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(artworkSize)
+                            .clip(roundedShape(ThumbnailCornerRadius))
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                    ) {
+                        Icon(
+                            painter = painterResource(PlaybackR.drawable.ic_notification),
+                            contentDescription = stringResource(R.string.player_hidden_thumbnail),
+                            tint = textBackgroundColor.copy(alpha = 0.7f),
+                            modifier = Modifier.size(120.dp),
+                        )
+                    }
+                } else {
+                    AndroidView(
+                        factory = { viewContext -> QueueCoverPager(viewContext, ThumbnailCornerRadius) },
+                        update = { pager ->
+                            pager.onSwipeToTrack = viewModel::onPlayQueueItem
+                            pager.onDoubleTap = onDoubleTap
+                            pager.isSwipeEnabled = isPlayerExpanded && swipeToChangeTrack
+                            pager.isRounded = isRounded
+                            pager.show(uiState.queue, uiState.currentQueueIndex)
+                        },
+                        modifier = Modifier.size(artworkSize),
+                    )
+                }
             }
         }
 

@@ -50,6 +50,10 @@ dependencies {
     ksp(libs.hilt.compiler)
 
     implementation(libs.kotlinx.coroutines.android)
+
+    implementation(libs.coil.compose)
+    implementation(libs.materialkolor)
+    implementation(libs.androidsvg)
 }
 
 kotlin {

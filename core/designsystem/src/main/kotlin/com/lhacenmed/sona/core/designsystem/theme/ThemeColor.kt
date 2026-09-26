@@ -4,13 +4,14 @@ import android.graphics.Bitmap
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.palette.graphics.Palette
+import com.lhacenmed.sona.core.designsystem.theme.palette.ThemeSeedPalette
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamicColorScheme
 import com.materialkolor.ktx.toHct
 
 /**
- * Fallback seed color used whenever no artwork-derived color is available (no track playing,
- * extraction failed, or dynamic theming disabled with no manual override set).
+ * The seed a scheme is grown from where there is nothing else to grow it from: no wallpaper colours
+ * before Android 12, and no cover. ArchiveTune's default palette's colour.
  */
 val DefaultThemeColor = Color(0xFFED5564)
 
@@ -64,3 +65,43 @@ fun materialKolorDynamicColorScheme(seedColor: Color, isDark: Boolean): ColorSch
         contrastLevel = 0.0,
         style = paletteStyleFor(seedColor),
     )
+
+/**
+ * A [ColorScheme] grown from a palette's four seeds, each role from its own - ArchiveTune's
+ * `mergedSeedColorScheme`: primary, secondary and tertiary are each seed's own primary tones, and every
+ * surface is the neutral seed's.
+ */
+fun paletteColorScheme(seeds: ThemeSeedPalette, isDark: Boolean): ColorScheme {
+    val primary = materialKolorDynamicColorScheme(seeds.primary, isDark)
+    val secondary = materialKolorDynamicColorScheme(seeds.secondary, isDark)
+    val tertiary = materialKolorDynamicColorScheme(seeds.tertiary, isDark)
+    val neutral = materialKolorDynamicColorScheme(seeds.neutral, isDark)
+    return primary.copy(
+        secondary = secondary.primary,
+        onSecondary = secondary.onPrimary,
+        secondaryContainer = secondary.primaryContainer,
+        onSecondaryContainer = secondary.onPrimaryContainer,
+        tertiary = tertiary.primary,
+        onTertiary = tertiary.onPrimary,
+        tertiaryContainer = tertiary.primaryContainer,
+        onTertiaryContainer = tertiary.onPrimaryContainer,
+        background = neutral.background,
+        onBackground = neutral.onBackground,
+        surface = neutral.surface,
+        onSurface = neutral.onSurface,
+        surfaceVariant = neutral.surfaceVariant,
+        onSurfaceVariant = neutral.onSurfaceVariant,
+        inverseSurface = neutral.inverseSurface,
+        inverseOnSurface = neutral.inverseOnSurface,
+        surfaceBright = neutral.surfaceBright,
+        surfaceDim = neutral.surfaceDim,
+        surfaceContainer = neutral.surfaceContainer,
+        surfaceContainerLow = neutral.surfaceContainerLow,
+        surfaceContainerLowest = neutral.surfaceContainerLowest,
+        surfaceContainerHigh = neutral.surfaceContainerHigh,
+        surfaceContainerHighest = neutral.surfaceContainerHighest,
+        outline = neutral.outline,
+        outlineVariant = neutral.outlineVariant,
+        scrim = neutral.scrim,
+    )
+}

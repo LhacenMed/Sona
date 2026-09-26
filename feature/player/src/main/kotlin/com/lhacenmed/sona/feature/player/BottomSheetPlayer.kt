@@ -29,10 +29,13 @@ import androidx.compose.ui.input.key.type
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
-import com.lhacenmed.sona.core.datastore.PlayerSliderStyle
-import com.lhacenmed.sona.core.datastore.PlayerStyle
+import com.lhacenmed.sona.core.datastore.PlayerAppearance
+import com.lhacenmed.sona.core.datastore.PlayerBackgroundStyle
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.SleepTimerState
+import com.lhacenmed.sona.feature.player.background.PlayerBackground
+import com.lhacenmed.sona.feature.player.background.playerColors
+import com.lhacenmed.sona.feature.player.background.rememberCoverGradientColors
 import com.lhacenmed.sona.feature.player.style.ExpandedPlayer
 import com.lhacenmed.sona.feature.player.style.sheetColor
 import kotlin.math.abs
@@ -43,6 +46,15 @@ private const val SeekbarSettleToleranceMs = 1_500L
 private const val PositionPollIntervalMs = 100L
 private const val KeyboardSeekStepMs = 5_000L
 private const val KeyboardVolumeStep = 0.05f
+
+/** The backgrounds drawn in the cover's colours - ArchiveTune extracts them for these alone. */
+private val CoverColoredBackgrounds = setOf(
+    PlayerBackgroundStyle.GRADIENT,
+    PlayerBackgroundStyle.COLORING,
+    PlayerBackgroundStyle.BLUR_GRADIENT,
+    PlayerBackgroundStyle.GLOW,
+    PlayerBackgroundStyle.GLOW_ANIMATED,
+)
 
 /**
  * The full player: the mini player as the sheet's collapsed content, expanding into the chosen player
@@ -55,8 +67,7 @@ private const val KeyboardVolumeStep = 0.05f
 internal fun BottomSheetPlayer(
     state: BottomSheetState,
     uiState: PlayerUiState,
-    playerStyle: PlayerStyle,
-    sliderStyle: PlayerSliderStyle,
+    appearance: PlayerAppearance,
     sleepTimer: SleepTimerState,
     viewModel: PlayerViewModel,
     onGoToAlbum: (Long) -> Unit,
@@ -67,6 +78,8 @@ internal fun BottomSheetPlayer(
 ) {
     val playback = uiState.playback
     val track = uiState.currentTrack
+    val playerStyle = appearance.style
+    val playerColors = playerColors(appearance.background, appearance.buttonsStyle)
 
     val deviceMusicVolumeController = rememberDeviceMusicVolumeController()
 
@@ -229,10 +242,21 @@ internal fun BottomSheetPlayer(
                 playback = playback,
                 position = position,
                 duration = duration,
+                appearance = appearance,
                 viewModel = viewModel,
             )
         },
     ) {
+        PlayerBackground(
+            style = appearance.background,
+            coverArtUri = track?.coverArtUri,
+            gradientColors = rememberCoverGradientColors(
+                coverArtUri = track?.coverArtUri,
+                enabled = appearance.background in CoverColoredBackgrounds,
+            ),
+            customBackground = appearance.customBackground,
+        )
+
         val onSliderValueChange: (Long) -> Unit = {
             isUserSeeking = true
             sliderPosition = it
@@ -252,7 +276,8 @@ internal fun BottomSheetPlayer(
             playerStyle.ExpandedPlayer(
                 track = track,
                 uiState = uiState,
-                sliderStyle = sliderStyle,
+                appearance = appearance,
+                colors = playerColors,
                 isLoading = isLoading,
                 isPlayerExpanded = state.isExpanded,
                 sliderPosition = sliderPosition,
@@ -278,6 +303,7 @@ internal fun BottomSheetPlayer(
             playerBottomSheetState = state,
             uiState = uiState,
             playerStyle = playerStyle,
+            barContentColor = playerColors.content,
             sleepTimer = sleepTimer,
             durationMs = duration,
             backgroundColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -294,6 +320,7 @@ internal fun BottomSheetPlayer(
                 track = currentTrack,
                 playback = playback,
                 durationMs = duration,
+                appearance = appearance,
                 lyricsSyncOffset = lyricsSyncOffset,
                 onLyricsSyncOffsetChange = { lyricsSyncOffset = it },
                 onDismiss = { isLyricsSheetVisible = false },

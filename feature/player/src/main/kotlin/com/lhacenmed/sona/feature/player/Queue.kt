@@ -79,6 +79,8 @@ internal fun Queue(
     playerBottomSheetState: BottomSheetState,
     uiState: PlayerUiState,
     playerStyle: PlayerStyle,
+    // What the collapsed bar draws in: the player's own content colour, since it sits over the player.
+    barContentColor: Color,
     sleepTimer: SleepTimerState,
     durationMs: Long,
     backgroundColor: Color,
@@ -140,6 +142,7 @@ internal fun Queue(
         isContentDraggable = false,
         collapsedContent = {
             playerStyle.QueueBar(
+                contentColor = barContentColor,
                 sleepTimerEnabled = sleepTimerEnabled,
                 sleepTimerTimeLeft = sleepTimerTimeLeft,
                 onExpandQueue = openQueue,
