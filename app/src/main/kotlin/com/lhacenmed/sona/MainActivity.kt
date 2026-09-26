@@ -1,5 +1,6 @@
 package com.lhacenmed.sona
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.view.ViewTreeObserver
@@ -24,14 +25,16 @@ import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.PlayerOverlay
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.scanner.MediaScanner
+import com.lhacenmed.sona.feature.settings.updates.UpdatesScreen
 import com.lhacenmed.sona.feature.update.NetworkMonitor
 import com.lhacenmed.sona.feature.update.UpdateChecker
 import com.lhacenmed.sona.feature.update.UpdateRegistry
 import com.lhacenmed.sona.feature.update.UpdateState
-import com.lhacenmed.sona.feature.update.UpdateStore
+import com.lhacenmed.sona.feature.update.notification.UpdateNotifier
 import com.lhacenmed.sona.feature.update.ui.UpdateGate
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -126,13 +129,12 @@ class MainActivity : SonaActivity() {
         if (savedInstanceState == null && intent.action == ShuffleAllShortcut.ACTION) {
             playbackController.shuffleAll()
         }
+        if (savedInstanceState == null) openUpdatesIfAsked(intent)
 
         setSonaContent {
             val themeConfig by appTheme.config.collectAsStateWithLifecycle()
             val coverStyle by appCoverStyle.style.collectAsStateWithLifecycle()
             val fastScrollTouchArea by appFastScrollTouchArea.touchArea.collectAsStateWithLifecycle()
-            val autoPromptUpdates by updateSettings.autoPrompt.flow
-                .collectAsStateWithLifecycle(updateSettings.autoPrompt.value)
 
             SonaTheme(
                 config = themeConfig,
@@ -143,32 +145,43 @@ class MainActivity : SonaActivity() {
                 val navigator = remember { IntentNavigator(this, currentScreen = null) }
                 CompositionLocalProvider(LocalNavigator provides navigator) {
                     AppShell(playerOverlay = playerOverlay)
-                    UpdateGate(autoPrompt = autoPromptUpdates)
+                    UpdateGate()
                 }
             }
         }
     }
 
+    /** The update notification, tapped while the app is already open. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        openUpdatesIfAsked(intent)
+    }
+
+    /** Opens the Updates screen when [intent] is the update notification's. */
+    private fun openUpdatesIfAsked(intent: Intent) {
+        if (intent.getBooleanExtra(UpdateNotifier.EXTRA_OPEN_UPDATES, false)) {
+            IntentNavigator(this, currentScreen = null).go(UpdatesScreen)
+        }
+    }
+
     /**
-     * Connectivity-driven update check; populates [UpdateRegistry] (and persists via [UpdateStore])
-     * so [UpdateGate] can prompt — now and on any later launch, even offline. Runs whenever the
-     * device is online: at launch if already connected, and again the moment connectivity returns
-     * for a user who opened the app offline. Skips re-checking while a download is mid-flight or a
-     * finished APK is awaiting install. Skipped for debug builds, whose `.debug` applicationId would
-     * side-load the release APK as a separate app rather than update in place.
+     * Connectivity-driven update check on the chosen channel; populates [UpdateRegistry] so [UpdateGate]
+     * can prompt. Runs whenever the device is online - at launch if already connected, and again the moment
+     * connectivity returns for a user who opened the app offline - and whenever the channel changes. The
+     * releases it reads are kept for hours, so most runs never reach the network. Skipped while a download
+     * is in flight or a finished APK awaits install, and for debug builds, whose `.debug` applicationId
+     * would side-load the release APK as a separate app rather than update in place.
      */
     private fun checkForUpdate() {
         if (BuildConfig.DEBUG) return
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                NetworkMonitor.online(applicationContext).collect { online ->
-                    if (!online || UpdateRegistry.isActive) return@collect
-                    if (UpdateRegistry.stateOf() is UpdateState.Downloaded) return@collect
-                    UpdateChecker.check(applicationContext)?.let {
-                        UpdateStore.save(applicationContext, it)
-                        UpdateRegistry.setAvailable(it)
+                combine(NetworkMonitor.online(applicationContext), updateSettings.channel.flow, ::Pair)
+                    .collect { (online, channel) ->
+                        if (!online || UpdateRegistry.isActive) return@collect
+                        if (UpdateRegistry.stateOf() is UpdateState.Downloaded) return@collect
+                        UpdateChecker.check(applicationContext, channel)
                     }
-                }
             }
         }
     }
