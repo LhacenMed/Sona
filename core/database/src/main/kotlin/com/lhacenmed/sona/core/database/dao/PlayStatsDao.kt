@@ -22,7 +22,7 @@ interface PlayStatsDao {
     )
     suspend fun recordPlayStarted(trackId: Long, playedAt: Long)
 
-    /** Counts a listen that lasted long enough to mean it. */
+    /** Counts a listen that lasted long enough to mean it - four fifths of the track. */
     @Query(
         """
         INSERT INTO play_stats (trackId, playCount, lastPlayedAt) VALUES (:trackId, 1, :playedAt)
@@ -41,7 +41,7 @@ interface PlayStatsDao {
     )
     fun observeRecentlyPlayed(): Flow<List<TrackEntity>>
 
-    /** "Most played" - only tracks that got past the threshold at least once. */
+    /** "Most played" - only tracks listened to far enough to count at least once. */
     @Query(
         """
         SELECT t.* FROM tracks t
