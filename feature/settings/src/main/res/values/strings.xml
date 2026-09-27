@@ -417,7 +417,6 @@
     <string name="about_licenses">Licenses</string>
     <string name="about_licenses_summary">The libraries Sona is built with, and their licenses</string>
     <string name="about_project">Project</string>
-    <string name="about_all_contributors">All contributors</string>
     <string name="about_license_unknown">Unknown license</string>
     <string name="about_lead_developer">Lead developer</string>
     <string name="about_role_lead_developer">Creator and maintainer</string>

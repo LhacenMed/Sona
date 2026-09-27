@@ -9,7 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.lhacenmed.sona.core.designsystem.component.section.rememberSectionCollapseState
+import com.lhacenmed.sona.core.designsystem.component.section.rememberSectionListState
 import com.lhacenmed.sona.core.designsystem.component.section.section
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
@@ -33,7 +33,7 @@ data object ChangelogScreen : Screen {
         val viewModel: ChangelogViewModel = hiltViewModel()
         val releases by viewModel.releases.load.collectAsStateWithLifecycle()
         val listState = rememberLazyListState()
-        val collapse = rememberSectionCollapseState(listState)
+        val sections = rememberSectionListState(listState)
 
         SettingsLazyList(listState) {
             item(key = "status") { SettingsLoadStatus(releases, onRetry = viewModel.releases::retry) }
@@ -41,7 +41,7 @@ data object ChangelogScreen : Screen {
                 section(
                     key = release.tagName,
                     title = listOf(release.versionName, formatReleaseDate(release.publishedAt)).joinToString(" · "),
-                    collapse = collapse,
+                    state = sections,
                     hasDividerAbove = index > 0,
                 ) {
                     release.notes?.let { notes ->

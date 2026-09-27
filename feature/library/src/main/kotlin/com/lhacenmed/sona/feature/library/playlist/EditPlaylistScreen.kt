@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -51,7 +52,9 @@ import com.lhacenmed.sona.core.designsystem.component.SonaTrackRow
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
 import com.lhacenmed.sona.core.designsystem.component.screen.screenList
-import com.lhacenmed.sona.core.designsystem.component.section.SectionHeader
+import com.lhacenmed.sona.core.designsystem.component.section.ColumnSection
+import com.lhacenmed.sona.core.designsystem.component.section.rememberSectionListState
+import com.lhacenmed.sona.core.designsystem.component.section.section
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.model.PlaylistCover
@@ -167,65 +170,66 @@ data class EditPlaylistScreen(val playlistId: Long) : Screen {
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
                 )
-                SectionHeader(title = "Cover")
-                Column(modifier = Modifier.selectableGroup()) {
-                    CoverOptionRow(
-                        label = "Stacked covers",
-                        description = "The covers of its tracks",
-                        coverArtUris = stackedCoverArtUris,
-                        seed = playlistId.hashCode(),
-                        selected = viewModel.cover == PlaylistCover.Stacked,
-                        onClick = { viewModel.selectCover(PlaylistCover.Stacked) },
-                    )
-                    CoverOptionRow(
-                        label = "First track",
-                        description = playlistTracks.firstOrNull()?.title ?: NO_TRACKS_DESCRIPTION,
-                        coverArtUris = coverArtUrisOf(PlaylistCover.FirstTrack),
-                        seed = playlistId.hashCode(),
-                        selected = viewModel.cover == PlaylistCover.FirstTrack,
-                        onClick = { viewModel.selectCover(PlaylistCover.FirstTrack) },
-                    )
-                    CoverOptionRow(
-                        label = "Last track",
-                        description = playlistTracks.lastOrNull()?.title ?: NO_TRACKS_DESCRIPTION,
-                        coverArtUris = coverArtUrisOf(PlaylistCover.LastTrack),
-                        seed = playlistId.hashCode(),
-                        selected = viewModel.cover == PlaylistCover.LastTrack,
-                        onClick = { viewModel.selectCover(PlaylistCover.LastTrack) },
-                    )
-                    // Choosing again once chosen, or with nothing chosen yet, opens the choice; otherwise
-                    // the track or image chosen before is simply selected again.
-                    val isTrackSelected = viewModel.cover is PlaylistCover.OfTrack
-                    CoverOptionRow(
-                        label = "A track",
-                        description = chosenTrack?.title ?: "Choose from the library",
-                        coverArtUris = chosenTrack?.coverArtUri?.let(::listOf).orEmpty(),
-                        seed = playlistId.hashCode(),
-                        selected = isTrackSelected,
-                        onClick = {
-                            if (isTrackSelected || chosenTrack == null) {
-                                isChoosingTrack = true
-                            } else {
-                                viewModel.selectCover(PlaylistCover.OfTrack(chosenTrack.id))
-                            }
-                        },
-                    )
-                    val chosenImageUri = viewModel.chosenImageUri
-                    val isImageSelected = viewModel.cover is PlaylistCover.Image
-                    CoverOptionRow(
-                        label = "An image",
-                        description = if (chosenImageUri == null) "Choose from your photos" else "From your photos",
-                        coverArtUris = chosenImageUri?.let(::listOf).orEmpty(),
-                        seed = playlistId.hashCode(),
-                        selected = isImageSelected,
-                        onClick = {
-                            if (isImageSelected || chosenImageUri == null) {
-                                imagePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                            } else {
-                                viewModel.selectCover(PlaylistCover.Image(chosenImageUri))
-                            }
-                        },
-                    )
+                ColumnSection(title = "Cover", scrollState = scrollState) {
+                    Column(modifier = Modifier.selectableGroup()) {
+                        CoverOptionRow(
+                            label = "Stacked covers",
+                            description = "The covers of its tracks",
+                            coverArtUris = stackedCoverArtUris,
+                            seed = playlistId.hashCode(),
+                            selected = viewModel.cover == PlaylistCover.Stacked,
+                            onClick = { viewModel.selectCover(PlaylistCover.Stacked) },
+                        )
+                        CoverOptionRow(
+                            label = "First track",
+                            description = playlistTracks.firstOrNull()?.title ?: NO_TRACKS_DESCRIPTION,
+                            coverArtUris = coverArtUrisOf(PlaylistCover.FirstTrack),
+                            seed = playlistId.hashCode(),
+                            selected = viewModel.cover == PlaylistCover.FirstTrack,
+                            onClick = { viewModel.selectCover(PlaylistCover.FirstTrack) },
+                        )
+                        CoverOptionRow(
+                            label = "Last track",
+                            description = playlistTracks.lastOrNull()?.title ?: NO_TRACKS_DESCRIPTION,
+                            coverArtUris = coverArtUrisOf(PlaylistCover.LastTrack),
+                            seed = playlistId.hashCode(),
+                            selected = viewModel.cover == PlaylistCover.LastTrack,
+                            onClick = { viewModel.selectCover(PlaylistCover.LastTrack) },
+                        )
+                        // Choosing again once chosen, or with nothing chosen yet, opens the choice; otherwise
+                        // the track or image chosen before is simply selected again.
+                        val isTrackSelected = viewModel.cover is PlaylistCover.OfTrack
+                        CoverOptionRow(
+                            label = "A track",
+                            description = chosenTrack?.title ?: "Choose from the library",
+                            coverArtUris = chosenTrack?.coverArtUri?.let(::listOf).orEmpty(),
+                            seed = playlistId.hashCode(),
+                            selected = isTrackSelected,
+                            onClick = {
+                                if (isTrackSelected || chosenTrack == null) {
+                                    isChoosingTrack = true
+                                } else {
+                                    viewModel.selectCover(PlaylistCover.OfTrack(chosenTrack.id))
+                                }
+                            },
+                        )
+                        val chosenImageUri = viewModel.chosenImageUri
+                        val isImageSelected = viewModel.cover is PlaylistCover.Image
+                        CoverOptionRow(
+                            label = "An image",
+                            description = if (chosenImageUri == null) "Choose from your photos" else "From your photos",
+                            coverArtUris = chosenImageUri?.let(::listOf).orEmpty(),
+                            seed = playlistId.hashCode(),
+                            selected = isImageSelected,
+                            onClick = {
+                                if (isImageSelected || chosenImageUri == null) {
+                                    imagePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                } else {
+                                    viewModel.selectCover(PlaylistCover.Image(chosenImageUri))
+                                }
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -280,6 +284,7 @@ private fun CoverTrackChooser(
 ) {
     var searchQuery by rememberSaveable { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
+    val sections = rememberSectionListState(listState)
     BackHandler(onBack = onBack)
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -310,17 +315,23 @@ private fun CoverTrackChooser(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
                 ) {
-                    if (visiblePlaylistTracks.isNotEmpty()) {
-                        item(key = "playlist-header") { SectionHeader(title = "In this playlist") }
-                        items(items = visiblePlaylistTracks, key = { "playlist-${it.id}" }) { track ->
+                    val libraryRows: LazyListScope.() -> Unit = {
+                        items(items = visibleLibraryTracks, key = { "library-${it.id}" }) { track ->
                             CoverTrackRow(track = track, onClick = { onTrackChosen(track) })
                         }
-                        item(key = "library-header") { SectionHeader(title = "All tracks") }
                     }
-                    items(items = visibleLibraryTracks, key = { "library-${it.id}" }) { track ->
-                        CoverTrackRow(track = track, onClick = { onTrackChosen(track) })
+                    // Sectioned only while the playlist has tracks to show: the library alone needs no heading.
+                    if (visiblePlaylistTracks.isNotEmpty()) {
+                        section(key = "playlist", title = "In this playlist", state = sections) {
+                            items(items = visiblePlaylistTracks, key = { "playlist-${it.id}" }) { track ->
+                                CoverTrackRow(track = track, onClick = { onTrackChosen(track) })
+                            }
+                        }
+                        section(key = "library", title = "All tracks", state = sections, hasDividerAbove = true, content = libraryRows)
+                    } else {
+                        libraryRows()
                     }
-            }
+                }
             }
         }
     }

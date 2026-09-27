@@ -1,7 +1,6 @@
 package com.lhacenmed.sona.feature.settings.about
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.NewReleases
@@ -10,12 +9,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
@@ -64,7 +61,6 @@ data object AboutScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.current
-        val uriHandler = LocalUriHandler.current
         val viewModel: AboutViewModel = hiltViewModel()
         val contributors by viewModel.contributors.load.collectAsStateWithLifecycle()
         val installedBuild = LocalContext.current.installedBuild()
@@ -112,16 +108,7 @@ data object AboutScreen : Screen {
 
             SettingsSectionDivider()
 
-            // The longest section, so it folds away; every contributor, beyond those listed, is on its heading.
-            SettingsSection(
-                title = stringResource(R.string.about_contributors),
-                actions = listOf(
-                    TopBarAction(label = stringResource(R.string.about_all_contributors), icon = Icons.AutoMirrored.Filled.OpenInNew) {
-                        runCatching { uriHandler.openUri(GitHub.CONTRIBUTORS_URL) }
-                    },
-                ),
-                isCollapsible = true,
-            ) {
+            SettingsSection(stringResource(R.string.about_contributors)) {
                 SettingsLoadStatus(contributors, onRetry = viewModel.contributors::retry)
                 (contributors as? SettingsLoad.Loaded)?.items?.forEach { contributor ->
                     SettingsLinkItem(
