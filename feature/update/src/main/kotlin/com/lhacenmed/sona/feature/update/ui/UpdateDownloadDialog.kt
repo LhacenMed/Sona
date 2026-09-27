@@ -113,7 +113,7 @@ fun UpdateDownloadDialog(release: Release, onClose: () -> Unit) {
     }
 
     val title = stringResource(
-        if (release.isPreRelease) R.string.update_download_title_beta else R.string.update_download_title,
+        if (release.isPreRelease) R.string.update_download_title_artifact else R.string.update_download_title,
         release.versionName,
     )
 
