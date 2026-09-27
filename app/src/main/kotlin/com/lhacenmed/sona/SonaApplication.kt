@@ -2,6 +2,7 @@ package com.lhacenmed.sona
 
 import android.app.Application
 import com.lhacenmed.sona.core.common.di.ApplicationScope
+import com.lhacenmed.sona.core.common.notification.SonaNotifications
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.datastore.EffectSettings
 import com.lhacenmed.sona.core.datastore.SettingsLoader
@@ -43,6 +44,8 @@ class SonaApplication : Application() {
         // already in place - the way it would start with defaults - instead of correcting itself
         // once they arrive. The files are small and load concurrently, once per process.
         runBlocking { settingsLoader.load() }
+        // Before anything can post: every channel, named in the current language, in one system call.
+        SonaNotifications.createChannels(this)
         followEffectSettings()
         // Touching the repository here starts its eager database read at the earliest moment the
         // process has a Context - typically well before the first activity is created, and always

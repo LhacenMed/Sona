@@ -8,6 +8,8 @@ import android.os.storage.StorageManager
 import com.lhacenmed.sona.core.database.stableIdOf
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.UnknownNames
+import com.lhacenmed.sona.feature.scanner.ScanProgress
+import com.lhacenmed.sona.feature.scanner.ScanStep
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.io.FileInputStream
@@ -28,8 +30,10 @@ class ManualFileWalker @Inject constructor(
      * @param pathsToSkip paths (individual files already known from MediaStore) or folders
      * (user-excluded directories) to leave out of the walk entirely - and their whole subtree, in
      * the case of a folder.
+     * @param onProgress told as the walk starts, then as each file found has its tags read.
      */
-    fun findTracks(pathsToSkip: Set<String>): List<Track> {
+    fun findTracks(pathsToSkip: Set<String>, onProgress: (ScanProgress) -> Unit): List<Track> {
+        onProgress(ScanProgress(ScanStep.SEARCHING_STORAGE))
         val audioFilePaths = mutableListOf<String>()
         for (root in storageRoots()) {
             findAudioFiles(File(root), audioFilePaths, pathsToSkip)
@@ -39,7 +43,10 @@ class ManualFileWalker @Inject constructor(
             return emptyList()
         }
 
-        val tracks = audioFilePaths.mapNotNull { path -> extractTrack(path) }
+        val tracks = audioFilePaths.mapIndexedNotNull { index, path ->
+            onProgress(ScanProgress(ScanStep.READING_TAGS, done = index, total = audioFilePaths.size))
+            extractTrack(path)
+        }
 
         // Ask the system indexer to pick these files up so a future MediaStore query returns them
         // with full metadata (art, stable ids, etc.) instead of relying on this manual fallback again.

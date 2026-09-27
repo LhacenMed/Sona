@@ -1,11 +1,8 @@
 package com.lhacenmed.sona.feature.update.notification
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.edit
@@ -14,6 +11,9 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.lhacenmed.sona.core.common.notification.SonaNotificationChannel
+import com.lhacenmed.sona.core.common.notification.SonaNotificationId
+import com.lhacenmed.sona.core.common.notification.SonaNotifications
 import com.lhacenmed.sona.feature.update.R
 import com.lhacenmed.sona.feature.update.UpdateService
 import com.lhacenmed.sona.feature.update.github.Release
@@ -26,8 +26,6 @@ import java.util.concurrent.TimeUnit
  * carries a Download action that starts the in-app download straight away.
  */
 object UpdateNotifier {
-    private const val CHANNEL_ID = "update_notification_channel"
-    private const val NOTIFICATION_ID = 9999
     private const val WORK_NAME = "update_check_work"
     private const val CHECK_INTERVAL_HOURS = 6L
     private const val FLEX_MINUTES = 30L
@@ -46,7 +44,7 @@ object UpdateNotifier {
         val workManager = WorkManager.getInstance(context)
         if (!enabled) {
             workManager.cancelUniqueWork(WORK_NAME)
-            NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
+            SonaNotifications.cancel(context, SonaNotificationId.UPDATE_AVAILABLE)
             return
         }
         val request = PeriodicWorkRequestBuilder<UpdateCheckWorker>(
@@ -71,12 +69,10 @@ object UpdateNotifier {
     }
 
     private fun show(context: Context, release: Release) {
-        ensureChannel(context)
         val openUpdates = context.packageManager.getLaunchIntentForPackage(context.packageName)
             ?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             ?.putExtra(EXTRA_OPEN_UPDATES, true)
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_update)
+        val notification = SonaNotifications.builder(context, SonaNotificationChannel.UPDATE_ALERTS)
             .setContentTitle(context.getString(R.string.update_notification_title))
             .setContentText(context.getString(R.string.update_notification_text, release.versionName))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -99,17 +95,6 @@ object UpdateNotifier {
                 }
             }
             .build()
-        runCatching { NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification) }
-    }
-
-    private fun ensureChannel(context: Context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(
-            NotificationChannel(
-                CHANNEL_ID,
-                context.getString(R.string.update_notification_channel_name),
-                NotificationManager.IMPORTANCE_DEFAULT,
-            ).apply { description = context.getString(R.string.update_notification_channel_description) },
-        )
+        SonaNotifications.post(context, SonaNotificationId.UPDATE_AVAILABLE, notification)
     }
 }

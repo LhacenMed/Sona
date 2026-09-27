@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The rescan notification -->
+    <string name="scan_notification_title">Rescanning your library</string>
+    <string name="scan_step_reading_media_store">Reading your music…</string>
+    <string name="scan_step_searching_storage">Searching storage for new files…</string>
+    <string name="scan_step_reading_tags">Reading new files · %1$d of %2$d</string>
+    <string name="scan_step_saving">Saving your library…</string>
+
+    <!-- How a rescan ended -->
+    <string name="scan_done">Library rescanned</string>
+    <string name="scan_failed">Couldn\'t rescan the library</string>
+</resources>

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import coil3.SingletonImageLoader
 import com.lhacenmed.sona.core.common.coroutines.launchOperation
 import com.lhacenmed.sona.feature.scanner.MediaScanner
+import com.lhacenmed.sona.feature.scanner.service.ScanService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
@@ -44,15 +45,13 @@ class StorageViewModel @Inject constructor(
     val isScanning: StateFlow<Boolean> = mediaScanner.isScanning
 
     init {
-        measure()
+        // Measured now, and again as every scan ends - the database it rebuilt.
+        viewModelScope.launch { isScanning.collect { if (!it) measure() } }
     }
 
-    /** Reads every track again, whatever the last scan found, then measures the database it rebuilt. */
+    /** Reads every track again, whatever the last scan found - in the background, shown in a notification. */
     fun rescan() {
-        viewModelScope.launch {
-            mediaScanner.rescan()
-            measure()
-        }
+        ScanService.start(context)
     }
 
     /** Empties the image cache - on disk and in memory - reporting how it went to [onFinished]. */

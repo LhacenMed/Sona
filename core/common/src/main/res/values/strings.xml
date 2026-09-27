@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Notification channels, as Android's app notification settings list them -->
+    <string name="notification_channel_playback">Playback</string>
+    <string name="notification_channel_playback_description">What is playing, with its controls</string>
+    <string name="notification_channel_update_alerts">Update notifications</string>
+    <string name="notification_channel_update_alerts_description">Tells you when a new version of Sona is out</string>
+    <string name="notification_channel_update_download">App update</string>
+    <string name="notification_channel_update_download_description">The progress of an update being downloaded</string>
+    <string name="notification_channel_library_scan">Library scan</string>
+    <string name="notification_channel_library_scan_description">The progress of a library rescan</string>
+</resources>

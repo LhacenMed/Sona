@@ -49,7 +49,7 @@ import com.lhacenmed.sona.core.designsystem.theme.LocalIsRounded
 import com.lhacenmed.sona.core.designsystem.theme.roundedShape
 import com.lhacenmed.sona.feature.player.swiper.QueueCoverPager
 import kotlinx.coroutines.delay
-import com.lhacenmed.sona.feature.playback.R as PlaybackR
+import com.lhacenmed.sona.core.common.R as CommonR
 
 private const val DoubleTapSeekStepMs = 5_000L
 private val ThumbnailCornerRadius = 16.dp
@@ -166,7 +166,7 @@ internal fun Thumbnail(
                             .background(MaterialTheme.colorScheme.surfaceVariant),
                     ) {
                         Icon(
-                            painter = painterResource(PlaybackR.drawable.ic_notification),
+                            painter = painterResource(CommonR.drawable.ic_stat_sona),
                             contentDescription = stringResource(R.string.player_hidden_thumbnail),
                             tint = textBackgroundColor.copy(alpha = 0.7f),
                             modifier = Modifier.size(120.dp),

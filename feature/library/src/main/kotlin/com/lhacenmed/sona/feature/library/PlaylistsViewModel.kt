@@ -20,6 +20,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -56,8 +57,18 @@ class PlaylistsViewModel @Inject constructor(
      * top playlist changing, changes the Playlists card with it. Favorites is left out: it keeps the top
      * whatever the sort, and has a card of its own. So are Recent and Most played, listening histories
      * rather than playlists, which are not among [playlists] at all.
+     *
+     * Until the user makes a playlist, the card previews Most played instead - stacked as its row is, the
+     * row that heads the list the card opens - so a card over a list with something in it is never bare.
      */
-    val playlistsCover: StateFlow<ShortcutCover?> = playlistCover { !it.isBuiltIn }
+    val playlistsCover: StateFlow<ShortcutCover?> =
+        combine(repository.playlists, mostPlayedCoverArtUris, ::playlistsCoverIn)
+            .distinctUntilChanged()
+            .stateIn(
+                viewModelScope,
+                SharingStarted.WhileSubscribed(5_000),
+                playlistsCoverIn(repository.playlists.value, mostPlayedCoverArtUris.value),
+            )
 
     /** The cover of the track played last, or null when nothing has been played. */
     val recentlyPlayedCover: StateFlow<ShortcutCover?> = repository.recentlyPlayedTracks().topCover()
@@ -135,6 +146,20 @@ class PlaylistsViewModel @Inject constructor(
             .map(::coverIn)
             .distinctUntilChanged()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), coverIn(repository.playlists.value))
+    }
+
+    /**
+     * The Playlists card's cover - see [playlistsCover]. Nothing while the playlists are still loading, so
+     * Most played never flashes up in place of a playlist that is about to arrive.
+     */
+    private fun playlistsCoverIn(playlists: LibraryContent<Playlist>, mostPlayedCoverArtUris: List<String>): ShortcutCover? {
+        if (playlists is LibraryContent.Loading) return null
+        val topPlaylist = playlists.itemsOrEmpty.firstOrNull { !it.isBuiltIn }
+        return when {
+            topPlaylist != null -> topPlaylist.shortcutCover()
+            mostPlayedCoverArtUris.isEmpty() -> null
+            else -> ShortcutCover.Playlist(coverArtUris = mostPlayedCoverArtUris, seed = MOST_PLAYED_TITLE.hashCode())
+        }
     }
 
     /** Every cover in the list, most shared first, kept current as the list changes. */
