@@ -25,7 +25,7 @@ object Releases {
 
     /** The releases a channel offers, newest version first. */
     private fun List<Release>.on(channel: UpdateChannel): List<Release> =
-        filter { channel == UpdateChannel.BETA || !it.isPreRelease }
+        filter { channel == UpdateChannel.ARTIFACT || !it.isPreRelease }
             .sortedWith(
                 compareByDescending<Release, SemanticVersion?>(nullsFirst()) { it.version }
                     .thenByDescending { it.publishedAt },

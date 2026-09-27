@@ -1,0 +1,71 @@
+name: ci
+
+# What every change goes through on its way into dev, and what it leaves behind:
+#
+#   - A pull request's commit messages are checked (scripts/check-commits.sh):
+#     Conventional Commits subjects, and no "Release:" trailer - releases are
+#     the maintainer's to make.
+#   - Every pull request, and every push to dev, is built: its debug APK is
+#     kept as the run's artifact, to try it without building it - ArchiveTune's
+#     per-commit builds.
+#
+# Needs no secrets, so a pull request from a fork runs it all the same.
+on:
+  pull_request:
+    branches: [dev]
+  push:
+    branches: [dev]
+
+# A newer push to the same pull request or branch makes an older run moot.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  commits:
+    name: Commit messages
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Check commit messages
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: ./scripts/check-commits.sh "$BASE" "$HEAD"
+
+  build:
+    name: Debug build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          # Only dev's builds write the cache the release pipelines read from.
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+
+      - name: Build debug APK
+        run: ./gradlew :app:assembleDebug -Dorg.gradle.jvmargs="-Xmx5g -Dfile.encoding=UTF-8"
+
+      - name: Keep the debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: sona-debug-${{ github.event.pull_request.number && format('pr{0}', github.event.pull_request.number) || github.sha }}
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 14

@@ -32,7 +32,10 @@ class UpdateSettings @Inject constructor(
 
     internal suspend fun awaitLoaded() = cache.awaitLoaded()
 
-    val channel: Setting<UpdateChannel> = cache.setting { it.enum(CHANNEL, UpdateChannel.STABLE) }
+    // "BETA" is what the Artifact channel was stored as before it was renamed.
+    val channel: Setting<UpdateChannel> = cache.setting {
+        if (it[CHANNEL] == "BETA") UpdateChannel.ARTIFACT else it.enum(CHANNEL, UpdateChannel.STABLE)
+    }
 
     suspend fun setChannel(channel: UpdateChannel) {
         dataStore.edit { it[CHANNEL] = channel.name }

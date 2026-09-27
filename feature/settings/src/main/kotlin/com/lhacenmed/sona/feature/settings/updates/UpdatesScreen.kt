@@ -100,7 +100,7 @@ data object UpdatesScreen : Screen {
                 label = stringResource(R.string.updates_current_version),
                 badge = SettingsHeroBadge(
                     text = stringResource(channelLabelRes(channel)),
-                    isAccented = channel == UpdateChannel.BETA,
+                    isAccented = channel == UpdateChannel.ARTIFACT,
                 ),
                 title = installedBuild.versionName,
                 supporting = when {
@@ -142,7 +142,7 @@ data object UpdatesScreen : Screen {
                     onSelect = { index ->
                         val chosen = UpdateChannel.entries[index]
                         // Beta is agreed to before it is chosen; going back to Stable needs no warning.
-                        if (chosen == UpdateChannel.BETA && channel != UpdateChannel.BETA) {
+                        if (chosen == UpdateChannel.ARTIFACT && channel != UpdateChannel.ARTIFACT) {
                             showBetaConfirmation = true
                         } else {
                             viewModel.setChannel(chosen)
@@ -223,7 +223,7 @@ data object UpdatesScreen : Screen {
                 title = stringResource(R.string.updates_channel_beta),
                 onConfirm = {
                     showBetaConfirmation = false
-                    viewModel.setChannel(UpdateChannel.BETA)
+                    viewModel.setChannel(UpdateChannel.ARTIFACT)
                 },
                 onDismiss = { showBetaConfirmation = false },
             ) {
@@ -304,5 +304,5 @@ private fun ChannelExplanation(title: String, lines: List<String>) {
 private fun channelLabelRes(channel: UpdateChannel): Int =
     when (channel) {
         UpdateChannel.STABLE -> R.string.updates_channel_stable
-        UpdateChannel.BETA -> R.string.updates_channel_beta
+        UpdateChannel.ARTIFACT -> R.string.updates_channel_beta
     }

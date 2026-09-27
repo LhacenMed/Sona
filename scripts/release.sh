@@ -1,25 +1,29 @@
 #!/usr/bin/env bash
 #
-# release.sh — release console for Sona.
+# release.sh — Stable release console for Sona.
 #
-# Picks the next version interactively, then hands the actual work to
+# Picks the next stable version interactively, then hands the actual work to
 # .github/workflows/release.yml. Nothing is built, signed or pushed locally:
 # once the run is dispatched this script is a viewer, and closing the terminal
 # (or losing power) has no effect on the release.
 #
+# Artifact releases are not made here: a commit marked `Release: <stage>`,
+# pushed to dev, makes one - see .github/workflows/artifact.yml.
+#
 # Run from ANY branch, on ANY device.
-#   1. Read the current version from origin/main — the authoritative copy
-#   2. Prompt for release type, bump kind and notes
+#   1. Work out the current versions from origin's release tags
+#   2. Prompt for the bump and the notes - drafted from the commits' changelog
 #   3. Preview + confirm, then dispatch the cloud pipeline
 #   4. Stream the run (Ctrl-C is safe — it detaches, it does not cancel)
 #
 # Usage:
 #   ./scripts/release.sh
-#   ./scripts/release.sh --type beta --bump build --notes 'Fixed the thing.' --yes
+#   ./scripts/release.sh --bump release --yes
+#   ./scripts/release.sh --bump minor --notes 'Fixed the thing.' --yes
 #
-# Any flag left unset falls back to its interactive prompt, so partial flags
-# (e.g. just --type) still ask for the rest. Passing --yes skips the
-# confirmation prompt.
+# Any flag left unset falls back to its interactive prompt. Passing --yes skips
+# the confirmation prompt - and, with no notes given, the notes are the ones
+# gathered from the commits.
 #
 # Release notes are markdown, so they carry characters the shell wants for
 # itself — ` runs a command, $ expands a variable, # starts a comment. The
@@ -34,7 +38,7 @@
 # $words, PowerShell treats ` as its escape character. Use --notes-file, or
 # feed the notes on stdin with a quoted heredoc, when in doubt:
 #
-#   ./scripts/release.sh --type beta --bump build --yes --notes-file - <<'EOF'
+#   ./scripts/release.sh --bump minor --yes --notes-file - <<'EOF'
 #   ## What's new
 #   - Fixed the `player` crash
 #   EOF
@@ -47,8 +51,8 @@ usage() {
     cat <<'USAGE'
 Usage: ./scripts/release.sh [options]
 
-  --type <stable|alpha|beta|rc>       Release type (default prompt: stable)
-  --bump <patch|minor|major|build>    Version bump kind (default prompt: patch)
+  --bump <release|patch|minor|major>  Version bump - release makes the latest
+                                      artifacts' version stable
   --notes <text>                      Release notes
   --notes-file <path|->               Notes from a file, or - for stdin
   -y, --yes                           Skip the confirmation prompt
@@ -63,7 +67,7 @@ USAGE
 }
 
 # ── Parse flags ─────────────────────────────────────────────────────────────────
-FLAG_TYPE="" FLAG_BUMP="" FLAG_NOTES="" FLAG_NOTES_FILE="" FLAG_YES=0
+FLAG_BUMP="" FLAG_NOTES="" FLAG_NOTES_FILE="" FLAG_YES=0
 
 # `set -u` turns a flag left without its value into "$2: unbound variable", which
 # says nothing about which flag was left dangling. This names it.
@@ -73,8 +77,6 @@ need_value() {
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --type)            need_value "$@"; FLAG_TYPE="$2"; shift 2 ;;
-        --type=*)          FLAG_TYPE="${1#*=}"; shift ;;
         --bump)            need_value "$@"; FLAG_BUMP="$2"; shift 2 ;;
         --bump=*)          FLAG_BUMP="${1#*=}"; shift ;;
         --notes)           need_value "$@"; FLAG_NOTES="$2"; shift 2 ;;
@@ -110,9 +112,9 @@ ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "$ROOT"
 
 source "${SCRIPT_DIR}/lib/version.sh"
+source "${SCRIPT_DIR}/lib/changelog.sh"
 source "${SCRIPT_DIR}/lib/git.sh"
 
-GRADLE_FILE="app/build.gradle.kts"
 MAIN_BRANCH="main"
 WORKFLOW="release.yml"
 
@@ -129,105 +131,64 @@ SOURCE_BRANCH="$(git::current_branch)"
 git::ensure_clean
 git::ensure_pushed "$SOURCE_BRANCH"
 
-# ── Step 1: Read current version from origin/main ───────────────────────────────
-git fetch origin "$MAIN_BRANCH" --quiet
-MAIN_GRADLE="$(mktemp)"
+# ── Step 1: Current versions, from origin's release tags ────────────────────────
+git fetch origin --tags --quiet
 NOTES_DIR="$(mktemp -d)"
 NOTES_FILE="${NOTES_DIR}/RELEASE_NOTES.md"
-trap 'rm -f "$MAIN_GRADLE"; rm -rf "$NOTES_DIR"' EXIT
-git show "origin/${MAIN_BRANCH}:${GRADLE_FILE}" > "$MAIN_GRADLE"
+trap 'rm -rf "$NOTES_DIR"' EXIT
 
-version::read "$MAIN_GRADLE"
-CURRENT_NAME="$(version::name "$V_TYPE" "$V_MAJOR" "$V_MINOR" "$V_PATCH" "$V_BUILD")"
+LATEST="$(version::latest)"
+LAST_STABLE="$(version::latest stable)"
+PENDING_ARTIFACT=0
+if [[ -n "$LATEST" ]]; then
+    version::parse "$LATEST"
+    [[ -n "$V_STAGE" ]] && PENDING_ARTIFACT=1
+fi
 
 echo ""
 echo "┌─────────────────────────────────────────────┐"
-echo "│            Sona Release Pipeline            │"
+echo "│         Sona Stable Release Pipeline         │"
 echo "└─────────────────────────────────────────────┘"
 echo ""
-echo "  Current version : ${CURRENT_NAME}  (${V_TYPE})"
+echo "  Last stable     : ${LAST_STABLE:-none}"
+echo "  Latest artifact : $( ((PENDING_ARTIFACT)) && echo "$LATEST" || echo none)"
 echo "  Source branch   : ${SOURCE_BRANCH}"
 echo "  Target branch   : ${MAIN_BRANCH}"
 echo "  Runs on         : GitHub Actions"
 echo ""
 
-# ── Step 2: Choose version type ─────────────────────────────────────────────────
-if [[ -n "$FLAG_TYPE" ]]; then
-    case "${FLAG_TYPE,,}" in
-        stable)                       NEW_TYPE="Stable" ;;
-        alpha)                        NEW_TYPE="Alpha" ;;
-        beta)                         NEW_TYPE="Beta" ;;
-        rc|release-candidate)         NEW_TYPE="ReleaseCandidate" ;;
-        *) echo "✗ --type must be one of: stable, alpha, beta, rc"; exit 1 ;;
-    esac
-else
-    echo "  Release type:"
-    echo "    1) Stable          (e.g. 1.2.3)"
-    echo "    2) Alpha           (e.g. 1.2.3-alpha.1)"
-    echo "    3) Beta            (e.g. 1.2.3-beta.1)"
-    echo "    4) Release Candidate  (e.g. 1.2.3-rc.1)"
-    echo ""
-    ask TYPE_CHOICE "  Select [1-4, default 1]: "
-    TYPE_CHOICE="${TYPE_CHOICE:-1}"
-
-    case "$TYPE_CHOICE" in
-        1) NEW_TYPE="Stable" ;;
-        2) NEW_TYPE="Alpha" ;;
-        3) NEW_TYPE="Beta" ;;
-        4) NEW_TYPE="ReleaseCandidate" ;;
-        *) echo "✗ Invalid choice"; exit 1 ;;
-    esac
-fi
-
-# ── Step 3: Choose bump kind ────────────────────────────────────────────────────
+# ── Step 2: Choose the bump ─────────────────────────────────────────────────────
 if [[ -n "$FLAG_BUMP" ]]; then
     BUMP_KIND="${FLAG_BUMP,,}"
     case "$BUMP_KIND" in
-        patch|minor|major) ;;
-        build)
-            if [[ "$NEW_TYPE" == "Stable" ]]; then
-                echo "✗ --bump build is only for pre-release types"; exit 1
-            fi
-            ;;
-        *) echo "✗ --bump must be one of: patch, minor, major, build"; exit 1 ;;
+        release|patch|minor|major) ;;
+        *) echo "✗ --bump must be one of: release, patch, minor, major"; exit 1 ;;
     esac
 else
-    echo ""
     echo "  Version bump:"
-    echo "    1) patch  — bug fixes          (x.y.Z)"
-    echo "    2) minor  — new features       (x.Y.0)"
-    echo "    3) major  — breaking changes   (X.0.0)"
-
-    if [[ "$NEW_TYPE" != "Stable" ]]; then
-        echo "    4) build  — pre-release iteration (same x.y.z, +build)"
+    if ((PENDING_ARTIFACT)); then
+        echo "    1) release — make ${LATEST%%-*} stable"
     fi
-
+    echo "    2) patch   — bug fixes          (x.y.Z)"
+    echo "    3) minor   — new features       (x.Y.0)"
+    echo "    4) major   — breaking changes   (X.0.0)"
     echo ""
-    BUMP_EXTRA=""; [[ "$NEW_TYPE" != "Stable" ]] && BUMP_EXTRA=" or 4"
-    ask BUMP_CHOICE "  Select [1-3${BUMP_EXTRA}, default 1]: "
-    BUMP_CHOICE="${BUMP_CHOICE:-1}"
-
-    case "$BUMP_CHOICE" in
-        1) BUMP_KIND="patch" ;;
-        2) BUMP_KIND="minor" ;;
-        3) BUMP_KIND="major" ;;
-        4)
-            if [[ "$NEW_TYPE" == "Stable" ]]; then
-                echo "✗ Build increment is only for pre-release types"; exit 1
-            fi
-            BUMP_KIND="build"
-            ;;
+    DEFAULT_CHOICE=2; ((PENDING_ARTIFACT)) && DEFAULT_CHOICE=1
+    ask BUMP_CHOICE "  Select [default ${DEFAULT_CHOICE}]: "
+    case "${BUMP_CHOICE:-$DEFAULT_CHOICE}" in
+        1) ((PENDING_ARTIFACT)) || { echo "✗ There is no artifact to release"; exit 1; }
+           BUMP_KIND="release" ;;
+        2) BUMP_KIND="patch" ;;
+        3) BUMP_KIND="minor" ;;
+        4) BUMP_KIND="major" ;;
         *) echo "✗ Invalid choice"; exit 1 ;;
     esac
 fi
 
-version::bump "$NEW_TYPE" "$BUMP_KIND"
-NEW_NAME="$(version::name "$NEW_TYPE" "$V_MAJOR" "$V_MINOR" "$V_PATCH" "$V_BUILD")"
+NEW_NAME="$(version::next_stable "$BUMP_KIND")"
 TAG="v${NEW_NAME}"
 
-# ── Step 4: Release notes ────────────────────────────────────────────────────────
-# Written in an editor rather than at the prompt: notes are markdown and run to
-# several lines.
+# ── Step 3: Release notes ────────────────────────────────────────────────────────
 # A file, or "-" for stdin — the one way of passing markdown that no shell can
 # reinterpret on the way in.
 read_notes_file() {
@@ -244,16 +205,17 @@ read_notes_file() {
     printf '%s' "${raw#$'﻿'}"
 }
 
-if [[ -n "$FLAG_NOTES" || -n "$FLAG_NOTES_FILE" ]]; then
-    if [[ -n "$FLAG_NOTES_FILE" ]]; then
-        NOTES="$(read_notes_file "$FLAG_NOTES_FILE" --notes-file)"
-    else
-        NOTES="$FLAG_NOTES"
-    fi
+# What the commits since the last stable release say, as the pipeline gathers it.
+CHANGES="$(changelog::since "${LAST_STABLE:+v${LAST_STABLE}}" "origin/${SOURCE_BRANCH}")"
 
-    [[ -n "$NOTES" ]] || { echo "✗ Release notes are required — pass --notes or --notes-file."; exit 1; }
+if [[ -n "$FLAG_NOTES_FILE" ]]; then
+    NOTES="$(read_notes_file "$FLAG_NOTES_FILE" --notes-file)"
+elif [[ -n "$FLAG_NOTES" ]]; then
+    NOTES="$FLAG_NOTES"
+elif [[ "$FLAG_YES" -eq 1 ]]; then
+    # Left to the pipeline, which gathers the same notes.
+    NOTES=""
 else
-
     CUT_MARKER="[cut]"
 
     # Everything above the cut. The help text lives below that cut rather than
@@ -271,14 +233,16 @@ else
     }
 
     cat > "$NOTES_FILE" <<TEMPLATE
-
+${CHANGES}
 
 ${CUT_MARKER}
 Release notes for ${TAG}.
 
-Write the notes above the ${CUT_MARKER} line. Markdown is supported: ## headings,
-- bullets and **bold** all render in the app's update dialog and on the GitHub
-release page.
+Above the ${CUT_MARKER} line is the changelog the commits since ${LAST_STABLE:-the first
+commit} gave - their Added, Changed, Fixed and Removed trailers. Edit it into
+the notes the app's update sheet and the GitHub release page show; CHANGELOG.md
+keeps the changelog as the commits gave it. Markdown is supported: ## headings,
+- bullets and **bold** all render.
 
 Everything from ${CUT_MARKER} down is ignored, and saving with no notes aborts
 the release.
@@ -290,15 +254,14 @@ TEMPLATE
     [[ -n "$NOTES" ]] || { echo "  Aborted — no release notes written."; exit 0; }
 fi
 
-# ── Step 5: Preview + confirm ────────────────────────────────────────────────────
+# ── Step 4: Preview + confirm ────────────────────────────────────────────────────
 echo ""
 echo "  ┌── Release Preview ────────────────────────────┐"
-echo "  │  ${CURRENT_NAME}  →  ${NEW_NAME}"
+echo "  │  ${LAST_STABLE:-none}  →  ${NEW_NAME}"
 echo "  │  Tag    : ${TAG}"
-echo "  │  Type   : ${NEW_TYPE}"
 echo "  │  Repo   : ${REPO}"
 echo "  ├── Notes ─────────────────────────────────────┤"
-sed 's/^/  │  /' <<< "$NOTES"
+sed 's/^/  │  /' <<< "${NOTES:-${CHANGES:-(Bug fixes and improvements.)}}"
 echo "  └───────────────────────────────────────────────┘"
 echo ""
 
@@ -313,7 +276,7 @@ else
     [[ "${CONFIRM,,}" == "y" ]] || { echo "  Aborted."; exit 0; }
 fi
 
-# ── Step 6: Dispatch the cloud pipeline ──────────────────────────────────────────
+# ── Step 5: Dispatch the cloud pipeline ──────────────────────────────────────────
 # Remember the newest run id first, so we can identify the one we just created —
 # `gh workflow run` does not return it.
 echo ""
@@ -326,12 +289,10 @@ PREV_RUN="$(gh run list --workflow "$WORKFLOW" --limit 1 --json databaseId --jq 
 # that runs" true — with --ref main, pipeline edits made on dev could never take
 # effect until a release had already shipped them.
 jq -n \
-    --arg release_type  "$NEW_TYPE" \
     --arg bump          "$BUMP_KIND" \
     --arg notes         "$NOTES" \
     --arg source_branch "$SOURCE_BRANCH" \
-    '{release_type: $release_type, bump: $bump, notes: $notes,
-      source_branch: $source_branch}' \
+    '{bump: $bump, notes: $notes, source_branch: $source_branch}' \
   | gh workflow run "$WORKFLOW" --ref "$SOURCE_BRANCH" --json
 
 RUN_ID=""
