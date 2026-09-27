@@ -170,8 +170,10 @@ Ordered from most to least critical. Every entry describes **what** is broken or
   - `QueueShuffleOrder.startingFrom` is the one place an order is dealt, so a smarter pick later replaces one function.
   - `ShuffleSettings` holds every shuffle option, in the playback settings file where the on/off state always lived, and Playback › Shuffle exposes them: **Keep shuffle** (Auxio's `keepShuffle`; ArchiveTune's "permanent shuffle"), **Reshuffle each time**, **Remember shuffle order** and **Shuffle all button**.
   - The shuffled order is saved with the queue (`queue_items.shufflePosition`, `MIGRATION_10_11`, Auxio's `QueueShuffledMappingItem`) and comes back when the app is reopened or a media button wakes the service, whether or not shuffle is on, so the kept order survives a restart too. Both restore paths now read `loadSavedQueue`. The saved order is armed on the empty player *before* the queue is set, because media3 runs custom commands at once but queues player commands, so an order sent after the queue could arrive first.
-- [ ] **6.2 Add a scroll-to-top FAB**
-- [ ] **6.3 Add fast-play / swipe action for playlist items** — scoped only to the Playlists activity.
+- [x] **6.2 Add a scroll-to-top FAB**
+- [x] **6.3 Add fast-play / swipe action for playlist items** — scoped only to the Playlists activity.
+  - Every row there, Most played included, swipes towards its end (right) to play and towards its start (left) to shuffle, through the options sheet's own Play and Shuffle; a playlist with no tracks holds back, as its sheet greys them out.
+  - A row's swipes are now an `OptionsSwipe` preset - two `OptionsAction`s, one per direction - drawn with the sheet's icons and honouring its disabled actions: `QUEUE` (play next / add to queue) for detail lists, `PLAYBACK` (play / shuffle) for the Playlists screen. Most played, which has no `OptionsTarget`, plays through `OptionsActions.perform(PlaybackParent, …)`.
 - [x] **6.4 Add an Auxio-style fast-scroll list control**
   A draggable scroll indicator/thumb for sorted lists that shows the current section/order position while dragging, with adjustable sensitivity near the screen edges — matching Auxio's exact behavior.
 - [ ] **6.5 Add pull-to-refresh to trigger a library rescan**

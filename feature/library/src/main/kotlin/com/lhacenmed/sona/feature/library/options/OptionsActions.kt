@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.itemsOrEmpty
+import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.navigation.AppNavigator
 import com.lhacenmed.sona.core.navigation.LocalNavigator
@@ -110,6 +111,18 @@ internal class OptionsActions(
             } else {
                 viewModel.loadTracks(target) { tracks -> context.shareTracks(tracks) }
             }
+        }
+    }
+
+    /**
+     * Carries out [action] on the collection [parent] names, for a row with no [OptionsTarget] of its own -
+     * Most played. Playing it whole, or shuffled, is all such a row offers.
+     */
+    fun perform(parent: PlaybackParent, action: OptionsAction) {
+        when (action) {
+            OptionsAction.PLAY -> viewModel.playCollection(parent, shuffled = false)
+            OptionsAction.SHUFFLE -> viewModel.playCollection(parent, shuffled = true)
+            else -> error("$parent offers no $action")
         }
     }
 

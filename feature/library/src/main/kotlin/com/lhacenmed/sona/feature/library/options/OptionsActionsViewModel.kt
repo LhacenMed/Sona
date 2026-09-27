@@ -208,17 +208,31 @@ class OptionsActionsViewModel @Inject constructor(
             .mapTo(HashSet()) { it.id }
     }
 
+    /**
+     * Plays the collection [parent] names, whole - [shuffled], from a random one of its tracks - as its
+     * own screen's Play and Shuffle do. For a row with no [OptionsTarget] of its own: Most played.
+     */
+    fun playCollection(parent: PlaybackParent, shuffled: Boolean) {
+        viewModelScope.launch { playWhole(readyTracks(repository.collectionTracks(parent)), parent, shuffled) }
+    }
+
     private fun startPlayback(target: OptionsTarget, shuffled: Boolean) {
         viewModelScope.launch {
-            val tracks = if (target is OptionsTarget.ForTrack) target.queueSource else entityTracks(target)
-            if (tracks.isEmpty()) return@launch
-            val startIndex = when {
-                target is OptionsTarget.ForTrack -> tracks.indexOfFirst { it.id == target.track.id }.coerceAtLeast(0)
-                shuffled -> tracks.indices.random()
-                else -> 0
+            if (target !is OptionsTarget.ForTrack) {
+                playWhole(entityTracks(target), parentOf(target), shuffled)
+                return@launch
             }
-            playbackController.playTracks(tracks, startIndex, parentOf(target), shuffled)
+            val tracks = target.queueSource
+            if (tracks.isEmpty()) return@launch
+            val startIndex = tracks.indexOfFirst { it.id == target.track.id }.coerceAtLeast(0)
+            playbackController.playTracks(tracks, startIndex, target.queueParent, shuffled)
         }
+    }
+
+    /** Plays [tracks] from the first, or [shuffled] from a random one - a collection started as a whole. */
+    private fun playWhole(tracks: List<Track>, parent: PlaybackParent?, shuffled: Boolean) {
+        if (tracks.isEmpty()) return
+        playbackController.playTracks(tracks, if (shuffled) tracks.indices.random() else 0, parent, shuffled)
     }
 
     /** [target] on its own - a track by itself, or a collection's tracks. Never the track's surrounding list. */
