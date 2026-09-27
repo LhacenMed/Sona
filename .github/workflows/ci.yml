@@ -5,16 +5,16 @@ name: Checks
 #   - A pull request's commit messages are checked (scripts/check-commits.sh):
 #     Conventional Commits subjects, and no "Release:" trailer - releases are
 #     the maintainer's to make.
-#   - Every pull request, and every push to dev, is built: its debug APK is
-#     kept as the run's artifact, to try it without building it - ArchiveTune's
-#     per-commit builds.
+#   - Every pull request, and every push to dev or a hotfix/* branch, is built:
+#     its debug APK is kept as the run's artifact, to try it without building
+#     it - ArchiveTune's per-commit builds.
 #
 # Needs no secrets, so a pull request from a fork runs it all the same.
 on:
   pull_request:
     branches: [dev]
   push:
-    branches: [dev]
+    branches: [dev, 'hotfix/**']
 
 # A newer push to the same pull request or branch makes an older run moot.
 concurrency:

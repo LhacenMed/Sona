@@ -119,7 +119,9 @@ version::next_artifact() {
 
 # version::next_stable <bump>
 # Prints the next stable version, from the tags: "release" makes the version the
-# newest artifacts lead to stable; major, minor and patch bump the last stable one.
+# newest artifacts lead to stable; major, minor and patch bump the last stable one;
+# "hotfix" is a patch on the last stable one, released from beside dev - so it
+# may come below artifacts already out, which keep leading on to their version.
 version::next_stable() {
     local bump="$1"
     local latest stable
@@ -137,6 +139,10 @@ version::next_stable() {
             exit 1
         fi
         echo "${V_MAJOR}.${V_MINOR}.${V_PATCH}"
+        return
+    fi
+    if [[ "$bump" == "hotfix" ]]; then
+        _version_bumped "$stable" patch
         return
     fi
     local next

@@ -6,6 +6,7 @@ How a change travels from a commit to a user's phone, and what the maintainer do
 
 - [The pieces](#the-pieces)
 - [The flow](#the-flow)
+- [Hotfixes](#hotfixes)
 - [Versions](#versions)
 - [Release notes](#release-notes)
 - [Every case](#every-case)
@@ -16,9 +17,10 @@ How a change travels from a commit to a user's phone, and what the maintainer do
 
 | Piece | Where | What it does |
 | --- | --- | --- |
-| **Checks** | [`ci.yml`](../.github/workflows/ci.yml) | On every pull request to `dev`: checks the commit messages ([`check-commits.sh`](../scripts/check-commits.sh)). On every pull request and push to `dev`: builds a debug APK and keeps it on the run's page for 14 days. |
+| **Checks** | [`ci.yml`](../.github/workflows/ci.yml) | On every pull request to `dev`: checks the commit messages ([`check-commits.sh`](../scripts/check-commits.sh)). On every pull request, and every push to `dev` or a `hotfix/*` branch: builds a debug APK and keeps it on the run's page for 14 days. |
+| Commit hook | [`hooks/commit-msg`](../scripts/hooks/commit-msg) | The same message check, run as each commit is made - `git config core.hooksPath scripts/hooks` once per clone. Your own `Release:` markers pass it. |
 | **Artifact release** | [`artifact.yml`](../.github/workflows/artifact.yml) | On every push to `dev`: if a commit the owner authored carries `Release: <stage> [bump]`, publishes a pre-release of that commit. Otherwise stops in seconds. |
-| **Stable release** | [`release.yml`](../.github/workflows/release.yml), started by [`release.sh`](../scripts/release.sh) | Merges `dev` into `main`, publishes a stable release, writes `CHANGELOG.md`, `version.json` and the version in `app/build.gradle.kts`, then fast-forwards `dev`. |
+| **Stable release** | [`release.yml`](../.github/workflows/release.yml), started by [`release.sh`](../scripts/release.sh) | Merges `dev` - or a `hotfix/*` branch - into `main`, publishes a stable release, writes `CHANGELOG.md`, `version.json` and the version in `app/build.gradle.kts`, then brings `dev` up to date with it. |
 | Build and upload | [`upload-release`](../.github/actions/upload-release/action.yml) | The steps both release workflows share: build and sign the APKs at a version, and upload them to a draft release. |
 | Versions | [`version.sh`](../scripts/lib/version.sh) | Works out the next version from the release tags. |
 | Notes | [`changelog.sh`](../scripts/lib/changelog.sh) | Gathers the commits' changelog trailers, and the issues they close. |
@@ -54,6 +56,26 @@ contributor ──PR──▶ dev ◀── maintainer's own commits
 
 `release.sh` needs `gh` (logged in) and `jq`, and nothing else - it builds nothing locally, and closing it does not stop the release.
 
+## Hotfixes
+
+A stable release from `dev` ships everything on `dev`. When a released version needs a fix now, and `dev` holds work not ready to ship, the fix is released on its own from a `hotfix/*` branch made from `main`:
+
+```bash
+git switch -c hotfix/queue-crash origin/main
+# fix it, and commit with its "Fixed:" trailer - or cherry-pick a fix already on dev
+git push -u origin hotfix/queue-crash
+./scripts/release.sh
+```
+
+On a `hotfix/*` branch `release.sh` asks nothing about the version: it is always a `hotfix`, the last stable release's patch - `1.6.0` becomes `1.6.1`, even while `dev`'s artifacts are at `1.7.0-beta.2`. Checks builds the branch as it is pushed, to try the fix first. The pipeline then:
+
+1. checks the branch is made from the latest `main`, and holds none of `dev`'s unreleased commits - a fix cherry-picked from `dev` is fine, `dev` merged in is not;
+2. merges it into `main` and publishes the release, its notes gathered from the branch's commits alone;
+3. merges the release into `dev`, so `dev` has the fix too - or, where the fix and `dev` changed the same lines, opens a pull request from `main` into `dev` to resolve them in;
+4. deletes the branch.
+
+Stable users are offered `1.6.1`; Artifact users keep their newer `1.7.0-beta.2`. The next artifact carries on at `1.7.0-beta.3`, and the next stable release's notes start after `1.6.1`.
+
 ## Versions
 
 Every version is worked out from the `v*` release tags - nothing is stored in a file for the pipelines to race over. Builds are handed the result as `-Psona.version=<version>`; a local build is versioned as the last stable release, written into `app/build.gradle.kts` by each stable release.
@@ -77,6 +99,7 @@ Every version is worked out from the `v*` release tags - nothing is stored in a 
 | `patch` | refused - below `1.6.0-rc.2` | `1.6.1` |
 | `minor` | `1.6.0` | `1.7.0` |
 | `major` | `2.0.0` | `2.0.0` |
+| `hotfix` - from a `hotfix/*` branch only | `1.5.1` | `1.6.1` |
 
 Version codes follow from the version (see `Version.toVersionCode()` in `app/build.gradle.kts`): every release outranks every earlier one, artifacts included, and each ABI's APK adds 1 to 4 to it, the universal one nothing.
 
@@ -100,15 +123,18 @@ A commit without trailers adds nothing. Commits made before trailers existed can
 | A marker on a commit already released | Nothing is released twice. |
 | Try `dev` without releasing it | Download the debug APK from Checks' run on that commit. It installs as Sona Debug, next to the real app. |
 | A stable release with nothing new | Choose a `patch` bump; the notes read "Bug fixes and improvements." unless you write them. |
-| A hotfix while `dev` holds unfinished artifacts | Not supported: a stable release always ships all of `dev`. Finish or revert the unfinished work first, or release it as it stands. |
+| A released version needs a fix, and `dev` is not ready | Release it from a `hotfix/*` branch - see [Hotfixes](#hotfixes). |
+| A hotfix's pull request into `dev` is open | The hotfix changed lines `dev` changed too. Resolve the conflicts in it and merge it with a merge commit. |
+| A commit's changelog lines are rejected | A non-trailer line - usually `Fixes #12` - shares their paragraph, so git would not read them. Move it above them. |
 
 ## When something goes wrong
 
 - **A workflow fails before publishing** - a build error, a failed upload: nothing is public. Fix it and push again (artifact), or run `release.sh` again (stable). A draft left behind is removed by the next run.
+- **Bringing `dev` up to date fails** after a stable release: the release is out and `main` is right. Bring `dev` level with `git switch dev && git merge origin/main && git push`.
 - **Stable fails after pushing `main`**, before publishing: the release commit and the uploaded draft are both there, so finish the last two steps by hand rather than running it again, which would find nothing left to commit:
   ```bash
   gh release edit v1.6.0 --draft=false --prerelease=false   # tags main's release commit
-  git fetch origin && git push origin origin/main:dev         # fast-forwards dev
+  git fetch origin && git switch dev && git merge origin/main && git push   # brings dev up to date
   ```
 - **A merge conflict** from `dev` into `main` stops the stable release. Resolve it locally on `main`, push, and run `release.sh` again.
 - **A release is wrong once published**: publish a newer one. Deleting a published release and its tag makes its version free again for the pipelines, but apps that installed it keep it.
