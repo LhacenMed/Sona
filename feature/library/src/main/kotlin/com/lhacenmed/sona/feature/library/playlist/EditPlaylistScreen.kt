@@ -44,7 +44,7 @@ import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.playlist.coverArtUris
 import com.lhacenmed.sona.core.designsystem.component.CoverArtDefaults
 import com.lhacenmed.sona.core.designsystem.component.DetailSectionHeader
-import com.lhacenmed.sona.core.designsystem.component.FastScroller
+import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.SonaPlaylistCover
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
