@@ -1,6 +1,5 @@
 package com.lhacenmed.sona.feature.update.github
 
-import android.content.Context
 import java.net.HttpURLConnection
 import java.net.URL
 import kotlinx.coroutines.CancellationException
@@ -33,7 +32,8 @@ object GitHub {
 
     /**
      * GETs [url] from GitHub's API. Given the [etag] of an earlier answer, GitHub answers 304 when nothing
-     * has changed - which it does not count against the hourly limit an app without a token is held to.
+     * has changed, and sends no body - though without a token, it still counts the request against the
+     * hourly limit.
      */
     internal suspend fun get(url: String, etag: String? = null): Response = withContext(Dispatchers.IO) {
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
@@ -62,13 +62,3 @@ internal inline fun <T> runCatchingCancellable(block: () -> T): Result<T> =
     } catch (e: Throwable) {
         Result.failure(e)
     }
-
-/**
- * What the app keeps of GitHub's answers, so a screen opens on the last ones at once, offline included,
- * and the network is asked again only when they are old.
- */
-internal object GitHubCache {
-    private const val PREFS = "github_cache"
-
-    fun prefs(context: Context) = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-}

@@ -6,27 +6,32 @@ import com.lhacenmed.sona.feature.update.github.Release
 import com.lhacenmed.sona.feature.update.github.Releases
 
 /**
- * Decides whether a newer build exists on a channel, and says so to [UpdateRegistry] - the one way every
- * check goes: at launch, from the Updates screen, and in the background.
+ * Decides whether a release is an update to the running build, and says so to [UpdateRegistry] - the one way
+ * every check goes: at launch, from the Updates screen, from what was kept, and in the background.
  */
 object UpdateChecker {
 
     /**
-     * The newest release on [channel] - held in [UpdateRegistry] as the available update when it is newer
-     * than the running build, and let go when it is not, unless its download is already under way or done.
+     * The newest release on [channel] - held in [UpdateRegistry] as the available update when it [isUpdate],
+     * and let go when it is not, unless its download is already under way or done.
      */
     suspend fun check(context: Context, channel: UpdateChannel, forceRefresh: Boolean = false): Result<Release> =
         Releases.latest(context, channel, forceRefresh).onSuccess { latest ->
             when {
-                isNewer(context, latest) -> UpdateRegistry.setAvailable(latest)
+                isUpdate(context, latest) -> UpdateRegistry.setAvailable(latest)
                 !UpdateRegistry.holdsDownload -> UpdateRegistry.setAvailable(null)
             }
         }
 
-    /** Whether [release] is newer than the running build. */
-    fun isNewer(context: Context, release: Release): Boolean {
-        val installed = context.installedVersion() ?: return false
+    /**
+     * Whether [release] updates the running build: a build that can be updated in place - never a debug one -
+     * to a newer version, with an APK it can install - see [Release.apkFor].
+     */
+    fun isUpdate(context: Context, release: Release): Boolean {
+        val build = context.installedBuild()
+        if (!build.isUpdatable) return false
+        val installed = build.version ?: return false
         val candidate = release.version ?: return false
-        return candidate > installed
+        return candidate > installed && release.apkFor(build) != null
     }
 }

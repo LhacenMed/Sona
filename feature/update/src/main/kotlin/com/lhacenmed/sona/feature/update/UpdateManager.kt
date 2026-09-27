@@ -22,6 +22,7 @@ object UpdateManager {
 
     fun restore(context: Context, channel: UpdateChannel) {
         val appContext = context.applicationContext
+        if (!appContext.installedBuild().isUpdatable) return
         val kept = Releases.cached(appContext, channel)
 
         val staged = ApkDownloader.stagedUpdate(appContext)
@@ -34,13 +35,13 @@ object UpdateManager {
                     notes = null,
                     publishedAt = "",
                     htmlUrl = "",
-                    apkUrl = null,
+                    apks = emptyList(),
                 )
             UpdateRegistry.setAvailable(release)
-            UpdateRegistry.update(UpdateState.Downloaded(staged.file))
+            UpdateRegistry.update(UpdateState.Downloaded(staged))
             return
         }
 
-        kept.firstOrNull()?.takeIf { UpdateChecker.isNewer(appContext, it) }?.let(UpdateRegistry::setAvailable)
+        kept.firstOrNull()?.takeIf { UpdateChecker.isUpdate(appContext, it) }?.let(UpdateRegistry::setAvailable)
     }
 }

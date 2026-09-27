@@ -45,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.R
+import com.lhacenmed.sona.core.designsystem.component.screen.LocalScreenLists
 
 /**
  * One thing a top app bar can do. Whether it is drawn as an icon or as a row in the overflow menu is
@@ -100,13 +101,11 @@ data class TopBarSearch(
  *
  * [progress] is how far the header has collapsed, 0 to 1, and is read while drawing so the bar follows
  * the scroll without recomposing. Over the second half of it the title, and [play] and [shuffle] as
- * round buttons, fade in and rise into place: what the header showed moves up into the bar. [isLifted]
- * is whether the list has scrolled on under the bar, which tints it as Material's lift-on-scroll does.
+ * round buttons, fade in and rise into place: what the header showed moves up into the bar.
  */
 @Immutable
 data class TopBarCollapse(
     val progress: () -> Float,
-    val isLifted: () -> Boolean,
     val play: TopBarAction,
     val shuffle: TopBarAction,
 )
@@ -149,6 +148,12 @@ private sealed interface BarContent {
  * rather than bars swapping places. Every mode is a `TopAppBar` of identical height, so nothing
  * around the bar moves while it transitions.
  *
+ * It lifts - tinted as Material's lift-on-scroll tints it - once the screen's list has scrolled from its
+ * top: the list marked with `screenList`, read here without the screen having to say anything. Over a
+ * header that collapses into it - [collapse], a detail screen's - it lifts the same way, as its list
+ * only scrolls once the header is out of the way. A bar that keeps one background whatever scrolls
+ * beneath it - the library's, for now - sets [liftsOnScroll] false.
+ *
  * Searching replaces the title rather than sitting beside it, which is what makes it feel like the
  * bar became the search rather than grew one. A selection outranks a search: if rows get picked
  * while searching, the context bar is what the user needs to see. Every mode keeps the same
@@ -171,6 +176,7 @@ fun SonaTopAppBar(
     selection: TopBarSelection? = null,
     search: TopBarSearch? = null,
     collapse: TopBarCollapse? = null,
+    liftsOnScroll: Boolean = true,
 ) {
     val content: BarContent = when {
         selection != null -> BarContent.Selecting(selection)
@@ -200,7 +206,10 @@ fun SonaTopAppBar(
     // theme as it is on each frame, so a theme change repaints the bar on the same frame as the rest of
     // the screen; animating the colour would have chased every step of the theme's own transition, a
     // beat behind it.
-    val isLifted by remember(collapse) { derivedStateOf { collapse?.isLifted?.invoke() == true } }
+    val screenLists = LocalScreenLists.current
+    val isLifted by remember(screenLists, liftsOnScroll) {
+        derivedStateOf { liftsOnScroll && screenLists?.current?.isScrolled == true }
+    }
     val liftFraction by animateFloatAsState(targetValue = if (isLifted) 1f else 0f, label = "topAppBarLift")
     val colorScheme = MaterialTheme.colorScheme
 

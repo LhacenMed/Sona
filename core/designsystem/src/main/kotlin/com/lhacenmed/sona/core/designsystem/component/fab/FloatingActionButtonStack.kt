@@ -19,7 +19,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -37,6 +36,9 @@ import com.lhacenmed.sona.core.designsystem.R
 import com.lhacenmed.sona.core.designsystem.component.LocalPlayerSheetHeight
 import com.lhacenmed.sona.core.designsystem.component.PlayerSheetHeight
 import com.lhacenmed.sona.core.designsystem.component.WindowOverlay
+import com.lhacenmed.sona.core.designsystem.component.screen.LocalScreenLists
+import com.lhacenmed.sona.core.designsystem.component.screen.ScreenLists
+import com.lhacenmed.sona.core.designsystem.component.screen.screenList
 import com.lhacenmed.sona.core.designsystem.theme.ExpressiveMotion
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.designsystem.theme.pressedCornerRadius
@@ -66,12 +68,8 @@ private val ScrollToTopCornerRadius = 16.dp
  */
 @Stable
 internal class FloatingActionButtonStackState {
-    val lists = mutableStateListOf<ScreenList>()
-
-    /** The list the stack follows: the one the window shows most of - see [screenList]. */
-    val currentList: ScreenList? by derivedStateOf {
-        lists.filter { it.visibleArea > 0f }.maxByOrNull { it.visibleArea }
-    }
+    /** The screen's lists, the stack following the one it shows most of - see [screenList]. */
+    val screenLists = ScreenLists()
 
     /** The screen's own FAB as it was last composed, if it has one - see [SonaFloatingActionButtonMenu]. */
     var primaryButton: PrimaryButton? by mutableStateOf(null)
@@ -120,7 +118,11 @@ fun FloatingActionButtonStack(content: @Composable () -> Unit) {
     // Handed over as they are composed: the window overlay is composed above the player that provides them.
     stack.playerSheet = LocalPlayerSheetHeight.current
     stack.navigationBarHeight = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
-    CompositionLocalProvider(LocalFloatingActionButtonStack provides stack, content = content)
+    CompositionLocalProvider(
+        LocalFloatingActionButtonStack provides stack,
+        LocalScreenLists provides stack.screenLists,
+        content = content,
+    )
     WindowOverlay { FloatingActionButtons(stack) }
 }
 
@@ -133,14 +135,14 @@ private fun BoxScope.FloatingActionButtons(stack: FloatingActionButtonStackState
         val stackHeightPx = with(LocalDensity.current) { (scrollToTopLift + ScrollToTopButtonSize).toPx() }
         val isShownState = remember(stack, stackHeightPx) {
             derivedStateOf {
-                val list = stack.currentList
+                val list = stack.screenLists.current
                 !stack.playerSheet.isRaised && list?.isFastScrolling?.invoke() != true &&
                     list?.isNearEnd(stackHeightPx) != true
             }
         }
         val isScrollToTopShown by remember(stack, isShownState) {
             derivedStateOf {
-                isShownState.value && stack.currentList?.isAwayFromTop == true && stack.primaryButton?.expanded != true
+                isShownState.value && stack.screenLists.current?.isAwayFromTop == true && stack.primaryButton?.expanded != true
             }
         }
         val isShown by isShownState
@@ -152,7 +154,7 @@ private fun BoxScope.FloatingActionButtons(stack: FloatingActionButtonStackState
 
         ScrollToTopButton(
             visible = isScrollToTopShown,
-            onClick = { stack.currentList?.let { list -> scope.launch { list.scrollToTop() } } },
+            onClick = { stack.screenLists.current?.let { list -> scope.launch { list.scrollToTop() } } },
             modifier = anchor.padding(bottom = scrollToTopLift),
         )
         primaryButton?.let { PrimaryButtonMenu(button = it, isShown = isShown, anchor = anchor) }

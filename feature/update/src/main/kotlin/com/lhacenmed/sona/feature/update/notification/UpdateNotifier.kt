@@ -17,6 +17,7 @@ import androidx.work.WorkManager
 import com.lhacenmed.sona.feature.update.R
 import com.lhacenmed.sona.feature.update.UpdateService
 import com.lhacenmed.sona.feature.update.github.Release
+import com.lhacenmed.sona.feature.update.installedBuild
 import java.util.concurrent.TimeUnit
 
 /**
@@ -84,7 +85,7 @@ object UpdateNotifier {
                 openUpdates?.let {
                     setContentIntent(PendingIntent.getActivity(context, 0, it, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
                 }
-                if (release.apkUrl != null) {
+                if (release.apkFor(context.installedBuild()) != null) {
                     addAction(
                         R.drawable.ic_update,
                         context.getString(R.string.update_notification_download),

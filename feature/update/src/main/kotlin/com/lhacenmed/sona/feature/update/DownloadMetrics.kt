@@ -1,5 +1,8 @@
 package com.lhacenmed.sona.feature.update
 
+import android.content.Context
+import android.text.format.Formatter
+
 /** Rolling-window download speed tracker. Thread-safe via synchronized. */
 class SpeedTracker(private val windowMs: Long = 3_000L) {
 
@@ -29,17 +32,13 @@ class SpeedTracker(private val windowMs: Long = 3_000L) {
     }
 }
 
-/** Formats a live download log line: "↓ 8.3 MB/s · 45.1 MB / 120.0 MB" */
-fun formatDownloadLog(speedBps: Long, received: Long, total: Long? = null): String {
-    val speed = "${formatBytes(speedBps)}/s"
-    val recv  = formatBytes(received)
-    return if (total != null && total > 0) "Downloading files... $speed · $recv / ${formatBytes(total)}"
-    else "Downloading files... $speed · $recv"
+/** How much has arrived, of how much - "4.2 MB / 18.6 MB" - or only how much, while the size is unknown. */
+fun UpdateState.Downloading.sizeText(context: Context): String {
+    val received = Formatter.formatShortFileSize(context, receivedBytes)
+    return totalBytes?.let { context.getString(R.string.update_download_size, received, Formatter.formatShortFileSize(context, it)) }
+        ?: received
 }
 
-fun formatBytes(bytes: Long): String = when {
-    bytes < 1_024L         -> "$bytes B"
-    bytes < 1_048_576L     -> "%.1f KB".format(bytes / 1_024f)
-    bytes < 1_073_741_824L -> "%.1f MB".format(bytes / 1_048_576f)
-    else                   -> "%.2f GB".format(bytes / 1_073_741_824f)
-}
+/** How fast it is arriving - "1.3 MB/s". */
+fun UpdateState.Downloading.speedText(context: Context): String =
+    context.getString(R.string.update_download_speed, Formatter.formatShortFileSize(context, bytesPerSecond))

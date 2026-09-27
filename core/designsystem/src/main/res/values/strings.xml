@@ -81,4 +81,12 @@
     <string name="palette_aurora">Aurora</string>
     <string name="palette_candy">Candy</string>
     <string name="palette_rainbow">Rainbow</string>
+
+    <!-- A section's heading -->
+    <string name="section_collapse">Collapse section</string>
+    <string name="section_expand">Expand section</string>
+
+    <!-- The connection banner -->
+    <string name="network_offline">No internet connection</string>
+    <string name="network_back_online">Back online</string>
 </resources>

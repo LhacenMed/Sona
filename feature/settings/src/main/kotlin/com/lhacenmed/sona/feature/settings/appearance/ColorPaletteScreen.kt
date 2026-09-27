@@ -62,7 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
-import com.lhacenmed.sona.core.designsystem.component.fab.screenList
+import com.lhacenmed.sona.core.designsystem.component.screen.screenList
 import com.lhacenmed.sona.core.designsystem.theme.palette.ThemePalette
 import com.lhacenmed.sona.core.designsystem.theme.palette.ThemePalettes
 import com.lhacenmed.sona.core.designsystem.theme.palette.ThemeSeedPaletteCodec

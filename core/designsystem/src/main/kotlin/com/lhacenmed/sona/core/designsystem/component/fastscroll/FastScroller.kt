@@ -50,8 +50,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
-import com.lhacenmed.sona.core.designsystem.component.fab.screenList
-import com.lhacenmed.sona.core.designsystem.component.fab.scrollBackToTop
+import com.lhacenmed.sona.core.designsystem.component.screen.screenList
+import com.lhacenmed.sona.core.designsystem.component.screen.scrollBackToTop
 import com.lhacenmed.sona.core.designsystem.theme.LocalFastScrollTouchArea
 import com.lhacenmed.sona.core.model.FastScrollTouchArea
 import kotlin.math.abs

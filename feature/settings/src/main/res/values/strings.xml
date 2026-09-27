@@ -44,7 +44,7 @@
     <string name="updates_title">Updates</string>
     <string name="updates_summary">Check for new versions</string>
     <string name="about_title">About</string>
-    <string name="about_summary">Version, changelog, and licenses</string>
+    <string name="about_summary">Version, licenses, and the people behind Sona</string>
 
     <!-- Appearance -->
     <string name="appearance_theme_section">Theme</string>
@@ -366,26 +366,27 @@
     <string name="storage_note">Clearing a cache never removes music. Only files the app made are deleted.</string>
 
     <!-- Updates -->
-    <string name="updates_subtitle_stable">Stable releases and release notes</string>
-    <string name="updates_subtitle_beta">Beta releases and recent development commits</string>
     <string name="updates_current_version">Current version</string>
-    <string name="updates_latest_version">Latest: %1$s</string>
+    <string name="updates_latest_available">Latest: %1$s</string>
+    <string name="updates_update_to">Update to %1$s</string>
+    <string name="updates_view_changelog">View changelog</string>
+    <string name="updates_preferences_section">Preferences</string>
+    <string name="updates_development_section">Development</string>
+    <string name="updates_commits_summary">What is coming next, from the development branch</string>
     <string name="updates_status_checking">Checking for the latest release</string>
     <string name="updates_status_current">You are on the latest available release</string>
+    <string name="updates_status_debug">Debug builds are not updated in the app</string>
     <string name="updates_check_for_update">Check for update</string>
-    <string name="updates_view_changelog">View changelog</string>
     <string name="updates_check_failed">Could not check for updates</string>
     <string name="updates_error_unknown">Unknown error</string>
     <string name="updates_notifications_title">Update notifications</string>
     <string name="updates_notifications_summary">Get notified when a new release is available on the selected channel</string>
+    <string name="updates_auto_prompt_title">Show updates on launch</string>
+    <string name="updates_auto_prompt_summary">Open the details of a new version as soon as the app starts</string>
     <string name="updates_channel_title">Update channel</string>
-    <string name="updates_channel_summary">Choose between tested releases and early builds.</string>
     <string name="updates_channel_stable">Stable</string>
     <string name="updates_channel_beta">Beta</string>
     <string name="updates_recent_commits">Recent commits</string>
-    <string name="updates_loading_commits">Loading recent commits</string>
-    <string name="updates_recent_commits_count">%1$d recent commits</string>
-    <string name="updates_no_commits">No recent commits found</string>
     <string name="updates_channel_warning_intro">Sona provides two channels for builds:</string>
     <string name="updates_channel_warning_stable_title">Stable builds</string>
     <string name="updates_channel_warning_stable_source">Distributed as GitHub releases.</string>
@@ -399,9 +400,12 @@
 
     <!-- Changelog -->
     <string name="changelog_title">Changelog</string>
-    <string name="changelog_load_failed">Error loading changelog</string>
-    <string name="changelog_no_releases">No releases found</string>
-    <string name="retry">Retry</string>
+
+    <!-- A list loaded from GitHub or the app, while it is not there yet -->
+    <string name="load_loading">Loading</string>
+    <string name="load_empty">Nothing found</string>
+    <string name="load_failed">Could not load</string>
+    <string name="load_retry">Tap to try again</string>
 
     <!-- About -->
     <string name="about_app_name">Sona</string>
@@ -411,6 +415,9 @@
     <string name="about_link_releases">Releases</string>
     <string name="about_link_issues">Report an issue</string>
     <string name="about_licenses">Licenses</string>
+    <string name="about_licenses_summary">The libraries Sona is built with, and their licenses</string>
+    <string name="about_project">Project</string>
+    <string name="about_all_contributors">All contributors</string>
     <string name="about_license_unknown">Unknown license</string>
     <string name="about_lead_developer">Lead developer</string>
     <string name="about_role_lead_developer">Creator and maintainer</string>
@@ -419,11 +426,6 @@
     <string name="about_role_archivetune">Player, lyrics, themes and updates</string>
     <string name="about_role_fossify">Scanning and a queue that survives restarts</string>
     <string name="about_contributors">Contributors</string>
-    <string name="about_more">More</string>
-    <string name="about_loading">Loading</string>
-    <string name="about_no_results">No results found</string>
-    <string name="about_error">Could not load</string>
-    <string name="about_close">Close</string>
 
     <!-- Managed lists -->
     <string name="excluded_folders_title">Excluded Folders</string>
