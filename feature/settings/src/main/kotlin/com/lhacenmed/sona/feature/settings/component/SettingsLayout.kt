@@ -137,31 +137,26 @@ fun Modifier.settingsScrollTarget(key: Any): Modifier {
 }
 
 /**
- * A named group of related settings, under the app's one section heading - see [SectionHeader].
+ * A named group of related settings, under the app's one section heading - see [ColumnSection].
  *
  * The rule the screens follow is one a reader can check at a glance: a screen either has no sections
  * at all, or every row belongs to one. Half-sectioned screens are what make a settings page feel
  * arbitrary.
  *
- * Its heading stays at the top of the list while its rows scroll under it - see [ColumnSection]. What acts
- * on the whole group sits on that heading - its [actions]. A long group can be [isCollapsible], folded down
- * to its heading so the groups under it are one press from sight; it opens expanded, and stays as it was
- * left when the screen comes back.
+ * Its heading stays at the top of the list while its rows scroll under it, and folds the group down to
+ * itself at a press, so the groups under it are one press from sight. What acts on the whole group sits on
+ * that heading - its [actions].
  */
 @Composable
 fun ColumnScope.SettingsSection(
     title: String,
     actions: List<TopBarAction> = emptyList(),
-    isCollapsible: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    var isCollapsed by rememberSaveable(title) { mutableStateOf(false) }
     ColumnSection(
         title = title,
         scrollState = LocalSettingsScrollState.current,
         actions = actions,
-        isCollapsed = isCollapsed.takeIf { isCollapsible },
-        onToggleCollapsed = { isCollapsed = !isCollapsed },
         content = content,
     )
 }
@@ -169,7 +164,7 @@ fun ColumnScope.SettingsSection(
 /**
  * A [SettingsList] for rows that are data rather than written out - licenses, releases, commits: as many
  * as there are, so only those on screen are composed. The same rows, the same way down the screen.
- * [listState] is the screen's to hold when its sections collapse - see `rememberSectionCollapseState`.
+ * [listState] is the screen's to hold when its sections collapse - see `rememberSectionListState`.
  */
 @Composable
 fun SettingsLazyList(

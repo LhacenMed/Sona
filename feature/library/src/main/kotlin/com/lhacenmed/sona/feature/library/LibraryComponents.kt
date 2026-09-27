@@ -49,8 +49,10 @@ import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.CookieShape
 import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
-import com.lhacenmed.sona.core.designsystem.component.section.rememberSectionCollapseState
+import com.lhacenmed.sona.core.designsystem.component.section.rememberSectionListState
+import com.lhacenmed.sona.core.designsystem.component.section.sectionItemAnimation
 import com.lhacenmed.sona.core.designsystem.component.section.section
+import com.lhacenmed.sona.core.designsystem.component.section.withoutItemAnimation
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.LocalDragHandle
 import com.lhacenmed.sona.core.designsystem.component.LocalDragSelection
@@ -360,12 +362,13 @@ internal fun <T> LazyListScope.reorderableRows(
     key: (T) -> Any,
     row: @Composable (T) -> Unit,
 ) {
-    items(
+    // Each row animates itself - still while dragged, as the rest of a section moves otherwise.
+    withoutItemAnimation().items(
         items = reorderableRows.rows,
         key = key,
         contentType = { LIST_ROW_CONTENT_TYPE },
     ) { item ->
-        ReorderableItem(state = reorderableRows.state, key = key(item)) {
+        ReorderableItem(state = reorderableRows.state, key = key(item), animateItemModifier = sectionItemAnimation()) {
             // The row draws the handle itself, beside its menu button, and gives it this gesture.
             CompositionLocalProvider(LocalDragHandle provides Modifier.draggableHandle()) {
                 row(item)
@@ -550,8 +553,20 @@ internal fun TrackListDetail(
         rememberReorderableRows(visibleTracks.itemsOrEmpty, { track -> track.id }, headerState.listState, it)
     }
 
-    // Which of the sections above the tracks are folded away - see [section].
-    val sectionCollapse = rememberSectionCollapseState(headerState.listState)
+    // Which sections are folded away - see [section].
+    val sectionList = rememberSectionListState(headerState.listState)
+    // The tracks by disc, where they are grouped so and span more than one - Auxio's discs.
+    val discs = remember(visibleTracks, groupsByDisc) {
+        visibleTracks.itemsOrEmpty.groupBy { it.discNumber }.takeIf { groupsByDisc && it.size > 1 }
+    }
+    // What a drag selects across: the tracks on show, never those folded away out of sight.
+    val draggableTracks = remember(visibleTracks, discs, sectionList.collapsedKeys) {
+        when {
+            sectionList.isCollapsed(TRACKS_SECTION_KEY) -> emptyList()
+            discs != null -> discs.filterKeys { !sectionList.isCollapsed(discSectionKey(it)) }.values.flatten()
+            else -> visibleTracks.itemsOrEmpty
+        }
+    }
 
     val collapse = remember(headerState, hasTracks) {
         TopBarCollapse(
@@ -660,17 +675,15 @@ internal fun TrackListDetail(
             dragSelection = rememberDragSelection(
                 selection = selection,
                 listState = headerState.listState,
-                orderedKeys = remember(visibleTracks) { visibleTracks.itemsOrEmpty.map { SelectionKey.Track(it.id) } },
+                orderedKeys = remember(draggableTracks) { draggableTracks.map { SelectionKey.Track(it.id) } },
             ),
         ) {
             if (searchQuery == null) {
-                // A section above the tracks can be folded away, so the tracks under a long one are one
-                // press from sight.
                 sections.forEachIndexed { index, section ->
                     section(
                         key = "detail-${section.title}",
                         title = section.title,
-                        collapse = sectionCollapse,
+                        state = sectionList,
                         hasDividerAbove = index > 0,
                     ) {
                         when (section) {
@@ -710,13 +723,15 @@ internal fun TrackListDetail(
             }
             // What acts on the tracks sits on their heading: searching them and sorting them, as one group
             // of buttons like any other. Search is inert while its field is open in the bar, so the row
-            // keeps its shape; only a list whose order is its content has no sort to offer. Not collapsible:
-            // the tracks are what the screen is for, and nothing follows them.
+            // keeps its shape, and opens the tracks if they were folded away; only a list whose order is its
+            // content has no sort to offer.
             section(
-                key = "tracks",
+                key = TRACKS_SECTION_KEY,
                 title = "Tracks",
+                state = sectionList,
                 actions = listOfNotNull(
                     TopBarAction(label = "Search", icon = Icons.Filled.Search, enabled = searchQuery == null) {
+                        sectionList.expand(TRACKS_SECTION_KEY)
                         searchQuery = ""
                     },
                     sort?.let { sortAction { isSortSheetOpen = true } },
@@ -730,17 +745,15 @@ internal fun TrackListDetail(
                         EmptyLibraryState(title = "No tracks found", message = emptyMessage)
                     }
                     reorderableRows != null -> reorderableRows(reorderableRows, { track -> track.id }, trackRow)
-                    groupsByDisc && rows.distinctBy { it.discNumber }.size > 1 -> {
-                        // Auxio's discs: the sorted tracks grouped by disc, each disc where its first track fell.
-                        // Not collapsible either: a drag across them selects every track between, seen or not.
-                        rows.groupBy { it.discNumber }.entries.forEachIndexed { index, (disc, discTracks) ->
-                            section(
-                                key = "disc-$disc",
-                                title = disc?.let { "Disc $it" } ?: "No disc",
-                                hasDividerAbove = index > 0,
-                            ) {
-                                items(discTracks, key = { it.id }, contentType = { LIST_ROW_CONTENT_TYPE }) { trackRow(it) }
-                            }
+                    // Auxio's discs: the sorted tracks grouped by disc, each disc where its first track fell.
+                    discs != null -> discs.entries.forEachIndexed { index, (disc, discTracks) ->
+                        section(
+                            key = discSectionKey(disc),
+                            title = disc?.let { "Disc $it" } ?: "No disc",
+                            state = sectionList,
+                            hasDividerAbove = index > 0,
+                        ) {
+                            items(discTracks, key = { it.id }, contentType = { LIST_ROW_CONTENT_TYPE }) { trackRow(it) }
                         }
                     }
                     else -> items(rows, key = { it.id }, contentType = { LIST_ROW_CONTENT_TYPE }) { trackRow(it) }
@@ -770,6 +783,10 @@ internal fun TrackListDetail(
         )
     }
 }
+
+private const val TRACKS_SECTION_KEY = "tracks"
+
+private fun discSectionKey(disc: Int?): String = "disc-$disc"
 
 /** Narrows a loaded list, leaving "still loading" alone so a search cannot look like an empty library. */
 internal fun <T> LibraryContent<T>.filterItems(predicate: (T) -> Boolean): LibraryContent<T> =

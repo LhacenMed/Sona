@@ -13,7 +13,6 @@ object GitHub {
     const val REPOSITORY_URL = "https://github.com/$OWNER/$REPOSITORY"
     const val RELEASES_URL = "$REPOSITORY_URL/releases"
     const val ISSUES_URL = "$REPOSITORY_URL/issues"
-    const val CONTRIBUTORS_URL = "$REPOSITORY_URL/graphs/contributors"
     const val PROFILE_URL = "https://github.com/$OWNER"
     const val AVATAR_URL = "https://github.com/$OWNER.png"
 
