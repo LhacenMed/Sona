@@ -1,4 +1,4 @@
-name: artifact
+name: Artifact release
 
 # Publishes an Artifact release - a pre-release of the version dev is heading
 # for - whenever a push to dev carries a commit marked for one:
