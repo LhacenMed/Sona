@@ -25,6 +25,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import com.lhacenmed.sona.core.common.R as CommonR
 import com.lhacenmed.sona.core.data.LibraryRepository
+import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
 import com.lhacenmed.sona.core.datastore.ImageSettings
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
@@ -74,11 +75,15 @@ class PlaybackService : MediaSessionService() {
     @Inject
     lateinit var equalizer: SonaEqualizer
 
+    @Inject
+    lateinit var playStatsDao: PlayStatsDao
+
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     private lateinit var exoPlayer: ExoPlayer
     private lateinit var forwardingPlayer: PlaybackForwardingPlayer
     private lateinit var mediaSession: MediaSession
+    private lateinit var playHistoryRecorder: PlayHistoryRecorder
 
     // Live-updated snapshots read synchronously from Player.Listener / the forwarding player -
     // DataStore is Flow/suspend-based, so runtime changes are mirrored into these volatile fields
@@ -268,6 +273,9 @@ class PlaybackService : MediaSessionService() {
         // Bound here rather than in the UI because the session id is the player's, and the
         // curve has to keep applying while no screen is open.
         equalizer.attach(exoPlayer.audioSessionId)
+
+        // On the player itself, so a listen is recorded however it was started and with no screen open.
+        playHistoryRecorder = PlayHistoryRecorder(exoPlayer, serviceScope, playStatsDao).also { it.attach() }
 
         forwardingPlayer = PlaybackForwardingPlayer(exoPlayer) { forwardingSettings }
 
@@ -509,6 +517,7 @@ class PlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         unregisterReceiver(headsetReceiver)
+        playHistoryRecorder.detach()
         serviceScope.cancel()
         mediaSession.release()
         // Before the player, while the audio session the effect is attached to still exists.
