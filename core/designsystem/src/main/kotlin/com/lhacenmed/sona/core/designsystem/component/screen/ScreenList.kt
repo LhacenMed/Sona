@@ -1,10 +1,14 @@
-package com.lhacenmed.sona.core.designsystem.component.fab
+package com.lhacenmed.sona.core.designsystem.component.screen
 
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
@@ -18,9 +22,11 @@ import androidx.compose.ui.platform.InspectorInfo
 private const val AwayFromTopFraction = 0.25f
 
 /**
- * A screen's scrolling list as its [FloatingActionButtonStack] follows it, told by how the list itself
- * has scrolled - how far from its top, how far it can still go - never by where it sits on screen, so
- * nothing laid over or around it, the player included, can change the answers.
+ * A screen's scrolling list as what stands around the screen follows it - its top app bar, its
+ * [FloatingActionButtonStack][com.lhacenmed.sona.core.designsystem.component.fab.FloatingActionButtonStack] -
+ * told by how the list itself has scrolled - whether it has left its top, how far, how far it can still go -
+ * never by where it sits on screen, so nothing laid over or around it, the player included, can change the
+ * answers.
  */
 internal abstract class ScreenList {
     /** What the list scrolls by - a list followed by another state is another list. */
@@ -44,6 +50,9 @@ internal abstract class ScreenList {
 
     /** Whether the list scrolls at all - one that fits has no end to come near and no top to go back to. */
     protected abstract val canScroll: Boolean
+
+    /** Whether the list has scrolled from its top at all - what a top app bar lifts by. */
+    abstract val isScrolled: Boolean
 
     /** Whether the list is far enough from its top for a way back to be worth offering. */
     val isAwayFromTop: Boolean
@@ -86,6 +95,9 @@ private class LazyScreenList(val state: LazyListState) : ScreenList() {
 
     override val canScroll: Boolean
         get() = state.canScrollForward || state.canScrollBackward
+
+    override val isScrolled: Boolean
+        get() = state.canScrollBackward
 }
 
 private class ScrollScreenList(val state: ScrollState) : ScreenList() {
@@ -103,7 +115,27 @@ private class ScrollScreenList(val state: ScrollState) : ScreenList() {
     // Before its first layout a column's end is not known yet, which reads as scrolling without end.
     override val canScroll: Boolean
         get() = state.maxValue in 1 until Int.MAX_VALUE
+
+    override val isScrolled: Boolean
+        get() = state.value > 0
 }
+
+/**
+ * The scrolling lists a screen shows, each marked with [screenList] - one screen's worth, provided around
+ * the screen and everything that stands around it by
+ * [FloatingActionButtonStack][com.lhacenmed.sona.core.designsystem.component.fab.FloatingActionButtonStack].
+ */
+@Stable
+internal class ScreenLists {
+    val lists = mutableStateListOf<ScreenList>()
+
+    /** The screen's list: the one the window shows most of - a pager's, the page on screen. */
+    val current: ScreenList? by derivedStateOf {
+        lists.filter { it.visibleArea > 0f }.maxByOrNull { it.visibleArea }
+    }
+}
+
+internal val LocalScreenLists = staticCompositionLocalOf<ScreenLists?> { null }
 
 /**
  * Takes the list back to its first row in one short glide, however far down it is. A list more than a
@@ -117,9 +149,9 @@ suspend fun LazyListState.scrollBackToTop() {
 }
 
 /**
- * Makes this the list its screen's [FloatingActionButtonStack] follows - stepping the stack aside as the
- * list nears its end and offering a way back to its top - whenever the window shows more of it than of
- * any other. A list in a pager is followed while its page is the one on screen.
+ * Makes this the screen's list whenever the window shows more of it than of any other - a list in a pager
+ * while its page is the one on screen: the one the screen's top app bar lifts over once it has scrolled,
+ * and its FABs follow, stepping aside as it nears its end and offering a way back to its top.
  *
  * Applied to the layout the list fills. [FastScroller][com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller]
  * applies it itself, so every lazy list with a fast scroller has it. [isFastScrolling] steps the stack
@@ -172,22 +204,22 @@ private class ScreenListElement(
 private class ScreenListNode(var list: ScreenList) :
     Modifier.Node(), CompositionLocalConsumerModifierNode, GlobalPositionAwareModifierNode {
 
-    private var stack: FloatingActionButtonStackState? = null
+    private var screenLists: ScreenLists? = null
 
     override fun onAttach() {
-        stack = currentValueOf(LocalFloatingActionButtonStack)
-        stack?.lists?.add(list)
+        screenLists = currentValueOf(LocalScreenLists)
+        screenLists?.lists?.add(list)
     }
 
     override fun onDetach() {
-        stack?.lists?.remove(list)
-        stack = null
+        screenLists?.lists?.remove(list)
+        screenLists = null
     }
 
     fun replaceList(newList: ScreenList) {
-        stack?.lists?.remove(list)
+        screenLists?.lists?.remove(list)
         list = newList
-        stack?.lists?.add(newList)
+        screenLists?.lists?.add(newList)
     }
 
     override fun onGloballyPositioned(coordinates: LayoutCoordinates) {

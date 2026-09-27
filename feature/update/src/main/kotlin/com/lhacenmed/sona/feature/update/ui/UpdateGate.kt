@@ -15,9 +15,12 @@ import com.lhacenmed.sona.feature.update.UpdateRegistry
  *
  * The registry is read only while the host is started, so a gate underneath another screen stays quiet
  * rather than prompting, or launching the installer, behind it.
+ *
+ * With [isAutoPromptEnabled] off the sheet waits to be asked for - Khatmah's `autoPrompt`: the update is
+ * still found and kept, and the Updates screen's check still shows it.
  */
 @Composable
-fun UpdateGate() {
+fun UpdateGate(isAutoPromptEnabled: Boolean) {
     val context = LocalContext.current
     val available by UpdateRegistry.available.collectAsStateWithLifecycle()
     var dismissedVersion by rememberSaveable { mutableStateOf<String?>(null) }
@@ -26,13 +29,13 @@ fun UpdateGate() {
 
     when {
         isUpdating -> UpdateDownloadDialog(release = release, onClose = { isUpdating = false })
-        dismissedVersion != release.versionName ->
+        isAutoPromptEnabled && dismissedVersion != release.versionName ->
             NewUpdateSheet(
                 release = release,
-                onUpdate = {
+                onUpdate = { apk ->
                     dismissedVersion = release.versionName
                     isUpdating = true
-                    startUpdate(context, release)
+                    startUpdate(context, release, apk)
                 },
                 onDismissRequest = { dismissedVersion = release.versionName },
             )

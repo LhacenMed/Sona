@@ -49,6 +49,8 @@ import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.CookieShape
 import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
+import com.lhacenmed.sona.core.designsystem.component.section.rememberSectionCollapseState
+import com.lhacenmed.sona.core.designsystem.component.section.section
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.LocalDragHandle
 import com.lhacenmed.sona.core.designsystem.component.LocalDragSelection
@@ -64,13 +66,9 @@ import com.lhacenmed.sona.core.designsystem.component.swipe.LocalSwipeActions
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.model.Track
-import androidx.compose.material3.HorizontalDivider
 import com.lhacenmed.sona.core.designsystem.component.DetailHeader
 import com.lhacenmed.sona.core.designsystem.component.DetailScaffold
-import com.lhacenmed.sona.core.designsystem.component.DetailSectionHeader
-import com.lhacenmed.sona.core.designsystem.component.SonaIconButtonGroup
 import com.lhacenmed.sona.core.designsystem.component.TopBarCollapse
-import com.lhacenmed.sona.core.designsystem.component.iconButton
 import com.lhacenmed.sona.core.designsystem.component.rememberDetailHeaderState
 import com.lhacenmed.sona.core.designsystem.theme.LocalIsRounded
 import com.lhacenmed.sona.core.designsystem.theme.SquareShape
@@ -552,10 +550,12 @@ internal fun TrackListDetail(
         rememberReorderableRows(visibleTracks.itemsOrEmpty, { track -> track.id }, headerState.listState, it)
     }
 
+    // Which of the sections above the tracks are folded away - see [section].
+    val sectionCollapse = rememberSectionCollapseState(headerState.listState)
+
     val collapse = remember(headerState, hasTracks) {
         TopBarCollapse(
             progress = { headerState.collapse },
-            isLifted = { headerState.isLifted },
             play = TopBarAction(label = "Play", icon = SonaIcons.Play, enabled = hasTracks) {
                 viewModel.onPlayAll(shuffled = false)
             },
@@ -664,84 +664,87 @@ internal fun TrackListDetail(
             ),
         ) {
             if (searchQuery == null) {
+                // A section above the tracks can be folded away, so the tracks under a long one are one
+                // press from sight.
                 sections.forEachIndexed { index, section ->
-                    if (index > 0) item(key = "divider-${section.title}") { HorizontalDivider() }
-                    item(key = "heading-${section.title}") { DetailSectionHeader(title = section.title) }
-                    when (section) {
-                        is DetailSection.Albums -> items(section.albums, key = { "album-${it.id}" }) { album ->
-                            CompositionLocalProvider(
-                                LocalSwipeActions provides rememberOptionsSwipeActions(OptionsSwipe.QUEUE, collectionActions, OptionsTarget.ForAlbum(album)),
-                            ) {
-                                AlbumRow(
-                                    album = album,
-                                    selection = null,
-                                    isCurrent = { playback.marks(album) },
-                                    isPlaying = { playback.isPlaying },
-                                    onClick = { navigator.go(AlbumDetailScreen(album.id)) },
-                                    onOpenOptions = { optionsTarget = OptionsTarget.ForAlbum(album) },
-                                    // Every album here is the artist's, so it is told apart by when it came out.
-                                    subtitle = album.year?.toString() ?: "No date",
-                                )
+                    section(
+                        key = "detail-${section.title}",
+                        title = section.title,
+                        collapse = sectionCollapse,
+                        hasDividerAbove = index > 0,
+                    ) {
+                        when (section) {
+                            is DetailSection.Albums -> items(section.albums, key = { "album-${it.id}" }) { album ->
+                                CompositionLocalProvider(
+                                    LocalSwipeActions provides rememberOptionsSwipeActions(OptionsSwipe.QUEUE, collectionActions, OptionsTarget.ForAlbum(album)),
+                                ) {
+                                    AlbumRow(
+                                        album = album,
+                                        selection = null,
+                                        isCurrent = { playback.marks(album) },
+                                        isPlaying = { playback.isPlaying },
+                                        onClick = { navigator.go(AlbumDetailScreen(album.id)) },
+                                        onOpenOptions = { optionsTarget = OptionsTarget.ForAlbum(album) },
+                                        // Every album here is the artist's, so it is told apart by when it came out.
+                                        subtitle = album.year?.toString() ?: "No date",
+                                    )
+                                }
                             }
-                        }
-                        is DetailSection.Artists -> items(section.artists, key = { "artist-${it.id}" }) { artist ->
-                            CompositionLocalProvider(
-                                LocalSwipeActions provides rememberOptionsSwipeActions(OptionsSwipe.QUEUE, collectionActions, OptionsTarget.ForArtist(artist)),
-                            ) {
-                                ArtistRow(
-                                    artist = artist,
-                                    selection = null,
-                                    isCurrent = { playback.marks(artist) },
-                                    isPlaying = { playback.isPlaying },
-                                    onClick = { navigator.go(ArtistDetailScreen(artist.id)) },
-                                    onOpenOptions = { optionsTarget = OptionsTarget.ForArtist(artist) },
-                                )
+                            is DetailSection.Artists -> items(section.artists, key = { "artist-${it.id}" }) { artist ->
+                                CompositionLocalProvider(
+                                    LocalSwipeActions provides rememberOptionsSwipeActions(OptionsSwipe.QUEUE, collectionActions, OptionsTarget.ForArtist(artist)),
+                                ) {
+                                    ArtistRow(
+                                        artist = artist,
+                                        selection = null,
+                                        isCurrent = { playback.marks(artist) },
+                                        isPlaying = { playback.isPlaying },
+                                        onClick = { navigator.go(ArtistDetailScreen(artist.id)) },
+                                        onOpenOptions = { optionsTarget = OptionsTarget.ForArtist(artist) },
+                                    )
+                                }
                             }
                         }
                     }
                 }
-                if (sections.isNotEmpty()) item(key = "divider-tracks") { HorizontalDivider() }
             }
-            item(key = "heading-tracks") {
-                // What acts on the tracks sits on their heading: searching them and sorting them, as one
-                // group of buttons like any other. Search is inert while its field is open in the bar, so
-                // the row keeps its shape; only a list whose order is its content has no sort to offer.
-                val sortTracks = sort?.let { sortAction { isSortSheetOpen = true } }
-                DetailSectionHeader(
-                    title = "Tracks",
-                    trailing = {
-                        SonaIconButtonGroup {
-                            iconButton(
-                                icon = Icons.Filled.Search,
-                                label = "Search",
-                                onClick = { searchQuery = "" },
-                                enabled = searchQuery == null,
-                            )
-                            if (sortTracks != null) {
-                                iconButton(icon = sortTracks.icon, label = sortTracks.label, onClick = sortTracks.onClick)
-                            }
-                        }
+            // What acts on the tracks sits on their heading: searching them and sorting them, as one group
+            // of buttons like any other. Search is inert while its field is open in the bar, so the row
+            // keeps its shape; only a list whose order is its content has no sort to offer. Not collapsible:
+            // the tracks are what the screen is for, and nothing follows them.
+            section(
+                key = "tracks",
+                title = "Tracks",
+                actions = listOfNotNull(
+                    TopBarAction(label = "Search", icon = Icons.Filled.Search, enabled = searchQuery == null) {
+                        searchQuery = ""
                     },
-                )
-            }
-            val rows = visibleTracks.itemsOrEmpty
-            when {
-                visibleTracks is LibraryContent.Loading -> Unit
-                rows.isEmpty() -> item(key = "empty-tracks") {
-                    EmptyLibraryState(title = "No tracks found", message = emptyMessage)
-                }
-                reorderableRows != null -> reorderableRows(reorderableRows, { track -> track.id }, trackRow)
-                groupsByDisc && rows.distinctBy { it.discNumber }.size > 1 -> {
-                    // Auxio's discs: the sorted tracks grouped by disc, each disc where its first track fell.
-                    rows.groupBy { it.discNumber }.entries.forEachIndexed { index, (disc, discTracks) ->
-                        if (index > 0) item(key = "divider-disc-$disc") { HorizontalDivider() }
-                        item(key = "heading-disc-$disc") {
-                            DetailSectionHeader(title = disc?.let { "Disc $it" } ?: "No disc")
-                        }
-                        items(discTracks, key = { it.id }, contentType = { LIST_ROW_CONTENT_TYPE }) { trackRow(it) }
+                    sort?.let { sortAction { isSortSheetOpen = true } },
+                ),
+                hasDividerAbove = searchQuery == null && sections.isNotEmpty(),
+            ) {
+                val rows = visibleTracks.itemsOrEmpty
+                when {
+                    visibleTracks is LibraryContent.Loading -> Unit
+                    rows.isEmpty() -> item(key = "empty-tracks") {
+                        EmptyLibraryState(title = "No tracks found", message = emptyMessage)
                     }
+                    reorderableRows != null -> reorderableRows(reorderableRows, { track -> track.id }, trackRow)
+                    groupsByDisc && rows.distinctBy { it.discNumber }.size > 1 -> {
+                        // Auxio's discs: the sorted tracks grouped by disc, each disc where its first track fell.
+                        // Not collapsible either: a drag across them selects every track between, seen or not.
+                        rows.groupBy { it.discNumber }.entries.forEachIndexed { index, (disc, discTracks) ->
+                            section(
+                                key = "disc-$disc",
+                                title = disc?.let { "Disc $it" } ?: "No disc",
+                                hasDividerAbove = index > 0,
+                            ) {
+                                items(discTracks, key = { it.id }, contentType = { LIST_ROW_CONTENT_TYPE }) { trackRow(it) }
+                            }
+                        }
+                    }
+                    else -> items(rows, key = { it.id }, contentType = { LIST_ROW_CONTENT_TYPE }) { trackRow(it) }
                 }
-                else -> items(rows, key = { it.id }, contentType = { LIST_ROW_CONTENT_TYPE }) { trackRow(it) }
             }
         }
     }

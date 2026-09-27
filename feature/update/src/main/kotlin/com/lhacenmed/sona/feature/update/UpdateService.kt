@@ -15,6 +15,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.lhacenmed.sona.feature.update.github.Release
+import com.lhacenmed.sona.feature.update.github.ReleaseApk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -47,20 +48,21 @@ class UpdateService : Service() {
         when {
             intent?.action == ACTION_CANCEL -> cancelDownload()
             job?.isActive == true           -> Unit            // busy — ignore the new request
-            else                            -> startDownload(intent?.release())
+            else                            -> startDownload(intent?.release(), intent?.variant())
         }
         return START_STICKY
     }
 
     /**
      * Downloads [release] - the one the request named, which is how a notification's Download reaches a
-     * process that has only just started - or else the available update.
+     * process that has only just started - or else the available update: its APK of [variant] when one was
+     * chosen, the one for the running build otherwise.
      */
-    private fun startDownload(release: Release?) {
+    private fun startDownload(release: Release?, variant: ApkVariant?) {
         val update = release?.also(UpdateRegistry::setAvailable) ?: UpdateRegistry.available.value
-        val apkUrl = update?.apkUrl ?: run { stopNow(); return }
+        val apk = update?.let { variant?.let(it::apkOf) ?: it.apkFor(installedBuild()) } ?: run { stopNow(); return }
         UpdateRegistry.update(UpdateState.Connecting)
-        job = ApkDownloader.download(applicationContext, apkUrl)
+        job = ApkDownloader.download(applicationContext, apk)
             .onEach { state ->
                 UpdateRegistry.update(state)
                 when (state) {
@@ -100,7 +102,7 @@ class UpdateService : Service() {
 
     private fun postResult() {
         when (val s = UpdateRegistry.stateOf()) {
-            is UpdateState.Downloaded -> notify(NOTIF_RESULT, result(s.apk))
+            is UpdateState.Downloaded -> notify(NOTIF_RESULT, result(s.staged.file))
             is UpdateState.Error      -> notify(NOTIF_RESULT, error(s.message))
             else                      -> Unit
         }
@@ -116,11 +118,11 @@ class UpdateService : Service() {
     }
 
     private fun progressNotification(state: UpdateState): Notification {
-        val log = (state as? UpdateState.Downloading)?.log?.ifBlank { getString(R.string.update_connecting) }
-            ?: getString(R.string.update_connecting)
-        val progress = (state as? UpdateState.Downloading)?.progress
+        val downloading = state as? UpdateState.Downloading
+        val text = downloading?.let { "${it.sizeText(this)} · ${it.speedText(this)}" } ?: getString(R.string.update_connecting)
+        val progress = downloading?.progress
         return base()
-            .setContentText(log)
+            .setContentText(text)
             .setOngoing(true)
             .setProgress(100, ((progress ?: 0f) * 100).toInt(), progress == null)
             .addAction(0, getString(R.string.update_stop), cancelIntent())
@@ -183,10 +185,12 @@ class UpdateService : Service() {
         private const val NOTIF_RESULT = 4201
         private const val ACTION_CANCEL = "com.lhacenmed.sona.action.CANCEL_UPDATE"
         private const val EXTRA_RELEASE = "com.lhacenmed.sona.extra.RELEASE"
+        private const val EXTRA_VARIANT = "com.lhacenmed.sona.extra.VARIANT"
 
-        /** Starts downloading [release]'s APK (no-op if a download is already running). */
-        fun start(context: Context, release: Release) {
-            ContextCompat.startForegroundService(context, startIntent(context, release))
+        /** Starts downloading [apk], one of [release]'s (no-op if a download is already running). */
+        fun start(context: Context, release: Release, apk: ReleaseApk) {
+            val intent = startIntent(context, release).putExtra(EXTRA_VARIANT, apk.variant.name)
+            ContextCompat.startForegroundService(context, intent)
         }
 
         /** What starts downloading [release]'s APK - from the app, or from a notification. */
@@ -195,6 +199,9 @@ class UpdateService : Service() {
 
         private fun Intent.release(): Release? =
             getStringExtra(EXTRA_RELEASE)?.let { runCatching { Release.fromJson(JSONObject(it)) }.getOrNull() }
+
+        private fun Intent.variant(): ApkVariant? =
+            getStringExtra(EXTRA_VARIANT)?.let { name -> ApkVariant.entries.firstOrNull { it.name == name } }
 
         /** Requests cancellation of the in-flight download. */
         fun cancel(context: Context) {

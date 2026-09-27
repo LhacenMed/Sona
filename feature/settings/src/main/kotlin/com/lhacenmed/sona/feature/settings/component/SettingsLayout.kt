@@ -1,18 +1,23 @@
 package com.lhacenmed.sona.feature.settings.component
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -28,10 +33,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onPlaced
-import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
+import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.WindowTouchBlocker
-import com.lhacenmed.sona.core.designsystem.component.fab.screenList
+import com.lhacenmed.sona.core.designsystem.component.screen.screenList
+import com.lhacenmed.sona.core.designsystem.component.section.ColumnSection
 import com.lhacenmed.sona.core.navigation.LocalScreenEntered
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -60,6 +66,9 @@ private class SettingsScrollTarget(val key: Any) {
 
 private val LocalSettingsScrollTarget = staticCompositionLocalOf<SettingsScrollTarget?> { null }
 
+/** What scrolls the [SettingsList] a [SettingsSection] is in - which its heading stays pinned by. */
+private val LocalSettingsScrollState = staticCompositionLocalOf<ScrollState> { error("A SettingsSection belongs in a SettingsList") }
+
 /**
  * The body every settings screen has: its rows, in order, scrolling as one.
  *
@@ -86,7 +95,10 @@ fun SettingsList(scrollTo: Any? = null, content: @Composable ColumnScope.() -> U
             .verticalScroll(scrollState)
             .padding(bottom = LocalBottomContentPadding.current),
     ) {
-        CompositionLocalProvider(LocalSettingsScrollTarget provides target) { content() }
+        CompositionLocalProvider(
+            LocalSettingsScrollTarget provides target,
+            LocalSettingsScrollState provides scrollState,
+        ) { content() }
     }
 
     if (target == null) return
@@ -125,24 +137,51 @@ fun Modifier.settingsScrollTarget(key: Any): Modifier {
 }
 
 /**
- * A named group of related settings.
+ * A named group of related settings, under the app's one section heading - see [SectionHeader].
  *
  * The rule the screens follow is one a reader can check at a glance: a screen either has no sections
  * at all, or every row belongs to one. Half-sectioned screens are what make a settings page feel
  * arbitrary.
+ *
+ * Its heading stays at the top of the list while its rows scroll under it - see [ColumnSection]. What acts
+ * on the whole group sits on that heading - its [actions]. A long group can be [isCollapsible], folded down
+ * to its heading so the groups under it are one press from sight; it opens expanded, and stays as it was
+ * left when the screen comes back.
  */
 @Composable
 fun ColumnScope.SettingsSection(
     title: String,
+    actions: List<TopBarAction> = emptyList(),
+    isCollapsible: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 8.dp),
+    var isCollapsed by rememberSaveable(title) { mutableStateOf(false) }
+    ColumnSection(
+        title = title,
+        scrollState = LocalSettingsScrollState.current,
+        actions = actions,
+        isCollapsed = isCollapsed.takeIf { isCollapsible },
+        onToggleCollapsed = { isCollapsed = !isCollapsed },
+        content = content,
     )
-    content()
+}
+
+/**
+ * A [SettingsList] for rows that are data rather than written out - licenses, releases, commits: as many
+ * as there are, so only those on screen are composed. The same rows, the same way down the screen.
+ * [listState] is the screen's to hold when its sections collapse - see `rememberSectionCollapseState`.
+ */
+@Composable
+fun SettingsLazyList(
+    listState: LazyListState = rememberLazyListState(),
+    content: LazyListScope.() -> Unit,
+) {
+    LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxSize().screenList(listState),
+        contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+        content = content,
+    )
 }
 
 /** The line between two [SettingsSection]s. */

@@ -43,7 +43,6 @@ import com.lhacenmed.sona.core.common.cover.rankedCoverArtUris
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.playlist.coverArtUris
 import com.lhacenmed.sona.core.designsystem.component.CoverArtDefaults
-import com.lhacenmed.sona.core.designsystem.component.DetailSectionHeader
 import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.SonaPlaylistCover
@@ -51,7 +50,8 @@ import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.SonaTrackRow
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
-import com.lhacenmed.sona.core.designsystem.component.fab.screenList
+import com.lhacenmed.sona.core.designsystem.component.screen.screenList
+import com.lhacenmed.sona.core.designsystem.component.section.SectionHeader
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.model.PlaylistCover
 import com.lhacenmed.sona.core.model.Track
@@ -167,7 +167,7 @@ data class EditPlaylistScreen(val playlistId: Long) : Screen {
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
                 )
-                DetailSectionHeader(title = "Cover")
+                SectionHeader(title = "Cover")
                 Column(modifier = Modifier.selectableGroup()) {
                     CoverOptionRow(
                         label = "Stacked covers",
@@ -311,11 +311,11 @@ private fun CoverTrackChooser(
                     contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
                 ) {
                     if (visiblePlaylistTracks.isNotEmpty()) {
-                        item(key = "playlist-header") { DetailSectionHeader(title = "In this playlist") }
+                        item(key = "playlist-header") { SectionHeader(title = "In this playlist") }
                         items(items = visiblePlaylistTracks, key = { "playlist-${it.id}" }) { track ->
                             CoverTrackRow(track = track, onClick = { onTrackChosen(track) })
                         }
-                        item(key = "library-header") { DetailSectionHeader(title = "All tracks") }
+                        item(key = "library-header") { SectionHeader(title = "All tracks") }
                     }
                     items(items = visibleLibraryTracks, key = { "library-${it.id}" }) { track ->
                         CoverTrackRow(track = track, onClick = { onTrackChosen(track) })

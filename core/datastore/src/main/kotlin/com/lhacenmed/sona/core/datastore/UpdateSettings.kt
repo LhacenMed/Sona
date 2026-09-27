@@ -15,8 +15,12 @@ private val Context.dataStore by preferencesDataStore(name = "update_settings")
 
 private val CHANNEL = stringPreferencesKey("channel")
 private val NOTIFICATIONS = booleanPreferencesKey("notifications")
+private val AUTO_PROMPT = booleanPreferencesKey("auto_prompt")
 
-/** How the app looks for updates - ArchiveTune's `UpdateChannelKey` and `EnableUpdateNotificationKey`. */
+/**
+ * How the app looks for updates - ArchiveTune's `UpdateChannelKey` and `EnableUpdateNotificationKey`, and
+ * Khatmah's `autoPrompt`.
+ */
 @Singleton
 class UpdateSettings @Inject constructor(
     @ApplicationContext context: Context,
@@ -39,5 +43,16 @@ class UpdateSettings @Inject constructor(
 
     suspend fun setNotifications(enabled: Boolean) {
         dataStore.edit { it[NOTIFICATIONS] = enabled }
+    }
+
+    /**
+     * Whether a newer version found as the app opens is shown at once, in its sheet - Khatmah's `autoPrompt`.
+     * It governs that sheet and nothing else: updates are still looked for, and checking on the Updates
+     * screen still shows what it finds.
+     */
+    val autoPrompt: Setting<Boolean> = cache.setting { it[AUTO_PROMPT] ?: true }
+
+    suspend fun setAutoPrompt(enabled: Boolean) {
+        dataStore.edit { it[AUTO_PROMPT] = enabled }
     }
 }

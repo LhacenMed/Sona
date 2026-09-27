@@ -1,13 +1,23 @@
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+
 package com.lhacenmed.sona.feature.settings.component
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -19,10 +29,18 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 
 /*
  * Every row below that holds a value holds it only until the screen is closed. The settings tree is
@@ -44,10 +62,25 @@ fun SettingsNavigationItem(
     ListItem(
         headlineContent = { Text(title) },
         supportingContent = { Text(summary) },
-        leadingContent = icon?.let { { Icon(it, contentDescription = null) } },
+        leadingContent = icon?.let { { SettingsLeadingIcon(rememberVectorPainter(it)) } },
         colors = settingsRowColors(enabled),
         modifier = modifier.clickable(enabled = enabled, onClick = onClick),
     )
+}
+
+/**
+ * How wide the start of a row that leads with something is: an avatar's width, which an icon is centred in.
+ * One width for every row, so a row's text starts at the same place whether it leads with an icon or with a
+ * picture - Material's list item lets its text start wherever its leading content ends.
+ */
+private val LeadingSize = 40.dp
+
+/** An icon at the start of a row - centred in the width every row's leading content takes. */
+@Composable
+fun SettingsLeadingIcon(icon: Painter) {
+    Box(modifier = Modifier.size(LeadingSize), contentAlignment = Alignment.Center) {
+        Icon(icon, contentDescription = null)
+    }
 }
 
 /**
@@ -71,7 +104,8 @@ fun SettingsActionItem(
 
 /**
  * A row that does something when pressed. A disabled one keeps its place, faded and inert, so the
- * screen keeps one shape whether or not it can be pressed right now.
+ * screen keeps one shape whether or not it can be pressed right now. While [isBusy] - what it started
+ * still under way - it shows so at its end and cannot be pressed again, without fading.
  */
 @Composable
 fun SettingsActionItem(
@@ -80,13 +114,68 @@ fun SettingsActionItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    isBusy: Boolean = false,
 ) {
     ListItem(
         headlineContent = { Text(title) },
         supportingContent = { Text(summary) },
+        trailingContent = if (isBusy) {
+            { LoadingIndicator(modifier = Modifier.size(BusyIndicatorSize)) }
+        } else {
+            null
+        },
         modifier = modifier
-            .clickable(enabled = enabled, onClick = onClick)
+            .clickable(enabled = enabled && !isBusy, onClick = onClick)
             .alpha(if (enabled) 1f else DISABLED_ROW_ALPHA),
+    )
+}
+
+/** How large a row's busy indicator is: an icon's size, so a row keeps its height while busy. */
+private val BusyIndicatorSize = 24.dp
+
+/**
+ * A row that opens a page on the web - a project's, a person's, a commit's - led by [leadingContent] when it
+ * has a [SettingsLeadingIcon] or a [SettingsAvatar]. The mark at its end says it leaves the app, where a
+ * [SettingsNavigationItem] opens a screen of the app's own.
+ */
+@Composable
+fun SettingsLinkItem(
+    title: String,
+    summary: String,
+    url: String,
+    modifier: Modifier = Modifier,
+    leadingContent: (@Composable () -> Unit)? = null,
+) {
+    val uriHandler = LocalUriHandler.current
+    ListItem(
+        headlineContent = { Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+        supportingContent = { Text(summary, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        leadingContent = leadingContent,
+        trailingContent = {
+            Icon(
+                Icons.AutoMirrored.Filled.OpenInNew,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        modifier = modifier.clickable { runCatching { uriHandler.openUri(url) } },
+    )
+}
+
+/**
+ * Someone's picture, round, where a row's icon would be - on a quiet circle until it has loaded, and on
+ * that circle alone for someone who has none.
+ */
+@Composable
+fun SettingsAvatar(url: String?) {
+    AsyncImage(
+        model = url,
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        modifier = Modifier
+            .size(LeadingSize)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
     )
 }
 
@@ -182,7 +271,7 @@ fun SettingsChoiceItem(
     ListItem(
         headlineContent = { Text(title) },
         supportingContent = { Text(options[selected]) },
-        leadingContent = icon?.let { { Icon(it, contentDescription = null) } },
+        leadingContent = icon?.let { { SettingsLeadingIcon(rememberVectorPainter(it)) } },
         modifier = modifier.clickable { isChoosing = true },
     )
 

@@ -12,10 +12,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.lhacenmed.sona.core.common.network.NetworkMonitor
 import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.datastore.UpdateSettings
 import com.lhacenmed.sona.core.designsystem.SonaActivity
+import com.lhacenmed.sona.core.designsystem.component.NetworkStatusHost
 import com.lhacenmed.sona.core.designsystem.theme.AppCoverStyle
 import com.lhacenmed.sona.core.designsystem.theme.AppFastScrollTouchArea
 import com.lhacenmed.sona.core.designsystem.theme.AppTheme
@@ -26,7 +28,6 @@ import com.lhacenmed.sona.core.navigation.PlayerOverlay
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.scanner.MediaScanner
 import com.lhacenmed.sona.feature.settings.updates.UpdatesScreen
-import com.lhacenmed.sona.feature.update.NetworkMonitor
 import com.lhacenmed.sona.feature.update.UpdateChecker
 import com.lhacenmed.sona.feature.update.UpdateRegistry
 import com.lhacenmed.sona.feature.update.UpdateState
@@ -72,6 +73,9 @@ class MainActivity : SonaActivity() {
 
     @Inject
     lateinit var updateSettings: UpdateSettings
+
+    @Inject
+    lateinit var networkMonitor: NetworkMonitor
 
     @Inject
     lateinit var playbackController: PlaybackController
@@ -135,6 +139,9 @@ class MainActivity : SonaActivity() {
             val themeConfig by appTheme.config.collectAsStateWithLifecycle()
             val coverStyle by appCoverStyle.style.collectAsStateWithLifecycle()
             val fastScrollTouchArea by appFastScrollTouchArea.touchArea.collectAsStateWithLifecycle()
+            val networkBanner by networkMonitor.banner.collectAsStateWithLifecycle()
+            val isUpdateAutoPromptEnabled by remember { updateSettings.autoPrompt.flow }
+                .collectAsStateWithLifecycle(updateSettings.autoPrompt.value)
 
             SonaTheme(
                 config = themeConfig,
@@ -144,8 +151,10 @@ class MainActivity : SonaActivity() {
                 // The library is no screen of its own, so every screen is one it can go to.
                 val navigator = remember { IntentNavigator(this, currentScreen = null) }
                 CompositionLocalProvider(LocalNavigator provides navigator) {
-                    AppShell(playerOverlay = playerOverlay)
-                    UpdateGate()
+                    NetworkStatusHost(networkBanner) {
+                        AppShell(playerOverlay = playerOverlay)
+                        UpdateGate(isAutoPromptEnabled = isUpdateAutoPromptEnabled)
+                    }
                 }
             }
         }
@@ -168,15 +177,14 @@ class MainActivity : SonaActivity() {
      * Connectivity-driven update check on the chosen channel; populates [UpdateRegistry] so [UpdateGate]
      * can prompt. Runs whenever the device is online - at launch if already connected, and again the moment
      * connectivity returns for a user who opened the app offline - and whenever the channel changes. The
-     * releases it reads are kept for hours, so most runs never reach the network. Skipped while a download
-     * is in flight or a finished APK awaits install, and for debug builds, whose `.debug` applicationId
-     * would side-load the release APK as a separate app rather than update in place.
+     * releases it reads are kept, and asked for again at most every few minutes - see `CachedGitHubResource`.
+     * Skipped while a download is in flight or a finished APK awaits install. Whether what it finds is an
+     * update to this build at all - never to a debug one - is [UpdateChecker]'s to say.
      */
     private fun checkForUpdate() {
-        if (BuildConfig.DEBUG) return
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                combine(NetworkMonitor.online(applicationContext), updateSettings.channel.flow, ::Pair)
+                combine(networkMonitor.isOnline, updateSettings.channel.flow, ::Pair)
                     .collect { (online, channel) ->
                         if (!online || UpdateRegistry.isActive) return@collect
                         if (UpdateRegistry.stateOf() is UpdateState.Downloaded) return@collect

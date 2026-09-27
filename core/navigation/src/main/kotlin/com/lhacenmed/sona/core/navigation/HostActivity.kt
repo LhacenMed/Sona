@@ -16,7 +16,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.IntentCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.common.network.NetworkMonitor
 import com.lhacenmed.sona.core.designsystem.SonaActivity
+import com.lhacenmed.sona.core.designsystem.component.NetworkStatusHost
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.WindowOverlayHost
 import com.lhacenmed.sona.core.designsystem.component.fab.FloatingActionButtonStack
@@ -59,6 +61,10 @@ class HostActivity : SonaActivity() {
     @Inject
     lateinit var playerOverlay: PlayerOverlay
 
+    /** The same connection the main activity follows, so a pushed screen shows its banner too. */
+    @Inject
+    lateinit var networkMonitor: NetworkMonitor
+
     /** Whether this activity's enter animation is over - see [LocalScreenEntered]. */
     private val hasEntered = mutableStateOf(false)
 
@@ -80,41 +86,44 @@ class HostActivity : SonaActivity() {
             val themeConfig by appTheme.config.collectAsStateWithLifecycle()
             val coverStyle by appCoverStyle.style.collectAsStateWithLifecycle()
             val fastScrollTouchArea by appFastScrollTouchArea.touchArea.collectAsStateWithLifecycle()
+            val networkBanner by networkMonitor.banner.collectAsStateWithLifecycle()
 
             SonaTheme(
                 config = themeConfig,
                 coverStyle = coverStyle,
                 fastScrollTouchArea = fastScrollTouchArea,
             ) {
-                val navigator = remember { IntentNavigator(this, currentScreen = screen) }
-                // Only screens that named a title get a bar from the host; the rest draw their own,
-                // because a title alone cannot express a selection or an action.
-                val hostedTitle = screen.title(LocalContext.current)
-                CompositionLocalProvider(LocalNavigator provides navigator, LocalScreenEntered provides hasEntered) {
-                    // Over the player too, so a screen can lay something over the whole window.
-                    WindowOverlayHost {
-                        playerOverlay.Content {
-                            // Inside the player, so the screen's FABs stand clear of it.
-                            FloatingActionButtonStack {
-                                Scaffold(
-                                    topBar = {
-                                        if (hostedTitle != null) {
-                                            SonaTopAppBar(title = hostedTitle, onNavigateBack = navigator::back)
+                NetworkStatusHost(networkBanner) {
+                    val navigator = remember { IntentNavigator(this, currentScreen = screen) }
+                    // Only screens that named a title get a bar from the host; the rest draw their own,
+                    // because a title alone cannot express a selection or an action.
+                    val hostedTitle = screen.title(LocalContext.current)
+                    CompositionLocalProvider(LocalNavigator provides navigator, LocalScreenEntered provides hasEntered) {
+                        // Over the player too, so a screen can lay something over the whole window.
+                        WindowOverlayHost {
+                            playerOverlay.Content {
+                                // Inside the player, so the screen's FABs stand clear of it.
+                                FloatingActionButtonStack {
+                                    Scaffold(
+                                        topBar = {
+                                            if (hostedTitle != null) {
+                                                SonaTopAppBar(title = hostedTitle, onNavigateBack = navigator::back)
+                                            }
+                                        },
+                                        // A screen drawing its own bar consumes the status bar inset there; letting the
+                                        // Scaffold add it as well would inset the screen twice. The bottom is never
+                                        // inset here: the screen's lists end clear of the navigation bar themselves,
+                                        // along with the mini player over it.
+                                        contentWindowInsets = if (hostedTitle == null) {
+                                            WindowInsets(0, 0, 0, 0)
+                                        } else {
+                                            ScaffoldDefaults.contentWindowInsets
+                                                .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+                                        },
+                                    ) { innerPadding ->
+                                        Box(modifier = Modifier.padding(innerPadding)) {
+                                            screen.Content()
                                         }
-                                    },
-                                    // A screen drawing its own bar consumes the status bar inset there; letting the
-                                    // Scaffold add it as well would inset the screen twice. The bottom is never
-                                    // inset here: the screen's lists end clear of the navigation bar themselves,
-                                    // along with the mini player over it.
-                                    contentWindowInsets = if (hostedTitle == null) {
-                                        WindowInsets(0, 0, 0, 0)
-                                    } else {
-                                        ScaffoldDefaults.contentWindowInsets
-                                            .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
-                                    },
-                                ) { innerPadding ->
-                                    Box(modifier = Modifier.padding(innerPadding)) {
-                                        screen.Content()
                                     }
                                 }
                             }

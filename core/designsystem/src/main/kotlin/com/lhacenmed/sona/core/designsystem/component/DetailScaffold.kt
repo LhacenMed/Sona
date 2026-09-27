@@ -11,11 +11,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -61,7 +59,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
-import com.lhacenmed.sona.core.designsystem.component.fab.scrollBackToTop
+import com.lhacenmed.sona.core.designsystem.component.screen.scrollBackToTop
 import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
@@ -123,10 +121,6 @@ class DetailHeaderState internal constructor(
      */
     val collapse: Float
         get() = if (collapseRangePx == 0f) 0f else scrollCollapsedPx / collapseRangePx
-
-    /** Whether the list has scrolled on under the bar once the header was out of the way. */
-    val isLifted: Boolean
-        get() = shownCollapse >= 1f && listState.canScrollBackward
 
     /** Whether the header is held collapsed out of the way - see [DetailScaffold]'s `isHeaderAside`. */
     internal var isHeaderAside = false
@@ -492,31 +486,4 @@ private fun ButtonContent(icon: @Composable () -> Unit, label: String) {
     Box(modifier = Modifier.size(ButtonDefaults.IconSize)) { icon() }
     Spacer(Modifier.width(ButtonDefaults.IconSpacing))
     Text(label)
-}
-
-/**
- * The heading of one section of a detail screen's list - "Albums", "Tracks" - with, on the section
- * that can be sorted, its sort button at the end: Auxio's `item_header` and `item_sort_header`.
- */
-@Composable
-fun DetailSectionHeader(
-    title: String,
-    modifier: Modifier = Modifier,
-    trailing: (@Composable () -> Unit)? = null,
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = 48.dp)
-            .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelLargeEmphasized,
-            color = MaterialTheme.colorScheme.secondary,
-            modifier = Modifier.weight(1f),
-        )
-        trailing?.invoke()
-    }
 }

@@ -192,6 +192,8 @@ fun LibraryPagerScreen(
                 Column(modifier = Modifier.fillMaxSize()) {
                     val sortTabAction = sortAction { sortingTab = selectedTab }
                     SonaTopAppBar(
+                        // One background whatever its tabs' lists do, for now.
+                        liftsOnScroll = false,
                         // The app's own label, so the bar reads exactly what the launcher does - "Sona Debug"
                         // on a debug build, which :app sets per build type.
                         title = stringResource(LocalContext.current.applicationInfo.labelRes),

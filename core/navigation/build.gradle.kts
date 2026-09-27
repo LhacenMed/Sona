@@ -24,6 +24,8 @@ android {
 }
 
 dependencies {
+    // The connection the host shows its banner for.
+    implementation(project(":core:common"))
     implementation(project(":core:designsystem"))
     // The fast scroll touch area the host hands to SonaTheme is a model type.
     implementation(project(":core:model"))

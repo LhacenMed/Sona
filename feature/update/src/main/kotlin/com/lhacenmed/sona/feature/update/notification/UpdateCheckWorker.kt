@@ -27,7 +27,7 @@ class UpdateCheckWorker(
 
         return UpdateChecker.check(applicationContext, settings.channel.value, forceRefresh = true).fold(
             onSuccess = { latest ->
-                if (UpdateChecker.isNewer(applicationContext, latest)) UpdateNotifier.notifyIfNew(applicationContext, latest)
+                if (UpdateChecker.isUpdate(applicationContext, latest)) UpdateNotifier.notifyIfNew(applicationContext, latest)
                 Result.success()
             },
             onFailure = { Result.retry() },

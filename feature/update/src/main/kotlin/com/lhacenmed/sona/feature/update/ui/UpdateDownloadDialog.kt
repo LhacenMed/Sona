@@ -34,43 +34,52 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.common.network.isNetworkOnline
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
-import com.lhacenmed.sona.feature.update.NetworkMonitor
 import com.lhacenmed.sona.feature.update.R
 import com.lhacenmed.sona.feature.update.UpdateInstaller
 import com.lhacenmed.sona.feature.update.UpdateRegistry
 import com.lhacenmed.sona.feature.update.UpdateService
 import com.lhacenmed.sona.feature.update.UpdateState
+import com.lhacenmed.sona.feature.update.installedBuild
+import com.lhacenmed.sona.feature.update.StagedApk
 import com.lhacenmed.sona.feature.update.github.Release
+import com.lhacenmed.sona.feature.update.github.ReleaseApk
+import com.lhacenmed.sona.feature.update.sizeText
+import com.lhacenmed.sona.feature.update.speedText
 import kotlin.math.roundToInt
 
 /**
- * Updates to [release]: installs it when its APK is already downloaded, downloads it otherwise - or, offline,
- * says so. What happens next is [UpdateRegistry.state], which [UpdateDownloadDialog] follows.
+ * Updates to [release] with [apk] - or, with none chosen, the APK for the running build: installs it when it
+ * is the one already downloaded, downloads it otherwise - or, offline, says so. What happens next is
+ * [UpdateRegistry.state], which [UpdateDownloadDialog] follows.
  */
-fun startUpdate(context: Context, release: Release) {
-    when (val state = UpdateRegistry.stateOf()) {
-        is UpdateState.Downloaded -> install(context, state)
-        UpdateState.Connecting, is UpdateState.Downloading -> Unit
-        else -> when {
-            release.apkUrl == null -> UpdateRegistry.update(UpdateState.Error(context.getString(R.string.update_no_apk)))
-            !NetworkMonitor.isOnline(context) ->
-                UpdateRegistry.update(UpdateState.Error(context.getString(R.string.update_offline)))
-            else -> {
-                // Connecting from the press on, so what follows it never reads the moment before the
-                // service starts as nothing happening.
-                UpdateRegistry.update(UpdateState.Connecting)
-                UpdateService.start(context, release)
-            }
+fun startUpdate(context: Context, release: Release, apk: ReleaseApk?) {
+    val chosen = apk ?: release.apkFor(context.installedBuild())
+    val state = UpdateRegistry.stateOf()
+    when {
+        state is UpdateState.Downloaded && state.staged.isOf(release, chosen) -> install(context, state)
+        state == UpdateState.Connecting || state is UpdateState.Downloading -> Unit
+        chosen == null -> UpdateRegistry.update(UpdateState.Error(context.getString(R.string.update_no_apk)))
+        !context.isNetworkOnline() -> UpdateRegistry.update(UpdateState.Error(context.getString(R.string.update_offline)))
+        else -> {
+            // Connecting from the press on, so what follows it never reads the moment before the
+            // service starts as nothing happening.
+            UpdateRegistry.update(UpdateState.Connecting)
+            UpdateService.start(context, release, chosen)
         }
     }
 }
+
+/** Whether this is [release]'s APK of [apk]'s variant - any of its variants, with none chosen. */
+private fun StagedApk.isOf(release: Release, apk: ReleaseApk?): Boolean =
+    versionName == release.versionName && (apk == null || variant == apk.variant)
 
 /** Hands the downloaded APK to the installer - or, without the grant to, sends the user to give it. */
 private fun install(context: Context, downloaded: UpdateState.Downloaded) {
     context.startActivity(
         if (UpdateInstaller.canInstall(context)) {
-            UpdateInstaller.installIntent(context, downloaded.apk)
+            UpdateInstaller.installIntent(context, downloaded.staged.file)
         } else {
             UpdateInstaller.requestPermissionIntent(context)
         },
@@ -79,7 +88,7 @@ private fun install(context: Context, downloaded: UpdateState.Downloaded) {
 
 /**
  * The update in progress, after [startUpdate] - ArchiveTune's download dialog: the download's progress as a
- * wavy ring with its percentage, and Cancel. A download that finishes launches the installer at once;
+ * wavy ring with its percentage, how much of how much has arrived and how fast, and Cancel. A download that finishes launches the installer at once;
  * without the grant to install, or on a failure, it stays to say so, and [onClose] is called once it is
  * done with.
  */
@@ -110,7 +119,8 @@ fun UpdateDownloadDialog(release: Release, onClose: () -> Unit) {
 
     when (val current = state) {
         UpdateState.Connecting, is UpdateState.Downloading -> {
-            val progress = (current as? UpdateState.Downloading)?.progress
+            val downloading = current as? UpdateState.Downloading
+            val progress = downloading?.progress
             val animatedProgress by animateFloatAsState(
                 targetValue = progress ?: 0f,
                 animationSpec = WavyProgressIndicatorDefaults.ProgressAnimationSpec,
@@ -120,13 +130,14 @@ fun UpdateDownloadDialog(release: Release, onClose: () -> Unit) {
                 onDismissRequest = {},
                 title = { CenteredTitle(title) },
                 text = {
+                    // The same shape from connecting to done, so nothing moves as the numbers arrive.
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        if (progress != null) {
-                            Box(modifier = Modifier.size(96.dp), contentAlignment = Alignment.Center) {
+                        Box(modifier = Modifier.size(96.dp), contentAlignment = Alignment.Center) {
+                            if (progress != null) {
                                 CircularWavyProgressIndicator(progress = { animatedProgress }, modifier = Modifier.fillMaxSize())
                                 Text(
                                     text = stringResource(
@@ -137,9 +148,21 @@ fun UpdateDownloadDialog(release: Release, onClose: () -> Unit) {
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onSurface,
                                 )
+                            } else {
+                                CircularWavyProgressIndicator(modifier = Modifier.size(72.dp))
                             }
-                        } else {
-                            CircularWavyProgressIndicator(modifier = Modifier.size(72.dp))
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = downloading?.sizeText(context) ?: stringResource(R.string.update_connecting),
+                                style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                text = downloading?.speedText(context).orEmpty(),
+                                style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
                 },

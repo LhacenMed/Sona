@@ -75,12 +75,6 @@ val keystorePropertiesFile: File = rootProject.file("keystore.properties")
 val isReleaseBuild = gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
 val splitApks = project.hasProperty("splits") || isReleaseBuild
 
-val abiFilterList = (properties["ABI_FILTERS"] as? String)
-    ?.split(';')
-    ?.map { it.trim() }
-    ?.filter { it.isNotEmpty() }
-    ?: listOf("arm64-v8a")
-
 android {
     namespace = "com.lhacenmed.sona"
     compileSdk = 37
@@ -109,7 +103,7 @@ android {
     }
 
     // ABI splits are opt-in (-Psplits). Without the flag every build produces a
-    // single APK filtered to abiFilterList, which can be sideloaded directly.
+    // single universal APK, which can be sideloaded directly.
     if (splitApks) {
         splits {
             abi {
@@ -166,12 +160,11 @@ androidComponents {
             val abi = output.filters
                 .find { it.filterType == FilterConfiguration.FilterType.ABI }
                 ?.identifier
-            // Per-ABI APKs get a distinct versionCode so each ABI is independently updatable.
-            // The single non-split APK keeps the base code (no bump).
-            if (splitApks) {
-                abiCodes[abi ?: abiFilterList.firstOrNull()]?.let { code ->
-                    output.versionCode.set(code + (output.versionCode.get() ?: 0))
-                }
+            // Per-ABI APKs get a distinct versionCode (+1..+4) so each ABI is independently updatable.
+            // The universal APK - and the single APK of a build without splits - keeps the base code, the
+            // lowest of a version's, rather than posing as one ABI's.
+            abi?.let(abiCodes::get)?.let { code ->
+                output.versionCode.set(code + (output.versionCode.get() ?: 0))
             }
             // Name every artifact "sona-<version>-<abi>.apk" ("…-universal.apk" for the
             // ABI-less output) so a bare "app-release.apk"/"app-debug.apk" can never be produced.
@@ -223,6 +216,9 @@ dependencies {
 
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.coil.compose)
+    // Coil 3 loads nothing from the network by itself: this is what fetches, and caches on disk, every
+    // https image the app shows - GitHub avatars on About and Updates.
+    implementation(libs.coil.network.okhttp)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
