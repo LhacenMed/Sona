@@ -33,7 +33,7 @@ object Commits {
 
     /** The latest commits - asking GitHub now when [forceRefresh]. */
     suspend fun recent(context: Context, forceRefresh: Boolean = false): Result<List<Commit>> =
-        runCatchingCancellable { resource.fetch(context, forceRefresh) }
+        runCatchingCancellable { resource.fetch(context, forceRefresh).value }
 
     private fun parse(json: String): List<Commit> {
         val array = JSONArray(json)

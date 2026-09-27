@@ -28,21 +28,24 @@ internal class CachedGitHubResource<T>(
 
     /**
      * The answer as it stands: the kept one when it was asked for within [RefreshIntervalMillis] and not
-     * [force]d, GitHub's otherwise. Unreachable or refused, the kept one still stands; with none kept, it
+     * [force]d, GitHub's otherwise. Unreachable or refused, the kept one still stands - no longer
+     * [Fetched.isCurrent], so a caller that needs today's answer can tell and ask again; with none kept, it
      * fails.
      */
-    suspend fun fetch(context: Context, force: Boolean): T {
+    suspend fun fetch(context: Context, force: Boolean): Fetched<T> {
         val prefs = prefs(context)
         val body = prefs.getString(bodyKey, null)
         val now = System.currentTimeMillis()
-        if (body != null && !force && now - prefs.getLong(checkedAtKey, 0L) < RefreshIntervalMillis) return parse(body)
+        if (body != null && !force && now - prefs.getLong(checkedAtKey, 0L) < RefreshIntervalMillis) {
+            return Fetched(parse(body), isCurrent = true)
+        }
 
         val etag = prefs.getString(etagKey, null).takeIf { body != null }
         val response = runCatchingCancellable { GitHub.get("${GitHub.API_URL}$path", etag) }.getOrNull()
         return when {
             response?.isNotModified == true && body != null -> {
                 prefs.edit { putLong(checkedAtKey, now) }
-                parse(body)
+                Fetched(parse(body), isCurrent = true)
             }
             response?.isSuccessful == true && response.body != null -> {
                 // Read before it is kept, so an answer that cannot be read never replaces one that can.
@@ -52,9 +55,9 @@ internal class CachedGitHubResource<T>(
                     putString(etagKey, response.etag)
                     putLong(checkedAtKey, now)
                 }
-                answer
+                Fetched(answer, isCurrent = true)
             }
-            body != null -> parse(body)
+            body != null -> Fetched(parse(body), isCurrent = false)
             else -> error(response?.let { "GitHub answered HTTP ${it.status}" } ?: "Could not reach GitHub")
         }
     }
@@ -66,3 +69,9 @@ internal class CachedGitHubResource<T>(
         fun prefs(context: Context) = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     }
 }
+
+/**
+ * A [CachedGitHubResource]'s answer, and whether it [isCurrent]: GitHub's own, or kept and asked for within the
+ * refresh interval - rather than kept from before and stood in for a GitHub that could not be reached.
+ */
+internal class Fetched<T>(val value: T, val isCurrent: Boolean)

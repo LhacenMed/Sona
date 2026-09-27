@@ -61,6 +61,10 @@ class HostActivity : SonaActivity() {
     @Inject
     lateinit var playerOverlay: PlayerOverlay
 
+    /** The same prompts the main activity raises, so one reaches the user on a pushed screen too. */
+    @Inject
+    lateinit var appPrompts: AppPrompts
+
     /** The same connection the main activity follows, so a pushed screen shows its banner too. */
     @Inject
     lateinit var networkMonitor: NetworkMonitor
@@ -128,6 +132,7 @@ class HostActivity : SonaActivity() {
                                 }
                             }
                         }
+                        appPrompts.Content()
                     }
                 }
             }
