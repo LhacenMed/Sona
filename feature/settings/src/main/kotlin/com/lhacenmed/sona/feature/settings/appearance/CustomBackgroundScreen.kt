@@ -3,7 +3,6 @@ package com.lhacenmed.sona.feature.settings.appearance
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -61,6 +60,7 @@ import com.lhacenmed.sona.core.datastore.CustomBackground
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.screen.screenList
+import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
@@ -101,13 +101,13 @@ data object CustomBackgroundScreen : Screen {
         val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri == null) return@rememberLauncherForActivityResult
             if (!persistReadPermission(context, uri)) {
-                Toast.makeText(context, R.string.custom_background_permission_error, Toast.LENGTH_SHORT).show()
+                context.toast(R.string.custom_background_permission_error)
                 return@rememberLauncherForActivityResult
             }
             val previousUri = stored.imageUri
             viewModel.setCustomBackgroundImage(uri.toString())
             if (previousUri != null && previousUri != uri.toString() && !releaseReadPermission(context, previousUri)) {
-                Toast.makeText(context, R.string.custom_background_permission_cleanup_error, Toast.LENGTH_SHORT).show()
+                context.toast(R.string.custom_background_permission_cleanup_error)
             }
         }
 
@@ -143,7 +143,7 @@ data object CustomBackgroundScreen : Screen {
                     val released = stored.imageUri?.let { releaseReadPermission(context, it) } ?: true
                     viewModel.setCustomBackgroundImage(null)
                     if (!released) {
-                        Toast.makeText(context, R.string.custom_background_permission_cleanup_error, Toast.LENGTH_SHORT).show()
+                        context.toast(R.string.custom_background_permission_cleanup_error)
                     }
                 },
             )

@@ -83,7 +83,8 @@ private fun applyRefreshRate(
     }
 }
 
-private tailrec fun Context.findActivity(): Activity? =
+/** The activity this context belongs to - null for the application, or a service. */
+internal tailrec fun Context.findActivity(): Activity? =
     when (this) {
         is Activity -> this
         is ContextWrapper -> baseContext.findActivity()

@@ -1,8 +1,5 @@
 package com.lhacenmed.sona.feature.settings.appearance
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -70,7 +67,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
+import com.lhacenmed.sona.core.designsystem.component.copyToClipboard
 import com.lhacenmed.sona.core.designsystem.component.screen.screenList
+import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.palette.ThemePalettes
 import com.lhacenmed.sona.core.designsystem.theme.palette.ThemeSeedPalette
@@ -138,7 +137,7 @@ data object ThemeCreatorScreen : Screen {
         val nameOrNull = themeName.takeIf { it.isNotBlank() }
         fun applyTheme() {
             viewModel.setColorPalette(ThemeSeedPaletteCodec.encodeForPreference(currentPalette, nameOrNull))
-            Toast.makeText(context, R.string.theme_applied, Toast.LENGTH_SHORT).show()
+            context.toast(R.string.theme_applied)
         }
 
         val exportTheme = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
@@ -151,11 +150,7 @@ data object ThemeCreatorScreen : Screen {
                             ?: error("No output stream")
                     }.isSuccess
                 }
-                Toast.makeText(
-                    context,
-                    if (exported) R.string.theme_export_success else R.string.theme_export_failed,
-                    Toast.LENGTH_SHORT,
-                ).show()
+                context.toast(if (exported) R.string.theme_export_success else R.string.theme_export_failed)
             }
         }
 
@@ -171,7 +166,7 @@ data object ThemeCreatorScreen : Screen {
                 viewModel.setColorPalette(
                     ThemeSeedPaletteCodec.encodeForPreference(imported, ThemeSeedPaletteCodec.extractNameFromJson(text)),
                 )
-                Toast.makeText(context, R.string.theme_import_success, Toast.LENGTH_SHORT).show()
+                context.toast(R.string.theme_import_success)
             }
         }
 
@@ -422,11 +417,7 @@ private fun SeedColorEditor(
             Surface(shape = pillShape, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
                 Row(
                     modifier = Modifier
-                        .clickable {
-                            context.getSystemService(ClipboardManager::class.java)
-                                ?.setPrimaryClip(ClipData.newPlainText(hex, hex))
-                            Toast.makeText(context, R.string.copied, Toast.LENGTH_SHORT).show()
-                        }
+                        .clickable { context.copyToClipboard(hex, context.getString(R.string.copied)) }
                         .padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),

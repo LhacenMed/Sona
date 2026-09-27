@@ -1,9 +1,5 @@
 package com.lhacenmed.sona.feature.player
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.widget.Toast
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material3.Text
@@ -18,6 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import com.lhacenmed.sona.core.designsystem.component.copyToClipboard
 import com.lhacenmed.sona.core.model.Track
 
 /**
@@ -45,7 +42,6 @@ internal fun rememberPlayerTitleActions(
     val latestOnGoToArtist by rememberUpdatedState(onGoToArtist)
 
     return remember(track, state, context) {
-        val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         PlayerTitleActions(
             onTitleClick = {
                 state.collapseSoft()
@@ -55,16 +51,8 @@ internal fun rememberPlayerTitleActions(
                 state.collapseSoft()
                 latestOnGoToArtist(track.artistId)
             },
-            onCopyTitle = {
-                val label = context.getString(R.string.player_copied_title)
-                clipboardManager.setPrimaryClip(ClipData.newPlainText(label, track.title))
-                Toast.makeText(context, label, Toast.LENGTH_SHORT).show()
-            },
-            onCopyArtists = {
-                val label = context.getString(R.string.player_copied_artist)
-                clipboardManager.setPrimaryClip(ClipData.newPlainText(label, track.artist))
-                Toast.makeText(context, label, Toast.LENGTH_SHORT).show()
-            },
+            onCopyTitle = { context.copyToClipboard(track.title, context.getString(R.string.player_copied_title)) },
+            onCopyArtists = { context.copyToClipboard(track.artist, context.getString(R.string.player_copied_artist)) },
         )
     }
 }

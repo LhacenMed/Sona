@@ -3,7 +3,6 @@ package com.lhacenmed.sona.feature.settings.updates
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +31,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.datastore.UpdateChannel
 import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
+import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
@@ -181,7 +181,7 @@ data object UpdatesScreen : Screen {
             UpdateCheck.UpToDate -> {
                 val message = stringResource(R.string.updates_status_current)
                 LaunchedEffect(current) {
-                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    context.toast(message)
                     viewModel.dismissCheck()
                 }
             }

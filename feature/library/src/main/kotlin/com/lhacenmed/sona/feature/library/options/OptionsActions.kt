@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.MediaStore
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -19,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.itemsOrEmpty
+import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.navigation.AppNavigator
@@ -283,10 +283,6 @@ private fun detailScreenOf(target: OptionsTarget): Screen = when (target) {
 
 private fun playlistOf(target: OptionsTarget): OptionsTarget.ForPlaylist =
     target as? OptionsTarget.ForPlaylist ?: error("$target is not a playlist")
-
-internal fun Context.toast(message: String) {
-    Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
-}
 
 /**
  * Offers [track]'s audio to another app - the player's own share.

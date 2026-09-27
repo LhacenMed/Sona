@@ -1,0 +1,6 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- A toast's haptic where no window is at hand to perform it: see Context.performSonaHaptic -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+</manifest>

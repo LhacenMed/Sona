@@ -2,7 +2,6 @@ package com.lhacenmed.sona.feature.settings.appearance
 
 import android.content.Context
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -63,6 +62,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.screen.screenList
+import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.theme.palette.ThemePalette
 import com.lhacenmed.sona.core.designsystem.theme.palette.ThemePalettes
 import com.lhacenmed.sona.core.designsystem.theme.palette.ThemeSeedPaletteCodec
@@ -112,13 +112,13 @@ data object ColorPaletteScreen : Screen {
                 val text = readThemeFile(context, uri)
                 val imported = ThemeSeedPaletteCodec.decodeFromJson(text)
                 if (imported == null) {
-                    Toast.makeText(context, R.string.theme_import_failed, Toast.LENGTH_SHORT).show()
+                    context.toast(R.string.theme_import_failed)
                     return@launch
                 }
                 viewModel.setColorPalette(
                     ThemeSeedPaletteCodec.encodeForPreference(imported, ThemeSeedPaletteCodec.extractNameFromJson(text)),
                 )
-                Toast.makeText(context, R.string.theme_import_success, Toast.LENGTH_SHORT).show()
+                context.toast(R.string.theme_import_success)
                 navigator.go(ThemeCreatorScreen)
             }
         }
