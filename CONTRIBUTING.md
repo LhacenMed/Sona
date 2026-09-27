@@ -192,3 +192,5 @@ Every pull request, and every push to `dev`, is built by CI, and its debug APK i
 Versions are worked out from the release tags ([`scripts/lib/version.sh`](scripts/lib/version.sh)): the bump, `patch` unless given, is from the last stable release; the same stage counts on (`beta.1`, `beta.2`), a later one starts again (`alpha.3`, then `beta.1`), and an earlier one is refused.
 
 **Stable.** `./scripts/release.sh` runs [`release.yml`](.github/workflows/release.yml): it merges `dev` into `main`, and releases either the version the artifacts lead to (`release`) or a `patch`, `minor` or `major` bump. The notes open in an editor, already drafted from the trailers since the last stable release; `CHANGELOG.md` gets those trailers as its new section.
+
+The maintainer's side of it all, every case included, is in [docs/RELEASING.md](docs/RELEASING.md).

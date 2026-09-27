@@ -1,4 +1,4 @@
-name: ci
+name: Checks
 
 # What every change goes through on its way into dev, and what it leaves behind:
 #

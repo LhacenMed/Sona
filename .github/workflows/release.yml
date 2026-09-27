@@ -1,4 +1,5 @@
-name: release
+name: Stable release
+run-name: Stable release (${{ inputs.bump }})
 
 # Cloud pipeline for Stable releases. Dispatched by scripts/release.sh (or
 # manually from the Actions tab). Everything that used to run on a laptop runs
