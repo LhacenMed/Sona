@@ -1,0 +1,190 @@
+name: artifact
+
+# Publishes an Artifact release - a pre-release of the version dev is heading
+# for - whenever a push to dev carries a commit marked for one:
+#
+#   Release: <alpha|beta|rc> [major|minor|patch]
+#
+# as the last of its message's trailers (see CONTRIBUTING.md). A push without
+# one ends after the first job, in seconds.
+#
+# Only a marker on a commit the repository's owner authored counts - GitHub's
+# own record of who wrote it, not the name in the commit. A contributor's commit
+# carrying one, merged in with their pull request, releases nothing (ci.yml
+# already turns such pull requests away).
+#
+# The version is worked out from the release tags alone (scripts/lib/version.sh)
+# and the notes from the commits since the release before
+# (scripts/lib/changelog.sh). Nothing is pushed to any branch: publishing only
+# tags the commit that was pushed, so a release can never race the next push.
+on:
+  push:
+    branches: [dev]
+
+# One release at a time, the stable pipeline's included, so each works out its
+# version from tags the other has finished writing. Queued rather than
+# cancelled: a run cancelled mid-upload would leave a draft behind.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Look for a release marker
+    runs-on: ubuntu-latest
+    outputs:
+      stage: ${{ steps.marker.outputs.stage }}
+      bump: ${{ steps.marker.outputs.bump }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # The newest marked commit of the owner's among those pushed decides - the
+      # whole push is released, as its last commit.
+      - name: Find the release marker
+        id: marker
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+          OWNER: ${{ github.repository_owner }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # A new branch or a force push has no "before" to count from here.
+          if git merge-base --is-ancestor "$BEFORE" "$AFTER" 2>/dev/null; then
+            RANGE="${BEFORE}..${AFTER}"
+          else
+            RANGE="-1 ${AFTER}"
+          fi
+          MARKER=""
+          # shellcheck disable=SC2086 # RANGE is one or two arguments on purpose.
+          for sha in $(git log --format=%H $RANGE); do
+            value="$(git log -1 --format='%(trailers:key=Release,valueonly,unfold)' "$sha" | sed '/^[[:space:]]*$/d' | head -n 1)"
+            [ -n "$value" ] || continue
+            author="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${sha}" --jq '.author.login // ""')"
+            if [ "$author" = "$OWNER" ]; then
+              MARKER="$value"; break
+            fi
+            echo "::notice::${sha:0:7} is marked Release: ${value}, but was not authored by ${OWNER} - skipped."
+          done
+          if [ -z "$MARKER" ]; then
+            echo "No release marker of ${OWNER}'s in this push."; exit 0
+          fi
+          if [ -n "$(git tag --points-at "$AFTER" --list 'v*')" ]; then
+            echo "${AFTER} is already released."; exit 0
+          fi
+
+          read -r STAGE BUMP EXTRA <<< "${MARKER,,}"
+          case "$STAGE" in alpha|beta|rc) ;; *)
+            echo "::error::Release: ${MARKER} - the stage must be alpha, beta or rc."; exit 1 ;;
+          esac
+          case "${BUMP:-patch}" in major|minor|patch) ;; *)
+            echo "::error::Release: ${MARKER} - the bump must be major, minor or patch."; exit 1 ;;
+          esac
+          [ -z "${EXTRA:-}" ] || { echo "::error::Release: ${MARKER} - expected <stage> [bump]."; exit 1; }
+
+          echo "stage=${STAGE}"        >> "$GITHUB_OUTPUT"
+          echo "bump=${BUMP:-patch}"   >> "$GITHUB_OUTPUT"
+          echo "✓ Release: ${STAGE} ${BUMP:-patch}"
+
+  publish:
+    name: Build and publish
+    needs: plan
+    if: needs.plan.outputs.stage != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Checkout the pushed commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Work out the version and notes
+        id: version
+        env:
+          STAGE: ${{ needs.plan.outputs.stage }}
+          BUMP: ${{ needs.plan.outputs.bump }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          source scripts/lib/version.sh
+          source scripts/lib/changelog.sh
+
+          PREVIOUS="$(version::latest)"
+          NAME="$(version::next_artifact "$STAGE" "$BUMP")"
+          TAG="v${NAME}"
+          # Only a published release blocks; a draft left by a failed run is reclaimed.
+          if [ "$(gh release view "$TAG" --json isDraft --jq .isDraft 2>/dev/null || echo absent)" = "false" ]; then
+            echo "::error::${TAG} is already published."; exit 1
+          fi
+
+          CHANGES="$(changelog::since "${PREVIOUS:+v${PREVIOUS}}" "$GITHUB_SHA")"
+          {
+            echo "Artifact build of Sona ${NAME%%-*} - early, and possibly unstable."
+            echo ""
+            if [ -n "$CHANGES" ]; then
+              echo "$CHANGES"
+            else
+              echo "No user-facing changes${PREVIOUS:+ since v${PREVIOUS}}."
+            fi
+          } > "${RUNNER_TEMP}/notes.md"
+
+          {
+            echo "name=${NAME}"
+            echo "tag=${TAG}"
+            echo "previous=${PREVIOUS}"
+          } >> "$GITHUB_OUTPUT"
+          echo "✓ ${PREVIOUS:-nothing} → ${NAME}"
+          cat "${RUNNER_TEMP}/notes.md"
+
+      - name: Build and upload
+        uses: ./.github/actions/upload-release
+        with:
+          version: ${{ steps.version.outputs.name }}
+          target: ${{ github.sha }}
+          notes-file: ${{ runner.temp }}/notes.md
+          prerelease: 'true'
+          keystore-base64: ${{ secrets.KEYSTORE_BASE64 }}
+          keystore-password: ${{ secrets.KEYSTORE_PASSWORD }}
+          key-alias: ${{ secrets.KEY_ALIAS }}
+          key-password: ${{ secrets.KEY_PASSWORD }}
+          github-token: ${{ github.token }}
+
+      # Publishing the draft is what makes the tag, on the pushed commit.
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: gh release edit "$TAG" --draft=false --prerelease=true
+
+      # ArchiveTune's notify_user, for releases: whoever is waiting on a fix hears
+      # it can be tried. Never fails the release - it is already out.
+      - name: Tell the issues it closes
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          PREVIOUS: ${{ steps.version.outputs.previous }}
+        run: |
+          source scripts/lib/changelog.sh
+          for number in $(changelog::referenced_issues "${PREVIOUS:+v${PREVIOUS}}" "$GITHUB_SHA"); do
+            gh issue comment "$number" --body "Available to try in the Artifact release [${TAG}](https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}) - early, and possibly unstable. Settings › Updates › Update channel › Artifact gets it in the app." \
+              || echo "::warning::Could not comment on #${number}."
+          done
+
+      - name: Summary
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          {
+            echo "### ✓ Released ${TAG} (Artifact)"
+            echo ""
+            echo "- **Commit**: ${GITHUB_SHA}"
+            echo "- **Release**: https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -8,6 +8,9 @@ enum class UpdateChannel {
     /** Releases only. */
     STABLE,
 
-    /** Pre-releases too: whichever is newest, pre-release or release. */
-    BETA,
+    /**
+     * Artifacts too - the alpha, beta and release candidate builds published ahead of each stable release:
+     * whichever is newest, artifact or release.
+     */
+    ARTIFACT,
 }

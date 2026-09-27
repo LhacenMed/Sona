@@ -62,11 +62,31 @@ sealed class Version(
     }
 }
 
-val currentVersion: Version = Version.Stable(
+/** The last stable release - written by the release pipeline, and what a local build is versioned as. */
+val lastStableVersion: Version = Version.Stable(
     versionMajor = 1,
     versionMinor = 5,
     versionPatch = 0,
 )
+
+/**
+ * The version this build is: the one the release pipelines pass as `-Psona.version=1.6.0-beta.2` - worked out
+ * from the repository's release tags, see scripts/lib/version.sh - or the last stable release otherwise.
+ */
+val currentVersion: Version = providers.gradleProperty("sona.version").orNull
+    ?.let { name ->
+        val match = requireNotNull(Regex("""(\d+)\.(\d+)\.(\d+)(?:-(alpha|beta|rc)\.(\d+))?""").matchEntire(name)) {
+            "sona.version must look like 1.6.0 or 1.6.0-beta.2, not $name"
+        }
+        val (major, minor, patch, stage, build) = match.destructured
+        when (stage) {
+            "alpha" -> Version.Alpha(major.toInt(), minor.toInt(), patch.toInt(), build.toInt())
+            "beta" -> Version.Beta(major.toInt(), minor.toInt(), patch.toInt(), build.toInt())
+            "rc" -> Version.ReleaseCandidate(major.toInt(), minor.toInt(), patch.toInt(), build.toInt())
+            else -> Version.Stable(major.toInt(), minor.toInt(), patch.toInt())
+        }
+    }
+    ?: lastStableVersion
 
 val keystorePropertiesFile: File = rootProject.file("keystore.properties")
 

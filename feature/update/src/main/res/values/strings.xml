@@ -10,7 +10,7 @@
 
     <!-- The download and install dialogs -->
     <string name="update_download_title">Sona %1$s</string>
-    <string name="update_download_title_beta">Sona Beta %1$s</string>
+    <string name="update_download_title_beta">Sona Artifact %1$s</string>
     <string name="update_download_progress">%1$d%%</string>
     <string name="update_download_size">%1$s / %2$s</string>
     <string name="update_download_speed">%1$s/s</string>

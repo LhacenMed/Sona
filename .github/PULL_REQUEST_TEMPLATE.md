@@ -23,4 +23,5 @@
 - [ ] Tested on a device or emulator
 - [ ] Only changes what this pull request is about
 - [ ] Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/)
+- [ ] Changes a user will notice have [changelog trailers](../CONTRIBUTING.md#changelog-trailers) (`Added:`, `Changed:`, `Fixed:`, `Removed:`)
 - [ ] Code taken from other projects is GPL-3.0 compatible and credited

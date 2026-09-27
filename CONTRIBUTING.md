@@ -13,6 +13,7 @@ Thanks for helping. This document covers how to report problems, propose changes
   - [Making a change](#making-a-change)
   - [Code guidelines](#code-guidelines)
   - [Commit messages](#commit-messages)
+    - [Changelog trailers](#changelog-trailers)
   - [Pull requests](#pull-requests)
   - [Using code from other projects](#using-code-from-other-projects)
   - [Releases](#releases)
@@ -120,7 +121,7 @@ Sona uses [Conventional Commits](https://www.conventionalcommits.org/):
 <type>(<scope>): <summary>
 ```
 
-- **type**: `feat`, `fix`, `perf`, `refactor`, `build`, `docs`, `chore`
+- **type**: `feat`, `fix`, `perf`, `refactor`, `style`, `build`, `ci`, `docs`, `chore`, `test`, `revert`
 - **scope**: the area changed, usually the module: `library`, `player`, `playback`, `scanner`, `settings`, `designsystem`, `update`, `ui`
 - **summary**: imperative, lower case, no trailing period, under ~72 characters
 
@@ -133,6 +134,26 @@ perf(sort): compute each name's sort key once, not once per comparison
 ```
 
 Add a body when the reason for the change is not obvious from the summary.
+
+### Changelog trailers
+
+Sona's release notes are written by its commits. A commit that changes something a user will notice says so in [git trailers](https://git-scm.com/docs/git-interpret-trailers): `Key: value` lines closing the message, as its last paragraph, one per change, under [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)'s headings:
+
+```
+fix(player): keep the queue in place when a track is removed
+
+Removing a track re-sorted the queue from the top.
+
+Fixed: The queue no longer jumps to the top when a track is removed.
+Fixes #123
+```
+
+- **Keys**: `Added`, `Changed`, `Fixed`, `Removed`. Write the value for users, not for developers: what they will see, in a sentence.
+- **Several changes**: one trailer each. A long one continues on the next line, indented.
+- **Nothing a user would notice** - a refactor, a build change: no trailers. The commit is left out of the notes.
+- **Issues**: `Fixes #123` (or `Closes`, `Resolves`) anywhere in the message. When a release ships the commit, the issue is told.
+
+Every release's notes gather these trailers from all the commits since the release before, so check yours read well on their own. Pull requests are checked by CI: their subjects must follow the format above, and a trailer the changelog does not read is pointed out.
 
 ## Pull requests
 
@@ -157,6 +178,17 @@ When you port code:
 
 ## Releases
 
-Releases are made by the maintainer with `./scripts/release.sh`, which runs the release workflow on GitHub Actions. Contributors do not need to bump versions or edit `version.json`; both are written by the pipeline.
+Releases are made by the maintainer, on GitHub Actions. Contributors never bump versions or edit `version.json` or `CHANGELOG.md`: the pipelines write them all, from the [changelog trailers](#changelog-trailers).
 
-Before a release, the maintainer adds its entry to [CHANGELOG.md](CHANGELOG.md).
+Every pull request, and every push to `dev`, is built by CI, and its debug APK is kept on the run's page to try.
+
+| Release | Versions | Made by | Update channel |
+| --- | --- | --- | --- |
+| **Artifact** | `1.6.0-alpha.1`, `1.6.0-beta.2`, `1.6.0-rc.1` - early builds of the next version | a commit on `dev` marked `Release:` | Artifact |
+| **Stable** | `1.6.0` | `./scripts/release.sh` | Stable and Artifact |
+
+**Artifact.** The maintainer adds a `Release: <alpha|beta|rc> [major|minor|patch]` trailer to a commit, or pushes an empty one (`git commit --allow-empty -m "chore: release an artifact" -m "Release: beta"`). When it reaches `dev`, [`artifact.yml`](.github/workflows/artifact.yml) publishes a pre-release of that commit, its notes gathered from the commits since the last release. Only a marker on a commit the repository's owner authored counts; pull requests carrying one are turned away by CI.
+
+Versions are worked out from the release tags ([`scripts/lib/version.sh`](scripts/lib/version.sh)): the bump, `patch` unless given, is from the last stable release; the same stage counts on (`beta.1`, `beta.2`), a later one starts again (`alpha.3`, then `beta.1`), and an earlier one is refused.
+
+**Stable.** `./scripts/release.sh` runs [`release.yml`](.github/workflows/release.yml): it merges `dev` into `main`, and releases either the version the artifacts lead to (`release`) or a `patch`, `minor` or `major` bump. The notes open in an editor, already drafted from the trailers since the last stable release; `CHANGELOG.md` gets those trailers as its new section.

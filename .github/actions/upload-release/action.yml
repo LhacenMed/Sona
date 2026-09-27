@@ -1,0 +1,148 @@
+name: Upload release
+description: >
+  Builds Sona's signed release APKs at a version and uploads them to a draft
+  GitHub release - shared by the stable and artifact pipelines, which each
+  publish the draft when their own work is done. Nothing is public until then.
+
+inputs:
+  version:
+    description: The version to build and release, without its "v" - 1.6.0 or 1.6.0-beta.2
+    required: true
+  target:
+    description: What the tag is made on once published - a branch or a commit
+    required: true
+  notes-file:
+    description: The release notes, as a markdown file
+    required: true
+  prerelease:
+    description: Whether this is an artifact - a pre-release
+    required: true
+  keystore-base64:
+    required: true
+  keystore-password:
+    required: true
+  key-alias:
+    required: true
+  key-password:
+    required: true
+  github-token:
+    required: true
+
+outputs:
+  version-code:
+    description: The universal APK's versionCode
+    value: ${{ steps.apks.outputs.version_code }}
+  universal:
+    description: The universal APK's file name
+    value: ${{ steps.apks.outputs.universal }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up JDK 21
+      uses: actions/setup-java@v5
+      with:
+        distribution: temurin
+        java-version: '21'
+
+    - name: Set up Gradle
+      uses: gradle/actions/setup-gradle@v6
+      with:
+        # The action defaults this to true off the default branch, and both
+        # pipelines run from dev - without this the cache would only ever be
+        # read, and every release would pay for a cold build.
+        cache-read-only: false
+
+    - name: Restore signing keystore
+      shell: bash
+      env:
+        KEYSTORE_BASE64: ${{ inputs.keystore-base64 }}
+        KEYSTORE_PASSWORD: ${{ inputs.keystore-password }}
+        KEY_ALIAS: ${{ inputs.key-alias }}
+        KEY_PASSWORD: ${{ inputs.key-password }}
+      run: |
+        set -euo pipefail
+        [ -n "$KEYSTORE_BASE64" ] || { echo "::error::KEYSTORE_BASE64 secret is not set."; exit 1; }
+        KEYSTORE_PATH="${RUNNER_TEMP}/sona-release-key.jks"
+        echo "$KEYSTORE_BASE64" | base64 -d > "$KEYSTORE_PATH"
+        # Absolute path: keystore.properties' storeFile is resolved relative to
+        # the app module locally, and that assumption doesn't hold here.
+        {
+          echo "storeFile=${KEYSTORE_PATH}"
+          echo "storePassword=${KEYSTORE_PASSWORD}"
+          echo "keyAlias=${KEY_ALIAS}"
+          echo "keyPassword=${KEY_PASSWORD}"
+        } > keystore.properties
+
+    - name: Build signed release APKs
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+      run: ./gradlew :app:assembleRelease "-Psona.version=${VERSION}" -Dorg.gradle.jvmargs="-Xmx5g -Dfile.encoding=UTF-8"
+
+    - name: Collect APKs
+      id: apks
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        RELEASE_DIR: app/build/outputs/apk/release
+      run: |
+        set -euo pipefail
+        META="${RELEASE_DIR}/output-metadata.json"
+        [ -f "$META" ] || { echo "::error::${META} not found."; exit 1; }
+
+        ELEM="$(jq -c 'first(.elements[] | select(.filters == [])) // .elements[0]' "$META")"
+        VERSION_CODE="$(jq -r '.versionCode' <<<"$ELEM")"
+        UNIVERSAL="$(jq -r '.outputFile' <<<"$ELEM")"
+        [ -f "${RELEASE_DIR}/${UNIVERSAL}" ] || { echo "::error::Universal APK missing."; exit 1; }
+
+        COUNT="$(ls -1 "${RELEASE_DIR}/sona-${VERSION}-"*.apk | wc -l)"
+        [ "$COUNT" -gt 0 ] || { echo "::error::No APKs matched sona-${VERSION}-*.apk"; exit 1; }
+
+        echo "version_code=${VERSION_CODE}" >> "$GITHUB_OUTPUT"
+        echo "universal=${UNIVERSAL}"       >> "$GITHUB_OUTPUT"
+        echo "✓ ${COUNT} APK(s)"
+        ls -1 "${RELEASE_DIR}/sona-${VERSION}-"*.apk
+
+    # A draft, so publishing stays a single act at the very end and no
+    # notification can fire against a release whose assets aren't up yet.
+    - name: Create draft release
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        TAG: v${{ inputs.version }}
+        TARGET: ${{ inputs.target }}
+        NOTES_FILE: ${{ inputs.notes-file }}
+        PRERELEASE: ${{ inputs.prerelease }}
+      run: |
+        set -euo pipefail
+        # Reclaim a draft left behind by a previous failed run.
+        gh release delete "$TAG" --yes --cleanup-tag > /dev/null 2>&1 || true
+        gh release create "$TAG" \
+          --draft \
+          --prerelease="$PRERELEASE" \
+          --target "$TARGET" \
+          --title "$TAG" \
+          --notes-file "$NOTES_FILE"
+
+    # Per asset with retry, instead of one all-or-nothing upload - a single
+    # transient 400 used to roll the whole release back.
+    - name: Upload APKs
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        TAG: v${{ inputs.version }}
+        VERSION: ${{ inputs.version }}
+        RELEASE_DIR: app/build/outputs/apk/release
+      run: |
+        set -euo pipefail
+        for apk in "${RELEASE_DIR}/sona-${VERSION}-"*.apk; do
+          for attempt in 1 2 3; do
+            if gh release upload "$TAG" "$apk" --clobber; then
+              echo "✓ $(basename "$apk")"; break
+            fi
+            [ "$attempt" -eq 3 ] && { echo "::error::Upload failed: $(basename "$apk")"; exit 1; }
+            echo "  retry ${attempt} for $(basename "$apk")…"
+            sleep $(( attempt * 10 ))
+          done
+        done
