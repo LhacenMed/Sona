@@ -25,13 +25,10 @@
     <!-- The download notification -->
     <string name="update_connecting">Connecting…</string>
     <string name="update_stop">Stop</string>
-    <string name="update_notif_channel">App update</string>
     <string name="update_notif_title">Downloading update</string>
     <string name="update_notif_ready">Update downloaded — tap to install</string>
 
     <!-- The new-update notification -->
-    <string name="update_notification_channel_name">Update notifications</string>
-    <string name="update_notification_channel_description">Tells you when a new version of Sona is out</string>
     <string name="update_notification_title">New update available</string>
     <string name="update_notification_text">Version %1$s is available</string>
     <string name="update_notification_download">Download</string>

@@ -11,6 +11,8 @@ import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaNotification
 import androidx.media3.session.MediaSession
 import com.google.common.collect.ImmutableList
+import com.lhacenmed.sona.core.common.notification.SonaNotificationChannel
+import com.lhacenmed.sona.core.common.notification.SonaNotificationId
 
 /**
  * The media notification, ported from ArchiveTune's `ArchiveTuneMediaNotificationProvider`.
@@ -34,9 +36,9 @@ class SonaMediaNotificationProvider(
     private val delegate =
         DefaultMediaNotificationProvider(
             context,
-            { PlaybackService.NOTIFICATION_ID },
-            PlaybackService.CHANNEL_ID,
-            R.string.playback_notification_channel_name,
+            { SonaNotificationId.PLAYBACK },
+            SonaNotificationChannel.PLAYBACK.id,
+            SonaNotificationChannel.PLAYBACK.nameRes,
         ).apply {
             setSmallIcon(smallIconResId)
         }

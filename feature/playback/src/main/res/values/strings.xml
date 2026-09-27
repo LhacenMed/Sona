@@ -1,5 +1,4 @@
 <resources>
-    <string name="playback_notification_channel_name">Playback</string>
     <string name="playback_action_add_favorite">Add to favorites</string>
     <string name="playback_action_remove_favorite">Remove from favorites</string>
     <string name="playback_action_shuffle_on">Shuffle on</string>

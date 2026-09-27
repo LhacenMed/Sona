@@ -1,7 +1,5 @@
 package com.lhacenmed.sona.feature.playback
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -25,6 +23,7 @@ import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
+import com.lhacenmed.sona.core.common.R as CommonR
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
 import com.lhacenmed.sona.core.datastore.ImageSettings
@@ -239,7 +238,6 @@ class PlaybackService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannel()
 
         // The settings the player and session are built with, read straight from memory: the
         // application loaded every setting before any service could be created (see
@@ -283,7 +281,7 @@ class PlaybackService : MediaSessionService() {
         setMediaNotificationProvider(
             SonaMediaNotificationProvider(
                 context = this,
-                smallIconResId = R.drawable.ic_notification,
+                smallIconResId = CommonR.drawable.ic_stat_sona,
             ),
         )
 
@@ -312,17 +310,6 @@ class PlaybackService : MediaSessionService() {
             intent.getParcelableExtra(EXTRA_MEDIA_NOTIFICATION_DELETE_INTENT)
         }
         runCatching { originalDeleteIntent?.send() }
-    }
-
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        getSystemService(NotificationManager::class.java)?.createNotificationChannel(
-            NotificationChannel(
-                CHANNEL_ID,
-                getString(R.string.playback_notification_channel_name),
-                NotificationManager.IMPORTANCE_LOW,
-            ),
-        )
     }
 
     /**
@@ -636,8 +623,6 @@ class PlaybackService : MediaSessionService() {
     // Fossify's PlayerInit.getSessionActivityIntent(), which can reference its app's MainActivity
     // directly since notification wiring and the activity live in the same module there.
     companion object {
-        const val CHANNEL_ID = "sona_playback_channel"
-        const val NOTIFICATION_ID = 888
         const val ACTION_MEDIA_NOTIFICATION_DISMISSED =
             "com.lhacenmed.sona.playback.action.MEDIA_NOTIFICATION_DISMISSED"
         const val EXTRA_MEDIA_NOTIFICATION_DELETE_INTENT =

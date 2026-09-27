@@ -204,11 +204,6 @@ class LibraryViewModel @Inject constructor(
         playbackController.shuffle(parent)
     }
 
-    /** An explicit user-initiated rescan, which bypasses the unchanged-library skip. */
-    fun onRescan() {
-        mediaScanner.requestScan(force = true)
-    }
-
     /** Opens the bar's search with an empty query, narrows it, or - with null - closes it. */
     fun onSearchQueryChange(query: String?) {
         _searchQuery.value = query

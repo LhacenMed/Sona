@@ -2,17 +2,18 @@ package com.lhacenmed.sona.core.common.coroutines
 
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
  * Runs a change [onFinished] is waiting to hear the outcome of - what backs every confirmation dialog
  * that stays up until its change is done. A screen closing mid-way cancels the wait, which is not the
- * change failing, so that is never reported as a failure.
+ * change failing, so that is never reported as a failure. The [Job] returned is the operation's own.
  */
 fun CoroutineScope.launchOperation(
     onFinished: (succeeded: Boolean) -> Unit,
     operation: suspend () -> Unit,
-) {
+): Job =
     launch {
         val succeeded = try {
             operation()
@@ -24,4 +25,3 @@ fun CoroutineScope.launchOperation(
         }
         onFinished(succeeded)
     }
-}

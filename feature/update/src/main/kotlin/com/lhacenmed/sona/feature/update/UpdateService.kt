@@ -1,19 +1,18 @@
 package com.lhacenmed.sona.feature.update
 
 import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ServiceInfo
-import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
+import com.lhacenmed.sona.core.common.notification.SonaNotificationChannel
+import com.lhacenmed.sona.core.common.notification.SonaNotificationId
+import com.lhacenmed.sona.core.common.notification.SonaNotifications
+import com.lhacenmed.sona.core.common.notification.startForegroundCompat
 import com.lhacenmed.sona.feature.update.github.Release
 import com.lhacenmed.sona.feature.update.github.ReleaseApk
 import kotlinx.coroutines.CoroutineScope
@@ -43,7 +42,7 @@ class UpdateService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // startForegroundService() requires startForeground() within 5s on every delivery.
-        goForeground(progressNotification(UpdateRegistry.stateOf()))
+        startForegroundCompat(SonaNotificationId.UPDATE_DOWNLOAD, progressNotification(UpdateRegistry.stateOf()))
 
         when {
             intent?.action == ACTION_CANCEL -> cancelDownload()
@@ -67,7 +66,7 @@ class UpdateService : Service() {
                 UpdateRegistry.update(state)
                 when (state) {
                     UpdateState.Connecting, is UpdateState.Downloading ->
-                        notify(NOTIF_PROGRESS, progressNotification(state))
+                        notify(SonaNotificationId.UPDATE_DOWNLOAD, progressNotification(state))
                     else -> Unit
                 }
             }
@@ -102,20 +101,17 @@ class UpdateService : Service() {
 
     private fun postResult() {
         when (val s = UpdateRegistry.stateOf()) {
-            is UpdateState.Downloaded -> notify(NOTIF_RESULT, result(s.staged.file))
-            is UpdateState.Error      -> notify(NOTIF_RESULT, error(s.message))
+            is UpdateState.Downloaded -> notify(SonaNotificationId.UPDATE_DOWNLOAD_RESULT, result(s.staged.file))
+            is UpdateState.Error      -> notify(SonaNotificationId.UPDATE_DOWNLOAD_RESULT, error(s.message))
             else                      -> Unit
         }
     }
 
-    private fun base(): NotificationCompat.Builder {
-        ensureChannel()
-        return NotificationCompat.Builder(this, CHANNEL)
-            .setSmallIcon(android.R.drawable.stat_sys_download)
+    private fun base(): NotificationCompat.Builder =
+        SonaNotifications.builder(this, SonaNotificationChannel.UPDATE_DOWNLOAD)
             .setContentTitle(getString(R.string.update_notif_title))
             .setOnlyAlertOnce(true)
             .setSilent(true)
-    }
 
     private fun progressNotification(state: UpdateState): Notification {
         val downloading = state as? UpdateState.Downloading
@@ -132,7 +128,6 @@ class UpdateService : Service() {
     /** Completion notification: tapping it launches the system installer for the downloaded APK. */
     private fun result(apk: File): Notification =
         base()
-            .setSmallIcon(android.R.drawable.stat_sys_download_done)
             .setContentText(getString(R.string.update_notif_ready))
             .setContentIntent(installIntent(apk))
             .setAutoCancel(true)
@@ -155,34 +150,11 @@ class UpdateService : Service() {
         )
     }
 
-    private fun ensureChannel() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        val nm = getSystemService(NotificationManager::class.java)
-        if (nm.getNotificationChannel(CHANNEL) == null) {
-            nm.createNotificationChannel(
-                NotificationChannel(CHANNEL, getString(R.string.update_notif_channel),
-                    NotificationManager.IMPORTANCE_LOW).apply { setShowBadge(false) }
-            )
-        }
-    }
-
     private fun notify(id: Int, notification: Notification) {
-        val nm = NotificationManagerCompat.from(this)
-        if (nm.areNotificationsEnabled()) nm.notify(id, notification)
-    }
-
-    private fun goForeground(notification: Notification) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIF_PROGRESS, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-        } else {
-            startForeground(NOTIF_PROGRESS, notification)
-        }
+        SonaNotifications.post(this, id, notification)
     }
 
     companion object {
-        private const val CHANNEL = "app_update"
-        private const val NOTIF_PROGRESS = 4200
-        private const val NOTIF_RESULT = 4201
         private const val ACTION_CANCEL = "com.lhacenmed.sona.action.CANCEL_UPDATE"
         private const val EXTRA_RELEASE = "com.lhacenmed.sona.extra.RELEASE"
         private const val EXTRA_VARIANT = "com.lhacenmed.sona.extra.VARIANT"

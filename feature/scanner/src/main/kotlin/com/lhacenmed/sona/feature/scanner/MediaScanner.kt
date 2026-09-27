@@ -34,10 +34,13 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -103,13 +106,18 @@ class MediaScanner @Inject constructor(
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
 
-    private val _isScanning = MutableStateFlow(false)
+    private val _progress = MutableStateFlow<ScanProgress?>(null)
+
+    /** Where the scan in progress is - what the rescan notification shows - or null while none runs. */
+    val progress: StateFlow<ScanProgress?> = _progress.asStateFlow()
 
     /**
      * Whether a scan is currently in progress - lets the UI show "scanning" instead of a misleading
      * "no tracks"/"no permission" state while the library is still empty.
      */
-    val isScanning: StateFlow<Boolean> = _isScanning.asStateFlow()
+    val isScanning: StateFlow<Boolean> = _progress
+        .map { it != null }
+        .stateIn(appScope, SharingStarted.Eagerly, false)
 
     private val scanMutex = Mutex()
 
@@ -140,23 +148,25 @@ class MediaScanner @Inject constructor(
      *
      * This is what launch should call. It runs on the application scope, so it is not tied to the
      * activity that asked for it - the previous code launched it from `lifecycleScope` in
-     * `onCreate`, which restarted the whole scan on every configuration change. [force] skips the
-     * unchanged-library check (an explicit "rescan", where the user's intent overrides it).
+     * `onCreate`, which restarted the whole scan on every configuration change.
      */
-    fun requestScan(force: Boolean = false) {
+    fun requestScan() {
         changeWatch.start()
-        enqueue(if (force) ScanKind.FORCED else ScanKind.FULL)
+        enqueue(ScanKind.FULL)
     }
 
     /**
      * Rescans with the current exclusions and waits for it to finish - for a change the user is
-     * watching take effect, such as excluding a folder.
+     * watching take effect, such as excluding a folder. [force] reads every file again even when the
+     * device reports nothing changed: the user asking for a rescan outright, where their intent
+     * overrides the check.
      *
      * The scan itself runs on the application scope, like [requestScan], so a screen closing mid-way
      * cannot leave the library half-rewritten; only the waiting belongs to the caller. A failure is
      * thrown here, to the caller that is waiting on it.
      */
-    suspend fun rescan(): SyncStats = appScope.async { scan(ScanKind.FULL) }.await()
+    suspend fun rescan(force: Boolean = false): SyncStats =
+        appScope.async { scan(if (force) ScanKind.FORCED else ScanKind.FULL) }.await()
 
     /**
      * Takes the tracks [trackIds] name out of the library the moment their files are deleted, then
@@ -182,13 +192,13 @@ class MediaScanner @Inject constructor(
                 val signature = scanSignatureOf(context, excludedFolders)
                 if (kind != ScanKind.FORCED && canSkip(signature)) return@withContext SyncStats()
 
-                _isScanning.value = true
+                _progress.value = ScanProgress(ScanStep.READING_MEDIA_STORE)
                 try {
                     val stats = runScan(excludedFolders, walksStorage = kind != ScanKind.REFRESH)
                     scanSettings.setLastScanSignature(signature)
                     stats
                 } finally {
-                    _isScanning.value = false
+                    _progress.value = null
                 }
             }
         }
@@ -266,6 +276,7 @@ class MediaScanner @Inject constructor(
 
         // Final pass: the authoritative one, and the only one allowed to delete. When stage 1
         // already stored exactly this, it opens no transaction at all.
+        _progress.value = ScanProgress(ScanStep.SAVING)
         stats += libraryWriter.sync(tracks, albums, artists, genres)
         return stats
     }
@@ -274,7 +285,7 @@ class MediaScanner @Inject constructor(
     private fun findUnindexedTracks(indexedTracks: List<Track>, excludedFolders: Set<String>): List<Track> {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return emptyList()
         val pathsToSkip = indexedTracks.mapTo(HashSet()) { it.path }.apply { addAll(excludedFolders) }
-        return manualFileWalker.findTracks(pathsToSkip)
+        return manualFileWalker.findTracks(pathsToSkip) { _progress.value = it }
     }
 
     /**

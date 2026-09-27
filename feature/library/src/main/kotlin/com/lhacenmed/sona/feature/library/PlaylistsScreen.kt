@@ -53,7 +53,7 @@ import com.lhacenmed.sona.feature.library.sort.SortSheet
 import com.lhacenmed.sona.feature.library.sort.sortAction
 
 /** Most played's title, which is also what a search matches it on. */
-private const val MOST_PLAYED_TITLE = "Most played"
+internal const val MOST_PLAYED_TITLE = "Most played"
 
 /** A row of the list: Most played pinned first, then the playlists. */
 private sealed interface PlaylistsRow {

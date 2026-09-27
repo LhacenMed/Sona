@@ -33,9 +33,4 @@ class ScanSettings @Inject constructor(@ApplicationContext context: Context) {
     suspend fun setLastScanSignature(signature: String) {
         dataStore.edit { it[LAST_SCAN_SIGNATURE] = signature }
     }
-
-    /** Forces the next scan to run in full - used when the user asks for a manual rescan. */
-    suspend fun clearLastScanSignature() {
-        dataStore.edit { it.remove(LAST_SCAN_SIGNATURE) }
-    }
 }
