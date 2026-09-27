@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -23,6 +22,7 @@ import com.lhacenmed.sona.core.datastore.MiniPlayerBackgroundStyle
 import com.lhacenmed.sona.core.datastore.PlayerBackgroundStyle
 import com.lhacenmed.sona.core.datastore.PlayerButtonsStyle
 import com.lhacenmed.sona.core.datastore.PlayerStyle
+import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.effect.isHighRefreshRate
 import com.lhacenmed.sona.core.designsystem.effect.rememberSupportedHighestFps
 import com.lhacenmed.sona.core.designsystem.theme.CustomFontLoader
@@ -274,7 +274,7 @@ internal fun ThemeMode.isDark(): Boolean =
  */
 private fun pickCustomFont(context: Context, uri: Uri, previousUri: String?): CustomFont? {
     if (!CustomFontLoader.isSupportedTtf(context, uri)) {
-        Toast.makeText(context, R.string.custom_font_invalid, Toast.LENGTH_SHORT).show()
+        context.toast(R.string.custom_font_invalid)
         return null
     }
     runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }

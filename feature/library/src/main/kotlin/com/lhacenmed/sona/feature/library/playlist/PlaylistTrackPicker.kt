@@ -21,8 +21,8 @@ import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDialog
+import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.navigation.LocalNavigator
-import com.lhacenmed.sona.feature.library.options.toast
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.selection.SelectionOptionsHost
 import com.lhacenmed.sona.feature.library.selection.selectAllAction

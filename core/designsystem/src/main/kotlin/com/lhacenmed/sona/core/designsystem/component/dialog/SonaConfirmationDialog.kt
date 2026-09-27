@@ -1,6 +1,5 @@
 package com.lhacenmed.sona.core.designsystem.component.dialog
 
-import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -18,6 +17,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.R
 import com.lhacenmed.sona.core.designsystem.component.actionButton
+import com.lhacenmed.sona.core.designsystem.component.toast
 
 /** A progress bar's own height: the slot held for it before it appears. */
 private val ProgressSlotHeight = 4.dp
@@ -61,7 +61,7 @@ fun SonaConfirmationDialog(
                     isRunning = true
                     operation { succeeded ->
                         val outcome = if (succeeded) successMessage else failureMessage
-                        Toast.makeText(context.applicationContext, outcome, Toast.LENGTH_SHORT).show()
+                        context.toast(outcome)
                         onDismiss()
                     }
                 },

@@ -6,7 +6,6 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.view.WindowManager
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
@@ -104,6 +103,7 @@ import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.shouldRomanizeLyricsLine
 import com.lhacenmed.sona.core.data.lyrics.WordTimestamp
 import com.lhacenmed.sona.core.database.entity.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import com.lhacenmed.sona.core.designsystem.component.shimmer
+import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.pillShape
 import com.lhacenmed.sona.core.designsystem.theme.roundedShape
@@ -224,7 +224,6 @@ internal fun LyricsV2(
     // ── Selection mode state ──
     var isSelectionModeActive by rememberSaveable { mutableStateOf(false) }
     val selectedIndices = remember { mutableStateListOf<Int>() }
-    var showMaxSelectionToast by remember { mutableStateOf(false) }
 
     // ── Parse lyrics into entries ──
     val isSynced = remember(lyrics) { lyrics != null && (isLineSyncedLrc(lyrics) || isTtml(lyrics)) }
@@ -376,17 +375,7 @@ internal fun LyricsV2(
         selectedIndices.clear()
     }
 
-    LaunchedEffect(showMaxSelectionToast) {
-        if (showMaxSelectionToast) {
-            Toast
-                .makeText(
-                    context,
-                    context.getString(R.string.player_max_selection_limit, MAX_SELECTION_LIMIT),
-                    Toast.LENGTH_SHORT,
-                ).show()
-            showMaxSelectionToast = false
-        }
-    }
+    fun toastMaxSelection() = context.toast(context.getString(R.string.player_max_selection_limit, MAX_SELECTION_LIMIT))
 
     // ── Keep screen alive ──
     val activity = context as? Activity
@@ -741,7 +730,7 @@ internal fun LyricsV2(
                                                 if (selectedIndices.size < MAX_SELECTION_LIMIT) {
                                                     selectedIndices.add(index)
                                                 } else {
-                                                    showMaxSelectionToast = true
+                                                    toastMaxSelection()
                                                 }
                                             }
                                         } else if (lyricsClick && isSynced && item.time > 0) {
@@ -755,7 +744,7 @@ internal fun LyricsV2(
                                         } else if (!isSelected && selectedIndices.size < MAX_SELECTION_LIMIT) {
                                             selectedIndices.add(index)
                                         } else if (!isSelected) {
-                                            showMaxSelectionToast = true
+                                            toastMaxSelection()
                                         }
                                     },
                                 ),

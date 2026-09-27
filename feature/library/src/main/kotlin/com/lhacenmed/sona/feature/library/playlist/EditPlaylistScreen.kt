@@ -52,6 +52,7 @@ import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
 import com.lhacenmed.sona.core.designsystem.component.screen.screenList
 import com.lhacenmed.sona.core.designsystem.component.section.SectionHeader
+import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.model.PlaylistCover
 import com.lhacenmed.sona.core.model.Track
@@ -62,7 +63,6 @@ import com.lhacenmed.sona.feature.library.PLAYLIST_NAME_TAKEN_MESSAGE
 import com.lhacenmed.sona.feature.library.filterItems
 import com.lhacenmed.sona.feature.library.isPlaylistNameTaken
 import com.lhacenmed.sona.feature.library.matchesSearch
-import com.lhacenmed.sona.feature.library.options.toast
 import com.lhacenmed.sona.feature.library.searchEmptyMessage
 
 /**

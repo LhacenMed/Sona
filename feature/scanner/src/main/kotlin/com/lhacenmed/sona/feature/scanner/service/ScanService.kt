@@ -6,7 +6,6 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.IBinder
-import android.widget.Toast
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.lhacenmed.sona.core.common.coroutines.launchOperation
@@ -14,6 +13,7 @@ import com.lhacenmed.sona.core.common.notification.SonaNotificationChannel
 import com.lhacenmed.sona.core.common.notification.SonaNotificationId
 import com.lhacenmed.sona.core.common.notification.SonaNotifications
 import com.lhacenmed.sona.core.common.notification.startForegroundCompat
+import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.feature.scanner.MediaScanner
 import com.lhacenmed.sona.feature.scanner.R
 import com.lhacenmed.sona.feature.scanner.ScanProgress
@@ -85,8 +85,7 @@ class ScanService : Service() {
 
     /** Tells how the rescan ended - wherever the user is by now - and lets the service go. */
     private fun finish(succeeded: Boolean) {
-        val message = if (succeeded) R.string.scan_done else R.string.scan_failed
-        Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
+        toast(if (succeeded) R.string.scan_done else R.string.scan_failed)
         stopNow()
     }
 
