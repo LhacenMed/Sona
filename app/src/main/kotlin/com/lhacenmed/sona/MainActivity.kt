@@ -8,34 +8,27 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import com.lhacenmed.sona.core.common.network.NetworkMonitor
 import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.data.LibraryRepository
-import com.lhacenmed.sona.core.datastore.UpdateSettings
 import com.lhacenmed.sona.core.designsystem.SonaActivity
 import com.lhacenmed.sona.core.designsystem.component.NetworkStatusHost
 import com.lhacenmed.sona.core.designsystem.theme.AppCoverStyle
 import com.lhacenmed.sona.core.designsystem.theme.AppFastScrollTouchArea
 import com.lhacenmed.sona.core.designsystem.theme.AppTheme
 import com.lhacenmed.sona.core.designsystem.theme.SonaTheme
+import com.lhacenmed.sona.core.navigation.AppPrompts
 import com.lhacenmed.sona.core.navigation.IntentNavigator
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.PlayerOverlay
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.scanner.MediaScanner
 import com.lhacenmed.sona.feature.settings.updates.UpdatesScreen
-import com.lhacenmed.sona.feature.update.UpdateChecker
-import com.lhacenmed.sona.feature.update.UpdateRegistry
-import com.lhacenmed.sona.feature.update.UpdateState
 import com.lhacenmed.sona.feature.update.notification.UpdateNotifier
-import com.lhacenmed.sona.feature.update.ui.UpdateGate
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -72,7 +65,7 @@ class MainActivity : SonaActivity() {
     lateinit var playerOverlay: PlayerOverlay
 
     @Inject
-    lateinit var updateSettings: UpdateSettings
+    lateinit var appPrompts: AppPrompts
 
     @Inject
     lateinit var networkMonitor: NetworkMonitor
@@ -126,8 +119,6 @@ class MainActivity : SonaActivity() {
             if (missingPermissions.isNotEmpty()) launchPermissionsLauncher.launch(missingPermissions.toTypedArray())
         }
 
-        checkForUpdate()
-
         // Only as the activity is first created: one recreated after a rotation or a process death
         // still carries the intent it was opened with, and must not shuffle a second time.
         if (savedInstanceState == null && intent.action == ShuffleAllShortcut.ACTION) {
@@ -140,8 +131,6 @@ class MainActivity : SonaActivity() {
             val coverStyle by appCoverStyle.style.collectAsStateWithLifecycle()
             val fastScrollTouchArea by appFastScrollTouchArea.touchArea.collectAsStateWithLifecycle()
             val networkBanner by networkMonitor.banner.collectAsStateWithLifecycle()
-            val isUpdateAutoPromptEnabled by remember { updateSettings.autoPrompt.flow }
-                .collectAsStateWithLifecycle(updateSettings.autoPrompt.value)
 
             SonaTheme(
                 config = themeConfig,
@@ -153,7 +142,7 @@ class MainActivity : SonaActivity() {
                 CompositionLocalProvider(LocalNavigator provides navigator) {
                     NetworkStatusHost(networkBanner) {
                         AppShell(playerOverlay = playerOverlay)
-                        UpdateGate(isAutoPromptEnabled = isUpdateAutoPromptEnabled)
+                        appPrompts.Content()
                     }
                 }
             }
@@ -170,27 +159,6 @@ class MainActivity : SonaActivity() {
     private fun openUpdatesIfAsked(intent: Intent) {
         if (intent.getBooleanExtra(UpdateNotifier.EXTRA_OPEN_UPDATES, false)) {
             IntentNavigator(this, currentScreen = null).go(UpdatesScreen)
-        }
-    }
-
-    /**
-     * Connectivity-driven update check on the chosen channel; populates [UpdateRegistry] so [UpdateGate]
-     * can prompt. Runs whenever the device is online - at launch if already connected, and again the moment
-     * connectivity returns for a user who opened the app offline - and whenever the channel changes. The
-     * releases it reads are kept, and asked for again at most every few minutes - see `CachedGitHubResource`.
-     * Skipped while a download is in flight or a finished APK awaits install. Whether what it finds is an
-     * update to this build at all - never to a debug one - is [UpdateChecker]'s to say.
-     */
-    private fun checkForUpdate() {
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                combine(networkMonitor.isOnline, updateSettings.channel.flow, ::Pair)
-                    .collect { (online, channel) ->
-                        if (!online || UpdateRegistry.isActive) return@collect
-                        if (UpdateRegistry.stateOf() is UpdateState.Downloaded) return@collect
-                        UpdateChecker.check(applicationContext, channel)
-                    }
-            }
         }
     }
 }

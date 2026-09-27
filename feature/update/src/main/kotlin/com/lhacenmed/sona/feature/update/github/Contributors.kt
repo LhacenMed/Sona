@@ -26,7 +26,7 @@ object Contributors {
 
     /** The contributors - asking GitHub now when [forceRefresh]. */
     suspend fun all(context: Context, forceRefresh: Boolean = false): Result<List<Contributor>> =
-        runCatchingCancellable { resource.fetch(context, forceRefresh) }
+        runCatchingCancellable { resource.fetch(context, forceRefresh).value }
 
     private fun parse(json: String): List<Contributor> {
         val array = JSONArray(json)
