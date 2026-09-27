@@ -385,18 +385,18 @@
     <string name="updates_auto_prompt_summary">Open the details of a new version as soon as the app starts</string>
     <string name="updates_channel_title">Update channel</string>
     <string name="updates_channel_stable">Stable</string>
-    <string name="updates_channel_beta">Artifact</string>
+    <string name="updates_channel_artifact">Artifact</string>
     <string name="updates_recent_commits">Recent commits</string>
     <string name="updates_channel_warning_intro">Sona provides two channels for builds:</string>
     <string name="updates_channel_warning_stable_title">Stable builds</string>
     <string name="updates_channel_warning_stable_source">Distributed as GitHub releases.</string>
     <string name="updates_channel_warning_stable_description">These versions are tested and recommended for most users.</string>
-    <string name="updates_channel_warning_beta_title">Artifact builds</string>
-    <string name="updates_channel_warning_beta_source">Distributed as GitHub pre-releases: alpha, beta and release candidate builds.</string>
-    <string name="updates_channel_warning_beta_risk">Artifact builds may include experimental features, unfinished changes, or temporary regressions.</string>
-    <string name="updates_channel_warning_beta_unstable">Artifact builds are provided for testing and early access only.\nStability, compatibility, and functionality are not guaranteed.</string>
+    <string name="updates_channel_warning_artifact_title">Artifact builds</string>
+    <string name="updates_channel_warning_artifact_source">Distributed as GitHub pre-releases: alpha, beta and release candidate builds.</string>
+    <string name="updates_channel_warning_artifact_risk">Artifact builds may include experimental features, unfinished changes, or temporary regressions.</string>
+    <string name="updates_channel_warning_artifact_unstable">Artifact builds are provided for testing and early access only.\nStability, compatibility, and functionality are not guaranteed.</string>
     <string name="updates_channel_warning_acknowledgement">Note: updates are downloaded directly from GitHub.\nBy continuing, you acknowledge that Artifact builds may be unstable and use them at your own risk.</string>
-    <string name="updates_beta_confirmation">Switch to the Artifact channel to receive pre-releases as well as releases.\n\nArtifact builds come before each release and may be unstable.\nNote: updates are downloaded directly from GitHub.</string>
+    <string name="updates_artifact_confirmation">Switch to the Artifact channel to receive pre-releases as well as releases.\n\nArtifact builds come before each release and may be unstable.\nNote: updates are downloaded directly from GitHub.</string>
 
     <!-- Changelog -->
     <string name="changelog_title">Changelog</string>

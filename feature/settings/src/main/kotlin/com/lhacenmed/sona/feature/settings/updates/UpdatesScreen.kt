@@ -220,14 +220,14 @@ data object UpdatesScreen : Screen {
 
         if (showBetaConfirmation) {
             ConfirmationDialog(
-                title = stringResource(R.string.updates_channel_beta),
+                title = stringResource(R.string.updates_channel_artifact),
                 onConfirm = {
                     showBetaConfirmation = false
                     viewModel.setChannel(UpdateChannel.ARTIFACT)
                 },
                 onDismiss = { showBetaConfirmation = false },
             ) {
-                Text(stringResource(R.string.updates_beta_confirmation))
+                Text(stringResource(R.string.updates_artifact_confirmation))
             }
         }
     }
@@ -282,13 +282,13 @@ private fun ChannelsExplanation() {
             ),
         )
         ChannelExplanation(
-            title = stringResource(R.string.updates_channel_warning_beta_title),
+            title = stringResource(R.string.updates_channel_warning_artifact_title),
             lines = listOf(
-                stringResource(R.string.updates_channel_warning_beta_source),
-                stringResource(R.string.updates_channel_warning_beta_risk),
+                stringResource(R.string.updates_channel_warning_artifact_source),
+                stringResource(R.string.updates_channel_warning_artifact_risk),
             ),
         )
-        Text(stringResource(R.string.updates_channel_warning_beta_unstable), style = MaterialTheme.typography.bodySmall)
+        Text(stringResource(R.string.updates_channel_warning_artifact_unstable), style = MaterialTheme.typography.bodySmall)
         Text(stringResource(R.string.updates_channel_warning_acknowledgement), style = MaterialTheme.typography.bodySmall)
     }
 }
@@ -304,5 +304,5 @@ private fun ChannelExplanation(title: String, lines: List<String>) {
 private fun channelLabelRes(channel: UpdateChannel): Int =
     when (channel) {
         UpdateChannel.STABLE -> R.string.updates_channel_stable
-        UpdateChannel.ARTIFACT -> R.string.updates_channel_beta
+        UpdateChannel.ARTIFACT -> R.string.updates_channel_artifact
     }
