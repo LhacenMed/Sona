@@ -6,6 +6,32 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-09-27
+
+### Added
+
+- Swipe a playlist, or Most played, to the right to play it and to the left to shuffle it.
+- A banner says when the connection is lost, and again when it is back.
+- Pick which build of an update to download - the one made for your phone's processor, or the universal one.
+- The download dialog shows how much has arrived, of how much, and how fast.
+- Show updates on launch, in Settings › Updates, to stop the update sheet opening with the app.
+- Long sections - an album's or a genre's, a release in the changelog, About's contributors - can be collapsed, and their headings stay in view while you scroll them.
+- About shows which build of Sona is installed.
+
+### Changed
+
+- The Beta update channel is now Artifact: the alpha, beta and release candidate builds of the next version.
+- About and Updates look like the rest of Settings, and licenses, the changelog and recent commits have screens of their own.
+- Contributors, releases and recent commits open on what was loaded last, offline too, and refresh whenever you are back online.
+- The top bar tints as a list scrolls under it.
+- Downloaded updates are checked before they are installed, so a damaged download is caught.
+
+### Fixed
+
+- The fast scroll thumb no longer jumps on screens with several sections, such as a genre's artists and tracks.
+- Contributors' pictures load.
+- Debug builds are no longer offered updates.
+
 ## [1.5.0] - 2026-09-26
 
 ### Added
