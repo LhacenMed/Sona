@@ -29,6 +29,7 @@ import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
 import com.lhacenmed.sona.core.designsystem.component.dragSelection
+import com.lhacenmed.sona.core.designsystem.component.swipe.LocalSwipeActions
 import com.lhacenmed.sona.core.designsystem.component.rememberDragSelection
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
@@ -37,8 +38,12 @@ import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.library.operation.DeletePlaylistsDialog
+import com.lhacenmed.sona.feature.library.options.OptionsFollowUps
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
+import com.lhacenmed.sona.feature.library.options.OptionsSwipe
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
+import com.lhacenmed.sona.feature.library.options.rememberOptionsActions
+import com.lhacenmed.sona.feature.library.options.rememberOptionsSwipeActions
 import com.lhacenmed.sona.feature.library.playlist.NewPlaylistFlow
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.selection.SelectionOptionsHost
@@ -83,6 +88,8 @@ data object PlaylistsScreen : Screen {
         val playback by viewModel.playback.collectAsStateWithLifecycle()
         val selection = rememberSelectionState()
         val listState = rememberLazyListState()
+        // What a row's swipe carries out - the options sheet's own actions.
+        val rowActions = rememberOptionsActions()
 
         var searchQuery by remember { mutableStateOf<String?>(null) }
         var isCreatingPlaylist by remember { mutableStateOf(false) }
@@ -192,24 +199,37 @@ data object PlaylistsScreen : Screen {
                                         }
                                     },
                                 ) { row ->
-                                    when (row) {
-                                        PlaylistsRow.MostPlayed -> TrackCollectionRow(
-                                            title = MOST_PLAYED_TITLE,
-                                            trackCount = mostPlayedCount,
-                                            coverArtUris = mostPlayedCoverArtUris,
-                                            isCurrent = { playback.marks(PlaybackParent.MostPlayed) },
-                                            isPlaying = { playback.isPlaying },
-                                            onClick = { navigator.go(MostPlayedScreen) },
-                                        )
+                                    // Every row swipes to play or shuffle it whole - see [OptionsSwipe.PLAYBACK] -
+                                    // and holds still while a selection runs: Most played too, though it is
+                                    // never selected itself.
+                                    val swipeActions = when (row) {
+                                        PlaylistsRow.MostPlayed ->
+                                            rememberOptionsSwipeActions(OptionsSwipe.PLAYBACK, rowActions, PlaybackParent.MostPlayed)
+                                        is PlaylistsRow.OfPlaylist ->
+                                            rememberOptionsSwipeActions(OptionsSwipe.PLAYBACK, rowActions, OptionsTarget.ForPlaylist(row.playlist))
+                                    }
+                                    CompositionLocalProvider(
+                                        LocalSwipeActions provides swipeActions.takeUnless { selection.isActive },
+                                    ) {
+                                        when (row) {
+                                            PlaylistsRow.MostPlayed -> TrackCollectionRow(
+                                                title = MOST_PLAYED_TITLE,
+                                                trackCount = mostPlayedCount,
+                                                coverArtUris = mostPlayedCoverArtUris,
+                                                isCurrent = { playback.marks(PlaybackParent.MostPlayed) },
+                                                isPlaying = { playback.isPlaying },
+                                                onClick = { navigator.go(MostPlayedScreen) },
+                                            )
 
-                                        is PlaylistsRow.OfPlaylist -> PlaylistRow(
-                                            playlist = row.playlist,
-                                            selection = selection,
-                                            isCurrent = { playback.marks(row.playlist) },
-                                            isPlaying = { playback.isPlaying },
-                                            onClick = { navigator.go(PlaylistDetailScreen(row.playlist.id)) },
-                                            onOpenOptions = { optionsTarget = OptionsTarget.ForPlaylist(row.playlist) },
-                                        )
+                                            is PlaylistsRow.OfPlaylist -> PlaylistRow(
+                                                playlist = row.playlist,
+                                                selection = selection,
+                                                isCurrent = { playback.marks(row.playlist) },
+                                                isPlaying = { playback.isPlaying },
+                                                onClick = { navigator.go(PlaylistDetailScreen(row.playlist.id)) },
+                                                onOpenOptions = { optionsTarget = OptionsTarget.ForPlaylist(row.playlist) },
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -247,6 +267,8 @@ data object PlaylistsScreen : Screen {
         optionsTarget?.let { target ->
             OptionsSheet(target = target, onDismissRequest = { optionsTarget = null })
         }
+
+        OptionsFollowUps(actions = rowActions)
 
         if (confirmingDelete.isNotEmpty()) {
             DeletePlaylistsDialog(

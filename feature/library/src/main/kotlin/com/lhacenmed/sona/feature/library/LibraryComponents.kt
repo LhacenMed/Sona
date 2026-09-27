@@ -79,12 +79,13 @@ import com.lhacenmed.sona.feature.library.operation.RemoveFromPlaylistDialog
 import com.lhacenmed.sona.feature.library.options.formatDurationMs
 import com.lhacenmed.sona.feature.library.options.OptionsFollowUps
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
+import com.lhacenmed.sona.feature.library.options.OptionsSwipe
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
 import com.lhacenmed.sona.feature.library.options.TrackOptionsContext
 import com.lhacenmed.sona.feature.library.options.actions
 import com.lhacenmed.sona.feature.library.options.disabledActions
 import com.lhacenmed.sona.feature.library.options.rememberOptionsActions
-import com.lhacenmed.sona.feature.library.options.rememberQueueSwipeActions
+import com.lhacenmed.sona.feature.library.options.rememberOptionsSwipeActions
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.selection.SelectionOptionsHost
 import com.lhacenmed.sona.feature.library.selection.selectionKeyOf
@@ -564,10 +565,10 @@ internal fun TrackListDetail(
         )
     }
 
-    // Every row swipes to play next or join the queue - see [rememberQueueSwipeActions].
+    // Every row swipes to play next or join the queue - see [OptionsSwipe.QUEUE].
     val trackRow: @Composable (Track) -> Unit = { track ->
         CompositionLocalProvider(
-            LocalSwipeActions provides rememberQueueSwipeActions(collectionActions, OptionsTarget.ForTrack(track)),
+            LocalSwipeActions provides rememberOptionsSwipeActions(OptionsSwipe.QUEUE, collectionActions, OptionsTarget.ForTrack(track)),
         ) {
             TrackRow(
                 track = track,
@@ -669,7 +670,7 @@ internal fun TrackListDetail(
                     when (section) {
                         is DetailSection.Albums -> items(section.albums, key = { "album-${it.id}" }) { album ->
                             CompositionLocalProvider(
-                                LocalSwipeActions provides rememberQueueSwipeActions(collectionActions, OptionsTarget.ForAlbum(album)),
+                                LocalSwipeActions provides rememberOptionsSwipeActions(OptionsSwipe.QUEUE, collectionActions, OptionsTarget.ForAlbum(album)),
                             ) {
                                 AlbumRow(
                                     album = album,
@@ -685,7 +686,7 @@ internal fun TrackListDetail(
                         }
                         is DetailSection.Artists -> items(section.artists, key = { "artist-${it.id}" }) { artist ->
                             CompositionLocalProvider(
-                                LocalSwipeActions provides rememberQueueSwipeActions(collectionActions, OptionsTarget.ForArtist(artist)),
+                                LocalSwipeActions provides rememberOptionsSwipeActions(OptionsSwipe.QUEUE, collectionActions, OptionsTarget.ForArtist(artist)),
                             ) {
                                 ArtistRow(
                                     artist = artist,
