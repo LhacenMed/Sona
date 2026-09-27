@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.component.fab.scrollBackToTop
+import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes

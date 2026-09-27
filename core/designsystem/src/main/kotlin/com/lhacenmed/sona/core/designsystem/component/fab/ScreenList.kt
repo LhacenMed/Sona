@@ -121,7 +121,7 @@ suspend fun LazyListState.scrollBackToTop() {
  * list nears its end and offering a way back to its top - whenever the window shows more of it than of
  * any other. A list in a pager is followed while its page is the one on screen.
  *
- * Applied to the layout the list fills. [FastScroller][com.lhacenmed.sona.core.designsystem.component.FastScroller]
+ * Applied to the layout the list fills. [FastScroller][com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller]
  * applies it itself, so every lazy list with a fast scroller has it. [isFastScrolling] steps the stack
  * aside while it holds; [scrollToTop] is what the way back does.
  */

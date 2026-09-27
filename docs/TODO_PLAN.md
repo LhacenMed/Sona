@@ -176,6 +176,8 @@ Ordered from most to least critical. Every entry describes **what** is broken or
   - A row's swipes are now an `OptionsSwipe` preset - two `OptionsAction`s, one per direction - drawn with the sheet's icons and honouring its disabled actions: `QUEUE` (play next / add to queue) for detail lists, `PLAYBACK` (play / shuffle) for the Playlists screen. Most played, which has no `OptionsTarget`, plays through `OptionsActions.perform(PlaybackParent, …)`.
 - [x] **6.4 Add an Auxio-style fast-scroll list control**
   A draggable scroll indicator/thumb for sorted lists that shows the current section/order position while dragging, with adjustable sensitivity near the screen edges — matching Auxio's exact behavior.
+  - **Fixed: the thumb was unstable on lists mixing row kinds** (a genre's artists then its tracks). The list's length was reckoned from the average height of the rows on screen, which moved every time a heading, a divider or a differently sized row scrolled in or out: the thumb jumped under an even scroll, and a dragged thumb shook, as the row it scrolled to was placed back by a different average the next frame. `ListScrollMetrics` now remembers every row laid out at its own size and reckons the rest at the size most rows share, forgetting it all when the rows or their count change - so placing the thumb and dragging it are exact inverses, whichever rows are on screen.
+  - The scroller has its own package, `component/fastscroll/`: `FastScroller` (drawing and touch), `FastScrollerState` (shown/dragging) and `ListScrollMetrics` (the reckoning).
 - [ ] **6.5 Add pull-to-refresh to trigger a library rescan**
   For lists inside collection tabs, pulling down should trigger a rescan.
 - [ ] **6.6 Collapse the main activity's top section on scroll**

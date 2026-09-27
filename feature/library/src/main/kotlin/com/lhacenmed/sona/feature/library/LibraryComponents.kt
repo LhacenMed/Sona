@@ -48,7 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.CookieShape
-import com.lhacenmed.sona.core.designsystem.component.FastScroller
+import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.LocalDragHandle
 import com.lhacenmed.sona.core.designsystem.component.LocalDragSelection

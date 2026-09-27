@@ -22,7 +22,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.itemsOrEmpty
-import com.lhacenmed.sona.core.designsystem.component.FastScroller
+import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.LocalDragSelection
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
