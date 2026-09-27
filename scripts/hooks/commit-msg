@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Checks the message being committed as CI checks a pull request's - see
+# scripts/check-commits.sh. Installed once per clone:
+#
+#   git config core.hooksPath scripts/hooks
+exec "$(git rev-parse --show-toplevel)/scripts/check-commits.sh" --message-file "$1"

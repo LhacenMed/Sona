@@ -49,10 +49,13 @@ Short version:
 git clone https://github.com/LhacenMed/Sona.git
 cd Sona
 git checkout dev
+git config core.hooksPath scripts/hooks
 ./gradlew :app:assembleDebug
 ```
 
 You do not need a signing key. Debug builds use the default debug key when `keystore.properties` is absent.
+
+`git config core.hooksPath scripts/hooks` turns on the repository's commit hook: each commit message is checked as you commit it, the same way CI checks a pull request's - see [Commit messages](#commit-messages).
 
 ## Branches
 
@@ -60,6 +63,7 @@ You do not need a signing key. Debug builds use the default debug key when `keys
 | --- | --- |
 | `dev` | Where work happens. **All pull requests target `dev`.** |
 | `main` | What was last released. Only the release pipeline writes to it. |
+| `hotfix/*` | The maintainer's: a fix released on its own, made from `main` - see [docs/RELEASING.md](docs/RELEASING.md#hotfixes). |
 
 Create your branch from an up-to-date `dev`:
 
@@ -144,16 +148,18 @@ fix(player): keep the queue in place when a track is removed
 
 Removing a track re-sorted the queue from the top.
 
-Fixed: The queue no longer jumps to the top when a track is removed.
 Fixes #123
+
+Fixed: The queue no longer jumps to the top when a track is removed.
 ```
 
 - **Keys**: `Added`, `Changed`, `Fixed`, `Removed`. Write the value for users, not for developers: what they will see, in a sentence.
 - **Several changes**: one trailer each. A long one continues on the next line, indented.
 - **Nothing a user would notice** - a refactor, a build change: no trailers. The commit is left out of the notes.
-- **Issues**: `Fixes #123` (or `Closes`, `Resolves`) anywhere in the message. When a release ships the commit, the issue is told.
+- **Last paragraph, trailers only**: git reads the trailers only if nothing else shares their paragraph. A line like `Fixes #123` among them hides them all, so the change is missing from the notes.
+- **Issues**: `Fixes #123` (or `Closes`, `Resolves`) in the body, above the trailers. When a release ships the commit, the issue is told.
 
-Every release's notes gather these trailers from all the commits since the release before, so check yours read well on their own. Pull requests are checked by CI: their subjects must follow the format above, and a trailer the changelog does not read is pointed out.
+Every release's notes gather these trailers from all the commits since the release before, so check yours read well on their own. The commit hook checks each message as you commit, and CI checks every pull request's: the subject's format, changelog lines git would not read, and a trailer the changelog does not read at all.
 
 ## Pull requests
 

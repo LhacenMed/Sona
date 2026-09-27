@@ -10,7 +10,8 @@
 # Artifact releases are not made here: a commit marked `Release: <stage>`,
 # pushed to dev, makes one - see .github/workflows/artifact.yml.
 #
-# Run from ANY branch, on ANY device.
+# Run from dev to release what dev holds, or from a hotfix/* branch made from
+# main to release that fix alone - see docs/RELEASING.md. On ANY device.
 #   1. Work out the current versions from origin's release tags
 #   2. Prompt for the bump and the notes - drafted from the commits' changelog
 #   3. Preview + confirm, then dispatch the cloud pipeline
@@ -52,7 +53,8 @@ usage() {
 Usage: ./scripts/release.sh [options]
 
   --bump <release|patch|minor|major>  Version bump - release makes the latest
-                                      artifacts' version stable
+                                      artifacts' version stable. A hotfix/*
+                                      branch is always released as a hotfix
   --notes <text>                      Release notes
   --notes-file <path|->               Notes from a file, or - for stdin
   -y, --yes                           Skip the confirmation prompt
@@ -126,6 +128,14 @@ gh auth status >/dev/null 2>&1 || { echo "✗ gh not authenticated — run: gh a
 
 REPO="$(git::repo_slug)"
 SOURCE_BRANCH="$(git::current_branch)"
+case "$SOURCE_BRANCH" in
+    dev) ;;
+    hotfix/*)
+        [[ -z "$FLAG_BUMP" || "${FLAG_BUMP,,}" == "hotfix" ]] \
+            || { echo "✗ ${SOURCE_BRANCH} is a hotfix - it takes no --bump."; exit 1; }
+        FLAG_BUMP="hotfix" ;;
+    *) echo "✗ Release from dev, or from a hotfix/* branch made from main - not ${SOURCE_BRANCH}."; exit 1 ;;
+esac
 
 # The pipeline builds from origin, so local-only work would silently be left out.
 git::ensure_clean
@@ -161,7 +171,7 @@ echo ""
 if [[ -n "$FLAG_BUMP" ]]; then
     BUMP_KIND="${FLAG_BUMP,,}"
     case "$BUMP_KIND" in
-        release|patch|minor|major) ;;
+        release|patch|minor|major|hotfix) ;;
         *) echo "✗ --bump must be one of: release, patch, minor, major"; exit 1 ;;
     esac
 else
@@ -258,7 +268,7 @@ fi
 echo ""
 echo "  ┌── Release Preview ────────────────────────────┐"
 echo "  │  ${LAST_STABLE:-none}  →  ${NEW_NAME}"
-echo "  │  Tag    : ${TAG}"
+echo "  │  Tag    : ${TAG}$( [[ "$BUMP_KIND" == hotfix ]] && echo "  (hotfix from ${SOURCE_BRANCH})")"
 echo "  │  Repo   : ${REPO}"
 echo "  ├── Notes ─────────────────────────────────────┤"
 sed 's/^/  │  /' <<< "${NOTES:-${CHANGES:-(Bug fixes and improvements.)}}"

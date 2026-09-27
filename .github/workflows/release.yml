@@ -12,6 +12,11 @@ run-name: Stable release (${{ inputs.bump }})
 # are the ones given, or else gathered from the commits since the last stable
 # release (scripts/lib/changelog.sh), which also become its CHANGELOG.md entry.
 #
+# Released from dev, or - with the "hotfix" bump - from a hotfix/* branch made
+# from main: a fix released on its own, beside whatever dev is working towards.
+# Either way dev ends up with the release commit: fast-forwarded to it, or with
+# the hotfix merged in.
+#
 # Ordering is deliberate: nothing becomes publicly visible until every APK is
 # durably stored on GitHub. The release is created as a DRAFT, assets are
 # uploaded (with retry), main is pushed, and only then is the draft published —
@@ -20,16 +25,16 @@ on:
   workflow_dispatch:
     inputs:
       bump:
-        description: Version bump (release = make the latest artifacts' version stable)
+        description: Version bump (release = make the latest artifacts' version stable; hotfix = from a hotfix/* branch)
         type: choice
-        options: [release, patch, minor, major]
+        options: [release, patch, minor, major, hotfix]
         default: release
       notes:
         description: Release notes (markdown) - empty to gather them from the commits
         type: string
         default: ''
       source_branch:
-        description: Branch to merge into main
+        description: Branch to merge into main - dev, or hotfix/* for a hotfix
         type: string
         default: dev
 
@@ -65,17 +70,40 @@ jobs:
 
       # Inputs reach the shell through env, never through ${{ }} interpolation
       # into script text — release notes are free-form user input.
+      # A hotfix branch must hold the fix alone: made from main as released, and
+      # with none of dev's unreleased work, which is what a hotfix goes around.
+      - name: Check the branch and bump
+        env:
+          SOURCE_BRANCH: ${{ inputs.source_branch }}
+          BUMP: ${{ inputs.bump }}
+        run: |
+          set -euo pipefail
+          case "$SOURCE_BRANCH" in
+            dev)
+              [ "$BUMP" != "hotfix" ] || { echo "::error::A hotfix is released from a hotfix/* branch, not dev."; exit 1; } ;;
+            hotfix/*)
+              [ "$BUMP" = "hotfix" ] || { echo "::error::A hotfix/* branch is released with the hotfix bump."; exit 1; }
+              git fetch origin dev "$SOURCE_BRANCH"
+              git merge-base --is-ancestor "origin/${MAIN_BRANCH}" "origin/${SOURCE_BRANCH}" \
+                || { echo "::error::${SOURCE_BRANCH} is not made from the latest ${MAIN_BRANCH} - rebase it onto ${MAIN_BRANCH}."; exit 1; }
+              UNRELEASED="$(comm -12 \
+                <(git rev-list "origin/${MAIN_BRANCH}..origin/${SOURCE_BRANCH}" | sort) \
+                <(git rev-list "origin/${MAIN_BRANCH}..origin/dev" | sort) | wc -l)"
+              [ "$UNRELEASED" -eq 0 ] \
+                || { echo "::error::${SOURCE_BRANCH} holds ${UNRELEASED} of dev's unreleased commit(s) - cherry-pick the fix onto ${MAIN_BRANCH} instead."; exit 1; } ;;
+            *)
+              echo "::error::Stable releases come from dev, and hotfixes from hotfix/* branches - not ${SOURCE_BRANCH}."; exit 1 ;;
+          esac
+
       - name: Merge source branch into main
         env:
           SOURCE_BRANCH: ${{ inputs.source_branch }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if [ "$SOURCE_BRANCH" != "$MAIN_BRANCH" ]; then
-            git fetch origin "$SOURCE_BRANCH"
-            git merge --no-edit "origin/${SOURCE_BRANCH}" \
-              || { echo "::error::Merge conflict ${SOURCE_BRANCH} → ${MAIN_BRANCH}. Resolve locally and re-run."; exit 1; }
-          fi
+          git fetch origin "$SOURCE_BRANCH"
+          git merge --no-edit "origin/${SOURCE_BRANCH}" \
+            || { echo "::error::Merge conflict ${SOURCE_BRANCH} → ${MAIN_BRANCH}. Resolve locally and re-run."; exit 1; }
 
       - name: Work out the version and notes
         id: version
@@ -175,15 +203,39 @@ jobs:
               || echo "::warning::Could not comment on #${number}."
           done
 
-      # dev was merged into main, so main is a descendant of dev and this is a
-      # plain fast-forward — no history rewrite, no force push.
-      - name: Fast-forward source branch
+      # Released from dev, main is a descendant of dev and dev is fast-forwarded
+      # to it - no history rewrite, no force push. Released from a hotfix, dev
+      # has moved on apart, so the release is merged into it; where the two
+      # changed the same lines, a pull request is opened for the merge instead.
+      # The release is out either way, so neither can fail it.
+      - name: Bring dev up to date
+        continue-on-error: true
         env:
+          GH_TOKEN: ${{ github.token }}
           SOURCE_BRANCH: ${{ inputs.source_branch }}
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
-          if [ "$SOURCE_BRANCH" != "$MAIN_BRANCH" ]; then
-            git push origin "${MAIN_BRANCH}:refs/heads/${SOURCE_BRANCH}"
+          set -euo pipefail
+          git fetch origin dev
+          if git merge-base --is-ancestor origin/dev HEAD; then
+            git push origin "HEAD:refs/heads/dev"
+            echo "✓ dev fast-forwarded to ${TAG}"
+          else
+            git switch --detach origin/dev
+            if git merge --no-ff --no-edit -m "Merge ${TAG} into dev" "$MAIN_BRANCH"; then
+              git push origin "HEAD:refs/heads/dev"
+              echo "✓ ${TAG} merged into dev"
+            else
+              git merge --abort
+              gh pr create --base dev --head "$MAIN_BRANCH" \
+                --title "Merge ${TAG} into dev" \
+                --body "The hotfix ${TAG} changed lines dev has changed too. Resolve the conflicts here to bring it into dev."
+              echo "::warning::${TAG} could not be merged into dev by itself - a pull request is open for it."
+            fi
           fi
+          case "$SOURCE_BRANCH" in
+            hotfix/*) git push origin --delete "$SOURCE_BRANCH" ;;
+          esac
 
       - name: Summary
         env:
