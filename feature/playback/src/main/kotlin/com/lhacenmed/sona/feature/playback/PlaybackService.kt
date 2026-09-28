@@ -265,6 +265,10 @@ class PlaybackService : MediaSessionService() {
             .setWakeMode(C.WAKE_MODE_LOCAL)
             .build()
             .apply {
+                // A video is played for its sound alone: its picture is never selected, so never decoded.
+                trackSelectionParameters = trackSelectionParameters.buildUpon()
+                    .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, true)
+                    .build()
                 shuffleModeEnabled = shuffleSettings.enabled.value
                 setShuffleOrder(QueueShuffleOrder())
                 addListener(playerListener)

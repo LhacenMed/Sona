@@ -76,7 +76,7 @@ private class VisibleCollections(
         CollectionTab.ARTISTS -> artists.itemsOrEmpty.filter { it.trackCount > 0 }.map { SelectionKey.Artist(it.id) }
         CollectionTab.ALBUMS -> albums.itemsOrEmpty.map { SelectionKey.Album(it.id) }
         CollectionTab.GENRES -> genres.itemsOrEmpty.map { SelectionKey.Genre(it.id) }
-        CollectionTab.FOLDERS -> folders.itemsOrEmpty.map { SelectionKey.Folder(it.path) }
+        CollectionTab.FOLDERS -> folders.itemsOrEmpty.map { SelectionKey.Folder(it.path, it.isVideo) }
         CollectionTab.PLAYLISTS -> playlists.itemsOrEmpty.filter { it.trackCount > 0 }.map { SelectionKey.Playlist(it.id) }
     }
 }
@@ -211,7 +211,7 @@ private fun CollectionPage(
                 selection = selection,
                 isCurrent = { playback().marks(folder) },
                 isPlaying = { playback().isPlaying },
-                onClick = { navigator.go(FolderDetailScreen(folder.path)) },
+                onClick = { navigator.go(FolderDetailScreen(folder.path, folder.isVideo)) },
                 onOpenOptions = { onOpenOptions(OptionsTarget.ForFolder(folder)) },
             )
         }

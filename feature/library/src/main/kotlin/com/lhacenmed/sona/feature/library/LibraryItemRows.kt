@@ -242,7 +242,7 @@ internal fun FolderRow(
     val current = isCurrent()
     SonaListRow(
         title = folder.name,
-        subtitle = trackCountLabel(folder.trackCount),
+        subtitle = folder.itemCountLabel(),
         selection = selection,
         selectionKey = selectionKeyOf(folder),
         onClick = onClick,
@@ -317,3 +317,6 @@ internal fun pluralCount(count: Int, noun: String): String = if (count == 1) "$c
 
 /** A count of tracks, or Auxio's `def_song_count` for a list that holds none yet. */
 internal fun trackCountLabel(count: Int): String = if (count == 0) "No tracks" else pluralCount(count, "track")
+
+/** A folder's count: of its tracks, or - for one of the Videos tab - of its videos. */
+internal fun Folder.itemCountLabel(): String = if (isVideo) pluralCount(trackCount, "video") else trackCountLabel(trackCount)

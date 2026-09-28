@@ -7,4 +7,5 @@ enum class LibraryTab {
     ALBUMS,
     GENRES,
     FOLDERS,
+    VIDEOS,
 }

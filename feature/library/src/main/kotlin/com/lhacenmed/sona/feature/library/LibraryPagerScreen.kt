@@ -277,6 +277,7 @@ fun LibraryPagerScreen(
                             LibraryTab.ALBUMS -> AlbumsScreen(viewModel, selection, listState)
                             LibraryTab.GENRES -> GenresScreen(viewModel, selection, listState)
                             LibraryTab.FOLDERS -> FoldersScreen(viewModel, selection, listState)
+                            LibraryTab.VIDEOS -> VideosScreen(viewModel, selection, listState)
                         }
                     }
                 }
@@ -352,4 +353,5 @@ private fun LibraryTab.label(): String = when (this) {
     LibraryTab.ALBUMS -> "Albums"
     LibraryTab.GENRES -> "Genres"
     LibraryTab.FOLDERS -> "Folders"
+    LibraryTab.VIDEOS -> "Videos"
 }

@@ -10,16 +10,17 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TrackDao {
-    @Query("SELECT * FROM tracks")
-    fun observeAll(): Flow<List<TrackEntity>>
+    /** The music - or, where [isVideo], the videos - every one of them. */
+    @Query("SELECT * FROM tracks WHERE isVideo = :isVideo")
+    fun observeAll(isVideo: Boolean): Flow<List<TrackEntity>>
 
     /**
      * The folders tab, computed by SQLite instead of by grouping the whole track list in memory on
      * every emission. It also means the folders tab no longer re-runs when a track's *contents*
      * change - only when the set of folders or their counts actually does.
      */
-    @Query("SELECT folderPath AS path, COUNT(*) AS trackCount FROM tracks GROUP BY folderPath")
-    fun observeFolders(): Flow<List<FolderRow>>
+    @Query("SELECT folderPath AS path, COUNT(*) AS trackCount FROM tracks WHERE isVideo = :isVideo GROUP BY folderPath")
+    fun observeFolders(isVideo: Boolean): Flow<List<FolderRow>>
 
     /**
      * How many tracks in each folder share each cover, which is what the folders tab composes its
@@ -29,11 +30,11 @@ interface TrackDao {
     @Query(
         """
         SELECT folderPath AS path, coverArtUri AS coverArtUri, COUNT(*) AS trackCount FROM tracks
-        WHERE coverArtUri IS NOT NULL AND coverArtUri != ''
+        WHERE isVideo = :isVideo AND coverArtUri IS NOT NULL AND coverArtUri != ''
         GROUP BY folderPath, coverArtUri
         """,
     )
-    fun observeFolderCoverArt(): Flow<List<FolderCoverRow>>
+    fun observeFolderCoverArt(isVideo: Boolean): Flow<List<FolderCoverRow>>
 
     @Query("SELECT * FROM tracks WHERE id = :trackId")
     fun observeById(trackId: Long): Flow<TrackEntity?>
@@ -47,8 +48,8 @@ interface TrackDao {
     @Query("SELECT * FROM tracks WHERE genreId = :genreId")
     fun observeByGenre(genreId: Long): Flow<List<TrackEntity>>
 
-    @Query("SELECT * FROM tracks WHERE folderPath = :folderPath")
-    fun observeByFolder(folderPath: String): Flow<List<TrackEntity>>
+    @Query("SELECT * FROM tracks WHERE folderPath = :folderPath AND isVideo = :isVideo")
+    fun observeByFolder(folderPath: String, isVideo: Boolean): Flow<List<TrackEntity>>
 
     /**
      * Whether the library has ever been populated. Used to decide if a scan may be skipped, and

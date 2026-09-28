@@ -19,4 +19,6 @@ data class Track(
     val dateAddedSeconds: Long,
     val coverArtUri: String?,
     val isManuallyScanned: Boolean,
+    /** A video file, of which only the sound is played - listed in the Videos tab, never among the music. */
+    val isVideo: Boolean,
 )

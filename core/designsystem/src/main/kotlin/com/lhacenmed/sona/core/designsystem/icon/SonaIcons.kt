@@ -64,6 +64,14 @@ object SonaIcons {
         )
     }
 
+    /** A screen with a play mark - the Videos tab's, drawn to match [Folder]'s outline. */
+    val Video: ImageVector by lazy {
+        materialSymbol(
+            name = "Video",
+            pathData = "M140,800Q116,800 98,781.5Q80,763 80,740L80,220Q80,197 98,178.5Q116,160 140,160L820,160Q843,160 861.5,178.5Q880,197 880,220L880,740Q880,763 861.5,781.5Q843,800 820,800L140,800ZM140,740L820,740L820,220L140,220L140,740ZM390,320L630,480L390,640Z",
+        )
+    }
+
     // The glyphs an options sheet's actions are drawn with - Auxio's own 24dp action icons, distinct
     // from the 48dp section glyphs above even where they share a subject, like Artist and GoToArtist.
 

@@ -22,6 +22,9 @@ enum class AppPermission {
     /** Reading the device's music - without it there is no library. */
     AUDIO_LIBRARY,
 
+    /** Reading the device's videos, whose sound the Videos tab plays - asked for from that tab. */
+    VIDEO_LIBRARY,
+
     /** Showing an update's download progress. The player's own controls need no permission. */
     NOTIFICATIONS,
 
@@ -32,9 +35,12 @@ enum class AppPermission {
     APP_INSTALLS,
     ;
 
-    /** Whether this Android version has this permission at all - notifications are only asked for from 13 on. */
+    /**
+     * Whether this Android version has this permission at all - notifications are only asked for from 13 on,
+     * and videos only apart from music from 13 on, the one permission granting both before it.
+     */
     val isNeeded: Boolean
-        get() = this != NOTIFICATIONS || Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+        get() = (this != NOTIFICATIONS && this != VIDEO_LIBRARY) || Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
 
     /**
      * Whether it is asked for as the app opens: what the app is hardly usable without, and asked in
@@ -52,6 +58,11 @@ enum class AppPermission {
             } else {
                 Manifest.permission.READ_EXTERNAL_STORAGE
             }
+            VIDEO_LIBRARY -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                Manifest.permission.READ_MEDIA_VIDEO
+            } else {
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            }
             NOTIFICATIONS -> Manifest.permission.POST_NOTIFICATIONS
             FILE_CHANGES -> Manifest.permission.WRITE_EXTERNAL_STORAGE.takeIf {
                 Build.VERSION.SDK_INT < Build.VERSION_CODES.R
@@ -64,7 +75,8 @@ enum class AppPermission {
             Environment.isExternalStorageManager()
         // Managing all files reads every file too, MediaStore's included - so where it is granted, the library
         // needs nothing more, and is never asked for.
-        this == AUDIO_LIBRARY && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager() ->
+        (this == AUDIO_LIBRARY || this == VIDEO_LIBRARY) &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager() ->
             true
         this == APP_INSTALLS -> context.packageManager.canRequestPackageInstalls()
         else -> context.checkSelfPermission(checkNotNull(runtimePermission)) == PackageManager.PERMISSION_GRANTED

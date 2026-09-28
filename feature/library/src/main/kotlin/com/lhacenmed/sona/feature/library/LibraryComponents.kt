@@ -510,6 +510,10 @@ internal class DetailHeaderContent(
 internal fun trackCountAndDuration(tracks: List<Track>): String =
     listOf(trackCountLabel(tracks.size), formatDurationMs(tracks.sumOf { it.durationMs })).joinToString(DETAIL_INFO_SEPARATOR)
 
+/** [trackCountAndDuration] for a list of videos. */
+internal fun videoCountAndDuration(videos: List<Track>): String =
+    listOf(pluralCount(videos.size, "video"), formatDurationMs(videos.sumOf { it.durationMs })).joinToString(DETAIL_INFO_SEPARATOR)
+
 /** What separates the parts of a header's info line - Auxio's `fmt_two`. */
 internal const val DETAIL_INFO_SEPARATOR = " • "
 

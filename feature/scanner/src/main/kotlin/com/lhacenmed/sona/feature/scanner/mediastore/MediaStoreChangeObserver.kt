@@ -10,8 +10,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 
 /**
- * Tells when MediaStore's audio collection changes - a file added, removed or re-tagged in any
- * folder of any volume.
+ * Tells when MediaStore's audio or video collection changes - a file added, removed or re-tagged in
+ * any folder of any volume.
  *
  * The shape of Budget's `StatusFolderObserver`, watching MediaStore instead of directories: inotify
  * sees only the one directory it is given, so following every folder of the library that way would
@@ -36,11 +36,8 @@ class MediaStoreChangeObserver @Inject constructor(
                 trySend(Unit)
             }
         }
-        context.contentResolver.registerContentObserver(
-            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-            true,
-            observer,
-        )
+        context.contentResolver.registerContentObserver(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, true, observer)
+        context.contentResolver.registerContentObserver(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, true, observer)
         awaitClose { context.contentResolver.unregisterContentObserver(observer) }
     }
 }

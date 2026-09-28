@@ -235,6 +235,13 @@ val MIGRATION_10_11 = object : Migration(10, 11) {
     }
 }
 
+/** Videos join the library, their sound played as a track's is; every row stored so far is music. */
+val MIGRATION_11_12 = object : Migration(11, 12) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `tracks` ADD COLUMN `isVideo` INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
 /**
  * Makes sure Favorites exists, every time the database is opened.
  *

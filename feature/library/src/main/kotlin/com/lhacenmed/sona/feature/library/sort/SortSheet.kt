@@ -206,6 +206,7 @@ private fun SortableList.scopeLabels(): ScopeLabels? = when (this) {
     SortableList.ARTISTS,
     SortableList.GENRES,
     SortableList.FOLDERS,
+    SortableList.VIDEO_FOLDERS,
     SortableList.PLAYLISTS,
     -> null
 }

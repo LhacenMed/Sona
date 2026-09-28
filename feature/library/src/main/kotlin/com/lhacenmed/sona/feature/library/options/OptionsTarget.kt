@@ -7,6 +7,7 @@ import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.library.itemCountLabel
 import com.lhacenmed.sona.feature.library.options.OptionsAction.ADD_COLLECTIONS
 import com.lhacenmed.sona.feature.library.options.OptionsAction.ADD_TRACKS
 import com.lhacenmed.sona.feature.library.options.OptionsAction.ALBUM_DETAILS
@@ -204,7 +205,7 @@ fun OptionsTarget.infoLine(): String = when (this) {
     is OptionsTarget.ForGenre ->
         artistCountLabel(genre.artistCount) + COUNTS_SEPARATOR + trackCountLabel(genre.trackCount)
     is OptionsTarget.ForPlaylist -> trackCountLabel(playlist.trackCount)
-    is OptionsTarget.ForFolder -> trackCountLabel(folder.trackCount)
+    is OptionsTarget.ForFolder -> folder.itemCountLabel()
     is OptionsTarget.ForSelection -> formatDurationMs(tracks.sumOf { it.durationMs })
 }
 

@@ -20,7 +20,8 @@ sealed interface PlaybackParent {
 
     data class Playlist(val playlistId: Long) : PlaybackParent
 
-    data class Folder(val folderPath: String) : PlaybackParent
+    /** A folder's music, or - where [isVideo] - its videos, as the Videos tab lists them. */
+    data class Folder(val folderPath: String, val isVideo: Boolean) : PlaybackParent
 
     data object RecentlyPlayed : PlaybackParent
 
@@ -33,7 +34,7 @@ fun PlaybackParent.toStorageKey(): String = when (this) {
     is PlaybackParent.Artist -> "artist:$artistId"
     is PlaybackParent.Genre -> "genre:$genreId"
     is PlaybackParent.Playlist -> "playlist:$playlistId"
-    is PlaybackParent.Folder -> "folder:$folderPath"
+    is PlaybackParent.Folder -> if (isVideo) "videoFolder:$folderPath" else "folder:$folderPath"
     PlaybackParent.RecentlyPlayed -> "recentlyPlayed"
     PlaybackParent.MostPlayed -> "mostPlayed"
 }
@@ -46,7 +47,8 @@ fun playbackParentOf(storageKey: String): PlaybackParent? {
         "artist" -> value.toLongOrNull()?.let(PlaybackParent::Artist)
         "genre" -> value.toLongOrNull()?.let(PlaybackParent::Genre)
         "playlist" -> value.toLongOrNull()?.let(PlaybackParent::Playlist)
-        "folder" -> value.takeIf { it.isNotEmpty() }?.let(PlaybackParent::Folder)
+        "folder" -> value.takeIf { it.isNotEmpty() }?.let { PlaybackParent.Folder(it, isVideo = false) }
+        "videoFolder" -> value.takeIf { it.isNotEmpty() }?.let { PlaybackParent.Folder(it, isVideo = true) }
         "recentlyPlayed" -> PlaybackParent.RecentlyPlayed
         "mostPlayed" -> PlaybackParent.MostPlayed
         else -> null

@@ -14,12 +14,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.lhacenmed.sona.core.common.permission.AppPermission
+import com.lhacenmed.sona.core.data.contentUri
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDialog
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.library.options.OptionsActionsViewModel
-import com.lhacenmed.sona.feature.library.options.contentUri
 import com.lhacenmed.sona.feature.library.pluralCount
 
 /*
@@ -166,7 +166,7 @@ internal fun DeleteFromDeviceDialog(
             val leftOutCount = tracks.size - indexedTracks.size
             if (leftOutCount > 0) context.toast("${pluralCount(leftOutCount, "track")} cannot be deleted")
             pendingDeletion = onFinished
-            val request = MediaStore.createDeleteRequest(context.contentResolver, indexedTracks.map { it.contentUri() })
+            val request = MediaStore.createDeleteRequest(context.contentResolver, indexedTracks.map { it.contentUri })
             systemRequestLauncher.launch(IntentSenderRequest.Builder(request.intentSender).build())
         } else {
             onFinished(false)

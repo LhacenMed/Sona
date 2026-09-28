@@ -6,11 +6,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
+import com.lhacenmed.sona.core.data.contentUri
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.datastore.LibrarySettings
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.model.playbackParent
 import com.lhacenmed.sona.feature.library.readM3uTrackIds
 import com.lhacenmed.sona.feature.library.writeM3u
 import com.lhacenmed.sona.core.common.coroutines.launchOperation
@@ -132,7 +134,7 @@ class OptionsActionsViewModel @Inject constructor(
             withContext(Dispatchers.IO) {
                 tracks.forEach { track ->
                     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R && !track.isManuallyScanned) {
-                        context.contentResolver.delete(track.contentUri(), null, null)
+                        context.contentResolver.delete(track.contentUri, null, null)
                     }
                     val file = File(track.path)
                     file.delete()
@@ -242,7 +244,7 @@ class OptionsActionsViewModel @Inject constructor(
         is OptionsTarget.ForArtist -> readyTracks(repository.artistTracks(target.artist.id))
         is OptionsTarget.ForGenre -> readyTracks(repository.genreTracks(target.genre.id))
         is OptionsTarget.ForPlaylist -> readyTracks(repository.playlistTracks(target.playlist.id))
-        is OptionsTarget.ForFolder -> readyTracks(repository.folderTracks(target.folder.path))
+        is OptionsTarget.ForFolder -> readyTracks(repository.folderTracks(target.folder.path, target.folder.isVideo))
         is OptionsTarget.ForSelection -> target.tracks
     }
 
@@ -253,7 +255,7 @@ class OptionsActionsViewModel @Inject constructor(
         is OptionsTarget.ForArtist -> PlaybackParent.Artist(target.artist.id)
         is OptionsTarget.ForGenre -> PlaybackParent.Genre(target.genre.id)
         is OptionsTarget.ForPlaylist -> PlaybackParent.Playlist(target.playlist.id)
-        is OptionsTarget.ForFolder -> PlaybackParent.Folder(target.folder.path)
+        is OptionsTarget.ForFolder -> target.folder.playbackParent
         is OptionsTarget.ForSelection -> null
     }
 

@@ -49,7 +49,7 @@ fun FoldersScreen(
             selection = selection,
             isCurrent = { playback.marks(folder) },
             isPlaying = { playback.isPlaying },
-            onClick = { navigator.go(FolderDetailScreen(folder.path)) },
+            onClick = { navigator.go(FolderDetailScreen(folder.path, folder.isVideo)) },
             onOpenOptions = { optionsTarget = OptionsTarget.ForFolder(folder) },
         )
     }

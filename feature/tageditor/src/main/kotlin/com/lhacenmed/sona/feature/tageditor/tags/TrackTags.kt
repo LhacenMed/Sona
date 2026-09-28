@@ -13,31 +13,30 @@ import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material.icons.filled.Title
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.vector.ImageVector
-import org.jaudiotagger.tag.FieldKey
 
 /**
- * One tag the editor reads, shows and writes: how it is labelled, drawn and typed, and the key it is stored
- * under in the file. The order here is the order the fields are laid out in.
+ * One tag the editor reads, shows and writes: how it is labelled, drawn and typed, and the name TagLib
+ * gives it in every format alike. The order here is the order the fields are laid out in.
  */
 enum class TagField(
     val label: String,
     val icon: ImageVector,
-    internal val key: FieldKey,
+    internal val key: String,
     val isNumeric: Boolean = false,
     val isMultiline: Boolean = false,
 ) {
-    TITLE("Title", Icons.Filled.Title, FieldKey.TITLE),
-    ARTIST("Artist", Icons.Filled.Person, FieldKey.ARTIST),
-    ALBUM("Album", Icons.Filled.Album, FieldKey.ALBUM),
-    ALBUM_ARTIST("Album artist", Icons.Filled.Group, FieldKey.ALBUM_ARTIST),
-    GENRE("Genre", Icons.Filled.Sell, FieldKey.GENRE),
-    YEAR("Year", Icons.Filled.CalendarMonth, FieldKey.YEAR, isNumeric = true),
-    TRACK_NUMBER("Track number", Icons.Filled.Numbers, FieldKey.TRACK, isNumeric = true),
-    TRACK_TOTAL("Track count", Icons.Filled.Numbers, FieldKey.TRACK_TOTAL, isNumeric = true),
-    DISC_NUMBER("Disc number", Icons.Filled.Numbers, FieldKey.DISC_NO, isNumeric = true),
-    COMPOSER("Composer", Icons.Filled.MusicNote, FieldKey.COMPOSER),
-    COMMENT("Comment", Icons.AutoMirrored.Filled.Comment, FieldKey.COMMENT),
-    LYRICS("Lyrics", Icons.Filled.Lyrics, FieldKey.LYRICS, isMultiline = true),
+    TITLE("Title", Icons.Filled.Title, "TITLE"),
+    ARTIST("Artist", Icons.Filled.Person, "ARTIST"),
+    ALBUM("Album", Icons.Filled.Album, "ALBUM"),
+    ALBUM_ARTIST("Album artist", Icons.Filled.Group, "ALBUMARTIST"),
+    GENRE("Genre", Icons.Filled.Sell, "GENRE"),
+    YEAR("Year", Icons.Filled.CalendarMonth, "DATE", isNumeric = true),
+    TRACK_NUMBER("Track number", Icons.Filled.Numbers, "TRACKNUMBER", isNumeric = true),
+    TRACK_TOTAL("Track count", Icons.Filled.Numbers, "TRACKTOTAL", isNumeric = true),
+    DISC_NUMBER("Disc number", Icons.Filled.Numbers, "DISCNUMBER", isNumeric = true),
+    COMPOSER("Composer", Icons.Filled.MusicNote, "COMPOSER"),
+    COMMENT("Comment", Icons.AutoMirrored.Filled.Comment, "COMMENT"),
+    LYRICS("Lyrics", Icons.Filled.Lyrics, "LYRICS", isMultiline = true),
 }
 
 /**

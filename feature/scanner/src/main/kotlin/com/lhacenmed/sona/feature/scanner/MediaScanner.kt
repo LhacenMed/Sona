@@ -66,7 +66,7 @@ private enum class ScanKind {
 }
 
 /**
- * Scans the device's audio library and reconciles it into Room.
+ * Scans the device's audio library - and its videos, played as audio - and reconciles it into Room.
  *
  * Still the Fossify pipeline - query MediaStore first because it is cheap and already indexed, then
  * (Q+ only) top it up with a manual filesystem walk for files MediaStore hasn't picked up. Two
@@ -246,19 +246,23 @@ class MediaScanner @Inject constructor(
         var artists = recomputeArtists(artistsOf(tracks, albums), albums, tracks)
         var genres = recomputeGenres(genresOf(tracks), tracks)
 
+        // Videos are rows of their own: no album, artist or genre is made of them, so they skip every
+        // pass above and are stored alongside the music.
+        val videos = mediaStoreResult.videos.filterNot { it.folderPath in excludedFolders }
+
         var stats = SyncStats()
-        val manualTracks = if (walksStorage) {
+        val (manualVideos, manualTracks) = if (walksStorage) {
             // Stage 1: publish MediaStore's fast, already-indexed results right away, without
             // deletions - on a first run this is what paints the library, and the slow filesystem
             // walk below never gets to delay it. Because it is a diff, on any later scan it writes
             // nothing.
-            stats = libraryWriter.sync(tracks, albums, artists, genres, deleteMissing = false)
+            stats = libraryWriter.sync(tracks + videos, albums, artists, genres, deleteMissing = false)
             // Stage 2: pick up files MediaStore hasn't indexed yet.
-            findUnindexedTracks(tracks, excludedFolders)
+            findUnindexedTracks(tracks + videos, excludedFolders)
         } else {
             // A refresh: MediaStore is all that changed, so what the last walk found is kept as is.
-            storedUnindexedTracks(tracks)
-        }
+            storedUnindexedTracks(tracks + videos)
+        }.partition { it.isVideo }
 
         if (manualTracks.isNotEmpty()) {
             val merged = mergeManualTracks(
@@ -277,11 +281,11 @@ class MediaScanner @Inject constructor(
         // Final pass: the authoritative one, and the only one allowed to delete. When stage 1
         // already stored exactly this, it opens no transaction at all.
         _progress.value = ScanProgress(ScanStep.SAVING)
-        stats += libraryWriter.sync(tracks, albums, artists, genres)
+        stats += libraryWriter.sync(tracks + videos + manualVideos, albums, artists, genres)
         return stats
     }
 
-    /** Audio files on storage that MediaStore has not indexed, found by walking it (Q+ only). */
+    /** Audio and video files on storage that MediaStore has not indexed, found by walking it (Q+ only). */
     private fun findUnindexedTracks(indexedTracks: List<Track>, excludedFolders: Set<String>): List<Track> {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return emptyList()
         val pathsToSkip = indexedTracks.mapTo(HashSet()) { it.path }.apply { addAll(excludedFolders) }

@@ -46,6 +46,7 @@ private val CANONICAL_TAB_ORDER = listOf(
     LibraryTab.ALBUMS,
     LibraryTab.GENRES,
     LibraryTab.FOLDERS,
+    LibraryTab.VIDEOS,
 )
 
 private fun Set<LibraryTab>.inCanonicalOrder(): List<LibraryTab> = CANONICAL_TAB_ORDER.filter { it in this }
@@ -56,6 +57,7 @@ private fun LibraryTab.sortableList(): SortableList = when (this) {
     LibraryTab.ALBUMS -> SortableList.ALBUMS
     LibraryTab.GENRES -> SortableList.GENRES
     LibraryTab.FOLDERS -> SortableList.FOLDERS
+    LibraryTab.VIDEOS -> SortableList.VIDEO_FOLDERS
 }
 
 /**
@@ -95,6 +97,8 @@ class LibraryViewModel @Inject constructor(
         repository.genres.narrowedBySearch { genre, query -> matchesSearch(query, genre.name) }
     val folders: StateFlow<LibraryContent<Folder>> =
         repository.folders.narrowedBySearch { folder, query -> matchesSearch(query, folder.name) }
+    val videoFolders: StateFlow<LibraryContent<Folder>> =
+        repository.videoFolders.narrowedBySearch { folder, query -> matchesSearch(query, folder.name) }
 
     /** The section each tab's rows sit in under its sort - what the fast scroller's popup names. */
     val trackSections: StateFlow<(Track) -> String?> = repository.trackSections
@@ -102,6 +106,7 @@ class LibraryViewModel @Inject constructor(
     val artistSections: StateFlow<(Artist) -> String?> = repository.artistSections
     val genreSections: StateFlow<(Genre) -> String?> = repository.genreSections
     val folderSections: StateFlow<(Folder) -> String?> = repository.folderSections
+    val videoFolderSections: StateFlow<(Folder) -> String?> = repository.videoFolderSections
 
     /**
      * A tab's rows as the search leaves them.
@@ -197,6 +202,14 @@ class LibraryViewModel @Inject constructor(
         )
 
     /**
+     * Reads the videos in, now that Sona may - a scan the device's unchanged media would otherwise skip,
+     * which the permission is part of the reckoning of.
+     */
+    fun onVideoAccessGranted() {
+        mediaScanner.requestScan()
+    }
+
+    /**
      * Starts playback of the whole tracks tab, beginning at [track]. The index is resolved here
      * rather than passed down so the list can stay keyed by identity rather than by position.
      *
@@ -242,6 +255,7 @@ class LibraryViewModel @Inject constructor(
         LibraryTab.ALBUMS -> albums.value.itemsOrEmpty.map { SelectionKey.Album(it.id) }
         LibraryTab.ARTISTS -> artists.value.itemsOrEmpty.filter { it.trackCount > 0 }.map { SelectionKey.Artist(it.id) }
         LibraryTab.GENRES -> genres.value.itemsOrEmpty.map { SelectionKey.Genre(it.id) }
-        LibraryTab.FOLDERS -> folders.value.itemsOrEmpty.map { SelectionKey.Folder(it.path) }
+        LibraryTab.FOLDERS -> folders.value.itemsOrEmpty.map { SelectionKey.Folder(it.path, isVideo = false) }
+        LibraryTab.VIDEOS -> videoFolders.value.itemsOrEmpty.map { SelectionKey.Folder(it.path, isVideo = true) }
     }
 }

@@ -3,6 +3,7 @@ package com.lhacenmed.sona.feature.scanner.filesystem
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.media.MediaScannerConnection
+import android.net.Uri
 import android.os.Build
 import android.os.storage.StorageManager
 import com.lhacenmed.sona.core.database.stableIdOf
@@ -16,7 +17,7 @@ import java.io.FileInputStream
 import javax.inject.Inject
 
 /**
- * Walks the device's storage roots with plain [File] I/O to find audio files that [MediaStore]
+ * Walks the device's storage roots with plain [File] I/O to find audio and video files that [MediaStore]
  * missed - e.g. files pushed via `adb push` that haven't been indexed yet. Ported from Fossify
  * Music Player's `MediaScanner.findTracksManually`/`findAudioFiles`.
  *
@@ -71,7 +72,7 @@ class ManualFileWalker @Inject constructor(
         }
 
         if (file.isFile) {
-            if (path.isAudioFile()) {
+            if (path.isMediaFile()) {
                 destination += path
             }
         } else if (file.isDirectory && !file.containsNoMedia()) {
@@ -93,6 +94,8 @@ class ManualFileWalker @Inject constructor(
                 retriever.setDataSource(inputStream.fd)
             }
 
+            // What a video is told by - its extension alone cannot, an .mp4 or a .webm being either.
+            val isVideo = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_HAS_VIDEO) == "yes"
             val title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
                 ?: path.substringAfterLast('/')
             if (title.isEmpty()) {
@@ -104,12 +107,12 @@ class ManualFileWalker @Inject constructor(
                 ?: UnknownNames.ARTIST
             val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
             val folderPath = File(path).parent.orEmpty()
-            val album = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
-                ?: folderPath.substringAfterLast('/').ifEmpty { UnknownNames.ALBUM }
+            val folderName = folderPath.substringAfterLast('/').ifEmpty { UnknownNames.ALBUM }
+            val album = if (isVideo) folderName else retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: folderName
             val trackNumber = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER).firstNumber()
             val discNumber = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DISC_NUMBER).firstNumber()
             val year = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_YEAR)?.toIntOrNull()?.takeIf { it > 0 }
-            val genre = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_GENRE)
+            val genre = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_GENRE).takeUnless { isVideo }
             val dateAddedSeconds = runCatching { File(path).lastModified() / 1000L }.getOrDefault(0L)
 
             return Track(
@@ -132,8 +135,10 @@ class ManualFileWalker @Inject constructor(
                 discNumber = discNumber,
                 year = year,
                 dateAddedSeconds = dateAddedSeconds,
-                coverArtUri = null,
+                // A video is its own cover - a frame of it; a track's own is read by MediaStore once indexed.
+                coverArtUri = if (isVideo) Uri.fromFile(File(path)).toString() else null,
                 isManuallyScanned = true,
+                isVideo = isVideo,
             )
         } catch (_: Exception) {
             return null
@@ -176,13 +181,14 @@ class ManualFileWalker @Inject constructor(
     }
 }
 
-private val AUDIO_EXTENSIONS = setOf(
+private val MEDIA_EXTENSIONS = setOf(
     "mp3", "m4a", "m4b", "m4p", "wav", "wma", "ogg", "oga", "opus", "flac", "aac",
     "mid", "midi", "3gp", "3ga", "amr", "awb", "mka", "ape", "aiff", "aif", "dsf", "alac",
+    "mp4", "m4v", "mkv", "webm", "mov", "avi",
 )
 
-private fun String.isAudioFile(): Boolean =
-    substringAfterLast('.', missingDelimiterValue = "").lowercase() in AUDIO_EXTENSIONS
+private fun String.isMediaFile(): Boolean =
+    substringAfterLast('.', missingDelimiterValue = "").lowercase() in MEDIA_EXTENSIONS
 
 private fun File.containsNoMedia(): Boolean = File(this, ".nomedia").exists()
 

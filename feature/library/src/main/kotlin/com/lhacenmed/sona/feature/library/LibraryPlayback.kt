@@ -8,6 +8,7 @@ import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.model.playbackParent
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -52,7 +53,7 @@ data class LibraryPlayback(
         parent == PlaybackParent.Playlist(playlist.id) && currentTrack != null
 
     fun marks(folder: Folder): Boolean =
-        parent == PlaybackParent.Folder(folder.path) && currentTrack?.folderPath == folder.path
+        parent == folder.playbackParent && currentTrack?.folderPath == folder.path
 
     /** A collection with no library row of its own - Recent and Most played - as its own row. */
     fun marks(collection: PlaybackParent): Boolean = parent == collection && currentTrack != null
