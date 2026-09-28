@@ -6,6 +6,29 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-09-28
+
+### Added
+
+- Edit a track's tags from its menu: its best match from Deezer and iTunes applied in one press, every tag editable, a cover from the matches or the gallery, and lyrics from five sources - each showing whether it was synced to a recording as long as the track.
+- Lists stretch past their ends and spring back.
+- Rescanning the library shows its progress in a notification, and says when it is done.
+
+### Changed
+
+- A track counts towards Most played once 80% of it has been played, rather than after 10 seconds, and skipping ahead does not count. Plays started from a headset, the notification or another app count too.
+- Recent lists a track once it actually plays, not when the queue is restored as the app opens.
+- Every section folds away at a press on its heading, smoothly, and a heading held at the top is underlined while its rows scroll beneath it.
+- A newer version is prompted for on whatever screen is open, not only the library.
+- Japanese lyrics romanization downloads its 13 MB dictionary once, from Settings › Lyrics, instead of it coming with every install - Sona is now a 5 MB download instead of 20 MB. Anyone who had it on turns it on again there.
+- Sona reads in English throughout, including the few labels its components used to show in the phone's language.
+
+### Fixed
+
+- A new release is found as soon as it is out, and a check that failed offline is made again the moment the connection is back.
+- Messages no longer queue up one after another; a new one replaces the last.
+- Sona no longer asks for access to music when it already has access to all files.
+
 ## [1.6.0] - 2026-09-27
 
 ### Added
