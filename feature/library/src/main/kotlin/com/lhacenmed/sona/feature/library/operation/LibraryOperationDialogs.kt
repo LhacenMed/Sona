@@ -177,7 +177,7 @@ internal fun DeleteFromDeviceDialog(
     ) {
         val onFinished = pendingDeletion ?: return@rememberLauncherForActivityResult
         pendingDeletion = null
-        if (AppPermission.FILE_DELETION.isGranted(context)) {
+        if (AppPermission.FILE_CHANGES.isGranted(context)) {
             actionsViewModel.deleteTracks(tracks, reporting(onFinished))
         } else {
             requestSystemDeletion(onFinished)
@@ -193,7 +193,7 @@ internal fun DeleteFromDeviceDialog(
 
     val isSingle = tracks.size == 1
     val needsAllFilesAccess =
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !AppPermission.FILE_DELETION.isGranted(context)
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !AppPermission.FILE_CHANGES.isGranted(context)
     SonaConfirmationDialog(
         title = if (isSingle) "Delete track" else "Delete ${tracks.size} tracks",
         message = buildString {
@@ -208,7 +208,7 @@ internal fun DeleteFromDeviceDialog(
         failureMessage = deletionOutcome(tracks.size, succeeded = false),
         onDismiss = onDismiss,
         operation = { onFinished ->
-            val permission = AppPermission.FILE_DELETION
+            val permission = AppPermission.FILE_CHANGES
             val runtimePermission = permission.runtimePermission
             when {
                 permission.isGranted(context) -> actionsViewModel.deleteTracks(tracks, reporting(onFinished))

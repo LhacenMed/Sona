@@ -16,6 +16,8 @@ media3 = "1.9.1"
 coroutines = "1.9.0"
 datastore = "1.1.7"
 coil = "3.5.0"
+okhttp = "4.12.0"
+jaudiotagger = "3.0.1"
 palette = "1.0.0"
 materialKolor = "5.0.0-alpha07"
 hiltNavigationCompose = "1.2.0"
@@ -63,6 +65,8 @@ kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
 coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+jaudiotagger = { group = "net.jthink", name = "jaudiotagger", version.ref = "jaudiotagger" }
 androidx-palette = { group = "androidx.palette", name = "palette-ktx", version.ref = "palette" }
 materialkolor = { group = "com.materialkolor", name = "material-kolor", version.ref = "materialKolor" }
 androidsvg = { group = "com.caverock", name = "androidsvg-aar", version.ref = "androidsvg" }

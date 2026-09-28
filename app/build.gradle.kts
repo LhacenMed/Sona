@@ -214,6 +214,7 @@ dependencies {
     implementation(project(":feature:settings"))
     implementation(project(":feature:equalizer"))
     implementation(project(":feature:update"))
+    implementation(project(":feature:tageditor"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

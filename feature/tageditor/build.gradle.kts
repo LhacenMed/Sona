@@ -6,11 +6,13 @@ plugins {
 }
 
 android {
-    namespace = "com.lhacenmed.sona.feature.library"
+    namespace = "com.lhacenmed.sona.feature.tageditor"
     compileSdk = 37
 
     defaultConfig {
         minSdk = 26
+        // jaudiotagger reflects into its own frame classes; consumer-rules.pro keeps what it reads.
+        consumerProguardFiles("consumer-rules.pro")
     }
 
     buildFeatures {
@@ -26,25 +28,17 @@ android {
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:data"))
-    implementation(project(":core:navigation"))
-    implementation(project(":core:datastore"))
     implementation(project(":core:common"))
+    implementation(project(":core:navigation"))
     implementation(project(":core:designsystem"))
-    implementation(project(":feature:playback"))
     implementation(project(":feature:scanner"))
-    implementation(project(":feature:tageditor"))
-
-    implementation(libs.androidx.core.ktx)
-    // The system photo picker a playlist's cover image is chosen with.
-    implementation(libs.androidx.activity.compose)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
 
+    implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.hilt.navigation.compose)
@@ -53,7 +47,12 @@ dependencies {
     ksp(libs.hilt.compiler)
 
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.reorderable)
+    implementation(libs.coil.compose)
+
+    // The catalogues and the lyrics sources are asked over OkHttp - the client Coil already ships.
+    implementation(libs.okhttp)
+    // Reads and writes the tags inside the audio files themselves.
+    implementation(libs.jaudiotagger)
 }
 
 kotlin {
