@@ -181,7 +181,7 @@ data object PlaylistsScreen : Screen {
                         items.mapNotNull { (it as? PlaylistsRow.OfPlaylist)?.playlist?.let(::selectionKeyOf) }
                     }
                     val dragSelection = rememberDragSelection(selection, listState, selectableKeys)
-                    FastScroller(listState = listState, modifier = Modifier.fillMaxSize()) {
+                    FastScroller(listState = listState, modifier = Modifier.fillMaxSize()) { overscrollEffect ->
                         CompositionLocalProvider(LocalDragSelection provides dragSelection) {
                             LazyColumn(
                                 state = listState,
@@ -189,6 +189,7 @@ data object PlaylistsScreen : Screen {
                                     .fillMaxSize()
                                     .dragSelection(dragSelection),
                                 contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+                                overscrollEffect = overscrollEffect,
                             ) {
                                 items(
                                     items = items,

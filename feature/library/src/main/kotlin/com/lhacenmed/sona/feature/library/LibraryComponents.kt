@@ -3,6 +3,7 @@ package com.lhacenmed.sona.feature.library
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.OverscrollEffect
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
@@ -49,6 +50,7 @@ import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.CookieShape
 import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
+import com.lhacenmed.sona.core.designsystem.component.refresh.SonaPullToRefreshBox
 import com.lhacenmed.sona.core.designsystem.component.section.rememberSectionListState
 import com.lhacenmed.sona.core.designsystem.component.section.sectionItemAnimation
 import com.lhacenmed.sona.core.designsystem.component.section.section
@@ -65,7 +67,9 @@ import com.lhacenmed.sona.core.designsystem.component.rememberDragSelection
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.component.shimmer
 import com.lhacenmed.sona.core.designsystem.component.swipe.LocalSwipeActions
+import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.core.designsystem.motion.rememberRubberBandOverscroll
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.designsystem.component.DetailHeader
@@ -92,6 +96,7 @@ import com.lhacenmed.sona.feature.library.selection.selectionKeyOf
 import com.lhacenmed.sona.feature.library.selection.toLibraryTopBarSelection
 import com.lhacenmed.sona.feature.library.sort.SortSheet
 import com.lhacenmed.sona.feature.library.sort.sortAction
+import com.lhacenmed.sona.feature.scanner.R as ScannerR
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableLazyListState
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -156,7 +161,8 @@ internal fun <T> LibraryListContent(
  * Every list has the fast scroller; one given [sectionOf] - the section its sort puts a row in - also
  * names that section in the scroller's popup.
  *
- * Its rows join [selection], and a long press drags across them - see [DragSelection].
+ * Its rows join [selection], and a long press drags across them - see [DragSelection]. Given [onRefresh],
+ * pulling it down past its top refreshes it - see [SonaPullToRefreshBox].
  */
 @Composable
 internal fun <T> LibraryList(
@@ -172,6 +178,7 @@ internal fun <T> LibraryList(
     listState: LazyListState = rememberLazyListState(),
     onReorder: ((List<T>) -> Unit)? = null,
     sectionOf: ((T) -> String?)? = null,
+    onRefresh: (suspend () -> Unit)? = null,
     row: @Composable (T) -> Unit,
 ) {
     LibraryListContent(
@@ -183,43 +190,67 @@ internal fun <T> LibraryList(
         loadingIcon = loadingIcon,
         modifier = modifier,
     ) { items ->
-        FastScroller(
-            listState = listState,
-            modifier = Modifier.fillMaxSize(),
-            sectionAt = sectionOf?.let { section -> { index -> items.getOrNull(index)?.let(section) } },
-        ) {
-            if (onReorder != null) {
-                // The same list state as the plain list below, so the rows keep their place when handles
-                // appear and again when they go: a list state belongs to the list, not to one of its modes.
-                ReorderableColumn(
-                    items = items,
-                    key = key,
-                    listState = listState,
-                    onReorder = onReorder,
-                    row = row,
-                )
-                return@FastScroller
-            }
-            KeepAtTopWhenRowsChange(listState = listState, rows = items)
-            val selectableKeys = remember(items) { items.mapNotNull(::selectionKeyOf) }
-            val dragSelection = rememberDragSelection(selection, listState, selectableKeys)
-            CompositionLocalProvider(LocalDragSelection provides dragSelection) {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .dragSelection(dragSelection),
-                    contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
-                ) {
-                    items(
+        // One band for the list, its fast scroller's thumb and its pull to refresh.
+        val overscroll = rememberRubberBandOverscroll()
+        SonaPullToRefreshBox(overscroll = overscroll, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
+            FastScroller(
+                listState = listState,
+                modifier = Modifier.fillMaxSize(),
+                sectionAt = sectionOf?.let { section -> { index -> items.getOrNull(index)?.let(section) } },
+                overscroll = overscroll,
+            ) { overscrollEffect ->
+                if (onReorder != null) {
+                    // The same list state as the plain list below, so the rows keep their place when handles
+                    // appear and again when they go: a list state belongs to the list, not to one of its modes.
+                    ReorderableColumn(
                         items = items,
                         key = key,
-                        // Every row in these lists is the same composable shape, so telling Compose that
-                        // lets it reuse a scrolled-off row's slot table wholesale instead of rebuilding it.
-                        contentType = { LIST_ROW_CONTENT_TYPE },
-                    ) { item -> row(item) }
+                        listState = listState,
+                        overscrollEffect = overscrollEffect,
+                        onReorder = onReorder,
+                        row = row,
+                    )
+                    return@FastScroller
+                }
+                KeepAtTopWhenRowsChange(listState = listState, rows = items)
+                val selectableKeys = remember(items) { items.mapNotNull(::selectionKeyOf) }
+                val dragSelection = rememberDragSelection(selection, listState, selectableKeys)
+                CompositionLocalProvider(LocalDragSelection provides dragSelection) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .dragSelection(dragSelection),
+                        contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+                        overscrollEffect = overscrollEffect,
+                    ) {
+                        items(
+                            items = items,
+                            key = key,
+                            // Every row in these lists is the same composable shape, so telling Compose that
+                            // lets it reuse a scrolled-off row's slot table wholesale instead of rebuilding it.
+                            contentType = { LIST_ROW_CONTENT_TYPE },
+                        ) { item -> row(item) }
+                    }
                 }
             }
+        }
+    }
+}
+
+/**
+ * A library tab's pull to refresh - a rescan of every file, told in a toast as every rescan's end is - or
+ * null while the user has it turned off.
+ */
+@Composable
+internal fun rememberLibraryRefresh(viewModel: LibraryViewModel): (suspend () -> Unit)? {
+    val isEnabled by viewModel.isPullToRefreshEnabled.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    return remember(viewModel, context, isEnabled) {
+        if (!isEnabled) {
+            null
+        } else {
+            suspend { context.toast(if (viewModel.rescanLibrary()) ScannerR.string.scan_done else ScannerR.string.scan_failed) }
         }
     }
 }
@@ -265,6 +296,7 @@ private fun <T> ReorderableColumn(
     items: List<T>,
     key: (T) -> Any,
     listState: LazyListState,
+    overscrollEffect: OverscrollEffect,
     onReorder: (List<T>) -> Unit,
     row: @Composable (T) -> Unit,
 ) {
@@ -275,6 +307,7 @@ private fun <T> ReorderableColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+        overscrollEffect = overscrollEffect,
     ) {
         reorderableRows(reorderableRows, key, row)
     }

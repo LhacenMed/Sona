@@ -28,6 +28,7 @@ import com.lhacenmed.sona.feature.scanner.MediaScanner
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -140,6 +141,25 @@ class LibraryViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, librarySettings.visibleTabs.value.inCanonicalOrder())
 
     val isScanning: StateFlow<Boolean> = mediaScanner.isScanning
+
+    /** Whether pulling a tab's list down past its top rescans the library - see [rescanLibrary]. */
+    val isPullToRefreshEnabled: StateFlow<Boolean> = librarySettings.pullToRefreshEnabled.flow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, librarySettings.pullToRefreshEnabled.value)
+
+    /**
+     * Reads every file on the device again, whatever the last scan found - a pull to refresh - and says
+     * whether it worked. The scan itself runs on the application's scope, so a screen closing mid-way
+     * only stops the waiting.
+     */
+    suspend fun rescanLibrary(): Boolean =
+        try {
+            mediaScanner.rescan(force = true)
+            true
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Exception) {
+            false
+        }
 
     /** Whether the user shows the button for shuffling every track. */
     val showShuffleAllButton: StateFlow<Boolean> = shuffleSettings.shuffleAllButton.flow

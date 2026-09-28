@@ -306,6 +306,8 @@
     <string name="fast_scroll_touch_area_narrow">Narrow</string>
     <string name="fast_scroll_touch_area_standard">Standard</string>
     <string name="fast_scroll_touch_area_wide">Wide</string>
+    <string name="pull_to_refresh_title">Pull to refresh</string>
+    <string name="pull_to_refresh_summary">Pull a library list down past its top to rescan your music</string>
     <string name="behavior_playing_section">Playing</string>
     <string name="play_from_library_title">When playing from the library</string>
     <string name="play_from_all_tracks">Play from all tracks</string>

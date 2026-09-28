@@ -39,6 +39,7 @@ fun TracksScreen(
         key = { it.id },
         modifier = modifier,
         listState = listState,
+        onRefresh = rememberLibraryRefresh(viewModel),
         loadingIcon = SonaIcons.Song,
         sectionOf = trackSections,
     ) { track ->

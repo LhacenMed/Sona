@@ -32,4 +32,11 @@ class BehaviorSettingsViewModel @Inject constructor(
     fun setFastScrollTouchArea(touchArea: FastScrollTouchArea) {
         viewModelScope.launch { librarySettings.setFastScrollTouchArea(touchArea) }
     }
+
+    val pullToRefreshEnabled: StateFlow<Boolean> = librarySettings.pullToRefreshEnabled.flow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), librarySettings.pullToRefreshEnabled.value)
+
+    fun setPullToRefreshEnabled(enabled: Boolean) {
+        viewModelScope.launch { librarySettings.setPullToRefreshEnabled(enabled) }
+    }
 }

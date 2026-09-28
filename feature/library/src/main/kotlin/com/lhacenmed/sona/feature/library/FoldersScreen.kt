@@ -42,6 +42,7 @@ fun FoldersScreen(
         sectionOf = folderSections,
         modifier = modifier,
         listState = listState,
+        onRefresh = rememberLibraryRefresh(viewModel),
     ) { folder ->
         FolderRow(
             folder = folder,

@@ -309,11 +309,12 @@ private fun CoverTrackChooser(
                 .weight(1f)
                 .fillMaxWidth(),
         ) { visibleLibraryTracks ->
-            FastScroller(listState = listState, modifier = Modifier.fillMaxSize()) {
+            FastScroller(listState = listState, modifier = Modifier.fillMaxSize()) { overscrollEffect ->
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+                    overscrollEffect = overscrollEffect,
                 ) {
                     val libraryRows: LazyListScope.() -> Unit = {
                         items(items = visibleLibraryTracks, key = { "library-${it.id}" }) { track ->

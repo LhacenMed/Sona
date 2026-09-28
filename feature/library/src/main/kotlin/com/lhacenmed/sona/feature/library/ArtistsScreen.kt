@@ -42,6 +42,7 @@ fun ArtistsScreen(
         sectionOf = artistSections,
         modifier = modifier,
         listState = listState,
+        onRefresh = rememberLibraryRefresh(viewModel),
     ) { artist ->
         ArtistRow(
             artist = artist,
