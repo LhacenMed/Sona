@@ -28,6 +28,7 @@ data object BehaviorScreen : Screen {
         val viewModel: BehaviorSettingsViewModel = hiltViewModel()
         val fastScrollTouchArea by viewModel.fastScrollTouchArea.collectAsStateWithLifecycle()
         val hapticsEnabled by viewModel.hapticsEnabled.collectAsStateWithLifecycle()
+        val pullToRefreshEnabled by viewModel.pullToRefreshEnabled.collectAsStateWithLifecycle()
 
         SettingsList {
             SettingsSection(stringResource(R.string.behavior_display_section)) {
@@ -59,6 +60,12 @@ data object BehaviorScreen : Screen {
                     options = FastScrollTouchArea.entries.map { fastScrollTouchAreaLabel(it) },
                     selectedIndex = fastScrollTouchArea.ordinal,
                     onSelect = { viewModel.setFastScrollTouchArea(FastScrollTouchArea.entries[it]) },
+                )
+                SettingsSwitchItem(
+                    title = stringResource(R.string.pull_to_refresh_title),
+                    summary = stringResource(R.string.pull_to_refresh_summary),
+                    checked = pullToRefreshEnabled,
+                    onCheckedChange = viewModel::setPullToRefreshEnabled,
                 )
             }
 

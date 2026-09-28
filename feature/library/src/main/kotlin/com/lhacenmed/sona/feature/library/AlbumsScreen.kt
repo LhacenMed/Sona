@@ -42,6 +42,7 @@ fun AlbumsScreen(
         sectionOf = albumSections,
         modifier = modifier,
         listState = listState,
+        onRefresh = rememberLibraryRefresh(viewModel),
     ) { album ->
         AlbumRow(
             album = album,

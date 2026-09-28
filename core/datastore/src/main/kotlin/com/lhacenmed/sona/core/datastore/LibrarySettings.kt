@@ -25,6 +25,8 @@ private val INTELLIGENT_SORTING_ENABLED = booleanPreferencesKey("intelligent_sor
 
 private val FAST_SCROLL_TOUCH_AREA = stringPreferencesKey("fast_scroll_touch_area")
 
+private val PULL_TO_REFRESH_ENABLED = booleanPreferencesKey("pull_to_refresh_enabled")
+
 @Singleton
 class LibrarySettings @Inject constructor(
     @ApplicationContext context: Context,
@@ -76,5 +78,12 @@ class LibrarySettings @Inject constructor(
 
     suspend fun setFastScrollTouchArea(touchArea: FastScrollTouchArea) {
         dataStore.edit { it[FAST_SCROLL_TOUCH_AREA] = touchArea.name }
+    }
+
+    /** Whether pulling a library tab's list down past its top rescans the library. */
+    val pullToRefreshEnabled: Setting<Boolean> = cache.setting { it[PULL_TO_REFRESH_ENABLED] ?: true }
+
+    suspend fun setPullToRefreshEnabled(enabled: Boolean) {
+        dataStore.edit { it[PULL_TO_REFRESH_ENABLED] = enabled }
     }
 }

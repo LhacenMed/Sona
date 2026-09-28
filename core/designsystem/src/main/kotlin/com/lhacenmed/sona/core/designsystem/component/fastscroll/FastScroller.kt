@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.OverscrollEffect
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -52,6 +53,8 @@ import androidx.compose.ui.unit.sp
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.screen.screenList
 import com.lhacenmed.sona.core.designsystem.component.screen.scrollBackToTop
+import com.lhacenmed.sona.core.designsystem.motion.RubberBandOverscroll
+import com.lhacenmed.sona.core.designsystem.motion.rememberRubberBandOverscroll
 import com.lhacenmed.sona.core.designsystem.theme.LocalFastScrollTouchArea
 import com.lhacenmed.sona.core.model.FastScrollTouchArea
 import kotlin.math.abs
@@ -64,6 +67,9 @@ private val ThumbWidth = 12.dp
 
 /** Auxio's `size_touchable_medium`. */
 private val ThumbHeight = 56.dp
+
+/** As short as the thumb gets pressed against an end the list is stretched past: its bar a dot. */
+private val SqueezedThumbHeight = ThumbWidth
 
 /** The bar drawn in the thumb: Auxio's `ui_scroll_thumb`, inset by `spacing_tiny`. */
 private val ThumbBarWidth = 4.dp
@@ -86,10 +92,13 @@ private const val POPUP_HIDDEN_SCALE = 0.5f
 private const val POPUP_BASE_ROTATION_DEGREES = 14f
 
 /**
- * [content] - a list on [listState] - with Auxio's fast scroller over it: `FastScrollRecyclerView`.
+ * [content] - a list on [listState], rubber-banded by the [overscroll] it is handed - with Auxio's fast
+ * scroller over it: `FastScrollRecyclerView`.
  *
- * A thumb slides in along the list's end edge while the list scrolls and slides out
- * half a second after it stops; a relayout never shows it. Dragging it moves the list in
+ * A thumb slides and fades in along the list's end edge while the list scrolls or is stretched past an
+ * end, and out half a second after it stops; a relayout never shows it. Stretched past an end, the thumb is
+ * pressed against it as the list is, shortening by as much - iOS's scroll indicator. Faded as well as
+ * slid out, so nothing of it shows past the edge as the list moves sideways - with the library's pager. Dragging it moves the list in
  * proportion - the thumb and the list are placed by one reckoning of the list's length, which rows of
  * different heights never unsettle (see [ListScrollMetrics]) - and while it is dragged a popup beside it names the section of the first row on screen -
  * [sectionAt] of that row's index, "?" where it has none - with a tick of haptics each time that
@@ -97,7 +106,8 @@ private const val POPUP_BASE_ROTATION_DEGREES = 14f
  *
  * Touches are Auxio's: the thumb takes any touch within the edge's width of it, and a touch on the
  * edge's outermost sliver takes the thumb straight to the finger. A vertical drag starting anywhere
- * in that width does the same once it passes the touch slop. How wide the edge is follows
+ * in that width does the same once it passes the touch slop - unless something else has taken the finger
+ * by then, as the library's pager does a sideways swipe. How wide the edge is follows
  * [LocalFastScrollTouchArea]. The thumb stays clear of [LocalBottomContentPadding], so it never
  * slides under the mini player.
  *
@@ -115,7 +125,8 @@ fun FastScroller(
     enabled: Boolean = true,
     sectionAt: ((index: Int) -> String?)? = null,
     scrollToTop: suspend () -> Unit = { listState.scrollBackToTop() },
-    content: @Composable () -> Unit,
+    overscroll: RubberBandOverscroll = rememberRubberBandOverscroll(),
+    content: @Composable (overscrollEffect: OverscrollEffect) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val state = remember(listState, scope) { FastScrollerState(listState, scope) }
@@ -127,17 +138,19 @@ fun FastScroller(
     val density = LocalDensity.current
     val bottomPaddingPx = with(density) { LocalBottomContentPadding.current.toPx() }
     val thumbHeightPx = with(density) { ThumbHeight.toPx() }
+    val squeezedThumbHeightPx = with(density) { SqueezedThumbHeight.toPx() }
     val edgeWidth = LocalFastScrollTouchArea.current.edgeWidth
 
-    // Shown by the list moving under a scroll of its own - a finger, a fling - never by a relayout.
+    // Shown by the list moving under a scroll of its own - a finger, a fling - or stretching past an end,
+    // never by a relayout.
     LaunchedEffect(state, isActive) {
         if (!isActive) {
             state.hide()
             return@LaunchedEffect
         }
-        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+        snapshotFlow { Triple(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset, overscroll.stretch) }
             .drop(1)
-            .collect { if (listState.isScrollInProgress) state.onScrolled() }
+            .collect { if (listState.isScrollInProgress || overscroll.stretch != 0f) state.onScrolled() }
     }
 
     Box(
@@ -205,6 +218,14 @@ fun FastScroller(
                             if (ownsGesture) {
                                 state.scrollToThumbTop(dragStartThumbTop + (y - dragStartY), thumbRangePx())
                                 change.consume()
+                            } else if (isInTarget(downX)) {
+                                // Still watching for the slop: a finger taken by a sideways swipe - the
+                                // pager's - is left to it for good. The list's own claim on it, a touch
+                                // catching its fling, is not: the thumb still takes over from that.
+                                val final = awaitPointerEvent(PointerEventPass.Final).changes
+                                    .firstOrNull { it.id == down.id } ?: break
+                                val movedSideways = abs(final.position.x - downX) > abs(final.position.y - downY)
+                                if (final.isConsumed && movedSideways) break
                             }
                             lastY = y
                         }
@@ -214,7 +235,7 @@ fun FastScroller(
                 }
             },
     ) {
-        content()
+        content(overscroll)
 
         val hiddenFraction by animateFloatAsState(
             targetValue = if (state.isThumbShown) 0f else 1f,
@@ -223,19 +244,34 @@ fun FastScroller(
             } else {
                 MaterialTheme.motionScheme.fastSpatialSpec()
             },
-            label = "fastScrollThumb",
+            label = "fastScrollThumbSlide",
+        )
+        val thumbAlpha by animateFloatAsState(
+            targetValue = if (state.isThumbShown) 1f else 0f,
+            animationSpec = if (state.isThumbShown) {
+                MaterialTheme.motionScheme.defaultEffectsSpec()
+            } else {
+                MaterialTheme.motionScheme.fastEffectsSpec()
+            },
+            label = "fastScrollThumbFade",
         )
         val thumbColor = MaterialTheme.colorScheme.secondary
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .layout { measurable, constraints ->
-                    val thumb = measurable.measure(Constraints())
+                    // Pressed against the end the list is stretched past - its top, past the start - by as
+                    // much as the list is, down to a dot.
+                    val stretch = overscroll.stretch
+                    val squeeze = abs(stretch).coerceAtMost(thumbHeightPx - squeezedThumbHeightPx)
+                    val thumb = measurable.measure(Constraints(maxHeight = (thumbHeightPx - squeeze).roundToInt()))
                     layout(thumb.width, constraints.maxHeight) {
-                        val top = listState.scrollFraction(state.metrics) * thumbRangePx(constraints.maxHeight, bottomPaddingPx, thumbHeightPx)
+                        val top = listState.scrollFraction(state.metrics) * thumbRangePx(constraints.maxHeight, bottomPaddingPx, thumbHeightPx) +
+                            if (stretch < 0f) squeeze else 0f
                         thumb.placeRelativeWithLayer(0, top.roundToInt()) {
                             // Slid out past the end edge, whichever side that is.
                             translationX = hiddenFraction * thumb.width * if (isRtl) -1 else 1
+                            alpha = thumbAlpha
                         }
                     }
                 }

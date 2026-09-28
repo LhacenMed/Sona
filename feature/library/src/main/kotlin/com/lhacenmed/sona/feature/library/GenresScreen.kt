@@ -42,6 +42,7 @@ fun GenresScreen(
         sectionOf = genreSections,
         modifier = modifier,
         listState = listState,
+        onRefresh = rememberLibraryRefresh(viewModel),
     ) { genre ->
         GenreRow(
             genre = genre,

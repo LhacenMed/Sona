@@ -5,7 +5,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.compositionContext
 import androidx.compose.ui.platform.createLifecycleAwareWindowRecomposer
 import com.lhacenmed.sona.core.designsystem.effect.ApplyRefreshRate
@@ -13,6 +15,8 @@ import com.lhacenmed.sona.core.designsystem.effect.ProvideSonaHaptics
 import com.lhacenmed.sona.core.designsystem.effect.SonaEffects
 import com.lhacenmed.sona.core.designsystem.effect.isHighRefreshRate
 import com.lhacenmed.sona.core.designsystem.effect.rememberSupportedHighestFps
+import com.lhacenmed.sona.core.designsystem.gesture.holdClaimedFingers
+import com.lhacenmed.sona.core.designsystem.motion.ProvideRubberBandOverscroll
 
 /**
  * The activity every Sona screen is hosted in.
@@ -31,7 +35,8 @@ import com.lhacenmed.sona.core.designsystem.effect.rememberSupportedHighestFps
  * the window's compositions are run with it as Android runs them with its own animator scale, so every
  * Compose animation follows it, the dialogs and sheets opened over the window included, with nothing to
  * check it one by one. And the content set with [setSonaContent] asks the display for its fastest mode
- * when that is forced, and gives its haptics only while they are on.
+ * when that is forced, gives its haptics only while they are on, rubber-bands every list at its ends, and
+ * keeps each finger with the drag that claimed it until it lifts - see [holdClaimedFingers].
  */
 abstract class SonaActivity : ComponentActivity() {
 
@@ -48,7 +53,13 @@ abstract class SonaActivity : ComponentActivity() {
     protected fun setSonaContent(content: @Composable () -> Unit) {
         setContent {
             WindowRefreshRate()
-            ProvideSonaHaptics(content)
+            ProvideSonaHaptics {
+                ProvideRubberBandOverscroll {
+                    // Passing the window's constraints on as they are, so the content is laid out as if
+                    // it were the root.
+                    Box(modifier = Modifier.holdClaimedFingers(), propagateMinConstraints = true) { content() }
+                }
+            }
         }
     }
 

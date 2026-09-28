@@ -256,6 +256,8 @@ fun LibraryPagerScreen(
                     HorizontalPager(
                         state = pagerState,
                         modifier = Modifier.fillMaxSize(),
+                        // No band past the first or last tab: the pager simply stops there.
+                        overscrollEffect = null,
                         // Enough to hold every tab, so none is ever disposed while the library is open.
                         // Disposing one cancels whatever its list was doing: leave a tab mid-fling and it
                         // would freeze where it stood, then reappear stopped dead when you came back.

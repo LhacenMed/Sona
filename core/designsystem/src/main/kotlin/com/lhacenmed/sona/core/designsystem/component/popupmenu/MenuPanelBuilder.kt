@@ -150,6 +150,8 @@ internal class MenuPanelBuilder(
 
         val scrollView = ScrollView(ctx).apply {
             isVerticalScrollBarEnabled = false
+            // Android's stretch is no end the app's lists have - they rubber-band - so a menu has none.
+            overScrollMode = View.OVER_SCROLL_NEVER
             addView(itemsLayout)
         }
         container.addView(scrollView)
