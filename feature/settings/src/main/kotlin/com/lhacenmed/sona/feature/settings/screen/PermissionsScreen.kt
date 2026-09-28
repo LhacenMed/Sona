@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.lhacenmed.sona.core.common.permission.AppPermission
+import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
 import com.lhacenmed.sona.feature.settings.component.SettingsActionItem
@@ -67,7 +68,7 @@ data object PermissionsScreen : Screen {
                     )
                     SettingsActionItem(
                         title = stringResource(permission.titleRes),
-                        summary = stringResource(permission.purposeRes) + " • " + status,
+                        summary = stringResource(permission.purposeRes) + InfoSeparator + status,
                         onClick = {
                             val runtimePermission = permission.runtimePermission
                             if (isGranted || runtimePermission == null) {
