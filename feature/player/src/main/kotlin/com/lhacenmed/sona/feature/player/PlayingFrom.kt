@@ -17,6 +17,9 @@ internal sealed interface PlayingFrom {
     /** The whole library - the tracks tab, or a search of it. */
     data object AllTracks : PlayingFrom
 
+    /** Every video - the Videos tab, or a search of it. */
+    data object Videos : PlayingFrom
+
     data object RecentlyPlayed : PlayingFrom
 
     data object MostPlayed : PlayingFrom
@@ -40,6 +43,7 @@ internal fun playingFromOf(
         null -> PlayingFrom.AllTracks
         PlaybackParent.RecentlyPlayed -> PlayingFrom.RecentlyPlayed
         PlaybackParent.MostPlayed -> PlayingFrom.MostPlayed
+        PlaybackParent.Videos -> PlayingFrom.Videos
         is PlaybackParent.Album -> albums.firstOrNull { it.id == parent.albumId }?.title?.named(CollectionKind.ALBUM)
         is PlaybackParent.Artist -> artists.firstOrNull { it.id == parent.artistId }?.name?.named(CollectionKind.ARTIST)
         is PlaybackParent.Genre -> genres.firstOrNull { it.id == parent.genreId }?.name?.named(CollectionKind.GENRE)
@@ -52,14 +56,15 @@ internal fun playingFromOf(
 private fun String.named(kind: CollectionKind) = PlayingFrom.Collection(name = this, kind = kind)
 
 /**
- * "Name - Kind" for a collection. The whole library and the two listening histories are named alone:
- * none of them is a collection of a kind the library has.
+ * "Name • Kind" for a collection. The whole library, the videos and the two listening histories are named
+ * alone: none of them is a collection of a kind the library has.
  */
 @Composable
 internal fun PlayingFrom.label(): String =
     when (this) {
         is PlayingFrom.Collection -> stringResource(R.string.player_playing_from_collection, name, kind.label())
         PlayingFrom.AllTracks -> stringResource(R.string.player_playing_from_all_tracks)
+        PlayingFrom.Videos -> stringResource(R.string.player_playing_from_videos)
         PlayingFrom.RecentlyPlayed -> stringResource(R.string.player_playing_from_recently_played)
         PlayingFrom.MostPlayed -> stringResource(R.string.player_playing_from_most_played)
     }

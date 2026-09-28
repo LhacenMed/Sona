@@ -6,6 +6,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.CoverArtDefaults
+import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.designsystem.component.SonaGenreCover
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
@@ -31,7 +32,7 @@ data class GenreDetailScreen(val genreId: Long) : Screen {
                 info = listOf(
                     pluralCount(genre?.artistCount ?: 0, "artist"),
                     trackCountLabel(tracks.itemsOrEmpty.size),
-                ).joinToString(DETAIL_INFO_SEPARATOR),
+                ).joinToString(InfoSeparator),
                 cover = {
                     SonaGenreCover(
                         coverArtUris = genre?.coverArtUris.orEmpty(),

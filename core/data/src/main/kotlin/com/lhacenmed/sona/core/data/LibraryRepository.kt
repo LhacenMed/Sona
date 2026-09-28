@@ -101,6 +101,11 @@ class LibraryRepository @Inject constructor(
         .sortedFor(LibrarySortSpecs.tracks) { rows -> rows.map { it.toDomain() } }
         .shareContent()
 
+    /** Every video - the Videos tab. */
+    val videos: StateFlow<LibraryContent<Track>> = trackDao.observeAll(isVideo = true)
+        .sortedFor(LibrarySortSpecs.videos) { rows -> rows.map { it.toDomain() } }
+        .shareContent()
+
     val albums: StateFlow<LibraryContent<Album>> = albumDao.observeAll()
         .sortedFor(LibrarySortSpecs.albums) { rows -> rows.map { it.toDomain() } }
         .shareContent()
@@ -113,10 +118,10 @@ class LibraryRepository @Inject constructor(
         .sortedFor(LibrarySortSpecs.genres) { rows -> rows.map { it.toDomain() } }
         .shareContent()
 
-    val folders: StateFlow<LibraryContent<Folder>> = foldersOf(isVideo = false, LibrarySortSpecs.folders)
+    val folders: StateFlow<LibraryContent<Folder>> = foldersOf(isVideo = false)
 
-    /** The Videos tab: every folder holding a video, counting its videos alone. */
-    val videoFolders: StateFlow<LibraryContent<Folder>> = foldersOf(isVideo = true, LibrarySortSpecs.videoFolders)
+    /** Every folder holding a video, counting its videos alone - sorted as [folders] are. */
+    val videoFolders: StateFlow<LibraryContent<Folder>> = foldersOf(isVideo = true)
 
     /**
      * Track lookup by id - the videos' too, as they are queued like any track - for the player and the
@@ -125,9 +130,7 @@ class LibraryRepository @Inject constructor(
      * re-reads the database at all.
      */
     val tracksById: StateFlow<Map<Long, Track>> = tracks
-        .combine(trackDao.observeAll(isVideo = true).conflate()) { content, videos ->
-            (content.itemsOrEmpty + videos.map { it.toDomain() }).associateBy { it.id }
-        }
+        .combine(videos) { tracks, videos -> (tracks.itemsOrEmpty + videos.itemsOrEmpty).associateBy { it.id } }
         .flowOn(defaultDispatcher)
         .stateIn(scope, SharingStarted.Eagerly, emptyMap())
 
@@ -136,11 +139,11 @@ class LibraryRepository @Inject constructor(
      * scroller's popup names it by. Kept in step with the sort the list itself is in.
      */
     val trackSections: StateFlow<(Track) -> String?> = sectionsOf(LibrarySortSpecs.tracks)
+    val videoSections: StateFlow<(Track) -> String?> = sectionsOf(LibrarySortSpecs.videos)
     val albumSections: StateFlow<(Album) -> String?> = sectionsOf(LibrarySortSpecs.albums)
     val artistSections: StateFlow<(Artist) -> String?> = sectionsOf(LibrarySortSpecs.artists)
     val genreSections: StateFlow<(Genre) -> String?> = sectionsOf(LibrarySortSpecs.genres)
     val folderSections: StateFlow<(Folder) -> String?> = sectionsOf(LibrarySortSpecs.folders)
-    val videoFolderSections: StateFlow<(Folder) -> String?> = sectionsOf(LibrarySortSpecs.videoFolders)
 
     /** `true` once the library has been read from disk - the app's first-paint gate. */
     val isReady: StateFlow<Boolean> = tracks
@@ -352,11 +355,12 @@ class LibraryRepository @Inject constructor(
         is PlaybackParent.Folder -> folderTracks(parent.folderPath, parent.isVideo)
         PlaybackParent.RecentlyPlayed -> recentlyPlayedTracks()
         PlaybackParent.MostPlayed -> mostPlayedTracks()
+        PlaybackParent.Videos -> videos
     }
 
     /**
      * [parent]'s name as the library has it now, or null once it is no longer in the library - and for
-     * the two listening histories, which have no name of their own to give.
+     * the videos and the two listening histories, which have no name of their own to give.
      */
     fun collectionName(parent: PlaybackParent): Flow<String?> = when (parent) {
         is PlaybackParent.Album -> album(parent.albumId).map { it?.title }
@@ -365,7 +369,7 @@ class LibraryRepository @Inject constructor(
         is PlaybackParent.Playlist -> playlists.readyItems().map { all -> all.find { it.id == parent.playlistId }?.name }
         is PlaybackParent.Folder -> (if (parent.isVideo) videoFolders else folders).readyItems()
             .map { all -> all.find { it.path == parent.folderPath }?.name }
-        PlaybackParent.RecentlyPlayed, PlaybackParent.MostPlayed -> flowOf(null)
+        PlaybackParent.Videos, PlaybackParent.RecentlyPlayed, PlaybackParent.MostPlayed -> flowOf(null)
     }.distinctUntilChanged()
 
     /**
@@ -425,7 +429,7 @@ class LibraryRepository @Inject constructor(
      * The folders holding music - or, where [isVideo], videos - with the count and cover each row shows.
      * Aggregated by SQLite (`GROUP BY folderPath`), not by grouping the track list in memory.
      */
-    private fun foldersOf(isVideo: Boolean, spec: SortSpec<Folder>): StateFlow<LibraryContent<Folder>> =
+    private fun foldersOf(isVideo: Boolean): StateFlow<LibraryContent<Folder>> =
         trackDao.observeFolders(isVideo)
             .combine(trackDao.observeFolderCoverArt(isVideo)) { rows, coverRows ->
                 val coversByPath = coverRows.groupBy { it.path }
@@ -438,7 +442,7 @@ class LibraryRepository @Inject constructor(
                     )
                 }
             }
-            .sortedFor(spec) { rows -> rows }
+            .sortedFor(LibrarySortSpecs.folders) { rows -> rows }
             .shareContent()
 
     /** The rows once read - a missing collection is then really missing, not merely not loaded yet. */

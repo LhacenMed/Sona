@@ -13,7 +13,7 @@ enum class ShuffleSourceKind(internal val icon: ImageVector) {
     FOLDER(SonaIcons.Folder),
 }
 
-/** The kind of collection [this] is, or null for the listening histories - never a shuffle-all source. */
+/** The kind of collection [this] is, or null for the videos and the listening histories - never a shuffle-all source. */
 val PlaybackParent.shuffleSourceKind: ShuffleSourceKind?
     get() = when (this) {
         is PlaybackParent.Playlist -> ShuffleSourceKind.PLAYLIST
@@ -21,5 +21,5 @@ val PlaybackParent.shuffleSourceKind: ShuffleSourceKind?
         is PlaybackParent.Album -> ShuffleSourceKind.ALBUM
         is PlaybackParent.Genre -> ShuffleSourceKind.GENRE
         is PlaybackParent.Folder -> ShuffleSourceKind.FOLDER
-        PlaybackParent.RecentlyPlayed, PlaybackParent.MostPlayed -> null
+        PlaybackParent.Videos, PlaybackParent.RecentlyPlayed, PlaybackParent.MostPlayed -> null
     }

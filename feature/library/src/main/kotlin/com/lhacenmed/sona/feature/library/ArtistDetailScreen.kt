@@ -6,6 +6,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.CoverArtDefaults
+import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.designsystem.component.SonaArtistCover
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
@@ -33,7 +34,7 @@ data class ArtistDetailScreen(val artistId: Long) : Screen {
                 info = listOf(
                     pluralCount(artist?.albumCount ?: 0, "album"),
                     trackCountLabel(tracks.itemsOrEmpty.size),
-                ).joinToString(DETAIL_INFO_SEPARATOR),
+                ).joinToString(InfoSeparator),
                 cover = {
                     SonaArtistCover(
                         coverArtUris = artist?.coverArtUris.orEmpty(),

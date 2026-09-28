@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.feature.library.options
 
+import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Folder
@@ -201,16 +202,13 @@ fun OptionsTarget.infoLine(): String = when (this) {
     is OptionsTarget.ForTrack -> track.artist
     is OptionsTarget.ForAlbum -> album.artistName
     is OptionsTarget.ForArtist ->
-        albumCountLabel(artist.albumCount) + COUNTS_SEPARATOR + trackCountLabel(artist.trackCount)
+        albumCountLabel(artist.albumCount) + InfoSeparator + trackCountLabel(artist.trackCount)
     is OptionsTarget.ForGenre ->
-        artistCountLabel(genre.artistCount) + COUNTS_SEPARATOR + trackCountLabel(genre.trackCount)
+        artistCountLabel(genre.artistCount) + InfoSeparator + trackCountLabel(genre.trackCount)
     is OptionsTarget.ForPlaylist -> trackCountLabel(playlist.trackCount)
     is OptionsTarget.ForFolder -> folder.itemCountLabel()
     is OptionsTarget.ForSelection -> formatDurationMs(tracks.sumOf { it.durationMs })
 }
-
-/** What separates the two counts under an artist or a genre: Auxio's `fmt_two`. */
-private const val COUNTS_SEPARATOR = " • "
 
 /** A count of albums, or Auxio's `def_album_count` for one that holds none. */
 private fun albumCountLabel(count: Int): String = if (count == 0) "No albums" else pluralCount(count, "album")

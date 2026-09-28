@@ -31,7 +31,7 @@ import com.lhacenmed.sona.feature.library.pluralCount
  * Excluding [folderPaths] from the library - from a folder's options sheet or the selection bar.
  *
  * [onConfirmed] runs the moment the exclusion starts, which is when a selection that asked for it ends.
- * The dialog stays through the rescan that takes the folders' tracks out, so the toast only ever
+ * The dialog stays through the rescan that takes the folders' music and videos out, so the toast only ever
  * announces an exclusion that has actually happened.
  */
 @Composable
@@ -45,9 +45,9 @@ internal fun ExcludeFoldersDialog(
     SonaConfirmationDialog(
         title = if (isSingle) "Exclude folder" else "Exclude ${folderPaths.size} folders",
         message = if (isSingle) {
-            "Its tracks leave your library. The files themselves are not deleted."
+            "Its music and videos leave your library. The files themselves are not deleted."
         } else {
-            "Their tracks leave your library. The files themselves are not deleted."
+            "Their music and videos leave your library. The files themselves are not deleted."
         },
         confirmLabel = "Exclude",
         successMessage = if (isSingle) "Folder excluded" else "${folderPaths.size} folders excluded",
