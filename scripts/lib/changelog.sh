@@ -2,18 +2,43 @@
 # lib/changelog.sh — release notes, gathered from commit messages.
 # Source this file; do not execute directly.
 #
-# A commit says what it changes for the user in git trailers - the "Key: value"
-# lines closing its message, as CONTRIBUTING.md describes - one per change,
-# under Keep a Changelog's headings:
+# A release's notes are every commit since the release before it, oldest first,
+# under Keep a Changelog's headings. Each commit speaks for itself one of two
+# ways:
 #
-#   Added: A sleep timer in the player's menu.
-#   Fixed: The queue no longer jumps when a track is removed.
+#   - Its changelog lines, when it has them: git trailers closing its message,
+#     one per change, as CONTRIBUTING.md describes - written for users, so they
+#     win whenever they are there.
 #
-# A release's notes are every such line since the release before it, oldest
-# first, under the heading each was given. Commits without any say nothing.
+#       Added: A sleep timer in the player's menu.
+#       Fixed: The queue no longer jumps when a track is removed.
+#
+#   - Otherwise its Conventional Commits subject, under the heading its type
+#     stands for: "feat(player): add a sleep timer" is Added, "Add a sleep timer."
+#     A type users never notice - build, ci, docs, chore, test, style - says
+#     nothing, and neither does a subject that is not conventional, such as the
+#     pipeline's own "release: v1.6.0".
 
 # The headings, in the order the notes list them.
 CHANGELOG_SECTIONS=(Added Changed Fixed Removed)
+
+# Prints the heading a Conventional Commits type stands for, or nothing for a
+# type users never notice.
+_changelog_section_of_type() {
+    case "$1" in
+        feat)                 echo Added ;;
+        fix)                  echo Fixed ;;
+        perf|refactor|revert) echo Changed ;;
+    esac
+}
+
+# Prints a subject's summary as a changelog entry: "add a sleep timer" becomes
+# "Add a sleep timer.", read as the sentences written changelog lines are.
+_changelog_entry_of_summary() {
+    local entry="${1^}"
+    [[ "$entry" =~ [.!?]$ ]] || entry="${entry}."
+    echo "$entry"
+}
 
 # changelog::since <from_tag> [to_rev]
 # Prints the notes of the commits after <from_tag> up to [to_rev] (HEAD), as
@@ -24,16 +49,45 @@ changelog::since() {
     local range="$to"
     [[ -n "$from" ]] && range="${from}..${to}"
 
-    local section entries printed=0
+    # One entry list per heading, filled commit by commit.
+    local -A entries=()
+    local section
+    for section in "${CHANGELOG_SECTIONS[@]}"; do entries[$section]=""; done
+
+    # One record per commit - its subject, then its changelog lines, one per line -
+    # read in a single pass over the range.
+    local keys trailer_format record subject trailers line key value
+    keys="$(printf 'key=%s,' "${CHANGELOG_SECTIONS[@]}")"
+    trailer_format="%(trailers:${keys}unfold)"
+    while IFS= read -r -d $'\x1e' record; do
+        record="${record#$'\n'}"
+        [[ -n "$record" ]] || continue
+        subject="${record%%$'\x1f'*}"
+        trailers="${record#*$'\x1f'}"
+
+        if [[ -n "${trailers//[[:space:]]/}" ]]; then
+            while IFS= read -r line; do
+                [[ "$line" =~ ^([A-Za-z]+):[[:space:]]*(.+)$ ]] || continue
+                key="${BASH_REMATCH[1],,}"
+                value="${BASH_REMATCH[2]}"
+                for section in "${CHANGELOG_SECTIONS[@]}"; do
+                    [[ "$key" == "${section,,}" ]] && entries[$section]+="- ${value}"$'\n'
+                done
+            done <<< "$trailers"
+        elif [[ "$subject" =~ ^([a-z]+)(\([a-z0-9-]+\))?!?:[[:space:]]+(.+)$ ]]; then
+            section="$(_changelog_section_of_type "${BASH_REMATCH[1]}")"
+            [[ -n "$section" ]] || continue
+            entries[$section]+="- $(_changelog_entry_of_summary "${BASH_REMATCH[3]}")"$'\n'
+        fi
+    done < <(git log --reverse --no-merges --format="%s%x1f${trailer_format}%x1e" "$range")
+
+    local printed=0
     for section in "${CHANGELOG_SECTIONS[@]}"; do
-        entries="$(git log --reverse --no-merges \
-            --format="%(trailers:key=${section},valueonly,unfold)" "$range" \
-            | sed '/^[[:space:]]*$/d')"
-        [[ -n "$entries" ]] || continue
+        [[ -n "${entries[$section]}" ]] || continue
         (( printed )) && echo ""
         echo "### ${section}"
         echo ""
-        sed 's/^/- /' <<< "$entries"
+        printf '%s' "${entries[$section]}"
         printed=1
     done
 }
@@ -55,14 +109,16 @@ changelog::add_release() {
 
 # changelog::referenced_issues <from_tag> [to_rev]
 # Prints, once each, the issues and pull requests the commits after <from_tag>
-# up to [to_rev] (HEAD) close - "Fixes #12", "Closes #12", "Resolves #12" - or
-# were merged as - the "(#12)" GitHub ends a squash-merged subject with.
+# up to [to_rev] (HEAD) close - a "Fixes #12", "Closes #12" or "Resolves #12"
+# line, as CONTRIBUTING.md writes them - or were merged as - the "(#12)" GitHub
+# ends a squash-merged subject with. Only a line of its own counts, so a
+# message that mentions "Fixes #12" in passing tells no issue anything.
 changelog::referenced_issues() {
     local from="$1" to="${2:-HEAD}"
     local range="$to"
     [[ -n "$from" ]] && range="${from}..${to}"
     git log --format='%B' "$range" \
-        | { grep -oiE '((close[sd]?|fix(e[sd])?|resolve[sd]?):? +#[0-9]+)|(\(#[0-9]+\)$)' || true; } \
+        | { grep -oiE '(^[[:space:]]*(close[sd]?|fix(e[sd])?|resolve[sd]?):? +#[0-9]+)|(\(#[0-9]+\)$)' || true; } \
         | grep -oE '[0-9]+' \
         | sort -un
 }

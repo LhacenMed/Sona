@@ -1,12 +1,14 @@
 name: Artifact release
 
 # Publishes an Artifact release - a pre-release of the version dev is heading
-# for - whenever a push to dev carries a commit marked for one:
+# for - of dev as it stands, asked for one of two ways:
 #
-#   Release: <alpha|beta|rc> [major|minor|patch]
-#
-# as the last of its message's trailers (see CONTRIBUTING.md). A push without
-# one ends after the first job, in seconds.
+#   - `./scripts/release.sh artifact <alpha|beta|rc> [--bump ...]`, which
+#     dispatches this workflow on dev - no commit needed;
+#   - a push to dev carrying a commit marked for one,
+#       Release: <alpha|beta|rc> [major|minor|patch]
+#     as the last of its message's trailers (see CONTRIBUTING.md). A push
+#     without one ends after the first job, in seconds.
 #
 # Only a marker on a commit the repository's owner authored counts - GitHub's
 # own record of who wrote it, not the name in the commit. A contributor's commit
@@ -20,6 +22,18 @@ name: Artifact release
 on:
   push:
     branches: [dev]
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: Stage of the version dev leads to
+        type: choice
+        options: [alpha, beta, rc]
+        default: beta
+      bump:
+        description: Bump from the last stable release, where no artifact leads further already
+        type: choice
+        options: [patch, minor, major]
+        default: patch
 
 # One release at a time, the stable pipeline's included, so each works out its
 # version from tags the other has finished writing. Queued rather than
@@ -30,7 +44,7 @@ concurrency:
 
 jobs:
   plan:
-    name: Look for a release marker
+    name: Decide what to release
     runs-on: ubuntu-latest
     outputs:
       stage: ${{ steps.marker.outputs.stage }}
@@ -41,36 +55,47 @@ jobs:
         with:
           fetch-depth: 0
 
-      # The newest marked commit of the owner's among those pushed decides - the
-      # whole push is released, as its last commit.
+      # Dispatched, the stage and bump are the ones asked for - only on dev, whose
+      # head is what gets released. Pushed, the newest marked commit of the
+      # owner's among those pushed decides - the whole push is released, as its
+      # last commit.
       - name: Find the release marker
         id: marker
         env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          INPUT_STAGE: ${{ inputs.stage }}
+          INPUT_BUMP: ${{ inputs.bump }}
           BEFORE: ${{ github.event.before }}
           AFTER: ${{ github.sha }}
           OWNER: ${{ github.repository_owner }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          # A new branch or a force push has no "before" to count from here.
-          if git merge-base --is-ancestor "$BEFORE" "$AFTER" 2>/dev/null; then
-            RANGE="${BEFORE}..${AFTER}"
-          else
-            RANGE="-1 ${AFTER}"
-          fi
           MARKER=""
-          # shellcheck disable=SC2086 # RANGE is one or two arguments on purpose.
-          for sha in $(git log --format=%H $RANGE); do
-            value="$(git log -1 --format='%(trailers:key=Release,valueonly,unfold)' "$sha" | sed '/^[[:space:]]*$/d' | head -n 1)"
-            [ -n "$value" ] || continue
-            author="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${sha}" --jq '.author.login // ""')"
-            if [ "$author" = "$OWNER" ]; then
-              MARKER="$value"; break
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            [ "$REF" = "refs/heads/dev" ] || { echo "::error::Artifacts are released from dev, not ${REF#refs/heads/}."; exit 1; }
+            MARKER="${INPUT_STAGE} ${INPUT_BUMP}"
+          else
+            # A new branch or a force push has no "before" to count from here.
+            if git merge-base --is-ancestor "$BEFORE" "$AFTER" 2>/dev/null; then
+              RANGE="${BEFORE}..${AFTER}"
+            else
+              RANGE="-1 ${AFTER}"
             fi
-            echo "::notice::${sha:0:7} is marked Release: ${value}, but was not authored by ${OWNER} - skipped."
-          done
-          if [ -z "$MARKER" ]; then
-            echo "No release marker of ${OWNER}'s in this push."; exit 0
+            # shellcheck disable=SC2086 # RANGE is one or two arguments on purpose.
+            for sha in $(git log --format=%H $RANGE); do
+              value="$(git log -1 --format='%(trailers:key=Release,valueonly,unfold)' "$sha" | sed '/^[[:space:]]*$/d' | head -n 1)"
+              [ -n "$value" ] || continue
+              author="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${sha}" --jq '.author.login // ""')"
+              if [ "$author" = "$OWNER" ]; then
+                MARKER="$value"; break
+              fi
+              echo "::notice::${sha:0:7} is marked Release: ${value}, but was not authored by ${OWNER} - skipped."
+            done
+            if [ -z "$MARKER" ]; then
+              echo "No release marker of ${OWNER}'s in this push."; exit 0
+            fi
           fi
           if [ -n "$(git tag --points-at "$AFTER" --list 'v*')" ]; then
             echo "${AFTER} is already released."; exit 0
@@ -99,7 +124,7 @@ jobs:
       issues: write
       pull-requests: write
     steps:
-      - name: Checkout the pushed commit
+      - name: Checkout the commit released
         uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
