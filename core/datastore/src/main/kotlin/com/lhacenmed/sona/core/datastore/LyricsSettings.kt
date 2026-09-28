@@ -27,7 +27,6 @@ private val LYRICS_V2_BOUNCE_FACTOR = floatPreferencesKey("lyricsV2BounceFactor"
 private val LYRICS_V2_GLOW_FACTOR = floatPreferencesKey("lyricsV2GlowFactor")
 private val LYRICS_V2_FILL_TRANSITION_WIDTH = floatPreferencesKey("lyricsV2FillTransitionWidth")
 private val LYRICS_V2_LRC_BOUNCE_ENABLED = booleanPreferencesKey("lyricsV2LrcBounceEnabled")
-private val LYRICS_ROMANIZE_JAPANESE = booleanPreferencesKey("lyricsRomanizeJapanese")
 private val LYRICS_ROMANIZE_KOREAN = booleanPreferencesKey("lyricsRomanizeKorean")
 private val LYRICS_ROMANIZE_CHINESE = booleanPreferencesKey("lyricsRomanizeChinese")
 private val LYRICS_ROMANIZE_HINDI = booleanPreferencesKey("lyricsRomanizeHindi")
@@ -107,10 +106,6 @@ class LyricsSettings @Inject constructor(
     val lrcBounceEnabled: Setting<Boolean> = cache.setting { it[LYRICS_V2_LRC_BOUNCE_ENABLED] ?: true }
 
     suspend fun setLrcBounceEnabled(enabled: Boolean) = set(LYRICS_V2_LRC_BOUNCE_ENABLED, enabled)
-
-    val romanizeJapanese: Setting<Boolean> = cache.setting { it[LYRICS_ROMANIZE_JAPANESE] ?: true }
-
-    suspend fun setRomanizeJapanese(enabled: Boolean) = set(LYRICS_ROMANIZE_JAPANESE, enabled)
 
     val romanizeKorean: Setting<Boolean> = cache.setting { it[LYRICS_ROMANIZE_KOREAN] ?: true }
 

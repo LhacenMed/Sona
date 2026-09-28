@@ -1,18 +1,23 @@
 package com.lhacenmed.sona.feature.settings.screen
 
+import android.text.format.Formatter
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.data.lyrics.DictionaryState
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDialog
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
 import com.lhacenmed.sona.feature.settings.component.SettingsActionItem
+import com.lhacenmed.sona.feature.settings.component.SettingsDownload
+import com.lhacenmed.sona.feature.settings.component.SettingsDownloadItem
 import com.lhacenmed.sona.feature.settings.component.SettingsList
 import com.lhacenmed.sona.feature.settings.component.SettingsNavigationItem
 import com.lhacenmed.sona.feature.settings.component.SettingsSection
@@ -36,7 +41,7 @@ data object LyricsScreen : Screen {
         val lyricsTextSize by viewModel.lyricsTextSize.collectAsStateWithLifecycle()
         val lyricsLineSpacing by viewModel.lyricsLineSpacing.collectAsStateWithLifecycle()
         val showLyricsPlayerControls by viewModel.showLyricsPlayerControls.collectAsStateWithLifecycle()
-        val romanizeJapanese by viewModel.romanizeJapanese.collectAsStateWithLifecycle()
+        val japaneseDictionary by viewModel.japaneseDictionaryState.collectAsStateWithLifecycle()
         val romanizeKorean by viewModel.romanizeKorean.collectAsStateWithLifecycle()
         val romanizeChinese by viewModel.romanizeChinese.collectAsStateWithLifecycle()
         val romanizeHindi by viewModel.romanizeHindi.collectAsStateWithLifecycle()
@@ -113,11 +118,15 @@ data object LyricsScreen : Screen {
             SettingsSectionDivider()
 
             SettingsSection(stringResource(R.string.lyrics_romanization_section)) {
-                SettingsSwitchItem(
+                // Japanese alone needs data of its own - a 13 MB dictionary - so it is downloaded rather than
+                // shipped, and romanizing it is on exactly while it is here.
+                SettingsDownloadItem(
                     title = stringResource(R.string.romanize_japanese_title),
-                    summary = stringResource(R.string.romanize_japanese_summary),
-                    checked = romanizeJapanese,
-                    onCheckedChange = viewModel::setRomanizeJapanese,
+                    summary = japaneseDictionarySummary(japaneseDictionary),
+                    download = japaneseDictionary.asSettingsDownload(),
+                    onDownload = viewModel::downloadJapaneseDictionary,
+                    onCancel = viewModel::cancelJapaneseDictionary,
+                    onRemove = viewModel::removeJapaneseDictionary,
                 )
                 SettingsSwitchItem(
                     title = stringResource(R.string.romanize_korean_title),
@@ -177,4 +186,24 @@ data object LyricsScreen : Screen {
             }
         }
     }
+}
+
+@Composable
+private fun japaneseDictionarySummary(state: DictionaryState): String {
+    val context = LocalContext.current
+    fun size(bytes: Long) = Formatter.formatShortFileSize(context, bytes)
+    return when (state) {
+        DictionaryState.Missing -> stringResource(R.string.romanize_japanese_download_summary)
+        is DictionaryState.Downloading ->
+            stringResource(R.string.romanize_japanese_downloading_summary, size(state.receivedBytes), size(state.totalBytes))
+        DictionaryState.Installed -> stringResource(R.string.romanize_japanese_summary)
+        DictionaryState.Failed -> stringResource(R.string.romanize_japanese_failed_summary)
+    }
+}
+
+private fun DictionaryState.asSettingsDownload(): SettingsDownload = when (this) {
+    DictionaryState.Missing -> SettingsDownload.Available
+    is DictionaryState.Downloading -> SettingsDownload.InProgress(progress)
+    DictionaryState.Installed -> SettingsDownload.Done
+    DictionaryState.Failed -> SettingsDownload.Failed
 }
