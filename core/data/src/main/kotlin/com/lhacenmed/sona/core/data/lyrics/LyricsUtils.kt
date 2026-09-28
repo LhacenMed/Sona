@@ -10,7 +10,6 @@ package com.lhacenmed.sona.core.data.lyrics
 import android.icu.text.Transliterator
 import android.os.Build
 import android.text.format.DateUtils
-import com.atilika.kuromoji.ipadic.Tokenizer
 import com.lhacenmed.sona.core.database.entity.LyricsEntity
 import java.lang.Character.UnicodeScript
 import kotlinx.coroutines.Dispatchers
@@ -370,11 +369,6 @@ object LyricsUtils {
                 ),
         )
 
-    // Lazy initialized Tokenizer
-    private val kuromojiTokenizer: Tokenizer by lazy {
-        Tokenizer()
-    }
-
     fun isTtml(lyrics: String): Boolean {
         val trimmed = normalizeLyricsText(lyrics)
         if (!trimmed.startsWith("<")) return false
@@ -654,15 +648,16 @@ object LyricsUtils {
     }
 
     /**
-     * Romanizes Japanese text using Kuromoji Tokenizer and the optimized katakanaToRomaji function.
+     * Romanizes Japanese text using Kuromoji Tokenizer and the optimized katakanaToRomaji function - left as it
+     * is while the dictionary is not downloaded (see [JapaneseDictionary]).
      * Runs on Dispatchers.Default for CPU-intensive work.
      * Expected impact: Faster tokenization due to reused Tokenizer instance and faster
      * per-token romanization.
      */
     suspend fun romanizeJapanese(text: String): String =
         withContext(Dispatchers.Default) {
-            // Use the lazily initialized tokenizer
-            val tokens = kuromojiTokenizer.tokenize(text)
+            val tokenizer = JapaneseTokenizer.get() ?: return@withContext text
+            val tokens = tokenizer.tokenize(text)
 
             val romanizedTokens =
                 tokens.mapIndexed { index, token ->

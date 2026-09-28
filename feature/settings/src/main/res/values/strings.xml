@@ -230,6 +230,9 @@
     <string name="lyrics_romanization_section">Romanization</string>
     <string name="romanize_japanese_title">Romanize Japanese</string>
     <string name="romanize_japanese_summary">Show Japanese lyrics in Latin script</string>
+    <string name="romanize_japanese_download_summary">Download its dictionary (13 MB) to show Japanese lyrics in Latin script</string>
+    <string name="romanize_japanese_downloading_summary">Downloading its dictionary: %1$s of %2$s</string>
+    <string name="romanize_japanese_failed_summary">The dictionary could not be downloaded. Tap to try again</string>
     <string name="romanize_korean_title">Romanize Korean</string>
     <string name="romanize_korean_summary">Show Korean lyrics in Latin script</string>
     <string name="romanize_chinese_title">Romanize Chinese</string>

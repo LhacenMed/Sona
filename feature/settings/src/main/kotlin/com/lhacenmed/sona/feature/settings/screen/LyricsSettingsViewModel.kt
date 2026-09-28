@@ -3,6 +3,8 @@ package com.lhacenmed.sona.feature.settings.screen
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.common.coroutines.launchOperation
+import com.lhacenmed.sona.core.data.lyrics.DictionaryState
+import com.lhacenmed.sona.core.data.lyrics.JapaneseDictionary
 import com.lhacenmed.sona.core.data.lyrics.LyricsRepository
 import com.lhacenmed.sona.core.datastore.LyricsSettings
 import com.lhacenmed.sona.core.datastore.Setting
@@ -18,6 +20,7 @@ import kotlinx.coroutines.launch
 class LyricsSettingsViewModel @Inject constructor(
     private val lyricsSettings: LyricsSettings,
     private val lyricsRepository: LyricsRepository,
+    private val japaneseDictionary: JapaneseDictionary,
 ) : ViewModel() {
 
     val lyricsClick: StateFlow<Boolean> = lyricsSettings.lyricsClick.state()
@@ -30,7 +33,8 @@ class LyricsSettingsViewModel @Inject constructor(
     val bounceFactor: StateFlow<Float> = lyricsSettings.bounceFactor.state()
     val glowFactor: StateFlow<Float> = lyricsSettings.glowFactor.state()
     val fillTransitionWidth: StateFlow<Float> = lyricsSettings.fillTransitionWidth.state()
-    val romanizeJapanese: StateFlow<Boolean> = lyricsSettings.romanizeJapanese.state()
+    /** The Japanese dictionary - romanizing Japanese is on exactly while it is downloaded. */
+    val japaneseDictionaryState: StateFlow<DictionaryState> = japaneseDictionary.state
     val romanizeKorean: StateFlow<Boolean> = lyricsSettings.romanizeKorean.state()
     val romanizeChinese: StateFlow<Boolean> = lyricsSettings.romanizeChinese.state()
     val romanizeHindi: StateFlow<Boolean> = lyricsSettings.romanizeHindi.state()
@@ -48,13 +52,16 @@ class LyricsSettingsViewModel @Inject constructor(
     fun setBounceFactor(factor: Float) = write { setBounceFactor(factor) }
     fun setGlowFactor(factor: Float) = write { setGlowFactor(factor) }
     fun setFillTransitionWidth(width: Float) = write { setFillTransitionWidth(width) }
-    fun setRomanizeJapanese(enabled: Boolean) = write { setRomanizeJapanese(enabled) }
     fun setRomanizeKorean(enabled: Boolean) = write { setRomanizeKorean(enabled) }
     fun setRomanizeChinese(enabled: Boolean) = write { setRomanizeChinese(enabled) }
     fun setRomanizeHindi(enabled: Boolean) = write { setRomanizeHindi(enabled) }
     fun setRomanizeOtherLanguages(enabled: Boolean) = write { setRomanizeOtherLanguages(enabled) }
     fun setPreloadQueueLyricsEnabled(enabled: Boolean) = write { setPreloadQueueLyricsEnabled(enabled) }
     fun setQueueLyricsPreloadCount(count: Int) = write { setQueueLyricsPreloadCount(count) }
+
+    fun downloadJapaneseDictionary() = japaneseDictionary.download()
+    fun cancelJapaneseDictionary() = japaneseDictionary.cancel()
+    fun removeJapaneseDictionary() = japaneseDictionary.remove()
 
     /** Forgets every stored and edited lyric, reporting how it went to [onFinished]. */
     fun clearLyricsCache(onFinished: (succeeded: Boolean) -> Unit) {

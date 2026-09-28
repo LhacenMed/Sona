@@ -2,6 +2,8 @@ package com.lhacenmed.sona.feature.player
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lhacenmed.sona.core.data.lyrics.DictionaryState
+import com.lhacenmed.sona.core.data.lyrics.JapaneseDictionary
 import com.lhacenmed.sona.core.data.lyrics.LyricsRepository
 import com.lhacenmed.sona.core.database.entity.LyricsEntity
 import com.lhacenmed.sona.core.datastore.LyricsBackgroundStyle
@@ -13,6 +15,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -21,6 +24,7 @@ import kotlinx.coroutines.launch
 class LyricsViewModel @Inject constructor(
     private val lyricsRepository: LyricsRepository,
     private val lyricsSettings: LyricsSettings,
+    japaneseDictionary: JapaneseDictionary,
 ) : ViewModel() {
 
     val lyricsClick: StateFlow<Boolean> = lyricsSettings.lyricsClick.state()
@@ -34,7 +38,10 @@ class LyricsViewModel @Inject constructor(
     val glowFactor: StateFlow<Float> = lyricsSettings.glowFactor.state()
     val fillTransitionWidth: StateFlow<Float> = lyricsSettings.fillTransitionWidth.state()
     val lrcBounceEnabled: StateFlow<Boolean> = lyricsSettings.lrcBounceEnabled.state()
-    val romanizeJapanese: StateFlow<Boolean> = lyricsSettings.romanizeJapanese.state()
+    /** Japanese is romanized exactly while its dictionary is downloaded. */
+    val romanizeJapanese: StateFlow<Boolean> = japaneseDictionary.state
+        .map { it == DictionaryState.Installed }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), japaneseDictionary.state.value == DictionaryState.Installed)
     val romanizeKorean: StateFlow<Boolean> = lyricsSettings.romanizeKorean.state()
     val romanizeChinese: StateFlow<Boolean> = lyricsSettings.romanizeChinese.state()
     val romanizeHindi: StateFlow<Boolean> = lyricsSettings.romanizeHindi.state()

@@ -12,8 +12,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
@@ -235,6 +241,70 @@ fun SettingsSwitchItem(
         modifier = modifier.clickable(enabled = enabled) { onCheckedChange(!checked) },
     )
 }
+
+/** Where something a [SettingsDownloadItem] offers stands. */
+sealed interface SettingsDownload {
+    data object Available : SettingsDownload
+
+    /** [progress] from 0 to 1. */
+    data class InProgress(val progress: Float) : SettingsDownload
+
+    data object Done : SettingsDownload
+
+    data object Failed : SettingsDownload
+}
+
+/**
+ * A row for something the app downloads only for those who want it - the in-app updater's download, as a
+ * row: a download button while it is not here, its progress while it arrives (pressed, it stops), and a
+ * remove button once it is. A failed download offers itself again. The whole row is the one target, as a
+ * switch row is.
+ */
+@Composable
+fun SettingsDownloadItem(
+    title: String,
+    summary: String,
+    download: SettingsDownload,
+    onDownload: () -> Unit,
+    onCancel: () -> Unit,
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val action = when (download) {
+        SettingsDownload.Available, SettingsDownload.Failed -> onDownload
+        is SettingsDownload.InProgress -> onCancel
+        SettingsDownload.Done -> onRemove
+    }
+    ListItem(
+        headlineContent = { Text(title) },
+        supportingContent = { Text(summary) },
+        trailingContent = {
+            Box(modifier = Modifier.size(DownloadControlSize), contentAlignment = Alignment.Center) {
+                when (download) {
+                    SettingsDownload.Available -> IconButton(onClick = onDownload) {
+                        Icon(Icons.Filled.Download, contentDescription = "Download")
+                    }
+                    SettingsDownload.Failed -> IconButton(onClick = onDownload) {
+                        Icon(Icons.Filled.Refresh, contentDescription = "Try again")
+                    }
+                    is SettingsDownload.InProgress -> {
+                        CircularProgressIndicator(progress = { download.progress }, modifier = Modifier.size(DownloadControlSize))
+                        IconButton(onClick = onCancel) {
+                            Icon(Icons.Filled.Close, contentDescription = "Stop downloading", modifier = Modifier.size(18.dp))
+                        }
+                    }
+                    SettingsDownload.Done -> IconButton(onClick = onRemove) {
+                        Icon(Icons.Filled.DeleteOutline, contentDescription = "Remove")
+                    }
+                }
+            }
+        },
+        modifier = modifier.clickable(onClick = action),
+    )
+}
+
+/** The size of a download row's control: a touch target, so the row keeps one height whatever it shows. */
+private val DownloadControlSize = 40.dp
 
 /** Material's disabled content: the surface's text at this much of its colour. */
 private const val DISABLED_CONTENT_ALPHA = 0.38f

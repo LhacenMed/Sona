@@ -165,6 +165,9 @@ android {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
         // Kuromoji ships these alongside other libraries that ship their own; none are read at runtime.
         resources.excludes += listOf("META-INF/NOTICE.md", "META-INF/CONTRIBUTORS.md", "META-INF/LICENSE.md")
+        // Kuromoji's dictionary - two thirds of the app - is downloaded by those who romanize Japanese
+        // instead (see JapaneseDictionary); its code stays, and reads the downloaded copy.
+        resources.excludes += "com/atilika/kuromoji/ipadic/*.bin"
     }
 
     compileOptions {
