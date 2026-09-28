@@ -62,6 +62,10 @@ enum class AppPermission {
     fun isGranted(context: Context): Boolean = when {
         this == FILE_CHANGES && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ->
             Environment.isExternalStorageManager()
+        // Managing all files reads every file too, MediaStore's included - so where it is granted, the library
+        // needs nothing more, and is never asked for.
+        this == AUDIO_LIBRARY && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager() ->
+            true
         this == APP_INSTALLS -> context.packageManager.canRequestPackageInstalls()
         else -> context.checkSelfPermission(checkNotNull(runtimePermission)) == PackageManager.PERMISSION_GRANTED
     }
