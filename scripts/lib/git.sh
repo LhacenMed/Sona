@@ -5,7 +5,8 @@
 # The branch mechanics (sync / merge / commit / fast-forward) now live in
 # .github/workflows/release.yml, where they run against a fresh checkout.
 # What remains here is what the local console still needs: identify the repo,
-# and refuse to dispatch a release that would miss local work.
+# refuse to dispatch a release that would miss local work, and dispatch and
+# follow the pipelines.
 
 # git::repo_slug -> prints "owner/repo" from the remote URL (supports https and ssh)
 git::repo_slug() {
@@ -49,4 +50,36 @@ git::ensure_pushed() {
 # reclaimed by the pipeline and must not block a retry.
 git::release_published() {
     [[ "$(gh release view "$1" --json isDraft --jq .isDraft 2>/dev/null || echo absent)" == "false" ]]
+}
+
+# git::run_workflow <workflow> <ref> <inputs_json>
+# Dispatches <workflow> on <ref> with <inputs_json>, then streams its run.
+# `gh workflow run` does not return the run it starts, so the newest run is
+# remembered first and the next one to appear is taken as it. Ctrl-C only
+# detaches: the run goes on, on GitHub.
+git::run_workflow() {
+    local workflow="$1" ref="$2" inputs="$3"
+    local previous run_id=""
+    previous="$(gh run list --workflow "$workflow" --limit 1 --json databaseId --jq '.[0].databaseId // 0')"
+    gh workflow run "$workflow" --ref "$ref" --json <<< "$inputs"
+
+    for _ in $(seq 1 20); do
+        sleep 2
+        run_id="$(gh run list --workflow "$workflow" --limit 1 --json databaseId --jq '.[0].databaseId // 0')"
+        [[ "$run_id" != "$previous" && "$run_id" != "0" ]] && break
+        run_id=""
+    done
+
+    local repo
+    repo="$(git::repo_slug)"
+    if [[ -z "$run_id" ]]; then
+        echo "  Dispatched, but its run did not appear in time."
+        echo "  Follow it at: https://github.com/${repo}/actions/workflows/${workflow}"
+        return 0
+    fi
+    echo ""
+    echo "  Running on GitHub : https://github.com/${repo}/actions/runs/${run_id}"
+    echo "  Streaming below - Ctrl-C only detaches; the release finishes on GitHub either way."
+    echo ""
+    gh run watch "$run_id" --exit-status || true
 }

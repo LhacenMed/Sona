@@ -171,8 +171,8 @@ Kotlin, Jetpack Compose with Material 3, Hilt, Room, DataStore, Media3 (ExoPlaye
 
 Every release is built, signed and published by GitHub Actions:
 
-- **Stable** releases (`1.6.0`) come from `./scripts/release.sh`, run by the maintainer.
-- **Artifact** releases (`1.6.0-beta.1`) - early builds of the next version - are made automatically when the maintainer marks a commit on `dev` with `Release: <stage>`. The in-app updater offers them on the Artifact update channel.
+- **Stable** releases (`1.6.0`) come from `./scripts/release.sh`, run by the maintainer - and fixes released on their own from `./scripts/release.sh hotfix`.
+- **Artifact** releases (`1.6.0-beta.1`) - early builds of the next version - come from `./scripts/release.sh artifact <stage>`, or a commit on `dev` the maintainer marks `Release: <stage>`. The in-app updater offers them on the Artifact update channel.
 
 Release notes are gathered from the commits themselves. [docs/RELEASING.md](docs/RELEASING.md) describes the whole process.
 

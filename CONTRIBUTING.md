@@ -141,7 +141,9 @@ Add a body when the reason for the change is not obvious from the summary.
 
 ### Changelog trailers
 
-Sona's release notes are written by its commits. A commit that changes something a user will notice says so in [git trailers](https://git-scm.com/docs/git-interpret-trailers): `Key: value` lines closing the message, as its last paragraph, one per change, under [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)'s headings:
+Sona's release notes are written by its commits. Every commit's subject is its line in the notes, under the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) heading its type stands for: `feat` is Added, `fix` is Fixed, `perf`, `refactor` and `revert` are Changed - `feat(player): add a sleep timer` reads "Add a sleep timer.". `build`, `ci`, `docs`, `chore`, `test` and `style` are left out.
+
+Where users deserve a better sentence than the subject, say it in [git trailers](https://git-scm.com/docs/git-interpret-trailers): `Key: value` lines closing the message, as its last paragraph, one per change. A commit's trailers take the place of its subject in the notes:
 
 ```
 fix(player): keep the queue in place when a track is removed
@@ -155,11 +157,11 @@ Fixed: The queue no longer jumps to the top when a track is removed.
 
 - **Keys**: `Added`, `Changed`, `Fixed`, `Removed`. Write the value for users, not for developers: what they will see, in a sentence.
 - **Several changes**: one trailer each. A long one continues on the next line, indented.
-- **Nothing a user would notice** - a refactor, a build change: no trailers. The commit is left out of the notes.
+- **No trailers** - the subject speaks for the commit, as above.
 - **Last paragraph, trailers only**: git reads the trailers only if nothing else shares their paragraph. A line like `Fixes #123` among them hides them all, so the change is missing from the notes.
 - **Issues**: `Fixes #123` (or `Closes`, `Resolves`) in the body, above the trailers. When a release ships the commit, the issue is told.
 
-Every release's notes gather these trailers from all the commits since the release before, so check yours read well on their own. The commit hook checks each message as you commit, and CI checks every pull request's: the subject's format, changelog lines git would not read, and a trailer the changelog does not read at all.
+Every release's notes gather these from all the commits since the release before, so check your subject - or your trailers - read well on their own. The commit hook checks each message as you commit, and CI checks every pull request's: the subject's format, changelog lines git would not read, and a trailer the changelog does not read at all.
 
 ## Pull requests
 
@@ -190,13 +192,16 @@ Every pull request, and every push to `dev`, is built by CI, and its debug APK i
 
 | Release | Versions | Made by | Update channel |
 | --- | --- | --- | --- |
-| **Artifact** | `1.6.0-alpha.1`, `1.6.0-beta.2`, `1.6.0-rc.1` - early builds of the next version | a commit on `dev` marked `Release:` | Artifact |
+| **Artifact** | `1.6.0-alpha.1`, `1.6.0-beta.2`, `1.6.0-rc.1` - early builds of the next version | `./scripts/release.sh artifact <stage>`, or a commit on `dev` marked `Release:` | Artifact |
 | **Stable** | `1.6.0` | `./scripts/release.sh` | Stable and Artifact |
+| **Hotfix** | `1.6.1` - a fix released on its own | `./scripts/release.sh hotfix <commit>...` | Stable and Artifact |
 
-**Artifact.** The maintainer adds a `Release: <alpha|beta|rc> [major|minor|patch]` trailer to a commit, or pushes an empty one (`git commit --allow-empty -m "chore: release an artifact" -m "Release: beta"`). When it reaches `dev`, [`artifact.yml`](.github/workflows/artifact.yml) publishes a pre-release of that commit, its notes gathered from the commits since the last release. Only a marker on a commit the repository's owner authored counts; pull requests carrying one are turned away by CI.
+**Artifact.** The maintainer runs `./scripts/release.sh artifact <alpha|beta|rc>`, or pushes a commit carrying a `Release: <alpha|beta|rc> [major|minor|patch]` trailer to `dev`. [`artifact.yml`](.github/workflows/artifact.yml) publishes a pre-release of `dev`, its notes gathered from the commits since the last release. Only a marker on a commit the repository's owner authored counts; pull requests carrying one are turned away by CI.
 
 Versions are worked out from the release tags ([`scripts/lib/version.sh`](scripts/lib/version.sh)): the bump, `patch` unless given, is from the last stable release; the same stage counts on (`beta.1`, `beta.2`), a later one starts again (`alpha.3`, then `beta.1`), and an earlier one is refused.
 
-**Stable.** `./scripts/release.sh` runs [`release.yml`](.github/workflows/release.yml): it merges `dev` into `main`, and releases either the version the artifacts lead to (`release`) or a `patch`, `minor` or `major` bump. The notes open in an editor, already drafted from the trailers since the last stable release; `CHANGELOG.md` gets those trailers as its new section.
+**Stable.** `./scripts/release.sh` runs [`release.yml`](.github/workflows/release.yml): it merges `dev` into `main`, and releases the version the artifacts lead to - or the next patch, with none out, or a `--bump` of `minor` or `major`. Its notes, and its `CHANGELOG.md` section, are the commits' since the last stable release.
+
+**Hotfix.** `./scripts/release.sh hotfix <commit>...` releases those commits alone, on top of the last stable release, beside whatever `dev` is working towards.
 
 The maintainer's side of it all, every case included, is in [docs/RELEASING.md](docs/RELEASING.md).
