@@ -34,8 +34,22 @@ data class FoundLyrics(val lyrics: LyricsText, val source: String, val durationM
  * so the first are on screen while the slowest source is still answering.
  */
 internal object OnlineLyrics {
-    /** In the order that decides between two alike answers - ArchiveTune's. */
-    private val sources = listOf(BetterLyricsSource, YouLyPlusSource, LrcLibSource, KuGouSource, UnisonSource)
+    /**
+     * In the order that decides between two alike answers: ArchiveTune's, then syncedlyrics' own - NetEase and
+     * Musixmatch, and Genius last, as it has words but never their timing. Adding a source is adding it here.
+     */
+    private val sources = listOf(
+        BetterLyricsSource,
+        BetterLyricsPortatoSource,
+        YouLyPlusSource,
+        LrcLibSource,
+        KuGouSource,
+        SimpMusicSource,
+        UnisonSource,
+        NetEaseSource,
+        MusixmatchSource,
+        GeniusSource,
+    )
 
     val sourceNames: List<String> = sources.map { it.name }
 
