@@ -1,12 +1,16 @@
 package com.lhacenmed.sona
 
 import android.app.Application
+import coil3.ImageLoader
+import coil3.PlatformContext
+import coil3.SingletonImageLoader
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.common.notification.SonaNotifications
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.datastore.EffectSettings
 import com.lhacenmed.sona.core.datastore.SettingsLoader
 import com.lhacenmed.sona.core.datastore.UpdateSettings
+import com.lhacenmed.sona.core.designsystem.component.cover.VideoThumbnailFetcher
 import com.lhacenmed.sona.core.designsystem.effect.SonaEffects
 import com.lhacenmed.sona.feature.update.UpdateMonitor
 import com.lhacenmed.sona.feature.update.notification.UpdateNotifier
@@ -18,7 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 @HiltAndroidApp
-class SonaApplication : Application() {
+class SonaApplication : Application(), SingletonImageLoader.Factory {
 
     @Inject
     lateinit var settingsLoader: SettingsLoader
@@ -39,6 +43,12 @@ class SonaApplication : Application() {
 
     @Inject
     lateinit var updateMonitor: UpdateMonitor
+
+    /** Coil's own loader, drawing a video's cover from Android's thumbnail of it - see [VideoThumbnailFetcher]. */
+    override fun newImageLoader(context: PlatformContext): ImageLoader =
+        ImageLoader.Builder(context)
+            .components { add(VideoThumbnailFetcher.Factory) }
+            .build()
 
     override fun onCreate() {
         super.onCreate()
