@@ -24,3 +24,10 @@ val <T> LibraryContent<T>.itemsOrEmpty: List<T>
 
 val LibraryContent<*>.isLoading: Boolean
     get() = this is LibraryContent.Loading
+
+/** These rows, then [other]'s - read once both lists are. */
+operator fun <T> LibraryContent<T>.plus(other: LibraryContent<T>): LibraryContent<T> {
+    val items = itemsOrNull ?: return LibraryContent.Loading
+    val otherItems = other.itemsOrNull ?: return LibraryContent.Loading
+    return LibraryContent.Ready(items + otherItems)
+}

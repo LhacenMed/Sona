@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.component.SonaAlbumCover
 import com.lhacenmed.sona.core.designsystem.component.SonaArtistCover
@@ -61,9 +62,6 @@ private const val SELECTED_ROW_FADE_OUT_MILLIS = 100
 
 /** The touch target a drag handle is centred in: Auxio's `size_touchable_small`. */
 private val DragHandleTouchSize = 48.dp
-
-/** What separates the two counts beneath an artist or a genre: Auxio's `fmt_two`. */
-private const val COUNTS_SEPARATOR = " • "
 
 /**
  * A track row: cover art, title over "artist - album".
@@ -144,7 +142,7 @@ internal fun ArtistRow(
     val current = isCurrent()
     SonaListRow(
         title = artist.name,
-        subtitle = pluralCount(artist.albumCount, "album") + COUNTS_SEPARATOR +
+        subtitle = pluralCount(artist.albumCount, "album") + InfoSeparator +
             pluralCount(artist.trackCount, "track"),
         selection = selection,
         selectionKey = selectionKeyOf(artist),
@@ -177,7 +175,7 @@ internal fun GenreRow(
     val current = isCurrent()
     SonaListRow(
         title = genre.name,
-        subtitle = pluralCount(genre.artistCount, "artist") + COUNTS_SEPARATOR +
+        subtitle = pluralCount(genre.artistCount, "artist") + InfoSeparator +
             pluralCount(genre.trackCount, "track"),
         selection = selection,
         selectionKey = selectionKeyOf(genre),

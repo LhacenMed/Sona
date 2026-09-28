@@ -7,6 +7,7 @@ import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.itemsOrEmpty
+import com.lhacenmed.sona.core.data.plus
 import com.lhacenmed.sona.core.data.shuffle.ShuffleAllSource
 import com.lhacenmed.sona.core.data.shuffle.ShuffleAllSourceRepository
 import com.lhacenmed.sona.core.data.sort.LibrarySortOrders
@@ -57,7 +58,7 @@ private fun LibraryTab.sortableList(): SortableList = when (this) {
     LibraryTab.ALBUMS -> SortableList.ALBUMS
     LibraryTab.GENRES -> SortableList.GENRES
     LibraryTab.FOLDERS -> SortableList.FOLDERS
-    LibraryTab.VIDEOS -> SortableList.VIDEO_FOLDERS
+    LibraryTab.VIDEOS -> SortableList.VIDEOS
 }
 
 /**
@@ -95,18 +96,21 @@ class LibraryViewModel @Inject constructor(
         repository.artists.narrowedBySearch { artist, query -> matchesSearch(query, artist.name) }
     val genres: StateFlow<LibraryContent<Genre>> =
         repository.genres.narrowedBySearch { genre, query -> matchesSearch(query, genre.name) }
+    /** The Folders tab: the folders of music, then those of videos, each kind a section of its own. */
     val folders: StateFlow<LibraryContent<Folder>> =
-        repository.folders.narrowedBySearch { folder, query -> matchesSearch(query, folder.name) }
-    val videoFolders: StateFlow<LibraryContent<Folder>> =
-        repository.videoFolders.narrowedBySearch { folder, query -> matchesSearch(query, folder.name) }
+        combine(repository.folders, repository.videoFolders, LibraryContent<Folder>::plus)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, repository.folders.value + repository.videoFolders.value)
+            .narrowedBySearch { folder, query -> matchesSearch(query, folder.name) }
+    val videos: StateFlow<LibraryContent<Track>> =
+        repository.videos.narrowedBySearch { video, query -> matchesSearch(query, video.title, video.artist) }
 
     /** The section each tab's rows sit in under its sort - what the fast scroller's popup names. */
     val trackSections: StateFlow<(Track) -> String?> = repository.trackSections
+    val videoSections: StateFlow<(Track) -> String?> = repository.videoSections
     val albumSections: StateFlow<(Album) -> String?> = repository.albumSections
     val artistSections: StateFlow<(Artist) -> String?> = repository.artistSections
     val genreSections: StateFlow<(Genre) -> String?> = repository.genreSections
     val folderSections: StateFlow<(Folder) -> String?> = repository.folderSections
-    val videoFolderSections: StateFlow<(Folder) -> String?> = repository.videoFolderSections
 
     /**
      * A tab's rows as the search leaves them.
@@ -209,21 +213,30 @@ class LibraryViewModel @Inject constructor(
         mediaScanner.requestScan()
     }
 
+    /** Starts playback of the whole tracks tab, beginning at [track] - see [play]. */
+    fun onTrackClick(track: Track) {
+        play(track, tracks.value.itemsOrEmpty, parent = null)
+    }
+
+    /** Starts playback of the whole Videos tab, beginning at [video] - see [play]. */
+    fun onVideoClick(video: Track) {
+        play(video, videos.value.itemsOrEmpty, PlaybackParent.Videos)
+    }
+
     /**
-     * Starts playback of the whole tracks tab, beginning at [track]. The index is resolved here
-     * rather than passed down so the list can stay keyed by identity rather than by position.
+     * Plays [list] - a tab's rows, as [parent] - beginning at [track]. The index is resolved here rather
+     * than passed down so the list can stay keyed by identity rather than by position.
      *
      * A track already playing from this list pauses or resumes instead of starting the queue over -
      * see [LibraryPlayback.isReselection].
      */
-    fun onTrackClick(track: Track) {
-        if (playback.value.isReselection(track, listParent = null)) {
+    private fun play(track: Track, list: List<Track>, parent: PlaybackParent?) {
+        if (playback.value.isReselection(track, listParent = parent)) {
             playbackController.togglePlayPause()
             return
         }
-        val all = tracks.value.itemsOrEmpty
-        val index = all.indexOfFirst { it.id == track.id }
-        if (index >= 0) playbackController.playTracks(all, index)
+        val index = list.indexOfFirst { it.id == track.id }
+        if (index >= 0) playbackController.playTracks(list, index, parent)
     }
 
     /** Shuffles what shuffle-all is set to play - see [PlaybackController.shuffleAll]. */
@@ -255,7 +268,7 @@ class LibraryViewModel @Inject constructor(
         LibraryTab.ALBUMS -> albums.value.itemsOrEmpty.map { SelectionKey.Album(it.id) }
         LibraryTab.ARTISTS -> artists.value.itemsOrEmpty.filter { it.trackCount > 0 }.map { SelectionKey.Artist(it.id) }
         LibraryTab.GENRES -> genres.value.itemsOrEmpty.map { SelectionKey.Genre(it.id) }
-        LibraryTab.FOLDERS -> folders.value.itemsOrEmpty.map { SelectionKey.Folder(it.path, isVideo = false) }
-        LibraryTab.VIDEOS -> videoFolders.value.itemsOrEmpty.map { SelectionKey.Folder(it.path, isVideo = true) }
+        LibraryTab.FOLDERS -> folders.value.itemsOrEmpty.map { SelectionKey.Folder(it.path, it.isVideo) }
+        LibraryTab.VIDEOS -> videos.value.itemsOrEmpty.map { SelectionKey.Track(it.id) }
     }
 }

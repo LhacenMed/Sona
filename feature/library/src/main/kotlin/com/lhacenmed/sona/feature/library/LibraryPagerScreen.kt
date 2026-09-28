@@ -317,7 +317,8 @@ fun LibraryPagerScreen(
  * folders alone.
  */
 private fun excludeFolderActions(selection: SelectionState, onExclude: (folderPaths: List<String>) -> Unit): List<TopBarAction> {
-    val folderPaths = selection.selectedKeys.filterIsInstance<SelectionKey.Folder>().map { it.folderPath }
+    // A path selected in both of the Folders tab's sections is still one folder to exclude.
+    val folderPaths = selection.selectedKeys.filterIsInstance<SelectionKey.Folder>().map { it.folderPath }.distinct()
     if (folderPaths.isEmpty()) return emptyList()
     return listOf(
         TopBarAction(label = "Exclude folder", icon = Icons.Filled.Block) { onExclude(folderPaths) },

@@ -68,6 +68,17 @@ internal object LibrarySortSpecs {
         ),
     )
 
+    /** The Videos tab: named, timed and dated as tracks are - a video has no album, year or track number. */
+    val videos = SortSpec(
+        list = SortableList.VIDEOS,
+        default = SortOrder(SortCriterion.DATE_ADDED, SortDirection.DESCENDING),
+        orderings = mapOf(
+            SortCriterion.NAME to tracksByTitle,
+            SortCriterion.DURATION to tracksByDuration,
+            SortCriterion.DATE_ADDED to tracksByDateAdded,
+        ),
+    )
+
     val albumTracks = SortSpec(
         list = SortableList.ALBUM_TRACKS,
         default = SortOrder(SortCriterion.TRACK_NUMBER, SortDirection.ASCENDING),
@@ -199,16 +210,16 @@ internal object LibrarySortSpecs {
 
     private val folderName = SortField.Name<Folder>({ it.name })
 
-    private val folderOrderings = mapOf(
-        SortCriterion.NAME to listOf(folderName),
-        SortCriterion.TRACK_COUNT to
-            listOf(SortField.Number<Folder>(NumberSection) { it.trackCount.toLong() }, folderName),
+    /** Every folder - of music and of videos alike, which are sorted one way wherever they are listed. */
+    val folders = SortSpec(
+        list = SortableList.FOLDERS,
+        default = nameAscending,
+        orderings = mapOf(
+            SortCriterion.NAME to listOf(folderName),
+            SortCriterion.TRACK_COUNT to
+                listOf(SortField.Number<Folder>(NumberSection) { it.trackCount.toLong() }, folderName),
+        ),
     )
-
-    val folders = SortSpec(list = SortableList.FOLDERS, default = nameAscending, orderings = folderOrderings)
-
-    /** The Videos tab's folders - sorted as the Folders tab's are, though on their own. */
-    val videoFolders = SortSpec(list = SortableList.VIDEO_FOLDERS, default = nameAscending, orderings = folderOrderings)
 
     private val playlistName = SortField.Name<PlaylistWithCount>({ it.name })
 
@@ -232,7 +243,7 @@ internal object LibrarySortSpecs {
         SortableList.ARTISTS -> artists
         SortableList.GENRES -> genres
         SortableList.FOLDERS -> folders
-        SortableList.VIDEO_FOLDERS -> videoFolders
+        SortableList.VIDEOS -> videos
         SortableList.PLAYLISTS -> playlists
         SortableList.ALBUM_TRACKS -> albumTracks
         SortableList.ARTIST_TRACKS -> artistTracks

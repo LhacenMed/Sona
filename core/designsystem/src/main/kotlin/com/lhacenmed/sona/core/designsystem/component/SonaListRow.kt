@@ -32,6 +32,12 @@ import com.lhacenmed.sona.core.designsystem.component.swipe.SwipeActionsBox
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.model.Track
 
+/**
+ * What parts the facts on one line - a track's artist and album, a count and a duration: a dot, which no
+ * name is mistaken for, where a dash could be part of the name itself.
+ */
+const val InfoSeparator = " • "
+
 /** How much of the selection colour washes over a selected row. */
 private const val SELECTED_ROW_TINT_ALPHA = 0.12f
 
@@ -229,7 +235,7 @@ fun SonaTrackRow(
     onClick: () -> Unit,
     onOpenOptions: (() -> Unit)?,
     modifier: Modifier = Modifier,
-    // Null for the usual "artist - album"; a list whose rows share one of the two names the other.
+    // Null for the usual "artist • album"; a list whose rows share one of the two names the other.
     subtitle: String? = null,
     onLongClick: (() -> Unit)? = null,
     containerColor: Color = MaterialTheme.colorScheme.surface,
@@ -238,7 +244,7 @@ fun SonaTrackRow(
     val current = isCurrent()
     SonaListRow(
         title = track.title,
-        subtitle = subtitle ?: "${track.artist} - ${track.album}",
+        subtitle = subtitle ?: "${track.artist}$InfoSeparator${track.album}",
         selection = selection,
         selectionKey = selectionKey,
         onClick = onClick,

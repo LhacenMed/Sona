@@ -49,6 +49,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.CookieShape
+import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.refresh.SonaPullToRefreshBox
 import com.lhacenmed.sona.core.designsystem.component.section.rememberSectionListState
@@ -163,6 +164,9 @@ internal fun <T> LibraryListContent(
  *
  * Its rows join [selection], and a long press drags across them - see [DragSelection]. Given [onRefresh],
  * pulling it down past its top refreshes it - see [SonaPullToRefreshBox].
+ *
+ * Given [headingOf], rows sharing a heading - which [content] keeps together - are laid out in a [section]
+ * under it, once the list holds more than one; a single heading would only repeat the tab's name.
  */
 @Composable
 internal fun <T> LibraryList(
@@ -179,8 +183,10 @@ internal fun <T> LibraryList(
     onReorder: ((List<T>) -> Unit)? = null,
     sectionOf: ((T) -> String?)? = null,
     onRefresh: (suspend () -> Unit)? = null,
+    headingOf: ((T) -> String)? = null,
     row: @Composable (T) -> Unit,
 ) {
+    val sectionList = rememberSectionListState(listState)
     LibraryListContent(
         content = content,
         hasPermission = hasPermission,
@@ -190,13 +196,24 @@ internal fun <T> LibraryList(
         loadingIcon = loadingIcon,
         modifier = modifier,
     ) { items ->
+        val groups = remember(items, headingOf) { headingOf?.let(items::groupBy)?.toList().orEmpty() }
+        val isSectioned = groups.size > 1
+        // The row at each of the list's indices - null for a heading or the line above it - so the fast
+        // scroller names what is under it, and a drag selects only the rows laid out.
+        val laidOutRows: List<T?> = if (!isSectioned) {
+            items
+        } else {
+            groups.flatMapIndexed { index, (heading, rows) ->
+                List(if (index > 0) 2 else 1) { null } + if (sectionList.isCollapsed(heading)) emptyList() else rows
+            }
+        }
         // One band for the list, its fast scroller's thumb and its pull to refresh.
         val overscroll = rememberRubberBandOverscroll()
         SonaPullToRefreshBox(overscroll = overscroll, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
             FastScroller(
                 listState = listState,
                 modifier = Modifier.fillMaxSize(),
-                sectionAt = sectionOf?.let { section -> { index -> items.getOrNull(index)?.let(section) } },
+                sectionAt = sectionOf?.let { section -> { index -> laidOutRows.getOrNull(index)?.let(section) } },
                 overscroll = overscroll,
             ) { overscrollEffect ->
                 if (onReorder != null) {
@@ -213,7 +230,7 @@ internal fun <T> LibraryList(
                     return@FastScroller
                 }
                 KeepAtTopWhenRowsChange(listState = listState, rows = items)
-                val selectableKeys = remember(items) { items.mapNotNull(::selectionKeyOf) }
+                val selectableKeys = remember(laidOutRows) { laidOutRows.mapNotNull(::selectionKeyOf) }
                 val dragSelection = rememberDragSelection(selection, listState, selectableKeys)
                 CompositionLocalProvider(LocalDragSelection provides dragSelection) {
                     LazyColumn(
@@ -224,13 +241,24 @@ internal fun <T> LibraryList(
                         contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
                         overscrollEffect = overscrollEffect,
                     ) {
-                        items(
-                            items = items,
-                            key = key,
-                            // Every row in these lists is the same composable shape, so telling Compose that
-                            // lets it reuse a scrolled-off row's slot table wholesale instead of rebuilding it.
-                            contentType = { LIST_ROW_CONTENT_TYPE },
-                        ) { item -> row(item) }
+                        val rows: LazyListScope.(List<T>) -> Unit = { rowItems ->
+                            items(
+                                items = rowItems,
+                                key = key,
+                                // Every row in these lists is the same composable shape, so telling Compose that
+                                // lets it reuse a scrolled-off row's slot table wholesale instead of rebuilding it.
+                                contentType = { LIST_ROW_CONTENT_TYPE },
+                            ) { item -> row(item) }
+                        }
+                        if (isSectioned) {
+                            groups.forEachIndexed { index, (heading, rowItems) ->
+                                section(key = heading, title = heading, state = sectionList, hasDividerAbove = index > 0) {
+                                    rows(rowItems)
+                                }
+                            }
+                        } else {
+                            rows(items)
+                        }
                     }
                 }
             }
@@ -508,14 +536,11 @@ internal class DetailHeaderContent(
 
 /** "12 tracks • 45:12" - a list's track count and how long it all plays for. */
 internal fun trackCountAndDuration(tracks: List<Track>): String =
-    listOf(trackCountLabel(tracks.size), formatDurationMs(tracks.sumOf { it.durationMs })).joinToString(DETAIL_INFO_SEPARATOR)
+    listOf(trackCountLabel(tracks.size), formatDurationMs(tracks.sumOf { it.durationMs })).joinToString(InfoSeparator)
 
 /** [trackCountAndDuration] for a list of videos. */
 internal fun videoCountAndDuration(videos: List<Track>): String =
-    listOf(pluralCount(videos.size, "video"), formatDurationMs(videos.sumOf { it.durationMs })).joinToString(DETAIL_INFO_SEPARATOR)
-
-/** What separates the parts of a header's info line - Auxio's `fmt_two`. */
-internal const val DETAIL_INFO_SEPARATOR = " • "
+    listOf(pluralCount(videos.size, "video"), formatDurationMs(videos.sumOf { it.durationMs })).joinToString(InfoSeparator)
 
 /**
  * The whole body of a detail screen: a header that collapses into the bar, then the collection's

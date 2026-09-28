@@ -23,6 +23,9 @@ sealed interface PlaybackParent {
     /** A folder's music, or - where [isVideo] - its videos, as the Videos tab lists them. */
     data class Folder(val folderPath: String, val isVideo: Boolean) : PlaybackParent
 
+    /** Every video, as the Videos tab lists them. */
+    data object Videos : PlaybackParent
+
     data object RecentlyPlayed : PlaybackParent
 
     data object MostPlayed : PlaybackParent
@@ -35,6 +38,7 @@ fun PlaybackParent.toStorageKey(): String = when (this) {
     is PlaybackParent.Genre -> "genre:$genreId"
     is PlaybackParent.Playlist -> "playlist:$playlistId"
     is PlaybackParent.Folder -> if (isVideo) "videoFolder:$folderPath" else "folder:$folderPath"
+    PlaybackParent.Videos -> "videos"
     PlaybackParent.RecentlyPlayed -> "recentlyPlayed"
     PlaybackParent.MostPlayed -> "mostPlayed"
 }
@@ -49,6 +53,7 @@ fun playbackParentOf(storageKey: String): PlaybackParent? {
         "playlist" -> value.toLongOrNull()?.let(PlaybackParent::Playlist)
         "folder" -> value.takeIf { it.isNotEmpty() }?.let { PlaybackParent.Folder(it, isVideo = false) }
         "videoFolder" -> value.takeIf { it.isNotEmpty() }?.let { PlaybackParent.Folder(it, isVideo = true) }
+        "videos" -> PlaybackParent.Videos
         "recentlyPlayed" -> PlaybackParent.RecentlyPlayed
         "mostPlayed" -> PlaybackParent.MostPlayed
         else -> null

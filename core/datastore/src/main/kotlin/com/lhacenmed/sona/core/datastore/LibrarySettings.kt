@@ -17,9 +17,12 @@ private val Context.dataStore by preferencesDataStore(name = "library_settings")
 
 private val EXCLUDED_FOLDERS = stringSetPreferencesKey("excluded_folders")
 
-// Stored as the set of *hidden* tabs (not visible ones) so that an empty/fresh datastore already
-// means "every tab visible" - no seed/migration step needed for the default state.
+// Stored as the set of *hidden* tabs (not visible ones), so a tab added later is visible to everyone
+// who has chosen theirs - and a fresh datastore means [DEFAULT_HIDDEN_TABS], with no seed step.
 private val HIDDEN_TABS = stringSetPreferencesKey("hidden_tabs")
+
+/** Folders are hidden until asked for: the Videos tab and the music tabs already reach every file. */
+private val DEFAULT_HIDDEN_TABS = setOf(LibraryTab.FOLDERS.name)
 
 private val INTELLIGENT_SORTING_ENABLED = booleanPreferencesKey("intelligent_sorting_enabled")
 
@@ -49,7 +52,7 @@ class LibrarySettings @Inject constructor(
     }
 
     val visibleTabs: Setting<Set<LibraryTab>> = cache.setting { preferences ->
-        val hidden = preferences[HIDDEN_TABS].orEmpty().mapNotNullTo(mutableSetOf()) { name ->
+        val hidden = (preferences[HIDDEN_TABS] ?: DEFAULT_HIDDEN_TABS).mapNotNullTo(mutableSetOf()) { name ->
             runCatching { LibraryTab.valueOf(name) }.getOrNull()
         }
         LibraryTab.entries.toSet() - hidden
@@ -57,7 +60,7 @@ class LibrarySettings @Inject constructor(
 
     suspend fun setTabVisible(tab: LibraryTab, visible: Boolean) {
         dataStore.edit { preferences ->
-            val hidden = preferences[HIDDEN_TABS].orEmpty().toMutableSet()
+            val hidden = (preferences[HIDDEN_TABS] ?: DEFAULT_HIDDEN_TABS).toMutableSet()
             if (visible) hidden.remove(tab.name) else hidden.add(tab.name)
             preferences[HIDDEN_TABS] = hidden
         }

@@ -10,10 +10,12 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.core.model.Folder
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
 
+/** Every folder holding music or videos, each kind in a section of its own - see [folderHeading]. */
 @Composable
 fun FoldersScreen(
     viewModel: LibraryViewModel,
@@ -37,12 +39,14 @@ fun FoldersScreen(
         isScanning = isScanning,
         emptyTitle = "No folders found",
         emptyMessage = searchEmptyMessage(searchQuery),
-        key = { it.path },
+        // One path can hold music and videos alike, and is then listed once in each section.
+        key = { folder -> if (folder.isVideo) "video:${folder.path}" else folder.path },
         loadingIcon = SonaIcons.Folder,
         sectionOf = folderSections,
         modifier = modifier,
         listState = listState,
         onRefresh = rememberLibraryRefresh(viewModel),
+        headingOf = ::folderHeading,
     ) { folder ->
         FolderRow(
             folder = folder,
@@ -58,3 +62,6 @@ fun FoldersScreen(
         OptionsSheet(target = target, onDismissRequest = { optionsTarget = null })
     }
 }
+
+/** The section a folder is listed in: its music's, or its videos'. */
+private fun folderHeading(folder: Folder): String = if (folder.isVideo) "Videos" else "Music"

@@ -14,14 +14,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.common.permission.AppPermission
+import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
-import com.lhacenmed.sona.core.navigation.LocalNavigator
+import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
 
 /**
- * Every folder holding a video, each opening on its videos - played for their sound alone, as any track is.
+ * Every video, listed and played as the tracks tab's tracks are - for their sound alone. The folders holding
+ * them are the Folders tab's.
  *
  * Reading videos takes a permission of its own, asked for here rather than as the app opens: until it is
  * given, the tab offers it in the place its list will fill. It is checked again each time the app comes
@@ -65,35 +67,41 @@ fun VideosScreen(
         return
     }
 
-    val folders by viewModel.videoFolders.collectAsStateWithLifecycle()
+    val videos by viewModel.videos.collectAsStateWithLifecycle()
     val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
     val playback by viewModel.playback.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
-    val folderSections by viewModel.videoFolderSections.collectAsStateWithLifecycle()
-    val navigator = LocalNavigator.current
-    var optionsTarget by remember { mutableStateOf<OptionsTarget.ForFolder?>(null) }
+    val videoSections by viewModel.videoSections.collectAsStateWithLifecycle()
+    var optionsTarget by remember { mutableStateOf<OptionsTarget.ForTrack?>(null) }
 
     LibraryList(
-        content = folders,
+        content = videos,
         selection = selection,
         hasPermission = true,
         isScanning = isScanning,
         emptyTitle = "No videos found",
         emptyMessage = searchEmptyMessage(searchQuery),
-        key = { it.path },
+        key = { it.id },
         loadingIcon = SonaIcons.Video,
-        sectionOf = folderSections,
+        sectionOf = videoSections,
         modifier = modifier,
         listState = listState,
         onRefresh = rememberLibraryRefresh(viewModel),
-    ) { folder ->
-        FolderRow(
-            folder = folder,
-            selection = selection,
-            isCurrent = { playback.marks(folder) },
+    ) { video ->
+        TrackRow(
+            track = video,
+            // Lambdas, so changing videos recomposes two rows instead of the whole list.
+            isCurrent = { playback.marks(video) },
             isPlaying = { playback.isPlaying },
-            onClick = { navigator.go(FolderDetailScreen(folder.path, isVideo = true)) },
-            onOpenOptions = { optionsTarget = OptionsTarget.ForFolder(folder) },
+            selection = selection,
+            onClick = { viewModel.onVideoClick(video) },
+            onOpenOptions = {
+                optionsTarget = OptionsTarget.ForTrack(
+                    video,
+                    queueSource = videos.itemsOrEmpty,
+                    queueParent = PlaybackParent.Videos,
+                )
+            },
         )
     }
 
