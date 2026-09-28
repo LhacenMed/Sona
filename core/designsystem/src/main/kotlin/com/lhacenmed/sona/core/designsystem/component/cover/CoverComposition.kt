@@ -22,6 +22,9 @@ import coil3.toBitmap
 import kotlin.math.min
 import kotlin.random.Random
 import kotlin.random.nextInt
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 
 /** How the covers of many tracks are laid out as one: Auxio's composition fetchers. */
 internal enum class CoverArrangement {
@@ -72,7 +75,8 @@ private const val FALLBACK_SIZE_PX = 512
 
 /**
  * Auxio's `CoverCompositionFetcher`: loads the first four covers that open, in the order given, and
- * composes them.
+ * composes them. The four are loaded at once rather than one after another, and only a cover that fails to
+ * open has the next in line loaded in its place.
  *
  * Each cover is loaded through the app's image loader, decoded no larger than the composition it is drawn
  * into rather than at full size - four full covers a row would be a scroll's worth of wasted memory.
@@ -90,9 +94,11 @@ internal class CoverCompositionFetcher(
         ).coerceAtLeast(1)
 
         val bitmaps = ArrayList<Bitmap>(COMPOSED_COVER_COUNT)
-        for (coverArtUri in composition.coverArtUris) {
-            loadBitmap(coverArtUri, size)?.let { bitmaps += it }
-            if (bitmaps.size == COMPOSED_COVER_COUNT) break
+        var nextCovers = composition.coverArtUris
+        while (bitmaps.size < COMPOSED_COVER_COUNT && nextCovers.isNotEmpty()) {
+            val batch = nextCovers.take(COMPOSED_COVER_COUNT - bitmaps.size)
+            nextCovers = nextCovers.drop(batch.size)
+            bitmaps += coroutineScope { batch.map { async { loadBitmap(it, size) } }.awaitAll() }.filterNotNull()
         }
         if (bitmaps.size < COMPOSED_COVER_COUNT) {
             val first = bitmaps.firstOrNull() ?: return null

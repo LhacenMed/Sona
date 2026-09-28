@@ -29,7 +29,7 @@ private const val DEFAULT_COVER_SIZE_PX = 512
  * without artwork, or artwork that fails to load.
  *
  * Artwork loads exactly as it would without this: through the loader a session builds for itself when
- * given none, which the session still limits in size - a video's being a frame of it ([VideoFrameBitmapLoader]).
+ * given none, which the session still limits in size - a video's being Android's thumbnail of it ([VideoThumbnailBitmapLoader]).
  */
 @UnstableApi
 internal class DefaultCoverBitmapLoader(
@@ -38,7 +38,7 @@ internal class DefaultCoverBitmapLoader(
 ) : BitmapLoader {
 
     private val artworkLoader = CacheBitmapLoader(
-        VideoFrameBitmapLoader(context, DataSourceBitmapLoader.Builder(context).setMakeShared(true).build()),
+        VideoThumbnailBitmapLoader(context, DataSourceBitmapLoader.Builder(context).setMakeShared(true).build()),
     )
 
     private val glyph = PathParser.createPathFromPathData(DefaultCover.GLYPH_PATH_DATA)

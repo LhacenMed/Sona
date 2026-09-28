@@ -35,8 +35,6 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.coil.compose)
-    // A video's cover is a frame of it - decoded wherever a cover is drawn, registered by the library itself.
-    implementation(libs.coil.video)
     implementation(libs.kotlinx.coroutines.android)
 
     implementation(libs.androidx.palette)
