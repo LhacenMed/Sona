@@ -161,6 +161,12 @@ android {
         resValues = true // required for resValue() in build types (AGP 8+)
     }
 
+    // Sona is written in English only, so the libraries' translations of their own few strings into some
+    // eighty languages are left out with it - the whole app reads in one language, and ~0.7 MB lighter.
+    androidResources {
+        localeFilters += "en"
+    }
+
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
         // Kuromoji ships these alongside other libraries that ship their own; none are read at runtime.
@@ -168,6 +174,9 @@ android {
         // Kuromoji's dictionary - two thirds of the app - is downloaded by those who romanize Japanese
         // instead (see JapaneseDictionary); its code stays, and reads the downloaded copy.
         resources.excludes += "com/atilika/kuromoji/ipadic/*.bin"
+        // The coroutines debug agent's probes, and every library's version stamp: read by tooling, never
+        // by the app.
+        resources.excludes += listOf("DebugProbesKt.bin", "META-INF/*.version")
     }
 
     compileOptions {
