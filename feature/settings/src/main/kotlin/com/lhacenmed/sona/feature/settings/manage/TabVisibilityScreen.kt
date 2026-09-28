@@ -62,4 +62,5 @@ private fun LibraryTab.displayName(): String = when (this) {
     LibraryTab.ALBUMS -> "Albums"
     LibraryTab.GENRES -> "Genres"
     LibraryTab.FOLDERS -> "Folders"
+    LibraryTab.VIDEOS -> "Videos"
 }

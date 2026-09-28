@@ -25,7 +25,8 @@ sealed interface SelectionKey {
 
     data class Playlist(val playlistId: Long) : SelectionKey
 
-    data class Folder(val folderPath: String) : SelectionKey
+    /** A folder's music, or - where [isVideo] - its videos. */
+    data class Folder(val folderPath: String, val isVideo: Boolean) : SelectionKey
 }
 
 /**
@@ -39,6 +40,6 @@ internal fun selectionKeyOf(item: Any?): SelectionKey? = when (item) {
     is ArtistModel -> SelectionKey.Artist(item.id).takeIf { item.trackCount > 0 }
     is GenreModel -> SelectionKey.Genre(item.id)
     is PlaylistModel -> SelectionKey.Playlist(item.id).takeIf { item.trackCount > 0 }
-    is FolderModel -> SelectionKey.Folder(item.path)
+    is FolderModel -> SelectionKey.Folder(item.path, item.isVideo)
     else -> null
 }

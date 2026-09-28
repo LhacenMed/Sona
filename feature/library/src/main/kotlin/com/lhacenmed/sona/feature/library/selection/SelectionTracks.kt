@@ -19,7 +19,7 @@ internal suspend fun LibraryRepository.tracksOf(keys: List<SelectionKey>): List<
             is SelectionKey.Artist -> readyTracks(artistTracks(key.artistId))
             is SelectionKey.Genre -> readyTracks(genreTracks(key.genreId))
             is SelectionKey.Playlist -> readyTracks(playlistTracks(key.playlistId))
-            is SelectionKey.Folder -> readyTracks(folderTracks(key.folderPath))
+            is SelectionKey.Folder -> readyTracks(folderTracks(key.folderPath, key.isVideo))
         }
     }
 

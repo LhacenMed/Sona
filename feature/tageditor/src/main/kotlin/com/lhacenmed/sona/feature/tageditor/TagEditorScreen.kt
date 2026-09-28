@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.lhacenmed.sona.core.common.permission.AppPermission
+import com.lhacenmed.sona.core.data.contentUri
 import com.lhacenmed.sona.core.designsystem.component.CoverArtDefaults
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverImage
@@ -101,7 +102,7 @@ data class TagEditorScreen(val trackId: Long) : Screen {
                 runtimePermission != null -> writePermissionLauncher.launch(runtimePermission)
                 track.isManuallyScanned -> allFilesAccessLauncher.launch(permission.settingsIntent(context))
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
-                    val request = MediaStore.createWriteRequest(context.contentResolver, listOf(track.writeUri()))
+                    val request = MediaStore.createWriteRequest(context.contentResolver, listOf(track.contentUri))
                     consentLauncher.launch(IntentSenderRequest.Builder(request.intentSender).build())
                 }
                 else -> save()

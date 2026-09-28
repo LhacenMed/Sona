@@ -19,6 +19,7 @@ import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.model.PlaybackParent
+import com.lhacenmed.sona.core.model.playbackParent
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.library.AlbumRow
@@ -165,7 +166,7 @@ data class ShuffleSourcePickerScreen(val kind: ShuffleSourceKind) : Screen {
                         key = { it.path },
                         sectionOf = sections,
                     ) { folder ->
-                        val parent = PlaybackParent.Folder(folder.path)
+                        val parent = folder.playbackParent
                         FolderRow(
                             folder = folder,
                             selection = null,

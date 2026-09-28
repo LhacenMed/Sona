@@ -87,6 +87,7 @@ data object PermissionsScreen : Screen {
 private val AppPermission.titleRes: Int
     get() = when (this) {
         AppPermission.AUDIO_LIBRARY -> R.string.permission_audio_library_title
+        AppPermission.VIDEO_LIBRARY -> R.string.permission_video_library_title
         AppPermission.NOTIFICATIONS -> R.string.permission_notifications_title
         AppPermission.FILE_CHANGES -> R.string.permission_file_changes_title
         AppPermission.APP_INSTALLS -> R.string.permission_app_installs_title
@@ -95,6 +96,7 @@ private val AppPermission.titleRes: Int
 private val AppPermission.purposeRes: Int
     get() = when (this) {
         AppPermission.AUDIO_LIBRARY -> R.string.permission_audio_library_purpose
+        AppPermission.VIDEO_LIBRARY -> R.string.permission_video_library_purpose
         AppPermission.NOTIFICATIONS -> R.string.permission_notifications_purpose
         AppPermission.FILE_CHANGES -> R.string.permission_file_changes_purpose
         AppPermission.APP_INSTALLS -> R.string.permission_app_installs_purpose

@@ -1,12 +1,10 @@
 package com.lhacenmed.sona.feature.playback
 
-import android.content.ContentUris
 import android.net.Uri
-import android.provider.MediaStore
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import com.lhacenmed.sona.core.data.contentUri
 import com.lhacenmed.sona.core.model.Track
-import java.io.File
 
 /**
  * How a [Track] reaches the player.
@@ -17,11 +15,6 @@ import java.io.File
  * to the same track.
  */
 internal fun Track.toMediaItem(): MediaItem {
-    val uri: Uri = if (isManuallyScanned) {
-        Uri.fromFile(File(path))
-    } else {
-        ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, mediaStoreId)
-    }
     val metadata = MediaMetadata.Builder()
         .setTitle(title)
         .setArtist(artist)
@@ -32,7 +25,7 @@ internal fun Track.toMediaItem(): MediaItem {
         .build()
     return MediaItem.Builder()
         .setMediaId(id.toString())
-        .setUri(uri)
+        .setUri(contentUri)
         .setMediaMetadata(metadata)
         .build()
 }

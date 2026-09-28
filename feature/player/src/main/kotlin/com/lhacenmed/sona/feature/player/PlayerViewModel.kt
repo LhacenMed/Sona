@@ -111,9 +111,9 @@ class PlayerViewModel @Inject constructor(
         repository.albums,
         repository.artists,
         repository.genres,
-        combine(repository.playlists, repository.folders, ::Pair),
-    ) { parent, albums, artists, genres, (playlists, folders) ->
-        resolvePlayingFrom(parent, albums, artists, genres, playlists, folders)
+        combine(repository.playlists, repository.folders, repository.videoFolders, ::Triple),
+    ) { parent, albums, artists, genres, (playlists, folders, videoFolders) ->
+        resolvePlayingFrom(parent, albums, artists, genres, playlists, folders, videoFolders)
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
@@ -124,6 +124,7 @@ class PlayerViewModel @Inject constructor(
             genres = repository.genres.value,
             playlists = repository.playlists.value,
             folders = repository.folders.value,
+            videoFolders = repository.videoFolders.value,
         ),
     )
 
@@ -221,6 +222,7 @@ class PlayerViewModel @Inject constructor(
         genres: LibraryContent<Genre>,
         playlists: LibraryContent<Playlist>,
         folders: LibraryContent<Folder>,
+        videoFolders: LibraryContent<Folder>,
     ): PlayingFrom? =
         playingFromOf(
             parent = parent,
@@ -228,7 +230,8 @@ class PlayerViewModel @Inject constructor(
             artists = artists.itemsOrEmpty,
             genres = genres.itemsOrEmpty,
             playlists = playlists.itemsOrEmpty,
-            folders = folders.itemsOrEmpty,
+            // A folder of the Videos tab is named from its list: one path can hold music and videos alike.
+            folders = (if ((parent as? PlaybackParent.Folder)?.isVideo == true) videoFolders else folders).itemsOrEmpty,
         )
 
     private fun resolveUiState(

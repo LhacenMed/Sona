@@ -1,10 +1,8 @@
 package com.lhacenmed.sona.feature.library.options
 
-import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -17,6 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.data.contentUri
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.model.PlaybackParent
@@ -278,7 +277,7 @@ private fun detailScreenOf(target: OptionsTarget): Screen = when (target) {
     is OptionsTarget.ForArtist -> ArtistDetailScreen(target.artist.id)
     is OptionsTarget.ForGenre -> GenreDetailScreen(target.genre.id)
     is OptionsTarget.ForPlaylist -> PlaylistDetailScreen(target.playlist.id)
-    is OptionsTarget.ForFolder -> FolderDetailScreen(target.folder.path)
+    is OptionsTarget.ForFolder -> FolderDetailScreen(target.folder.path, target.folder.isVideo)
     is OptionsTarget.ForTrack -> error("A track's own detail is Song properties, not View")
     is OptionsTarget.ForSelection -> error("A selection has no detail screen of its own")
 }
@@ -298,8 +297,8 @@ private fun Context.shareTrack(track: Track) {
             type = "text/plain"
             putExtra(Intent.EXTRA_TEXT, "${track.title} - ${track.artist}")
         } else {
-            type = "audio/*"
-            putExtra(Intent.EXTRA_STREAM, track.contentUri())
+            type = shareTypeOf(listOf(track))
+            putExtra(Intent.EXTRA_STREAM, track.contentUri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
     }
@@ -319,7 +318,8 @@ private fun Context.shareTrack(track: Track) {
  * for the intent to carry is turned down before it is sent - see [shareIntentCostBytes].
  */
 private fun Context.shareTracks(tracks: List<Track>) {
-    val streams = tracks.filterNot(Track::isManuallyScanned).map(Track::contentUri)
+    val shared = tracks.filterNot(Track::isManuallyScanned)
+    val streams = shared.map(Track::contentUri)
     if (streams.isEmpty()) {
         toast("Unable to share this")
         return
@@ -336,7 +336,7 @@ private fun Context.shareTracks(tracks: List<Track>) {
     } else {
         Intent(Intent.ACTION_SEND_MULTIPLE).putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(streams))
     }
-    intent.setType("audio/*").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    intent.setType(shareTypeOf(shared)).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     startActivity(Intent.createChooser(intent, null))
 }
 
@@ -364,4 +364,9 @@ private const val URI_PARCEL_OVERHEAD_BYTES = 16
  */
 private const val SHARE_INTENT_BUDGET_BYTES = 512 * 1024
 
-internal fun Track.contentUri() = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, mediaStoreId)
+/** What [tracks] are shared as: audio, video, or - a selection holding both - either. */
+private fun shareTypeOf(tracks: List<Track>): String = when {
+    tracks.none(Track::isVideo) -> "audio/*"
+    tracks.all(Track::isVideo) -> "video/*"
+    else -> "*/*"
+}

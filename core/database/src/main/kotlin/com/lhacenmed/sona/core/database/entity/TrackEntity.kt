@@ -1,12 +1,13 @@
 package com.lhacenmed.sona.core.database.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.lhacenmed.sona.core.model.Track
 
 /**
- * A scanned audio file.
+ * A scanned audio file - or video file, of which only the sound is played ([isVideo]).
  *
  * [id] is **derived from [path]** ([com.lhacenmed.sona.core.database.stableIdOf]) rather than
  * auto-generated. That is a correctness fix, not a micro-optimisation: with `autoGenerate = true`
@@ -50,6 +51,7 @@ data class TrackEntity(
     val dateAddedSeconds: Long,
     val coverArtUri: String?,
     val isManuallyScanned: Boolean,
+    @ColumnInfo(defaultValue = "0") val isVideo: Boolean,
 )
 
 fun TrackEntity.toDomain() = Track(
@@ -71,6 +73,7 @@ fun TrackEntity.toDomain() = Track(
     dateAddedSeconds = dateAddedSeconds,
     coverArtUri = coverArtUri,
     isManuallyScanned = isManuallyScanned,
+    isVideo = isVideo,
 )
 
 fun Track.toEntity() = TrackEntity(
@@ -92,4 +95,5 @@ fun Track.toEntity() = TrackEntity(
     dateAddedSeconds = dateAddedSeconds,
     coverArtUri = coverArtUri,
     isManuallyScanned = isManuallyScanned,
+    isVideo = isVideo,
 )

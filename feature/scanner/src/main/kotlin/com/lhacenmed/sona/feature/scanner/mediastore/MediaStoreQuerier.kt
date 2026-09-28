@@ -16,12 +16,17 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
 
-/** Raw result of querying MediaStore's audio collection - no folder-exclusion or cross-referencing applied yet. */
+/**
+ * Raw result of querying MediaStore's audio and video collections - no folder-exclusion or
+ * cross-referencing applied yet. [videos] stand apart from the music: no album, artist or genre is
+ * made of them.
+ */
 data class MediaStoreScanResult(
     val tracks: List<Track>,
     val albums: List<Album>,
     val artists: List<Artist>,
     val genres: List<Genre>,
+    val videos: List<Track>,
 )
 
 private val ALBUM_ART_URI: Uri = Uri.parse("content://media/external/audio/albumart")
@@ -54,7 +59,7 @@ class MediaStoreQuerier @Inject constructor(
             }
         }
 
-        return MediaStoreScanResult(tracks = tracks, albums = albums, artists = artists, genres = genres)
+        return MediaStoreScanResult(tracks = tracks, albums = albums, artists = artists, genres = genres, videos = queryVideos())
     }
 
     private fun queryTracks(): List<Track> {
@@ -143,11 +148,63 @@ class MediaStoreQuerier @Inject constructor(
                     isManuallyScanned = false,
                     // MediaStore knows nothing about this; LibraryWriter carries the stored value
                     // forward on every sync, so a rescan never clears favorites.
+                    isVideo = false,
                 )
             }
         }
 
         return tracks
+    }
+
+    /**
+     * Every video MediaStore has - none until the user lets Sona read them, which Android answers with an
+     * empty collection rather than an error. A video is its own cover: a frame of it, drawn from its own uri.
+     */
+    private fun queryVideos(): List<Track> {
+        val videos = mutableListOf<Track>()
+        val uri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        val projection = arrayOf(
+            MediaStore.Video.Media._ID,
+            MediaStore.Video.Media.DATA,
+            MediaStore.Video.Media.TITLE,
+            MediaStore.Video.Media.ARTIST,
+            MediaStore.Video.Media.DURATION,
+            MediaStore.Video.Media.DATE_ADDED,
+        )
+
+        context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+            while (cursor.moveToNext()) {
+                val path = cursor.stringOrNull(MediaStore.Video.Media.DATA)
+                if (path.isNullOrEmpty()) continue
+
+                val mediaStoreId = cursor.long(MediaStore.Video.Media._ID)
+                val folderPath = File(path).parent.orEmpty()
+                videos += Track(
+                    id = stableIdOf(path),
+                    mediaStoreId = mediaStoreId,
+                    title = cursor.stringOrNull(MediaStore.Video.Media.TITLE)?.takeIf { it.isNotBlank() }
+                        ?: File(path).nameWithoutExtension,
+                    artist = cursor.stringOrNull(MediaStore.Video.Media.ARTIST).orUnknown(UnknownNames.ARTIST),
+                    artistId = 0L,
+                    album = folderPath.substringAfterLast('/').ifEmpty { UnknownNames.ALBUM },
+                    albumId = 0L,
+                    genre = null,
+                    genreId = null,
+                    path = path,
+                    folderPath = folderPath,
+                    durationMs = cursor.long(MediaStore.Video.Media.DURATION),
+                    trackNumber = null,
+                    discNumber = null,
+                    year = null,
+                    dateAddedSeconds = cursor.long(MediaStore.Video.Media.DATE_ADDED),
+                    coverArtUri = ContentUris.withAppendedId(uri, mediaStoreId).toString(),
+                    isManuallyScanned = false,
+                    isVideo = true,
+                )
+            }
+        }
+
+        return videos
     }
 
     private fun queryArtists(): List<Artist> {

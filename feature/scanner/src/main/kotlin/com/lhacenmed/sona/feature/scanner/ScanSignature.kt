@@ -3,12 +3,13 @@ package com.lhacenmed.sona.feature.scanner
 import android.content.Context
 import android.os.Build
 import android.provider.MediaStore
+import com.lhacenmed.sona.core.common.permission.AppPermission
 
 /**
  * Bump whenever a change makes previously-scanned rows wrong (a new column, a different id scheme,
  * a corrected parsing rule). It invalidates every stored signature, forcing one full rescan.
  */
-private const val SCANNER_SCHEMA_VERSION = 6
+private const val SCANNER_SCHEMA_VERSION = 7
 
 /**
  * A cheap fingerprint of "what a scan of this device would find right now".
@@ -39,7 +40,9 @@ fun scanSignatureOf(context: Context, excludedFolders: Set<String>): String {
     }
     // Excluded folders are part of the result, so changing them must invalidate the signature.
     val exclusions = excludedFolders.sorted().joinToString(" ")
-    return "$SCANNER_SCHEMA_VERSION|$version|$generation|${exclusions.hashCode()}"
+    // Videos are read only once they may be: granting that changes what a scan finds, without a file changing.
+    val readsVideos = AppPermission.VIDEO_LIBRARY.isGranted(context)
+    return "$SCANNER_SCHEMA_VERSION|$version|$generation|${exclusions.hashCode()}|$readsVideos"
 }
 
 /** `true` when [scanSignatureOf] produced something that may legitimately be trusted for skipping. */

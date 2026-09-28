@@ -11,8 +11,6 @@ android {
 
     defaultConfig {
         minSdk = 26
-        // jaudiotagger reflects into its own frame classes; consumer-rules.pro keeps what it reads.
-        consumerProguardFiles("consumer-rules.pro")
     }
 
     buildFeatures {
@@ -51,8 +49,8 @@ dependencies {
 
     // The catalogues and the lyrics sources are asked over OkHttp - the client Coil already ships.
     implementation(libs.okhttp)
-    // Reads and writes the tags inside the audio files themselves.
-    implementation(libs.jaudiotagger)
+    // Reads and writes the tags inside the audio and video files themselves - TagLib, every format it knows.
+    implementation(libs.taglib)
 }
 
 kotlin {

@@ -96,7 +96,8 @@ class LibraryRepository @Inject constructor(
         .distinctUntilChanged()
         .stateIn(scope, SharingStarted.Eagerly, librarySettings.intelligentSortingEnabled.value)
 
-    val tracks: StateFlow<LibraryContent<Track>> = trackDao.observeAll()
+    /** The music - every track but the videos, which are the Videos tab's alone. */
+    val tracks: StateFlow<LibraryContent<Track>> = trackDao.observeAll(isVideo = false)
         .sortedFor(LibrarySortSpecs.tracks) { rows -> rows.map { it.toDomain() } }
         .shareContent()
 
@@ -112,28 +113,22 @@ class LibraryRepository @Inject constructor(
         .sortedFor(LibrarySortSpecs.genres) { rows -> rows.map { it.toDomain() } }
         .shareContent()
 
-    /** Aggregated by SQLite (`GROUP BY folderPath`), not by grouping the track list in memory. */
-    val folders: StateFlow<LibraryContent<Folder>> = trackDao.observeFolders()
-        .combine(trackDao.observeFolderCoverArt()) { rows, coverRows ->
-            val coversByPath = coverRows.groupBy { it.path }
-            rows.map { row ->
-                row.toDomain(
-                    coverArtUris = rankedCoverArtUris(
-                        coversByPath[row.path].orEmpty().associate { it.coverArtUri to it.trackCount },
-                    ),
-                )
-            }
-        }
-        .sortedFor(LibrarySortSpecs.folders) { rows -> rows }
-        .shareContent()
+    val folders: StateFlow<LibraryContent<Folder>> = foldersOf(isVideo = false, LibrarySortSpecs.folders)
+
+    /** The Videos tab: every folder holding a video, counting its videos alone. */
+    val videoFolders: StateFlow<LibraryContent<Folder>> = foldersOf(isVideo = true, LibrarySortSpecs.videoFolders)
 
     /**
-     * Track lookup by id, for the player and the notification theme. Derived from [tracks] so it
-     * costs one pass per library change rather than a fresh query - and crucially, so a playback
-     * event (which fires several times a second) never re-reads the database at all.
+     * Track lookup by id - the videos' too, as they are queued like any track - for the player and the
+     * notification theme. Derived from [tracks] so it costs one pass per library change rather than a
+     * fresh query - and crucially, so a playback event (which fires several times a second) never
+     * re-reads the database at all.
      */
     val tracksById: StateFlow<Map<Long, Track>> = tracks
-        .map { content -> content.itemsOrEmpty.associateBy { it.id } }
+        .combine(trackDao.observeAll(isVideo = true).conflate()) { content, videos ->
+            (content.itemsOrEmpty + videos.map { it.toDomain() }).associateBy { it.id }
+        }
+        .flowOn(defaultDispatcher)
         .stateIn(scope, SharingStarted.Eagerly, emptyMap())
 
     /**
@@ -145,6 +140,7 @@ class LibraryRepository @Inject constructor(
     val artistSections: StateFlow<(Artist) -> String?> = sectionsOf(LibrarySortSpecs.artists)
     val genreSections: StateFlow<(Genre) -> String?> = sectionsOf(LibrarySortSpecs.genres)
     val folderSections: StateFlow<(Folder) -> String?> = sectionsOf(LibrarySortSpecs.folders)
+    val videoFolderSections: StateFlow<(Folder) -> String?> = sectionsOf(LibrarySortSpecs.videoFolders)
 
     /** `true` once the library has been read from disk - the app's first-paint gate. */
     val isReady: StateFlow<Boolean> = tracks
@@ -182,8 +178,9 @@ class LibraryRepository @Inject constructor(
             .sortedFor(LibrarySortSpecs.genreTracks, genreId.toString()) { rows -> rows.map { it.toDomain() } }
             .asContent()
 
-    fun folderTracks(folderPath: String): Flow<LibraryContent<Track>> =
-        trackDao.observeByFolder(folderPath)
+    /** The music in [folderPath] - or, where [isVideo], its videos. */
+    fun folderTracks(folderPath: String, isVideo: Boolean): Flow<LibraryContent<Track>> =
+        trackDao.observeByFolder(folderPath, isVideo)
             .sortedFor(LibrarySortSpecs.folderTracks, folderPath) { rows -> rows.map { it.toDomain() } }
             .asContent()
 
@@ -352,7 +349,7 @@ class LibraryRepository @Inject constructor(
         is PlaybackParent.Artist -> artistTracks(parent.artistId)
         is PlaybackParent.Genre -> genreTracks(parent.genreId)
         is PlaybackParent.Playlist -> playlistTracks(parent.playlistId)
-        is PlaybackParent.Folder -> folderTracks(parent.folderPath)
+        is PlaybackParent.Folder -> folderTracks(parent.folderPath, parent.isVideo)
         PlaybackParent.RecentlyPlayed -> recentlyPlayedTracks()
         PlaybackParent.MostPlayed -> mostPlayedTracks()
     }
@@ -366,7 +363,8 @@ class LibraryRepository @Inject constructor(
         is PlaybackParent.Artist -> artist(parent.artistId).map { it?.name }
         is PlaybackParent.Genre -> genre(parent.genreId).map { it?.name }
         is PlaybackParent.Playlist -> playlists.readyItems().map { all -> all.find { it.id == parent.playlistId }?.name }
-        is PlaybackParent.Folder -> folders.readyItems().map { all -> all.find { it.path == parent.folderPath }?.name }
+        is PlaybackParent.Folder -> (if (parent.isVideo) videoFolders else folders).readyItems()
+            .map { all -> all.find { it.path == parent.folderPath }?.name }
         PlaybackParent.RecentlyPlayed, PlaybackParent.MostPlayed -> flowOf(null)
     }.distinctUntilChanged()
 
@@ -422,6 +420,26 @@ class LibraryRepository @Inject constructor(
         return combine(sortOrders.order(target), intelligentSorting, ::sectionsFor)
             .stateIn(scope, SharingStarted.Eagerly, sectionsFor(sortOrders.currentOrder(target), intelligentSorting.value))
     }
+
+    /**
+     * The folders holding music - or, where [isVideo], videos - with the count and cover each row shows.
+     * Aggregated by SQLite (`GROUP BY folderPath`), not by grouping the track list in memory.
+     */
+    private fun foldersOf(isVideo: Boolean, spec: SortSpec<Folder>): StateFlow<LibraryContent<Folder>> =
+        trackDao.observeFolders(isVideo)
+            .combine(trackDao.observeFolderCoverArt(isVideo)) { rows, coverRows ->
+                val coversByPath = coverRows.groupBy { it.path }
+                rows.map { row ->
+                    row.toDomain(
+                        coverArtUris = rankedCoverArtUris(
+                            coversByPath[row.path].orEmpty().associate { it.coverArtUri to it.trackCount },
+                        ),
+                        isVideo = isVideo,
+                    )
+                }
+            }
+            .sortedFor(spec) { rows -> rows }
+            .shareContent()
 
     /** The rows once read - a missing collection is then really missing, not merely not loaded yet. */
     private fun <T> Flow<LibraryContent<T>>.readyItems(): Flow<List<T>> = mapNotNull { it.itemsOrNull }

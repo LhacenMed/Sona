@@ -1,10 +1,8 @@
 package com.lhacenmed.sona.core.data.lyrics
 
-import android.content.ContentUris
 import android.content.Context
-import android.net.Uri
-import android.provider.MediaStore
 import com.lhacenmed.sona.core.common.di.IoDispatcher
+import com.lhacenmed.sona.core.data.contentUri
 import com.lhacenmed.sona.core.database.dao.LyricsDao
 import com.lhacenmed.sona.core.database.entity.LyricsEntity
 import com.lhacenmed.sona.core.model.Track
@@ -40,7 +38,7 @@ class LyricsRepository @Inject constructor(
             if (lyricsDao.getLyrics(track.id) != null) return@withContext
             val lyrics =
                 embeddedLyricsExtractor
-                    .extract(contentUri = track.contentUri(), displayName = File(track.path).name, mimeType = null)
+                    .extract(contentUri = track.contentUri, displayName = File(track.path).name, mimeType = null)
                     ?.let(LyricsUtils::lyricsOrNotFound)
                     ?: LyricsEntity.LYRICS_NOT_FOUND
             lyricsDao.insertIfAbsent(
@@ -73,12 +71,4 @@ class LyricsRepository @Inject constructor(
     suspend fun clearLyrics() {
         withContext(ioDispatcher) { lyricsDao.clearAll() }
     }
-
-    // The same file the player opens.
-    private fun Track.contentUri(): Uri =
-        if (isManuallyScanned) {
-            Uri.fromFile(File(path))
-        } else {
-            ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, mediaStoreId)
-        }
 }

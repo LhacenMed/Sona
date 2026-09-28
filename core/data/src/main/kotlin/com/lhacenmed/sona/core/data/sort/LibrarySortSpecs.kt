@@ -199,15 +199,16 @@ internal object LibrarySortSpecs {
 
     private val folderName = SortField.Name<Folder>({ it.name })
 
-    val folders = SortSpec(
-        list = SortableList.FOLDERS,
-        default = nameAscending,
-        orderings = mapOf(
-            SortCriterion.NAME to listOf(folderName),
-            SortCriterion.TRACK_COUNT to
-                listOf(SortField.Number<Folder>(NumberSection) { it.trackCount.toLong() }, folderName),
-        ),
+    private val folderOrderings = mapOf(
+        SortCriterion.NAME to listOf(folderName),
+        SortCriterion.TRACK_COUNT to
+            listOf(SortField.Number<Folder>(NumberSection) { it.trackCount.toLong() }, folderName),
     )
+
+    val folders = SortSpec(list = SortableList.FOLDERS, default = nameAscending, orderings = folderOrderings)
+
+    /** The Videos tab's folders - sorted as the Folders tab's are, though on their own. */
+    val videoFolders = SortSpec(list = SortableList.VIDEO_FOLDERS, default = nameAscending, orderings = folderOrderings)
 
     private val playlistName = SortField.Name<PlaylistWithCount>({ it.name })
 
@@ -231,6 +232,7 @@ internal object LibrarySortSpecs {
         SortableList.ARTISTS -> artists
         SortableList.GENRES -> genres
         SortableList.FOLDERS -> folders
+        SortableList.VIDEO_FOLDERS -> videoFolders
         SortableList.PLAYLISTS -> playlists
         SortableList.ALBUM_TRACKS -> albumTracks
         SortableList.ARTIST_TRACKS -> artistTracks

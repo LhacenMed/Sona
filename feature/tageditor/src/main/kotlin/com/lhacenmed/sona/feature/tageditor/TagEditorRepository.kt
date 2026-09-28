@@ -1,14 +1,13 @@
 package com.lhacenmed.sona.feature.tageditor
 
-import android.content.ContentUris
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaScannerConnection
 import android.net.Uri
-import android.provider.MediaStore
 import coil3.SingletonImageLoader
 import com.lhacenmed.sona.core.common.di.IoDispatcher
+import com.lhacenmed.sona.core.data.contentUri
 import com.lhacenmed.sona.core.data.lyrics.LyricsRepository
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.scanner.MediaScanner
@@ -20,7 +19,6 @@ import com.lhacenmed.sona.feature.tageditor.tags.TagFileInfo
 import com.lhacenmed.sona.feature.tageditor.tags.TrackTags
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.ByteArrayOutputStream
-import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
@@ -51,7 +49,7 @@ class TagEditorRepository @Inject constructor(
      */
     suspend fun read(track: Track): TagFileInfo =
         withContext(ioDispatcher) {
-            val info = TagFile.read(track.path)
+            val info = TagFile.read(context, track.contentUri)
             val typedLyrics = lyricsRepository.typedLyrics(track.id) ?: return@withContext info
             info.copy(tags = info.tags.with(TagField.LYRICS, typedLyrics))
         }
@@ -69,7 +67,7 @@ class TagEditorRepository @Inject constructor(
                 is CoverChoice.Web -> checkNotNull(Http.bytes(cover.url)) { "The cover could not be downloaded" }
                 is CoverChoice.Device -> deviceCover(Uri.parse(cover.uri))
             }
-            TagFile.write(context, track.writeUri(), File(track.path).extension, tags, coverBytes)
+            TagFile.write(context, track.contentUri, tags, coverBytes)
             scanFile(track.path)
             lyricsRepository.forgetLyrics(track.id)
             if (coverBytes != null) forgetCover(track)
@@ -111,11 +109,3 @@ class TagEditorRepository @Inject constructor(
         track.coverArtUri?.let { imageLoader.diskCache?.remove(it) }
     }
 }
-
-/** The uri [track]'s file is written through: its MediaStore entry, or the file itself for one MediaStore has not indexed. */
-internal fun Track.writeUri(): Uri =
-    if (isManuallyScanned) {
-        Uri.fromFile(File(path))
-    } else {
-        ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, mediaStoreId)
-    }

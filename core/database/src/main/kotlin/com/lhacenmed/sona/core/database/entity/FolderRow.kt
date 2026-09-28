@@ -18,9 +18,10 @@ data class FolderCoverRow(
     val trackCount: Int,
 )
 
-fun FolderRow.toDomain(coverArtUris: List<String>) = Folder(
+fun FolderRow.toDomain(coverArtUris: List<String>, isVideo: Boolean) = Folder(
     path = path,
     name = path.substringAfterLast('/'),
     trackCount = trackCount,
     coverArtUris = coverArtUris,
+    isVideo = isVideo,
 )

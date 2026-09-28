@@ -13,6 +13,7 @@ enum class SortableList {
     ARTISTS,
     GENRES,
     FOLDERS,
+    VIDEO_FOLDERS,
     PLAYLISTS,
     ALBUM_TRACKS,
     ARTIST_TRACKS,

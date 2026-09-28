@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.stateIn
 @HiltViewModel(assistedFactory = FolderDetailViewModel.Factory::class)
 class FolderDetailViewModel @AssistedInject constructor(
     @Assisted private val folderPath: String,
+    @Assisted private val isVideo: Boolean,
     repository: LibraryRepository,
     sortOrders: LibrarySortOrders,
     playbackController: PlaybackController,
@@ -31,19 +32,19 @@ class FolderDetailViewModel @AssistedInject constructor(
 
     @AssistedFactory
     interface Factory {
-        fun create(folderPath: String): FolderDetailViewModel
+        fun create(folderPath: String, isVideo: Boolean): FolderDetailViewModel
     }
 
-    override val playbackParent: PlaybackParent = PlaybackParent.Folder(folderPath)
+    override val playbackParent: PlaybackParent = PlaybackParent.Folder(folderPath, isVideo)
 
     val folderName: String = folderPath.substringAfterLast('/')
 
     /** The folder this screen shows, as its own menu acts on it - null until the library has it. */
-    val folder: StateFlow<Folder?> = repository.folders
+    val folder: StateFlow<Folder?> = (if (isVideo) repository.videoFolders else repository.folders)
         .map { content -> content.itemsOrEmpty.firstOrNull { it.path == folderPath } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    override val tracks: StateFlow<LibraryContent<Track>> = repository.folderTracks(folderPath)
+    override val tracks: StateFlow<LibraryContent<Track>> = repository.folderTracks(folderPath, isVideo)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryContent.Loading)
 
     override val sort: SortControl = sortOrders.control(SortableList.FOLDER_TRACKS, folderPath)
