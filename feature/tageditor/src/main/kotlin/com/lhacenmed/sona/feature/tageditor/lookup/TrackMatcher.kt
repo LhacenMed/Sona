@@ -77,14 +77,17 @@ internal object TrackMatcher {
     }
 
     /** How well [match] answers [query], from 0 (unrelated) to 1 (exactly the song asked for). */
-    fun score(query: TrackQuery, match: CatalogueMatch): Double {
-        val titleScore = similarity(baseTitle(query.title), baseTitle(match.title))
+    fun score(query: TrackQuery, match: CatalogueMatch): Double = score(query, match.title, match.artist)
+
+    /** How well a song named [title] by [artist] answers [query] - [score], for a song from anywhere. */
+    fun score(query: TrackQuery, title: String, artist: String): Double {
+        val titleScore = similarity(baseTitle(query.title), baseTitle(title))
         val value = if (query.artist.isBlank()) {
             titleScore
         } else {
-            TitleWeight * titleScore + ArtistWeight * similarity(normalize(query.artist), normalize(match.artist))
+            TitleWeight * titleScore + ArtistWeight * similarity(normalize(query.artist), normalize(artist))
         }
-        return (value - versionPenalty(query.version, versionOf(match.title))).coerceIn(0.0, 1.0)
+        return (value - versionPenalty(query.version, versionOf(title))).coerceIn(0.0, 1.0)
     }
 
     /**

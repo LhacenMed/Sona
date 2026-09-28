@@ -187,7 +187,9 @@ Sona ports code from these open-source projects. Ported files say so in their co
 | Project | License | Used for |
 | --- | --- | --- |
 | [Auxio](https://github.com/OxygenCobalt/Auxio) | GPL-3.0 | Library behaviour, selection, sorting, detail screens, settings |
-| [ArchiveTune](https://github.com/rukamori/ArchiveTune) | GPL-3.0 | Player, queue sheet, lyrics display, dynamic theming |
+| [ArchiveTune](https://github.com/rukamori/ArchiveTune) | GPL-3.0 | Player, queue sheet, lyrics display, online lyrics sources, dynamic theming |
+| [YTDLnis](https://github.com/deniscerri/ytdlnis) | GPL-3.0 | Tag editor's catalogue lookup and tag writing |
+| [syncedlyrics](https://github.com/moehmeni/syncedlyrics) | MIT | NetEase, Musixmatch and Genius lyrics sources |
 | [Fossify Music Player](https://github.com/FossifyOrg/Music-Player) | GPL-3.0 | Media scanning, playback persistence, notification |
 | [cascade](https://github.com/saket/cascade) | Apache-2.0 | Cascading popup menu |
 

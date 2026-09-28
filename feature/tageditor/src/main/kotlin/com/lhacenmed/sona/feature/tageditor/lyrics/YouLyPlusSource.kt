@@ -43,6 +43,13 @@ internal object YouLyPlusSource : LyricsSource {
     private fun lyricsOf(response: JSONObject): SourceLyrics? =
         lrcOf(response)?.let { SourceLyrics(it, response.optJSONObject("metadata")?.string("totalDuration")?.let(::clockTimeMs)) }
 
+    /** The TTML the service answered with: the document itself, or the `ttml` field of a JSON answer. */
+    private fun ttmlOf(body: String): String? {
+        val trimmed = body.trim()
+        val ttml = if (trimmed.startsWith("<")) trimmed else attempt { JSONObject(trimmed).string("ttml") }
+        return ttml?.takeIf { it.startsWith("<") }
+    }
+
     /** Timed lines as LRC - each word's time before it, where the lines are timed word by word. */
     private fun lrcOf(response: JSONObject): String? {
         val lines = response.objects("lyrics")

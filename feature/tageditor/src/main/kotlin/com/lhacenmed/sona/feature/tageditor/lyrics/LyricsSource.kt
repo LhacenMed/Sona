@@ -1,5 +1,9 @@
 package com.lhacenmed.sona.feature.tageditor.lyrics
 
+import com.lhacenmed.sona.feature.tageditor.lookup.TrackMatcher
+import com.lhacenmed.sona.feature.tageditor.lookup.TrackQuery
+import kotlin.math.abs
+
 /** The song whose lyrics are looked for. [durationSeconds] is -1 when it is not known. */
 internal data class LyricsQuery(
     val title: String,
@@ -24,6 +28,36 @@ internal interface LyricsSource {
 
     /** Every set of lyrics the source has for [query], its likeliest first - ArchiveTune's `getAllLyrics`. */
     suspend fun fetchAll(query: LyricsQuery): List<SourceLyrics>
+}
+
+/** What a source that takes one line is searched with - syncedlyrics' "<title> <artist>". */
+internal val LyricsQuery.searchTerm: String
+    get() = listOf(title, artist).filter { it.isNotBlank() }.joinToString(" ")
+
+/** Below this likeness - syncedlyrics' 65 - a song a source found is taken for another song. */
+private const val MinLikeness = 0.65
+
+/**
+ * The songs among [candidates] that answer this query, best first - syncedlyrics' `get_best_match`, keeping
+ * every one that passes rather than the first: at least [MinLikeness] alike by name, by the tag lookup's own
+ * measure, and among them the likest names, then the length nearest the track's.
+ */
+internal fun <T> LyricsQuery.bestMatches(
+    candidates: List<T>,
+    title: (T) -> String,
+    artist: (T) -> String,
+    durationMs: (T) -> Long?,
+): List<T> {
+    val query = TrackQuery(artist = this.artist, title = this.title, version = TrackMatcher.versionOf(this.title))
+    val trackMs = durationSeconds.takeIf { it > 0 }?.times(1000L)
+    return candidates
+        .map { it to TrackMatcher.score(query, title(it), artist(it)) }
+        .filter { (_, likeness) -> likeness >= MinLikeness }
+        .sortedWith(
+            compareByDescending<Pair<T, Double>> { (_, likeness) -> likeness }
+                .thenBy { (candidate, _) -> durationMs(candidate)?.let { ms -> trackMs?.let { abs(ms - it) } } ?: Long.MAX_VALUE },
+        )
+        .map { (candidate, _) -> candidate }
 }
 
 private val ClockTime = Regex("""^(?:(\d+):)?(?:(\d+):)?(\d+(?:\.\d+)?)s?$""")
