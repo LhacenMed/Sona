@@ -58,6 +58,17 @@ class LyricsRepository @Inject constructor(
         }
     }
 
+    /** The lyrics the user typed in for [trackId], or null where the track's own are what is shown. */
+    suspend fun typedLyrics(trackId: Long): String? =
+        withContext(ioDispatcher) {
+            lyricsDao.getLyrics(trackId)?.takeIf { it.source == LyricsEntity.Source.USER_EDIT.name }?.lyrics
+        }
+
+    /** Forgets [trackId]'s lyrics - its tags changed - so they are read from them again the next time they are wanted. */
+    suspend fun forgetLyrics(trackId: Long) {
+        withContext(ioDispatcher) { lyricsDao.delete(trackId) }
+    }
+
     /** Forgets every track's lyrics; each is read from its tags again the next time it is wanted. */
     suspend fun clearLyrics() {
         withContext(ioDispatcher) { lyricsDao.clearAll() }

@@ -25,8 +25,8 @@ enum class AppPermission {
     /** Showing an update's download progress. The player's own controls need no permission. */
     NOTIFICATIONS,
 
-    /** Deleting tracks' files without Android asking each time. */
-    FILE_DELETION,
+    /** Changing tracks' files - deleting them, writing their tags - without Android asking each time. */
+    FILE_CHANGES,
 
     /** Installing a downloaded update. */
     APP_INSTALLS,
@@ -53,14 +53,14 @@ enum class AppPermission {
                 Manifest.permission.READ_EXTERNAL_STORAGE
             }
             NOTIFICATIONS -> Manifest.permission.POST_NOTIFICATIONS
-            FILE_DELETION -> Manifest.permission.WRITE_EXTERNAL_STORAGE.takeIf {
+            FILE_CHANGES -> Manifest.permission.WRITE_EXTERNAL_STORAGE.takeIf {
                 Build.VERSION.SDK_INT < Build.VERSION_CODES.R
             }
             APP_INSTALLS -> null
         }
 
     fun isGranted(context: Context): Boolean = when {
-        this == FILE_DELETION && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ->
+        this == FILE_CHANGES && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ->
             Environment.isExternalStorageManager()
         this == APP_INSTALLS -> context.packageManager.canRequestPackageInstalls()
         else -> context.checkSelfPermission(checkNotNull(runtimePermission)) == PackageManager.PERMISSION_GRANTED
@@ -73,7 +73,7 @@ enum class AppPermission {
     fun settingsIntent(context: Context): Intent {
         val packageUri = Uri.parse("package:${context.packageName}")
         return when {
-            this == FILE_DELETION && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ->
+            this == FILE_CHANGES && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ->
                 Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, packageUri)
             this == APP_INSTALLS -> Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, packageUri)
             else -> Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, packageUri)

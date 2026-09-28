@@ -14,6 +14,7 @@ import com.lhacenmed.sona.feature.library.options.OptionsAction.ARTIST_DETAILS
 import com.lhacenmed.sona.feature.library.options.OptionsAction.DELETE
 import com.lhacenmed.sona.feature.library.options.OptionsAction.DELETE_FROM_DEVICE
 import com.lhacenmed.sona.feature.library.options.OptionsAction.EDIT
+import com.lhacenmed.sona.feature.library.options.OptionsAction.EDIT_TAGS
 import com.lhacenmed.sona.feature.library.options.OptionsAction.EXCLUDE
 import com.lhacenmed.sona.feature.library.options.OptionsAction.EXPORT
 import com.lhacenmed.sona.feature.library.options.OptionsAction.IMPORT
@@ -108,11 +109,11 @@ private val FolderActions =
 fun OptionsTarget.actions(): List<OptionsAction> = when (this) {
     is OptionsTarget.ForTrack -> when (context) {
         TrackOptionsContext.LIST ->
-            listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ARTIST_DETAILS, ALBUM_DETAILS, SONG_PROPERTIES, SHARE)
+            listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ARTIST_DETAILS, ALBUM_DETAILS, SONG_PROPERTIES, EDIT_TAGS, SHARE)
         TrackOptionsContext.FROM_ALBUM ->
-            listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ARTIST_DETAILS, SONG_PROPERTIES, SHARE)
+            listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ARTIST_DETAILS, SONG_PROPERTIES, EDIT_TAGS, SHARE)
         TrackOptionsContext.FROM_ARTIST ->
-            listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ALBUM_DETAILS, SONG_PROPERTIES, SHARE)
+            listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ALBUM_DETAILS, SONG_PROPERTIES, EDIT_TAGS, SHARE)
     } + listOfNotNull(REMOVE_FROM_PLAYLIST.takeIf { playlist != null }, DELETE_FROM_DEVICE)
 
     is OptionsTarget.ForAlbum -> when (context) {

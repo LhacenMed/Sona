@@ -25,6 +25,9 @@ interface LyricsDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertIfAbsent(lyrics: LyricsEntity)
 
+    @Query("DELETE FROM lyrics WHERE trackId = :trackId")
+    suspend fun delete(trackId: Long)
+
     @Query("DELETE FROM lyrics")
     suspend fun clearAll()
 }

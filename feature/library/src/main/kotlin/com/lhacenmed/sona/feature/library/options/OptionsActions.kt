@@ -41,6 +41,7 @@ import com.lhacenmed.sona.feature.library.playlist.AddCollectionsScreen
 import com.lhacenmed.sona.feature.library.playlist.AddTracksScreen
 import com.lhacenmed.sona.feature.library.playlist.EditPlaylistScreen
 import com.lhacenmed.sona.feature.library.pluralCount
+import com.lhacenmed.sona.feature.tageditor.TagEditorScreen
 
 /**
  * A dialog or file picker a chosen action is waiting on, for [target]. Until it ends the action is still
@@ -96,6 +97,7 @@ internal class OptionsActions(
             OptionsAction.ARTIST_DETAILS -> navigator.go(ArtistDetailScreen(artistIdOf(target)))
             OptionsAction.ALBUM_DETAILS -> navigator.go(AlbumDetailScreen(albumIdOf(target)))
             OptionsAction.SONG_PROPERTIES -> followUp = FollowUp.Properties(target as OptionsTarget.ForTrack)
+            OptionsAction.EDIT_TAGS -> navigator.go(TagEditorScreen((target as OptionsTarget.ForTrack).track.id))
             OptionsAction.VIEW_DETAILS -> navigator.go(detailScreenOf(target))
             OptionsAction.ADD_TRACKS -> navigator.go(AddTracksScreen(playlistOf(target).playlist.id))
             OptionsAction.ADD_COLLECTIONS -> navigator.go(AddCollectionsScreen(playlistOf(target).playlist.id))

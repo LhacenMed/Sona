@@ -3,6 +3,7 @@ package com.lhacenmed.sona.feature.library.options
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.LibraryAdd
@@ -33,6 +34,7 @@ enum class OptionsAction(val icon: ImageVector, val label: String) {
     ARTIST_DETAILS(SonaIcons.GoToArtist, "Go to artist"),
     ALBUM_DETAILS(SonaIcons.GoToAlbum, "Go to album"),
     SONG_PROPERTIES(SonaIcons.Details, "View properties"),
+    EDIT_TAGS(Icons.Filled.EditNote, "Edit tags"),
     VIEW_DETAILS(SonaIcons.Details, "View"),
     ADD_TRACKS(Icons.AutoMirrored.Filled.PlaylistAdd, "Add tracks"),
     ADD_COLLECTIONS(Icons.Filled.LibraryAdd, "Add from collections"),
