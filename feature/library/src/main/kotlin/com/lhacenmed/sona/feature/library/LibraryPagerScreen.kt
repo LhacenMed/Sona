@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -45,7 +46,7 @@ import com.lhacenmed.sona.feature.library.operation.ExcludeFoldersDialog
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.selection.SelectionOptionsHost
 import com.lhacenmed.sona.feature.library.selection.toLibraryTopBarSelection
-import com.lhacenmed.sona.feature.library.shuffle.ShuffleAllButton
+import com.lhacenmed.sona.feature.library.quickplay.QuickPlayButton
 import com.lhacenmed.sona.feature.library.sort.SortSheet
 import com.lhacenmed.sona.feature.library.sort.sortAction
 import kotlinx.coroutines.coroutineScope
@@ -70,19 +71,20 @@ import kotlinx.coroutines.launch
  * "Opening" a tab therefore costs a composition and nothing else - no query, no sort - which is why
  * they can all exist at once without competing for the launch frame.
  *
- * [onChooseShuffleSource] opens where the shuffle-all button's source is chosen, which the shell knows.
+ * [onChooseQuickPlaySource] opens where the quick play button's source is chosen, which the shell knows.
  */
 @Composable
 fun LibraryPagerScreen(
-    onChooseShuffleSource: () -> Unit,
+    onChooseQuickPlaySource: () -> Unit,
     modifier: Modifier = Modifier,
     actions: List<TopBarAction> = emptyList(),
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
     val visibleTabs by viewModel.visibleTabs.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
-    val showShuffleAllButton by viewModel.showShuffleAllButton.collectAsStateWithLifecycle()
-    val shuffleAllSource by viewModel.shuffleAllSource.collectAsStateWithLifecycle()
+    // Not paused with the activity, as the rest is: it is changed from another screen - the settings - and is
+    // then already there for the first frame back, rather than arriving just after it.
+    val quickPlay by viewModel.quickPlay.collectAsState()
     val hasTracks by viewModel.hasTracks.collectAsStateWithLifecycle()
     if (visibleTabs.isEmpty()) return
 
@@ -284,14 +286,15 @@ fun LibraryPagerScreen(
 
                 // Auxio's rules for its shuffle button: only over a library with tracks in it, and on the
                 // library itself rather than its search. Stepping aside for the player, a fast scroll or
-                // the list's end is the FAB stack's, as every FAB's is.
-                ShuffleAllButton(
-                    visible = showShuffleAllButton && hasTracks && searchQuery == null,
-                    source = shuffleAllSource,
+                // the list's end is the FAB stack's, as every FAB's is. Read by the stack as it draws the
+                // button - see QuickPlayButton - so this screen does not recompose for any of it.
+                QuickPlayButton(
+                    quickPlay = { quickPlay },
+                    visible = { hasTracks && searchQuery == null },
                     favoritesPlaylistId = viewModel.favoritesPlaylistId,
-                    onShuffle = viewModel::onShuffleAll,
-                    onShuffleFrom = viewModel::onShuffleFrom,
-                    onChooseOther = onChooseShuffleSource,
+                    onPlay = viewModel::onQuickPlay,
+                    onPlayFrom = viewModel::onQuickPlayFrom,
+                    onChooseOther = onChooseQuickPlaySource,
                 )
             }
         }

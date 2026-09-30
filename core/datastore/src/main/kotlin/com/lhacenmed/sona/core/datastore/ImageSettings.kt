@@ -30,7 +30,7 @@ class ImageSettings @Inject constructor(
 
     val coverMode: Setting<CoverMode> = cache.setting { preferences ->
         preferences[COVER_MODE]?.let { name -> runCatching { CoverMode.valueOf(name) }.getOrNull() }
-            ?: CoverMode.BALANCED
+            ?: CoverMode.Default
     }
 
     suspend fun setCoverMode(mode: CoverMode) {

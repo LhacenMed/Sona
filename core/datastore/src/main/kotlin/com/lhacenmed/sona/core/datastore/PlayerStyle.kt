@@ -8,5 +8,11 @@ package com.lhacenmed.sona.core.datastore
  */
 enum class PlayerStyle {
     /** ArchiveTune's Cinematic player. */
-    DEFAULT,
+    CINEMATIC,
+    ;
+
+    companion object {
+        /** What it is until the user chooses otherwise. */
+        val Default = CINEMATIC
+    }
 }

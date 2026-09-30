@@ -31,7 +31,7 @@ fun AppShell(playerOverlay: PlayerOverlay, modifier: Modifier = Modifier) {
         )
     }
 
-    // Over the player too, so a screen can lay something over the whole window - the shuffle button's menu.
+    // Over the player too, so a screen can lay something over the whole window - the quick play button's menu.
     WindowOverlayHost {
         // The expandable player overlays the whole screen - collapsed, it's just a mini-bar pinned to the
         // bottom; expanded, it covers everything. Each list keeps its own end clear of it, rather than the
@@ -43,7 +43,7 @@ fun AppShell(playerOverlay: PlayerOverlay, modifier: Modifier = Modifier) {
                 // inset, so letting the Scaffold add it too would pad the screen twice.
                 Scaffold(modifier = modifier, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { innerPadding ->
                     LibraryPagerScreen(
-                        onChooseShuffleSource = { navigator.go(PlaybackScreen(scrollTo = PlaybackSetting.SHUFFLE_ALL_SOURCE)) },
+                        onChooseQuickPlaySource = { navigator.go(PlaybackScreen(scrollTo = PlaybackSetting.QUICK_PLAY_SOURCE)) },
                         modifier = Modifier.padding(innerPadding),
                         actions = libraryActions,
                     )

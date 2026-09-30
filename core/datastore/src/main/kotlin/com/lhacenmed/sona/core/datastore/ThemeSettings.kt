@@ -137,12 +137,12 @@ class ThemeSettings @Inject constructor(
     }
 }
 
-private fun Preferences.themeMode() = enum(THEME_MODE, ThemeMode.SYSTEM)
+private fun Preferences.themeMode() = enum(THEME_MODE, ThemeMode.Default)
 private fun Preferences.pureBlack() = this[PURE_BLACK] ?: false
 private fun Preferences.dynamicColors() = this[DYNAMIC_COLORS] ?: true
 private fun Preferences.wallpaperColors() = this[WALLPAPER_COLORS] ?: true
 private fun Preferences.coverColors() = this[COVER_COLORS] ?: false
-private fun Preferences.font() = enum(FONT, AppFont.DEFAULT)
+private fun Preferences.font() = enum(FONT, AppFont.Default)
 private fun Preferences.customFont() =
     this[CUSTOM_FONT_URI]?.let { CustomFont(uri = it, name = this[CUSTOM_FONT_NAME].orEmpty()) }
 

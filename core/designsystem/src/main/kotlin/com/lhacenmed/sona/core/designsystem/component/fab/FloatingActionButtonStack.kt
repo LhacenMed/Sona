@@ -71,7 +71,7 @@ internal class FloatingActionButtonStackState {
     /** The screen's lists, the stack following the one it shows most of - see [screenList]. */
     val screenLists = ScreenLists()
 
-    /** The screen's own FAB as it was last composed, if it has one - see [SonaFloatingActionButtonMenu]. */
+    /** The screen's own FAB, if it has one - see [SonaFloatingActionButtonMenu]. */
     var primaryButton: PrimaryButton? by mutableStateOf(null)
 
     /** The player the stack stands on - see [LocalPlayerSheetHeight]. */
@@ -106,7 +106,8 @@ internal val LocalFloatingActionButtonStack = staticCompositionLocalOf<FloatingA
  * The whole stack steps aside together: while the player is raised over the screen, while the list is
  * fast scrolled, and once the list has come within the stack's height of its end - where the stack would
  * cover its last rows - so a list needs no room of its own for it. How tall it is is set by which buttons
- * the screen has rather than which are showing, so one showing never moves the others.
+ * the screen has rather than which are showing, so one showing never moves the others - while a screen whose
+ * own FAB is turned off has none, and the way back to the top takes its place.
  *
  * The way back to the top shows once the list is a quarter of a screen from it, and steps aside while the
  * screen's own FAB has its menu open. Both are told by how the list has scrolled alone - see [ScreenList] -
@@ -131,7 +132,9 @@ fun FloatingActionButtonStack(content: @Composable () -> Unit) {
 private fun BoxScope.FloatingActionButtons(stack: FloatingActionButtonStackState) {
     ExpressiveMotion {
         val primaryButton = stack.primaryButton
-        val scrollToTopLift = if (primaryButton != null) PrimaryButtonSize + StackSpacing else 0.dp
+        // Read here, in the stack's own composition, so a change to it is drawn in the frame it happens in.
+        val primaryContent = primaryButton?.content
+        val scrollToTopLift = if (primaryContent != null) PrimaryButtonSize + StackSpacing else 0.dp
         val stackHeightPx = with(LocalDensity.current) { (scrollToTopLift + ScrollToTopButtonSize).toPx() }
         val isShownState = remember(stack, stackHeightPx) {
             derivedStateOf {
@@ -157,7 +160,9 @@ private fun BoxScope.FloatingActionButtons(stack: FloatingActionButtonStackState
             onClick = { stack.screenLists.current?.let { list -> scope.launch { list.scrollToTop() } } },
             modifier = anchor.padding(bottom = scrollToTopLift),
         )
-        primaryButton?.let { PrimaryButtonMenu(button = it, isShown = isShown, anchor = anchor) }
+        if (primaryButton != null && primaryContent != null) {
+            PrimaryButtonMenu(button = primaryButton, content = primaryContent, isShown = isShown, anchor = anchor)
+        }
     }
 }
 

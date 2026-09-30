@@ -29,9 +29,14 @@ import androidx.compose.material3.animateFloatingActionButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -82,29 +87,48 @@ class FloatingActionButtonMenuChoice(
 )
 
 /**
- * A screen's own FAB as it was last composed - what [FloatingActionButtonStack] draws it from. A new one
- * each time, so the stack always hears of it.
+ * What a screen's FAB is at this moment: its [icon], what it does at a tap - [onClick] - and the [choices] its
+ * long press opens. [visible] is whether the screen has it showing right now; it steps aside without the
+ * stack giving up its place.
  */
-internal class PrimaryButton(
-    val owner: Any,
+class FloatingActionButtonMenuContent(
     val icon: ImageVector,
     val contentDescription: String,
     val visible: Boolean,
-    val expanded: Boolean,
     val onClick: () -> Unit,
-    val onExpandedChange: (Boolean) -> Unit,
     val choices: List<FloatingActionButtonMenuChoice>,
 )
 
 /**
+ * A screen's own FAB as [FloatingActionButtonStack] holds it: handed over once, and read by the stack where it
+ * draws it - its [content] then, and whether its menu is [expanded].
+ */
+internal class PrimaryButton(
+    private val latestContent: State<() -> FloatingActionButtonMenuContent?>,
+    expandedState: MutableState<Boolean>,
+) {
+    /** What it is right now, or null while the screen has none - read in the stack's own composition. */
+    val content: FloatingActionButtonMenuContent?
+        get() = latestContent.value()
+
+    var expanded: Boolean by expandedState
+}
+
+/**
  * A screen's own FAB: Material's expressive FAB menu, as a medium FAB, standing at the bottom of the
  * screen's [FloatingActionButtonStack] - which draws it over the whole window and steps it aside with the
- * rest of the stack. [visible] is whether the screen itself has it showing; shown and hidden by its own
- * motion - [animateFloatingActionButton], growing out of and shrinking into its centre, as Auxio's does.
+ * rest of the stack. Shown and hidden by its own motion - [animateFloatingActionButton], growing out of and
+ * shrinking into its centre, as Auxio's does.
  *
- * A tap does what the button is for - [onClick]. A long press opens its menu of [choices] instead: the
- * button shrinks towards its top end into Material's close button and the choices unfold above it, over
- * a scrim across the whole app. A tap on the close button, anywhere on the scrim, or back closes it again.
+ * [content] is what it is at this moment - null while the screen has no FAB at all, such as one the user has
+ * turned off, which the stack closes the gap under. It is read where the stack draws it, in the stack's own
+ * composition, so it reads whatever changes from state - as a window overlay's content does - rather than
+ * capturing values: then a change is drawn in the very frame the state changes in, without the screen
+ * recomposing for it.
+ *
+ * A tap does what the button is for. A long press opens its menu of choices instead: the button shrinks
+ * towards its top end into Material's close button and the choices unfold above it, over a scrim across the
+ * whole app. Picking one closes it; so does a tap on the close button, anywhere on the scrim, or back.
  * Material's button knows only a tap, so the long press is read here, ahead of it, and the rest of that
  * press is kept from it - it would otherwise close the menu the moment the finger lifts.
  *
@@ -116,43 +140,40 @@ internal class PrimaryButton(
  * stays composed, so showing it again is only its motion.
  */
 @Composable
-fun SonaFloatingActionButtonMenu(
-    onClick: () -> Unit,
-    icon: ImageVector,
-    contentDescription: String,
-    visible: Boolean,
-    expanded: Boolean,
-    onExpandedChange: (Boolean) -> Unit,
-    choices: List<FloatingActionButtonMenuChoice>,
-) {
+fun SonaFloatingActionButtonMenu(content: () -> FloatingActionButtonMenuContent?) {
     val stack = checkNotNull(LocalFloatingActionButtonStack.current) { "A FAB needs a FloatingActionButtonStack" }
-    BackHandler(enabled = expanded) { onExpandedChange(false) }
-    // Handed to the stack as it is composed, which is what draws it: a screen recomposing is what the
-    // stack redraws the button from.
-    val owner = remember { Any() }
-    stack.primaryButton = PrimaryButton(owner, icon, contentDescription, visible, expanded, onClick, onExpandedChange, choices)
-    DisposableEffect(stack, owner) {
-        onDispose { if (stack.primaryButton?.owner === owner) stack.primaryButton = null }
+    val latestContent = rememberUpdatedState(content)
+    val expandedState = rememberSaveable { mutableStateOf(false) }
+    val button = remember { PrimaryButton(latestContent, expandedState) }
+    BackHandler(enabled = button.expanded) { button.expanded = false }
+    DisposableEffect(stack, button) {
+        stack.primaryButton = button
+        onDispose { if (stack.primaryButton === button) stack.primaryButton = null }
     }
 }
 
 /**
- * [button] as the stack draws it, standing at [anchor]: shown while the screen has it [PrimaryButton.visible]
- * and the stack [isShown].
+ * [button] as the stack draws it - as its [content] is now - standing at [anchor]: shown while the screen has
+ * it [FloatingActionButtonMenuContent.visible] and the stack [isShown].
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-internal fun BoxScope.PrimaryButtonMenu(button: PrimaryButton, isShown: Boolean, anchor: Modifier) {
-    val latestButton by rememberUpdatedState(button)
-    val isVisible = button.visible && isShown
-    LaunchedEffect(isVisible) { if (!isVisible) latestButton.onExpandedChange(false) }
+internal fun BoxScope.PrimaryButtonMenu(
+    button: PrimaryButton,
+    content: FloatingActionButtonMenuContent,
+    isShown: Boolean,
+    anchor: Modifier,
+) {
+    val latestContent by rememberUpdatedState(content)
+    val isVisible = content.visible && isShown
+    LaunchedEffect(isVisible) { if (!isVisible) button.expanded = false }
 
     val haptics by rememberUpdatedState(LocalHapticFeedback.current)
     // Remembered, so the long press is not started over whenever the button is drawn again.
-    val openMenu = remember {
+    val openMenu = remember(button) {
         {
             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-            latestButton.onExpandedChange(true)
+            button.expanded = true
         }
     }
     val openLabel = stringResource(R.string.fab_menu_open)
@@ -171,7 +192,7 @@ internal fun BoxScope.PrimaryButtonMenu(button: PrimaryButton, isShown: Boolean,
     }
     val expanded = button.expanded
 
-    MenuScrim(expanded = expanded, closeLabel = closeLabel, onClose = { latestButton.onExpandedChange(false) })
+    MenuScrim(expanded = expanded, closeLabel = closeLabel, onClose = { button.expanded = false })
     FloatingActionButtonMenu(
         expanded = expanded,
         modifier = anchor.offset(x = MenuInset, y = MenuInset),
@@ -180,7 +201,7 @@ internal fun BoxScope.PrimaryButtonMenu(button: PrimaryButton, isShown: Boolean,
                 checked = expanded,
                 // Checking it is a tap on the closed button, which is its own action rather than the menu.
                 onCheckedChange = { checked ->
-                    if (checked) latestButton.onClick() else latestButton.onExpandedChange(false)
+                    if (checked) latestContent.onClick() else button.expanded = false
                 },
                 modifier = Modifier
                     .semantics { if (!expanded) onLongClick(label = openLabel) { openMenu(); true } }
@@ -192,8 +213,8 @@ internal fun BoxScope.PrimaryButtonMenu(button: PrimaryButton, isShown: Boolean,
             ) {
                 val isClose = checkedProgress > 0.5f
                 Icon(
-                    imageVector = if (isClose) Icons.Filled.Close else button.icon,
-                    contentDescription = if (isClose) closeLabel else button.contentDescription,
+                    imageVector = if (isClose) Icons.Filled.Close else content.icon,
+                    contentDescription = if (isClose) closeLabel else content.contentDescription,
                     modifier = Modifier.animateIcon(
                         checkedProgress = { checkedProgress },
                         size = ToggleFloatingActionButtonDefaults.iconSizeMedium(),
@@ -202,9 +223,12 @@ internal fun BoxScope.PrimaryButtonMenu(button: PrimaryButton, isShown: Boolean,
             }
         },
     ) {
-        button.choices.forEach { choice ->
+        content.choices.forEach { choice ->
             FloatingActionButtonMenuItem(
-                onClick = choice.onClick,
+                onClick = {
+                    button.expanded = false
+                    choice.onClick()
+                },
                 text = { Text(text = choice.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 icon = { Icon(imageVector = choice.icon, contentDescription = null, modifier = Modifier.size(MenuItemIconSize)) },
                 modifier = Modifier.semantics { selected = choice.isSelected },

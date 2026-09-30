@@ -20,7 +20,6 @@ import com.lhacenmed.sona.core.datastore.CustomFont
 import com.lhacenmed.sona.core.datastore.LyricsBackgroundStyle
 import com.lhacenmed.sona.core.datastore.MiniPlayerBackgroundStyle
 import com.lhacenmed.sona.core.datastore.PlayerBackgroundStyle
-import com.lhacenmed.sona.core.datastore.PlayerButtonsStyle
 import com.lhacenmed.sona.core.datastore.PlayerStyle
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.effect.isHighRefreshRate
@@ -52,7 +51,7 @@ private val playerBackgroundOptions = PlayerBackgroundStyle.entries.filter {
 
 /** The lyrics backgrounds on offer - the custom one is the player's, followed rather than chosen. */
 private val lyricsBackgroundOptions = listOf(
-    LyricsBackgroundStyle.DEFAULT,
+    LyricsBackgroundStyle.BLURRED_COVER,
     LyricsBackgroundStyle.FOLLOW_THEME,
     LyricsBackgroundStyle.COLORING,
 )
@@ -92,17 +91,17 @@ data object AppearanceScreen : Screen {
                     title = stringResource(R.string.theme_title),
                     options = ThemeMode.entries.map { themeModeLabel(it) },
                     selectedIndex = theme.mode.ordinal,
+                    defaultIndex = ThemeMode.Default.ordinal,
                     onSelect = { viewModel.setThemeMode(ThemeMode.entries[it]) },
                 )
                 // ArchiveTune's: only a dark theme has surfaces to turn black.
-                if (isDarkTheme) {
-                    SettingsSwitchItem(
-                        title = stringResource(R.string.black_theme_title),
-                        summary = stringResource(R.string.black_theme_summary),
-                        checked = theme.pureBlack,
-                        onCheckedChange = viewModel::setPureBlack,
-                    )
-                }
+                SettingsSwitchItem(
+                    title = stringResource(R.string.black_theme_title),
+                    summary = stringResource(R.string.black_theme_summary),
+                    checked = theme.pureBlack,
+                    onCheckedChange = viewModel::setPureBlack,
+                    enabled = isDarkTheme,
+                )
                 SettingsSwitchItem(
                     title = stringResource(R.string.dynamic_colors_title),
                     summary = stringResource(R.string.dynamic_colors_summary),
@@ -134,7 +133,7 @@ data object AppearanceScreen : Screen {
                 SettingsChoiceItem(
                     title = stringResource(R.string.app_icon_title),
                     options = listOf(
-                        stringResource(R.string.app_icon_default),
+                        stringResource(R.string.app_icon_original),
                         stringResource(R.string.app_icon_monochrome),
                     ),
                 )
@@ -142,19 +141,19 @@ data object AppearanceScreen : Screen {
                     title = stringResource(R.string.font_title),
                     options = AppFont.entries.map { fontLabel(it) },
                     selectedIndex = theme.font.ordinal,
+                    defaultIndex = AppFont.Default.ordinal,
                     onSelect = { index ->
                         val font = AppFont.entries[index]
                         // The custom font becomes the font once one is picked, so it is never custom without one.
                         if (font == AppFont.CUSTOM && theme.customFont == null) pickFont() else viewModel.setFont(font)
                     },
                 )
-                if (theme.font == AppFont.CUSTOM) {
-                    SettingsNavigationItem(
-                        title = stringResource(R.string.custom_font_title),
-                        summary = theme.customFont?.name?.ifBlank { null } ?: stringResource(R.string.custom_font_summary),
-                        onClick = pickFont,
-                    )
-                }
+                SettingsNavigationItem(
+                    title = stringResource(R.string.custom_font_title),
+                    summary = theme.customFont?.name?.ifBlank { null } ?: stringResource(R.string.custom_font_summary),
+                    onClick = pickFont,
+                    enabled = theme.font == AppFont.CUSTOM,
+                )
             }
 
             SettingsSectionDivider()
@@ -166,6 +165,7 @@ data object AppearanceScreen : Screen {
                     title = stringResource(R.string.player_style_title),
                     options = PlayerStyle.entries.map { playerStyleLabel(it) },
                     selectedIndex = player.style.ordinal,
+                    defaultIndex = PlayerStyle.Default.ordinal,
                     onSelect = { viewModel.setPlayerStyle(PlayerStyle.entries[it]) },
                 )
                 SettingsNavigationItem(
@@ -177,28 +177,30 @@ data object AppearanceScreen : Screen {
                     title = stringResource(R.string.player_background_title),
                     options = playerBackgroundOptions.map { playerBackgroundLabel(it) },
                     selectedIndex = playerBackgroundOptions.indexOf(player.background).coerceAtLeast(0),
+                    defaultIndex = playerBackgroundOptions.indexOf(PlayerBackgroundStyle.Default),
                     onSelect = { viewModel.setPlayerBackground(playerBackgroundOptions[it]) },
                 )
-                if (player.background == PlayerBackgroundStyle.CUSTOM) {
-                    SettingsNavigationItem(
-                        title = stringResource(R.string.customized_background_title),
-                        summary = stringResource(R.string.customized_background_summary),
-                        onClick = { navigator.go(CustomBackgroundScreen) },
-                    )
-                }
+                SettingsNavigationItem(
+                    title = stringResource(R.string.customized_background_title),
+                    summary = stringResource(R.string.customized_background_summary),
+                    onClick = { navigator.go(CustomBackgroundScreen) },
+                    enabled = player.background == PlayerBackgroundStyle.CUSTOM,
+                )
                 // Shows the player's custom image while the player has one, and waits for it to go.
                 SettingsChoiceItem(
                     title = stringResource(R.string.lyrics_background_style_title),
                     options = lyricsBackgroundOptions.map { lyricsBackgroundLabel(it) },
                     selectedIndex = lyricsBackgroundOptions.indexOf(chosenLyricsBackground).coerceAtLeast(0),
+                    defaultIndex = lyricsBackgroundOptions.indexOf(LyricsBackgroundStyle.Default),
                     onSelect = { viewModel.setLyricsBackground(lyricsBackgroundOptions[it]) },
-                    summary = lyricsBackgroundLabel(lyricsBackground),
+                    summary = if (lyricsBackground == LyricsBackgroundStyle.CUSTOM) lyricsBackgroundLabel(lyricsBackground) else null,
                     enabled = player.background != PlayerBackgroundStyle.CUSTOM,
                 )
                 SettingsChoiceItem(
                     title = stringResource(R.string.mini_player_background_title),
                     options = MiniPlayerBackgroundStyle.entries.map { miniPlayerBackgroundLabel(it) },
                     selectedIndex = player.miniPlayerBackground.ordinal,
+                    defaultIndex = MiniPlayerBackgroundStyle.Default.ordinal,
                     onSelect = { viewModel.setMiniPlayerBackground(MiniPlayerBackgroundStyle.entries[it]) },
                 )
                 SettingsSwitchItem(
@@ -206,12 +208,6 @@ data object AppearanceScreen : Screen {
                     summary = stringResource(R.string.hide_player_thumbnail_summary),
                     checked = player.hideThumbnail,
                     onCheckedChange = viewModel::setHideThumbnail,
-                )
-                SettingsChoiceItem(
-                    title = stringResource(R.string.player_buttons_title),
-                    options = PlayerButtonsStyle.entries.map { playerButtonsLabel(it) },
-                    selectedIndex = player.buttonsStyle.ordinal,
-                    onSelect = { viewModel.setButtonsStyle(PlayerButtonsStyle.entries[it]) },
                 )
                 SettingsSwitchItem(
                     title = stringResource(R.string.swipe_to_change_song_title),
@@ -300,7 +296,7 @@ private fun themeModeLabel(mode: ThemeMode): String =
 private fun fontLabel(font: AppFont): String =
     stringResource(
         when (font) {
-            AppFont.DEFAULT -> R.string.font_default
+            AppFont.POPPINS -> R.string.font_poppins
             AppFont.SYSTEM -> R.string.font_system
             AppFont.INTER -> R.string.font_inter
             AppFont.CUSTOM -> R.string.font_custom
@@ -310,14 +306,14 @@ private fun fontLabel(font: AppFont): String =
 @Composable
 private fun playerStyleLabel(style: PlayerStyle): String =
     when (style) {
-        PlayerStyle.DEFAULT -> stringResource(R.string.player_style_default)
+        PlayerStyle.CINEMATIC -> stringResource(R.string.player_style_cinematic)
     }
 
 @Composable
 private fun playerBackgroundLabel(style: PlayerBackgroundStyle): String =
     stringResource(
         when (style) {
-            PlayerBackgroundStyle.DEFAULT -> R.string.background_follow_theme
+            PlayerBackgroundStyle.FOLLOW_THEME -> R.string.background_follow_theme
             PlayerBackgroundStyle.GRADIENT -> R.string.background_gradient
             PlayerBackgroundStyle.CUSTOM -> R.string.background_custom
             PlayerBackgroundStyle.BLUR -> R.string.background_blur
@@ -332,7 +328,7 @@ private fun playerBackgroundLabel(style: PlayerBackgroundStyle): String =
 private fun lyricsBackgroundLabel(style: LyricsBackgroundStyle): String =
     stringResource(
         when (style) {
-            LyricsBackgroundStyle.DEFAULT -> R.string.lyrics_background_default
+            LyricsBackgroundStyle.BLURRED_COVER -> R.string.lyrics_background_blurred_cover
             LyricsBackgroundStyle.FOLLOW_THEME -> R.string.background_follow_theme
             LyricsBackgroundStyle.COLORING -> R.string.background_coloring
             LyricsBackgroundStyle.CUSTOM -> R.string.background_custom
@@ -343,17 +339,8 @@ private fun lyricsBackgroundLabel(style: LyricsBackgroundStyle): String =
 private fun miniPlayerBackgroundLabel(style: MiniPlayerBackgroundStyle): String =
     stringResource(
         when (style) {
-            MiniPlayerBackgroundStyle.THEME -> R.string.background_follow_theme
+            MiniPlayerBackgroundStyle.FOLLOW_THEME -> R.string.background_follow_theme
             MiniPlayerBackgroundStyle.GRADIENT -> R.string.background_gradient
             MiniPlayerBackgroundStyle.GLOW -> R.string.background_glow
-        },
-    )
-
-@Composable
-private fun playerButtonsLabel(style: PlayerButtonsStyle): String =
-    stringResource(
-        when (style) {
-            PlayerButtonsStyle.DEFAULT -> R.string.player_buttons_default
-            PlayerButtonsStyle.SECONDARY -> R.string.player_buttons_secondary
         },
     )

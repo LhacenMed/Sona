@@ -41,10 +41,10 @@ internal fun MiniPlayer(
     val coroutineScope = rememberCoroutineScope()
     val gradientColors = rememberCoverGradientColors(
         coverArtUri = track?.coverArtUri,
-        enabled = appearance.miniPlayerBackground != MiniPlayerBackgroundStyle.THEME,
+        enabled = appearance.miniPlayerBackground != MiniPlayerBackgroundStyle.FOLLOW_THEME,
     )
     // A cover style draws the theme's surface until the cover has colours to give - and so do its contents.
-    val drawsCover = appearance.miniPlayerBackground != MiniPlayerBackgroundStyle.THEME && gradientColors.isNotEmpty()
+    val drawsCover = appearance.miniPlayerBackground != MiniPlayerBackgroundStyle.FOLLOW_THEME && gradientColors.isNotEmpty()
     val contentColors = rememberMiniPlayerContentColors(useArtworkBackground = drawsCover)
 
     SwipeableMiniPlayerBox(

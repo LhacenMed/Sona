@@ -7,4 +7,10 @@ enum class CoverMode {
     BALANCED,
     HIGH_QUALITY,
     AS_IS,
+    ;
+
+    companion object {
+        /** What it is until the user chooses otherwise. */
+        val Default = BALANCED
+    }
 }

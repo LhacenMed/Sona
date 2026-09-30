@@ -77,8 +77,10 @@ class LyricsSettings @Inject constructor(
     suspend fun setLyricsLineBlur(enabled: Boolean) = set(LYRICS_LINE_BLUR, enabled)
 
     val lyricsBackgroundStyle: Setting<LyricsBackgroundStyle> = cache.setting { preferences ->
-        preferences[LYRICS_BACKGROUND_STYLE]?.let { name -> runCatching { LyricsBackgroundStyle.valueOf(name) }.getOrNull() }
-            ?: LyricsBackgroundStyle.DEFAULT
+        preferences[LYRICS_BACKGROUND_STYLE]?.let { name ->
+            // The blurred cover's name while it was the default - kept as what was chosen, not the default now.
+            if (name == "DEFAULT") LyricsBackgroundStyle.BLURRED_COVER else runCatching { LyricsBackgroundStyle.valueOf(name) }.getOrNull()
+        } ?: LyricsBackgroundStyle.Default
     }
 
     suspend fun setLyricsBackgroundStyle(style: LyricsBackgroundStyle) = set(LYRICS_BACKGROUND_STYLE, style.name)

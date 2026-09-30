@@ -1,10 +1,10 @@
-package com.lhacenmed.sona.feature.library.shuffle
+package com.lhacenmed.sona.feature.library.quickplay
 
 import androidx.lifecycle.ViewModel
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
-import com.lhacenmed.sona.core.data.shuffle.ShuffleAllSource
-import com.lhacenmed.sona.core.data.shuffle.ShuffleAllSourceRepository
+import com.lhacenmed.sona.core.data.quickplay.QuickPlaySource
+import com.lhacenmed.sona.core.data.quickplay.QuickPlaySourceRepository
 import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Folder
@@ -15,11 +15,11 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.StateFlow
 
-/** What [ShuffleSourcePickerScreen] lists - the library's own lists, already in memory - and the source it marks. */
+/** What [QuickPlaySourcePickerScreen] lists - the library's own lists, already in memory - and the source it marks. */
 @HiltViewModel
-class ShuffleSourcePickerViewModel @Inject constructor(
+class QuickPlaySourcePickerViewModel @Inject constructor(
     repository: LibraryRepository,
-    private val shuffleAllSources: ShuffleAllSourceRepository,
+    private val quickPlaySources: QuickPlaySourceRepository,
 ) : ViewModel() {
 
     val playlists: StateFlow<LibraryContent<Playlist>> = repository.playlists
@@ -34,10 +34,10 @@ class ShuffleSourcePickerViewModel @Inject constructor(
     val genreSections: StateFlow<(Genre) -> String?> = repository.genreSections
     val folderSections: StateFlow<(Folder) -> String?> = repository.folderSections
 
-    val source: StateFlow<ShuffleAllSource> = shuffleAllSources.source
+    val source: StateFlow<QuickPlaySource> = quickPlaySources.source
 
-    /** Makes [parent] what shuffle-all plays. Nothing plays yet: this is a setting, not the button. */
+    /** Makes [parent] what quick play plays. Nothing plays yet: this is a setting, not the button. */
     fun choose(parent: PlaybackParent) {
-        shuffleAllSources.choose(parent)
+        quickPlaySources.choose(parent)
     }
 }

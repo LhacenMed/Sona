@@ -19,7 +19,6 @@ private val PLAYER_STYLE = stringPreferencesKey("player_style")
 private val PLAYER_SLIDER_STYLE = stringPreferencesKey("player_slider_style")
 private val PLAYER_BACKGROUND_STYLE = stringPreferencesKey("player_background_style")
 private val MINI_PLAYER_BACKGROUND_STYLE = stringPreferencesKey("mini_player_background_style")
-private val PLAYER_BUTTONS_STYLE = stringPreferencesKey("player_buttons_style")
 private val HIDE_PLAYER_THUMBNAIL = booleanPreferencesKey("hide_player_thumbnail")
 private val SWIPE_TO_CHANGE_TRACK = booleanPreferencesKey("swipe_thumbnail")
 private val CUSTOM_BACKGROUND_IMAGE_URI = stringPreferencesKey("player_custom_image_uri")
@@ -46,12 +45,11 @@ class PlayerStyleSettings @Inject constructor(
 
     val appearance: Setting<PlayerAppearance> = cache.setting { preferences ->
         PlayerAppearance(
-            // DEFAULT for a style no longer offered, too, such as the ones dropped.
-            style = preferences.enum(PLAYER_STYLE, PlayerStyle.DEFAULT),
-            sliderStyle = preferences.enum(PLAYER_SLIDER_STYLE, PlayerSliderStyle.CIRCULAR),
-            background = preferences.enum(PLAYER_BACKGROUND_STYLE, PlayerBackgroundStyle.DEFAULT),
-            miniPlayerBackground = preferences.enum(MINI_PLAYER_BACKGROUND_STYLE, MiniPlayerBackgroundStyle.THEME),
-            buttonsStyle = preferences.enum(PLAYER_BUTTONS_STYLE, PlayerButtonsStyle.DEFAULT),
+            // The default for a style no longer offered, too, such as the ones dropped.
+            style = preferences.enum(PLAYER_STYLE, PlayerStyle.Default),
+            sliderStyle = preferences.enum(PLAYER_SLIDER_STYLE, PlayerSliderStyle.Default),
+            background = preferences.enum(PLAYER_BACKGROUND_STYLE, PlayerBackgroundStyle.Default),
+            miniPlayerBackground = preferences.enum(MINI_PLAYER_BACKGROUND_STYLE, MiniPlayerBackgroundStyle.Default),
             hideThumbnail = preferences[HIDE_PLAYER_THUMBNAIL] ?: false,
             swipeToChangeTrack = preferences[SWIPE_TO_CHANGE_TRACK] ?: true,
             customBackground = CustomBackground(
@@ -75,8 +73,6 @@ class PlayerStyleSettings @Inject constructor(
 
     suspend fun setMiniPlayerBackground(style: MiniPlayerBackgroundStyle) =
         set(MINI_PLAYER_BACKGROUND_STYLE, style.name)
-
-    suspend fun setButtonsStyle(style: PlayerButtonsStyle) = set(PLAYER_BUTTONS_STYLE, style.name)
 
     suspend fun setHideThumbnail(enabled: Boolean) = set(HIDE_PLAYER_THUMBNAIL, enabled)
 
@@ -102,7 +98,6 @@ data class PlayerAppearance(
     val sliderStyle: PlayerSliderStyle,
     val background: PlayerBackgroundStyle,
     val miniPlayerBackground: MiniPlayerBackgroundStyle,
-    val buttonsStyle: PlayerButtonsStyle,
     /** ArchiveTune's "Hide player thumbnail": the app's logo in place of the cover. */
     val hideThumbnail: Boolean,
     /** Swiping the cover, or the mini player, changes track. */

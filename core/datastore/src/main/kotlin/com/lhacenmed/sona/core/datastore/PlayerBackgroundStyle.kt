@@ -6,7 +6,7 @@ package com.lhacenmed.sona.core.datastore
  */
 enum class PlayerBackgroundStyle {
     /** The theme's own surface - ArchiveTune's "Follow theme". */
-    DEFAULT,
+    FOLLOW_THEME,
     GRADIENT,
     CUSTOM,
     BLUR,
@@ -14,4 +14,10 @@ enum class PlayerBackgroundStyle {
     BLUR_GRADIENT,
     GLOW,
     GLOW_ANIMATED,
+    ;
+
+    companion object {
+        /** What it is until the user chooses otherwise. */
+        val Default = FOLLOW_THEME
+    }
 }

@@ -20,7 +20,7 @@ import com.lhacenmed.sona.feature.player.background.PlayerColors
 @Composable
 internal fun PlayerStyle.sheetColor(): Color =
     when (this) {
-        PlayerStyle.DEFAULT -> DefaultPlayerColors.sheet
+        PlayerStyle.CINEMATIC -> CinematicPlayerColors.sheet
     }
 
 /** The expanded player above the queue bar, leaving [queueBarHeight] clear at its bottom for it. */
@@ -45,8 +45,8 @@ internal fun PlayerStyle.ExpandedPlayer(
     onSliderValueChangeFinished: () -> Unit,
 ) {
     when (this) {
-        PlayerStyle.DEFAULT ->
-            DefaultPlayer(
+        PlayerStyle.CINEMATIC ->
+            CinematicPlayer(
                 track = track,
                 uiState = uiState,
                 appearance = appearance,
@@ -79,8 +79,8 @@ internal fun PlayerStyle.QueueBar(
     onShowLyrics: () -> Unit,
 ) {
     when (this) {
-        PlayerStyle.DEFAULT ->
-            DefaultQueueBar(
+        PlayerStyle.CINEMATIC ->
+            CinematicQueueBar(
                 contentColor = contentColor,
                 sleepTimerEnabled = sleepTimerEnabled,
                 sleepTimerTimeLeft = sleepTimerTimeLeft,

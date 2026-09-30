@@ -288,17 +288,17 @@ private fun ImageActions(
             Spacer(Modifier.width(ButtonDefaults.IconSpacing))
             Text(stringResource(if (hasImage) R.string.custom_background_replace_image else R.string.custom_background_add_image))
         }
-        if (hasImage) {
-            OutlinedButton(
-                onClick = onRemoveImage,
-                shapes = buttonPressShapes(),
-                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(Icons.Filled.Delete, contentDescription = null)
-                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                Text(stringResource(R.string.custom_background_remove_image))
-            }
+        // Kept while there is nothing to remove, disabled, so the buttons do not shift as an image comes and goes.
+        OutlinedButton(
+            onClick = onRemoveImage,
+            enabled = hasImage,
+            shapes = buttonPressShapes(),
+            contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(Icons.Filled.Delete, contentDescription = null)
+            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+            Text(stringResource(R.string.custom_background_remove_image))
         }
     }
 }

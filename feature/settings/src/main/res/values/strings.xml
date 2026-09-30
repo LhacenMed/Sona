@@ -4,6 +4,7 @@
 
     <string name="dialog_cancel">Cancel</string>
     <string name="dialog_save">Save</string>
+    <string name="settings_option_default">Default</string>
     <string name="seconds_format">%1$ds</string>
     <string name="decibels_format">%1$d dB</string>
     <string name="sp_format">%1$dsp</string>
@@ -66,10 +67,10 @@
     <string name="color_palette_title">Color palette</string>
     <string name="color_palette_custom">Custom</string>
     <string name="app_icon_title">App icon</string>
-    <string name="app_icon_default">Default</string>
+    <string name="app_icon_original">Original</string>
     <string name="app_icon_monochrome">Monochrome</string>
     <string name="font_title">Font</string>
-    <string name="font_default">Default</string>
+    <string name="font_poppins">Poppins</string>
     <string name="font_system">System</string>
     <string name="font_inter">Inter</string>
     <string name="font_custom">Custom</string>
@@ -78,7 +79,7 @@
     <string name="custom_font_invalid">Pick a .ttf font file</string>
     <string name="appearance_player_section">Player</string>
     <string name="player_style_title">Player style</string>
-    <string name="player_style_default">Default</string>
+    <string name="player_style_cinematic">Cinematic</string>
     <string name="player_slider_style_title">Seek bar style</string>
     <string name="player_slider_style_standard">Standard</string>
     <string name="player_slider_style_circular">Circular</string>
@@ -96,9 +97,6 @@
     <string name="mini_player_background_title">Mini player background style</string>
     <string name="hide_player_thumbnail_title">Hide player thumbnail</string>
     <string name="hide_player_thumbnail_summary">Show the app\'s logo in place of the cover</string>
-    <string name="player_buttons_title">Player button colors</string>
-    <string name="player_buttons_default">Default</string>
-    <string name="player_buttons_secondary">Secondary</string>
     <string name="swipe_to_change_song_title">Swipe to change song</string>
     <string name="swipe_to_change_song_summary">Swipe the cover or the mini player to skip</string>
     <string name="appearance_motion_section">Shape and motion</string>
@@ -158,6 +156,7 @@
 
     <!-- Playback -->
     <string name="playback_controls_section">Controls</string>
+    <string name="playback_headphones_section">Headphones</string>
     <string name="headset_autoplay_title">Headset autoplay</string>
     <string name="headset_autoplay_summary">Always start playing when a headset is connected (may not work on all devices)</string>
     <string name="bluetooth_autoplay_title">Bluetooth autoplay</string>
@@ -194,16 +193,23 @@
     <string name="reshuffle_each_time_summary">Turning shuffle on picks a new order instead of the last one</string>
     <string name="remember_shuffle_order_title">Remember shuffle order</string>
     <string name="remember_shuffle_order_summary">Play on in the same order when the app reopens</string>
-    <string name="shuffle_all_button_title">Shuffle all button</string>
-    <string name="shuffle_all_button_summary">Show a button that shuffles your library</string>
-    <string name="shuffle_all_source_title">Shuffle all plays</string>
-    <string name="shuffle_all_source_collection">%1$s: %2$s</string>
-    <string name="shuffle_source_all_tracks">All tracks</string>
-    <string name="shuffle_source_playlist">Playlist</string>
-    <string name="shuffle_source_artist">Artist</string>
-    <string name="shuffle_source_album">Album</string>
-    <string name="shuffle_source_genre">Genre</string>
-    <string name="shuffle_source_folder">Folder</string>
+    <string name="playback_quick_play_section">Quick play</string>
+    <string name="quick_play_button_title">Quick play button</string>
+    <string name="quick_play_button_summary">Show a button in the library that plays your music in one tap</string>
+    <string name="quick_play_mode_title">Action</string>
+    <string name="quick_play_mode_shuffle">Shuffle</string>
+    <string name="quick_play_mode_play">Play in order</string>
+    <string name="quick_play_source_title">Plays from</string>
+    <string name="quick_play_source_collection">%1$s: %2$s</string>
+    <string name="quick_play_source_all_tracks">All tracks</string>
+    <string name="quick_play_source_recently_played">Recently played</string>
+    <string name="quick_play_source_most_played">Most played</string>
+    <string name="quick_play_source_playlist">Playlist</string>
+    <string name="quick_play_source_artist">Artist</string>
+    <string name="quick_play_source_album">Album</string>
+    <string name="quick_play_source_genre">Genre</string>
+    <string name="quick_play_source_folder">Folder</string>
+    <string name="quick_play_note">The library button and the launcher shortcut both play this way. Hold the button to play something else.</string>
     <string name="playback_queue_section">Queue</string>
     <string name="persistent_queue_title">Restore the queue</string>
     <string name="persistent_queue_summary">Bring the queue back when the app reopens</string>
@@ -226,7 +232,7 @@
     <string name="lyrics_line_spacing_title">Lyrics line spacing</string>
     <string name="lyrics_line_spacing_format">%.1fx</string>
     <string name="lyrics_background_style_title">Lyrics background style</string>
-    <string name="lyrics_background_default">Default</string>
+    <string name="lyrics_background_blurred_cover">Blurred cover</string>
     <string name="lyrics_show_player_controls_title">Show player controls</string>
     <string name="lyrics_show_player_controls_summary">Keep playback controls beneath the lyrics</string>
     <string name="lyrics_romanization_section">Romanization</string>

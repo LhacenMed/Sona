@@ -2,10 +2,13 @@ package com.lhacenmed.sona.feature.settings.screen
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.lhacenmed.sona.core.data.shuffle.ShuffleAllSource
-import com.lhacenmed.sona.core.data.shuffle.ShuffleAllSourceRepository
+import com.lhacenmed.sona.core.data.quickplay.QuickPlaySource
+import com.lhacenmed.sona.core.data.quickplay.QuickPlaySourceRepository
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
+import com.lhacenmed.sona.core.datastore.QuickPlayMode
+import com.lhacenmed.sona.core.datastore.QuickPlaySettings
 import com.lhacenmed.sona.core.datastore.ShuffleSettings
+import com.lhacenmed.sona.core.model.PlaybackParent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,7 +21,8 @@ import kotlinx.coroutines.launch
 class PlaybackSettingsViewModel @Inject constructor(
     private val playbackSettings: PlaybackSettings,
     private val shuffleSettings: ShuffleSettings,
-    private val shuffleAllSources: ShuffleAllSourceRepository,
+    private val quickPlaySettings: QuickPlaySettings,
+    private val quickPlaySources: QuickPlaySourceRepository,
 ) : ViewModel() {
 
     val rewindBeforeSkipBack: StateFlow<Boolean> = playbackSettings.rewindBeforeSkipBack.flow
@@ -36,10 +40,13 @@ class PlaybackSettingsViewModel @Inject constructor(
     val rememberShuffleOrder: StateFlow<Boolean> = shuffleSettings.rememberOrder.flow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), shuffleSettings.rememberOrder.value)
 
-    val shuffleAllButton: StateFlow<Boolean> = shuffleSettings.shuffleAllButton.flow
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), shuffleSettings.shuffleAllButton.value)
+    val showQuickPlayButton: StateFlow<Boolean> = quickPlaySettings.showButton.flow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), quickPlaySettings.showButton.value)
 
-    val shuffleAllSource: StateFlow<ShuffleAllSource> = shuffleAllSources.source
+    val quickPlayMode: StateFlow<QuickPlayMode> = quickPlaySettings.mode.flow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), quickPlaySettings.mode.value)
+
+    val quickPlaySource: StateFlow<QuickPlaySource> = quickPlaySources.source
 
     fun setRewindBeforeSkipBack(enabled: Boolean) {
         viewModelScope.launch { playbackSettings.setRewindBeforeSkipBack(enabled) }
@@ -61,12 +68,19 @@ class PlaybackSettingsViewModel @Inject constructor(
         viewModelScope.launch { shuffleSettings.setRememberOrder(enabled) }
     }
 
-    fun setShuffleAllButton(enabled: Boolean) {
-        viewModelScope.launch { shuffleSettings.setShuffleAllButton(enabled) }
+    fun setShowQuickPlayButton(enabled: Boolean) {
+        viewModelScope.launch { quickPlaySettings.setShowButton(enabled) }
     }
 
-    /** Makes shuffle-all play every track again; a collection is chosen on its own picker instead. */
-    fun chooseAllTracksForShuffleAll() {
-        shuffleAllSources.choose(null)
+    fun setQuickPlayMode(mode: QuickPlayMode) {
+        viewModelScope.launch { quickPlaySettings.setMode(mode) }
+    }
+
+    /**
+     * Makes [parent] - every track while null, or a listening history - what quick play plays: the sources
+     * chosen right here. A collection is chosen on its own picker instead.
+     */
+    fun chooseQuickPlaySource(parent: PlaybackParent?) {
+        quickPlaySources.choose(parent)
     }
 }

@@ -27,6 +27,7 @@ import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.core.designsystem.theme.roundedShape
 import com.lhacenmed.sona.feature.player.StyledPlaybackSlider
 import com.lhacenmed.sona.feature.settings.R
+import com.lhacenmed.sona.feature.settings.component.settingsDefaultLabel
 
 /**
  * The seek bar styles side by side, each a live slider to try before choosing, the current one outlined.
@@ -49,7 +50,9 @@ internal fun SeekBarStyleDialog(
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            PlayerSliderStyle.entries.chunked(3).forEach { styleRow ->
+            // The default first, as every chooser has it.
+            val styles = listOf(PlayerSliderStyle.Default) + PlayerSliderStyle.entries.filter { it != PlayerSliderStyle.Default }
+            styles.chunked(3).forEach { styleRow ->
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth(),
@@ -76,7 +79,7 @@ internal fun SeekBarStyleDialog(
 
 @Composable
 internal fun seekBarStyleLabel(sliderStyle: PlayerSliderStyle): String =
-    when (sliderStyle) {
+    if (sliderStyle == PlayerSliderStyle.Default) settingsDefaultLabel() else when (sliderStyle) {
         PlayerSliderStyle.STANDARD -> stringResource(R.string.player_slider_style_standard)
         PlayerSliderStyle.CIRCULAR -> stringResource(R.string.player_slider_style_circular)
     }

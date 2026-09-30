@@ -8,12 +8,13 @@ import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.data.plus
-import com.lhacenmed.sona.core.data.shuffle.ShuffleAllSource
-import com.lhacenmed.sona.core.data.shuffle.ShuffleAllSourceRepository
+import com.lhacenmed.sona.core.data.quickplay.QuickPlay
+import com.lhacenmed.sona.core.data.quickplay.QuickPlaySourceRepository
 import com.lhacenmed.sona.core.data.sort.LibrarySortOrders
 import com.lhacenmed.sona.core.datastore.LibrarySettings
 import com.lhacenmed.sona.core.datastore.LibraryTab
-import com.lhacenmed.sona.core.datastore.ShuffleSettings
+import com.lhacenmed.sona.core.datastore.QuickPlayMode
+import com.lhacenmed.sona.core.datastore.QuickPlaySettings
 import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Folder
@@ -76,8 +77,8 @@ class LibraryViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val repository: LibraryRepository,
     private val librarySettings: LibrarySettings,
-    shuffleSettings: ShuffleSettings,
-    private val shuffleAllSources: ShuffleAllSourceRepository,
+    quickPlaySettings: QuickPlaySettings,
+    private val quickPlaySources: QuickPlaySourceRepository,
     private val mediaScanner: MediaScanner,
     private val playbackController: PlaybackController,
     sortOrders: LibrarySortOrders,
@@ -170,14 +171,22 @@ class LibraryViewModel @Inject constructor(
             false
         }
 
-    /** Whether the user shows the button for shuffling every track. */
-    val showShuffleAllButton: StateFlow<Boolean> = shuffleSettings.shuffleAllButton.flow
-        .stateIn(viewModelScope, SharingStarted.Eagerly, shuffleSettings.shuffleAllButton.value)
+    /**
+     * The quick play button as it shows - what it plays and how, its icon and its menu following - or null
+     * while the user has turned it off. One state, so the button never shows one of them changed before the other.
+     */
+    val quickPlay: StateFlow<QuickPlay?> = combine(
+        quickPlaySettings.showButton.flow,
+        quickPlaySettings.mode.flow,
+        quickPlaySources.source,
+    ) { isShown, mode, source -> if (isShown) QuickPlay(mode, source) else null }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.Eagerly,
+            if (quickPlaySettings.showButton.value) QuickPlay(quickPlaySettings.mode.value, quickPlaySources.source.value) else null,
+        )
 
-    /** What the shuffle-all button plays, and marks in its menu. */
-    val shuffleAllSource: StateFlow<ShuffleAllSource> = shuffleAllSources.source
-
-    /** Favorites, which the shuffle-all button's menu always offers. */
+    /** Favorites, which the quick play button's menu always offers. */
     val favoritesPlaylistId: Long get() = repository.favoritesPlaylistId
 
     /**
@@ -239,15 +248,15 @@ class LibraryViewModel @Inject constructor(
         if (index >= 0) playbackController.playTracks(list, index, parent)
     }
 
-    /** Shuffles what shuffle-all is set to play - see [PlaybackController.shuffleAll]. */
-    fun onShuffleAll() {
-        playbackController.shuffleAll()
+    /** Plays [quickPlay] as the button shows it - see [PlaybackController.quickPlay]. */
+    fun onQuickPlay(quickPlay: QuickPlay) {
+        playbackController.quickPlay(quickPlay.source.parent, quickPlay.mode)
     }
 
-    /** Makes [parent] - every track, while null - what shuffle-all plays, and shuffles it now. */
-    fun onShuffleFrom(parent: PlaybackParent?) {
-        shuffleAllSources.choose(parent)
-        playbackController.shuffle(parent)
+    /** Makes [parent] - every track, while null - what quick play plays, and plays it now as [mode]. */
+    fun onQuickPlayFrom(parent: PlaybackParent?, mode: QuickPlayMode) {
+        quickPlaySources.choose(parent)
+        playbackController.quickPlay(parent, mode)
     }
 
     /** Opens the bar's search with an empty query, narrows it, or - with null - closes it. */

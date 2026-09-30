@@ -13,4 +13,10 @@ enum class UpdateChannel {
      * whichever is newest, artifact or release.
      */
     ARTIFACT,
+    ;
+
+    companion object {
+        /** What it is until the user chooses otherwise. */
+        val Default = STABLE
+    }
 }

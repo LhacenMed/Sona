@@ -3,11 +3,7 @@ package com.lhacenmed.sona.core.datastore
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
 import com.lhacenmed.sona.core.common.di.ApplicationScope
-import com.lhacenmed.sona.core.model.PlaybackParent
-import com.lhacenmed.sona.core.model.playbackParentOf
-import com.lhacenmed.sona.core.model.toStorageKey
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -17,8 +13,6 @@ private val SHUFFLE_ENABLED = booleanPreferencesKey("shuffle_enabled")
 private val KEEP_SHUFFLE = booleanPreferencesKey("keep_shuffle")
 private val RESHUFFLE_EACH_TIME = booleanPreferencesKey("reshuffle_each_time")
 private val REMEMBER_SHUFFLE_ORDER = booleanPreferencesKey("remember_shuffle_order")
-private val SHUFFLE_ALL_BUTTON = booleanPreferencesKey("shuffle_all_button")
-private val SHUFFLE_ALL_SOURCE = stringPreferencesKey("shuffle_all_source")
 
 /**
  * Everything about shuffle the user can choose, in one place: whether it is on, and how it behaves.
@@ -72,24 +66,5 @@ class ShuffleSettings @Inject constructor(
 
     suspend fun setRememberOrder(enabled: Boolean) {
         dataStore.edit { it[REMEMBER_SHUFFLE_ORDER] = enabled }
-    }
-
-    /** Whether the library shows its shuffle-all button - Auxio's home shuffle FAB. */
-    val shuffleAllButton: Setting<Boolean> = cache.setting { it[SHUFFLE_ALL_BUTTON] ?: true }
-
-    suspend fun setShuffleAllButton(enabled: Boolean) {
-        dataStore.edit { it[SHUFFLE_ALL_BUTTON] = enabled }
-    }
-
-    /**
-     * The collection the shuffle-all button and the launcher shortcut shuffle, or null for every track -
-     * written down as a [PlaybackParent] is, so it reads back as the same collection after a rescan.
-     */
-    val shuffleAllSource: Setting<PlaybackParent?> = cache.setting { it[SHUFFLE_ALL_SOURCE]?.let(::playbackParentOf) }
-
-    suspend fun setShuffleAllSource(source: PlaybackParent?) {
-        dataStore.edit {
-            if (source == null) it.remove(SHUFFLE_ALL_SOURCE) else it[SHUFFLE_ALL_SOURCE] = source.toStorageKey()
-        }
     }
 }
