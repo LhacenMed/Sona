@@ -169,6 +169,13 @@ class MediaScanner @Inject constructor(
         appScope.async { scan(if (force) ScanKind.FORCED else ScanKind.FULL) }.await()
 
     /**
+     * Re-reads MediaStore - without walking storage again - and waits for it: all a file Sona changed itself
+     * needs, once Android has read it back, for every list to show the change. Runs on the application
+     * scope, as [rescan] does.
+     */
+    suspend fun refresh(): SyncStats = appScope.async { scan(ScanKind.REFRESH) }.await()
+
+    /**
      * Takes the tracks [trackIds] name out of the library the moment their files are deleted, then
      * queues a [ScanKind.REFRESH] behind it to bring their albums, artists and genres up to date -
      * MediaStore re-read without walking storage, which is all a deletion changes. Only the first part
@@ -244,7 +251,7 @@ class MediaScanner @Inject constructor(
 
         var albums = recomputeAlbums(canonicalAlbums.values.distinctBy { it.id }, tracks)
         var artists = recomputeArtists(artistsOf(tracks, albums), albums, tracks)
-        var genres = recomputeGenres(genresOf(tracks), tracks)
+        var genres = recomputeGenres(genresOf(tracks), albums, tracks)
 
         // Videos are rows of their own: no album, artist or genre is made of them, so they skip every
         // pass above and are stored alongside the music.
@@ -422,6 +429,12 @@ class MediaScanner @Inject constructor(
             )
         }
 
+    /**
+     * Every album that still has tracks, with what it is made of worked out from them: how many, when the
+     * first was added, and the year - the one most of them give, the earliest of a tie - so an album follows
+     * every change to its tracks, one retagged included. Its cover is MediaStore's for it - drawn from
+     * whichever of its files has a picture - or, for an album MediaStore does not know, its first track's own.
+     */
     private fun recomputeAlbums(albums: List<Album>, tracks: List<Track>): List<Album> {
         val tracksByAlbumId = tracks.groupBy { it.albumId }
         return albums.mapNotNull { album ->
@@ -432,11 +445,18 @@ class MediaScanner @Inject constructor(
                 album.copy(
                     trackCount = albumTracks.size,
                     dateAddedSeconds = albumTracks.minOf { it.dateAddedSeconds },
+                    year = commonestYear(albumTracks),
+                    coverArtUri = album.coverArtUri ?: albumTracks.sortedWith(AlbumOrder).firstNotNullOfOrNull { it.coverArtUri },
                 )
             }
         }
     }
 
+    /**
+     * Every artist with a track or an album of its own - Auxio's artists, who are those credited on songs as
+     * much as on albums. An artist whose tracks all sit on albums credited to another - a compilation, or an
+     * untagged folder's album - is still one, so it can be found; it simply has no albums of its own to list.
+     */
     private fun recomputeArtists(
         artists: List<Artist>,
         albums: List<Album>,
@@ -444,25 +464,27 @@ class MediaScanner @Inject constructor(
     ): List<Artist> {
         val albumsByArtistId = albums.groupBy { it.artistId }
         val tracksByArtistId = tracks.groupBy { it.artistId }
+        val collageCoverOf = collageCovers(albums)
         return artists.mapNotNull { artist ->
-            val artistAlbums = albumsByArtistId[artist.id]
-            val artistTracks = tracksByArtistId[artist.id]
-            if (artistAlbums.isNullOrEmpty() || artistTracks.isNullOrEmpty()) {
+            val artistAlbums = albumsByArtistId[artist.id].orEmpty()
+            val artistTracks = tracksByArtistId[artist.id].orEmpty()
+            if (artistAlbums.isEmpty() && artistTracks.isEmpty()) {
                 null
             } else {
                 artist.copy(
                     trackCount = artistTracks.size,
                     albumCount = artistAlbums.size,
                     // Auxio falls back to the artist's albums only when none of its tracks has a cover.
-                    coverArtUris = rankedCoverArtUris(artistTracks.map { it.coverArtUri })
+                    coverArtUris = rankedCoverArtUris(artistTracks.map(collageCoverOf))
                         .ifEmpty { rankedCoverArtUris(artistAlbums.map { it.coverArtUri }) },
                 )
             }
         }
     }
 
-    private fun recomputeGenres(genres: List<Genre>, tracks: List<Track>): List<Genre> {
+    private fun recomputeGenres(genres: List<Genre>, albums: List<Album>, tracks: List<Track>): List<Genre> {
         val tracksByGenreId = tracks.groupBy { it.genreId }
+        val collageCoverOf = collageCovers(albums)
         return genres.mapNotNull { genre ->
             val genreTracks = tracksByGenreId[genre.id]
             if (genreTracks.isNullOrEmpty()) {
@@ -471,10 +493,20 @@ class MediaScanner @Inject constructor(
                 genre.copy(
                     trackCount = genreTracks.size,
                     artistCount = genreTracks.distinctBy { it.artistId }.size,
-                    coverArtUris = rankedCoverArtUris(genreTracks.map { it.coverArtUri }),
+                    coverArtUris = rankedCoverArtUris(genreTracks.map(collageCoverOf)),
                 )
             }
         }
+    }
+
+    /**
+     * The cover a track stands for in a collection's collage: its album's. Every track has its own cover, so
+     * ten tracks of one album would otherwise fill the collage with the one picture ten times; its album's
+     * counts it once. A track on no album the scan knows stands for its own.
+     */
+    private fun collageCovers(albums: List<Album>): (Track) -> String? {
+        val albumCovers = albums.associate { it.id to it.coverArtUri }
+        return { track -> albumCovers[track.albumId] ?: track.coverArtUri }
     }
 
 
@@ -531,7 +563,7 @@ class MediaScanner @Inject constructor(
                     artistId = artist.id,
                     artistName = artist.name,
                     coverArtUri = null,
-                    year = track.year,
+                    year = null,
                     trackCount = 0,
                     dateAddedSeconds = track.dateAddedSeconds,
                 ).also { newAlbums += it }
@@ -562,11 +594,21 @@ class MediaScanner @Inject constructor(
         val allTracks = existingTracks + resolvedTracks
         val allAlbums = recomputeAlbums(existingAlbums + newAlbums, allTracks)
         val allArtists = recomputeArtists(existingArtists + newArtists, allAlbums, allTracks)
-        val allGenres = recomputeGenres(existingGenres + newGenres, allTracks)
+        val allGenres = recomputeGenres(existingGenres + newGenres, allAlbums, allTracks)
 
         return MergedResult(allTracks, allAlbums, allArtists, allGenres)
     }
 }
+
+/** The year most of [tracks] give, the earliest of a tie, or null where none gives one. */
+private fun commonestYear(tracks: List<Track>): Int? =
+    tracks.mapNotNull { it.year }.groupingBy { it }.eachCount().entries
+        .minWithOrNull(compareByDescending<Map.Entry<Int, Int>> { it.value }.thenBy { it.key })
+        ?.key
+
+/** An album's tracks in the order it plays: by disc, then by number, the unnumbered last. */
+private val AlbumOrder: Comparator<Track> =
+    compareBy<Track>({ it.discNumber ?: Int.MAX_VALUE }, { it.trackNumber ?: Int.MAX_VALUE }, { it.title })
 
 /**
  * The name a row goes under: what the file said, trimmed - or [unknown], when it said nothing.

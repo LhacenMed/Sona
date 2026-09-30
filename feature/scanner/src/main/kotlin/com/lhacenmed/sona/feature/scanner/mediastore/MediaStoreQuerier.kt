@@ -6,6 +6,7 @@ import android.database.Cursor
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import com.lhacenmed.sona.core.common.cover.withCoverVersion
 import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Genre
@@ -30,6 +31,17 @@ data class MediaStoreScanResult(
 )
 
 private val ALBUM_ART_URI: Uri = Uri.parse("content://media/external/audio/albumart")
+
+/**
+ * What changes whenever a file does: MediaStore's own change counter from Android 11, which moves on every
+ * change however close together, and the file's modification time before it.
+ */
+private val FILE_VERSION_COLUMN: String =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) MediaStore.MediaColumns.GENERATION_MODIFIED else MediaStore.MediaColumns.DATE_MODIFIED
+
+/** MediaStore's cover for the album [albumId], stamped with [version] - the latest change to any of its files. */
+private fun albumArtUriOf(albumId: Long, version: Long?): String =
+    ContentUris.withAppendedId(ALBUM_ART_URI, albumId).withCoverVersion(version)
 private val GENRE_MEMBERS_URI: Uri = Uri.parse("content://media/external/audio/genres/all/members")
 
 /**
@@ -42,8 +54,9 @@ class MediaStoreQuerier @Inject constructor(
 
     fun query(): MediaStoreScanResult {
         val artists = queryArtists()
-        val albums = queryAlbums(artists)
-        var tracks = queryTracks()
+        val coverVersions = HashMap<Long, Long>()
+        var tracks = queryTracks(coverVersions)
+        val albums = queryAlbums(artists, coverVersions)
         val genres = queryGenres()
 
         // MediaStore.Audio.Media.GENRE_ID only exists starting on API 30 (R). Below that, genre
@@ -62,7 +75,15 @@ class MediaStoreQuerier @Inject constructor(
         return MediaStoreScanResult(tracks = tracks, albums = albums, artists = artists, genres = genres, videos = queryVideos())
     }
 
-    private fun queryTracks(): List<Track> {
+    /**
+     * Every audio file MediaStore has, as a track - and into [coverVersions], each album's latest change to
+     * any of its files, which versions its cover (see [albumArtUriOf]).
+     *
+     * A track's cover is its own file's, stamped with its own latest change - see [withCoverVersion] - so a
+     * track shows the picture it holds whatever album it is filed under. Before Android 10, which keeps no
+     * thumbnail of an audio file, it is its album's instead.
+     */
+    private fun queryTracks(coverVersions: MutableMap<Long, Long>): List<Track> {
         val tracks = mutableListOf<Track>()
         val uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
         val projection = buildList {
@@ -77,6 +98,7 @@ class MediaStoreQuerier @Inject constructor(
             add(MediaStore.Audio.Media.TRACK)
             add(MediaStore.Audio.Media.YEAR)
             add(MediaStore.Audio.Media.DATE_ADDED)
+            add(FILE_VERSION_COLUMN)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 add(MediaStore.Audio.Media.GENRE)
                 add(MediaStore.Audio.Media.GENRE_ID)
@@ -102,7 +124,8 @@ class MediaStoreQuerier @Inject constructor(
                 val artistId = cursor.long(MediaStore.Audio.Media.ARTIST_ID)
                 val year = cursor.int(MediaStore.Audio.Media.YEAR).takeIf { it > 0 }
                 val dateAddedSeconds = cursor.long(MediaStore.Audio.Media.DATE_ADDED)
-                val coverArtUri = ContentUris.withAppendedId(ALBUM_ART_URI, albumId).toString()
+                val fileVersion = cursor.long(FILE_VERSION_COLUMN)
+                coverVersions.merge(albumId, fileVersion, ::maxOf)
 
                 var trackNumber = cursor.stringOrNull(MediaStore.Audio.Media.TRACK).firstNumber()
                     ?: cursor.intOrNull(MediaStore.Audio.Media.TRACK)
@@ -144,7 +167,11 @@ class MediaStoreQuerier @Inject constructor(
                     discNumber = discNumber,
                     year = year,
                     dateAddedSeconds = dateAddedSeconds,
-                    coverArtUri = coverArtUri,
+                    coverArtUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        ContentUris.withAppendedId(uri, mediaStoreId).withCoverVersion(fileVersion)
+                    } else {
+                        null
+                    },
                     isManuallyScanned = false,
                     // MediaStore knows nothing about this; LibraryWriter carries the stored value
                     // forward on every sync, so a rescan never clears favorites.
@@ -153,12 +180,18 @@ class MediaStoreQuerier @Inject constructor(
             }
         }
 
-        return tracks
+        // Before Android 10 a track's cover is its album's, whose latest change is only known once all its files are read.
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            tracks
+        } else {
+            tracks.map { it.copy(coverArtUri = albumArtUriOf(it.albumId, coverVersions[it.albumId])) }
+        }
     }
 
     /**
      * Every video MediaStore has - none until the user lets Sona read them, which Android answers with an
-     * empty collection rather than an error. A video is its own cover: a frame of it, drawn from its own uri.
+     * empty collection rather than an error. A video is its own cover - its picture, or a frame of it - drawn
+     * from its own uri, stamped with its latest change as a track's is.
      */
     private fun queryVideos(): List<Track> {
         val videos = mutableListOf<Track>()
@@ -170,6 +203,7 @@ class MediaStoreQuerier @Inject constructor(
             MediaStore.Video.Media.ARTIST,
             MediaStore.Video.Media.DURATION,
             MediaStore.Video.Media.DATE_ADDED,
+            FILE_VERSION_COLUMN,
         )
 
         context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
@@ -197,7 +231,7 @@ class MediaStoreQuerier @Inject constructor(
                     discNumber = null,
                     year = null,
                     dateAddedSeconds = cursor.long(MediaStore.Video.Media.DATE_ADDED),
-                    coverArtUri = ContentUris.withAppendedId(uri, mediaStoreId).toString(),
+                    coverArtUri = ContentUris.withAppendedId(uri, mediaStoreId).withCoverVersion(cursor.long(FILE_VERSION_COLUMN)),
                     isManuallyScanned = false,
                     isVideo = true,
                 )
@@ -232,13 +266,12 @@ class MediaStoreQuerier @Inject constructor(
         return artists
     }
 
-    private fun queryAlbums(artists: List<Artist>): List<Album> {
+    private fun queryAlbums(artists: List<Artist>, coverVersions: Map<Long, Long>): List<Album> {
         val albums = mutableListOf<Album>()
         val uri = MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI
         val projection = buildList {
             add(MediaStore.Audio.Albums._ID)
             add(MediaStore.Audio.Albums.ARTIST)
-            add(MediaStore.Audio.Albums.FIRST_YEAR)
             add(MediaStore.Audio.Albums.ALBUM)
             add(MediaStore.Audio.Albums.NUMBER_OF_SONGS)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -254,8 +287,7 @@ class MediaStoreQuerier @Inject constructor(
                 val id = cursor.long(MediaStore.Audio.Albums._ID)
                 val artistName = cursor.stringOrNull(MediaStore.Audio.Albums.ARTIST).orUnknown(UnknownNames.ARTIST)
                 val title = cursor.stringOrNull(MediaStore.Audio.Albums.ALBUM).orUnknown(UnknownNames.ALBUM)
-                val year = cursor.int(MediaStore.Audio.Albums.FIRST_YEAR).takeIf { it > 0 }
-                val coverArtUri = ContentUris.withAppendedId(ALBUM_ART_URI, id).toString()
+                val coverArtUri = albumArtUriOf(id, coverVersions[id])
 
                 // ARTIST_ID was only added to Audio.Albums on API 29 (Q). Below that, join by name
                 // against the artists already queried.
@@ -271,7 +303,9 @@ class MediaStoreQuerier @Inject constructor(
                     artistId = artistId,
                     artistName = artistName,
                     coverArtUri = coverArtUri,
-                    year = year,
+                    // Its year, like its count and when it was added, is its tracks' - worked out once the
+                    // scanner knows which tracks it has, since MediaStore groups them its own way.
+                    year = null,
                     trackCount = trackCount,
                     dateAddedSeconds = 0L,
                 )

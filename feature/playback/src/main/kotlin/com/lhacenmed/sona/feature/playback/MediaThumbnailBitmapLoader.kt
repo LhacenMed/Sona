@@ -8,19 +8,20 @@ import androidx.media3.common.util.UnstableApi
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
-import com.lhacenmed.sona.core.common.cover.isVideo
-import com.lhacenmed.sona.core.common.cover.videoThumbnailOf
+import com.lhacenmed.sona.core.common.cover.isMediaFile
+import com.lhacenmed.sona.core.common.cover.mediaThumbnailOf
 import java.util.concurrent.Executors
 
-/** The side a video's thumbnail is asked for at - what the session scales artwork down to anyway. */
+/** The side a file's thumbnail is asked for at - what the session scales artwork down to anyway. */
 private const val THUMBNAIL_SIZE_PX = 512
 
 /**
- * Artwork as [images] loads it - except a video's, which is Android's thumbnail of it, as the app's own
- * covers show it. Read as a picture, a video would be read whole into memory before failing to decode.
+ * Artwork as [images] loads it - except a track's or a video's own, which is Android's thumbnail of its file,
+ * as the app's own covers show it. Read as a picture, the file would be read whole into memory before failing
+ * to decode.
  */
 @UnstableApi
-internal class VideoThumbnailBitmapLoader(
+internal class MediaThumbnailBitmapLoader(
     private val context: Context,
     private val images: BitmapLoader,
 ) : BitmapLoader {
@@ -32,8 +33,8 @@ internal class VideoThumbnailBitmapLoader(
     override fun decodeBitmap(data: ByteArray): ListenableFuture<Bitmap> = images.decodeBitmap(data)
 
     override fun loadBitmap(uri: Uri): ListenableFuture<Bitmap> =
-        if (uri.isVideo) {
-            executor.submit<Bitmap> { checkNotNull(videoThumbnailOf(context, uri, THUMBNAIL_SIZE_PX)) { "$uri has no thumbnail" } }
+        if (uri.isMediaFile) {
+            executor.submit<Bitmap> { checkNotNull(mediaThumbnailOf(context, uri, THUMBNAIL_SIZE_PX)) { "$uri has no thumbnail" } }
         } else {
             images.loadBitmap(uri)
         }

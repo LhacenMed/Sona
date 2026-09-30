@@ -25,13 +25,17 @@ interface TrackDao {
     /**
      * How many tracks in each folder share each cover, which is what the folders tab composes its
      * covers from. Counted by SQLite rather than by grouping the track list, for the same reason the
-     * folders themselves are.
+     * folders themselves are. A track counts for its album's cover, as it does in every collage, so an
+     * album's tracks are its one cover there rather than the same picture each - a video, on no album,
+     * for its own.
      */
     @Query(
         """
-        SELECT folderPath AS path, coverArtUri AS coverArtUri, COUNT(*) AS trackCount FROM tracks
-        WHERE isVideo = :isVideo AND coverArtUri IS NOT NULL AND coverArtUri != ''
-        GROUP BY folderPath, coverArtUri
+        SELECT t.folderPath AS path, COALESCE(a.coverArtUri, t.coverArtUri) AS coverArtUri, COUNT(*) AS trackCount
+        FROM tracks t LEFT JOIN albums a ON a.id = t.albumId
+        WHERE t.isVideo = :isVideo AND COALESCE(a.coverArtUri, t.coverArtUri) IS NOT NULL
+            AND COALESCE(a.coverArtUri, t.coverArtUri) != ''
+        GROUP BY t.folderPath, COALESCE(a.coverArtUri, t.coverArtUri)
         """,
     )
     fun observeFolderCoverArt(isVideo: Boolean): Flow<List<FolderCoverRow>>

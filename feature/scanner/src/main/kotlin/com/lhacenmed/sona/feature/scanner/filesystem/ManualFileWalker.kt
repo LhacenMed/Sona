@@ -6,6 +6,7 @@ import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
 import android.os.storage.StorageManager
+import com.lhacenmed.sona.core.common.cover.withCoverVersion
 import com.lhacenmed.sona.core.database.stableIdOf
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.UnknownNames
@@ -111,7 +112,10 @@ class ManualFileWalker @Inject constructor(
             val album = if (isVideo) folderName else retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: folderName
             val trackNumber = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER).firstNumber()
             val discNumber = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DISC_NUMBER).firstNumber()
-            val year = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_YEAR)?.toIntOrNull()?.takeIf { it > 0 }
+            // A date may be written whole - "2019-05-03" - as MP4 keeps it: its year is what leads it.
+            val year = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_YEAR)
+                ?.let { Regex("\\d{4}").find(it)?.value?.toInt() }
+                ?.takeIf { it > 0 }
             val genre = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_GENRE).takeUnless { isVideo }
             val dateAddedSeconds = runCatching { File(path).lastModified() / 1000L }.getOrDefault(0L)
 
@@ -135,8 +139,8 @@ class ManualFileWalker @Inject constructor(
                 discNumber = discNumber,
                 year = year,
                 dateAddedSeconds = dateAddedSeconds,
-                // A video is its own cover - a frame of it; a track's own is read by MediaStore once indexed.
-                coverArtUri = if (isVideo) Uri.fromFile(File(path)).toString() else null,
+                // Its own cover, as every track's and video's is, stamped with its latest change.
+                coverArtUri = Uri.fromFile(File(path)).withCoverVersion(File(path).lastModified()),
                 isManuallyScanned = true,
                 isVideo = isVideo,
             )

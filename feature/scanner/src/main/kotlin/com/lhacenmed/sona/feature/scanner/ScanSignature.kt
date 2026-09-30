@@ -9,7 +9,7 @@ import com.lhacenmed.sona.core.common.permission.AppPermission
  * Bump whenever a change makes previously-scanned rows wrong (a new column, a different id scheme,
  * a corrected parsing rule). It invalidates every stored signature, forcing one full rescan.
  */
-private const val SCANNER_SCHEMA_VERSION = 7
+private const val SCANNER_SCHEMA_VERSION = 8
 
 /**
  * A cheap fingerprint of "what a scan of this device would find right now".
