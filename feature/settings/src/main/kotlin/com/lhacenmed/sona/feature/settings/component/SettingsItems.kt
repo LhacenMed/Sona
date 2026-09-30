@@ -37,7 +37,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -49,6 +48,12 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 
 /*
+ * A row that only means something while another setting is set some way - black surfaces while the theme
+ * is dark, a custom font's file while the font is custom - is never taken off the screen: it stays where it
+ * is, not [enabled], faded and inert, and comes back to life the moment it applies. A screen keeps one shape
+ * whatever it is set to, so nothing jumps under the finger, and what a setting would unlock can be seen
+ * before it is. Every row that can be pressed takes `enabled`, and every one shows it the same way.
+ *
  * Every row below that holds a value holds it only until the screen is closed. The settings tree is
  * being laid out before any of it is connected to storage, and a control that cannot move reads as
  * broken rather than as unfinished. Connecting one means taking its value and its callback from a
@@ -109,9 +114,9 @@ fun SettingsActionItem(
 }
 
 /**
- * A row that does something when pressed. A disabled one keeps its place, faded and inert, so the
- * screen keeps one shape whether or not it can be pressed right now. While [isBusy] - what it started
- * still under way - it shows so at its end and cannot be pressed again, without fading.
+ * A row that does something when pressed - or, while not [enabled], stands faded and inert in its place.
+ * While [isBusy] - what it started still under way - it shows so at its end and cannot be pressed again,
+ * without fading.
  */
 @Composable
 fun SettingsActionItem(
@@ -130,9 +135,8 @@ fun SettingsActionItem(
         } else {
             null
         },
-        modifier = modifier
-            .clickable(enabled = enabled && !isBusy, onClick = onClick)
-            .alpha(if (enabled) 1f else DISABLED_ROW_ALPHA),
+        colors = settingsRowColors(enabled),
+        modifier = modifier.clickable(enabled = enabled && !isBusy, onClick = onClick),
     )
 }
 
@@ -185,9 +189,6 @@ fun SettingsAvatar(url: String?) {
     )
 }
 
-/** Material's opacity for disabled content. */
-private const val DISABLED_ROW_ALPHA = 0.38f
-
 /** A row that only reports something - a version, a size, a total. Not a control, so not clickable. */
 @Composable
 fun SettingsInfoItem(
@@ -220,7 +221,7 @@ fun SettingsSwitchItem(
     )
 }
 
-/** A row that turns a stored setting on or off. */
+/** A row that turns a stored setting on or off - or, while not [enabled], still shows which it is, faded and inert. */
 @Composable
 fun SettingsSwitchItem(
     title: String,
@@ -228,7 +229,6 @@ fun SettingsSwitchItem(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
-    // False for a setting this device has nothing to do with: shown, as Material shows it disabled.
     enabled: Boolean = true,
 ) {
     ListItem(
@@ -309,7 +309,10 @@ private val DownloadControlSize = 40.dp
 /** Material's disabled content: the surface's text at this much of its colour. */
 private const val DISABLED_CONTENT_ALPHA = 0.38f
 
-/** A row's colours: Material's own, or its disabled text colour while the row is not [enabled]. */
+/**
+ * A row's colours: Material's own, or its disabled text colour while the row is not [enabled] - the one
+ * disabled look every row shares, its control's own disabled look beside it.
+ */
 @Composable
 private fun settingsRowColors(enabled: Boolean): ListItemColors {
     if (enabled) return ListItemDefaults.colors()
@@ -318,6 +321,7 @@ private fun settingsRowColors(enabled: Boolean): ListItemColors {
         headlineColor = disabledColor,
         supportingColor = disabledColor,
         leadingIconColor = disabledColor,
+        trailingIconColor = disabledColor,
     )
 }
 
@@ -325,7 +329,8 @@ private fun settingsRowColors(enabled: Boolean): ListItemColors {
  * A row whose value is one of a fixed set, shown beneath the title and picked from a dialog.
  *
  * The chosen option is the summary, so the row answers "what is this set to" without being opened -
- * which is the whole reason a settings list is worth scrolling.
+ * which is the whole reason a settings list is worth scrolling. It starts at [selectedIndex], which is
+ * so its default.
  */
 @Composable
 fun SettingsChoiceItem(
@@ -340,7 +345,7 @@ fun SettingsChoiceItem(
 
     ListItem(
         headlineContent = { Text(title) },
-        supportingContent = { Text(options[selected]) },
+        supportingContent = { Text(if (selected == selectedIndex) settingsDefaultLabel() else options[selected]) },
         leadingContent = icon?.let { { SettingsLeadingIcon(rememberVectorPainter(it)) } },
         modifier = modifier.clickable { isChoosing = true },
     )
@@ -350,6 +355,7 @@ fun SettingsChoiceItem(
             title = title,
             options = options,
             selectedIndex = selected,
+            defaultIndex = selectedIndex,
             onSelect = {
                 selected = it
                 isChoosing = false
@@ -360,8 +366,9 @@ fun SettingsChoiceItem(
 }
 
 /**
- * A row whose stored value is one of a fixed set, picked from a dialog. [summary] says what it is set
- * to, where the chosen option alone would say too little. While not [enabled], it still says so, faded
+ * A row whose stored value is one of a fixed set, picked from a dialog, where the option at
+ * [defaultIndex] - the one the setting starts at - is Default. [summary], when given, says what it is set
+ * to where the chosen option alone would say too little. While not [enabled], it still says so, faded
  * and inert.
  */
 @Composable
@@ -369,16 +376,19 @@ fun SettingsChoiceItem(
     title: String,
     options: List<String>,
     selectedIndex: Int,
+    defaultIndex: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    summary: String = options[selectedIndex],
+    summary: String? = null,
     enabled: Boolean = true,
 ) {
     var isChoosing by remember { mutableStateOf(false) }
 
     ListItem(
         headlineContent = { Text(title) },
-        supportingContent = { Text(summary) },
+        supportingContent = {
+            Text(summary ?: if (selectedIndex == defaultIndex) settingsDefaultLabel() else options[selectedIndex])
+        },
         colors = settingsRowColors(enabled),
         modifier = modifier.clickable(enabled = enabled) { isChoosing = true },
     )
@@ -388,6 +398,7 @@ fun SettingsChoiceItem(
             title = title,
             options = options,
             selectedIndex = selectedIndex,
+            defaultIndex = defaultIndex,
             onSelect = {
                 onSelect(it)
                 isChoosing = false
@@ -427,7 +438,8 @@ fun SettingsSliderItem(
 }
 
 /**
- * A row holding a stored number on a continuous range.
+ * A row holding a stored number on a continuous range - or, while not [enabled], still showing it, faded
+ * and inert.
  *
  * The slider follows the finger on its own and hands over [onValueChangeFinished] only once it is let
  * go, so dragging it writes the setting once rather than on every frame of the drag.
@@ -441,12 +453,14 @@ fun SettingsSliderItem(
     formatValue: (Float) -> String,
     modifier: Modifier = Modifier,
     steps: Int = 0,
+    enabled: Boolean = true,
 ) {
     var draggedValue by remember(value) { mutableFloatStateOf(value) }
     Column(modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         ListItem(
             headlineContent = { Text(title) },
             supportingContent = { Text(formatValue(draggedValue)) },
+            colors = settingsRowColors(enabled),
             modifier = Modifier.padding(horizontal = 0.dp),
         )
         Slider(
@@ -455,6 +469,7 @@ fun SettingsSliderItem(
             onValueChangeFinished = { onValueChangeFinished(draggedValue) },
             valueRange = valueRange,
             steps = steps,
+            enabled = enabled,
             modifier = Modifier.fillMaxWidth(),
         )
     }

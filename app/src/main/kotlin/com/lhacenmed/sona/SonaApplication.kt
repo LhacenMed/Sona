@@ -8,6 +8,7 @@ import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.common.notification.SonaNotifications
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.datastore.EffectSettings
+import com.lhacenmed.sona.core.datastore.QuickPlaySettings
 import com.lhacenmed.sona.core.datastore.SettingsLoader
 import com.lhacenmed.sona.core.datastore.UpdateSettings
 import com.lhacenmed.sona.core.designsystem.component.cover.VideoThumbnailFetcher
@@ -42,6 +43,9 @@ class SonaApplication : Application(), SingletonImageLoader.Factory {
     lateinit var updateSettings: UpdateSettings
 
     @Inject
+    lateinit var quickPlaySettings: QuickPlaySettings
+
+    @Inject
     lateinit var updateMonitor: UpdateMonitor
 
     /** Coil's own loader, drawing a video's cover from Android's thumbnail of it - see [VideoThumbnailFetcher]. */
@@ -70,8 +74,9 @@ class SonaApplication : Application(), SingletonImageLoader.Factory {
         updateMonitor.start()
         // The background update check runs exactly while its notifications are on.
         applicationScope.launch { updateSettings.notifications.flow.collect { UpdateNotifier.follow(this@SonaApplication, it) } }
-        // A call to the system's shortcut service, so off the main thread as well.
-        applicationScope.launch { ShuffleAllShortcut.publish(this@SonaApplication) }
+        // The launcher shortcut is named and drawn for how quick play plays, so it follows that as it changes.
+        // Calls to the system's shortcut service, so off the main thread as well.
+        applicationScope.launch { quickPlaySettings.mode.flow.collect { QuickPlayShortcut.publish(this@SonaApplication, it) } }
     }
 
     /**

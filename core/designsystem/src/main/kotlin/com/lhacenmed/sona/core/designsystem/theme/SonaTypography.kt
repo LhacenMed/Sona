@@ -14,7 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import com.lhacenmed.sona.core.designsystem.R
 import com.lhacenmed.sona.core.model.AppFont
 
-/** ArchiveTune's own typeface - what [AppFont.DEFAULT] sets text in. */
+/** ArchiveTune's own typeface - what [AppFont.POPPINS] sets text in. */
 private val PoppinsFontFamily = FontFamily(Font(R.font.poppins))
 
 /**
@@ -46,7 +46,7 @@ internal fun rememberTypography(font: AppFont, customFontUri: String?): Typograp
     }
     return remember(font, customFontFamily) {
         when (font) {
-            AppFont.DEFAULT -> typographyFor(PoppinsFontFamily)
+            AppFont.POPPINS -> typographyFor(PoppinsFontFamily)
             AppFont.SYSTEM -> SystemTypography
             AppFont.INTER -> typographyFor(InterFontFamily)
             AppFont.CUSTOM -> typographyFor(customFontFamily ?: PoppinsFontFamily)

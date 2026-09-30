@@ -5,8 +5,14 @@ package com.lhacenmed.sona.core.model
  * [DEFAULT] is ArchiveTune's own, Poppins; [INTER] is Auxio's; [CUSTOM] is a `.ttf` the user picked.
  */
 enum class AppFont {
-    DEFAULT,
+    POPPINS,
     SYSTEM,
     INTER,
     CUSTOM,
+    ;
+
+    companion object {
+        /** What it is until the user chooses otherwise. */
+        val Default = POPPINS
+    }
 }

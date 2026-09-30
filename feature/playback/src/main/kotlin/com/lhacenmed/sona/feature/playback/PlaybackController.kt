@@ -16,10 +16,12 @@ import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.lyrics.LyricsPreloadManager
-import com.lhacenmed.sona.core.data.shuffle.ShuffleAllSourceRepository
+import com.lhacenmed.sona.core.data.quickplay.QuickPlaySourceRepository
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
 import com.lhacenmed.sona.core.database.entity.QueueItemEntity
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
+import com.lhacenmed.sona.core.datastore.QuickPlayMode
+import com.lhacenmed.sona.core.datastore.QuickPlaySettings
 import com.lhacenmed.sona.core.datastore.ShuffleSettings
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.RepeatMode
@@ -56,7 +58,8 @@ class PlaybackController @Inject constructor(
     private val repository: LibraryRepository,
     private val playbackSettings: PlaybackSettings,
     private val shuffleSettings: ShuffleSettings,
-    private val shuffleAllSources: ShuffleAllSourceRepository,
+    private val quickPlaySettings: QuickPlaySettings,
+    private val quickPlaySources: QuickPlaySourceRepository,
     private val lyricsPreloadManager: LyricsPreloadManager,
 ) {
 
@@ -190,31 +193,37 @@ class PlaybackController @Inject constructor(
     }
 
     /**
-     * Shuffles what shuffle-all is set to play - every track, or the one collection chosen instead; see
-     * [ShuffleAllSourceRepository]. The launcher shortcut and the library's button both come here.
+     * Plays what quick play is set to play - every track, a listening history or one collection; see
+     * [QuickPlaySourceRepository] - the way it is set to: what the launcher shortcut plays.
      */
-    fun shuffleAll() {
-        scope.launch { shuffleNow(shuffleAllSources.current().parent) }
+    fun quickPlay() {
+        scope.launch { quickPlayNow(quickPlaySources.current().parent, quickPlaySettings.mode.value) }
     }
 
     /**
-     * Shuffles [parent]'s tracks - every track in the library while it is null - in the order its own list
-     * shows them, from one picked at random: Auxio's `shuffleAll`. It is what the queue plays from, so its
-     * list is marked as playing, and every track marks none - as playing from the Tracks tab does.
+     * Plays [parent] - every track while it is null - as [mode] says: what the library's quick play button
+     * shows, so a tap on it plays exactly that.
      */
-    fun shuffle(parent: PlaybackParent?) {
-        scope.launch { shuffleNow(parent) }
+    fun quickPlay(parent: PlaybackParent?, mode: QuickPlayMode) {
+        scope.launch { quickPlayNow(parent, mode) }
     }
 
     /**
+     * Plays [parent]'s tracks in the order its own list shows them: shuffled from one picked at random -
+     * Auxio's `shuffleAll` - or from the first, in order. It is what the queue plays from, so its list is
+     * marked as playing, and every track marks none - as playing from the Tracks tab does.
+     *
      * Waits for the tracks and for the saved queue to be back, so asked for as the app opens - from the
      * launcher shortcut - it is neither lost nor overwritten by the queue being restored.
      */
-    private suspend fun shuffleNow(parent: PlaybackParent?) {
-        val tracks = shuffleAllSources.tracks(parent)
+    private suspend fun quickPlayNow(parent: PlaybackParent?, mode: QuickPlayMode) {
+        val (playedParent, tracks) = quickPlaySources.tracks(parent)
         if (tracks.isEmpty()) return
         playbackState.first { it.isReady }
-        playTracks(tracks, tracks.indices.random(), parent, shuffled = true)
+        when (mode) {
+            QuickPlayMode.SHUFFLE -> playTracks(tracks, tracks.indices.random(), playedParent, shuffled = true)
+            QuickPlayMode.PLAY -> playTracks(tracks, 0, playedParent, shuffled = false)
+        }
     }
 
     /** Pauses or plays by what the play/pause button shows, so a press always does what it says. */

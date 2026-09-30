@@ -2,7 +2,8 @@ package com.lhacenmed.sona.core.datastore
 
 /** What the lyrics sheet is drawn over: ArchiveTune's `LyricsBackgroundStyle`. */
 enum class LyricsBackgroundStyle {
-    DEFAULT,
+    /** The cover, blurred, under a gradient of its colours. */
+    BLURRED_COVER,
     FOLLOW_THEME,
     COLORING,
 
@@ -17,7 +18,12 @@ enum class LyricsBackgroundStyle {
     fun resolveFor(playerBackground: PlayerBackgroundStyle): LyricsBackgroundStyle =
         when {
             playerBackground == PlayerBackgroundStyle.CUSTOM -> CUSTOM
-            this == CUSTOM -> DEFAULT
+            this == CUSTOM -> Default
             else -> this
         }
+
+    companion object {
+        /** What it is until the user chooses otherwise. */
+        val Default = FOLLOW_THEME
+    }
 }

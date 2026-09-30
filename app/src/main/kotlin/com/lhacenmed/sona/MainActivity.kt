@@ -120,9 +120,9 @@ class MainActivity : SonaActivity() {
         }
 
         // Only as the activity is first created: one recreated after a rotation or a process death
-        // still carries the intent it was opened with, and must not shuffle a second time.
-        if (savedInstanceState == null && intent.action == ShuffleAllShortcut.ACTION) {
-            playbackController.shuffleAll()
+        // still carries the intent it was opened with, and must not play a second time.
+        if (savedInstanceState == null && intent.action == QuickPlayShortcut.ACTION) {
+            playbackController.quickPlay()
         }
         if (savedInstanceState == null) openUpdatesIfAsked(intent)
 

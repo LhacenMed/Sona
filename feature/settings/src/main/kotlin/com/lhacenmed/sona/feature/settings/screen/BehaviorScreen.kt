@@ -59,6 +59,7 @@ data object BehaviorScreen : Screen {
                     title = stringResource(R.string.fast_scroll_touch_area_title),
                     options = FastScrollTouchArea.entries.map { fastScrollTouchAreaLabel(it) },
                     selectedIndex = fastScrollTouchArea.ordinal,
+                    defaultIndex = FastScrollTouchArea.Default.ordinal,
                     onSelect = { viewModel.setFastScrollTouchArea(FastScrollTouchArea.entries[it]) },
                 )
                 SettingsSwitchItem(

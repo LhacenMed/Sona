@@ -34,7 +34,7 @@ class UpdateSettings @Inject constructor(
 
     // "BETA" is what the Artifact channel was stored as before it was renamed.
     val channel: Setting<UpdateChannel> = cache.setting {
-        if (it[CHANNEL] == "BETA") UpdateChannel.ARTIFACT else it.enum(CHANNEL, UpdateChannel.STABLE)
+        if (it[CHANNEL] == "BETA") UpdateChannel.ARTIFACT else it.enum(CHANNEL, UpdateChannel.Default)
     }
 
     suspend fun setChannel(channel: UpdateChannel) {

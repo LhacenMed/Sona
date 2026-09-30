@@ -23,7 +23,7 @@ internal fun MiniPlayerBackground(
     modifier: Modifier = Modifier,
 ) {
     val first = gradientColors.firstOrNull()
-    if (style == MiniPlayerBackgroundStyle.THEME || first == null) {
+    if (style == MiniPlayerBackgroundStyle.FOLLOW_THEME || first == null) {
         Box(modifier = modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh))
         return
     }
@@ -86,6 +86,6 @@ internal fun MiniPlayerBackground(
                 },
             )
 
-        MiniPlayerBackgroundStyle.THEME -> Unit
+        MiniPlayerBackgroundStyle.FOLLOW_THEME -> Unit
     }
 }

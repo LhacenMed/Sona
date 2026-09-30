@@ -39,11 +39,11 @@ import com.lhacenmed.sona.feature.player.R
 import com.lhacenmed.sona.feature.player.makeTimeString
 
 /**
- * The Default player's queue bar: queue and lyrics pills either side of the sleep timer. Ported from
+ * The Cinematic player's queue bar: queue and lyrics pills either side of the sleep timer. Ported from
  * ArchiveTune's `QueueCollapsedContentV4`.
  */
 @Composable
-internal fun DefaultQueueBar(
+internal fun CinematicQueueBar(
     contentColor: Color,
     sleepTimerEnabled: Boolean,
     sleepTimerTimeLeft: Long,

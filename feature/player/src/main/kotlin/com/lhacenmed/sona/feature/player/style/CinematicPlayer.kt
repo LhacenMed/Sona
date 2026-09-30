@@ -61,18 +61,18 @@ import com.lhacenmed.sona.feature.player.playPauseIconRes
 import com.lhacenmed.sona.feature.player.transportIconRes
 import com.lhacenmed.sona.feature.playback.R as PlaybackR
 
-/** The sheet the Default player is drawn on: the app theme's own surface, black under a black theme. */
-internal object DefaultPlayerColors {
+/** The sheet the Cinematic player is drawn on: the app theme's own surface, black under a black theme. */
+internal object CinematicPlayerColors {
     val sheet: Color
         @Composable get() = MaterialTheme.colorScheme.surface
 }
 
 /**
- * The Default player: the artwork above its title, seek bar and transport - side by side in landscape.
+ * The Cinematic player: the artwork above its title, seek bar and transport - side by side in landscape.
  * ArchiveTune's Cinematic player.
  */
 @Composable
-internal fun DefaultPlayer(
+internal fun CinematicPlayer(
     track: Track,
     uiState: PlayerUiState,
     appearance: PlayerAppearance,
@@ -93,7 +93,7 @@ internal fun DefaultPlayer(
 ) {
     val contentColor = colors.content
     val controls: @Composable () -> Unit = {
-        DefaultPlayerControls(
+        CinematicPlayerControls(
             track = track,
             sliderStyle = appearance.sliderStyle,
             playback = uiState.playback,
@@ -184,7 +184,7 @@ internal fun DefaultPlayer(
 
 /** The title and its actions, seek bar, times and transport. */
 @Composable
-private fun DefaultPlayerControls(
+private fun CinematicPlayerControls(
     track: Track,
     sliderStyle: PlayerSliderStyle,
     playback: PlaybackUiState,
@@ -219,7 +219,7 @@ private fun DefaultPlayerControls(
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        DefaultTrackActions(
+        CinematicTrackActions(
             contentColor = contentColor,
             isFavorite = isFavorite,
             onToggleFavorite = viewModel::onToggleFavorite,
@@ -251,7 +251,7 @@ private fun DefaultPlayerControls(
 
     Spacer(Modifier.height(12.dp))
 
-    DefaultTransportControls(
+    CinematicTransportControls(
         playback = playback,
         isLoading = isLoading,
         colors = colors,
@@ -264,7 +264,7 @@ private fun DefaultPlayerControls(
  * more opens, so the title keeps the room a third card would take.
  */
 @Composable
-private fun DefaultTrackActions(
+private fun CinematicTrackActions(
     contentColor: Color,
     isFavorite: Boolean,
     onToggleFavorite: () -> Unit,
@@ -325,14 +325,14 @@ private fun DefaultTrackActions(
  * play/pause button squares off while playing.
  */
 @Composable
-private fun DefaultTransportControls(
+private fun CinematicTransportControls(
     playback: PlaybackUiState,
     isLoading: Boolean,
     colors: PlayerColors,
     viewModel: PlayerViewModel,
 ) {
     val contentColor = colors.content
-    val onContentColor = colors.onContent
+    val onButtonColor = colors.onButton
     val haptic = LocalHapticFeedback.current
     val view = LocalView.current
     val shuffleEnabled = playback.shuffleEnabled
@@ -464,13 +464,13 @@ private fun DefaultTransportControls(
                     if (isLoading) {
                         CircularWavyProgressIndicator(
                             modifier = Modifier.size(40.dp),
-                            color = onContentColor,
+                            color = onButtonColor,
                         )
                     } else {
                         Icon(
                             painter = painterResource(playback.playPauseIconRes()),
                             contentDescription = null,
-                            tint = onContentColor,
+                            tint = onButtonColor,
                             modifier = Modifier.size(44.dp),
                         )
                     }

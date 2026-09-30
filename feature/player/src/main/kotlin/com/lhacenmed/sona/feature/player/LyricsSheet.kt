@@ -222,7 +222,7 @@ private fun LyricsSheet(
     var sliderPosition by remember(track.id) { mutableStateOf<Long?>(null) }
     val gradientColors = rememberCoverGradientColors(
         coverArtUri = track.coverArtUri,
-        enabled = lyricsBackground == LyricsBackgroundStyle.DEFAULT || lyricsBackground == LyricsBackgroundStyle.COLORING,
+        enabled = lyricsBackground == LyricsBackgroundStyle.BLURRED_COVER || lyricsBackground == LyricsBackgroundStyle.COLORING,
     ).ifEmpty { AppleMusicFallbackGradient }
 
     // Followed only while the activity is started, as the player's own position is.
@@ -421,7 +421,7 @@ private fun LyricsSheetBackground(
                 ),
     ) {
         when (style) {
-            LyricsBackgroundStyle.DEFAULT -> {
+            LyricsBackgroundStyle.BLURRED_COVER -> {
                 AppleMusicBackground(
                     coverArtUri = coverArtUri,
                     gradientColors = gradientColors,

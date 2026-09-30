@@ -48,7 +48,7 @@ private val GlowBase = Color(0xFF050505)
 
 /**
  * What the expanded player - and the lyrics sheet, for its coloring and custom styles - is drawn over:
- * ArchiveTune's `PlayerBackground`. [PlayerBackgroundStyle.DEFAULT] draws nothing, leaving the theme's
+ * ArchiveTune's `PlayerBackground`. [PlayerBackgroundStyle.FOLLOW_THEME] draws nothing, leaving the theme's
  * own surface the sheet is.
  *
  * [gradientColors] are the cover's - see [rememberCoverGradientColors]. Every style fades from one cover
@@ -64,7 +64,7 @@ internal fun PlayerBackground(
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         when (style) {
-            PlayerBackgroundStyle.DEFAULT -> Unit
+            PlayerBackgroundStyle.FOLLOW_THEME -> Unit
 
             PlayerBackgroundStyle.BLUR ->
                 BlurredCover(coverArtUri) {

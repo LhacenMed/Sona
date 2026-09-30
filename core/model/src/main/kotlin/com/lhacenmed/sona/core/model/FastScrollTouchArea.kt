@@ -8,4 +8,10 @@ enum class FastScrollTouchArea {
     NARROW,
     STANDARD,
     WIDE,
+    ;
+
+    companion object {
+        /** What it is until the user chooses otherwise. */
+        val Default = NARROW
+    }
 }

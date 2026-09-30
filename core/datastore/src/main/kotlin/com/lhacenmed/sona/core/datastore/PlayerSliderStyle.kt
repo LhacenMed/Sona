@@ -4,4 +4,10 @@ package com.lhacenmed.sona.core.datastore
 enum class PlayerSliderStyle {
     STANDARD,
     CIRCULAR,
+    ;
+
+    companion object {
+        /** What it is until the user chooses otherwise. */
+        val Default = CIRCULAR
+    }
 }

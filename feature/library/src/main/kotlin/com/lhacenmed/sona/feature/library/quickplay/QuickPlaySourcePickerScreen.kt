@@ -1,4 +1,4 @@
-package com.lhacenmed.sona.feature.library.shuffle
+package com.lhacenmed.sona.feature.library.quickplay
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,16 +33,16 @@ import com.lhacenmed.sona.feature.library.matchesSearch
 import com.lhacenmed.sona.feature.library.searchEmptyMessage
 
 /**
- * Choosing which [kind] of collection shuffle-all plays - opened from the settings once the kind is
+ * Choosing which [kind] of collection quick play plays - opened from the settings once the kind is
  * picked. The library's own rows, searchable, with the current source marked; a tap chooses that row and
- * closes the screen. A collection holding no tracks cannot be chosen, as it would give nothing to shuffle.
+ * closes the screen. A collection holding no tracks cannot be chosen, as it would give nothing to play.
  */
-data class ShuffleSourcePickerScreen(val kind: ShuffleSourceKind) : Screen {
+data class QuickPlaySourcePickerScreen(val kind: QuickPlaySourceKind) : Screen {
 
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.current
-        val viewModel: ShuffleSourcePickerViewModel = hiltViewModel()
+        val viewModel: QuickPlaySourcePickerViewModel = hiltViewModel()
         val source by viewModel.source.collectAsStateWithLifecycle()
         var searchQuery by rememberSaveable { mutableStateOf<String?>(null) }
         val choose: (PlaybackParent) -> Unit = { parent ->
@@ -65,7 +65,7 @@ data class ShuffleSourcePickerScreen(val kind: ShuffleSourceKind) : Screen {
                 },
             )
             when (kind) {
-                ShuffleSourceKind.PLAYLIST -> {
+                QuickPlaySourceKind.PLAYLIST -> {
                     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
                     PickerList(
                         content = playlists.filterItems { it.trackCount > 0 && matchesSearch(searchQuery, it.name) },
@@ -86,7 +86,7 @@ data class ShuffleSourcePickerScreen(val kind: ShuffleSourceKind) : Screen {
                     }
                 }
 
-                ShuffleSourceKind.ARTIST -> {
+                QuickPlaySourceKind.ARTIST -> {
                     val artists by viewModel.artists.collectAsStateWithLifecycle()
                     val sections by viewModel.artistSections.collectAsStateWithLifecycle()
                     PickerList(
@@ -109,7 +109,7 @@ data class ShuffleSourcePickerScreen(val kind: ShuffleSourceKind) : Screen {
                     }
                 }
 
-                ShuffleSourceKind.ALBUM -> {
+                QuickPlaySourceKind.ALBUM -> {
                     val albums by viewModel.albums.collectAsStateWithLifecycle()
                     val sections by viewModel.albumSections.collectAsStateWithLifecycle()
                     PickerList(
@@ -132,7 +132,7 @@ data class ShuffleSourcePickerScreen(val kind: ShuffleSourceKind) : Screen {
                     }
                 }
 
-                ShuffleSourceKind.GENRE -> {
+                QuickPlaySourceKind.GENRE -> {
                     val genres by viewModel.genres.collectAsStateWithLifecycle()
                     val sections by viewModel.genreSections.collectAsStateWithLifecycle()
                     PickerList(
@@ -155,7 +155,7 @@ data class ShuffleSourcePickerScreen(val kind: ShuffleSourceKind) : Screen {
                     }
                 }
 
-                ShuffleSourceKind.FOLDER -> {
+                QuickPlaySourceKind.FOLDER -> {
                     val folders by viewModel.folders.collectAsStateWithLifecycle()
                     val sections by viewModel.folderSections.collectAsStateWithLifecycle()
                     PickerList(
@@ -182,13 +182,13 @@ data class ShuffleSourcePickerScreen(val kind: ShuffleSourceKind) : Screen {
     }
 }
 
-private val ShuffleSourceKind.pickerTitle: String
+private val QuickPlaySourceKind.pickerTitle: String
     get() = when (this) {
-        ShuffleSourceKind.PLAYLIST -> "Choose a playlist"
-        ShuffleSourceKind.ARTIST -> "Choose an artist"
-        ShuffleSourceKind.ALBUM -> "Choose an album"
-        ShuffleSourceKind.GENRE -> "Choose a genre"
-        ShuffleSourceKind.FOLDER -> "Choose a folder"
+        QuickPlaySourceKind.PLAYLIST -> "Choose a playlist"
+        QuickPlaySourceKind.ARTIST -> "Choose an artist"
+        QuickPlaySourceKind.ALBUM -> "Choose an album"
+        QuickPlaySourceKind.GENRE -> "Choose a genre"
+        QuickPlaySourceKind.FOLDER -> "Choose a folder"
     }
 
 /**

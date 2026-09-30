@@ -163,16 +163,15 @@ data object LyricsScreen : Screen {
                     checked = preloadQueueLyricsEnabled,
                     onCheckedChange = viewModel::setPreloadQueueLyricsEnabled,
                 )
-                if (preloadQueueLyricsEnabled) {
-                    SettingsSliderItem(
-                        title = stringResource(R.string.lyrics_preload_count_title),
-                        value = queueLyricsPreloadCount.toFloat(),
-                        onValueChangeFinished = { viewModel.setQueueLyricsPreloadCount(it.roundToInt()) },
-                        valueRange = 0f..10f,
-                        steps = 9,
-                        formatValue = { if (it.roundToInt() == 0) preloadOff else it.roundToInt().toString() },
-                    )
-                }
+                SettingsSliderItem(
+                    title = stringResource(R.string.lyrics_preload_count_title),
+                    value = queueLyricsPreloadCount.toFloat(),
+                    onValueChangeFinished = { viewModel.setQueueLyricsPreloadCount(it.roundToInt()) },
+                    valueRange = 0f..10f,
+                    steps = 9,
+                    formatValue = { if (it.roundToInt() == 0) preloadOff else it.roundToInt().toString() },
+                    enabled = preloadQueueLyricsEnabled,
+                )
             }
 
             SettingsSectionDivider()

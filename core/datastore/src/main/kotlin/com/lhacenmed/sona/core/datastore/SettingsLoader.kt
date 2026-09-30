@@ -20,6 +20,7 @@ class SettingsLoader @Inject constructor(
     private val librarySettings: LibrarySettings,
     private val playbackSettings: PlaybackSettings,
     private val shuffleSettings: ShuffleSettings,
+    private val quickPlaySettings: QuickPlaySettings,
     private val themeSettings: ThemeSettings,
     private val equalizerSettings: EqualizerSettings,
     private val sortSettings: SortSettings,
@@ -33,6 +34,7 @@ class SettingsLoader @Inject constructor(
         librarySettings.awaitLoaded()
         playbackSettings.awaitLoaded()
         shuffleSettings.awaitLoaded()
+        quickPlaySettings.awaitLoaded()
         themeSettings.awaitLoaded()
         equalizerSettings.awaitLoaded()
         sortSettings.awaitLoaded()

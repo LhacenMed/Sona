@@ -5,4 +5,10 @@ enum class ThemeMode {
     SYSTEM,
     LIGHT,
     DARK,
+    ;
+
+    companion object {
+        /** What it is until the user chooses otherwise. */
+        val Default = SYSTEM
+    }
 }

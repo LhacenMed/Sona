@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">Sona</string>
-    <string name="shuffle_all_shortcut_short">Shuffle</string>
-    <string name="shuffle_all_shortcut_long">Shuffle all</string>
+    <string name="quick_play_shortcut_shuffle_short">Shuffle</string>
+    <string name="quick_play_shortcut_shuffle_long">Shuffle all</string>
+    <string name="quick_play_shortcut_play_short">Play</string>
+    <string name="quick_play_shortcut_play_long">Play all</string>
 </resources>
