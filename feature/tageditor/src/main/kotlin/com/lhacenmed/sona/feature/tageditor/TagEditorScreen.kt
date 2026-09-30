@@ -147,7 +147,7 @@ data class TagEditorScreen(val trackId: Long) : Screen {
                 HeaderText(draft[TagField.TITLE].ifBlank { track.title }, MaterialTheme.typography.titleLargeEmphasized)
                 HeaderText(draft[TagField.ARTIST].ifBlank { track.artist }, MaterialTheme.typography.bodyLarge)
 
-                ColumnSection(title = "Search", scrollState = scrollState) {
+                ColumnSection(title = "Search") {
                     SearchFields(
                         artist = viewModel.queryArtist,
                         title = viewModel.queryTitle,
@@ -158,7 +158,7 @@ data class TagEditorScreen(val trackId: Long) : Screen {
                 }
 
                 HorizontalDivider()
-                ColumnSection(title = "Best match", scrollState = scrollState) {
+                ColumnSection(title = "Best match") {
                     SourceFilter(
                         sources = viewModel.catalogueNames,
                         selected = viewModel.catalogueFilter,
@@ -174,12 +174,12 @@ data class TagEditorScreen(val trackId: Long) : Screen {
                 }
 
                 HorizontalDivider()
-                ColumnSection(title = "Tags", scrollState = scrollState) {
+                ColumnSection(title = "Tags") {
                     TagFields(tags = draft, onChange = viewModel::setField)
                 }
 
                 HorizontalDivider()
-                ColumnSection(title = "Covers", scrollState = scrollState) {
+                ColumnSection(title = "Covers") {
                     CoverChoices(
                         ownCoverUri = track.coverArtUri,
                         deviceCoverUri = viewModel.deviceCoverUri,
@@ -193,7 +193,7 @@ data class TagEditorScreen(val trackId: Long) : Screen {
                 }
 
                 HorizontalDivider()
-                ColumnSection(title = "Lyrics", scrollState = scrollState) {
+                ColumnSection(title = "Lyrics") {
                     SourceFilter(
                         sources = viewModel.lyricsSourceNames,
                         selected = viewModel.lyricsFilter,
@@ -214,7 +214,7 @@ data class TagEditorScreen(val trackId: Long) : Screen {
                 val others = viewModel.matches.drop(1)
                 if (others.isNotEmpty()) {
                     HorizontalDivider()
-                    ColumnSection(title = "Other matches", scrollState = scrollState) {
+                    ColumnSection(title = "Other matches") {
                         others.forEach { match ->
                             MatchRow(
                                 match = match,
@@ -227,7 +227,7 @@ data class TagEditorScreen(val trackId: Long) : Screen {
                 }
 
                 HorizontalDivider()
-                ColumnSection(title = "File", scrollState = scrollState) {
+                ColumnSection(title = "File") {
                     FileFact(label = "Duration", value = formatDuration(track.durationMs))
                     FileFact(label = "Format", value = File(track.path).extension.uppercase())
                     viewModel.bitrateKbps?.let { FileFact(label = "Bitrate", value = "$it kbps") }

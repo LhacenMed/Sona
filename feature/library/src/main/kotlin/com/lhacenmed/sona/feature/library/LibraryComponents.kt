@@ -186,7 +186,7 @@ internal fun <T> LibraryList(
     headingOf: ((T) -> String)? = null,
     row: @Composable (T) -> Unit,
 ) {
-    val sectionList = rememberSectionListState(listState)
+    val sectionList = rememberSectionListState()
     LibraryListContent(
         content = content,
         hasPermission = hasPermission,
@@ -616,7 +616,7 @@ internal fun TrackListDetail(
     }
 
     // Which sections are folded away - see [section].
-    val sectionList = rememberSectionListState(headerState.listState)
+    val sectionList = rememberSectionListState()
     // The tracks by disc, where they are grouped so and span more than one - Auxio's discs.
     val discs = remember(visibleTracks, groupsByDisc) {
         visibleTracks.itemsOrEmpty.groupBy { it.discNumber }.takeIf { groupsByDisc && it.size > 1 }

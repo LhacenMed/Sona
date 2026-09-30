@@ -4,6 +4,7 @@ package com.lhacenmed.sona.feature.settings.component
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.LoadingIndicator
@@ -40,6 +41,23 @@ fun SettingsLoadStatus(load: SettingsLoad<*>, onRetry: () -> Unit) {
         SettingsLoad.Empty -> RetryItem(stringResource(R.string.load_empty), onRetry)
         SettingsLoad.Failed -> RetryItem(stringResource(R.string.load_failed), onRetry)
         is SettingsLoad.Loaded -> Unit
+    }
+}
+
+/**
+ * A lazy list's rows for [load]: [loadedRows] once it has loaded, and until then the one row of its
+ * [SettingsLoadStatus] in their place. Never a status row that draws nothing - a list whose first row is
+ * empty takes itself to be scrolled past it, and lifts its top bar and swallows a pull at its top.
+ */
+fun <T> LazyListScope.settingsLoad(
+    load: SettingsLoad<T>,
+    onRetry: () -> Unit,
+    loadedRows: LazyListScope.(items: List<T>) -> Unit,
+) {
+    if (load is SettingsLoad.Loaded) {
+        loadedRows(load.items)
+    } else {
+        item(key = "status") { SettingsLoadStatus(load, onRetry) }
     }
 }
 
