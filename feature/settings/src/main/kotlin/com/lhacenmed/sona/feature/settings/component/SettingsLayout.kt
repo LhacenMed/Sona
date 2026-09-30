@@ -1,6 +1,5 @@
 package com.lhacenmed.sona.feature.settings.component
 
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -66,9 +65,6 @@ private class SettingsScrollTarget(val key: Any) {
 
 private val LocalSettingsScrollTarget = staticCompositionLocalOf<SettingsScrollTarget?> { null }
 
-/** What scrolls the [SettingsList] a [SettingsSection] is in - which its heading stays pinned by. */
-private val LocalSettingsScrollState = staticCompositionLocalOf<ScrollState> { error("A SettingsSection belongs in a SettingsList") }
-
 /**
  * The body every settings screen has: its rows, in order, scrolling as one.
  *
@@ -95,10 +91,7 @@ fun SettingsList(scrollTo: Any? = null, content: @Composable ColumnScope.() -> U
             .verticalScroll(scrollState)
             .padding(bottom = LocalBottomContentPadding.current),
     ) {
-        CompositionLocalProvider(
-            LocalSettingsScrollTarget provides target,
-            LocalSettingsScrollState provides scrollState,
-        ) { content() }
+        CompositionLocalProvider(LocalSettingsScrollTarget provides target) { content() }
     }
 
     if (target == null) return
@@ -155,7 +148,6 @@ fun ColumnScope.SettingsSection(
 ) {
     ColumnSection(
         title = title,
-        scrollState = LocalSettingsScrollState.current,
         actions = actions,
         content = content,
     )
@@ -164,7 +156,6 @@ fun ColumnScope.SettingsSection(
 /**
  * A [SettingsList] for rows that are data rather than written out - licenses, releases, commits: as many
  * as there are, so only those on screen are composed. The same rows, the same way down the screen.
- * [listState] is the screen's to hold when its sections collapse - see `rememberSectionListState`.
  */
 @Composable
 fun SettingsLazyList(

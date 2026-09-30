@@ -10,8 +10,7 @@ import com.lhacenmed.sona.feature.settings.R
 import com.lhacenmed.sona.feature.settings.component.SettingsAvatar
 import com.lhacenmed.sona.feature.settings.component.SettingsLazyList
 import com.lhacenmed.sona.feature.settings.component.SettingsLinkItem
-import com.lhacenmed.sona.feature.settings.component.SettingsLoad
-import com.lhacenmed.sona.feature.settings.component.SettingsLoadStatus
+import com.lhacenmed.sona.feature.settings.component.settingsLoad
 import com.lhacenmed.sona.feature.update.github.Commit
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -30,9 +29,8 @@ data object CommitsScreen : Screen {
         val commits by viewModel.commits.load.collectAsStateWithLifecycle()
 
         SettingsLazyList {
-            item(key = "status") { SettingsLoadStatus(commits, onRetry = viewModel.commits::retry) }
-            (commits as? SettingsLoad.Loaded)?.let { loaded ->
-                items(loaded.items, key = Commit::sha) { commit ->
+            settingsLoad(commits, onRetry = viewModel.commits::retry) { loaded ->
+                items(loaded, key = Commit::sha) { commit ->
                     SettingsLinkItem(
                         title = commit.message,
                         summary = commit.byline(),

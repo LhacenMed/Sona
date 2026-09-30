@@ -170,7 +170,7 @@ data class EditPlaylistScreen(val playlistId: Long) : Screen {
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
                 )
-                ColumnSection(title = "Cover", scrollState = scrollState) {
+                ColumnSection(title = "Cover") {
                     Column(modifier = Modifier.selectableGroup()) {
                         CoverOptionRow(
                             label = "Stacked covers",
@@ -284,7 +284,7 @@ private fun CoverTrackChooser(
 ) {
     var searchQuery by rememberSaveable { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
-    val sections = rememberSectionListState(listState)
+    val sections = rememberSectionListState()
     BackHandler(onBack = onBack)
 
     Column(modifier = Modifier.fillMaxSize()) {

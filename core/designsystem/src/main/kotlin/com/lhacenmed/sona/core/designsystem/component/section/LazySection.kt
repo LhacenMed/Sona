@@ -3,7 +3,6 @@ package com.lhacenmed.sona.core.designsystem.component.section
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -17,14 +16,10 @@ import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 
 /**
  * The sections of one lazy list: which are collapsed, by their keys - kept across recreation, so a section
- * folded away stays folded when the screen comes back - and whether a heading is pinned over its rows. Every
- * section starts open.
+ * folded away stays folded when the screen comes back. Every section starts open.
  */
 @Stable
-class SectionListState internal constructor(
-    collapsedKeys: Set<String>,
-    private val listState: LazyListState,
-) {
+class SectionListState internal constructor(collapsedKeys: Set<String>) {
     /** The keys of the sections folded down to their headings. */
     var collapsedKeys by mutableStateOf(collapsedKeys)
         private set
@@ -36,39 +31,26 @@ class SectionListState internal constructor(
         if (key in collapsedKeys) collapsedKeys = collapsedKeys - key
     }
 
-    /**
-     * Collapses or expands the section [key], whose heading is item [headerIndex]. A heading collapsed while
-     * pinned over its own rows takes the list back to it: the rows the list kept its place by are going, and
-     * the section under it is what the reader collapsed it to reach.
-     */
-    internal fun toggle(key: String, headerIndex: Int) {
-        val isCollapsing = key !in collapsedKeys
-        collapsedKeys = if (isCollapsing) collapsedKeys + key else collapsedKeys - key
-        if (isCollapsing && isPinned(headerIndex)) listState.requestScrollToItem(headerIndex)
-    }
-
-    /** Whether the heading at [headerIndex] is held at the top while its section scrolls under it. */
-    internal fun isPinned(headerIndex: Int): Boolean {
-        val first = listState.firstVisibleItemIndex
-        return first > headerIndex || first == headerIndex && listState.firstVisibleItemScrollOffset > 0
+    /** Collapses the section [key], or expands it if it was collapsed. */
+    internal fun toggle(key: String) {
+        collapsedKeys = if (key in collapsedKeys) collapsedKeys - key else collapsedKeys + key
     }
 }
 
-/** A [SectionListState] for the list [listState] scrolls. */
+/** A [SectionListState] for one lazy list. */
 @Composable
-fun rememberSectionListState(listState: LazyListState): SectionListState =
+fun rememberSectionListState(): SectionListState =
     rememberSaveable(
-        listState,
         saver = Saver(
             save = { ArrayList(it.collapsedKeys) },
-            restore = { SectionListState(it.toSet(), listState) },
+            restore = { SectionListState(it.toSet()) },
         ),
-    ) { SectionListState(emptySet(), listState) }
+    ) { SectionListState(emptySet()) }
 
 /**
  * One section of a lazy list: the line parting it from the section before - [hasDividerAbove] - its
- * [SectionHeader], pinned at the top of the list while its rows scroll under it, then its [content], left out
- * while [state] has it collapsed. A press on the heading folds it and back.
+ * [SectionHeader], scrolling with its rows, then its [content], left out while [state] has it collapsed. A
+ * press on the heading folds it and back.
  *
  * Folding is the list's own: its rows leave or join the list, and every row the section lays out - its
  * heading and divider too - animates as a lazy list animates an item that comes, goes or moves, so the rows
@@ -92,12 +74,11 @@ fun LazyListScope.section(
     if (hasDividerAbove) {
         scope.item(key = "section-divider-$key", contentType = SectionDividerContentType) { HorizontalDivider() }
     }
-    scope.stickyHeader(key = "section-header-$key", contentType = SectionHeaderContentType) { headerIndex ->
+    scope.item(key = "section-header-$key", contentType = SectionHeaderContentType) {
         SectionHeader(
             title = title,
             isCollapsed = isCollapsed,
-            onToggle = { state.toggle(key, headerIndex) },
-            isPinned = { state.isPinned(headerIndex) },
+            onToggle = { state.toggle(key) },
             actions = actions,
         )
     }

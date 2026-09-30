@@ -10,8 +10,7 @@ import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
 import com.lhacenmed.sona.feature.settings.component.SettingsInfoItem
 import com.lhacenmed.sona.feature.settings.component.SettingsLazyList
-import com.lhacenmed.sona.feature.settings.component.SettingsLoad
-import com.lhacenmed.sona.feature.settings.component.SettingsLoadStatus
+import com.lhacenmed.sona.feature.settings.component.settingsLoad
 
 /** Every library the app is built with, its version and its licenses. */
 data object LicensesScreen : Screen {
@@ -24,9 +23,8 @@ data object LicensesScreen : Screen {
         val unknownLicense = stringResource(R.string.about_license_unknown)
 
         SettingsLazyList {
-            item(key = "status") { SettingsLoadStatus(licenses, onRetry = viewModel::load) }
-            (licenses as? SettingsLoad.Loaded)?.let { loaded ->
-                itemsIndexed(loaded.items, key = { index, license -> "${license.name}:$index" }) { _, license ->
+            settingsLoad(licenses, onRetry = viewModel::load) { loaded ->
+                itemsIndexed(loaded, key = { index, license -> "${license.name}:$index" }) { _, license ->
                     SettingsInfoItem(
                         title = license.name,
                         value = listOfNotNull(license.version, license.licenses ?: unknownLicense).joinToString(" · "),

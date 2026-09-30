@@ -2,7 +2,6 @@ package com.lhacenmed.sona.feature.settings.updates
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -14,8 +13,7 @@ import com.lhacenmed.sona.core.designsystem.component.section.section
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
 import com.lhacenmed.sona.feature.settings.component.SettingsLazyList
-import com.lhacenmed.sona.feature.settings.component.SettingsLoad
-import com.lhacenmed.sona.feature.settings.component.SettingsLoadStatus
+import com.lhacenmed.sona.feature.settings.component.settingsLoad
 import com.lhacenmed.sona.feature.update.ui.ReleaseNotes
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -32,24 +30,24 @@ data object ChangelogScreen : Screen {
     override fun Content() {
         val viewModel: ChangelogViewModel = hiltViewModel()
         val releases by viewModel.releases.load.collectAsStateWithLifecycle()
-        val listState = rememberLazyListState()
-        val sections = rememberSectionListState(listState)
+        val sections = rememberSectionListState()
 
-        SettingsLazyList(listState) {
-            item(key = "status") { SettingsLoadStatus(releases, onRetry = viewModel.releases::retry) }
-            (releases as? SettingsLoad.Loaded)?.items?.forEachIndexed { index, release ->
-                section(
-                    key = release.tagName,
-                    title = listOf(release.versionName, formatReleaseDate(release.publishedAt)).joinToString(" · "),
-                    state = sections,
-                    hasDividerAbove = index > 0,
-                ) {
-                    release.notes?.let { notes ->
-                        item(key = "notes-${release.tagName}") {
-                            ReleaseNotes(
-                                markdown = notes,
-                                modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                            )
+        SettingsLazyList {
+            settingsLoad(releases, onRetry = viewModel.releases::retry) { loaded ->
+                loaded.forEachIndexed { index, release ->
+                    section(
+                        key = release.tagName,
+                        title = listOf(release.versionName, formatReleaseDate(release.publishedAt)).joinToString(" · "),
+                        state = sections,
+                        hasDividerAbove = index > 0,
+                    ) {
+                        release.notes?.let { notes ->
+                            item(key = "notes-${release.tagName}") {
+                                ReleaseNotes(
+                                    markdown = notes,
+                                    modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                                )
+                            }
                         }
                     }
                 }
