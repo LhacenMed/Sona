@@ -45,6 +45,10 @@
     <string name="player_share_lyrics">Share lyrics</string>
     <string name="player_edit">Edit</string>
     <string name="player_lyrics_sync_offset">Lyrics sync offset</string>
+    <string name="player_lyrics_sync_offset_slider">Slider</string>
+    <string name="player_lyrics_sync_offset_custom">Custom</string>
+    <string name="player_lyrics_sync_offset_milliseconds">Milliseconds</string>
+    <string name="player_lyrics_sync_offset_custom_range">From %1$d to %2$d ms</string>
     <string name="player_show_lyrics_player_controls">Show player controls</string>
     <string name="player_cancel">Cancel</string>
     <string name="player_save">Save</string>
