@@ -69,15 +69,17 @@ interface PlaylistDao {
     /**
      * How many tracks in each playlist share each cover, which is what a playlist row composes its
      * cover from. One aggregate for every playlist rather than a query per row, so the list costs the
-     * same whether there is one playlist or fifty.
+     * same whether there is one playlist or fifty. A track counts for its album's cover, as it does in
+     * every collage - a video, on no album, for its own.
      */
     @Query(
         """
-        SELECT pt.playlistId AS playlistId, t.coverArtUri AS coverArtUri, COUNT(*) AS trackCount
+        SELECT pt.playlistId AS playlistId, COALESCE(a.coverArtUri, t.coverArtUri) AS coverArtUri, COUNT(*) AS trackCount
         FROM playlist_tracks pt
         INNER JOIN tracks t ON t.id = pt.trackId
-        WHERE t.coverArtUri IS NOT NULL AND t.coverArtUri != ''
-        GROUP BY pt.playlistId, t.coverArtUri
+        LEFT JOIN albums a ON a.id = t.albumId
+        WHERE COALESCE(a.coverArtUri, t.coverArtUri) IS NOT NULL AND COALESCE(a.coverArtUri, t.coverArtUri) != ''
+        GROUP BY pt.playlistId, COALESCE(a.coverArtUri, t.coverArtUri)
         """,
     )
     fun observeCoverArt(): Flow<List<PlaylistCoverRow>>

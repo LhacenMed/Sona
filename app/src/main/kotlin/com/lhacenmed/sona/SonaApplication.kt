@@ -11,7 +11,7 @@ import com.lhacenmed.sona.core.datastore.EffectSettings
 import com.lhacenmed.sona.core.datastore.QuickPlaySettings
 import com.lhacenmed.sona.core.datastore.SettingsLoader
 import com.lhacenmed.sona.core.datastore.UpdateSettings
-import com.lhacenmed.sona.core.designsystem.component.cover.VideoThumbnailFetcher
+import com.lhacenmed.sona.core.designsystem.component.cover.MediaThumbnailFetcher
 import com.lhacenmed.sona.core.designsystem.effect.SonaEffects
 import com.lhacenmed.sona.feature.update.UpdateMonitor
 import com.lhacenmed.sona.feature.update.notification.UpdateNotifier
@@ -48,10 +48,10 @@ class SonaApplication : Application(), SingletonImageLoader.Factory {
     @Inject
     lateinit var updateMonitor: UpdateMonitor
 
-    /** Coil's own loader, drawing a video's cover from Android's thumbnail of it - see [VideoThumbnailFetcher]. */
+    /** Coil's own loader, drawing a track's or a video's cover from Android's thumbnail of its file - see [MediaThumbnailFetcher]. */
     override fun newImageLoader(context: PlatformContext): ImageLoader =
         ImageLoader.Builder(context)
-            .components { add(VideoThumbnailFetcher.Factory) }
+            .components { add(MediaThumbnailFetcher.Factory) }
             .build()
 
     override fun onCreate() {
