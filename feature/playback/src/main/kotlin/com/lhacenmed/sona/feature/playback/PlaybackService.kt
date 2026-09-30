@@ -47,11 +47,11 @@ import kotlinx.coroutines.launch
  * controls and headset button handling via `androidx.media3.session`.
  *
  * The notification itself is still rendered by media3, but through
- * [SonaMediaNotificationProvider] rather than the bare default, so it carries Sona's icon and its
- * own action buttons. Those buttons follow ArchiveTune's design: [updateNotification] rebuilds the
- * whole layout from current state, and it is called from the player's state listeners rather than
- * from the button handlers - a press only changes state, and the notification follows. That
- * indirection is what keeps a button's icon from ever disagreeing with the player.
+ * [SonaMediaNotificationProvider] rather than the bare default, so it carries Sona's icon. Its own
+ * buttons follow ArchiveTune's design: [updateMediaButtons] rebuilds them from current state, and it is
+ * called from the player's state listeners rather than from the button handlers - a press only changes
+ * state, and the buttons follow. That indirection is what keeps a button's icon from ever disagreeing
+ * with the player.
  */
 @AndroidEntryPoint
 @UnstableApi
@@ -115,12 +115,12 @@ class PlaybackService : MediaSessionService() {
                     QueueShuffleOrder.startingFrom(exoPlayer.mediaItemCount, exoPlayer.currentMediaItemIndex),
                 )
             }
-            updateNotification()
+            updateMediaButtons()
         }
 
         // The heart belongs to the track, so it has to be redrawn when the track changes.
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-            updateNotification()
+            updateMediaButtons()
         }
     }
 
@@ -171,7 +171,7 @@ class PlaybackService : MediaSessionService() {
             args: Bundle,
         ): ListenableFuture<SessionResult> {
             // Each branch only changes state. Nothing here touches the notification - the
-            // resulting player callback does, via updateNotification().
+            // resulting player callback does, via updateMediaButtons().
             when (customCommand.customAction) {
                 PlaybackSessionCommands.ACTION_TOGGLE_FAVORITE -> toggleFavorite()
 
@@ -297,7 +297,7 @@ class PlaybackService : MediaSessionService() {
             ),
         )
 
-        updateNotification()
+        updateMediaButtons()
         applyRepeatMode(repeatMode)
         registerHeadsetReceiver()
         collectRuntimeSettings()
@@ -325,64 +325,17 @@ class PlaybackService : MediaSessionService() {
     }
 
     /**
-     * Rebuilds the whole notification layout from current player state.
+     * Rebuilds the session's own buttons - repeat, shuffle and favorite - from current player state, for
+     * everything that shows them: the notification, the system's media controls, a car or a watch.
      *
-     * Ported from ArchiveTune's `updateNotification`: the same three buttons, with no slot assigned
-     * to any of them - only each button's icon and label change from one call to the next.
-     * `setCustomLayout` (not `setMediaButtonPreferences`) is what ArchiveTune uses, and media3 fits
-     * play/pause plus as much of this list as the platform allows around it.
-     *
-     * The one deviation: while repeating the current track (`ONE`/`STOP_AFTER_CURRENT`), favorite
-     * moves to the front of the list. media3 backfills a missing transport button - previous, or
-     * next when repeating - from whichever button is first, so this is what keeps repeat and
-     * shuffle from being the one pulled into that spot while there is nowhere to go next.
+     * Always in this order, and none of them asks for a place: where each goes is media3's to decide
+     * around the transport buttons - never in previous's place, and first into the one next leaves when
+     * there is nowhere to go next - so they fall into place by themselves as the queue changes.
      */
-    private fun updateNotification() {
-        val repeatButton = CommandButton.Builder()
-            .setDisplayName(
-                getString(
-                    when (repeatMode) {
-                        RepeatMode.STOP_AFTER_CURRENT -> R.string.playback_action_repeat_one_stop
-                        RepeatMode.ONE -> R.string.playback_action_repeat_one
-                        RepeatMode.ALL -> R.string.playback_action_repeat_all
-                        RepeatMode.OFF -> R.string.playback_action_repeat_off
-                    },
-                ),
-            )
-            .setIconResId(
-                when (repeatMode) {
-                    RepeatMode.STOP_AFTER_CURRENT -> R.drawable.repeat_one_stop
-                    RepeatMode.ONE -> R.drawable.repeat_one_on
-                    RepeatMode.ALL -> R.drawable.repeat_on
-                    RepeatMode.OFF -> R.drawable.repeat
-                },
-            )
-            .setSessionCommand(PlaybackSessionCommands.toggleRepeatModeCommand)
-            .build()
-        val shuffleButton = CommandButton.Builder()
-            .setDisplayName(
-                getString(
-                    if (exoPlayer.shuffleModeEnabled) {
-                        R.string.playback_action_shuffle_off
-                    } else {
-                        R.string.playback_action_shuffle_on
-                    },
-                ),
-            )
-            .setIconResId(
-                if (exoPlayer.shuffleModeEnabled) R.drawable.shuffle_on else R.drawable.shuffle,
-            )
-            .setSessionCommand(PlaybackSessionCommands.toggleShuffleCommand)
-            .build()
-        val favoriteButton = buildFavoriteCommandButton()
-
-        val repeatsCurrentTrack = repeatMode == RepeatMode.ONE || repeatMode == RepeatMode.STOP_AFTER_CURRENT
-        val customLayout = if (repeatsCurrentTrack) {
-            listOf(favoriteButton, repeatButton, shuffleButton)
-        } else {
-            listOf(repeatButton, shuffleButton, favoriteButton)
-        }
-        mediaSession.setCustomLayout(customLayout)
+    private fun updateMediaButtons() {
+        mediaSession.setMediaButtonPreferences(
+            listOf(buildRepeatCommandButton(), buildShuffleCommandButton(), buildFavoriteCommandButton()),
+        )
     }
 
     // Deviation from ArchiveTune, which mutates the player and nothing else: Sona persists shuffle
@@ -543,7 +496,7 @@ class PlaybackService : MediaSessionService() {
             playbackSettings.repeatMode.flow.collect { mode ->
                 repeatMode = mode
                 applyRepeatMode(mode)
-                updateNotification()
+                updateMediaButtons()
             }
         }
         serviceScope.launch {
@@ -552,7 +505,7 @@ class PlaybackService : MediaSessionService() {
         serviceScope.launch {
             libraryRepository.favoriteTrackIds.collect {
                 favoriteTrackIds = it
-                updateNotification()
+                updateMediaButtons()
             }
         }
     }
@@ -611,10 +564,48 @@ class PlaybackService : MediaSessionService() {
      * Ported from ArchiveTune's like button: it carries no slot, and is disabled rather than hidden
      * while nothing is loaded, matching `.setEnabled(currentSong.value != null)`.
      */
+    private fun buildRepeatCommandButton(): CommandButton =
+        CommandButton.Builder(
+            when (repeatMode) {
+                RepeatMode.STOP_AFTER_CURRENT, RepeatMode.ONE -> CommandButton.ICON_REPEAT_ONE
+                RepeatMode.ALL -> CommandButton.ICON_REPEAT_ALL
+                RepeatMode.OFF -> CommandButton.ICON_REPEAT_OFF
+            },
+        )
+            .setDisplayName(
+                getString(
+                    when (repeatMode) {
+                        RepeatMode.STOP_AFTER_CURRENT -> R.string.playback_action_repeat_one_stop
+                        RepeatMode.ONE -> R.string.playback_action_repeat_one
+                        RepeatMode.ALL -> R.string.playback_action_repeat_all
+                        RepeatMode.OFF -> R.string.playback_action_repeat_off
+                    },
+                ),
+            )
+            .setCustomIconResId(
+                when (repeatMode) {
+                    RepeatMode.STOP_AFTER_CURRENT -> R.drawable.repeat_one_stop
+                    RepeatMode.ONE -> R.drawable.repeat_one_on
+                    RepeatMode.ALL -> R.drawable.repeat_on
+                    RepeatMode.OFF -> R.drawable.repeat
+                },
+            )
+            .setSessionCommand(PlaybackSessionCommands.toggleRepeatModeCommand)
+            .build()
+
+    private fun buildShuffleCommandButton(): CommandButton {
+        val isShuffled = exoPlayer.shuffleModeEnabled
+        return CommandButton.Builder(if (isShuffled) CommandButton.ICON_SHUFFLE_ON else CommandButton.ICON_SHUFFLE_OFF)
+            .setDisplayName(getString(if (isShuffled) R.string.playback_action_shuffle_off else R.string.playback_action_shuffle_on))
+            .setCustomIconResId(if (isShuffled) R.drawable.shuffle_on else R.drawable.shuffle)
+            .setSessionCommand(PlaybackSessionCommands.toggleShuffleCommand)
+            .build()
+    }
+
     private fun buildFavoriteCommandButton(): CommandButton {
         val trackId = currentTrackId()
         val isFavorite = trackId?.let { it in favoriteTrackIds } == true
-        return CommandButton.Builder()
+        return CommandButton.Builder(if (isFavorite) CommandButton.ICON_HEART_FILLED else CommandButton.ICON_HEART_UNFILLED)
             .setDisplayName(
                 getString(
                     if (isFavorite) {
@@ -625,7 +616,7 @@ class PlaybackService : MediaSessionService() {
                 ),
             )
             .setSessionCommand(PlaybackSessionCommands.toggleFavoriteCommand)
-            .setIconResId(if (isFavorite) R.drawable.favorite else R.drawable.favorite_border)
+            .setCustomIconResId(if (isFavorite) R.drawable.favorite else R.drawable.favorite_border)
             .setEnabled(trackId != null)
             .build()
     }

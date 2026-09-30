@@ -18,7 +18,7 @@ import com.lhacenmed.sona.core.common.notification.SonaNotificationId
  * The media notification, ported from ArchiveTune's `ArchiveTuneMediaNotificationProvider`.
  *
  * It builds nothing itself: media3's [DefaultMediaNotificationProvider] renders the notification
- * from the session, including its custom layout buttons, and this only wraps it to do two things
+ * from the session, including its media buttons, and this only wraps it to do two things
  * the default cannot. It names the channel and small icon, which is why the status bar shows
  * Sona's mark rather than media3's generic glyph. And it replaces the notification's delete intent
  * so that swiping the notification away arrives at [PlaybackService] as an ordinary command,
