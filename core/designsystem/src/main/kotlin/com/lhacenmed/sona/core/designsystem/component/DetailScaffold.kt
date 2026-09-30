@@ -313,11 +313,19 @@ fun DetailScaffold(
                     // the thumb moves the list directly, past the header's collapse, which would leave
                     // the header standing open over a list scrolled somewhere else.
                     val isCollapsed by remember(state) { derivedStateOf { state.shownCollapse == 1f } }
-                    FastScroller(listState = listState, enabled = isCollapsed, scrollToTop = state::scrollToTop) { overscrollEffect ->
+                    FastScroller(
+                        listState = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        enabled = isCollapsed,
+                        scrollToTop = state::scrollToTop,
+                    ) { overscrollEffect ->
                         CompositionLocalProvider(LocalDragSelection provides dragSelection) {
+                            // The whole room below the header, however few its rows: a drag anywhere in it
+                            // scrolls the list, and so opens and collapses the header.
                             LazyColumn(
                                 state = listState,
                                 modifier = Modifier
+                                    .fillMaxSize()
                                     .then(dragSelection?.let(Modifier::dragSelection) ?: Modifier)
                                     .nestedScroll(state.nestedScrollConnection),
                                 contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
