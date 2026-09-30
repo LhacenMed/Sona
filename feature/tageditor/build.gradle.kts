@@ -29,6 +29,7 @@ dependencies {
     implementation(project(":core:common"))
     implementation(project(":core:navigation"))
     implementation(project(":core:designsystem"))
+    implementation(project(":feature:playback"))
     implementation(project(":feature:scanner"))
 
     implementation(platform(libs.androidx.compose.bom))

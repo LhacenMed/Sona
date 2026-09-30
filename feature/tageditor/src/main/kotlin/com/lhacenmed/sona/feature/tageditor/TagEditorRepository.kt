@@ -5,11 +5,11 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaScannerConnection
 import android.net.Uri
-import coil3.SingletonImageLoader
 import com.lhacenmed.sona.core.common.di.IoDispatcher
 import com.lhacenmed.sona.core.data.contentUri
 import com.lhacenmed.sona.core.data.lyrics.LyricsRepository
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.playback.TrackFiles
 import com.lhacenmed.sona.feature.scanner.MediaScanner
 import com.lhacenmed.sona.feature.tageditor.net.Http
 import com.lhacenmed.sona.feature.tageditor.tags.CoverChoice
@@ -39,6 +39,7 @@ private const val DeviceCoverJpegQuality = 90
 class TagEditorRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val mediaScanner: MediaScanner,
+    private val trackFiles: TrackFiles,
     private val lyricsRepository: LyricsRepository,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
@@ -49,30 +50,40 @@ class TagEditorRepository @Inject constructor(
      */
     suspend fun read(track: Track): TagFileInfo =
         withContext(ioDispatcher) {
-            val info = TagFile.read(context, track.contentUri)
+            val info = TagFile.read(context, track.contentUri, track.path)
             val typedLyrics = lyricsRepository.typedLyrics(track.id) ?: return@withContext info
             info.copy(tags = info.tags.with(TagField.LYRICS, typedLyrics))
         }
 
     /**
-     * Writes [tags] into [track]'s file, with [cover] unless it is the file's own, then waits for the library
-     * to have read them back - so every list, the player and the lyrics show the new tags the moment this
-     * returns. Throws when the file cannot be written, a [SecurityException] among others where Android has
-     * not granted it.
+     * The picture [choice] embeds, ready to write: a catalogue's downloaded, the device's scaled down - or null
+     * for the file's own, which is left as it is. Throws when it cannot be had.
      */
-    suspend fun save(track: Track, tags: TrackTags, cover: CoverChoice) {
+    suspend fun coverBytes(choice: CoverChoice): ByteArray? =
         withContext(ioDispatcher) {
-            val coverBytes = when (cover) {
+            when (choice) {
                 CoverChoice.Own -> null
-                is CoverChoice.Web -> checkNotNull(Http.bytes(cover.url)) { "The cover could not be downloaded" }
-                is CoverChoice.Device -> deviceCover(Uri.parse(cover.uri))
+                is CoverChoice.Web -> checkNotNull(Http.bytes(choice.url)) { "The cover could not be downloaded" }
+                is CoverChoice.Device -> deviceCover(Uri.parse(choice.uri))
             }
-            TagFile.write(context, track.contentUri, tags, coverBytes)
+        }
+
+    /**
+     * Writes [tags] into [track]'s file, with [cover] when there is one - see [coverBytes] - then waits for the
+     * library to have read them back, so every list, the player and the lyrics show the new tags the moment
+     * this returns: the file alone is read again, and the library re-reads MediaStore - walking storage only
+     * for a file MediaStore has not indexed. A track the player is on reads on from the file as it was - see [TrackFiles] - so it carries on
+     * without a break. Throws when the file cannot be written, a [SecurityException] among others where
+     * Android has not granted it.
+     */
+    suspend fun save(track: Track, tags: TrackTags, cover: ByteArray?) {
+        withContext(ioDispatcher) {
+            trackFiles.write(track.contentUri) { TagFile.write(context, track.contentUri, track.path, tags, cover) }
             scanFile(track.path)
             lyricsRepository.forgetLyrics(track.id)
-            if (coverBytes != null) forgetCover(track)
         }
-        mediaScanner.rescan()
+        // A file MediaStore has not indexed is only read again by walking storage, which a refresh leaves be.
+        if (track.isManuallyScanned) mediaScanner.rescan() else mediaScanner.refresh()
     }
 
     /** The picture at [uri] as a JPEG no larger than [DeviceCoverMaxSidePx] - a photo is many times what a cover needs. */
@@ -100,12 +111,5 @@ class TagEditorRepository @Inject constructor(
     /** Has Android read the file again, so MediaStore - which the library follows - carries its new tags. */
     private suspend fun scanFile(path: String) = suspendCancellableCoroutine { continuation ->
         MediaScannerConnection.scanFile(context, arrayOf(path), null) { _, _ -> continuation.resume(Unit) }
-    }
-
-    /** Drops the old cover from the image caches, which would otherwise go on showing it. */
-    private fun forgetCover(track: Track) {
-        val imageLoader = SingletonImageLoader.get(context)
-        imageLoader.memoryCache?.clear()
-        track.coverArtUri?.let { imageLoader.diskCache?.remove(it) }
     }
 }

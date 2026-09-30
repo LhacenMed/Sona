@@ -1,9 +1,18 @@
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+
 package com.lhacenmed.sona.core.designsystem.component
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.ContainedLoadingIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -14,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -69,17 +79,47 @@ fun WindowOverlay(content: @Composable BoxScope.() -> Unit) {
 @Composable
 fun WindowTouchBlocker() {
     WindowOverlay {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(Unit) {
-                    awaitEachGesture {
-                        do {
-                            val event = awaitPointerEvent(PointerEventPass.Initial)
-                            event.changes.forEach { it.consume() }
-                        } while (event.changes.any { it.pressed })
-                    }
-                },
-        )
+        Box(modifier = Modifier.fillMaxSize().consumeEveryTouch())
+    }
+}
+
+/** How much of the scrim [WindowBusyOverlay] dims the window with: Material's own for what it lays over a screen. */
+private const val BusyScrimAlpha = 0.32f
+
+/**
+ * Holds the whole window while [isBusy] - work the user waits on and must not interrupt, such as a file being
+ * written: a scrim over everything, the player included, with the loading indicator at its centre, fading in
+ * and out, and every touch kept from the window. Back still works; a screen whose work must not be left
+ * halfway holds that itself.
+ */
+@Composable
+fun WindowBusyOverlay(isBusy: Boolean) {
+    val busy = rememberUpdatedState(isBusy)
+    WindowOverlay {
+        AnimatedVisibility(
+            visible = busy.value,
+            enter = fadeIn(MaterialTheme.motionScheme.defaultEffectsSpec()),
+            exit = fadeOut(MaterialTheme.motionScheme.defaultEffectsSpec()),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = BusyScrimAlpha))
+                    .consumeEveryTouch(),
+                contentAlignment = Alignment.Center,
+            ) {
+                ContainedLoadingIndicator()
+            }
+        }
+    }
+}
+
+/** Takes every touch that lands here, before anything beneath can see it. */
+private fun Modifier.consumeEveryTouch(): Modifier = pointerInput(Unit) {
+    awaitEachGesture {
+        do {
+            val event = awaitPointerEvent(PointerEventPass.Initial)
+            event.changes.forEach { it.consume() }
+        } while (event.changes.any { it.pressed })
     }
 }

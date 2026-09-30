@@ -29,3 +29,10 @@ internal fun Track.toMediaItem(): MediaItem {
         .setMediaMetadata(metadata)
         .build()
 }
+
+/** Whether this shows exactly what [other] does, in every field [toMediaItem] sets. */
+internal fun MediaMetadata.isShownAs(other: MediaMetadata): Boolean =
+    title?.toString() == other.title?.toString() &&
+        artist?.toString() == other.artist?.toString() &&
+        albumTitle?.toString() == other.albumTitle?.toString() &&
+        artworkUri == other.artworkUri

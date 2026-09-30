@@ -14,7 +14,9 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -31,6 +33,7 @@ import com.lhacenmed.sona.core.datastore.ImageSettings
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.datastore.ShuffleSettings
 import com.lhacenmed.sona.core.model.RepeatMode
+import com.lhacenmed.sona.core.model.Track
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -78,6 +81,9 @@ class PlaybackService : MediaSessionService() {
     @Inject
     lateinit var playStatsDao: PlayStatsDao
 
+    @Inject
+    lateinit var trackFiles: TrackFiles
+
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     private lateinit var exoPlayer: ExoPlayer
@@ -121,6 +127,19 @@ class PlaybackService : MediaSessionService() {
         // The heart belongs to the track, so it has to be redrawn when the track changes.
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             updateMediaButtons()
+        }
+
+        // Whatever can change which track plays now or next.
+        override fun onEvents(player: Player, events: Player.Events) {
+            if (events.containsAny(
+                    Player.EVENT_MEDIA_ITEM_TRANSITION,
+                    Player.EVENT_TIMELINE_CHANGED,
+                    Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
+                    Player.EVENT_REPEAT_MODE_CHANGED,
+                )
+            ) {
+                holdTrackFiles()
+            }
         }
     }
 
@@ -255,6 +274,8 @@ class PlaybackService : MediaSessionService() {
         repeatMode = playbackSettings.repeatMode.value
 
         exoPlayer = ExoPlayer.Builder(this)
+            // Every file read through [trackFiles], so one changed while it plays reads on unchanged.
+            .setMediaSourceFactory(DefaultMediaSourceFactory(trackFiles.dataSourceFactory(DefaultDataSource.Factory(this))))
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA)
@@ -409,6 +430,33 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
+    /**
+     * Tells [trackFiles] which files the player holds a track of: the one playing, and the next, which it opens
+     * ahead of time - the only ones it reads.
+     */
+    private fun holdTrackFiles() {
+        // The current item by itself, not by its index: an empty queue still reports index 0, with nothing there.
+        val next = exoPlayer.nextMediaItemIndex.takeIf { it != C.INDEX_UNSET }?.let(exoPlayer::getMediaItemAt)
+        val held = listOfNotNull(exoPlayer.currentMediaItem, next)
+            .mapNotNullTo(HashSet()) { it.localConfiguration?.uri?.toString() }
+        trackFiles.hold(held)
+    }
+
+    /**
+     * Keeps every queued track's title, artist, album and cover as the library now has them - what the
+     * notification, the lock screen and every other controller show - when a track's tags change under it.
+     * In place, and all at once: the files are the same, so nothing that plays is interrupted, and the queue
+     * changes once however many of its tracks did.
+     */
+    private fun refreshQueueMetadata(tracksById: Map<Long, Track>) {
+        val queue = List(exoPlayer.mediaItemCount, exoPlayer::getMediaItemAt)
+        val refreshed = queue.map { queued ->
+            val current = queued.mediaId.toLongOrNull()?.let(tracksById::get)?.toMediaItem()
+            if (current == null || current.mediaMetadata.isShownAs(queued.mediaMetadata)) queued else current
+        }
+        if (refreshed.indices.any { refreshed[it] !== queue[it] }) exoPlayer.replaceMediaItems(0, queue.size, refreshed)
+    }
+
     /** The queue's indices in the order it plays - the shuffle order while shuffling. */
     private fun playOrder(): MutableList<Int> {
         val timeline = exoPlayer.currentTimeline
@@ -502,6 +550,7 @@ class PlaybackService : MediaSessionService() {
         serviceScope.launch {
             playbackSettings.headsetAutoplay.flow.collect { headsetAutoplayEnabled = it }
         }
+        serviceScope.launch { libraryRepository.tracksById.collect(::refreshQueueMetadata) }
         serviceScope.launch {
             libraryRepository.favoriteTrackIds.collect {
                 favoriteTrackIds = it

@@ -30,7 +30,9 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.File
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -146,7 +148,20 @@ class TagEditorViewModel @AssistedInject constructor(
     var isSaving by mutableStateOf(false)
         private set
 
+    /**
+     * How the last save ended, until the screen has acted on it - see [onSaveOutcomeHandled]. Set together
+     * with [isSaving] turning false, so whatever the screen holds while saving is let go before it acts.
+     */
+    var saveOutcome by mutableStateOf<SaveOutcome?>(null)
+        private set
+
     val hasChanges: Boolean get() = original.let { it != null && (it != draft || cover != CoverChoice.Own) }
+
+    /**
+     * The chosen [cover]'s picture, on its way from the moment it is chosen - downloaded or scaled down while
+     * the rest is edited, so saving seldom waits for it. Null for the file's own.
+     */
+    private var preparedCover: Deferred<ByteArray?>? = null
 
     private var matchJob: Job? = null
     private var lyricsJob: Job? = null
@@ -195,11 +210,13 @@ class TagEditorViewModel @AssistedInject constructor(
 
     fun chooseCover(choice: CoverChoice) {
         cover = choice
+        preparedCover?.cancel()
+        preparedCover = if (choice == CoverChoice.Own) null else viewModelScope.async { tagEditorRepository.coverBytes(choice) }
     }
 
     fun pickDeviceCover(uri: String) {
         deviceCoverUri = uri
-        cover = CoverChoice.Device(uri)
+        chooseCover(CoverChoice.Device(uri))
     }
 
     /** [match] with every tag its catalogue knows, where that is already known. */
@@ -225,18 +242,20 @@ class TagEditorViewModel @AssistedInject constructor(
         setField(TagField.LYRICS, found.lyrics.text)
     }
 
-    /** Writes the draft into the file; [onOutcome] hears how it went. */
-    fun save(onOutcome: (SaveOutcome) -> Unit) {
+    /** Writes the draft into the file; [saveOutcome] tells how it went. */
+    fun save() {
         val track = track ?: return
         if (isSaving) return
         isSaving = true
         viewModelScope.launch {
             val outcome = try {
-                tagEditorRepository.save(track, draft, cover)
+                tagEditorRepository.save(track, draft, preparedCover?.await())
                 SaveOutcome.Saved
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                // A cover that could not be had is fetched afresh, so saving again tries it again.
+                if (preparedCover?.isCancelled == true) chooseCover(cover)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && e is RecoverableSecurityException) {
                     SaveOutcome.NeedsConsent(e.userAction.actionIntent.intentSender)
                 } else {
@@ -244,13 +263,17 @@ class TagEditorViewModel @AssistedInject constructor(
                 }
             }
             isSaving = false
-            onOutcome(outcome)
+            saveOutcome = outcome
         }
+    }
+
+    fun onSaveOutcomeHandled() {
+        saveOutcome = null
     }
 
     private fun applyComplete(match: CatalogueMatch, listed: CatalogueMatch) {
         draft = draft.overlaidWith(match.tags)
-        match.coverUrl.takeIf { it.isNotBlank() }?.let { cover = CoverChoice.Web(it) }
+        match.coverUrl.takeIf { it.isNotBlank() }?.let { chooseCover(CoverChoice.Web(it)) }
         appliedMatch = listed
     }
 

@@ -3,6 +3,7 @@ package com.lhacenmed.sona.feature.tageditor
 import android.app.Activity
 import android.os.Build
 import android.provider.MediaStore
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.PickVisualMediaRequest
@@ -20,6 +21,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -35,6 +37,7 @@ import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverImage
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
+import com.lhacenmed.sona.core.designsystem.component.WindowBusyOverlay
 import com.lhacenmed.sona.core.designsystem.component.screen.screenList
 import com.lhacenmed.sona.core.designsystem.component.section.ColumnSection
 import com.lhacenmed.sona.core.designsystem.component.toast
@@ -81,17 +84,21 @@ data class TagEditorScreen(val trackId: Long) : Screen {
         val galleryPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
             if (uri != null) viewModel.pickDeviceCover(uri.toString())
         }
-        save = {
-            viewModel.save { outcome ->
-                when (outcome) {
-                    SaveOutcome.Saved -> {
-                        context.toast("Tags saved")
-                        navigator.back()
-                    }
-                    is SaveOutcome.NeedsConsent -> consentLauncher.launch(IntentSenderRequest.Builder(outcome.request).build())
-                    is SaveOutcome.Failed -> context.toast(outcome.message)
+        save = viewModel::save
+        // Acted on once the save has let go of the screen - back included - so leaving it after a save gets
+        // through; a save that did not succeed stays, to be tried again.
+        val saveOutcome = viewModel.saveOutcome
+        LaunchedEffect(saveOutcome) {
+            when (saveOutcome) {
+                null -> return@LaunchedEffect
+                SaveOutcome.Saved -> {
+                    context.toast("Tags saved")
+                    navigator.back()
                 }
+                is SaveOutcome.NeedsConsent -> consentLauncher.launch(IntentSenderRequest.Builder(saveOutcome.request).build())
+                is SaveOutcome.Failed -> context.toast(saveOutcome.message)
             }
+            viewModel.onSaveOutcomeHandled()
         }
         val requestSave: () -> Unit = {
             val permission = AppPermission.FILE_CHANGES
@@ -108,6 +115,11 @@ data class TagEditorScreen(val trackId: Long) : Screen {
                 else -> save()
             }
         }
+
+        // The whole window held while the file is written and the library reads it back - and back with it, so
+        // the save is never left halfway, with the file changed and the lists not yet showing it.
+        WindowBusyOverlay(isBusy = viewModel.isSaving)
+        BackHandler(enabled = viewModel.isSaving) {}
 
         Column(modifier = Modifier.fillMaxSize()) {
             SonaTopAppBar(
