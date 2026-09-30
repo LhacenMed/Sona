@@ -1,22 +1,8 @@
 package com.lhacenmed.sona.feature.library.options
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.common.cover.rankedCoverArtUris
 import com.lhacenmed.sona.core.designsystem.component.CoverArtDefaults
 import com.lhacenmed.sona.core.designsystem.component.SonaAlbumCover
@@ -25,11 +11,10 @@ import com.lhacenmed.sona.core.designsystem.component.SonaBottomSheet
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverArt
 import com.lhacenmed.sona.core.designsystem.component.SonaFolderCover
 import com.lhacenmed.sona.core.designsystem.component.SonaGenreCover
+import com.lhacenmed.sona.core.designsystem.component.SonaOptionRow
+import com.lhacenmed.sona.core.designsystem.component.SonaOptionsSheetHeader
 import com.lhacenmed.sona.core.designsystem.component.SonaPlaylistCover
 import com.lhacenmed.sona.core.designsystem.component.SonaSelectionCover
-
-/** How faint a disabled action reads, next to the actions it sits among: Material's disabled content alpha. */
-private const val DISABLED_ACTION_ALPHA = 0.38f
 
 /**
  * The sheet every song, album, artist, genre, folder and playlist opens for its overflow button - Auxio's
@@ -57,63 +42,31 @@ fun OptionsSheet(
         SonaBottomSheet(
             onDismissRequest = onDismissRequest,
             modifier = modifier,
-            header = { OptionsSheetHeader(target) },
+            header = {
+                SonaOptionsSheetHeader(
+                    cover = { OptionsSheetCover(target) },
+                    type = target.typeLabel(),
+                    name = target.name(),
+                    info = target.infoLine(),
+                )
+            },
         ) {
             target.actions().forEach { action ->
-                val enabled = action !in disabledActions
-                ListItem(
-                    headlineContent = { Text(action.label) },
-                    leadingContent = { Icon(action.icon, contentDescription = null) },
-                    // The sheet already paints its own background; a row painting its own would seam
-                    // against it instead of reading as one surface.
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    modifier = Modifier
-                        .alpha(if (enabled) 1f else DISABLED_ACTION_ALPHA)
-                        .let { rowModifier ->
-                            if (enabled) {
-                                rowModifier.clickable {
-                                    onActionChosen()
-                                    actions.perform(target, action)
-                                    if (!actions.isFollowingUp) dismiss()
-                                }
-                            } else {
-                                rowModifier
-                            }
-                        },
+                SonaOptionRow(
+                    label = action.label,
+                    icon = action.icon,
+                    enabled = action !in disabledActions,
+                    onClick = {
+                        onActionChosen()
+                        actions.perform(target, action)
+                        if (!actions.isFollowingUp) dismiss()
+                    },
                 )
             }
         }
     }
 
     OptionsFollowUps(actions = actions, onFinished = onDismissRequest)
-}
-
-/** The cover, type, name and info line every options sheet opens with - Auxio's `menuCover`/`menuType`/`menuName`/`menuInfo`. */
-@Composable
-private fun OptionsSheetHeader(target: OptionsTarget) {
-    Column {
-        Row(
-            modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            OptionsSheetCover(target)
-            Column(modifier = Modifier.padding(start = 16.dp)) {
-                Text(
-                    text = target.typeLabel(),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                Text(text = target.name(), style = MaterialTheme.typography.titleLarge)
-                Text(
-                    text = target.infoLine(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        // Auxio's `menu_mode_group`: the line the header ends on, edge to edge under the cover.
-        HorizontalDivider()
-    }
 }
 
 @Composable
