@@ -178,13 +178,13 @@ Ordered from most to least critical. Every entry describes **what** is broken or
   A draggable scroll indicator/thumb for sorted lists that shows the current section/order position while dragging, with adjustable sensitivity near the screen edges — matching Auxio's exact behavior.
   - **Fixed: the thumb was unstable on lists mixing row kinds** (a genre's artists then its tracks). The list's length was reckoned from the average height of the rows on screen, which moved every time a heading, a divider or a differently sized row scrolled in or out: the thumb jumped under an even scroll, and a dragged thumb shook, as the row it scrolled to was placed back by a different average the next frame. `ListScrollMetrics` now remembers every row laid out at its own size and reckons the rest at the size most rows share, forgetting it all when the rows or their count change - so placing the thumb and dragging it are exact inverses, whichever rows are on screen.
   - The scroller has its own package, `component/fastscroll/`: `FastScroller` (drawing and touch), `FastScrollerState` (shown/dragging) and `ListScrollMetrics` (the reckoning).
-- [ ] **6.5 Add pull-to-refresh to trigger a library rescan**
+- [x] **6.5 Add pull-to-refresh to trigger a library rescan**
   For lists inside collection tabs, pulling down should trigger a rescan.
 - [ ] **6.6 Collapse the main activity's top section on scroll**
   Matching Auxio's exact behavior.
 - [ ] **6.7 Fetch and display real artist profile images**
   Replace the current stacked-cover thumbnail on artist list items with each artist's fetched profile image.
-- [ ] **6.8 Integrate a Khamah-style iOS swipe gesture**
+- [x] **6.8 Integrate a Khamah-style iOS swipe gesture**
   Bring in the same swipe gesture mechanics (same math/algorithm) used in the referenced app "Khamah," specifically the interaction used in its "Wird session reader" when opening a new session.
   *Note: the original request doesn't specify which screen in Sona this should apply to — needs clarification.*
 
@@ -234,9 +234,9 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 - [ ] **9.1 Complete remaining settings/preferences functionality**
 - [ ] **9.2 Add app icon quick-action shortcuts** (long-press shortcuts from the device's home screen/app list, outside the app itself)
 - [ ] **9.3 Add home screen widgets**, styled after the referenced app "ArchiveTune"
-- [ ] **9.4 Integrate a synced lyrics editor with a lyrics-provider fetching system**, based on the referenced app "ArchiveTune"
-- [ ] **9.5 Integrate a metadata/tag editor system**, based on the referenced system "AutomaTag"
-- [ ] **9.6 Add a Videos tab** listing all video files on the device, playable as audio only, based on the referenced app "MiMusic"
+- [x] **9.4 Integrate a synced lyrics editor with a lyrics-provider fetching system**, based on the referenced app "ArchiveTune"
+- [x] **9.5 Integrate a metadata/tag editor system**, based on the referenced system "AutomaTag"
+- [x] **9.6 Add a Videos tab** listing all video files on the device, playable as audio only, based on the referenced app "MiMusic"
 - [ ] **9.7 Add a video-to-audio converter**, based on the referenced tool "MP3 Video Converter"
 
 ---
