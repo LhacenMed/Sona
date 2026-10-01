@@ -66,13 +66,14 @@ data class TopBarAction(
 /**
  * What the bar shows while a list has rows selected: how many, what can be done with them, and the
  * more options button that opens everything else - Auxio's selection toolbar, whose overflow opens
- * the selection's options sheet rather than a menu.
+ * the selection's options sheet rather than a menu. A selection whose [actions] are all there is has no
+ * [onMoreOptions], and no such button.
  */
 @Immutable
 data class TopBarSelection(
     val count: Int,
     val actions: List<TopBarAction>,
-    val onMoreOptions: () -> Unit,
+    val onMoreOptions: (() -> Unit)?,
     val onDismiss: () -> Unit,
 )
 
@@ -346,7 +347,7 @@ private fun SelectionActions(selection: TopBarSelection) {
         selection.actions.forEach { action ->
             iconButton(icon = action.icon, label = action.label, onClick = action.onClick, enabled = action.enabled)
         }
-        iconButton(icon = Icons.Filled.MoreVert, label = moreOptionsLabel, onClick = selection.onMoreOptions)
+        selection.onMoreOptions?.let { iconButton(icon = Icons.Filled.MoreVert, label = moreOptionsLabel, onClick = it) }
     }
 }
 

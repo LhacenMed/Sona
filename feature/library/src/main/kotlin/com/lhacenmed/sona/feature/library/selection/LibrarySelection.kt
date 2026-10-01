@@ -1,8 +1,5 @@
 package com.lhacenmed.sona.feature.library.selection
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Deselect
-import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -12,6 +9,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSelection
+import com.lhacenmed.sona.core.designsystem.component.selectAllAction
 import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
 import com.lhacenmed.sona.core.navigation.NavigateAwayEffect
 import com.lhacenmed.sona.feature.library.options.OptionsActionsViewModel
@@ -32,18 +30,6 @@ internal fun SelectionState.toLibraryTopBarSelection(
     if (!isActive) return null
     return toTopBarSelection(actions = listOf(selectAllAction(listKeys())) + actions, onMoreOptions = onMoreOptions)
 }
-
-/**
- * Select all over [listKeys], a list's own rows: it adds them after whatever else is selected, so a
- * selection gathered elsewhere survives it, and once every one of them is selected it deselects them
- * instead.
- */
-internal fun SelectionState.selectAllAction(listKeys: List<SelectionKey>): TopBarAction =
-    if (listKeys.isNotEmpty() && selectedKeys.containsAll(listKeys)) {
-        TopBarAction(label = "Deselect all", icon = Icons.Filled.Deselect) { deselectAll(listKeys) }
-    } else {
-        TopBarAction(label = "Select all", icon = Icons.Filled.SelectAll) { selectAll(listKeys) }
-    }
 
 /**
  * What every selectable list shares beyond its rows and its bar: the options sheet its more options

@@ -15,7 +15,6 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
 import com.lhacenmed.sona.core.data.LibraryRepository
-import com.lhacenmed.sona.core.data.lyrics.LyricsPreloadManager
 import com.lhacenmed.sona.core.data.quickplay.QuickPlaySourceRepository
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
 import com.lhacenmed.sona.core.database.entity.QueueItemEntity
@@ -60,7 +59,6 @@ class PlaybackController @Inject constructor(
     private val shuffleSettings: ShuffleSettings,
     private val quickPlaySettings: QuickPlaySettings,
     private val quickPlaySources: QuickPlaySourceRepository,
-    private val lyricsPreloadManager: LyricsPreloadManager,
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -71,6 +69,9 @@ class PlaybackController @Inject constructor(
     // The player's repeat int cannot tell RepeatMode.ONE from STOP_AFTER_CURRENT, so the stored
     // mode is what the UI is told about.
     @Volatile private var storedRepeatMode: RepeatMode = playbackSettings.repeatMode.value
+
+    // How many screens hold the playing track - see holdCurrentTrack.
+    private var trackHolds = 0
 
     // Read from the setting rather than held only in memory, so a queue restored on a cold start is
     // still playing from the collection it was started from.
@@ -94,7 +95,6 @@ class PlaybackController @Inject constructor(
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-            controller?.let(::preloadUpcomingLyrics)
             sleepTimerHolder.onTrackEnd()
         }
 
@@ -158,6 +158,8 @@ class PlaybackController @Inject constructor(
             {
                 val mediaController = future.get()
                 controller = mediaController
+                // A hold asked for before the player was reached is handed over now.
+                if (trackHolds > 0) sendTrackHold()
                 mediaController.addListener(playerListener)
                 updateUiState(mediaController)
                 if (mediaController.isPlaying) startPositionPolling()
@@ -178,16 +180,23 @@ class PlaybackController @Inject constructor(
      * [shuffled] turns shuffle on or off for the new queue - Auxio's explicit Play and Shuffle - or,
      * when null, the way tapping a row does: shuffle stays as it was while the user keeps shuffle, and
      * is turned off otherwise - Auxio's implicit shuffle. Shuffled, [startIndex] still plays first and
-     * the rest follow in random order; the queue itself keeps the order it was given.
+     * the rest follow in random order; the queue itself keeps the order it was given. It plays from
+     * [startPositionMs] into the track at [startIndex].
      */
-    fun playTracks(tracks: List<Track>, startIndex: Int, parent: PlaybackParent? = null, shuffled: Boolean? = null) {
+    fun playTracks(
+        tracks: List<Track>,
+        startIndex: Int,
+        parent: PlaybackParent? = null,
+        shuffled: Boolean? = null,
+        startPositionMs: Long = 0L,
+    ) {
         val mediaController = controller ?: return
         scope.launch { playbackSettings.setPlaybackParent(parent) }
         val shuffle = shuffled ?: (shuffleSettings.keepShuffle.value && mediaController.shuffleModeEnabled)
         // Before the items, so the player builds the new shuffle order around startIndex.
         if (shuffle != mediaController.shuffleModeEnabled) setShuffleEnabled(shuffle)
         val mediaItems = tracks.map(Track::toMediaItem)
-        mediaController.setMediaItems(mediaItems, startIndex, 0L)
+        mediaController.setMediaItems(mediaItems, startIndex, startPositionMs)
         mediaController.prepare()
         mediaController.play()
     }
@@ -360,6 +369,28 @@ class PlaybackController @Inject constructor(
 
     // Only the stored mode is written; PlaybackService puts it on the player and the notification,
     // and the collector in init hands it to the UI - the same path a notification press takes.
+    /**
+     * Has the playing track repeat rather than go on to the next, until the returned release is called - for a
+     * screen where the track is being worked on, so it is never carried off to another mid-way. Holds add up: the
+     * track plays on as the user set it once every one is released. The stored repeat mode is left as it is, and is
+     * what is still shown.
+     */
+    fun holdCurrentTrack(): () -> Unit {
+        if (trackHolds++ == 0) sendTrackHold()
+        var isReleased = false
+        return {
+            if (!isReleased) {
+                isReleased = true
+                if (--trackHolds == 0) sendTrackHold()
+            }
+        }
+    }
+
+    private fun sendTrackHold() {
+        val args = Bundle().apply { putBoolean(PlaybackSessionCommands.EXTRA_HOLD, trackHolds > 0) }
+        controller?.sendCustomCommand(PlaybackSessionCommands.holdTrackCommand, args)
+    }
+
     fun cycleRepeatMode() {
         scope.launch { playbackSettings.cycleRepeatMode() }
     }
@@ -409,14 +440,6 @@ class PlaybackController @Inject constructor(
             mediaItemIndex = timeline.getNextWindowIndex(mediaItemIndex, Player.REPEAT_MODE_OFF, shuffleEnabled)
         }
         return queue
-    }
-
-    /** Hands the queue, as it plays from here, to the lyrics preload - ArchiveTune does this on every song change. */
-    private fun preloadUpcomingLyrics(mediaController: MediaController) {
-        val queue = currentQueue(mediaController)
-        val currentIndex = queue.indexOfFirst { it.mediaItemIndex == mediaController.currentMediaItemIndex }
-        val tracksById = repository.tracksById.value
-        lyricsPreloadManager.onSongChanged(currentIndex, queue.map { tracksById[it.trackId] })
     }
 
     // Ported from Fossify's AudioHelper.resetQueue: a full delete-and-reinsert of the queue table

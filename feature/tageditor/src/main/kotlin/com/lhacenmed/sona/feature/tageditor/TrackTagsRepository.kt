@@ -7,7 +7,6 @@ import android.media.MediaScannerConnection
 import android.net.Uri
 import com.lhacenmed.sona.core.common.di.IoDispatcher
 import com.lhacenmed.sona.core.data.contentUri
-import com.lhacenmed.sona.core.data.lyrics.LyricsRepository
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.TrackFiles
 import com.lhacenmed.sona.feature.scanner.MediaScanner
@@ -23,6 +22,11 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 
@@ -33,27 +37,37 @@ private const val DeviceCoverJpegQuality = 90
 
 /**
  * A track's tags as its file holds them, and the one way they are changed - written into the file, then
- * taken up by every part of the app that shows them.
+ * taken up by every part of the app that shows them. The file is the only place they are kept: its lyrics
+ * included, which the player reads from it as they are wanted.
  */
 @Singleton
-class TagEditorRepository @Inject constructor(
+class TrackTagsRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val mediaScanner: MediaScanner,
     private val trackFiles: TrackFiles,
-    private val lyricsRepository: LyricsRepository,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
 
-    /**
-     * What [track]'s file holds - its lyrics as the player shows them, which are the ones the user typed in
-     * where they did, so saving writes those into the file rather than losing them.
-     */
+    /** The ids of the tracks whose files Sona has just written, each as its write is done. */
+    private val writtenTrackIds = MutableSharedFlow<Long>(extraBufferCapacity = 16)
+
+    /** What [track]'s file holds. */
     suspend fun read(track: Track): TagFileInfo =
-        withContext(ioDispatcher) {
-            val info = TagFile.read(context, track.contentUri, track.path)
-            val typedLyrics = lyricsRepository.typedLyrics(track.id) ?: return@withContext info
-            info.copy(tags = info.tags.with(TagField.LYRICS, typedLyrics))
-        }
+        withContext(ioDispatcher) { TagFile.read(context, track.contentUri, track.path) }
+
+    /** The lyrics [track]'s file holds, as written - blank where it holds none. */
+    suspend fun readLyrics(track: Track): String = read(track).tags[TagField.LYRICS]
+
+    /**
+     * The lyrics [track]'s file holds - read as this is collected, and again each time Sona writes the file, so
+     * what is shown is always what the file holds, whoever wrote it there.
+     */
+    fun lyrics(track: Track): Flow<String> =
+        writtenTrackIds
+            .filter { it == track.id }
+            .map { }
+            .onStart { emit(Unit) }
+            .map { readLyrics(track) }
 
     /**
      * The picture [choice] embeds, ready to write: a catalogue's downloaded, the device's scaled down - or null
@@ -77,12 +91,34 @@ class TagEditorRepository @Inject constructor(
      * Android has not granted it.
      */
     suspend fun save(track: Track, tags: TrackTags, cover: ByteArray?) {
-        withContext(ioDispatcher) {
-            trackFiles.write(track.contentUri) { TagFile.write(context, track.contentUri, track.path, tags, cover) }
-            scanFile(track.path)
-            lyricsRepository.forgetLyrics(track.id)
+        writeFile(track) { TagFile.write(context, track.contentUri, track.path, tags, cover) }
+        refreshLibrary(track)
+    }
+
+    /** Writes [lyrics] into [track]'s file as its lyrics, every other tag left as the file holds it, then as [save]. */
+    suspend fun saveLyrics(track: Track, lyrics: String) {
+        writeFile(track) {
+            // Every field is written as given, so the file's own are read first: only the lyrics change.
+            val tags = TagFile.read(context, track.contentUri, track.path).tags.with(TagField.LYRICS, lyrics)
+            TagFile.write(context, track.contentUri, track.path, tags, cover = null)
         }
-        // A file MediaStore has not indexed is only read again by walking storage, which a refresh leaves be.
+        refreshLibrary(track)
+    }
+
+    /**
+     * Has [write] change [track]'s file - the player reading on from it as it was - and Android read it again;
+     * then tells whatever shows its lyrics to read them again.
+     */
+    private suspend fun writeFile(track: Track, write: () -> Unit) {
+        withContext(ioDispatcher) {
+            trackFiles.write(track.contentUri, write)
+            scanFile(track.path)
+        }
+        writtenTrackIds.emit(track.id)
+    }
+
+    /** Has the library read [track]'s file back - a file MediaStore has not indexed only by walking storage, which a refresh leaves be. */
+    private suspend fun refreshLibrary(track: Track) {
         if (track.isManuallyScanned) mediaScanner.rescan() else mediaScanner.refresh()
     }
 

@@ -3,19 +3,14 @@ package com.lhacenmed.sona.feature.settings.screen
 import android.text.format.Formatter
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.lyrics.DictionaryState
-import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDialog
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
-import com.lhacenmed.sona.feature.settings.component.SettingsActionItem
 import com.lhacenmed.sona.feature.settings.component.SettingsDownload
 import com.lhacenmed.sona.feature.settings.component.SettingsDownloadItem
 import com.lhacenmed.sona.feature.settings.component.SettingsList
@@ -27,7 +22,7 @@ import com.lhacenmed.sona.feature.settings.component.SettingsSwitchItem
 import java.util.Locale
 import kotlin.math.roundToInt
 
-/** How lyrics read, what they are romanized into, and what is kept of them. Ported from ArchiveTune's `LyricsSettings`. */
+/** How lyrics read, what they are romanized into, and whether missing ones are found online. Ported from ArchiveTune's `LyricsSettings`. */
 data object LyricsScreen : Screen {
     override val titleRes: Int get() = R.string.lyrics_title
 
@@ -46,25 +41,10 @@ data object LyricsScreen : Screen {
         val romanizeChinese by viewModel.romanizeChinese.collectAsStateWithLifecycle()
         val romanizeHindi by viewModel.romanizeHindi.collectAsStateWithLifecycle()
         val romanizeOtherLanguages by viewModel.romanizeOtherLanguages.collectAsStateWithLifecycle()
-        val preloadQueueLyricsEnabled by viewModel.preloadQueueLyricsEnabled.collectAsStateWithLifecycle()
-        val queueLyricsPreloadCount by viewModel.queueLyricsPreloadCount.collectAsStateWithLifecycle()
-        var showClearLyricsDialog by rememberSaveable { mutableStateOf(false) }
+        val findMissingLyrics by viewModel.findMissingLyrics.collectAsStateWithLifecycle()
 
         val spFormat = stringResource(R.string.sp_format)
         val lineSpacingFormat = stringResource(R.string.lyrics_line_spacing_format)
-        val preloadOff = stringResource(R.string.lyrics_preload_count_off)
-
-        if (showClearLyricsDialog) {
-            SonaConfirmationDialog(
-                title = stringResource(R.string.lyrics_clear_cache_title),
-                message = stringResource(R.string.lyrics_clear_cache_confirm),
-                confirmLabel = stringResource(R.string.lyrics_clear_cache_action),
-                successMessage = stringResource(R.string.lyrics_clear_cache_done),
-                failureMessage = stringResource(R.string.lyrics_clear_cache_failed),
-                onDismiss = { showClearLyricsDialog = false },
-                operation = viewModel::clearLyricsCache,
-            )
-        }
 
         SettingsList {
             SettingsSection(stringResource(R.string.lyrics_display_section)) {
@@ -156,31 +136,12 @@ data object LyricsScreen : Screen {
 
             SettingsSectionDivider()
 
-            SettingsSection(stringResource(R.string.lyrics_queue_section)) {
+            SettingsSection(stringResource(R.string.lyrics_online_section)) {
                 SettingsSwitchItem(
-                    title = stringResource(R.string.lyrics_preload_title),
-                    summary = stringResource(R.string.lyrics_preload_summary),
-                    checked = preloadQueueLyricsEnabled,
-                    onCheckedChange = viewModel::setPreloadQueueLyricsEnabled,
-                )
-                SettingsSliderItem(
-                    title = stringResource(R.string.lyrics_preload_count_title),
-                    value = queueLyricsPreloadCount.toFloat(),
-                    onValueChangeFinished = { viewModel.setQueueLyricsPreloadCount(it.roundToInt()) },
-                    valueRange = 0f..10f,
-                    steps = 9,
-                    formatValue = { if (it.roundToInt() == 0) preloadOff else it.roundToInt().toString() },
-                    enabled = preloadQueueLyricsEnabled,
-                )
-            }
-
-            SettingsSectionDivider()
-
-            SettingsSection(stringResource(R.string.lyrics_cache_section)) {
-                SettingsActionItem(
-                    title = stringResource(R.string.lyrics_clear_cache_title),
-                    summary = stringResource(R.string.lyrics_clear_cache_summary),
-                    onClick = { showClearLyricsDialog = true },
+                    title = stringResource(R.string.lyrics_find_missing_title),
+                    summary = stringResource(R.string.lyrics_find_missing_summary),
+                    checked = findMissingLyrics,
+                    onCheckedChange = viewModel::setFindMissingLyrics,
                 )
             }
         }

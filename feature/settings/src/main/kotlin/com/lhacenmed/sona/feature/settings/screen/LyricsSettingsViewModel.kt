@@ -2,10 +2,8 @@ package com.lhacenmed.sona.feature.settings.screen
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.lhacenmed.sona.core.common.coroutines.launchOperation
 import com.lhacenmed.sona.core.data.lyrics.DictionaryState
 import com.lhacenmed.sona.core.data.lyrics.JapaneseDictionary
-import com.lhacenmed.sona.core.data.lyrics.LyricsRepository
 import com.lhacenmed.sona.core.datastore.LyricsSettings
 import com.lhacenmed.sona.core.datastore.Setting
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,7 +17,6 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class LyricsSettingsViewModel @Inject constructor(
     private val lyricsSettings: LyricsSettings,
-    private val lyricsRepository: LyricsRepository,
     private val japaneseDictionary: JapaneseDictionary,
 ) : ViewModel() {
 
@@ -39,8 +36,7 @@ class LyricsSettingsViewModel @Inject constructor(
     val romanizeChinese: StateFlow<Boolean> = lyricsSettings.romanizeChinese.state()
     val romanizeHindi: StateFlow<Boolean> = lyricsSettings.romanizeHindi.state()
     val romanizeOtherLanguages: StateFlow<Boolean> = lyricsSettings.romanizeOtherLanguages.state()
-    val preloadQueueLyricsEnabled: StateFlow<Boolean> = lyricsSettings.preloadQueueLyricsEnabled.state()
-    val queueLyricsPreloadCount: StateFlow<Int> = lyricsSettings.queueLyricsPreloadCount.state()
+    val findMissingLyrics: StateFlow<Boolean> = lyricsSettings.findMissingLyrics.state()
 
     fun setLyricsClick(enabled: Boolean) = write { setLyricsClick(enabled) }
     fun setLyricsScroll(enabled: Boolean) = write { setLyricsScroll(enabled) }
@@ -56,17 +52,13 @@ class LyricsSettingsViewModel @Inject constructor(
     fun setRomanizeChinese(enabled: Boolean) = write { setRomanizeChinese(enabled) }
     fun setRomanizeHindi(enabled: Boolean) = write { setRomanizeHindi(enabled) }
     fun setRomanizeOtherLanguages(enabled: Boolean) = write { setRomanizeOtherLanguages(enabled) }
-    fun setPreloadQueueLyricsEnabled(enabled: Boolean) = write { setPreloadQueueLyricsEnabled(enabled) }
-    fun setQueueLyricsPreloadCount(count: Int) = write { setQueueLyricsPreloadCount(count) }
+    fun setFindMissingLyrics(enabled: Boolean) = write { setFindMissingLyrics(enabled) }
 
     fun downloadJapaneseDictionary() = japaneseDictionary.download()
     fun cancelJapaneseDictionary() = japaneseDictionary.cancel()
     fun removeJapaneseDictionary() = japaneseDictionary.remove()
 
     /** Forgets every stored and edited lyric, reporting how it went to [onFinished]. */
-    fun clearLyricsCache(onFinished: (succeeded: Boolean) -> Unit) {
-        viewModelScope.launchOperation(onFinished) { lyricsRepository.clearLyrics() }
-    }
 
     private fun write(change: suspend LyricsSettings.() -> Unit) {
         viewModelScope.launch { lyricsSettings.change() }

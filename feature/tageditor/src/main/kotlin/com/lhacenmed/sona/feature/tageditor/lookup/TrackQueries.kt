@@ -1,5 +1,9 @@
 package com.lhacenmed.sona.feature.tageditor.lookup
 
+import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.model.UnknownNames
+import java.io.File
+
 /**
  * The ways a track can be looked up, best first - YTDLnis's title parsing, turned on a library track.
  *
@@ -46,6 +50,14 @@ internal object TrackQueries {
             addAll(fromCombined(fileName))
             if (isEmpty() && title.isNotBlank()) add(query("", title))
         }.filter { it.text.isNotBlank() }.distinctBy { it.text.lowercase() }
+
+    /** Every distinct reading of [track], best first: its own names - an unknown artist as none - then its file's. */
+    fun of(track: Track): List<TrackQuery> =
+        of(
+            title = track.title,
+            artist = track.artist.takeUnless { it == UnknownNames.ARTIST }.orEmpty(),
+            fileName = File(track.path).nameWithoutExtension,
+        )
 
     /** A title cleaned of featuring credits, bracketed noise and trailing descriptions. */
     fun cleanTitle(raw: String): String {

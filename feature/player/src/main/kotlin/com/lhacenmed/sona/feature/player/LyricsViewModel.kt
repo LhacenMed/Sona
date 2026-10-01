@@ -4,12 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.lyrics.DictionaryState
 import com.lhacenmed.sona.core.data.lyrics.JapaneseDictionary
-import com.lhacenmed.sona.core.data.lyrics.LyricsRepository
-import com.lhacenmed.sona.core.database.entity.LyricsEntity
 import com.lhacenmed.sona.core.datastore.LyricsBackgroundStyle
 import com.lhacenmed.sona.core.datastore.LyricsSettings
 import com.lhacenmed.sona.core.datastore.Setting
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.tageditor.TrackTagsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
@@ -22,7 +21,7 @@ import kotlinx.coroutines.launch
 /** The lyrics sheet's lyrics and the stored settings it is drawn with. */
 @HiltViewModel
 class LyricsViewModel @Inject constructor(
-    private val lyricsRepository: LyricsRepository,
+    private val trackTagsRepository: TrackTagsRepository,
     private val lyricsSettings: LyricsSettings,
     japaneseDictionary: JapaneseDictionary,
 ) : ViewModel() {
@@ -47,15 +46,8 @@ class LyricsViewModel @Inject constructor(
     val romanizeHindi: StateFlow<Boolean> = lyricsSettings.romanizeHindi.state()
     val romanizeOtherLanguages: StateFlow<Boolean> = lyricsSettings.romanizeOtherLanguages.state()
 
-    fun lyrics(trackId: Long): Flow<LyricsEntity?> = lyricsRepository.lyrics(trackId)
-
-    fun loadLyrics(track: Track) {
-        viewModelScope.launch { lyricsRepository.loadLyrics(track) }
-    }
-
-    fun updateLyrics(trackId: Long, lyrics: String) {
-        viewModelScope.launch { lyricsRepository.updateLyrics(trackId, lyrics) }
-    }
+    /** The lyrics [track]'s file holds, read again whenever Sona writes them - blank where it holds none. */
+    fun lyrics(track: Track): Flow<String> = trackTagsRepository.lyrics(track)
 
     fun setShowLyricsPlayerControls(enabled: Boolean) {
         viewModelScope.launch { lyricsSettings.setShowLyricsPlayerControls(enabled) }

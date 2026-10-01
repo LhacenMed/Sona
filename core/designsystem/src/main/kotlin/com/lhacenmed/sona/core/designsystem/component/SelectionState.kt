@@ -1,5 +1,8 @@
 package com.lhacenmed.sona.core.designsystem.component
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Deselect
+import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -56,7 +59,19 @@ fun rememberSelectionState(): SelectionState = remember { SelectionState() }
  * what leaves the bar in its ordinary mode. Every selectable screen needs this same conversion, so
  * it lives here rather than as a null check repeated at each one.
  */
-fun SelectionState.toTopBarSelection(actions: List<TopBarAction>, onMoreOptions: () -> Unit): TopBarSelection? =
+/**
+ * Select all over [listKeys], a list's own rows: it adds them after whatever else is selected, so a selection
+ * gathered elsewhere survives it, and once every one of them is selected it deselects them instead - the one Select
+ * all every selectable list offers.
+ */
+fun SelectionState.selectAllAction(listKeys: List<Any>): TopBarAction =
+    if (listKeys.isNotEmpty() && selectedKeys.containsAll(listKeys)) {
+        TopBarAction(label = "Deselect all", icon = Icons.Filled.Deselect) { deselectAll(listKeys) }
+    } else {
+        TopBarAction(label = "Select all", icon = Icons.Filled.SelectAll) { selectAll(listKeys) }
+    }
+
+fun SelectionState.toTopBarSelection(actions: List<TopBarAction>, onMoreOptions: (() -> Unit)?): TopBarSelection? =
     if (!isActive) {
         null
     } else {

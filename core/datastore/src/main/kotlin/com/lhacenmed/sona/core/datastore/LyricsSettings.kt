@@ -5,7 +5,6 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
-import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.lhacenmed.sona.core.common.di.ApplicationScope
@@ -31,8 +30,7 @@ private val LYRICS_ROMANIZE_KOREAN = booleanPreferencesKey("lyricsRomanizeKorean
 private val LYRICS_ROMANIZE_CHINESE = booleanPreferencesKey("lyricsRomanizeChinese")
 private val LYRICS_ROMANIZE_HINDI = booleanPreferencesKey("lyricsRomanizeHindi")
 private val LYRICS_ROMANIZE_OTHER_LANGUAGES = booleanPreferencesKey("lyricsRomanizeOtherLanguages")
-private val PRELOAD_QUEUE_LYRICS_ENABLED = booleanPreferencesKey("preload_queue_lyrics_enabled")
-private val QUEUE_LYRICS_PRELOAD_COUNT = intPreferencesKey("queue_lyrics_preload_count")
+private val FIND_MISSING_LYRICS = booleanPreferencesKey("find_missing_lyrics")
 
 /**
  * How lyrics look and behave (ported from ArchiveTune's lyrics preferences, under the same keys and
@@ -125,13 +123,11 @@ class LyricsSettings @Inject constructor(
 
     suspend fun setRomanizeOtherLanguages(enabled: Boolean) = set(LYRICS_ROMANIZE_OTHER_LANGUAGES, enabled)
 
-    /** Read the lyrics of the tracks coming up next, so they are there before those tracks play. */
-    val preloadQueueLyricsEnabled: Setting<Boolean> = cache.setting { it[PRELOAD_QUEUE_LYRICS_ENABLED] ?: true }
+    /**
+     * Whether the playing track, and the ones either side of it in the queue, have lyrics looked for on the web
+     * when their files hold none - the best found written into them.
+     */
+    val findMissingLyrics: Setting<Boolean> = cache.setting { it[FIND_MISSING_LYRICS] ?: true }
 
-    suspend fun setPreloadQueueLyricsEnabled(enabled: Boolean) = set(PRELOAD_QUEUE_LYRICS_ENABLED, enabled)
-
-    /** How many upcoming tracks are preloaded, from 0 (off) to 10. */
-    val queueLyricsPreloadCount: Setting<Int> = cache.setting { it[QUEUE_LYRICS_PRELOAD_COUNT] ?: 1 }
-
-    suspend fun setQueueLyricsPreloadCount(count: Int) = set(QUEUE_LYRICS_PRELOAD_COUNT, count)
+    suspend fun setFindMissingLyrics(enabled: Boolean) = set(FIND_MISSING_LYRICS, enabled)
 }

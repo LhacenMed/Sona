@@ -1,11 +1,7 @@
 package com.lhacenmed.sona.feature.tageditor
 
-import android.app.Activity
-import android.os.Build
-import android.provider.MediaStore
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
@@ -17,11 +13,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -30,8 +30,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.lhacenmed.sona.core.common.permission.AppPermission
-import com.lhacenmed.sona.core.data.contentUri
+import androidx.lifecycle.compose.LifecycleStartEffect
 import com.lhacenmed.sona.core.designsystem.component.CoverArtDefaults
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverImage
@@ -43,6 +42,8 @@ import com.lhacenmed.sona.core.designsystem.component.section.ColumnSection
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.tageditor.lyricseditor.DiscardChangesDialog
+import com.lhacenmed.sona.feature.tageditor.lyricseditor.LyricsEditor
 import com.lhacenmed.sona.feature.tageditor.tags.CoverChoice
 import com.lhacenmed.sona.feature.tageditor.tags.TagField
 import java.io.File
@@ -54,7 +55,7 @@ import java.io.File
  * changed and searched again. What it finds fills the screen as it arrives: the best match, applied whole with
  * one press, every tag to change by hand, every cover to choose from - the gallery's included, found or not -
  * every set of lyrics every source has, and the other matches; each list narrowed to one source in a tap.
- * Nothing reaches the file until it is saved; back leaves it as it was.
+ * Nothing reaches the file until it is saved - see [rememberTrackFileSave]; back leaves it as it was.
  *
  * Saving writes the file itself. Sona does so freely where it may manage all files; elsewhere Android asks the
  * user first, once for this file - and a file MediaStore has not indexed, which Android's request cannot name,
@@ -71,55 +72,55 @@ data class TagEditorScreen(val trackId: Long) : Screen {
         )
         val track = viewModel.track
 
-        lateinit var save: () -> Unit
-        val consentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
-            if (result.resultCode == Activity.RESULT_OK) save()
-        }
-        val allFilesAccessLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-            if (AppPermission.FILE_CHANGES.isGranted(context)) save()
-        }
-        val writePermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (granted) save()
-        }
         val galleryPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
             if (uri != null) viewModel.pickDeviceCover(uri.toString())
         }
-        save = viewModel::save
         // Acted on once the save has let go of the screen - back included - so leaving it after a save gets
         // through; a save that did not succeed stays, to be tried again.
-        val saveOutcome = viewModel.saveOutcome
-        LaunchedEffect(saveOutcome) {
-            when (saveOutcome) {
-                null -> return@LaunchedEffect
-                SaveOutcome.Saved -> {
-                    context.toast("Tags saved")
-                    navigator.back()
-                }
-                is SaveOutcome.NeedsConsent -> consentLauncher.launch(IntentSenderRequest.Builder(saveOutcome.request).build())
-                is SaveOutcome.Failed -> context.toast(saveOutcome.message)
-            }
-            viewModel.onSaveOutcomeHandled()
+        val requestSave = rememberTrackFileSave(
+            track = track,
+            outcome = viewModel.saveOutcome,
+            save = viewModel::save,
+            onSaved = {
+                context.toast("Tags saved")
+                // Closed outright: going back would ask whether to leave the changes just saved.
+                navigator.close()
+            },
+            onOutcomeHandled = viewModel::onSaveOutcomeHandled,
+        )
+        LifecycleStartEffect(viewModel) {
+            val release = viewModel.holdPlayingTrack()
+            onStopOrDispose { release() }
         }
-        val requestSave: () -> Unit = {
-            val permission = AppPermission.FILE_CHANGES
-            val runtimePermission = permission.runtimePermission
-            when {
-                track == null -> Unit
-                permission.isGranted(context) -> save()
-                runtimePermission != null -> writePermissionLauncher.launch(runtimePermission)
-                track.isManuallyScanned -> allFilesAccessLauncher.launch(permission.settingsIntent(context))
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
-                    val request = MediaStore.createWriteRequest(context.contentResolver, listOf(track.contentUri))
-                    consentLauncher.launch(IntentSenderRequest.Builder(request.intentSender).build())
-                }
-                else -> save()
-            }
-        }
+        var isConfirmingDiscard by rememberSaveable { mutableStateOf(false) }
+        // Kept while the lyrics editor is over the tags, so they come back scrolled where they were left.
+        val scrollState = rememberScrollState()
 
         // The whole window held while the file is written and the library reads it back - and back with it, so
         // the save is never left halfway, with the file changed and the lists not yet showing it.
         WindowBusyOverlay(isBusy = viewModel.isSaving)
+        BackHandler(enabled = viewModel.hasChanges && !viewModel.isSaving) { isConfirmingDiscard = true }
         BackHandler(enabled = viewModel.isSaving) {}
+
+        if (isConfirmingDiscard) {
+            DiscardChangesDialog(
+                onKeepEditing = { isConfirmingDiscard = false },
+                // Closed outright: going back would only ask again.
+                onDiscard = navigator::close,
+            )
+        }
+
+        val lyricsEditor = viewModel.lyricsEditor
+        if (lyricsEditor != null) {
+            LyricsEditor(
+                state = lyricsEditor,
+                confirmAction = TopBarAction(label = "Done", icon = Icons.Filled.Check, enabled = lyricsEditor.hasChanges) {
+                    viewModel.closeLyricsEditor(kept = true)
+                },
+                onLeave = { viewModel.closeLyricsEditor(kept = false) },
+            )
+            return
+        }
 
         Column(modifier = Modifier.fillMaxSize()) {
             SonaTopAppBar(
@@ -133,7 +134,6 @@ data class TagEditorScreen(val trackId: Long) : Screen {
             )
             if (track == null) return@Column
 
-            val scrollState = rememberScrollState()
             val draft = viewModel.draft
             val best = viewModel.matches.firstOrNull()
             val cover = viewModel.cover
@@ -205,7 +205,10 @@ data class TagEditorScreen(val trackId: Long) : Screen {
                 }
 
                 HorizontalDivider()
-                ColumnSection(title = "Lyrics") {
+                ColumnSection(
+                    title = "Lyrics",
+                    actions = listOf(TopBarAction(label = "Edit lyrics", icon = Icons.Filled.Edit) { viewModel.openLyricsEditor() }),
+                ) {
                     SourceFilter(
                         sources = viewModel.lyricsSourceNames,
                         selected = viewModel.lyricsFilter,

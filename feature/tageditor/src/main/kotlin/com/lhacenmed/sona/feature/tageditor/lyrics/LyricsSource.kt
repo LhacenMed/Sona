@@ -1,6 +1,9 @@
 package com.lhacenmed.sona.feature.tageditor.lyrics
 
+import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.model.UnknownNames
 import com.lhacenmed.sona.feature.tageditor.lookup.TrackMatcher
+import com.lhacenmed.sona.feature.tageditor.lookup.TrackQueries
 import com.lhacenmed.sona.feature.tageditor.lookup.TrackQuery
 import kotlin.math.abs
 
@@ -11,6 +14,20 @@ internal data class LyricsQuery(
     val album: String?,
     val durationSeconds: Int,
 )
+
+/**
+ * What [track]'s lyrics are looked for under, unasked: the likeliest reading of its names - see [TrackQueries] - on
+ * its album, at its length. Null for a track with no name to look for.
+ */
+internal fun lyricsQueryOf(track: Track): LyricsQuery? {
+    val reading = TrackQueries.of(track).firstOrNull() ?: return null
+    return LyricsQuery(
+        title = reading.title,
+        artist = reading.artist,
+        album = track.album.takeUnless { it == UnknownNames.ALBUM },
+        durationSeconds = (track.durationMs / 1000).toInt().takeIf { it > 0 } ?: -1,
+    )
+}
 
 /**
  * One set of lyrics as a source publishes it - LRC, TTML or plain text - and how long the recording it was

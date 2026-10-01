@@ -59,7 +59,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.datastore.PlayerSliderStyle
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverImage
+import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.effect.performSonaHaptic
 import com.lhacenmed.sona.core.designsystem.motion.RubberBandSettleDurationMillis
 import com.lhacenmed.sona.core.designsystem.motion.RubberBandSettleEasing
@@ -396,6 +398,48 @@ private fun MiniPlayerTransportButton(
     }
 }
 
+/**
+ * What the mini player's seek bar stands beside: play and pause, and the screen's own [action] - the seek bar moves
+ * through the track, so it needs no skipping.
+ */
+@Composable
+private fun MiniPlayerSeekControls(
+    playback: PlaybackUiState,
+    viewModel: PlayerViewModel,
+    action: TopBarAction,
+    colors: MiniPlayerContentColors,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(MiniPlayerTransportButtonSpacing),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        MiniPlayerTransportButton(
+            iconResId = playback.playPauseIconRes(),
+            contentDescription =
+                stringResource(
+                    if (playback.hasEnded || !playback.isPlaying) R.string.player_play else R.string.player_pause,
+                ),
+            onClick = viewModel::onTogglePlayPause,
+            isPrimary = true,
+            colors = colors,
+        )
+        IconButton(
+            onClick = action.onClick,
+            shapes = iconButtonPressShapes(),
+            modifier = Modifier.size(48.dp),
+            enabled = action.enabled,
+            colors = IconButtonDefaults.iconButtonColors(
+                containerColor = colors.secondaryButtonContainer,
+                contentColor = colors.buttonIcon,
+                disabledContainerColor = Color.Transparent,
+                disabledContentColor = colors.disabledButtonIcon,
+            ),
+        ) {
+            Icon(imageVector = action.icon, contentDescription = action.label, modifier = Modifier.size(20.dp))
+        }
+    }
+}
+
 @Composable
 private fun MiniPlayerTransportControls(
     playback: PlaybackUiState,
@@ -435,6 +479,60 @@ private fun MiniPlayerTransportControls(
     }
 }
 
+/**
+ * The mini player's seek bar, as the player hands it over: where the slider is held, how it moves the track, and the
+ * [action] the screen beneath puts beside play and pause.
+ */
+internal class MiniPlayerSeekBarState(
+    val sliderPosition: Long?,
+    val onSeek: (Long) -> Unit,
+    val onSeekFinished: () -> Unit,
+    val action: TopBarAction,
+)
+
+/** How tall the mini player's slider stands, under its time, within the mini player's own height. */
+private val MiniPlayerSliderHeight = 32.dp
+
+/**
+ * Where the track is, of how long, over a slider to move through it - in [sliderStyle], as the expanded player's
+ * - in the place of the track's names.
+ */
+@Composable
+private fun RowScope.MiniPlayerSeekBar(
+    seekBar: MiniPlayerSeekBarState,
+    position: Long,
+    duration: Long,
+    isPlaying: Boolean,
+    sliderStyle: PlayerSliderStyle,
+    colors: MiniPlayerContentColors,
+) {
+    val shownPosition = seekBar.sliderPosition ?: position
+    Column(
+        modifier =
+            Modifier
+                .weight(1f)
+                .padding(horizontal = 10.dp),
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text = "${makeTimeString(shownPosition)} / ${makeTimeString(duration)}",
+            style = MaterialTheme.typography.labelMedium,
+            color = colors.secondary,
+            maxLines = 1,
+        )
+        StyledPlaybackSlider(
+            sliderStyle = sliderStyle,
+            value = shownPosition.toFloat(),
+            valueRange = 0f..duration.coerceAtLeast(1L).toFloat(),
+            onValueChange = { seekBar.onSeek(it.toLong()) },
+            onValueChangeFinished = seekBar.onSeekFinished,
+            activeColor = colors.progress,
+            isPlaying = isPlaying,
+            modifier = Modifier.fillMaxWidth().height(MiniPlayerSliderHeight),
+        )
+    }
+}
+
 @Composable
 internal fun MiniPlayerContent(
     track: Track?,
@@ -443,6 +541,8 @@ internal fun MiniPlayerContent(
     duration: Long,
     viewModel: PlayerViewModel,
     colors: MiniPlayerContentColors,
+    seekBar: MiniPlayerSeekBarState?,
+    sliderStyle: PlayerSliderStyle,
 ) {
     val progressProvider =
         remember(position, duration) {
@@ -463,19 +563,26 @@ internal fun MiniPlayerContent(
             colors = colors,
         )
 
-        if (track != null) {
-            MiniPlayerInfo(
+        when {
+            seekBar != null -> MiniPlayerSeekBar(
+                seekBar = seekBar,
+                position = position,
+                duration = duration,
+                isPlaying = playback.isPlaying,
+                sliderStyle = sliderStyle,
+                colors = colors,
+            )
+            track != null -> MiniPlayerInfo(
                 track = track,
                 colors = colors,
             )
-        } else {
-            Spacer(Modifier.weight(1f))
+            else -> Spacer(Modifier.weight(1f))
         }
 
-        MiniPlayerTransportControls(
-            playback = playback,
-            viewModel = viewModel,
-            colors = colors,
-        )
+        if (seekBar != null) {
+            MiniPlayerSeekControls(playback = playback, viewModel = viewModel, action = seekBar.action, colors = colors)
+        } else {
+            MiniPlayerTransportControls(playback = playback, viewModel = viewModel, colors = colors)
+        }
     }
 }
