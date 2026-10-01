@@ -115,6 +115,7 @@ internal fun LyricsSheetTransition(
     appearance: PlayerAppearance,
     lyricsSyncOffset: Int,
     onLyricsSyncOffsetChange: (Int) -> Unit,
+    onEditLyrics: (trackId: Long) -> Unit,
     onDismiss: () -> Unit,
     viewModel: PlayerViewModel,
     modifier: Modifier = Modifier,
@@ -164,6 +165,7 @@ internal fun LyricsSheetTransition(
                     appearance = appearance,
                     lyricsSyncOffset = lyricsSyncOffset,
                     onLyricsSyncOffsetChange = onLyricsSyncOffsetChange,
+                    onEditLyrics = onEditLyrics,
                     onBackClick = onDismiss,
                     viewModel = viewModel,
                     backHandlerEnabled = backHandlerEnabled,
@@ -185,6 +187,7 @@ private fun LyricsSheet(
     appearance: PlayerAppearance,
     lyricsSyncOffset: Int,
     onLyricsSyncOffsetChange: (Int) -> Unit,
+    onEditLyrics: (trackId: Long) -> Unit,
     onBackClick: () -> Unit,
     viewModel: PlayerViewModel,
     backHandlerEnabled: Boolean,
@@ -199,9 +202,8 @@ private fun LyricsSheet(
                 deviceMusicVolumeController.setVolumeFraction(volume)
             }
         }
-    val currentLyrics by remember(track.id) { lyricsViewModel.lyrics(track.id) }
-        .collectAsStateWithLifecycle(initialValue = null)
-    val lyrics = currentLyrics?.lyrics
+    // Null while the file is being read. Keyed by the whole track, so it is read again as the library reads it anew.
+    val lyrics by remember(track) { lyricsViewModel.lyrics(track) }.collectAsStateWithLifecycle(initialValue = null)
 
     val chosenLyricsBackground by lyricsViewModel.lyricsBackgroundStyle.collectAsStateWithLifecycle()
     val lyricsBackground = chosenLyricsBackground.resolveFor(appearance.background)
@@ -212,11 +214,6 @@ private fun LyricsSheet(
             Color.White
         }
     val showPlayerControls by lyricsViewModel.showLyricsPlayerControls.collectAsStateWithLifecycle()
-
-    LaunchedEffect(track.id, lyrics) {
-        if (currentLyrics != null) return@LaunchedEffect
-        lyricsViewModel.loadLyrics(track)
-    }
 
     var position by remember(track.id) { mutableLongStateOf(viewModel.currentPositionMs()) }
     var sliderPosition by remember(track.id) { mutableStateOf<Long?>(null) }
@@ -374,12 +371,11 @@ private fun LyricsSheet(
     if (showLyricsMenu) {
         LyricsMenuSheet(
             track = track,
-            lyrics = lyrics,
             lyricsSyncOffset = lyricsSyncOffset,
             onLyricsSyncOffsetChange = onLyricsSyncOffsetChange,
             showPlayerControls = showPlayerControls,
             onShowPlayerControlsChange = lyricsViewModel::setShowLyricsPlayerControls,
-            onEditLyrics = { lyricsViewModel.updateLyrics(track.id, it) },
+            onEditLyrics = { onEditLyrics(track.id) },
             onDismissRequest = { showLyricsMenu = false },
         )
     }

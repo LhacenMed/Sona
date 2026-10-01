@@ -10,12 +10,12 @@ import com.lhacenmed.sona.core.database.MIGRATION_8_9
 import com.lhacenmed.sona.core.database.MIGRATION_9_10
 import com.lhacenmed.sona.core.database.MIGRATION_10_11
 import com.lhacenmed.sona.core.database.MIGRATION_11_12
+import com.lhacenmed.sona.core.database.MIGRATION_12_13
 import com.lhacenmed.sona.core.database.SeedBuiltInPlaylists
 import com.lhacenmed.sona.core.database.SonaDatabase
 import com.lhacenmed.sona.core.database.dao.AlbumDao
 import com.lhacenmed.sona.core.database.dao.ArtistDao
 import com.lhacenmed.sona.core.database.dao.GenreDao
-import com.lhacenmed.sona.core.database.dao.LyricsDao
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.PlaylistDao
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
@@ -34,7 +34,7 @@ object DatabaseModule {
     @Singleton
     fun provideSonaDatabase(@ApplicationContext context: Context): SonaDatabase =
         Room.databaseBuilder(context, SonaDatabase::class.java, SonaDatabase.FILE_NAME)
-            .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
+            .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
             // Seeds Favorites on a fresh install; MIGRATION_4_5 does the same for an existing one.
             .addCallback(SeedBuiltInPlaylists)
             // Still a net for a version pair no migration covers. Real migrations take precedence
@@ -62,7 +62,4 @@ object DatabaseModule {
 
     @Provides
     fun provideQueueItemDao(database: SonaDatabase): QueueItemDao = database.queueItemDao()
-
-    @Provides
-    fun provideLyricsDao(database: SonaDatabase): LyricsDao = database.lyricsDao()
 }

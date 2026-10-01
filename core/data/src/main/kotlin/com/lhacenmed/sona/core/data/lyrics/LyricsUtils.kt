@@ -10,7 +10,6 @@ package com.lhacenmed.sona.core.data.lyrics
 import android.icu.text.Transliterator
 import android.os.Build
 import android.text.format.DateUtils
-import com.lhacenmed.sona.core.database.entity.LyricsEntity
 import java.lang.Character.UnicodeScript
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -440,7 +439,7 @@ object LyricsUtils {
         val result = mutableListOf<LyricsEntry>()
 
         for (line in lines) {
-            val entries = parseLineSyncedLrcLine(line) ?: parseMillisecondsSyncedLine(line)
+            val entries = parseSyncedLine(line)
             if (entries != null) {
                 result.addAll(entries)
             }
@@ -473,7 +472,7 @@ object LyricsUtils {
 
     fun displayLyricsText(lyrics: String): String {
         val raw = normalizeLyricsText(lyrics)
-        if (raw.isEmpty() || raw == LyricsEntity.LYRICS_NOT_FOUND) return ""
+        if (raw.isEmpty()) return ""
 
         val visibleLines =
             when {
@@ -493,11 +492,6 @@ object LyricsUtils {
     }
 
     fun hasMeaningfulLyricsContent(lyrics: String): Boolean = displayLyricsText(lyrics).isNotEmpty()
-
-    fun lyricsOrNotFound(lyrics: String): String {
-        val normalized = normalizeLyricsText(lyrics)
-        return normalized.takeIf(::hasMeaningfulLyricsContent) ?: LyricsEntity.LYRICS_NOT_FOUND
-    }
 
     private fun stripCodeFence(lyrics: String): String {
         if (!lyrics.startsWith("```")) return lyrics
@@ -579,6 +573,12 @@ object LyricsUtils {
             ),
         )
     }
+
+    /**
+     * The entries one line of synced lyrics stands for - one per time stamp it opens with, each with the line's
+     * words, word timings taken out - or null for a line that is not timed: plain text, an LRC info tag, nothing.
+     */
+    fun parseSyncedLine(line: String): List<LyricsEntry>? = parseLineSyncedLrcLine(line) ?: parseMillisecondsSyncedLine(line)
 
     private fun parseLineSyncedLrcLine(line: String): List<LyricsEntry>? {
         if (line.isEmpty()) {

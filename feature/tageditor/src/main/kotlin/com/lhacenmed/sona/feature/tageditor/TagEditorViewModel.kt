@@ -1,8 +1,5 @@
 package com.lhacenmed.sona.feature.tageditor
 
-import android.app.RecoverableSecurityException
-import android.content.IntentSender
-import android.os.Build
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -13,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.UnknownNames
+import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.tageditor.lookup.CatalogueMatch
 import com.lhacenmed.sona.feature.tageditor.lookup.TagLookup
 import com.lhacenmed.sona.feature.tageditor.lookup.TrackMatcher
@@ -21,6 +19,7 @@ import com.lhacenmed.sona.feature.tageditor.lookup.TrackQuery
 import com.lhacenmed.sona.feature.tageditor.lyrics.FoundLyrics
 import com.lhacenmed.sona.feature.tageditor.lyrics.LyricsQuery
 import com.lhacenmed.sona.feature.tageditor.lyrics.OnlineLyrics
+import com.lhacenmed.sona.feature.tageditor.lyricseditor.LyricsEditorState
 import com.lhacenmed.sona.feature.tageditor.tags.CoverChoice
 import com.lhacenmed.sona.feature.tageditor.tags.TagField
 import com.lhacenmed.sona.feature.tageditor.tags.TrackTags
@@ -28,8 +27,6 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.io.File
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -51,13 +48,6 @@ sealed interface MatchLookup {
     data object Unreachable : MatchLookup
 }
 
-/** How saving ended: done, waiting on the user to let Sona change the file, or failed. */
-sealed interface SaveOutcome {
-    data object Saved : SaveOutcome
-    data class NeedsConsent(val request: IntentSender) : SaveOutcome
-    data class Failed(val message: String) : SaveOutcome
-}
-
 /**
  * The track [trackId]'s tags as a draft that reaches its file only on [save] - AutomaTag's editor.
  *
@@ -73,7 +63,8 @@ sealed interface SaveOutcome {
 class TagEditorViewModel @AssistedInject constructor(
     @Assisted private val trackId: Long,
     libraryRepository: LibraryRepository,
-    private val tagEditorRepository: TagEditorRepository,
+    private val trackTagsRepository: TrackTagsRepository,
+    private val playbackController: PlaybackController,
 ) : ViewModel() {
 
     @AssistedFactory
@@ -157,6 +148,27 @@ class TagEditorViewModel @AssistedInject constructor(
 
     val hasChanges: Boolean get() = original.let { it != null && (it != draft || cover != CoverChoice.Own) }
 
+    /** The lyrics editor, while it is open over the tags - see [openLyricsEditor]. */
+    var lyricsEditor by mutableStateOf<LyricsEditorState?>(null)
+        private set
+
+    /** Opens the lyrics editor over the tags, on the lyrics as the draft has them - found on the web, or typed. */
+    fun openLyricsEditor() {
+        val track = track ?: return
+        lyricsEditor = LyricsEditorState(track, draft[TagField.LYRICS], playbackController, viewModelScope)
+    }
+
+    /** Closes the lyrics editor, the lyrics it ends with put into the draft where they are [kept], to be saved with the tags. */
+    fun closeLyricsEditor(kept: Boolean) {
+        val editor = lyricsEditor ?: return
+        editor.stopSearching()
+        if (kept) setField(TagField.LYRICS, editor.lyrics)
+        lyricsEditor = null
+    }
+
+    /** Has the playing track repeat while the editor is in front - see [PlaybackController.holdCurrentTrack]. */
+    fun holdPlayingTrack(): () -> Unit = playbackController.holdCurrentTrack()
+
     /**
      * The chosen [cover]'s picture, on its way from the moment it is chosen - downloaded or scaled down while
      * the rest is edited, so saving seldom waits for it. Null for the file's own.
@@ -171,15 +183,11 @@ class TagEditorViewModel @AssistedInject constructor(
             val found = libraryRepository.tracksById.map { it[trackId] }.filterNotNull().first()
             track = found
             // Read before anything can be applied over them - a matter of milliseconds, as the file is local.
-            val info = tagEditorRepository.read(found)
+            val info = trackTagsRepository.read(found)
             original = info.tags
             draft = info.tags
             bitrateKbps = info.bitrateKbps
-            val readings = TrackQueries.of(
-                title = found.title,
-                artist = found.artist.takeUnless { it == UnknownNames.ARTIST }.orEmpty(),
-                fileName = File(found.path).nameWithoutExtension,
-            )
+            val readings = TrackQueries.of(found)
             readings.firstOrNull()?.let {
                 queryArtist = it.artist
                 queryTitle = it.title
@@ -211,7 +219,7 @@ class TagEditorViewModel @AssistedInject constructor(
     fun chooseCover(choice: CoverChoice) {
         cover = choice
         preparedCover?.cancel()
-        preparedCover = if (choice == CoverChoice.Own) null else viewModelScope.async { tagEditorRepository.coverBytes(choice) }
+        preparedCover = if (choice == CoverChoice.Own) null else viewModelScope.async { trackTagsRepository.coverBytes(choice) }
     }
 
     fun pickDeviceCover(uri: String) {
@@ -248,20 +256,11 @@ class TagEditorViewModel @AssistedInject constructor(
         if (isSaving) return
         isSaving = true
         viewModelScope.launch {
-            val outcome = try {
-                tagEditorRepository.save(track, draft, preparedCover?.await())
-                SaveOutcome.Saved
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // A cover that could not be had is fetched afresh, so saving again tries it again.
-                if (preparedCover?.isCancelled == true) chooseCover(cover)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && e is RecoverableSecurityException) {
-                    SaveOutcome.NeedsConsent(e.userAction.actionIntent.intentSender)
-                } else {
-                    SaveOutcome.Failed(e.message ?: "The tags could not be saved")
-                }
+            val outcome = saveOutcomeOf("The tags could not be saved") {
+                trackTagsRepository.save(track, draft, preparedCover?.await())
             }
+            // A cover that could not be had is fetched afresh, so saving again tries it again.
+            if (outcome != SaveOutcome.Saved && preparedCover?.isCancelled == true) chooseCover(cover)
             isSaving = false
             saveOutcome = outcome
         }

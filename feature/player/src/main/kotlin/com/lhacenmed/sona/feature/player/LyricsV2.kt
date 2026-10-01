@@ -101,7 +101,6 @@ import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.providedRomanizedTextForE
 import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.romanizeLyricsLine
 import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.shouldRomanizeLyricsLine
 import com.lhacenmed.sona.core.data.lyrics.WordTimestamp
-import com.lhacenmed.sona.core.database.entity.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import com.lhacenmed.sona.core.designsystem.component.shimmer
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
@@ -167,8 +166,7 @@ private fun isRtlText(text: String): Boolean {
 /**
  * Synced lyrics with a liquid word fill, glow and bounce - ArchiveTune's `LyricsV2`.
  *
- * [lyrics] is null until the track's lyrics have been looked for, and [LYRICS_NOT_FOUND] once they
- * were looked for and there were none.
+ * [lyrics] is null while the track's file is being read, and blank where it holds none.
  */
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -231,7 +229,7 @@ internal fun LyricsV2(
 
     val entriesWithWords: List<LyricsEntry> =
         remember(lyrics) {
-            if (lyrics == null || lyrics == LYRICS_NOT_FOUND) return@remember emptyList()
+            if (lyrics.isNullOrBlank()) return@remember emptyList()
             val parsed =
                 when {
                     isTtml(lyrics) -> {

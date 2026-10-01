@@ -5,6 +5,7 @@ import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 
 /** How near a recording's length has to be to the track's for lyrics timed to it to fit - LrcLib's own margin. */
@@ -64,6 +65,16 @@ internal object OnlineLyrics {
             }
         }
     }
+
+    /**
+     * The lyrics to give a track [trackDurationMs] long unasked, once every source has answered for [query]: the
+     * first in [order] among those that can be trusted to fit it - plain, or timed to a recording not known to be of
+     * another length. Null where none can.
+     */
+    suspend fun best(query: LyricsQuery, trackDurationMs: Long): FoundLyrics? =
+        search(query).toList()
+            .filter { it.lyrics.timing == LyricsTiming.NONE || it.durationMs == null || it.fits(trackDurationMs) }
+            .minWithOrNull(order(trackDurationMs))
 
     /**
      * The order lyrics are offered in, for a track [trackDurationMs] long: word-timed before line-timed before

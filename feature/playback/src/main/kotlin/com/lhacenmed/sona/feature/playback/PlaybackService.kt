@@ -103,6 +103,10 @@ class PlaybackService : MediaSessionService() {
     // stored mode is what both the player and the notification are driven from.
     @Volatile private var repeatMode: RepeatMode = RepeatMode.OFF
 
+    // Whether a screen working on the playing track holds it, repeating whatever the stored mode - see
+    // PlaybackController.holdCurrentTrack.
+    @Volatile private var isTrackHeld = false
+
     @Volatile private var headsetAutoplayEnabled = false
 
     // Mirrored into a field because the notification is rebuilt synchronously and cannot suspend to
@@ -176,6 +180,7 @@ class PlaybackService : MediaSessionService() {
                 .add(PlaybackSessionCommands.restoreQueueItemCommand)
                 .add(PlaybackSessionCommands.removeQueueItemCommand)
                 .add(PlaybackSessionCommands.removeTracksCommand)
+                .add(PlaybackSessionCommands.holdTrackCommand)
                 .build()
             return MediaSession.ConnectionResult.accept(
                 sessionCommands,
@@ -225,6 +230,11 @@ class PlaybackService : MediaSessionService() {
 
                 PlaybackSessionCommands.ACTION_REMOVE_TRACKS ->
                     removeTracks(args.getLongArray(PlaybackSessionCommands.EXTRA_TRACK_IDS) ?: LongArray(0))
+
+                PlaybackSessionCommands.ACTION_HOLD_TRACK -> {
+                    isTrackHeld = args.getBoolean(PlaybackSessionCommands.EXTRA_HOLD)
+                    applyRepeatMode(repeatMode)
+                }
 
                 else -> return super.onCustomCommand(session, controller, customCommand, args)
             }
@@ -564,11 +574,11 @@ class PlaybackService : MediaSessionService() {
      *
      * `pauseAtEndOfMediaItems` is what separates "repeat this track" from "play it once more, then
      * stop" - media3 already knows how to pause at the end of an item, so unlike the reference app
-     * this needs no hand-written seek-and-pause when the track comes round.
+     * this needs no hand-written seek-and-pause when the track comes round. A held track repeats whatever the mode.
      */
     private fun applyRepeatMode(mode: RepeatMode) {
-        exoPlayer.repeatMode = mode.toPlayerRepeatMode()
-        exoPlayer.pauseAtEndOfMediaItems = mode.stopsAfterCurrentTrack()
+        exoPlayer.repeatMode = if (isTrackHeld) Player.REPEAT_MODE_ONE else mode.toPlayerRepeatMode()
+        exoPlayer.pauseAtEndOfMediaItems = !isTrackHeld && mode.stopsAfterCurrentTrack()
     }
 
     private fun registerHeadsetReceiver() {

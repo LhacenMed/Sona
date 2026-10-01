@@ -31,6 +31,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.lhacenmed.sona.core.datastore.PlayerAppearance
 import com.lhacenmed.sona.core.datastore.PlayerBackgroundStyle
+import com.lhacenmed.sona.core.designsystem.component.MiniPlayerSeekBarRequests
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.SleepTimerState
 import com.lhacenmed.sona.feature.player.background.PlayerBackground
@@ -70,9 +71,11 @@ internal fun BottomSheetPlayer(
     appearance: PlayerAppearance,
     sleepTimer: SleepTimerState,
     viewModel: PlayerViewModel,
+    miniPlayerSeekBarRequests: MiniPlayerSeekBarRequests,
     onGoToAlbum: (Long) -> Unit,
     onGoToArtist: (Long) -> Unit,
     onOpenEqualizer: () -> Unit,
+    onEditLyrics: (trackId: Long) -> Unit,
     trackOptionsSheet: @Composable (track: Track, onDismissRequest: () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -151,6 +154,19 @@ internal fun BottomSheetPlayer(
         if (state.isExpanded) {
             focusRequester.requestFocus()
         }
+    }
+
+    // Both the expanded player's seek bar and the mini player's move through the track this way.
+    val onSliderValueChange: (Long) -> Unit = {
+        isUserSeeking = true
+        sliderPosition = it
+    }
+    val onSliderValueChangeFinished: () -> Unit = {
+        sliderPosition?.let {
+            viewModel.onSeek(it)
+            position = it
+        }
+        isUserSeeking = false
     }
 
     BottomSheet(
@@ -244,6 +260,14 @@ internal fun BottomSheetPlayer(
                 duration = duration,
                 appearance = appearance,
                 viewModel = viewModel,
+                seekBar = miniPlayerSeekBarRequests.action?.let { action ->
+                    MiniPlayerSeekBarState(
+                        sliderPosition = sliderPosition,
+                        onSeek = onSliderValueChange,
+                        onSeekFinished = onSliderValueChangeFinished,
+                        action = action,
+                    )
+                },
             )
         },
     ) {
@@ -256,18 +280,6 @@ internal fun BottomSheetPlayer(
             ),
             customBackground = appearance.customBackground,
         )
-
-        val onSliderValueChange: (Long) -> Unit = {
-            isUserSeeking = true
-            sliderPosition = it
-        }
-        val onSliderValueChangeFinished: () -> Unit = {
-            sliderPosition?.let {
-                viewModel.onSeek(it)
-                position = it
-            }
-            isUserSeeking = false
-        }
 
         if (track != null) {
             val titleActions = rememberPlayerTitleActions(track, state, onGoToAlbum, onGoToArtist)
@@ -323,6 +335,7 @@ internal fun BottomSheetPlayer(
                 appearance = appearance,
                 lyricsSyncOffset = lyricsSyncOffset,
                 onLyricsSyncOffsetChange = { lyricsSyncOffset = it },
+                onEditLyrics = onEditLyrics,
                 onDismiss = { isLyricsSheetVisible = false },
                 viewModel = viewModel,
             )

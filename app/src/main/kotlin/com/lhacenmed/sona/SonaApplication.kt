@@ -13,6 +13,7 @@ import com.lhacenmed.sona.core.datastore.SettingsLoader
 import com.lhacenmed.sona.core.datastore.UpdateSettings
 import com.lhacenmed.sona.core.designsystem.component.cover.MediaThumbnailFetcher
 import com.lhacenmed.sona.core.designsystem.effect.SonaEffects
+import com.lhacenmed.sona.feature.tageditor.lyrics.MissingLyricsFinder
 import com.lhacenmed.sona.feature.update.UpdateMonitor
 import com.lhacenmed.sona.feature.update.notification.UpdateNotifier
 import dagger.hilt.android.HiltAndroidApp
@@ -28,9 +29,13 @@ class SonaApplication : Application(), SingletonImageLoader.Factory {
     @Inject
     lateinit var settingsLoader: SettingsLoader
 
-    // A Provider, so constructing the repository is not part of Hilt's own graph setup.
+    // Providers, for what reads settings as it is built - the repository, and everything built on it: Hilt injects
+    // these fields before onCreate has loaded the settings, so each is built only when asked for, after that.
     @Inject
     lateinit var libraryRepository: Provider<LibraryRepository>
+
+    @Inject
+    lateinit var missingLyricsFinder: Provider<MissingLyricsFinder>
 
     @Inject
     @ApplicationScope
@@ -72,6 +77,8 @@ class SonaApplication : Application(), SingletonImageLoader.Factory {
         // Updates are looked for from here on, whichever activity is open: what the last session left is
         // put back first, so its prompt is there again even offline - see UpdateMonitor.
         updateMonitor.start()
+        // The tracks around the one playing are given the lyrics their files lack, whichever screen is open.
+        missingLyricsFinder.get().start()
         // The background update check runs exactly while its notifications are on.
         applicationScope.launch { updateSettings.notifications.flow.collect { UpdateNotifier.follow(this@SonaApplication, it) } }
         // The launcher shortcut is named and drawn for how quick play plays, so it follows that as it changes.

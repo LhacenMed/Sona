@@ -242,6 +242,13 @@ val MIGRATION_11_12 = object : Migration(11, 12) {
     }
 }
 
+/** Lyrics are read from each file's tags as they are wanted, and written into them; none are kept here any more. */
+val MIGRATION_12_13 = object : Migration(12, 13) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("DROP TABLE IF EXISTS `lyrics`")
+    }
+}
+
 /**
  * Makes sure Favorites exists, every time the database is opened.
  *

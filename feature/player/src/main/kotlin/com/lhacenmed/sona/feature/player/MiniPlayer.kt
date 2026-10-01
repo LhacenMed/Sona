@@ -26,6 +26,10 @@ import kotlin.math.roundToInt
  * The collapsed player: artwork ringed by progress, title and artist, and transport buttons, over the
  * background [appearance] chooses. Swiping it sideways changes track, while [appearance] allows it.
  * Ported from ArchiveTune's `MiniPlayer`.
+ *
+ * Given a [seekBar] - while the screen beneath asks for it, see `ShowMiniPlayerSeekBar` - it shows where the
+ * track is and a slider to move through it in place of the names, at the same height, and holds still under
+ * the finger rather than swiping to another track.
  */
 @Composable
 internal fun MiniPlayer(
@@ -35,6 +39,7 @@ internal fun MiniPlayer(
     duration: Long,
     appearance: PlayerAppearance,
     viewModel: PlayerViewModel,
+    seekBar: MiniPlayerSeekBarState?,
     modifier: Modifier = Modifier,
 ) {
     val layoutDirection = LocalLayoutDirection.current
@@ -50,7 +55,7 @@ internal fun MiniPlayer(
     SwipeableMiniPlayerBox(
         hasPreviousTrack = playback.hasPreviousTrack,
         hasNextTrack = playback.hasNextTrack,
-        swipeEnabled = appearance.swipeToChangeTrack,
+        swipeEnabled = appearance.swipeToChangeTrack && seekBar == null,
         onSwipeToPrevious = viewModel::onSkipToPreviousTrack,
         onSwipeToNext = viewModel::onSkipNext,
         layoutDirection = layoutDirection,
@@ -77,6 +82,8 @@ internal fun MiniPlayer(
                 duration = duration,
                 viewModel = viewModel,
                 colors = contentColors,
+                seekBar = seekBar,
+                sliderStyle = appearance.sliderStyle,
             )
         }
     }

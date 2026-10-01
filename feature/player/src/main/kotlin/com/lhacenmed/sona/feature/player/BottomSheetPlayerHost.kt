@@ -12,12 +12,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
-import com.lhacenmed.sona.core.designsystem.component.LocalPlayerSheetHeight
-import com.lhacenmed.sona.core.designsystem.component.PlayerSheetHeight
-import com.lhacenmed.sona.core.model.Track
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
+import com.lhacenmed.sona.core.designsystem.component.LocalMiniPlayerSeekBarRequests
+import com.lhacenmed.sona.core.designsystem.component.LocalPlayerSheetHeight
+import com.lhacenmed.sona.core.designsystem.component.MiniPlayerSeekBarRequests
+import com.lhacenmed.sona.core.designsystem.component.PlayerSheetHeight
+import com.lhacenmed.sona.core.model.Track
 
 /**
  * The player an activity lays over its content: a mini player along the bottom that expands into the
@@ -36,6 +38,7 @@ fun BottomSheetPlayerHost(
     onGoToAlbum: (Long) -> Unit,
     onGoToArtist: (Long) -> Unit,
     onOpenEqualizer: () -> Unit,
+    onEditLyrics: (trackId: Long) -> Unit,
     trackOptionsSheet: @Composable (track: Track, onDismissRequest: () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PlayerViewModel = hiltViewModel(),
@@ -72,12 +75,14 @@ fun BottomSheetPlayerHost(
 
         // Read by the screen where it lays out or draws, so following every frame of a drag recomposes nothing.
         val sheetHeight = remember(state) { PlayerSheetHeight(current = { state.value }, collapsed = state.collapsedBound) }
+        val miniPlayerSeekBarRequests = remember { MiniPlayerSeekBarRequests() }
 
         // Held clear whether or not a track is loaded, so a list's end stays where it is as the mini
         // player comes and goes rather than jumping under it.
         CompositionLocalProvider(
             LocalBottomContentPadding provides miniPlayerClearance + MiniPlayerContentSpacing,
             LocalPlayerSheetHeight provides sheetHeight,
+            LocalMiniPlayerSeekBarRequests provides miniPlayerSeekBarRequests,
         ) {
             content()
         }
@@ -88,9 +93,11 @@ fun BottomSheetPlayerHost(
             appearance = appearance,
             sleepTimer = sleepTimer,
             viewModel = viewModel,
+            miniPlayerSeekBarRequests = miniPlayerSeekBarRequests,
             onGoToAlbum = onGoToAlbum,
             onGoToArtist = onGoToArtist,
             onOpenEqualizer = onOpenEqualizer,
+            onEditLyrics = onEditLyrics,
             trackOptionsSheet = trackOptionsSheet,
         )
     }
