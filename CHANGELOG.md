@@ -6,6 +6,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.6.3] - 2026-10-01
+
+### Added
+
+- A synced lyrics editor - time each line as it is sung, nudge or type its time, and bring lyrics in from the web, the clipboard or a file.
+- Find missing lyrics - the playing, next and previous tracks get lyrics from the web written into their files when they have none.
+
+### Changed
+
+- Lyrics are read from and saved into each file, so they are the same wherever the file plays.
+
+### Fixed
+
+- Tapping outside a dialog closes it.
+- Pressing an option in a dialog highlights the whole width of the dialog.
+
+### Removed
+
+- The lyrics cache and queue lyrics preloading, with their settings.
+
 ## [1.6.2] - 2026-10-01
 
 ### Added
