@@ -6,6 +6,42 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.6.2] - 2026-10-01
+
+### Added
+
+- Add multiple new online lyrics sources.
+- Add video library support to music player.
+- Show all videos as a flat list in the Videos tab.
+- Pick excluded folders from library, not the system picker.
+- Quick play - the library button and the launcher shortcut play one chosen source, shuffled or in order, and a long press on the button plays another.
+- A Custom lyrics sync offset, typed in exact milliseconds.
+- A spinner covers the screen while tags are saved, and the editor closes once they are.
+
+### Changed
+
+- Use Android's cached video thumbnails instead of decoding frames.
+- Remove sticky header pinning from section components.
+- Every setting's chooser lists the option it starts at first, as Default.
+- Settings that only apply while another is set some way stay on screen, faded, instead of disappearing.
+- Repeat, shuffle and favorite are offered to every media control - the notification, the system's media controls, a car or a watch.
+- The lyrics menu looks and behaves like every other options sheet.
+- Saving tags is much faster, and a chosen cover downloads while you edit.
+
+### Fixed
+
+- On a detail screen with only a few tracks, dragging anywhere below them opens and collapses the header.
+- Each track shows its own cover, and a cover changed in a file shows at once.
+- Artists whose tracks sit on another artist's album are listed under their own name.
+- Album years match their tracks' tags and follow every change to them.
+- Saving the tags of the playing track no longer stops playback.
+- The notification and lock screen show a track's new tags as soon as they are saved.
+- Tags written into MP4 and M4A files named as another format now reach the file, and a file damaged that way is repaired on its next save.
+
+### Removed
+
+- The player button colours setting.
+
 ## [1.6.1] - 2026-09-28
 
 ### Added
