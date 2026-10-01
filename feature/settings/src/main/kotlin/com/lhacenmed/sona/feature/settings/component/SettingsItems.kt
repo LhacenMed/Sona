@@ -329,8 +329,8 @@ private fun settingsRowColors(enabled: Boolean): ListItemColors {
  * A row whose value is one of a fixed set, shown beneath the title and picked from a dialog.
  *
  * The chosen option is the summary, so the row answers "what is this set to" without being opened -
- * which is the whole reason a settings list is worth scrolling. It starts at [selectedIndex], which is
- * so its default.
+ * which is the whole reason a settings list is worth scrolling. It starts at [selectedIndex]; options go by
+ * their names, but for a look's, where [defaultIndex] is Default - see the stored one's.
  */
 @Composable
 fun SettingsChoiceItem(
@@ -338,6 +338,7 @@ fun SettingsChoiceItem(
     options: List<String>,
     modifier: Modifier = Modifier,
     selectedIndex: Int = 0,
+    defaultIndex: Int? = null,
     icon: ImageVector? = null,
 ) {
     var selected by remember { mutableIntStateOf(selectedIndex) }
@@ -345,7 +346,7 @@ fun SettingsChoiceItem(
 
     ListItem(
         headlineContent = { Text(title) },
-        supportingContent = { Text(if (selected == selectedIndex) settingsDefaultLabel() else options[selected]) },
+        supportingContent = { Text(if (selected == defaultIndex) settingsDefaultLabel() else options[selected]) },
         leadingContent = icon?.let { { SettingsLeadingIcon(rememberVectorPainter(it)) } },
         modifier = modifier.clickable { isChoosing = true },
     )
@@ -355,7 +356,7 @@ fun SettingsChoiceItem(
             title = title,
             options = options,
             selectedIndex = selected,
-            defaultIndex = selectedIndex,
+            defaultIndex = defaultIndex,
             onSelect = {
                 selected = it
                 isChoosing = false
@@ -366,19 +367,20 @@ fun SettingsChoiceItem(
 }
 
 /**
- * A row whose stored value is one of a fixed set, picked from a dialog, where the option at
- * [defaultIndex] - the one the setting starts at - is Default. [summary], when given, says what it is set
- * to where the chosen option alone would say too little. While not [enabled], it still says so, faded
- * and inert.
+ * A row whose stored value is one of a fixed set, picked from a dialog. Each option goes by its own name,
+ * which says what the setting does - Shuffle, Stable. Only a look, whose starting option is Sona's own and
+ * has no better name, gives [defaultIndex]: that option is then named Default, and listed first. [summary],
+ * when given, says what it is set to where the chosen option alone would say too little. While not
+ * [enabled], it still says so, faded and inert.
  */
 @Composable
 fun SettingsChoiceItem(
     title: String,
     options: List<String>,
     selectedIndex: Int,
-    defaultIndex: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    defaultIndex: Int? = null,
     summary: String? = null,
     enabled: Boolean = true,
 ) {

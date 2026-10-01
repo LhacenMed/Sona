@@ -91,7 +91,6 @@ data object AppearanceScreen : Screen {
                     title = stringResource(R.string.theme_title),
                     options = ThemeMode.entries.map { themeModeLabel(it) },
                     selectedIndex = theme.mode.ordinal,
-                    defaultIndex = ThemeMode.Default.ordinal,
                     onSelect = { viewModel.setThemeMode(ThemeMode.entries[it]) },
                 )
                 // ArchiveTune's: only a dark theme has surfaces to turn black.
@@ -136,6 +135,7 @@ data object AppearanceScreen : Screen {
                         stringResource(R.string.app_icon_original),
                         stringResource(R.string.app_icon_monochrome),
                     ),
+                    defaultIndex = 0,
                 )
                 SettingsChoiceItem(
                     title = stringResource(R.string.font_title),
