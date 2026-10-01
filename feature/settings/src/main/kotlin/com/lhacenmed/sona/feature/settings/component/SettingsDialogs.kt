@@ -16,8 +16,8 @@ import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialogOption
 import com.lhacenmed.sona.feature.settings.R
 
 /**
- * The chooser behind a [SettingsChoiceItem]: the option at [defaultIndex] - what the setting starts at -
- * first, named Default, and the rest after it in their own order.
+ * The chooser behind a [SettingsChoiceItem]: every option by its name, in its own order - or, for a look,
+ * the option at [defaultIndex], Sona's own, first and named Default, and the rest after it.
  *
  * Picking an option is the whole interaction, so there is no confirm button - only a way out.
  */
@@ -26,14 +26,14 @@ internal fun SettingsChoiceDialog(
     title: String,
     options: List<String>,
     selectedIndex: Int,
-    defaultIndex: Int,
+    defaultIndex: Int?,
     onSelect: (Int) -> Unit,
     onDismiss: () -> Unit,
 ) {
     // Read here rather than inside the group: a group builds its items outside composition.
     val cancelLabel = stringResource(R.string.dialog_cancel)
     val defaultLabel = settingsDefaultLabel()
-    val order = remember(options.size, defaultIndex) { listOf(defaultIndex) + options.indices.filter { it != defaultIndex } }
+    val order = remember(options.size, defaultIndex) { listOfNotNull(defaultIndex) + options.indices.filter { it != defaultIndex } }
 
     SonaDialog(
         onDismissRequest = onDismiss,
@@ -52,7 +52,7 @@ internal fun SettingsChoiceDialog(
     }
 }
 
-/** What every chooser calls the option its setting starts at, whatever that option is. */
+/** What a look's chooser calls Sona's own look, whatever it is - see [SettingsChoiceDialog]. */
 @Composable
 internal fun settingsDefaultLabel(): String = stringResource(R.string.settings_option_default)
 

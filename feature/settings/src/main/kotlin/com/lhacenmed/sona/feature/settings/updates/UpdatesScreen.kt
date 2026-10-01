@@ -139,7 +139,6 @@ data object UpdatesScreen : Screen {
                     title = stringResource(R.string.updates_channel_title),
                     options = UpdateChannel.entries.map { stringResource(channelLabelRes(it)) },
                     selectedIndex = channel.ordinal,
-                    defaultIndex = UpdateChannel.Default.ordinal,
                     onSelect = { index ->
                         val chosen = UpdateChannel.entries[index]
                         // Beta is agreed to before it is chosen; going back to Stable needs no warning.

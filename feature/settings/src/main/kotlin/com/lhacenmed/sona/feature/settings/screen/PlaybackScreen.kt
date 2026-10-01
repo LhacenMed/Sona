@@ -136,7 +136,6 @@ data class PlaybackScreen(val scrollTo: PlaybackSetting? = null) : Screen {
                     title = stringResource(R.string.quick_play_mode_title),
                     options = QuickPlayMode.entries.map { it.label() },
                     selectedIndex = quickPlayMode.ordinal,
-                    defaultIndex = QuickPlayMode.Default.ordinal,
                     onSelect = { viewModel.setQuickPlayMode(QuickPlayMode.entries[it]) },
                 )
                 QuickPlaySourceItem(
@@ -240,7 +239,6 @@ private fun QuickPlaySourceItem(
             is QuickPlaySource.Collection -> source.parent.quickPlaySourceKind?.let { directSources.size + kinds.indexOf(it) } ?: 0
             else -> directSources.indexOf(source)
         },
-        defaultIndex = directSources.indexOf(QuickPlaySource.AllTracks),
         onSelect = { index ->
             if (index < directSources.size) onChoose(directSources[index].parent) else onChooseKind(kinds[index - directSources.size])
         },

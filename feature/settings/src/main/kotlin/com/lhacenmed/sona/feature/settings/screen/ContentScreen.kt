@@ -80,7 +80,6 @@ data object ContentScreen : Screen {
                         stringResource(R.string.album_covers_as_is),
                     ),
                     selectedIndex = coverMode.ordinal,
-                    defaultIndex = CoverMode.Default.ordinal,
                     onSelect = { viewModel.setCoverMode(CoverMode.entries[it]) },
                 )
                 SettingsSwitchItem(
