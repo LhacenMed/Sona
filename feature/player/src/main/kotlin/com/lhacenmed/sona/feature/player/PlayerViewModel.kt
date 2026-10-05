@@ -22,13 +22,23 @@ import com.lhacenmed.sona.feature.playback.SleepTimerState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
+
+/**
+ * How long a track must keep loading before the player says so. A local file loads in a moment, and a
+ * loader shown at once flashed on every skip; one that takes longer than this still shows it - the delay
+ * Android's `ContentLoadingProgressBar` waits.
+ */
+private const val LoaderDelayMillis = 500L
 
 /**
  * Playback resolved against the library, for the mini player, the full player and its queue.
@@ -37,7 +47,10 @@ import kotlinx.coroutines.launch
  * in it, or -1 while nothing is playing.
  */
 data class PlayerUiState(
-    /** The playback state, save for its position - read that through [PlayerViewModel.currentPositionMs]. */
+    /**
+     * The playback state, save for its position - read that through [PlayerViewModel.currentPositionMs] -
+     * and buffering only once it has lasted [LoaderDelayMillis], so every loader the player draws waits alike.
+     */
     val playback: PlaybackUiState = PlaybackUiState(),
     val currentTrack: Track? = null,
     val queue: List<QueueTrack> = emptyList(),
@@ -68,9 +81,23 @@ class PlayerViewModel @Inject constructor(
     // player far closer than that, reading it straight through [currentPositionMs]. Carried in, every
     // tick would rebuild the state and recompose the player and every row of the queue - under a
     // reorder drag included, where a list rebuilt twice a second is what the drag stutters against.
-    private val steadyPlaybackState = playbackController.playbackState
-        .map { it.withoutPosition() }
+    // Buffering, as the loaders show it: only once it has lasted [LoaderDelayMillis]. Not buffering is told
+    // at once - first thing, so the state below is never held up waiting for the delay.
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val isLoaderShown = playbackController.playbackState
+        .map { it.isBuffering }
         .distinctUntilChanged()
+        .transformLatest { isBuffering ->
+            if (isBuffering) {
+                emit(false)
+                delay(LoaderDelayMillis)
+            }
+            emit(isBuffering)
+        }
+
+    private val steadyPlaybackState = combine(playbackController.playbackState, isLoaderShown) { playback, isLoaderShown ->
+        playback.withoutPosition().copy(isBuffering = isLoaderShown)
+    }.distinctUntilChanged()
 
     // Narrowed to the queue itself, so it is not resolved again for a queue that has not changed.
     private val queue = combine(
@@ -91,7 +118,7 @@ class PlayerViewModel @Inject constructor(
     ).stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
-        playbackController.playbackState.value.withoutPosition().let { playback ->
+        playbackController.playbackState.value.withoutPosition().copy(isBuffering = false).let { playback ->
             resolveUiState(
                 playback = playback,
                 queue = resolveQueue(playback.queue, repository.tracksById.value),

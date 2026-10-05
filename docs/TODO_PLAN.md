@@ -173,9 +173,12 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 - [ ] **5.4 Apply Material "expressive" animated styling to player buttons**
   Player control buttons (and the player UI generally) should animate: extending in size and changing corner radius on press.
 
-- [ ] **5.5 Delay the mini player's loader instead of showing it instantly when skipping**
+- [x] **5.5 Delay the mini player's loader instead of showing it instantly when skipping**
   Delay the loader in the mini player's cover and on the pause/resume button when skipping next/back. Don't drop it — only delay it, so it still appears when a track takes longer to load.
   - Tracks are local, so the loader currently flashes visible for a split second on every skip.
+  - Every loader in the player reads `playback.isBuffering` from `PlayerUiState`: the mini player's cover ring, the full player's play button, and the lyrics sheet's. So the delay is applied once, where that state is built (`PlayerViewModel.isLoaderShown`), and every loader waits the same.
+  - Buffering is shown only once it has lasted 500&nbsp;ms, the delay Android's `ContentLoadingProgressBar` waits. A local skip finishes well inside that and shows nothing; a slower load still shows its loader. The end of buffering is passed on at once.
+  - The full player's own loader while the seek bar is being dragged is not buffering and is unchanged.
 
 - [ ] **5.6 Merge the lyrics sheet background into the player sheet background system**
   - Make the player sheet background and the lyrics sheet background the same.
