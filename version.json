@@ -1,6 +1,6 @@
 {
-  "versionCode": 106039000,
-  "versionName": "1.6.3",
-  "apkUrl": "https://github.com/LhacenMed/Sona/releases/download/v1.6.3/sona-1.6.3-release-universal.apk",
-  "notes": "### Added\n\n- A synced lyrics editor - time each line as it is sung, nudge or type its time, and bring lyrics in from the web, the clipboard or a file.\n- Find missing lyrics - the playing, next and previous tracks get lyrics from the web written into their files when they have none.\n\n### Changed\n\n- Lyrics are read from and saved into each file, so they are the same wherever the file plays.\n\n### Fixed\n\n- Tapping outside a dialog closes it.\n- Pressing an option in a dialog highlights the whole width of the dialog.\n\n### Removed\n\n- The lyrics cache and queue lyrics preloading, with their settings."
+  "versionCode": 106049000,
+  "versionName": "1.6.4",
+  "apkUrl": "https://github.com/LhacenMed/Sona/releases/download/v1.6.4/sona-1.6.4-release-universal.apk",
+  "notes": "### Added\n\n- A rebuilt equalizer - a sound shaping switch, basic and advanced controls, bass boost, virtualizer, output gain with automatic headroom, and profiles to save, share and import.\n- Open the system equalizer from the equalizer screen.\n\n### Changed\n\n- Sound shaping starts off - turn it on in the equalizer. A curve tuned before is kept.\n- The lyrics sheet is drawn over the player's own background.\n- Custom is listed last among the player backgrounds.\n- Only appearance choices mark their starting option as Default.\n\n### Fixed\n\n- The library updates as soon as you return to the app, with or without a track playing.\n- The queue opens at the playing track, however it is opened.\n- Skipping tracks no longer flashes a loader.\n\n### Removed\n\n- The lyrics background setting."
 }

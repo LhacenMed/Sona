@@ -6,6 +6,23 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.6.4] - 2026-10-05
+
+### Added
+
+- Rebuild the equalizer to match ArchiveTune exactly.
+
+### Changed
+
+- Restrict "Default" option label to appearance choices.
+- Merge the lyrics sheet background into the player's.
+
+### Fixed
+
+- Refresh the library immediately on return to foreground.
+- Open the queue sheet already scrolled to the current track.
+- Delay the loader shown while skipping tracks.
+
 ## [1.6.3] - 2026-10-01
 
 ### Added
