@@ -35,6 +35,11 @@ Ordered from most to least critical. Every entry describes **what** is broken or
   - Watching starts with the first scan request — only ever made with the permission granted — and lasts the process.
   - Scan requests are queued instead of dropped: one made mid-scan used to vanish (excluding a folder during the launch scan did nothing until the next launch); now it runs once the current scan ends, and any made meanwhile merge into it as the widest asked for.
 
+- [ ] **1.5 Fix the library refreshing late after returning from the background with nothing playing**
+  Sona updates the library live while it is open in the foreground. But when it is left in the background while tracks' metadata is edited, or tracks are renamed or deleted elsewhere, the library takes 5 to 10 seconds to refresh after returning to the app.
+  - This only happens when no track is playing or paused. With a track playing or paused, the library updates live as soon as the app is re-entered.
+  - The refresh on return should be as immediate with no track loaded as it is with one.
+
 ---
 
 ## Priority 2 — Critical: Core Playback & List Interaction Bugs
@@ -82,6 +87,9 @@ Ordered from most to least critical. Every entry describes **what** is broken or
   - The host now reads the target (`isDismissedOrDismissing`, alongside `isExpandedOrExpanding`), as Auxio's `tryShowSheets`/`tryHideAllSheets` read `targetState`. So a track that arrives mid-slide always brings the sheet back.
   - "Not known yet" is no longer read as "none". `PlaybackUiState.isReady` turns true once the controller has connected and any saved queue is back. `PlayerUiState.isResolved` also waits for the library. Until both are loaded the sheet stays where the restored activity left it, so there's no dismiss-and-return flicker.
   - The mini player is still dismissed only when the queue is emptied: by swiping it down (stop and clear) or by the player dropping the queue. Auxio behaves the same way. Its bar hides only when the song becomes null, and dragging can't hide it (`isHideableWhenDragging() = false`).
+
+- [ ] **2.7 Fix the queue sheet's button press and drag scroll behaving differently**
+  Pressing the queue sheet's button and dragging the sheet scroll it differently; make the two behave the same.
 
 ---
 
@@ -160,6 +168,18 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 - [ ] **5.4 Apply Material "expressive" animated styling to player buttons**
   Player control buttons (and the player UI generally) should animate: extending in size and changing corner radius on press.
 
+- [ ] **5.5 Delay the mini player's loader instead of showing it instantly when skipping**
+  Delay the loader in the mini player's cover and on the pause/resume button when skipping next/back. Don't drop it — only delay it, so it still appears when a track takes longer to load.
+  - Tracks are local, so the loader currently flashes visible for a split second on every skip.
+
+- [ ] **5.6 Merge the lyrics sheet background into the player sheet background system**
+  - Make the player sheet background and the lyrics sheet background the same.
+  - Drop the lyrics background preference and merge it into the player background system.
+  - In the player sheet's background selection dialog, "Custom" is listed as the third option; make it the last.
+
+- [ ] **5.7 Rebuild the equalizer to match ArchiveTune exactly**
+  Improve the equalizer by cloning it exactly from ArchiveTune.
+
 ---
 
 ## Priority 6 — Browsing & List Navigation Features
@@ -192,6 +212,10 @@ Ordered from most to least critical. Every entry describes **what** is broken or
   Currently only tracks can be liked/favorited. Extend favoriting to Artists, Albums, Genres, and Folders collections as well, alongside the existing liked-tracks feature.
   - Add top tabs to the favorites area, similar to the tabs already used in the main activity, so each favorited collection type has its own tab.
   - *Under consideration:* a grid-style listing for favorited Artists/Albums, similar to the grid layout used in the Samsung Music app — flagged as an idea to explore, not a firm requirement.
+
+- [ ] **6.10 Unify the FAB system and make it scroll to the playing track**
+  - Unify the FAB system across the custom color palette screens.
+  - Integrate the FAB to scroll to the playing track when it is in the list and the list is already scrolled to the top.
 
 ---
 
@@ -241,4 +265,40 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 
 ---
 
-**Total: 46 items** across bug fixes, flow fixes, visual fixes, player polish, and new features.
+## Priority 10 — Sorting System
+
+- [ ] **10.1 Redesign the sort sheet so it fits every case dynamically**
+  When a collection has custom sorting, opening the sort sheet currently shows no sorting option selected and the Direction options disabled, while the "apply to" options are not disabled. Improve the sort sheet's logic and behavior to fit every possible case dynamically and globally, with solid system design.
+  - Design it clean, smart, simple and logical in UI/UX, and easy to interact with — with default options where needed, and preference options added to the settings system.
+  - It should do exactly what is wanted.
+
+- [ ] **10.2 Send items added to a custom-sorted collection to the bottom**
+  When a collection has been custom sorted by dragging its items, items added to it later automatically go to the bottom.
+  - Make sure every collection type has the same exact system: playlists, folders, albums, artists...
+
+- [ ] **10.3 Allow custom ordering combined with a sort option**
+  Sometimes a collection (favorites, for example) should be customized by dragging while it is also set to a sorting option at the same time — for example kept sorted by adding time, so future tracks follow that sort.
+
+---
+
+## Priority 11 — Downloads, Video Player & Private Storage
+
+- [ ] **11.1 Clone Seal's downloading system, combined with some YTDLnis features**
+  Clone the exact Seal downloading system with a combination of some features from YTDLnis. It should support the exact same fast download sheets from Seal, with improvements.
+  - *Note: the original request ends at "should support." with nothing after it — needs clarification on what else it should support.*
+
+- [ ] **11.2 Add a video player cloned from PLAYit, with a private audio/video folder system**
+  - Clone the video player from PLAYit.
+  - Best high-privacy audio/video private folder system, not easily reachable from external storage (may be stored in app data).
+
+---
+
+## Priority 12 — Backup & Sync
+
+- [ ] **12.1 Back up media, app settings, playlists and data to the cloud**
+  Back up media, app settings, playlists, data... to the cloud dynamically and for free.
+  - Let the user choose between Google Drive, GitHub or another cloud storage provider.
+
+---
+
+**Total: 58 items** across bug fixes, flow fixes, visual fixes, player polish, and new features.
