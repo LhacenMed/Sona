@@ -91,8 +91,10 @@ Ordered from most to least critical. Every entry describes **what** is broken or
   - "Not known yet" is no longer read as "none". `PlaybackUiState.isReady` turns true once the controller has connected and any saved queue is back. `PlayerUiState.isResolved` also waits for the library. Until both are loaded the sheet stays where the restored activity left it, so there's no dismiss-and-return flicker.
   - The mini player is still dismissed only when the queue is emptied: by swiping it down (stop and clear) or by the player dropping the queue. Auxio behaves the same way. Its bar hides only when the song becomes null, and dragging can't hide it (`isHideableWhenDragging() = false`).
 
-- [ ] **2.7 Fix the queue sheet's button press and drag scroll behaving differently**
+- [x] **2.7 Fix the queue sheet's button press and drag scroll behaving differently**
   Pressing the queue sheet's button and dragging the sheet scroll it differently; make the two behave the same.
+  - **Cause:** the queue's list is composed only while the sheet is open, so every opening builds it afresh, at its top. The button raised a "scroll to the current track" flag and a `LaunchedEffect` scrolled there once the sheet had left collapsed. A drag never raised the flag, and neither did a swipe up over the player; only the very first opening of a process had it set by default.
+  - The list now starts at the track playing (`rememberLazyListState(initialFirstVisibleItemIndex = currentQueueIndex)`). Since it is built on every opening, every way of opening it — the button, a drag of the bar, a swipe up over the player — lands there, already in place on its first frame rather than scrolled after it. The flag and the effect are gone.
 
 ---
 

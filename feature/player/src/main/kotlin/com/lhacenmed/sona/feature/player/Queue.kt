@@ -114,11 +114,9 @@ internal fun Queue(
         }
     }
 
-    var scrollToCurrentRequested by remember { mutableStateOf(true) }
     val openQueue =
         remember(playerBottomSheetState, state) {
             {
-                scrollToCurrentRequested = true
                 if (!playerBottomSheetState.isExpandedOrExpanding) {
                     playerBottomSheetState.expandSoft()
                 }
@@ -195,7 +193,10 @@ internal fun Queue(
                 }
         }
 
-        val lazyListState = rememberLazyListState()
+        // The list is composed afresh each time the sheet opens - it leaves with the sheet collapsed - so
+        // starting it at the track playing opens it there however it was opened: the bar's button, a drag
+        // of the bar, or a swipe up over the player. It is first in view, rows being places in the queue.
+        val lazyListState = rememberLazyListState(initialFirstVisibleItemIndex = uiState.currentQueueIndex.coerceAtLeast(0))
         // A drag down with the list already at its top closes the sheet, wherever on the list it
         // starts - swiping a row away is a horizontal gesture, and moving one starts on its handle,
         // so neither can claim a vertical drag of the list first.
@@ -245,16 +246,6 @@ internal fun Queue(
         // The player's answer - or any other change to the queue - takes over from an arranged order.
         LaunchedEffect(queue) {
             if (!reorderableState.isAnyItemDragging) arrangedQueue = null
-        }
-
-        LaunchedEffect(state.isCollapsed, scrollToCurrentRequested, currentPlayingKey) {
-            if (!state.isCollapsed && scrollToCurrentRequested && currentPlayingKey != null) {
-                val index = rows.indexOfFirst { it.entry.key == currentPlayingKey }
-                if (index != -1) {
-                    lazyListState.scrollToItem(index)
-                    scrollToCurrentRequested = false
-                }
-            }
         }
 
         Box(
