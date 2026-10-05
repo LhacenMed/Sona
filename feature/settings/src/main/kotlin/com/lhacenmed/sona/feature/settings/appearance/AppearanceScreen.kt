@@ -17,7 +17,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.datastore.CustomFont
-import com.lhacenmed.sona.core.datastore.LyricsBackgroundStyle
 import com.lhacenmed.sona.core.datastore.MiniPlayerBackgroundStyle
 import com.lhacenmed.sona.core.datastore.PlayerBackgroundStyle
 import com.lhacenmed.sona.core.datastore.PlayerStyle
@@ -49,13 +48,6 @@ private val playerBackgroundOptions = PlayerBackgroundStyle.entries.filter {
     it != PlayerBackgroundStyle.BLUR || Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 }
 
-/** The lyrics backgrounds on offer - the custom one is the player's, followed rather than chosen. */
-private val lyricsBackgroundOptions = listOf(
-    LyricsBackgroundStyle.BLURRED_COVER,
-    LyricsBackgroundStyle.FOLLOW_THEME,
-    LyricsBackgroundStyle.COLORING,
-)
-
 /** How the app looks: its theme and colours, its typeface, the player, and how it moves. */
 data object AppearanceScreen : Screen {
     override val titleRes: Int get() = R.string.appearance_title
@@ -67,7 +59,6 @@ data object AppearanceScreen : Screen {
         val viewModel: AppearanceSettingsViewModel = hiltViewModel()
         val theme by viewModel.theme.collectAsStateWithLifecycle()
         val player by viewModel.player.collectAsStateWithLifecycle()
-        val chosenLyricsBackground by viewModel.lyricsBackground.collectAsStateWithLifecycle()
         val roundMode by viewModel.roundMode.collectAsStateWithLifecycle()
         val disableAnimations by viewModel.disableAnimations.collectAsStateWithLifecycle()
         val forceHighRefreshRate by viewModel.forceHighRefreshRate.collectAsStateWithLifecycle()
@@ -77,7 +68,6 @@ data object AppearanceScreen : Screen {
         // What each colour switch stands for right now: dynamic colours are both at once, and hold both.
         val usesWallpaperColors = hasWallpaperColors && (theme.dynamicColors || theme.wallpaperColors)
         val usesCoverColors = theme.dynamicColors || theme.coverColors
-        val lyricsBackground = chosenLyricsBackground.resolveFor(player.background)
 
         val customFontPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri == null) return@rememberLauncherForActivityResult
@@ -185,16 +175,6 @@ data object AppearanceScreen : Screen {
                     summary = stringResource(R.string.customized_background_summary),
                     onClick = { navigator.go(CustomBackgroundScreen) },
                     enabled = player.background == PlayerBackgroundStyle.CUSTOM,
-                )
-                // Shows the player's custom image while the player has one, and waits for it to go.
-                SettingsChoiceItem(
-                    title = stringResource(R.string.lyrics_background_style_title),
-                    options = lyricsBackgroundOptions.map { lyricsBackgroundLabel(it) },
-                    selectedIndex = lyricsBackgroundOptions.indexOf(chosenLyricsBackground).coerceAtLeast(0),
-                    defaultIndex = lyricsBackgroundOptions.indexOf(LyricsBackgroundStyle.Default),
-                    onSelect = { viewModel.setLyricsBackground(lyricsBackgroundOptions[it]) },
-                    summary = if (lyricsBackground == LyricsBackgroundStyle.CUSTOM) lyricsBackgroundLabel(lyricsBackground) else null,
-                    enabled = player.background != PlayerBackgroundStyle.CUSTOM,
                 )
                 SettingsChoiceItem(
                     title = stringResource(R.string.mini_player_background_title),
@@ -315,23 +295,12 @@ private fun playerBackgroundLabel(style: PlayerBackgroundStyle): String =
         when (style) {
             PlayerBackgroundStyle.FOLLOW_THEME -> R.string.background_follow_theme
             PlayerBackgroundStyle.GRADIENT -> R.string.background_gradient
-            PlayerBackgroundStyle.CUSTOM -> R.string.background_custom
             PlayerBackgroundStyle.BLUR -> R.string.background_blur
             PlayerBackgroundStyle.COLORING -> R.string.background_coloring
             PlayerBackgroundStyle.BLUR_GRADIENT -> R.string.background_blur_gradient
             PlayerBackgroundStyle.GLOW -> R.string.background_glow
             PlayerBackgroundStyle.GLOW_ANIMATED -> R.string.background_glow_animated
-        },
-    )
-
-@Composable
-private fun lyricsBackgroundLabel(style: LyricsBackgroundStyle): String =
-    stringResource(
-        when (style) {
-            LyricsBackgroundStyle.BLURRED_COVER -> R.string.lyrics_background_blurred_cover
-            LyricsBackgroundStyle.FOLLOW_THEME -> R.string.background_follow_theme
-            LyricsBackgroundStyle.COLORING -> R.string.background_coloring
-            LyricsBackgroundStyle.CUSTOM -> R.string.background_custom
+            PlayerBackgroundStyle.CUSTOM -> R.string.background_custom
         },
     )
 

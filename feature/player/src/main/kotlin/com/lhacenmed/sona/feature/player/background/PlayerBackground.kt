@@ -46,22 +46,31 @@ private const val GlowCycleMillis = 20_000
 /** The near-black the glows are drawn over. */
 private val GlowBase = Color(0xFF050505)
 
+/** The backgrounds drawn in the cover's colours - ArchiveTune extracts them for these alone. */
+private val CoverColoredBackgrounds = setOf(
+    PlayerBackgroundStyle.GRADIENT,
+    PlayerBackgroundStyle.COLORING,
+    PlayerBackgroundStyle.BLUR_GRADIENT,
+    PlayerBackgroundStyle.GLOW,
+    PlayerBackgroundStyle.GLOW_ANIMATED,
+)
+
 /**
- * What the expanded player - and the lyrics sheet, for its coloring and custom styles - is drawn over:
- * ArchiveTune's `PlayerBackground`. [PlayerBackgroundStyle.FOLLOW_THEME] draws nothing, leaving the theme's
- * own surface the sheet is.
+ * What the expanded player and its lyrics sheet are drawn over - one background for both: ArchiveTune's
+ * `PlayerBackground`. [PlayerBackgroundStyle.FOLLOW_THEME] draws nothing, leaving the theme's own surface
+ * the sheet is.
  *
- * [gradientColors] are the cover's - see [rememberCoverGradientColors]. Every style fades from one cover
- * to the next.
+ * The styles in the cover's colours read them through [rememberCoverGradientColors]. Every style fades from
+ * one cover to the next.
  */
 @Composable
 internal fun PlayerBackground(
     style: PlayerBackgroundStyle,
     coverArtUri: String?,
-    gradientColors: List<Color>,
     customBackground: CustomBackground,
     modifier: Modifier = Modifier,
 ) {
+    val gradientColors = rememberCoverGradientColors(coverArtUri, enabled = style in CoverColoredBackgrounds)
     Box(modifier = modifier.fillMaxSize()) {
         when (style) {
             PlayerBackgroundStyle.FOLLOW_THEME -> Unit
@@ -154,7 +163,7 @@ private fun GradientBackground(gradientColors: List<Color>) {
 
 /** The cover's dominant colour, darkened down the player. */
 @Composable
-internal fun ColoringBackground(gradientColors: List<Color>) {
+private fun ColoringBackground(gradientColors: List<Color>) {
     AnimatedContent(
         targetState = gradientColors,
         transitionSpec = { fadeIn(tween(CrossfadeMillis)) togetherWith fadeOut(tween(CrossfadeMillis)) },
@@ -177,7 +186,7 @@ internal fun ColoringBackground(gradientColors: List<Color>) {
 
 /** The user's own image, adjusted as they set it - see [CustomBackground]. */
 @Composable
-internal fun CustomImageBackground(customBackground: CustomBackground) {
+private fun CustomImageBackground(customBackground: CustomBackground) {
     AnimatedContent(
         targetState = customBackground.imageUri,
         transitionSpec = { fadeIn(tween(CrossfadeMillis)) togetherWith fadeOut(tween(CrossfadeMillis)) },

@@ -231,8 +231,6 @@
     <string name="lyrics_text_size_title">Lyrics text size</string>
     <string name="lyrics_line_spacing_title">Lyrics line spacing</string>
     <string name="lyrics_line_spacing_format">%.1fx</string>
-    <string name="lyrics_background_style_title">Lyrics background style</string>
-    <string name="lyrics_background_blurred_cover">Blurred cover</string>
     <string name="lyrics_show_player_controls_title">Show player controls</string>
     <string name="lyrics_show_player_controls_summary">Keep playback controls beneath the lyrics</string>
     <string name="lyrics_romanization_section">Romanization</string>

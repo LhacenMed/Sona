@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.lyrics.DictionaryState
 import com.lhacenmed.sona.core.data.lyrics.JapaneseDictionary
-import com.lhacenmed.sona.core.datastore.LyricsBackgroundStyle
 import com.lhacenmed.sona.core.datastore.LyricsSettings
 import com.lhacenmed.sona.core.datastore.Setting
 import com.lhacenmed.sona.core.model.Track
@@ -31,7 +30,6 @@ class LyricsViewModel @Inject constructor(
     val lyricsTextSize: StateFlow<Float> = lyricsSettings.lyricsTextSize.state()
     val lyricsLineSpacing: StateFlow<Float> = lyricsSettings.lyricsLineSpacing.state()
     val lyricsLineBlur: StateFlow<Boolean> = lyricsSettings.lyricsLineBlur.state()
-    val lyricsBackgroundStyle: StateFlow<LyricsBackgroundStyle> = lyricsSettings.lyricsBackgroundStyle.state()
     val showLyricsPlayerControls: StateFlow<Boolean> = lyricsSettings.showLyricsPlayerControls.state()
     val bounceFactor: StateFlow<Float> = lyricsSettings.bounceFactor.state()
     val glowFactor: StateFlow<Float> = lyricsSettings.glowFactor.state()

@@ -5,7 +5,6 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
-import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -20,7 +19,6 @@ private val LYRICS_SCROLL = booleanPreferencesKey("lyricsScrollKey")
 private val LYRICS_TEXT_SIZE = floatPreferencesKey("lyricsTextSize")
 private val LYRICS_LINE_SPACING = floatPreferencesKey("lyricsLineSpacing")
 private val LYRICS_LINE_BLUR = booleanPreferencesKey("lyricsLineBlur")
-private val LYRICS_BACKGROUND_STYLE = stringPreferencesKey("lyricsBackgroundStyle")
 private val SHOW_LYRICS_PLAYER_CONTROLS = booleanPreferencesKey("showLyricsPlayerControls")
 private val LYRICS_V2_BOUNCE_FACTOR = floatPreferencesKey("lyricsV2BounceFactor")
 private val LYRICS_V2_GLOW_FACTOR = floatPreferencesKey("lyricsV2GlowFactor")
@@ -73,15 +71,6 @@ class LyricsSettings @Inject constructor(
     val lyricsLineBlur: Setting<Boolean> = cache.setting { it[LYRICS_LINE_BLUR] ?: true }
 
     suspend fun setLyricsLineBlur(enabled: Boolean) = set(LYRICS_LINE_BLUR, enabled)
-
-    val lyricsBackgroundStyle: Setting<LyricsBackgroundStyle> = cache.setting { preferences ->
-        preferences[LYRICS_BACKGROUND_STYLE]?.let { name ->
-            // The blurred cover's name while it was the default - kept as what was chosen, not the default now.
-            if (name == "DEFAULT") LyricsBackgroundStyle.BLURRED_COVER else runCatching { LyricsBackgroundStyle.valueOf(name) }.getOrNull()
-        } ?: LyricsBackgroundStyle.Default
-    }
-
-    suspend fun setLyricsBackgroundStyle(style: LyricsBackgroundStyle) = set(LYRICS_BACKGROUND_STYLE, style.name)
 
     val showLyricsPlayerControls: Setting<Boolean> = cache.setting { it[SHOW_LYRICS_PLAYER_CONTROLS] ?: true }
 

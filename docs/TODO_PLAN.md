@@ -180,10 +180,13 @@ Ordered from most to least critical. Every entry describes **what** is broken or
   - Buffering is shown only once it has lasted 500&nbsp;ms, the delay Android's `ContentLoadingProgressBar` waits. A local skip finishes well inside that and shows nothing; a slower load still shows its loader. The end of buffering is passed on at once.
   - The full player's own loader while the seek bar is being dragged is not buffering and is unchanged.
 
-- [ ] **5.6 Merge the lyrics sheet background into the player sheet background system**
+- [x] **5.6 Merge the lyrics sheet background into the player sheet background system**
   - Make the player sheet background and the lyrics sheet background the same.
   - Drop the lyrics background preference and merge it into the player background system.
   - In the player sheet's background selection dialog, "Custom" is listed as the third option; make it the last.
+  - The lyrics sheet draws `PlayerBackground` with the player's style, over the player's sheet colour and in the player's content colours, so the two sheets are always the same. `PlayerBackground` now reads the cover's colours itself, for the styles drawn in them, so neither sheet repeats that.
+  - Deleted: `LyricsBackgroundStyle`, its setting and its row in Appearance, the lyrics sheet's own backgrounds (`LyricsSheetBackground`, the Apple Music–style blurred cover) and their strings. The stored `lyricsBackgroundStyle` value is no longer read; the lyrics now follow the player's background, whatever was chosen for them before.
+  - `CUSTOM` is the last of `PlayerBackgroundStyle`, so it is listed last. Styles are stored by name, so no stored choice changes.
 
 - [ ] **5.7 Rebuild the equalizer to match ArchiveTune exactly**
   Improve the equalizer by cloning it exactly from ArchiveTune.

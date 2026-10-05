@@ -4,14 +4,9 @@ package com.lhacenmed.sona.feature.player
 
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -53,10 +48,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -83,23 +75,14 @@ import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.pillShape
 import com.lhacenmed.sona.core.designsystem.theme.roundedShape
 import coil3.compose.AsyncImage
-import com.lhacenmed.sona.core.datastore.CustomBackground
-import com.lhacenmed.sona.core.datastore.LyricsBackgroundStyle
 import com.lhacenmed.sona.core.datastore.PlayerAppearance
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
-import com.lhacenmed.sona.feature.player.background.ColoringBackground
-import com.lhacenmed.sona.feature.player.background.CustomImageBackground
-import com.lhacenmed.sona.feature.player.background.rememberCoverGradientColors
+import com.lhacenmed.sona.feature.player.background.PlayerBackground
+import com.lhacenmed.sona.feature.player.background.playerColors
+import com.lhacenmed.sona.feature.player.style.sheetColor
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-
-private val AppleMusicFallbackGradient =
-    listOf(
-        Color(0xFF202020),
-        Color(0xFF141414),
-        Color(0xFF050505),
-    )
 
 /**
  * Grows the lyrics sheet up out of the player and shrinks it back down - ArchiveTune's
@@ -205,22 +188,12 @@ private fun LyricsSheet(
     // Null while the file is being read. Keyed by the whole track, so it is read again as the library reads it anew.
     val lyrics by remember(track) { lyricsViewModel.lyrics(track) }.collectAsStateWithLifecycle(initialValue = null)
 
-    val chosenLyricsBackground by lyricsViewModel.lyricsBackgroundStyle.collectAsStateWithLifecycle()
-    val lyricsBackground = chosenLyricsBackground.resolveFor(appearance.background)
-    val foregroundColor =
-        if (lyricsBackground == LyricsBackgroundStyle.FOLLOW_THEME) {
-            MaterialTheme.colorScheme.onSurface
-        } else {
-            Color.White
-        }
+    // Drawn in the player's colours, over the player's own background.
+    val foregroundColor = playerColors(appearance.background).content
     val showPlayerControls by lyricsViewModel.showLyricsPlayerControls.collectAsStateWithLifecycle()
 
     var position by remember(track.id) { mutableLongStateOf(viewModel.currentPositionMs()) }
     var sliderPosition by remember(track.id) { mutableStateOf<Long?>(null) }
-    val gradientColors = rememberCoverGradientColors(
-        coverArtUri = track.coverArtUri,
-        enabled = lyricsBackground == LyricsBackgroundStyle.BLURRED_COVER || lyricsBackground == LyricsBackgroundStyle.COLORING,
-    ).ifEmpty { AppleMusicFallbackGradient }
 
     // Followed only while the activity is started, as the player's own position is.
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -292,11 +265,11 @@ private fun LyricsSheet(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        LyricsSheetBackground(
-            style = lyricsBackground,
+        PlayerBackground(
+            style = appearance.background,
             coverArtUri = track.coverArtUri,
-            gradientColors = gradientColors,
             customBackground = appearance.customBackground,
+            modifier = Modifier.background(appearance.style.sheetColor()),
         )
 
         Box(
@@ -395,115 +368,6 @@ private fun Modifier.consumeUnhandledPointerInput(): Modifier =
             }
         }
     }
-
-@Composable
-private fun LyricsSheetBackground(
-    style: LyricsBackgroundStyle,
-    coverArtUri: String?,
-    gradientColors: List<Color>,
-    customBackground: CustomBackground,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .background(
-                    if (style == LyricsBackgroundStyle.FOLLOW_THEME) {
-                        MaterialTheme.colorScheme.surface
-                    } else {
-                        Color.Black
-                    },
-                ),
-    ) {
-        when (style) {
-            LyricsBackgroundStyle.BLURRED_COVER -> {
-                AppleMusicBackground(
-                    coverArtUri = coverArtUri,
-                    gradientColors = gradientColors,
-                )
-            }
-
-            LyricsBackgroundStyle.FOLLOW_THEME -> Unit
-
-            LyricsBackgroundStyle.COLORING -> ColoringBackground(gradientColors)
-
-            LyricsBackgroundStyle.CUSTOM -> CustomImageBackground(customBackground)
-        }
-    }
-}
-
-@Composable
-private fun AppleMusicBackground(
-    coverArtUri: String?,
-    gradientColors: List<Color>,
-    modifier: Modifier = Modifier,
-) {
-    val colors = gradientColors.ifEmpty { AppleMusicFallbackGradient }
-    val backgroundBrush =
-        remember(colors) {
-            Brush.verticalGradient(
-                listOf(
-                    colors.getOrElse(0) { AppleMusicFallbackGradient[0] }.copy(alpha = 0.88f),
-                    colors.getOrElse(1) { AppleMusicFallbackGradient[1] }.copy(alpha = 0.76f),
-                    colors.getOrElse(2) { AppleMusicFallbackGradient[2] }.copy(alpha = 0.96f),
-                ),
-            )
-        }
-    val bottomScrim =
-        remember {
-            Brush.verticalGradient(
-                listOf(
-                    Color.Transparent,
-                    Color.Black.copy(alpha = 0.28f),
-                ),
-            )
-        }
-
-    Box(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .background(AppleMusicFallbackGradient.last()),
-    ) {
-        AnimatedContent(
-            targetState = coverArtUri,
-            transitionSpec = { fadeIn(tween(700)) togetherWith fadeOut(tween(700)) },
-            label = "lyrics-apple-background",
-        ) { artworkUri ->
-            if (artworkUri != null) {
-                AsyncImage(
-                    model = artworkUri,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .blur(46.dp)
-                            .alpha(0.62f),
-                )
-            }
-        }
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .background(backgroundBrush),
-        )
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.18f)),
-        )
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .background(bottomScrim),
-        )
-    }
-}
 
 @Composable
 private fun AppleMusicGrabber(

@@ -30,13 +30,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.lhacenmed.sona.core.datastore.PlayerAppearance
-import com.lhacenmed.sona.core.datastore.PlayerBackgroundStyle
 import com.lhacenmed.sona.core.designsystem.component.MiniPlayerSeekBarRequests
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.SleepTimerState
 import com.lhacenmed.sona.feature.player.background.PlayerBackground
 import com.lhacenmed.sona.feature.player.background.playerColors
-import com.lhacenmed.sona.feature.player.background.rememberCoverGradientColors
 import com.lhacenmed.sona.feature.player.style.ExpandedPlayer
 import com.lhacenmed.sona.feature.player.style.sheetColor
 import kotlin.math.abs
@@ -47,15 +45,6 @@ private const val SeekbarSettleToleranceMs = 1_500L
 private const val PositionPollIntervalMs = 100L
 private const val KeyboardSeekStepMs = 5_000L
 private const val KeyboardVolumeStep = 0.05f
-
-/** The backgrounds drawn in the cover's colours - ArchiveTune extracts them for these alone. */
-private val CoverColoredBackgrounds = setOf(
-    PlayerBackgroundStyle.GRADIENT,
-    PlayerBackgroundStyle.COLORING,
-    PlayerBackgroundStyle.BLUR_GRADIENT,
-    PlayerBackgroundStyle.GLOW,
-    PlayerBackgroundStyle.GLOW_ANIMATED,
-)
 
 /**
  * The full player: the mini player as the sheet's collapsed content, expanding into the chosen player
@@ -274,10 +263,6 @@ internal fun BottomSheetPlayer(
         PlayerBackground(
             style = appearance.background,
             coverArtUri = track?.coverArtUri,
-            gradientColors = rememberCoverGradientColors(
-                coverArtUri = track?.coverArtUri,
-                enabled = appearance.background in CoverColoredBackgrounds,
-            ),
             customBackground = appearance.customBackground,
         )
 

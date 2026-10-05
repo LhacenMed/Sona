@@ -4,8 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.datastore.CustomFont
 import com.lhacenmed.sona.core.datastore.EffectSettings
-import com.lhacenmed.sona.core.datastore.LyricsBackgroundStyle
-import com.lhacenmed.sona.core.datastore.LyricsSettings
 import com.lhacenmed.sona.core.datastore.MiniPlayerBackgroundStyle
 import com.lhacenmed.sona.core.datastore.PlayerAppearance
 import com.lhacenmed.sona.core.datastore.PlayerBackgroundStyle
@@ -30,13 +28,11 @@ import kotlinx.coroutines.launch
 class AppearanceSettingsViewModel @Inject constructor(
     private val themeSettings: ThemeSettings,
     private val playerStyleSettings: PlayerStyleSettings,
-    private val lyricsSettings: LyricsSettings,
     private val effectSettings: EffectSettings,
 ) : ViewModel() {
 
     val theme: StateFlow<ThemeChoices> = themeSettings.choices.stateIn(viewModelScope)
     val player: StateFlow<PlayerAppearance> = playerStyleSettings.appearance.stateIn(viewModelScope)
-    val lyricsBackground: StateFlow<LyricsBackgroundStyle> = lyricsSettings.lyricsBackgroundStyle.stateIn(viewModelScope)
     val roundMode: StateFlow<Boolean> = themeSettings.roundMode.stateIn(viewModelScope)
     val disableAnimations: StateFlow<Boolean> = effectSettings.disableAnimations.stateIn(viewModelScope)
     val forceHighRefreshRate: StateFlow<Boolean> = effectSettings.forceHighRefreshRate.stateIn(viewModelScope)
@@ -58,7 +54,6 @@ class AppearanceSettingsViewModel @Inject constructor(
     fun setPlayerStyle(style: PlayerStyle) = write { playerStyleSettings.setStyle(style) }
     fun setSliderStyle(style: PlayerSliderStyle) = write { playerStyleSettings.setSliderStyle(style) }
     fun setPlayerBackground(style: PlayerBackgroundStyle) = write { playerStyleSettings.setBackground(style) }
-    fun setLyricsBackground(style: LyricsBackgroundStyle) = write { lyricsSettings.setLyricsBackgroundStyle(style) }
     fun setMiniPlayerBackground(style: MiniPlayerBackgroundStyle) =
         write { playerStyleSettings.setMiniPlayerBackground(style) }
     fun setHideThumbnail(enabled: Boolean) = write { playerStyleSettings.setHideThumbnail(enabled) }
