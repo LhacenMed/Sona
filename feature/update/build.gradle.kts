@@ -36,8 +36,6 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
 
     implementation(libs.androidx.lifecycle.runtime.compose)
-    // What tells the update monitor whether the app is in the foreground.
-    implementation(libs.androidx.lifecycle.process)
 
     implementation(libs.kotlinx.coroutines.android)
 

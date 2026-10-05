@@ -5,6 +5,7 @@ import android.os.Build
 import com.lhacenmed.sona.core.common.cover.rankedCoverArtUris
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.common.di.IoDispatcher
+import com.lhacenmed.sona.core.common.lifecycle.isAppInForeground
 import com.lhacenmed.sona.core.data.LibraryWriter
 import com.lhacenmed.sona.core.data.SyncStats
 import com.lhacenmed.sona.core.database.dao.TrackDao
@@ -33,13 +34,18 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.consumeEach
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.dropWhile
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -85,6 +91,10 @@ private enum class ScanKind {
  * Once the first scan is requested, the library also follows the device live: every change
  * MediaStore reports ([MediaStoreChangeObserver]) is a [ScanKind.REFRESH] - MediaStore re-read and
  * diffed, without walking storage again - so a download appears without a relaunch or a rescan.
+ * So is every return to the foreground: a process in the background is frozen once nothing keeps it
+ * alive - nothing playing - and MediaStore's reports wait until it thaws, arriving seconds late and
+ * piecemeal. Re-reading on return makes the library current at once, playing or not; when nothing
+ * changed meanwhile, the signature check makes it cost one counter read.
  *
  * Requests are queued, not dropped: one arriving mid-scan runs once that scan ends, and any number
  * arriving meanwhile collapse into that one, as the widest of them. Scans are serialised by a
@@ -128,13 +138,15 @@ class MediaScanner @Inject constructor(
     private val scanWakeups = Channel<Unit>(Channel.CONFLATED)
 
     /**
-     * Follows MediaStore for as long as the process lives. Lazy, because watching - like scanning -
-     * needs the permission the first [requestScan] is only ever made with.
+     * Follows MediaStore, and catches up on every return to the foreground, for as long as the
+     * process lives. Lazy, because watching - like scanning - needs the permission the first
+     * [requestScan] is only ever made with.
      */
     private val changeWatch = appScope.launch(start = CoroutineStart.LAZY) {
-        mediaStoreChangeObserver.changes
-            .debounce(CHANGE_SETTLE_MS)
-            .collect { enqueue(ScanKind.REFRESH) }
+        merge(
+            mediaStoreChangeObserver.changes.debounce(CHANGE_SETTLE_MS),
+            returnsToForeground(),
+        ).collect { enqueue(ScanKind.REFRESH) }
     }
 
     init {
@@ -185,6 +197,17 @@ class MediaScanner @Inject constructor(
         libraryWriter.deleteTracks(trackIds)
         enqueue(ScanKind.REFRESH)
     }
+
+    /**
+     * Every time the app comes back to the foreground - not the first time it gets there, which is the
+     * launch [requestScan] already scans for.
+     */
+    private fun returnsToForeground(): Flow<Unit> =
+        isAppInForeground()
+            .dropWhile { !it }
+            .drop(1)
+            .filter { it }
+            .map { }
 
     private fun enqueue(kind: ScanKind) {
         pendingScan.getAndUpdate { pending -> if (pending == null || kind > pending) kind else pending }

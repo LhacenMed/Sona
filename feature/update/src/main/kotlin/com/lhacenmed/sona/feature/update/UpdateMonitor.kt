@@ -1,9 +1,8 @@
 package com.lhacenmed.sona.feature.update
 
 import android.content.Context
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.ProcessLifecycleOwner
 import com.lhacenmed.sona.core.common.di.ApplicationScope
+import com.lhacenmed.sona.core.common.lifecycle.isAppInForeground
 import com.lhacenmed.sona.core.common.network.NetworkMonitor
 import com.lhacenmed.sona.core.datastore.UpdateChannel
 import com.lhacenmed.sona.core.datastore.UpdateSettings
@@ -19,7 +18,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -67,7 +65,7 @@ class UpdateMonitor @Inject constructor(
             if (!context.installedBuild().isUpdatable) return@launch
             restore(updateSettings.channel.value)
             launch { updateSettings.channel.flow.drop(1).collect { offerKept(it) } }
-            combine(isForeground(), networkMonitor.isOnline, updateSettings.channel.flow) { isForeground, isOnline, channel ->
+            combine(isAppInForeground(), networkMonitor.isOnline, updateSettings.channel.flow) { isForeground, isOnline, channel ->
                 channel.takeIf { isForeground && isOnline }
             }
                 .distinctUntilChanged()
@@ -126,11 +124,6 @@ class UpdateMonitor @Inject constructor(
         UpdateRegistry.setLatest(latest)
         if (!UpdateRegistry.holdsDownload) UpdateRegistry.setAvailable(latest?.takeIf { UpdateChecker.isUpdate(context, it) })
     }
-
-    private fun isForeground() =
-        ProcessLifecycleOwner.get().lifecycle.currentStateFlow
-            .map { it.isAtLeast(Lifecycle.State.STARTED) }
-            .distinctUntilChanged()
 
     private companion object {
         /** How often an app left open looks again. */

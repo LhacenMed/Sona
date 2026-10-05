@@ -23,6 +23,7 @@ dependencies {
     ksp(libs.hilt.compiler)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.process)
 }
 
 kotlin {

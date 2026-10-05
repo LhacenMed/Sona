@@ -35,10 +35,13 @@ Ordered from most to least critical. Every entry describes **what** is broken or
   - Watching starts with the first scan request — only ever made with the permission granted — and lasts the process.
   - Scan requests are queued instead of dropped: one made mid-scan used to vanish (excluding a folder during the launch scan did nothing until the next launch); now it runs once the current scan ends, and any made meanwhile merge into it as the widest asked for.
 
-- [ ] **1.5 Fix the library refreshing late after returning from the background with nothing playing**
+- [x] **1.5 Fix the library refreshing late after returning from the background with nothing playing**
   Sona updates the library live while it is open in the foreground. But when it is left in the background while tracks' metadata is edited, or tracks are renamed or deleted elsewhere, the library takes 5 to 10 seconds to refresh after returning to the app.
   - This only happens when no track is playing or paused. With a track playing or paused, the library updates live as soon as the app is re-entered.
   - The refresh on return should be as immediate with no track loaded as it is with one.
+  - **Cause:** the cached apps freezer. With nothing loaded, no service holds the process up, so about 10&nbsp;s after leaving the app it is cached and frozen. MediaStore's change reports to a frozen process wait until it thaws, and then arrive late and piecemeal, which was the 5–10&nbsp;s. While playing or paused, the playback service keeps the process unfrozen, so the reports arrive live.
+  - Every return to the foreground is now a refresh of its own (`MediaScanner.returnsToForeground`), merged into the same queue as MediaStore's reports. The first time the app reaches the foreground is not counted, because launch already scans. When nothing changed meanwhile, the scan signature skips it, so a return costs one generation read. The late reports that follow are skipped the same way.
+  - Whether the app is in the foreground is now read in one place, `isAppInForeground()` (`core:common`), shared with `UpdateMonitor`, which had its own copy.
 
 ---
 
