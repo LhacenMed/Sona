@@ -1,143 +1,195 @@
 package com.lhacenmed.sona.feature.playback
 
+import android.content.Context
+import android.content.Intent
+import android.media.audiofx.AudioEffect
+import android.media.audiofx.BassBoost
 import android.media.audiofx.Equalizer
+import android.media.audiofx.LoudnessEnhancer
+import android.media.audiofx.Virtualizer
 import com.lhacenmed.sona.core.common.di.ApplicationScope
+import com.lhacenmed.sona.core.datastore.EqualizerChoices
+import com.lhacenmed.sona.core.datastore.EqualizerSelection
 import com.lhacenmed.sona.core.datastore.EqualizerSettings
+import com.lhacenmed.sona.core.datastore.EqualizerSound
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.ceil
+import kotlin.math.floor
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** The preset index standing for "no device preset" - a curve the user tuned by hand. */
-const val CUSTOM_PRESET = -1
-
-/** One band of the device's equalizer: where it sits, and how much it is currently boosting. */
-data class EqualizerBand(val centerFrequencyHz: Int, val levelMillibels: Int)
-
 /**
- * Everything the equalizer screen draws, read from the device rather than assumed: band count,
- * centre frequencies, the gain range and the preset names all belong to whichever equalizer
- * implementation the device ships.
+ * What the device's equalizer offers - read from it, never assumed: its bands, the gain each takes and its
+ * own presets. ArchiveTune's `EqCapabilities`.
  */
-data class EqualizerState(
-    val bands: List<EqualizerBand>,
-    val levelRangeMillibels: IntRange,
+data class EqualizerCapabilities(
+    /** Each band's centre, in band order. */
+    val centerFrequenciesHz: List<Int>,
+    val bandLevelRangeMb: IntRange,
     val presetNames: List<String>,
-    val selectedPreset: Int,
-)
+) {
+    val bandCount: Int get() = centerFrequenciesHz.size
+}
 
 /**
- * The platform equalizer attached to Sona's own audio session.
+ * The equalizer, bass boost, virtualizer and loudness enhancer on Sona's own audio session, playing the
+ * stored [EqualizerSettings] - ArchiveTune's, from its `MusicService`: every change to the settings is
+ * applied as it is stored, whether or not a screen is open.
  *
- * Ported from Fossify's `SimpleEqualizer`, which is a global `object` holding a `lateinit` effect:
- * because nothing could observe it becoming ready, its equalizer screen polled for the `lateinit`
- * five times at 100 ms intervals before giving up. Here the effect is a singleton on the object
- * graph and publishes [state], so a screen waits on the state it needs rather than for a field to
- * appear - and there is nothing left to poll.
- *
- * [PlaybackService] owns the lifecycle, so the curve keeps applying while the UI is closed.
+ * [PlaybackService] attaches it to the player's session and releases it with the player. Opening the
+ * session is announced, as ArchiveTune announces it, so the system's equalizer - and any other app's - can
+ * shape it too.
  */
 @Singleton
 class SonaEqualizer @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val settings: EqualizerSettings,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
 
-    private var equalizer: Equalizer? = null
+    private var effects: AudioEffects? = null
+    private var following: Job? = null
 
-    private val _state = MutableStateFlow<EqualizerState?>(null)
+    private val _capabilities = MutableStateFlow<EqualizerCapabilities?>(null)
 
-    /** Null until the player's session has one, and on devices that provide no equalizer at all. */
-    val state: StateFlow<EqualizerState?> = _state.asStateFlow()
+    /** Null until the player's session has an equalizer, and on a device that provides none at all. */
+    val capabilities: StateFlow<EqualizerCapabilities?> = _capabilities.asStateFlow()
 
-    /**
-     * Binds to [audioSessionId] and restores the stored curve onto it.
-     *
-     * Priority 0 and the player's own session, matching Fossify: the curve shapes Sona's output
-     * rather than the device's whole audio mix.
-     */
+    /** The session the effects are on, for the system's equalizer to open on - null while none is. */
+    val audioSessionId: Int? get() = effects?.sessionId
+
     internal fun attach(audioSessionId: Int) {
-        scope.launch {
-            val storedPreset = settings.preset.value
-            val storedLevels = settings.bandLevels.value
-            val engine = runCatching { Equalizer(0, audioSessionId).apply { enabled = true } }
-                .getOrNull() ?: return@launch
-            equalizer = engine
-            _state.value = engine.applyCurve(storedPreset, storedLevels)
+        // The equalizer is what the screen is built on, so without it nothing is attached; the others are
+        // each optional, as a device may lack any of them.
+        val equalizer = runCatching { Equalizer(0, audioSessionId) }.getOrNull() ?: return
+        val capabilities = runCatching { equalizer.capabilities() }.getOrElse {
+            equalizer.release()
+            return
         }
+        val attached = AudioEffects(
+            sessionId = audioSessionId,
+            equalizer = equalizer,
+            bassBoost = runCatching { BassBoost(0, audioSessionId) }.getOrNull(),
+            virtualizer = runCatching { Virtualizer(0, audioSessionId) }.getOrNull(),
+            loudnessEnhancer = runCatching { LoudnessEnhancer(audioSessionId) }.getOrNull(),
+        )
+        effects = attached
+        _capabilities.value = capabilities
+        following = scope.launch { settings.choices.flow.collect { attached.play(it, capabilities) } }
+        context.sendBroadcast(sessionIntent(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION, audioSessionId))
     }
 
     internal fun release() {
-        equalizer?.release()
-        equalizer = null
-        _state.value = null
+        val attached = effects ?: return
+        following?.cancel()
+        following = null
+        effects = null
+        _capabilities.value = null
+        attached.release()
+        context.sendBroadcast(sessionIntent(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION, attached.sessionId))
     }
 
-    /** Puts a device preset - or the stored hand-tuned curve, for [CUSTOM_PRESET] - on the engine. */
-    fun selectPreset(preset: Int) {
-        val engine = equalizer ?: return
-        scope.launch {
-            _state.value = engine.applyCurve(preset, settings.bandLevels.value)
-            settings.setPreset(preset)
-        }
+    /** Every band at zero, and sound shaping on. */
+    suspend fun applyFlatPreset() {
+        val bandCount = _capabilities.value?.bandCount ?: return
+        settings.applyPreset(List(bandCount) { 0 }, EqualizerSelection.Flat)
     }
+
+    /** The device's preset at [index], read off its equalizer as levels - then stored like any other. */
+    suspend fun applySystemPreset(index: Int) {
+        val equalizer = effects?.equalizer ?: return
+        val levels = runCatching {
+            equalizer.usePreset(index.toShort())
+            List(equalizer.numberOfBands.toInt()) { band -> equalizer.getBandLevel(band.toShort()).toInt() }
+        }.getOrNull() ?: return
+        settings.applyPreset(levels, EqualizerSelection.SystemPreset(index))
+    }
+
+    private fun sessionIntent(action: String, audioSessionId: Int) =
+        Intent(action)
+            .putExtra(AudioEffect.EXTRA_AUDIO_SESSION, audioSessionId)
+            .putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
+            .putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
+}
+
+/**
+ * [levelsMb] spread over [bandCount] bands - a curve stored on a device with a different number of them,
+ * read along its length. ArchiveTune's `resampleLevels`.
+ */
+fun resampleBandLevels(levelsMb: List<Int>, bandCount: Int): List<Int> {
+    if (bandCount <= 0) return emptyList()
+    if (levelsMb.isEmpty()) return List(bandCount) { 0 }
+    if (levelsMb.size == bandCount) return levelsMb
+    if (bandCount == 1) return listOf(levelsMb.average().toInt())
+    val lastIndex = levelsMb.lastIndex.toFloat().coerceAtLeast(1f)
+    return List(bandCount) { index ->
+        val position = index * lastIndex / (bandCount - 1)
+        val lower = floor(position).toInt().coerceIn(0, levelsMb.lastIndex)
+        val upper = ceil(position).toInt().coerceIn(0, levelsMb.lastIndex)
+        (levelsMb[lower] + (levelsMb[upper] - levelsMb[lower]) * (position - lower)).toInt()
+    }
+}
+
+private class AudioEffects(
+    val sessionId: Int,
+    val equalizer: Equalizer,
+    val bassBoost: BassBoost?,
+    val virtualizer: Virtualizer?,
+    val loudnessEnhancer: LoudnessEnhancer?,
+) {
 
     /**
-     * Moves one band, which by definition makes the curve a custom one.
-     *
-     * Nothing is written here: a drag produces a level per frame, and the curve is only worth
-     * persisting once the user lets go. [saveCurve] is what the screen calls then.
+     * Puts [choices] on every effect - ArchiveTune's `applyEqSettingsToEffects`. Each call is guarded: the
+     * effects can be released mid-way, as the player goes, and an effect a device refuses a value for keeps
+     * the rest working.
      */
-    fun setBandLevel(bandIndex: Int, levelMillibels: Int) {
-        val engine = equalizer ?: return
-        engine.setBandLevel(bandIndex.toShort(), levelMillibels.toShort())
-        _state.update { current ->
-            current?.copy(
-                bands = current.bands.mapIndexed { index, band ->
-                    if (index == bandIndex) band.copy(levelMillibels = levelMillibels) else band
-                },
-                selectedPreset = CUSTOM_PRESET,
-            )
+    fun play(choices: EqualizerChoices, capabilities: EqualizerCapabilities) {
+        val enabled = choices.enabled
+        val sound = choices.sound
+        val levels = resampleBandLevels(sound.bandLevelsMb, capabilities.bandCount)
+        runCatching { equalizer.enabled = enabled }
+        levels.forEachIndexed { band, level ->
+            runCatching { equalizer.setBandLevel(band.toShort(), level.coerceIn(capabilities.bandLevelRangeMb).toShort()) }
+        }
+        bassBoost?.let {
+            runCatching { it.enabled = enabled && sound.bassBoostEnabled }
+            runCatching { it.setStrength(sound.bassBoostStrength.toShort()) }
+        }
+        virtualizer?.let {
+            runCatching { it.enabled = enabled && sound.virtualizerEnabled }
+            runCatching { it.setStrength(sound.virtualizerStrength.toShort()) }
+        }
+        loudnessEnhancer?.let {
+            runCatching { it.setTargetGain(sound.outputGainFor(levels)) }
+            runCatching { it.enabled = enabled && (sound.autoHeadroomEnabled || sound.outputGainEnabled) }
         }
     }
 
-    /** Remembers the curve the bands are currently at, so it is restored on the next launch. */
-    fun saveCurve() {
-        val bands = _state.value?.bands ?: return
-        scope.launch {
-            settings.setPreset(CUSTOM_PRESET)
-            settings.setBandLevels(bands.map { it.levelMillibels })
-        }
+    fun release() {
+        runCatching { equalizer.release() }
+        runCatching { bassBoost?.release() }
+        runCatching { virtualizer?.release() }
+        runCatching { loudnessEnhancer?.release() }
     }
 }
 
-private fun Equalizer.applyCurve(preset: Int, customLevels: List<Int>): EqualizerState {
-    // A preset index stored on another device may not exist on this one; the hand-tuned curve is
-    // the fallback, the same one Fossify drops to whenever a preset fails to apply.
-    val resolvedPreset = preset.takeIf { it in 0 until numberOfPresets.toInt() } ?: CUSTOM_PRESET
-    if (resolvedPreset != CUSTOM_PRESET) {
-        usePreset(resolvedPreset.toShort())
-    } else if (customLevels.size == numberOfBands.toInt()) {
-        // A curve saved against a different band count cannot be mapped onto this device's bands,
-        // so the engine is left at whatever it already has rather than half-restored.
-        customLevels.forEachIndexed { index, level -> setBandLevel(index.toShort(), level.toShort()) }
+/** The output's gain: down by the highest boost with automatic headroom, the chosen gain otherwise. */
+private fun EqualizerSound.outputGainFor(levelsMb: List<Int>): Int =
+    when {
+        autoHeadroomEnabled -> -(levelsMb.maxOrNull()?.coerceAtLeast(0) ?: 0)
+        outputGainEnabled -> outputGainMb
+        else -> 0
     }
-    return readState(resolvedPreset)
-}
 
-private fun Equalizer.readState(preset: Int) = EqualizerState(
-    bands = (0 until numberOfBands.toInt()).map { band ->
-        EqualizerBand(
-            // The platform reports centre frequencies in millihertz.
-            centerFrequencyHz = getCenterFreq(band.toShort()) / 1000,
-            levelMillibels = getBandLevel(band.toShort()).toInt(),
-        )
-    },
-    levelRangeMillibels = bandLevelRange[0].toInt()..bandLevelRange[1].toInt(),
-    presetNames = (0 until numberOfPresets.toInt()).map { getPresetName(it.toShort()) },
-    selectedPreset = preset,
+private fun Equalizer.capabilities() = EqualizerCapabilities(
+    // The platform reports centre frequencies in millihertz.
+    centerFrequenciesHz = List(numberOfBands.toInt()) { band -> getCenterFreq(band.toShort()) / 1000 },
+    bandLevelRangeMb = bandLevelRange[0].toInt()..bandLevelRange[1].toInt(),
+    presetNames = List(numberOfPresets.toInt()) { preset -> getPresetName(preset.toShort()) },
 )

@@ -188,8 +188,13 @@ Ordered from most to least critical. Every entry describes **what** is broken or
   - Deleted: `LyricsBackgroundStyle`, its setting and its row in Appearance, the lyrics sheet's own backgrounds (`LyricsSheetBackground`, the Apple Music–style blurred cover) and their strings. The stored `lyricsBackgroundStyle` value is no longer read; the lyrics now follow the player's background, whatever was chosen for them before.
   - `CUSTOM` is the last of `PlayerBackgroundStyle`, so it is listed last. Styles are stored by name, so no stored choice changes.
 
-- [ ] **5.7 Rebuild the equalizer to match ArchiveTune exactly**
+- [x] **5.7 Rebuild the equalizer to match ArchiveTune exactly**
   Improve the equalizer by cloning it exactly from ArchiveTune.
+  - Cloned from ArchiveTune's `EqualizerDialog`, `EqualizerViewModel`, `EqualizerRepository`, use cases and `MusicService` effects. The screen: a sound-shaping switch and **Open system equalizer**; a Basic / Advanced control mode; Basic is presets (Flat and the device's) and Bass / Midrange / Treble tones; Advanced is presets, every band with Reset, output gain and automatic headroom, bass boost and virtualizer, and profiles (save, manage — apply, export, delete — and import).
+  - Built into Sona's layers rather than ArchiveTune's five: `EqualizerSettings` (`core:datastore`) stores everything as one `EqualizerChoices`; `SonaEqualizer` (`feature:playback`) puts the equalizer, bass boost, virtualizer and loudness enhancer on the player's session and applies every stored change, screen open or not; `EqualizerViewModel` holds a slider under the finger until it is let go, as ArchiveTune does — the sound changes on release. ArchiveTune's use cases only forwarded, so they are not ported.
+  - Profiles are kept and exported in ArchiveTune's JSON, with its field names, so a profile file moves between the two apps; it is read with Android's own `org.json` rather than adding kotlinx.serialization. The session is announced on open and close, and the system equalizer is declared in `<queries>`, as ArchiveTune does, so it can be found and shape Sona's audio.
+  - It stays a `Screen` in Sona's host, reached from the queue bar (5.1), rather than ArchiveTune's full-screen dialog — so its large top bar's subtitle is not carried over. Messages are Sona's toasts, its dialogs are `SonaDialog`.
+  - Sound shaping is off until turned on — ArchiveTune's default; the earlier equalizer was always on. A curve tuned with it is kept (same key and format) and plays once sound shaping is turned on. Its preset index is no longer read.
 
 ---
 
