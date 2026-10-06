@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.about.AboutScreen
@@ -22,6 +23,7 @@ import com.lhacenmed.sona.feature.settings.screen.LyricsScreen
 import com.lhacenmed.sona.feature.settings.screen.PermissionsScreen
 import com.lhacenmed.sona.feature.settings.screen.PlaybackScreen
 import com.lhacenmed.sona.feature.settings.screen.StorageScreen
+import com.lhacenmed.sona.feature.settings.screen.VideoScreen
 import com.lhacenmed.sona.feature.settings.updates.UpdatesScreen
 
 /** The bands the settings home groups its categories into. */
@@ -58,6 +60,13 @@ enum class SettingsCategory(
         summaryRes = R.string.playback_summary,
         icon = Icons.Filled.MusicNote,
         screen = PlaybackScreen(),
+    ),
+    Video(
+        group = SettingsGroup.LibraryAndPlayback,
+        titleRes = R.string.video_title,
+        summaryRes = R.string.video_summary,
+        icon = Icons.Filled.VideoLibrary,
+        screen = VideoScreen,
     ),
     Lyrics(
         group = SettingsGroup.LibraryAndPlayback,

@@ -249,6 +249,22 @@ val MIGRATION_12_13 = object : Migration(12, 13) {
     }
 }
 
+/** Videos carry on from where they were left: one row per video left part-way through. */
+val MIGRATION_13_14 = object : Migration(13, 14) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `resume_positions` (
+                `trackId` INTEGER NOT NULL,
+                `positionMs` INTEGER NOT NULL,
+                PRIMARY KEY(`trackId`),
+                FOREIGN KEY(`trackId`) REFERENCES `tracks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent(),
+        )
+    }
+}
+
 /**
  * Makes sure Favorites exists, every time the database is opened.
  *

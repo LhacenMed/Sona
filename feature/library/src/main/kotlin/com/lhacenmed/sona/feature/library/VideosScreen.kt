@@ -20,10 +20,11 @@ import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
+import com.lhacenmed.sona.feature.video.openVideoPlayer
 
 /**
- * Every video, listed and played as the tracks tab's tracks are - for their sound alone. The folders holding
- * them are the Folders tab's.
+ * Every video, listed as the tracks tab's tracks are, and opened in the video player when tapped. The folders
+ * holding them are the Folders tab's.
  *
  * Reading videos takes a permission of its own, asked for here rather than as the app opens: until it is
  * given, the tab offers it in the place its list will fill. It is checked again each time the app comes
@@ -60,7 +61,7 @@ fun VideosScreen(
     if (!canReadVideos) {
         EmptyLibraryState(
             title = "Allow access to videos",
-            message = "Sona plays the sound of the videos on your device.",
+            message = "Sona plays the videos on your device.",
             modifier = modifier,
             action = EmptyStateAction(label = "Allow", icon = SonaIcons.Video) { permissionLauncher.launch(runtimePermission) },
         )
@@ -94,7 +95,10 @@ fun VideosScreen(
             isCurrent = { playback.marks(video) },
             isPlaying = { playback.isPlaying },
             selection = selection,
-            onClick = { viewModel.onVideoClick(video) },
+            onClick = {
+                viewModel.onVideoClick(video)
+                context.openVideoPlayer()
+            },
             onOpenOptions = {
                 optionsTarget = OptionsTarget.ForTrack(
                     video,

@@ -1,4 +1,4 @@
-package com.lhacenmed.sona.feature.player
+package com.lhacenmed.sona.core.designsystem.effect
 
 import android.content.Context
 import android.database.ContentObserver
@@ -18,9 +18,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import kotlin.math.roundToInt
 
-/** The device's music volume as a fraction, kept current with the system. Ported from ArchiveTune. */
+/**
+ * The device's music volume as a fraction, kept current with the system - what the music player's volume
+ * controls and the video player's volume gesture both move. Ported from ArchiveTune.
+ */
 @Stable
-internal class DeviceMusicVolumeController(
+class DeviceMusicVolumeController(
     private val audioManager: AudioManager,
 ) {
     private var minVolume by mutableIntStateOf(readMinVolume())
@@ -68,7 +71,7 @@ internal class DeviceMusicVolumeController(
 }
 
 @Composable
-internal fun rememberDeviceMusicVolumeController(): DeviceMusicVolumeController {
+fun rememberDeviceMusicVolumeController(): DeviceMusicVolumeController {
     val context = LocalContext.current
     val audioManager =
         remember(context) {

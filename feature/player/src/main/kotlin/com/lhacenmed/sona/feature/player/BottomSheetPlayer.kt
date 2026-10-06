@@ -31,6 +31,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.lhacenmed.sona.core.datastore.PlayerAppearance
 import com.lhacenmed.sona.core.designsystem.component.MiniPlayerSeekBarRequests
+import com.lhacenmed.sona.core.designsystem.effect.rememberDeviceMusicVolumeController
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.SleepTimerState
 import com.lhacenmed.sona.feature.player.background.PlayerBackground

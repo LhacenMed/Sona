@@ -1,5 +1,8 @@
 package com.lhacenmed.sona.feature.playback
 
+import android.view.Surface
+import android.view.SurfaceHolder
+import androidx.media3.common.C
 import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.Player
 
@@ -14,6 +17,9 @@ import androidx.media3.common.Player
  * - rewind-before-skip-back off: skip-back always jumps to the literal previous queue item
  *   (or seeks to 0 if there is none) instead of using media3's stock rewind-vs-previous threshold.
  * - remember-pause off (the default): resume playback after any track-change action.
+ *
+ * It also decides when a video's picture is decoded: only while a surface shows it. A video played for
+ * its sound - in the music player, or with the video player's screen gone - decodes its audio alone.
  */
 internal class PlaybackForwardingPlayer(
     player: Player,
@@ -61,5 +67,39 @@ internal class PlaybackForwardingPlayer(
             .remove(Player.COMMAND_SEEK_TO_NEXT)
             .remove(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
             .build()
+    }
+
+    // A controller's surface reaches the session's player as a holder - or as a bare surface where media3
+    // falls back to its older handling - and is let go the same ways. Views never cross from a controller.
+    override fun setVideoSurfaceHolder(surfaceHolder: SurfaceHolder?) {
+        showVideo(surfaceHolder != null)
+        super.setVideoSurfaceHolder(surfaceHolder)
+    }
+
+    override fun setVideoSurface(surface: Surface?) {
+        showVideo(surface != null)
+        super.setVideoSurface(surface)
+    }
+
+    override fun clearVideoSurfaceHolder(surfaceHolder: SurfaceHolder?) {
+        showVideo(false)
+        super.clearVideoSurfaceHolder(surfaceHolder)
+    }
+
+    override fun clearVideoSurface(surface: Surface?) {
+        showVideo(false)
+        super.clearVideoSurface(surface)
+    }
+
+    override fun clearVideoSurface() {
+        showVideo(false)
+        super.clearVideoSurface()
+    }
+
+    /** Has the player decode video only while [isShown] - changed only when it differs, as a change reselects the tracks. */
+    private fun showVideo(isShown: Boolean) {
+        val parameters = trackSelectionParameters
+        if ((C.TRACK_TYPE_VIDEO !in parameters.disabledTrackTypes) == isShown) return
+        trackSelectionParameters = parameters.buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, !isShown).build()
     }
 }

@@ -33,6 +33,7 @@ dependencies {
     implementation(project(":feature:playback"))
     implementation(project(":feature:scanner"))
     implementation(project(":feature:tageditor"))
+    implementation(project(":feature:video"))
 
     implementation(libs.androidx.core.ktx)
     // The system photo picker a playlist's cover image is chosen with.

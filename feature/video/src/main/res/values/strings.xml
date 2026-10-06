@@ -1,0 +1,44 @@
+<resources>
+    <string name="video_back">Back</string>
+    <string name="video_play">Play</string>
+    <string name="video_pause">Pause</string>
+    <string name="video_previous">Previous</string>
+    <string name="video_next">Next</string>
+    <string name="video_queue">Queue</string>
+    <string name="video_more">More</string>
+
+    <string name="video_speed">Speed</string>
+    <!-- A playback speed, as in "1.5x". -->
+    <string name="video_speed_value">%1$sx</string>
+
+    <string name="video_aspect">Aspect ratio</string>
+    <string name="video_aspect_crop">Crop</string>
+    <string name="video_aspect_stretch">Stretch</string>
+    <string name="video_aspect_16_9">16:9</string>
+    <string name="video_aspect_18_9">18:9</string>
+    <string name="video_aspect_4_3">4:3</string>
+    <string name="video_aspect_original">Original</string>
+    <string name="video_aspect_fit">Fit to screen</string>
+
+    <string name="video_rotation_auto">Auto-rotate</string>
+    <string name="video_rotation_portrait">Locked to portrait</string>
+    <string name="video_rotation_landscape">Locked to landscape</string>
+
+    <string name="video_lock">Lock controls</string>
+    <string name="video_unlock">Unlock controls</string>
+    <string name="video_mute">Mute</string>
+    <string name="video_unmute">Unmute</string>
+    <string name="video_screenshot">Screenshot</string>
+    <string name="video_screenshot_saved">Screenshot saved to Pictures/Sona</string>
+    <string name="video_screenshot_failed">Couldn\'t take a screenshot</string>
+    <string name="video_floating_window">Floating window</string>
+
+    <string name="video_play_as_audio">Play as audio</string>
+    <string name="video_back_to_video">Back to video</string>
+    <string name="video_audio_message">The sound keeps playing while you use other apps or lock the screen</string>
+
+    <string name="video_brightness">Brightness</string>
+    <string name="video_volume">Volume</string>
+    <!-- A level, as in "60%". -->
+    <string name="video_percent">%1$d%%</string>
+</resources>

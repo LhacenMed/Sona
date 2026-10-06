@@ -22,6 +22,7 @@ internal object PlaybackSessionCommands {
     const val ACTION_REMOVE_QUEUE_ITEM = "REMOVE_QUEUE_ITEM"
     const val ACTION_REMOVE_TRACKS = "REMOVE_TRACKS"
     const val ACTION_HOLD_TRACK = "HOLD_TRACK"
+    const val ACTION_SET_SCRUBBING = "SET_SCRUBBING"
 
     /** The ids of the tracks [ACTION_PLAY_NEXT], [ACTION_ADD_TO_QUEUE] and [ACTION_REMOVE_TRACKS] act on, as a `LongArray`. */
     const val EXTRA_TRACK_IDS = "TRACK_IDS"
@@ -45,6 +46,9 @@ internal object PlaybackSessionCommands {
     /** Whether [ACTION_HOLD_TRACK] holds the playing track or lets it go, as a `Boolean`. */
     const val EXTRA_HOLD = "HOLD"
 
+    /** Whether [ACTION_SET_SCRUBBING] turns the player's scrubbing mode on or off, as a `Boolean`. */
+    const val EXTRA_SCRUBBING = "SCRUBBING"
+
     val toggleFavoriteCommand = SessionCommand(ACTION_TOGGLE_FAVORITE, Bundle.EMPTY)
     val toggleShuffleCommand = SessionCommand(ACTION_TOGGLE_SHUFFLE, Bundle.EMPTY)
     val toggleRepeatModeCommand = SessionCommand(ACTION_TOGGLE_REPEAT_MODE, Bundle.EMPTY)
@@ -56,4 +60,5 @@ internal object PlaybackSessionCommands {
     val removeQueueItemCommand = SessionCommand(ACTION_REMOVE_QUEUE_ITEM, Bundle.EMPTY)
     val removeTracksCommand = SessionCommand(ACTION_REMOVE_TRACKS, Bundle.EMPTY)
     val holdTrackCommand = SessionCommand(ACTION_HOLD_TRACK, Bundle.EMPTY)
+    val setScrubbingCommand = SessionCommand(ACTION_SET_SCRUBBING, Bundle.EMPTY)
 }

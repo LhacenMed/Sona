@@ -19,6 +19,7 @@ internal fun Track.toMediaItem(): MediaItem {
         .setTitle(title)
         .setArtist(artist)
         .setAlbumTitle(album)
+        .setMediaType(if (isVideo) MediaMetadata.MEDIA_TYPE_VIDEO else MediaMetadata.MEDIA_TYPE_MUSIC)
         .apply {
             coverArtUri?.let { setArtworkUri(Uri.parse(it)) }
         }
@@ -29,6 +30,9 @@ internal fun Track.toMediaItem(): MediaItem {
         .setMediaMetadata(metadata)
         .build()
 }
+
+/** Whether this item is a video's - see [toMediaItem]. */
+internal val MediaItem.isVideo: Boolean get() = mediaMetadata.mediaType == MediaMetadata.MEDIA_TYPE_VIDEO
 
 /** Whether this shows exactly what [other] does, in every field [toMediaItem] sets. */
 internal fun MediaMetadata.isShownAs(other: MediaMetadata): Boolean =

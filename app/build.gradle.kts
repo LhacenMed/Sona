@@ -227,6 +227,7 @@ dependencies {
     implementation(project(":feature:equalizer"))
     implementation(project(":feature:update"))
     implementation(project(":feature:tageditor"))
+    implementation(project(":feature:video"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

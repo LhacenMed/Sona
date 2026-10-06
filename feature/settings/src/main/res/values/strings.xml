@@ -19,6 +19,8 @@
     <string name="appearance_summary">Themes, colours, and the shape of the player</string>
     <string name="playback_title">Playback</string>
     <string name="playback_summary">Audio behaviour, crossfade, and the queue</string>
+    <string name="video_title">Video</string>
+    <string name="video_summary">The video player, its gestures and how it shows a video</string>
     <string name="lyrics_title">Lyrics</string>
     <string name="lyrics_summary">Appearance, animation, and romanization</string>
     <string name="content_title">Content</string>
@@ -436,4 +438,42 @@
     <string name="excluded_folders_remove">Remove folder</string>
     <string name="excluded_folders_none_left">No other folder holds music or videos.</string>
     <string name="manage_tabs_title">Manage Tabs</string>
+
+    <!-- Video -->
+    <string name="video_display_section">Display</string>
+    <string name="video_playback_section">Playback</string>
+    <string name="video_orientation_title">Video screen orientation</string>
+    <string name="video_orientation_auto">Auto-rotate</string>
+    <string name="video_orientation_portrait">Portrait</string>
+    <string name="video_orientation_landscape">Landscape</string>
+    <string name="video_keep_orientation_title">Keep screen orientation locked</string>
+    <string name="video_keep_orientation_summary">Apply the orientation chosen in the player to every video</string>
+    <string name="video_scan_list_title">Manage your scan list</string>
+    <string name="video_scan_list_summary">Hide or show the folders Sona finds videos in</string>
+    <string name="video_keep_aspect_title">Fixed screen ratio</string>
+    <string name="video_keep_aspect_summary">Apply the screen ratio chosen in the player to every video</string>
+    <string name="video_show_clock_title">Display battery level and time</string>
+    <string name="video_show_clock_summary">Keep the time and battery level on screen while the controls are hidden</string>
+    <string name="video_subtitle_customization_title">Subtitle customization</string>
+    <string name="video_subtitle_customization_summary">Apply custom subtitle settings to every video</string>
+    <string name="video_resume_title">Resume</string>
+    <string name="video_resume_summary">Carry on from where you stopped</string>
+    <string name="video_gestures_title">Gesture operation</string>
+    <string name="video_gestures_summary">Drag across to seek, and down either side for brightness and volume</string>
+    <string name="video_continuous_play_title">Continuous play</string>
+    <string name="video_continuous_play_summary">Play the next video automatically after one ends</string>
+    <string name="video_auto_popup_title">Auto pop-up play</string>
+    <string name="video_auto_popup_summary">Keep playing in a floating window when you switch to other apps</string>
+    <string name="video_double_tap_seek_title">Double-tap to seek</string>
+    <string name="video_double_tap_seek_summary">Double-tap either side to rewind or fast forward, and the middle to pause or play</string>
+    <string name="video_double_tap_seek_time_title">Double-tap seek time</string>
+    <string name="video_long_press_speed_up_title">Long press accelerator</string>
+    <string name="video_long_press_speed_up_summary">Hold a finger on the video to speed it up</string>
+    <string name="video_long_press_speed_title">Long press playback speed</string>
+    <!-- A playback speed, as in "2x". -->
+    <string name="video_speed_format">%1$sx</string>
+    <string name="video_long_press_vibration_title">Long press vibration</string>
+    <string name="video_long_press_vibration_summary">Vibrate as a long press speeds the video up</string>
+    <string name="video_zoom_pan_title">Zoom pan</string>
+    <string name="video_zoom_pan_summary">Pinch to zoom the video, and drag two fingers to pan it while enlarged</string>
 </resources>

@@ -98,6 +98,7 @@ import com.lhacenmed.sona.feature.library.selection.toLibraryTopBarSelection
 import com.lhacenmed.sona.feature.library.sort.SortSheet
 import com.lhacenmed.sona.feature.library.sort.sortAction
 import com.lhacenmed.sona.feature.scanner.R as ScannerR
+import com.lhacenmed.sona.feature.video.openVideoPlayer
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableLazyListState
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -652,7 +653,10 @@ internal fun TrackListDetail(
                 isCurrent = { playback.marks(track) },
                 isPlaying = { playback.isPlaying },
                 selection = selection,
-                onClick = { viewModel.onTrackClick(track) },
+                onClick = {
+                    viewModel.onTrackClick(track)
+                    if (track.isVideo) context.openVideoPlayer()
+                },
                 onOpenOptions = {
                     optionsTarget = OptionsTarget.ForTrack(
                         track = track,

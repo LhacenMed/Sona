@@ -9,6 +9,7 @@ import com.lhacenmed.sona.core.database.dao.GenreDao
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.PlaylistDao
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
+import com.lhacenmed.sona.core.database.dao.ResumePositionDao
 import com.lhacenmed.sona.core.database.dao.TrackDao
 import com.lhacenmed.sona.core.database.entity.AlbumEntity
 import com.lhacenmed.sona.core.database.entity.ArtistEntity
@@ -17,6 +18,7 @@ import com.lhacenmed.sona.core.database.entity.PlayStatsEntity
 import com.lhacenmed.sona.core.database.entity.PlaylistEntity
 import com.lhacenmed.sona.core.database.entity.PlaylistTrackEntity
 import com.lhacenmed.sona.core.database.entity.QueueItemEntity
+import com.lhacenmed.sona.core.database.entity.ResumePositionEntity
 import com.lhacenmed.sona.core.database.entity.TrackEntity
 
 @Database(
@@ -29,8 +31,9 @@ import com.lhacenmed.sona.core.database.entity.TrackEntity
         PlaylistEntity::class,
         PlaylistTrackEntity::class,
         PlayStatsEntity::class,
+        ResumePositionEntity::class,
     ],
-    version = 13,
+    version = 14,
     exportSchema = true,
 )
 @TypeConverters(CoverArtUrisConverter::class)
@@ -42,6 +45,7 @@ abstract class SonaDatabase : RoomDatabase() {
     abstract fun queueItemDao(): QueueItemDao
     abstract fun playlistDao(): PlaylistDao
     abstract fun playStatsDao(): PlayStatsDao
+    abstract fun resumePositionDao(): ResumePositionDao
 
     companion object {
         const val FILE_NAME = "sona.db"

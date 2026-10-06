@@ -13,6 +13,9 @@ material3 = "1.5.0-alpha27"
 hilt = "2.60.1"
 room = "2.7.1"
 media3 = "1.9.1"
+# Jellyfin's prebuilt FFmpeg audio decoder for media3 - AC-3, E-AC-3, DTS, TrueHD and the rest a device
+# cannot decode itself - versioned after the media3 release it is built against.
+media3Ffmpeg = "1.9.0+1"
 coroutines = "1.9.0"
 datastore = "1.1.7"
 coil = "3.5.0"
@@ -60,6 +63,7 @@ androidx-room-compiler = { group = "androidx.room", name = "room-compiler", vers
 androidx-media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "media3" }
 androidx-media3-session = { group = "androidx.media3", name = "media3-session", version.ref = "media3" }
 androidx-media3-common = { group = "androidx.media3", name = "media3-common", version.ref = "media3" }
+jellyfin-media3-ffmpeg-decoder = { group = "org.jellyfin.media3", name = "media3-ffmpeg-decoder", version.ref = "media3Ffmpeg" }
 
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }

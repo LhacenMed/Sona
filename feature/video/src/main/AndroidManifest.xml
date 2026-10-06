@@ -1,0 +1,16 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!--
+            Turning the device, folding it or resizing its window never recreates the player: it lays itself
+            out again in place, so the picture carries on without a pause or a blank frame.
+        -->
+        <activity
+            android:name=".VideoPlayerActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode|density"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.Sona.Video" />
+    </application>
+
+</manifest>

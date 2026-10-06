@@ -15,6 +15,8 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.CommandButton
@@ -26,12 +28,15 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import com.lhacenmed.sona.core.common.R as CommonR
+import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
+import com.lhacenmed.sona.core.database.dao.ResumePositionDao
 import com.lhacenmed.sona.core.datastore.ImageSettings
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.datastore.ShuffleSettings
+import com.lhacenmed.sona.core.datastore.VideoSettings
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
 import dagger.hilt.android.AndroidEntryPoint
@@ -84,12 +89,23 @@ class PlaybackService : MediaSessionService() {
     @Inject
     lateinit var trackFiles: TrackFiles
 
+    @Inject
+    lateinit var videoSettings: VideoSettings
+
+    @Inject
+    lateinit var resumePositionDao: ResumePositionDao
+
+    @Inject
+    @ApplicationScope
+    lateinit var applicationScope: CoroutineScope
+
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     private lateinit var exoPlayer: ExoPlayer
     private lateinit var forwardingPlayer: PlaybackForwardingPlayer
     private lateinit var mediaSession: MediaSession
     private lateinit var playHistoryRecorder: PlayHistoryRecorder
+    private lateinit var resumePositionRecorder: ResumePositionRecorder
 
     // Live-updated snapshots read synchronously from Player.Listener / the forwarding player -
     // DataStore is Flow/suspend-based, so runtime changes are mirrored into these volatile fields
@@ -128,9 +144,11 @@ class PlaybackService : MediaSessionService() {
             updateMediaButtons()
         }
 
-        // The heart belongs to the track, so it has to be redrawn when the track changes.
+        // The heart belongs to the track, so it has to be redrawn when the track changes - and whether
+        // playback pauses at its end depends on whether it is a video.
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             updateMediaButtons()
+            applyRepeatMode(repeatMode)
         }
 
         // Whatever can change which track plays now or next.
@@ -181,6 +199,7 @@ class PlaybackService : MediaSessionService() {
                 .add(PlaybackSessionCommands.removeQueueItemCommand)
                 .add(PlaybackSessionCommands.removeTracksCommand)
                 .add(PlaybackSessionCommands.holdTrackCommand)
+                .add(PlaybackSessionCommands.setScrubbingCommand)
                 .build()
             return MediaSession.ConnectionResult.accept(
                 sessionCommands,
@@ -236,6 +255,9 @@ class PlaybackService : MediaSessionService() {
                     applyRepeatMode(repeatMode)
                 }
 
+                PlaybackSessionCommands.ACTION_SET_SCRUBBING ->
+                    exoPlayer.isScrubbingModeEnabled = args.getBoolean(PlaybackSessionCommands.EXTRA_SCRUBBING)
+
                 else -> return super.onCustomCommand(session, controller, customCommand, args)
             }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
@@ -283,7 +305,23 @@ class PlaybackService : MediaSessionService() {
         headsetAutoplayEnabled = playbackSettings.headsetAutoplay.value
         repeatMode = playbackSettings.repeatMode.value
 
-        exoPlayer = ExoPlayer.Builder(this)
+        // Every format the device decodes itself, and FFmpeg behind it for the audio it cannot - a film's
+        // AC-3, DTS or TrueHD track. A decoder that fails to start hands over to the next that can play it.
+        val renderersFactory = DefaultRenderersFactory(this)
+            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
+            .setEnableDecoderFallback(true)
+        // Every file is on the device, read far faster than it plays: playback starts, and resumes after a seek, as
+        // soon as a moment of it is in, rather than after the seconds a stream from the network would wait for.
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                /* minBufferMs = */ 15_000,
+                /* maxBufferMs = */ 30_000,
+                /* bufferForPlaybackMs = */ 250,
+                /* bufferForPlaybackAfterRebufferMs = */ 500,
+            )
+            .build()
+        exoPlayer = ExoPlayer.Builder(this, renderersFactory)
+            .setLoadControl(loadControl)
             // Every file read through [trackFiles], so one changed while it plays reads on unchanged.
             .setMediaSourceFactory(DefaultMediaSourceFactory(trackFiles.dataSourceFactory(DefaultDataSource.Factory(this))))
             .setAudioAttributes(
@@ -296,7 +334,7 @@ class PlaybackService : MediaSessionService() {
             .setWakeMode(C.WAKE_MODE_LOCAL)
             .build()
             .apply {
-                // A video is played for its sound alone: its picture is never selected, so never decoded.
+                // A video's picture is decoded only while a screen shows it - see PlaybackForwardingPlayer.
                 trackSelectionParameters = trackSelectionParameters.buildUpon()
                     .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, true)
                     .build()
@@ -311,6 +349,13 @@ class PlaybackService : MediaSessionService() {
 
         // On the player itself, so a listen is recorded however it was started and with no screen open.
         playHistoryRecorder = PlayHistoryRecorder(exoPlayer, serviceScope, playStatsDao).also { it.attach() }
+        resumePositionRecorder = ResumePositionRecorder(
+            player = exoPlayer,
+            writeScope = applicationScope,
+            resumePositionDao = resumePositionDao,
+            isEnabled = { videoSettings.resume.value },
+            durationMsOf = { trackId -> libraryRepository.tracksById.value[trackId]?.durationMs },
+        ).also { it.attach() }
 
         forwardingPlayer = PlaybackForwardingPlayer(exoPlayer) { forwardingSettings }
 
@@ -533,6 +578,7 @@ class PlaybackService : MediaSessionService() {
     override fun onDestroy() {
         unregisterReceiver(headsetReceiver)
         playHistoryRecorder.detach()
+        resumePositionRecorder.detach()
         serviceScope.cancel()
         mediaSession.release()
         // Before the player, while the audio session the effect is attached to still exists.
@@ -560,6 +606,7 @@ class PlaybackService : MediaSessionService() {
         serviceScope.launch {
             playbackSettings.headsetAutoplay.flow.collect { headsetAutoplayEnabled = it }
         }
+        serviceScope.launch { videoSettings.continuousPlay.flow.collect { applyRepeatMode(repeatMode) } }
         serviceScope.launch { libraryRepository.tracksById.collect(::refreshQueueMetadata) }
         serviceScope.launch {
             libraryRepository.favoriteTrackIds.collect {
@@ -575,10 +622,16 @@ class PlaybackService : MediaSessionService() {
      * `pauseAtEndOfMediaItems` is what separates "repeat this track" from "play it once more, then
      * stop" - media3 already knows how to pause at the end of an item, so unlike the reference app
      * this needs no hand-written seek-and-pause when the track comes round. A held track repeats whatever the mode.
+     *
+     * A video not repeating also pauses at its end while the user plays videos one at a time - PLAYit's
+     * Continuous play turned off - so this is put on again as each item starts.
      */
     private fun applyRepeatMode(mode: RepeatMode) {
         exoPlayer.repeatMode = if (isTrackHeld) Player.REPEAT_MODE_ONE else mode.toPlayerRepeatMode()
-        exoPlayer.pauseAtEndOfMediaItems = !isTrackHeld && mode.stopsAfterCurrentTrack()
+        val isVideoPlayedAlone = exoPlayer.currentMediaItem?.isVideo == true &&
+            exoPlayer.repeatMode != Player.REPEAT_MODE_ONE &&
+            !videoSettings.continuousPlay.value
+        exoPlayer.pauseAtEndOfMediaItems = !isTrackHeld && (mode.stopsAfterCurrentTrack() || isVideoPlayedAlone)
     }
 
     private fun registerHeadsetReceiver() {

@@ -29,6 +29,7 @@ class SettingsLoader @Inject constructor(
     private val lyricsSettings: LyricsSettings,
     private val updateSettings: UpdateSettings,
     private val effectSettings: EffectSettings,
+    private val videoSettings: VideoSettings,
 ) {
     suspend fun load() {
         librarySettings.awaitLoaded()
@@ -43,5 +44,6 @@ class SettingsLoader @Inject constructor(
         lyricsSettings.awaitLoaded()
         updateSettings.awaitLoaded()
         effectSettings.awaitLoaded()
+        videoSettings.awaitLoaded()
     }
 }

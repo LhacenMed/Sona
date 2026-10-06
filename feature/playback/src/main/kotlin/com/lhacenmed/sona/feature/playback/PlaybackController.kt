@@ -3,6 +3,7 @@ package com.lhacenmed.sona.feature.playback
 import android.content.ComponentName
 import android.content.Context
 import android.os.Bundle
+import android.view.SurfaceView
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -41,6 +42,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 /**
  * UI-facing façade over the [PlaybackService]'s media session.
@@ -79,6 +81,9 @@ class PlaybackController @Inject constructor(
 
     private val hasRestoredQueue = AtomicBoolean(false)
 
+    /** See [PlaybackUiState.pictureTrackId]. */
+    private var pictureTrackId: Long? = null
+
     /** Whether the queue is known - see [PlaybackUiState.isReady]. */
     private var isQueueSettled = false
 
@@ -96,6 +101,14 @@ class PlaybackController @Inject constructor(
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             sleepTimerHolder.onTrackEnd()
+            // The same video come round again keeps its picture; another has none until its first frame.
+            if (mediaItem?.mediaId?.toLongOrNull() != pictureTrackId) pictureTrackId = null
+        }
+
+        override fun onRenderedFirstFrame() {
+            val mediaController = controller ?: return
+            pictureTrackId = mediaController.currentMediaItem?.mediaId?.toLongOrNull()
+            updateUiState(mediaController)
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -117,6 +130,9 @@ class PlaybackController @Inject constructor(
                     Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
                     Player.EVENT_REPEAT_MODE_CHANGED,
                     Player.EVENT_AVAILABLE_COMMANDS_CHANGED,
+                    Player.EVENT_PLAYBACK_PARAMETERS_CHANGED,
+                    Player.EVENT_VOLUME_CHANGED,
+                    Player.EVENT_VIDEO_SIZE_CHANGED,
                 )
             ) {
                 updateUiState(mediaController)
@@ -182,6 +198,10 @@ class PlaybackController @Inject constructor(
      * is turned off otherwise - Auxio's implicit shuffle. Shuffled, [startIndex] still plays first and
      * the rest follow in random order; the queue itself keeps the order it was given. It plays from
      * [startPositionMs] into the track at [startIndex].
+     *
+     * [showsPicture] is for a video about to be watched: its picture is decoded from the first frame, so its size
+     * is known and its frame is ready by the time the video player's surface arrives - rather than the picture
+     * being switched on then, which would pause the video while the player starts decoding it.
      */
     fun playTracks(
         tracks: List<Track>,
@@ -189,12 +209,18 @@ class PlaybackController @Inject constructor(
         parent: PlaybackParent? = null,
         shuffled: Boolean? = null,
         startPositionMs: Long = 0L,
+        showsPicture: Boolean = false,
     ) {
         val mediaController = controller ?: return
         scope.launch { playbackSettings.setPlaybackParent(parent) }
         val shuffle = shuffled ?: (shuffleSettings.keepShuffle.value && mediaController.shuffleModeEnabled)
         // Before the items, so the player builds the new shuffle order around startIndex.
         if (shuffle != mediaController.shuffleModeEnabled) setShuffleEnabled(shuffle)
+        if (showsPicture) {
+            mediaController.trackSelectionParameters = mediaController.trackSelectionParameters.buildUpon()
+                .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, false)
+                .build()
+        }
         val mediaItems = tracks.map(Track::toMediaItem)
         mediaController.setMediaItems(mediaItems, startIndex, startPositionMs)
         mediaController.prepare()
@@ -242,8 +268,38 @@ class PlaybackController @Inject constructor(
         Util.handlePlayPauseButtonAction(mediaController)
     }
 
+    fun pause() {
+        controller?.pause()
+    }
+
     fun seekTo(positionMs: Long) {
         controller?.seekTo(positionMs)
+    }
+
+    /**
+     * Has the player seek as fast as it can, for as long as [enabled] - while a finger drags through a video,
+     * each seek showing its frame without waiting on the one before.
+     */
+    fun setScrubbing(enabled: Boolean) {
+        val args = Bundle().apply { putBoolean(PlaybackSessionCommands.EXTRA_SCRUBBING, enabled) }
+        controller?.sendCustomCommand(PlaybackSessionCommands.setScrubbingCommand, args)
+    }
+
+    fun setPlaybackSpeed(speed: Float) {
+        controller?.setPlaybackSpeed(speed)
+    }
+
+    fun setMuted(muted: Boolean) {
+        controller?.volume = if (muted) 0f else 1f
+    }
+
+    /** Shows the current video's picture on [view] - which decodes it, until [clearVideoSurface] lets it go. */
+    fun setVideoSurface(view: SurfaceView) {
+        controller?.setVideoSurfaceView(view)
+    }
+
+    fun clearVideoSurface(view: SurfaceView) {
+        controller?.clearVideoSurfaceView(view)
     }
 
     /** The player's position at this moment, for a screen that follows it closer than [playbackState] ticks. */
@@ -399,6 +455,7 @@ class PlaybackController @Inject constructor(
     private fun updateUiState(mediaController: MediaController) {
         val queue = currentQueue(mediaController)
         val currentMediaItemIndex = mediaController.currentMediaItemIndex
+        val videoSize = mediaController.videoSize
         _playbackState.update {
             it.copy(
                 isReady = isQueueSettled,
@@ -419,6 +476,11 @@ class PlaybackController @Inject constructor(
                 hasNextTrack = mediaController.hasNextMediaItem(),
                 queue = queue,
                 currentQueueIndex = queue.indexOfFirst { entry -> entry.mediaItemIndex == currentMediaItemIndex },
+                playbackSpeed = mediaController.playbackParameters.speed,
+                isMuted = mediaController.volume == 0f,
+                videoWidth = (videoSize.width * videoSize.pixelWidthHeightRatio).roundToInt(),
+                videoHeight = videoSize.height,
+                pictureTrackId = pictureTrackId,
             )
         }
     }

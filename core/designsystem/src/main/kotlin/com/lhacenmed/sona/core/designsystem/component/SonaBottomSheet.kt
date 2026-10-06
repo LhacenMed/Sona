@@ -1,7 +1,12 @@
 package com.lhacenmed.sona.core.designsystem.component
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -47,13 +52,7 @@ fun SonaBottomSheet(
     SonaBottomSheet(
         onDismissRequest = onDismissRequest,
         modifier = modifier,
-        header = {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
-            )
-        },
+        header = { SheetTitle(title) },
         content = content,
     )
 }
@@ -62,13 +61,55 @@ fun SonaBottomSheet(
  * The same sheet, with [header] standing in for the plain title - an options sheet's cover, type,
  * name and info line, in place of a single line of text.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SonaBottomSheet(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
     header: @Composable () -> Unit,
     content: @Composable SonaBottomSheetScope.() -> Unit,
+) {
+    SheetFrame(onDismissRequest, modifier) { sheetScope ->
+        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+            header()
+            sheetScope.content()
+        }
+    }
+}
+
+/**
+ * The same sheet for a list that can run long - a queue, say: the rows are a lazy list, so only those in view
+ * are drawn, however many there are. [listState] places it - opened at the row that matters.
+ */
+@Composable
+fun SonaLazyBottomSheet(
+    title: String,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+    listState: LazyListState = rememberLazyListState(),
+    content: LazyListScope.(SonaBottomSheetScope) -> Unit,
+) {
+    SheetFrame(onDismissRequest, modifier) { sheetScope ->
+        SheetTitle(title)
+        LazyColumn(state = listState) { content(sheetScope) }
+    }
+}
+
+@Composable
+private fun SheetTitle(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleLarge,
+        modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
+    )
+}
+
+/** The modal sheet every variant is: opened fully, closed animated from inside, with its own window's haptics. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SheetFrame(
+    onDismissRequest: () -> Unit,
+    modifier: Modifier,
+    content: @Composable ColumnScope.(SonaBottomSheetScope) -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val coroutineScope = rememberCoroutineScope()
@@ -86,10 +127,7 @@ fun SonaBottomSheet(
     ) {
         // Its own window, with its own haptics: gated as every window's are.
         ProvideSonaHaptics {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                header()
-                sheetScope.content()
-            }
+            content(sheetScope)
         }
     }
 }

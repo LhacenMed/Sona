@@ -35,4 +35,16 @@ data class PlaybackUiState(
     val queue: List<QueueEntry> = emptyList(),
     /** Where the current track sits in [queue], or -1 while nothing is loaded. */
     val currentQueueIndex: Int = -1,
+    /** How fast it plays, 1 being as recorded. */
+    val playbackSpeed: Float = 1f,
+    /** Whether the player itself is silenced - the device's volume left as it is. */
+    val isMuted: Boolean = false,
+    /** The current video's picture as it is shown, its pixels' own shape applied - 0 by 0 for music, or before it is known. */
+    val videoWidth: Int = 0,
+    val videoHeight: Int = 0,
+    /**
+     * The track whose picture is on the surface - set once its first frame is drawn, and cleared as the next track
+     * starts - so a screen shows a picture only once it is there, at its own size.
+     */
+    val pictureTrackId: Long? = null,
 )
