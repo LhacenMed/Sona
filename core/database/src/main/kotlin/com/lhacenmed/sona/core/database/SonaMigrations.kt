@@ -311,6 +311,16 @@ val MIGRATION_14_15 = object : Migration(14, 15) {
     }
 }
 
+/** Albums, artists, genres, folders and playlists can be favorited as themselves, for Favorites to list. */
+val MIGRATION_15_16 = object : Migration(15, 16) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `favorite_collections` " +
+                "(`collection` TEXT NOT NULL, `favoritedAt` INTEGER NOT NULL, PRIMARY KEY(`collection`))",
+        )
+    }
+}
+
 /**
  * Makes sure Favorites exists, every time the database is opened.
  *

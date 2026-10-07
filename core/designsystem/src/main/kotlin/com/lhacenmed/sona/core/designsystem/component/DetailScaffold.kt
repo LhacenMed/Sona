@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -51,13 +52,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
+import com.lhacenmed.sona.core.designsystem.component.header.CollapsingHeaderState
+import com.lhacenmed.sona.core.designsystem.component.header.collapsingHeaderDrag
 import com.lhacenmed.sona.core.designsystem.component.screen.PlayingRow
 import com.lhacenmed.sona.core.designsystem.component.screen.indexOfKey
 import com.lhacenmed.sona.core.designsystem.component.screen.scrollBackToTop
 import com.lhacenmed.sona.core.designsystem.component.screen.scrollToRow
-import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
-import com.lhacenmed.sona.core.designsystem.component.header.CollapsingHeaderState
-import com.lhacenmed.sona.core.designsystem.component.header.collapsingHeaderDrag
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
@@ -329,7 +330,8 @@ fun DetailScaffold(
 /**
  * A detail screen's header: its cover, what kind of collection it is, its name, a line or two about
  * it, then Play and Shuffle - Auxio's `detail_header` on a tall screen. [subhead] is left out when
- * there is nothing to say there, as Auxio hides its line.
+ * there is nothing to say there, as Auxio hides its line. A collection that can be favorited has its
+ * [favorite] heart at the end of those lines, centred on them - as an options sheet's header has.
  */
 @Composable
 fun DetailHeader(
@@ -344,6 +346,7 @@ fun DetailHeader(
     shuffleLabel: String,
     modifier: Modifier = Modifier,
     isPlayable: Boolean = true,
+    favorite: FavoriteToggle? = null,
 ) {
     Column(
         modifier = modifier
@@ -352,33 +355,38 @@ fun DetailHeader(
     ) {
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { cover() }
         Spacer(Modifier.size(16.dp))
-        Text(
-            text = type,
-            style = MaterialTheme.typography.labelMediumEmphasized,
-            color = MaterialTheme.colorScheme.secondary,
-        )
-        Text(
-            text = name,
-            style = MaterialTheme.typography.titleLargeEmphasized,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (subhead != null) {
-            Text(
-                text = subhead,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = type,
+                    style = MaterialTheme.typography.labelMediumEmphasized,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.titleLargeEmphasized,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (subhead != null) {
+                    Text(
+                        text = subhead,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Text(
+                    text = info,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (favorite != null) SonaFavoriteButton(favorite)
         }
-        Text(
-            text = info,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
         Spacer(Modifier.size(12.dp))
         DetailPlaybackButtons(
             onPlay = onPlay,

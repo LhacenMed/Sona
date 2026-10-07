@@ -10,7 +10,9 @@ import com.lhacenmed.sona.core.database.entity.PlaylistCoverSource
 import com.lhacenmed.sona.core.database.entity.PlaylistEntity
 import com.lhacenmed.sona.core.database.entity.PlaylistTrackEntity
 import com.lhacenmed.sona.core.database.entity.TrackEntity
+import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.sort.SortableList
+import com.lhacenmed.sona.core.model.toStorageKey
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -111,15 +113,20 @@ interface PlaylistDao {
     suspend fun deleteRow(playlistId: Long): Int
 
     /**
-     * Deletes a playlist with its hand-made order, which no foreign key reaches - so a playlist later
-     * given the same id never opens in an order it did not make. Whether it was deleted.
+     * Deletes a playlist with its hand-made order and its place in Favorites, which no foreign key reaches -
+     * so a playlist later given the same id never opens in an order it did not make, nor turns up favorited.
+     * Whether it was deleted.
      */
     @Transaction
     suspend fun delete(playlistId: Long): Boolean {
         if (deleteRow(playlistId) == 0) return false
         deleteArrangement(SortableList.PLAYLIST_TRACKS, playlistId.toString())
+        deleteFavoriteCollection(PlaybackParent.Playlist(playlistId).toStorageKey())
         return true
     }
+
+    @Query("DELETE FROM favorite_collections WHERE collection = :collection")
+    suspend fun deleteFavoriteCollection(collection: String)
 
     @Query("DELETE FROM arrangements WHERE list = :list AND instanceId = :instanceId")
     suspend fun deleteArrangement(list: SortableList, instanceId: String)

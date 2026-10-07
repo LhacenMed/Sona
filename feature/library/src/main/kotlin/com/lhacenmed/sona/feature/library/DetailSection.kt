@@ -2,11 +2,14 @@ package com.lhacenmed.sona.feature.library
 
 import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
+import com.lhacenmed.sona.core.model.Folder
+import com.lhacenmed.sona.core.model.Genre
+import com.lhacenmed.sona.core.model.Playlist
 
 /**
  * A section a detail screen lists above its tracks - Auxio's `DetailSection`s, less the tracks
  * themselves, which every detail screen ends with. An artist lists its albums and those it appears
- * on; a genre, the artists in it.
+ * on; a genre, the artists in it; Favorites, the collections favorited as themselves, a section per kind.
  */
 internal sealed interface DetailSection {
     val title: String
@@ -15,6 +18,18 @@ internal sealed interface DetailSection {
 
     data class Artists(val artists: List<Artist>) : DetailSection {
         override val title: String get() = "Artists"
+    }
+
+    data class Genres(val genres: List<Genre>) : DetailSection {
+        override val title: String get() = "Genres"
+    }
+
+    data class Folders(val folders: List<Folder>) : DetailSection {
+        override val title: String get() = "Folders"
+    }
+
+    data class Playlists(val playlists: List<Playlist>) : DetailSection {
+        override val title: String get() = "Playlists"
     }
 }
 

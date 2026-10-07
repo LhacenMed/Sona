@@ -15,10 +15,12 @@ import com.lhacenmed.sona.core.data.sort.SortSpec
 import com.lhacenmed.sona.core.database.dao.AlbumDao
 import com.lhacenmed.sona.core.database.dao.ArrangementDao
 import com.lhacenmed.sona.core.database.dao.ArtistDao
+import com.lhacenmed.sona.core.database.dao.FavoriteCollectionDao
 import com.lhacenmed.sona.core.database.FAVORITES_PLAYLIST_ID
 import com.lhacenmed.sona.core.database.dao.GenreDao
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.PlaylistDao
+import com.lhacenmed.sona.core.database.entity.FavoriteCollectionEntity
 import com.lhacenmed.sona.core.database.entity.PlaylistEntity
 import com.lhacenmed.sona.core.database.entity.PlaylistTrackEntity
 import com.lhacenmed.sona.core.database.dao.TrackDao
@@ -32,6 +34,8 @@ import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.PlaylistCover
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.model.playbackParentOf
+import com.lhacenmed.sona.core.model.toStorageKey
 import com.lhacenmed.sona.core.model.sort.SortOrder
 import com.lhacenmed.sona.core.model.sort.SortTarget
 import com.lhacenmed.sona.core.model.sort.SortableList
@@ -86,6 +90,7 @@ class LibraryRepository @Inject constructor(
     private val genreDao: GenreDao,
     private val playlistDao: PlaylistDao,
     private val arrangementDao: ArrangementDao,
+    private val favoriteCollectionDao: FavoriteCollectionDao,
     private val playStatsDao: PlayStatsDao,
     private val playlistCoverImages: PlaylistCoverImages,
     private val sortOrders: LibrarySortOrders,
@@ -410,12 +415,39 @@ class LibraryRepository @Inject constructor(
         .map { it.toSet() }
         .stateIn(scope, SharingStarted.Eagerly, emptySet())
 
+    /**
+     * The collections favorited as themselves - albums, artists, genres, folders and playlists - the latest
+     * favorited first, for Favorites to list one tap away. A favorited track is in Favorites' playlist instead.
+     */
+    val favoriteCollections: StateFlow<List<PlaybackParent>> = favoriteCollectionDao.observeAll()
+        .map { keys -> keys.mapNotNull(::playbackParentOf) }
+        .stateIn(scope, SharingStarted.Eagerly, emptyList())
+
     suspend fun setFavorite(trackId: Long, isFavorite: Boolean) {
+        setFavorites(listOf(trackId), emptyList(), isFavorite)
+    }
+
+    /**
+     * Favorites [trackIds] - into Favorites' playlist - and [collections] as themselves, or, while not
+     * [isFavorite], takes them all out of Favorites. Favorites' own playlist is never one of [collections].
+     */
+    suspend fun setFavorites(trackIds: List<Long>, collections: List<PlaybackParent>, isFavorite: Boolean) {
         val changedAt = System.currentTimeMillis()
+        val collectionKeys = collections.map { it.toStorageKey() }
         if (isFavorite) {
-            playlistDao.addTracks(FAVORITES_PLAYLIST_ID, membershipsOf(FAVORITES_PLAYLIST_ID, listOf(trackId), changedAt), changedAt)
+            if (trackIds.isNotEmpty()) {
+                playlistDao.addTracks(FAVORITES_PLAYLIST_ID, membershipsOf(FAVORITES_PLAYLIST_ID, trackIds, changedAt), changedAt)
+            }
+            if (collectionKeys.isNotEmpty()) {
+                // Each a millisecond before the one before it, so collections favorited together are listed -
+                // the latest favorited first - in the order they were given.
+                favoriteCollectionDao.insert(
+                    collectionKeys.mapIndexed { index, key -> FavoriteCollectionEntity(key, changedAt - index) },
+                )
+            }
         } else {
-            playlistDao.removeTracks(FAVORITES_PLAYLIST_ID, listOf(trackId), changedAt)
+            if (trackIds.isNotEmpty()) playlistDao.removeTracks(FAVORITES_PLAYLIST_ID, trackIds, changedAt)
+            if (collectionKeys.isNotEmpty()) favoriteCollectionDao.delete(collectionKeys)
         }
     }
 

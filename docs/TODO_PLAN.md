@@ -227,10 +227,12 @@ Ordered from most to least critical. Every entry describes **what** is broken or
   Bring in the same swipe gesture mechanics (same math/algorithm) used in the referenced app "Khamah," specifically the interaction used in its "Wird session reader" when opening a new session.
   *Note: the original request doesn't specify which screen in Sona this should apply to — needs clarification.*
 
-- [ ] **6.9 Expand the favorites system beyond tracks**
+- [x] **6.9 Expand the favorites system beyond tracks**
   Currently only tracks can be liked/favorited. Extend favoriting to Artists, Albums, Genres, and Folders collections as well, alongside the existing liked-tracks feature.
   - Add top tabs to the favorites area, similar to the tabs already used in the main activity, so each favorited collection type has its own tab.
   - *Under consideration:* a grid-style listing for favorited Artists/Albums, similar to the grid layout used in the Samsung Music app — flagged as an idea to explore, not a firm requirement.
+  - **Resolved:** albums, artists, genres, folders (music and video) and playlists are favorited as themselves (`favorite_collections`, `MIGRATION_15_16`, keyed by `PlaybackParent.toStorageKey`); tracks stay Favorites' own playlist. Instead of tabs, Favorites lists them above its tracks in the detail screens' own sections - Artists, Albums, Genres, Folders, Playlists, each there once it holds one, the latest favorited first, one tap from each. A collection no longer in the library is not listed until it is back; a deleted playlist leaves Favorites with its row.
+  - One heart everywhere: every detail screen's header has it at the end of its title, centred on it (not Favorites itself, nor the listening histories); every options sheet has it at the end of its top section, centred on it - one `SonaFavoriteButton` for both - flipping in place with the sheet left open; a selection's sheet favorites each row its own way - tracks into the playlist, collections as themselves - filled once all of them are in. The grid listing is not done.
 
 - [x] **6.10 Unify the FAB system and make it scroll to the playing track**
   - Unify the FAB system across the custom color palette screens.

@@ -17,6 +17,8 @@ import com.lhacenmed.sona.core.model.playbackParent
 import com.lhacenmed.sona.core.vault.VaultRepository
 import com.lhacenmed.sona.core.vault.VaultState
 import com.lhacenmed.sona.core.vault.data.VaultItem
+import com.lhacenmed.sona.feature.library.favorite.FavoriteItems
+import com.lhacenmed.sona.feature.library.favorite.Favorites
 import com.lhacenmed.sona.feature.library.readPlaylistFile
 import com.lhacenmed.sona.feature.library.writeM3u
 import com.lhacenmed.sona.core.common.coroutines.launchOperation
@@ -33,8 +35,11 @@ import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -60,6 +65,21 @@ class OptionsActionsViewModel @Inject constructor(
 
     /** Every playlist there is to add to. */
     val playlists: StateFlow<LibraryContent<Playlist>> = repository.playlists
+
+    /** What Favorites holds, for the heart of whatever is shown - see [Favorites]. */
+    internal val favorites: StateFlow<Favorites> =
+        combine(repository.favoriteTrackIds, repository.favoriteCollections) { trackIds, collections ->
+            Favorites(trackIds, collections.toSet())
+        }.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            Favorites(repository.favoriteTrackIds.value, repository.favoriteCollections.value.toSet()),
+        )
+
+    /** Puts [items] in Favorites - or, while not [isFavorite], takes them out - each its own way: see [FavoriteItems]. */
+    internal fun setFavorite(items: FavoriteItems, isFavorite: Boolean) {
+        viewModelScope.launch { repository.setFavorites(items.trackIds, items.collections, isFavorite) }
+    }
 
     /** Where the Private Folder stands - whether "Add to Private Folder" has to create it first. */
     val vaultState: StateFlow<VaultState> = vaultRepository.state
@@ -240,7 +260,7 @@ class OptionsActionsViewModel @Inject constructor(
     fun resolveSelection(keys: List<SelectionKey>, onResolved: (OptionsTarget.ForSelection) -> Unit) {
         viewModelScope.launch {
             val tracks = repository.tracksOf(keys)
-            if (tracks.isNotEmpty()) onResolved(OptionsTarget.ForSelection(tracks))
+            if (tracks.isNotEmpty()) onResolved(OptionsTarget.ForSelection(tracks, keys))
         }
     }
 

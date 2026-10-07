@@ -83,12 +83,14 @@ import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.sort.SortCriterion
 import com.lhacenmed.sona.core.designsystem.component.DetailHeader
 import com.lhacenmed.sona.core.designsystem.component.DetailScaffold
+import com.lhacenmed.sona.core.designsystem.component.FavoriteToggle
 import com.lhacenmed.sona.core.designsystem.component.TopBarCollapse
 import com.lhacenmed.sona.core.designsystem.component.rememberDetailHeaderState
 import com.lhacenmed.sona.core.designsystem.theme.LocalIsRounded
 import com.lhacenmed.sona.core.designsystem.theme.SquareShape
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.feature.library.operation.RemoveFromPlaylistDialog
+import com.lhacenmed.sona.feature.library.favorite.favoriteItemsOf
 import com.lhacenmed.sona.feature.library.options.formatDurationMs
 import com.lhacenmed.sona.feature.library.options.OptionsFollowUps
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
@@ -639,6 +641,9 @@ internal fun TrackListDetail(
     var removingTracks by remember { mutableStateOf<List<Track>>(emptyList()) }
     val playlist = (collection as? OptionsTarget.ForPlaylist)?.playlist
     val sort = viewModel.sort
+    val favorites by collectionActions.viewModel.favorites.collectAsStateWithLifecycle()
+    // Known from the screen itself rather than its collection, so the heart takes its place on the first frame.
+    val favoriteItems = remember(viewModel) { favoriteItemsOf(viewModel.playbackParent) }
     val hasTracks = tracks.itemsOrEmpty.isNotEmpty()
 
     val exportLauncher = rememberLauncherForActivityResult(
@@ -787,6 +792,10 @@ internal fun TrackListDetail(
                     playLabel = "Play",
                     shuffleLabel = "Shuffle",
                     isPlayable = hasTracks,
+                    favorite = favoriteItems?.let { items ->
+                        val isFavorite = favorites.containsAll(items)
+                        FavoriteToggle(isFavorite) { collectionActions.viewModel.setFavorite(items, !isFavorite) }
+                    },
                 )
             },
             isHeaderAside = searchQuery != null,
@@ -835,6 +844,48 @@ internal fun TrackListDetail(
                                         isPlaying = { playback.isPlaying },
                                         onClick = { navigator.go(ArtistDetailScreen(artist.id)) },
                                         onOpenOptions = { optionsTarget = OptionsTarget.ForArtist(artist) },
+                                    )
+                                }
+                            }
+                            is DetailSection.Genres -> items(section.genres, key = { "genre-${it.id}" }) { genre ->
+                                CompositionLocalProvider(
+                                    LocalSwipeActions provides rememberOptionsSwipeActions(OptionsSwipe.QUEUE, collectionActions, OptionsTarget.ForGenre(genre)),
+                                ) {
+                                    GenreRow(
+                                        genre = genre,
+                                        selection = null,
+                                        isCurrent = { playback.marks(genre) },
+                                        isPlaying = { playback.isPlaying },
+                                        onClick = { navigator.go(GenreDetailScreen(genre.id)) },
+                                        onOpenOptions = { optionsTarget = OptionsTarget.ForGenre(genre) },
+                                    )
+                                }
+                            }
+                            is DetailSection.Folders -> items(section.folders, key = { "folder-${it.isVideo}-${it.path}" }) { folder ->
+                                CompositionLocalProvider(
+                                    LocalSwipeActions provides rememberOptionsSwipeActions(OptionsSwipe.QUEUE, collectionActions, OptionsTarget.ForFolder(folder)),
+                                ) {
+                                    FolderRow(
+                                        folder = folder,
+                                        selection = null,
+                                        isCurrent = { playback.marks(folder) },
+                                        isPlaying = { playback.isPlaying },
+                                        onClick = { navigator.go(FolderDetailScreen(folder.path, folder.isVideo)) },
+                                        onOpenOptions = { optionsTarget = OptionsTarget.ForFolder(folder) },
+                                    )
+                                }
+                            }
+                            is DetailSection.Playlists -> items(section.playlists, key = { "playlist-${it.id}" }) { playlist ->
+                                CompositionLocalProvider(
+                                    LocalSwipeActions provides rememberOptionsSwipeActions(OptionsSwipe.QUEUE, collectionActions, OptionsTarget.ForPlaylist(playlist)),
+                                ) {
+                                    PlaylistRow(
+                                        playlist = playlist,
+                                        selection = null,
+                                        isCurrent = { playback.marks(playlist) },
+                                        isPlaying = { playback.isPlaying },
+                                        onClick = { navigator.go(PlaylistDetailScreen(playlist.id)) },
+                                        onOpenOptions = { optionsTarget = OptionsTarget.ForPlaylist(playlist) },
                                     )
                                 }
                             }

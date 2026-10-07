@@ -1,10 +1,13 @@
 package com.lhacenmed.sona.feature.library.options
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.common.cover.rankedCoverArtUris
 import com.lhacenmed.sona.core.designsystem.component.CoverArtDefaults
+import com.lhacenmed.sona.core.designsystem.component.FavoriteToggle
 import com.lhacenmed.sona.core.designsystem.component.SonaAlbumCover
 import com.lhacenmed.sona.core.designsystem.component.SonaArtistCover
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverArt
@@ -15,11 +18,13 @@ import com.lhacenmed.sona.core.designsystem.component.SonaSelectionCover
 import com.lhacenmed.sona.core.designsystem.component.sheet.SonaBottomSheet
 import com.lhacenmed.sona.core.designsystem.component.sheet.SonaOptionRow
 import com.lhacenmed.sona.core.designsystem.component.sheet.SonaOptionsSheetHeader
+import com.lhacenmed.sona.feature.library.favorite.favoriteItems
 
 /**
  * The sheet every song, album, artist, genre, folder and playlist opens for its overflow button - Auxio's
- * menu bottom sheet: the entity's cover over its type, name and a line of detail, then [target]'s actions
- * in order, each disabled exactly where [disabledActions] says.
+ * menu bottom sheet: the entity's cover over its type, name and a line of detail, with its heart at the end
+ * wherever it can be favorited - see [favoriteItems] - then [target]'s actions in order, each disabled
+ * exactly where [disabledActions] says. The heart flips in place, leaving the sheet open.
  *
  * What each action does is [OptionsActions]'s, shared with a collection's own menu. An action that opens
  * a dialog or a file picker takes the sheet out of sight without dismissing it, so the follow-up still
@@ -37,6 +42,8 @@ fun OptionsSheet(
 ) {
     val actions = rememberOptionsActions()
     val disabledActions = target.disabledActions()
+    val favorites by actions.viewModel.favorites.collectAsStateWithLifecycle()
+    val favoriteItems = remember(target) { target.favoriteItems() }
 
     if (!actions.isFollowingUp) {
         SonaBottomSheet(
@@ -48,6 +55,13 @@ fun OptionsSheet(
                     type = target.typeLabel(),
                     name = target.name(),
                     info = target.infoLine(),
+                    favorite = favoriteItems?.let { items ->
+                        val isFavorite = favorites.containsAll(items)
+                        FavoriteToggle(isFavorite) {
+                            onActionChosen()
+                            actions.viewModel.setFavorite(items, !isFavorite)
+                        }
+                    },
                 )
             },
         ) {

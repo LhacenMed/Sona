@@ -31,6 +31,7 @@ import com.lhacenmed.sona.feature.library.options.OptionsAction.SHUFFLE
 import com.lhacenmed.sona.feature.library.options.OptionsAction.SONG_PROPERTIES
 import com.lhacenmed.sona.feature.library.options.OptionsAction.VIEW_DETAILS
 import com.lhacenmed.sona.feature.library.pluralCount
+import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.trackCountLabel
 
 /**
@@ -84,8 +85,11 @@ sealed interface OptionsTarget {
         val context: FolderOptionsContext = FolderOptionsContext.LIST,
     ) : OptionsTarget
 
-    /** A selection, as the tracks it stands for, in the order their rows were selected - Auxio's `Menu.ForSelection`. */
-    data class ForSelection(val tracks: List<Track>) : OptionsTarget
+    /**
+     * A selection, as the tracks it stands for, in the order their rows were selected - Auxio's
+     * `Menu.ForSelection` - and as the rows themselves, [keys], which favoriting it favorites each its own way.
+     */
+    data class ForSelection(val tracks: List<Track>, val keys: List<SelectionKey>) : OptionsTarget
 }
 
 /**
@@ -108,7 +112,10 @@ private val PlaylistActions =
 private val FolderActions =
     listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, EXPORT, EXCLUDE, DELETE_FROM_DEVICE)
 
-/** The rows an options sheet or a collection's menu lists, top to bottom - Auxio's inflated menu XML, chosen by target and context. */
+/**
+ * The rows an options sheet or a collection's menu lists, top to bottom - Auxio's inflated menu XML, chosen by
+ * target and context. Favoriting is the heart in the sheet's header rather than a row - see [OptionsSheet].
+ */
 fun OptionsTarget.actions(): List<OptionsAction> = when (this) {
     is OptionsTarget.ForTrack -> when (context) {
         TrackOptionsContext.LIST ->

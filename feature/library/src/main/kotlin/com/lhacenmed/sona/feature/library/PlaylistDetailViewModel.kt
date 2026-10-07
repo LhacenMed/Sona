@@ -9,6 +9,7 @@ import com.lhacenmed.sona.core.data.sort.LibrarySortOrders
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.model.playbackParent
 import com.lhacenmed.sona.core.model.sort.SortableList
 import com.lhacenmed.sona.feature.library.sort.SortControl
 import com.lhacenmed.sona.feature.library.sort.control
@@ -20,6 +21,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
@@ -46,6 +48,41 @@ class PlaylistDetailViewModel @AssistedInject constructor(
 
     override val tracks: StateFlow<LibraryContent<Track>> = repository.playlistTracks(playlistId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryContent.Loading)
+
+    /**
+     * Favorites lists, above its tracks, the collections favorited as themselves - a section per kind, each
+     * there once it holds one, the latest favorited first - one tap from each. A collection no longer in the
+     * library is not listed, and is again once it is back. Any other playlist lists its tracks alone.
+     */
+    override val sections: StateFlow<List<DetailSection>> =
+        if (playlistId != repository.favoritesPlaylistId) {
+            super.sections
+        } else {
+            combine(
+                repository.favoriteCollections,
+                repository.artists,
+                repository.albums,
+                repository.genres,
+                combine(repository.folders, repository.videoFolders, repository.playlists, ::Triple),
+            ) { favorites, artists, albums, genres, (folders, videoFolders, playlists) ->
+                fun <T, K> favorited(items: List<T>, keyOf: (T) -> K, parentOf: (PlaybackParent) -> K?): List<T> {
+                    val byKey = items.associateBy(keyOf)
+                    return favorites.mapNotNull { parent -> parentOf(parent)?.let(byKey::get) }
+                }
+                listOfNotNull(
+                    favorited(artists.itemsOrEmpty, { it.id }, { (it as? PlaybackParent.Artist)?.artistId })
+                        .takeIf { it.isNotEmpty() }?.let(DetailSection::Artists),
+                    favorited(albums.itemsOrEmpty, { it.id }, { (it as? PlaybackParent.Album)?.albumId })
+                        .takeIf { it.isNotEmpty() }?.let { DetailSection.Albums("Albums", it) },
+                    favorited(genres.itemsOrEmpty, { it.id }, { (it as? PlaybackParent.Genre)?.genreId })
+                        .takeIf { it.isNotEmpty() }?.let(DetailSection::Genres),
+                    favorited(folders.itemsOrEmpty + videoFolders.itemsOrEmpty, { it.playbackParent }, { it as? PlaybackParent.Folder })
+                        .takeIf { it.isNotEmpty() }?.let(DetailSection::Folders),
+                    favorited(playlists.itemsOrEmpty, { it.id }, { (it as? PlaybackParent.Playlist)?.playlistId })
+                        .takeIf { it.isNotEmpty() }?.let(DetailSection::Playlists),
+                )
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        }
 }
 
 @HiltViewModel
