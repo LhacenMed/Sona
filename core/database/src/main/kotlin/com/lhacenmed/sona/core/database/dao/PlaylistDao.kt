@@ -10,6 +10,7 @@ import com.lhacenmed.sona.core.database.entity.PlaylistCoverSource
 import com.lhacenmed.sona.core.database.entity.PlaylistEntity
 import com.lhacenmed.sona.core.database.entity.PlaylistTrackEntity
 import com.lhacenmed.sona.core.database.entity.TrackEntity
+import com.lhacenmed.sona.core.model.sort.SortableList
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -84,13 +85,13 @@ interface PlaylistDao {
     )
     fun observeCoverArt(): Flow<List<PlaylistCoverRow>>
 
-    /** A playlist's tracks, in the order the user arranged them. */
+    /** A playlist's tracks, in the order they joined it: the repository sorts them the way the user chose. */
     @Query(
         """
         SELECT t.*, pt.addedAt AS addedAt FROM tracks t
         INNER JOIN playlist_tracks pt ON pt.trackId = t.id
         WHERE pt.playlistId = :playlistId
-        ORDER BY pt.position ASC
+        ORDER BY pt.addedAt ASC
         """,
     )
     fun observeTracks(playlistId: Long): Flow<List<PlaylistTrackRow>>
@@ -107,7 +108,24 @@ interface PlaylistDao {
 
     /** Built-in playlists are excluded here rather than in the caller, so nothing can delete them. */
     @Query("DELETE FROM playlists WHERE id = :playlistId AND isBuiltIn = 0")
-    suspend fun delete(playlistId: Long): Int
+    suspend fun deleteRow(playlistId: Long): Int
+
+    /**
+     * Deletes a playlist with its hand-made order, which no foreign key reaches - so a playlist later
+     * given the same id never opens in an order it did not make. Whether it was deleted.
+     */
+    @Transaction
+    suspend fun delete(playlistId: Long): Boolean {
+        if (deleteRow(playlistId) == 0) return false
+        deleteArrangement(SortableList.PLAYLIST_TRACKS, playlistId.toString())
+        return true
+    }
+
+    @Query("DELETE FROM arrangements WHERE list = :list AND instanceId = :instanceId")
+    suspend fun deleteArrangement(list: SortableList, instanceId: String)
+
+    @Query("DELETE FROM arrangements WHERE list = :list AND instanceId = :instanceId AND trackId IN (:trackIds)")
+    suspend fun deleteArranged(list: SortableList, instanceId: String, trackIds: List<Long>)
 
     @Query("SELECT coverImageUri FROM playlists WHERE id = :playlistId")
     suspend fun coverImageUri(playlistId: Long): String?
@@ -144,54 +162,34 @@ interface PlaylistDao {
     @Query("UPDATE playlists SET modifiedAt = :modifiedAt WHERE id = :playlistId")
     suspend fun setModifiedAt(playlistId: Long, modifiedAt: Long)
 
-    @Query("SELECT COALESCE(MAX(position), -1) FROM playlist_tracks WHERE playlistId = :playlistId")
-    suspend fun lastPosition(playlistId: Long): Int
-
     /** The row id of each inserted membership, or -1 for one that was already there. */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertMemberships(rows: List<PlaylistTrackEntity>): List<Long>
 
     /**
-     * Appends [trackIds] after whatever the playlist already holds.
+     * Adds [rows] to their playlist, as of [changedAt].
      *
-     * IGNORE rather than REPLACE on conflict: a track already in the playlist keeps the position the
-     * user put it in, instead of jumping to the end because it was added again. For the same reason
-     * the playlist only counts as changed when something was actually inserted.
+     * IGNORE rather than REPLACE on conflict: a track already in the playlist keeps the place and the
+     * date it has, instead of turning new because it was added again. For the same reason the
+     * playlist only counts as changed when something was actually inserted.
      */
     @Transaction
-    suspend fun addTracks(playlistId: Long, trackIds: List<Long>, addedAt: Long) {
-        if (trackIds.isEmpty()) return
-        val startPosition = lastPosition(playlistId) + 1
-        val inserted = insertMemberships(
-            trackIds.mapIndexed { index, trackId ->
-                PlaylistTrackEntity(playlistId, trackId, startPosition + index, addedAt)
-            },
-        )
-        if (inserted.any { it != -1L }) setModifiedAt(playlistId, addedAt)
+    suspend fun addTracks(playlistId: Long, rows: List<PlaylistTrackEntity>, changedAt: Long) {
+        if (rows.isEmpty()) return
+        if (insertMemberships(rows).any { it != -1L }) setModifiedAt(playlistId, changedAt)
     }
 
-    // Removal deliberately leaves gaps in `position`. Only the relative order matters to the
-    // ORDER BY, so renumbering every remaining row would be work with nothing to show for it.
     @Query("DELETE FROM playlist_tracks WHERE playlistId = :playlistId AND trackId IN (:trackIds)")
     suspend fun deleteMemberships(playlistId: Long, trackIds: List<Long>): Int
 
-    @Transaction
-    suspend fun removeTracks(playlistId: Long, trackIds: List<Long>, removedAt: Long) {
-        if (deleteMemberships(playlistId, trackIds) > 0) setModifiedAt(playlistId, removedAt)
-    }
-
-    @Query("UPDATE playlist_tracks SET position = :position WHERE playlistId = :playlistId AND trackId = :trackId")
-    suspend fun setPosition(playlistId: Long, trackId: Long, position: Int)
-
     /**
-     * Writes the order a drag ended on.
-     *
-     * Called once on drop, never per frame: dragging reorders the list in memory, and only the
-     * result reaches the database.
+     * Takes [trackIds] out of the playlist, and out of its hand-made order with them, so one added
+     * back later arrives as a new track rather than returning to where it once was.
      */
     @Transaction
-    suspend fun setOrder(playlistId: Long, trackIds: List<Long>, reorderedAt: Long) {
-        trackIds.forEachIndexed { position, trackId -> setPosition(playlistId, trackId, position) }
-        setModifiedAt(playlistId, reorderedAt)
+    suspend fun removeTracks(playlistId: Long, trackIds: List<Long>, removedAt: Long) {
+        if (deleteMemberships(playlistId, trackIds) == 0) return
+        deleteArranged(SortableList.PLAYLIST_TRACKS, playlistId.toString(), trackIds)
+        setModifiedAt(playlistId, removedAt)
     }
 }

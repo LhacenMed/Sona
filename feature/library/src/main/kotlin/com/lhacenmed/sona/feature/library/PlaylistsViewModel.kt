@@ -90,7 +90,8 @@ class PlaylistsViewModel @Inject constructor(
     }
 
     /**
-     * Creates a playlist from an M3U file.
+     * Creates a playlist from an M3U file, as it was exported - its order and sort included: see
+     * [LibraryRepository.importPlaylist].
      *
      * The file is read before the playlist is created, so an import that resolves nothing leaves
      * nothing behind - an empty playlist named after a failed import is worse than no playlist.
@@ -101,24 +102,10 @@ class PlaylistsViewModel @Inject constructor(
         onResult: (Boolean) -> Unit,
     ) {
         viewModelScope.launch {
-            val trackIds = readTrackIds(openStream)
-            if (trackIds.isEmpty()) {
-                onResult(false)
-                return@launch
-            }
-            val playlistId = repository.createPlaylist(name)
-            if (playlistId == null) {
-                onResult(false)
-                return@launch
-            }
-            repository.addTracksToPlaylist(playlistId, trackIds)
-            onResult(true)
+            val file = readPlaylistFile(openStream, repository.tracks.value.itemsOrEmpty)
+            onResult(repository.importPlaylist(name, file))
         }
     }
-
-    /** The tracks an M3U file names, as ids - see [readM3uTrackIds]. */
-    private suspend fun readTrackIds(openStream: () -> InputStream?): List<Long> =
-        readM3uTrackIds(openStream, repository.tracks.value.itemsOrEmpty)
 
     /**
      * Tracks the library holds anywhere beneath [folderPath].

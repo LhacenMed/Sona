@@ -22,6 +22,9 @@ private val Context.sortDataStore by preferencesDataStore(name = "sort_settings"
 private const val ORDER_SEPARATOR = ':'
 private const val INSTANCE_SEPARATOR = '@'
 
+private val DEFAULT_SCOPE = stringPreferencesKey("default_sort_scope")
+private val NEW_TRACKS_DIRECTION = stringPreferencesKey("custom_new_tracks_direction")
+
 /**
  * The order each sortable list was last set to.
  *
@@ -55,6 +58,28 @@ class SortSettings @Inject constructor(
         }
     }
 
+    /** Where the sort sheet's "Apply to" starts: this list alone, unless the user chose otherwise. */
+    val defaultScope: Setting<SortScope> = cache.setting { preferences ->
+        preferences[DEFAULT_SCOPE]?.let { runCatching { SortScope.valueOf(it) }.getOrNull() } ?: SortScope.THIS_LIST
+    }
+
+    suspend fun setDefaultScope(scope: SortScope) {
+        dataStore.edit { it[DEFAULT_SCOPE] = scope.name }
+    }
+
+    /**
+     * Where a list newly put in its custom order places the tracks added to it later, when the order
+     * it leaves says nothing about it - see [SortOrder]. At the bottom unless the user chose the top.
+     */
+    val newTracksDirection: Setting<SortDirection> = cache.setting { preferences ->
+        preferences[NEW_TRACKS_DIRECTION]?.let { runCatching { SortDirection.valueOf(it) }.getOrNull() }
+            ?: SortDirection.ASCENDING
+    }
+
+    suspend fun setNewTracksDirection(direction: SortDirection) {
+        dataStore.edit { it[NEW_TRACKS_DIRECTION] = direction.name }
+    }
+
     /**
      * Saves [order] as far as [scope] reaches.
      *
@@ -72,6 +97,22 @@ class SortSettings @Inject constructor(
             }
             preferences[target.list.preferenceKey()] = stored
             preferences.clearInstanceOrders(target.list)
+        }
+    }
+
+    /** Drops the order [target] was given on its own - for a list that no longer exists. */
+    suspend fun forget(target: SortTarget) {
+        val instanceKey = target.instanceKey() ?: return
+        dataStore.edit { it -= instanceKey }
+    }
+
+    /** Drops every order chosen, so each list is back to its default. The preferences above are kept. */
+    suspend fun resetOrders() {
+        dataStore.edit { preferences ->
+            SortableList.entries.forEach { list ->
+                preferences -= list.preferenceKey()
+                preferences.clearInstanceOrders(list)
+            }
         }
     }
 }

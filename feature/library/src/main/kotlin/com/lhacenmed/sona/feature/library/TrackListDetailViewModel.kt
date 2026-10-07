@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.itemsOrEmpty
+import com.lhacenmed.sona.core.data.playlist.PlaylistFile
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
@@ -78,6 +79,14 @@ abstract class TrackListDetailViewModel(
         playbackController.playTracks(all, if (shuffled) all.indices.random() else 0, playbackParent, shuffled)
     }
 
+    /**
+     * Keeps [trackIds] - the whole list, as a drag left it - as this list's own order, and puts the list
+     * in it. Called once on drop, never while the finger moves - see [SortControl.arrange].
+     */
+    fun arrange(trackIds: List<Long>) {
+        sort?.arrange(trackIds)
+    }
+
     /** Every row's selection key, which is what the context bar's "select all" selects. */
     fun selectableKeys(): List<SelectionKey> = tracks.value.itemsOrEmpty.map { SelectionKey.Track(it.id) }
 
@@ -91,7 +100,7 @@ abstract class TrackListDetailViewModel(
         val exported = tracks.value.itemsOrEmpty
         if (exported.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
-            openStream()?.use { stream -> writeM3u(stream, exported) }
+            openStream()?.use { stream -> writeM3u(stream, PlaylistFile.of(exported)) }
         }
     }
 }

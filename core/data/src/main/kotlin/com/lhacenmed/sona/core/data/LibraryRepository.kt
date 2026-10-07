@@ -4,20 +4,23 @@ import com.lhacenmed.sona.core.common.cover.rankedCoverArtUris
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.common.di.DefaultDispatcher
 import com.lhacenmed.sona.core.data.playlist.PlaylistCoverImages
+import com.lhacenmed.sona.core.data.playlist.PlaylistFile
 import com.lhacenmed.sona.core.data.playlist.cover
 import com.lhacenmed.sona.core.data.playlist.coverArtUris
 import com.lhacenmed.sona.core.data.playlist.source
 import com.lhacenmed.sona.core.data.sort.LibrarySortOrders
 import com.lhacenmed.sona.core.data.sort.LibrarySortSpecs
-import com.lhacenmed.sona.core.data.sort.PlaylistEntry
+import com.lhacenmed.sona.core.data.sort.ListEntry
 import com.lhacenmed.sona.core.data.sort.SortSpec
 import com.lhacenmed.sona.core.database.dao.AlbumDao
+import com.lhacenmed.sona.core.database.dao.ArrangementDao
 import com.lhacenmed.sona.core.database.dao.ArtistDao
 import com.lhacenmed.sona.core.database.FAVORITES_PLAYLIST_ID
 import com.lhacenmed.sona.core.database.dao.GenreDao
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.PlaylistDao
 import com.lhacenmed.sona.core.database.entity.PlaylistEntity
+import com.lhacenmed.sona.core.database.entity.PlaylistTrackEntity
 import com.lhacenmed.sona.core.database.dao.TrackDao
 import com.lhacenmed.sona.core.database.entity.toDomain
 import com.lhacenmed.sona.core.datastore.LibrarySettings
@@ -31,6 +34,7 @@ import com.lhacenmed.sona.core.model.PlaylistCover
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.sort.SortOrder
 import com.lhacenmed.sona.core.model.sort.SortTarget
+import com.lhacenmed.sona.core.model.sort.SortableList
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
@@ -42,6 +46,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
@@ -80,6 +85,7 @@ class LibraryRepository @Inject constructor(
     private val artistDao: ArtistDao,
     private val genreDao: GenreDao,
     private val playlistDao: PlaylistDao,
+    private val arrangementDao: ArrangementDao,
     private val playStatsDao: PlayStatsDao,
     private val playlistCoverImages: PlaylistCoverImages,
     private val sortOrders: LibrarySortOrders,
@@ -168,24 +174,24 @@ class LibraryRepository @Inject constructor(
     /** Album tracks, in playback order - disc, then track number - unless sorted otherwise. */
     fun albumTracks(albumId: Long): Flow<LibraryContent<Track>> =
         trackDao.observeByAlbum(albumId)
-            .sortedFor(LibrarySortSpecs.albumTracks, albumId.toString()) { rows -> rows.map { it.toDomain() } }
-            .asContent()
+            .arrangedFor(LibrarySortSpecs.albumTracks, albumId.toString()) { ListEntry(it.toDomain()) }
+            .asTrackContent()
 
     fun artistTracks(artistId: Long): Flow<LibraryContent<Track>> =
         trackDao.observeByArtist(artistId)
-            .sortedFor(LibrarySortSpecs.artistTracks, artistId.toString()) { rows -> rows.map { it.toDomain() } }
-            .asContent()
+            .arrangedFor(LibrarySortSpecs.artistTracks, artistId.toString()) { ListEntry(it.toDomain()) }
+            .asTrackContent()
 
     fun genreTracks(genreId: Long): Flow<LibraryContent<Track>> =
         trackDao.observeByGenre(genreId)
-            .sortedFor(LibrarySortSpecs.genreTracks, genreId.toString()) { rows -> rows.map { it.toDomain() } }
-            .asContent()
+            .arrangedFor(LibrarySortSpecs.genreTracks, genreId.toString()) { ListEntry(it.toDomain()) }
+            .asTrackContent()
 
     /** The music in [folderPath] - or, where [isVideo], its videos. */
     fun folderTracks(folderPath: String, isVideo: Boolean): Flow<LibraryContent<Track>> =
         trackDao.observeByFolder(folderPath, isVideo)
-            .sortedFor(LibrarySortSpecs.folderTracks, folderPath) { rows -> rows.map { it.toDomain() } }
-            .asContent()
+            .arrangedFor(LibrarySortSpecs.folderTracks, folderPath) { ListEntry(it.toDomain()) }
+            .asTrackContent()
 
     /** Resolves persisted queue ids to tracks, in the order given. */
     suspend fun tracksByIds(ids: List<Long>): List<Track> {
@@ -251,15 +257,39 @@ class LibraryRepository @Inject constructor(
      * Sorting only changes what is shown. The arranged order is never rewritten by it: it stays the
      * Custom order, which is the one dragging edits.
      */
-    fun playlistTracks(playlistId: Long): Flow<LibraryContent<Track>> =
+    fun playlistTracks(playlistId: Long): Flow<LibraryContent<Track>> = playlistEntries(playlistId).asTrackContent()
+
+    private fun playlistEntries(playlistId: Long): Flow<List<ListEntry>> =
         playlistDao.observeTracks(playlistId)
-            .sortedFor(LibrarySortSpecs.playlistTracks, playlistId.toString()) { rows ->
-                rows.mapIndexed { position, row ->
-                    PlaylistEntry(track = row.track.toDomain(), position = position, addedAt = row.addedAt)
-                }
+            .arrangedFor(LibrarySortSpecs.playlistTracks, playlistId.toString()) { row ->
+                ListEntry(track = row.track.toDomain(), addedAt = row.addedAt)
             }
-            .map { entries -> entries.map { it.track } }
-            .asContent()
+
+    /** A playlist as its file carries it: as it is shown, when each track joined it, and how it is sorted. */
+    suspend fun playlistFile(playlistId: Long): PlaylistFile = PlaylistFile(
+        entries = playlistEntries(playlistId).first().map { PlaylistFile.Entry(it.track, it.addedAt) },
+        order = sortOrders.currentOrder(playlistTarget(playlistId)),
+    )
+
+    /**
+     * Creates a playlist named [name] holding [file]'s tracks, as it was exported: each track's date
+     * added, the order it was shown in as its arrangement, and its sort. Whether it was created - not
+     * when the file names no track this library has, or the name is taken, leaving nothing behind.
+     */
+    suspend fun importPlaylist(name: String, file: PlaylistFile): Boolean {
+        if (file.entries.isEmpty()) return false
+        val playlistId = createPlaylist(name) ?: return false
+        val importedAt = System.currentTimeMillis()
+        playlistDao.addTracks(
+            playlistId,
+            file.entries.mapIndexed { index, entry ->
+                PlaylistTrackEntity(playlistId, entry.track.id, entry.addedAt ?: (importedAt + index))
+            },
+            importedAt,
+        )
+        sortOrders.restore(playlistTarget(playlistId), file.entries.map { it.track.id }, file.order)
+        return true
+    }
 
     /**
      * Creates a playlist and returns its id, or null when the name is already taken.
@@ -315,24 +345,22 @@ class LibraryRepository @Inject constructor(
         if (previousImageUri != null && previousImageUri != imageUri) playlistCoverImages.delete(previousImageUri)
     }
 
-    /** Deletes a playlist, its membership and its cover image. The tracks themselves are untouched. */
+    /** Deletes a playlist, its membership, its order and its cover image. The tracks themselves are untouched. */
     suspend fun deletePlaylist(playlistId: Long) {
         val imageUri = playlistDao.coverImageUri(playlistId)
-        if (playlistDao.delete(playlistId) > 0 && imageUri != null) playlistCoverImages.delete(imageUri)
+        if (!playlistDao.delete(playlistId)) return
+        sortOrders.forget(playlistTarget(playlistId))
+        if (imageUri != null) playlistCoverImages.delete(imageUri)
     }
 
     suspend fun removeTracksFromPlaylist(playlistId: Long, trackIds: List<Long>) {
         playlistDao.removeTracks(playlistId, trackIds, System.currentTimeMillis())
     }
 
-    /** Persists the order a drag ended on, in one transaction. */
-    suspend fun setPlaylistOrder(playlistId: Long, trackIds: List<Long>) {
-        playlistDao.setOrder(playlistId, trackIds, System.currentTimeMillis())
-    }
-
-    /** Appends tracks to a playlist, keeping the position of any already in it. */
+    /** Adds tracks to a playlist as new ones, keeping the place and date of any already in it. */
     suspend fun addTracksToPlaylist(playlistId: Long, trackIds: List<Long>) {
-        playlistDao.addTracks(playlistId, trackIds, System.currentTimeMillis())
+        val addedAt = System.currentTimeMillis()
+        playlistDao.addTracks(playlistId, membershipsOf(playlistId, trackIds, addedAt), addedAt)
     }
 
     /** "Recent" and "Most played" - ordered by the statistics, so likewise never re-sorted. */
@@ -385,7 +413,7 @@ class LibraryRepository @Inject constructor(
     suspend fun setFavorite(trackId: Long, isFavorite: Boolean) {
         val changedAt = System.currentTimeMillis()
         if (isFavorite) {
-            playlistDao.addTracks(FAVORITES_PLAYLIST_ID, listOf(trackId), changedAt)
+            playlistDao.addTracks(FAVORITES_PLAYLIST_ID, membershipsOf(FAVORITES_PLAYLIST_ID, listOf(trackId), changedAt), changedAt)
         } else {
             playlistDao.removeTracks(FAVORITES_PLAYLIST_ID, listOf(trackId), changedAt)
         }
@@ -393,16 +421,44 @@ class LibraryRepository @Inject constructor(
 
     // endregion
 
+    private fun playlistTarget(playlistId: Long) = SortTarget(SortableList.PLAYLIST_TRACKS, playlistId.toString())
+
+    /**
+     * [trackIds] as they join [playlistId] at [addedAt] - each a millisecond after the one before, so
+     * tracks added together keep the order they were added in wherever a playlist is sorted by date.
+     */
+    private fun membershipsOf(playlistId: Long, trackIds: List<Long>, addedAt: Long): List<PlaylistTrackEntity> =
+        trackIds.mapIndexed { index, trackId -> PlaylistTrackEntity(playlistId, trackId, addedAt + index) }
+
+    /**
+     * A collection's rows as [spec]'s entries, each where [instanceId]'s hand-made order puts it - read
+     * alongside the rows, so a drop re-sorts the list as soon as it is stored - sorted the way the list
+     * is set to.
+     */
+    private fun <R> Flow<List<R>>.arrangedFor(
+        spec: SortSpec<ListEntry>,
+        instanceId: String,
+        toEntry: (R) -> ListEntry,
+    ): Flow<List<ListEntry>> =
+        combine(this, arrangementDao.observe(spec.list, instanceId), ::Pair)
+            .sortedFor(spec, instanceId) { (rows, arranged) ->
+                val positions = arranged.associate { it.trackId to it.position }
+                rows.map { row -> toEntry(row).let { entry -> entry.copy(position = positions[entry.track.id]) } }
+            }
+
+    private fun Flow<List<ListEntry>>.asTrackContent(): Flow<LibraryContent<Track>> =
+        map { entries -> entries.map { it.track } }.asContent()
+
     /**
      * Turns rows into [spec]'s items, sorted the way its list is set to, and sorts them again
      * whenever that order or the name-sorting mode changes.
      */
-    private fun <R, T> Flow<List<R>>.sortedFor(
+    private fun <R, T> Flow<R>.sortedFor(
         spec: SortSpec<T>,
         // Which list of its kind this is, for the lists there can be many of - so one playlist's order
         // is its own. The library's own lists are the only one of their kind and name nothing here.
         instanceId: String? = null,
-        toItems: (List<R>) -> List<T>,
+        toItems: (R) -> List<T>,
     ): Flow<List<T>> =
         // conflate() sits *upstream* of the transform on purpose. Room can fire several
         // invalidations in quick succession; without it each one would be mapped and sorted in

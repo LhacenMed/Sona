@@ -5,17 +5,17 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 
 /**
- * One track's membership of one playlist, at one position.
+ * One track's membership of one playlist.
  *
  * Membership is a row of its own rather than a copy of the track. Fossify Music Player, which this
  * is otherwise ported from, instead duplicates the whole track row once per playlist - which forces
  * it to fan metadata out across every copy after each scan, and to de-duplicate in memory on every
  * library read. Keeping membership separate costs one join and avoids both.
  *
- * [position] is dense within a playlist, so a drag reorder rewrites the run it moved through in one
- * transaction. Cascading on both sides is what keeps this table honest without any cleanup code:
- * deleting a playlist drops its membership, and a track that disappears from the device takes its
- * memberships with it.
+ * Cascading on both sides is what keeps this table honest without any cleanup code: deleting a
+ * playlist drops its membership, and a track that disappears from the device takes its memberships
+ * with it. Where the user dragged a track to is not membership, and is kept with every other list's
+ * hand-made order - see [ArrangementEntity].
  *
  * [addedAt] is when the track joined this playlist, which is what a playlist sorted by date added
  * orders by - distinct from when its file joined the library.
@@ -40,13 +40,11 @@ import androidx.room.Index
         ),
     ],
     indices = [
-        Index(value = ["playlistId", "position"]),
         Index(value = ["trackId"]),
     ],
 )
 data class PlaylistTrackEntity(
     val playlistId: Long,
     val trackId: Long,
-    val position: Int,
     val addedAt: Long,
 )

@@ -8,6 +8,7 @@ import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.contentUri
 import com.lhacenmed.sona.core.data.itemsOrEmpty
+import com.lhacenmed.sona.core.data.playlist.PlaylistFile
 import com.lhacenmed.sona.core.datastore.LibrarySettings
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
@@ -16,7 +17,7 @@ import com.lhacenmed.sona.core.model.playbackParent
 import com.lhacenmed.sona.core.vault.VaultRepository
 import com.lhacenmed.sona.core.vault.VaultState
 import com.lhacenmed.sona.core.vault.data.VaultItem
-import com.lhacenmed.sona.feature.library.readM3uTrackIds
+import com.lhacenmed.sona.feature.library.readPlaylistFile
 import com.lhacenmed.sona.feature.library.writeM3u
 import com.lhacenmed.sona.core.common.coroutines.launchOperation
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
@@ -204,18 +205,26 @@ class OptionsActionsViewModel @Inject constructor(
      */
     fun importIntoPlaylist(playlistId: Long, openStream: () -> InputStream?, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
-            val trackIds = readM3uTrackIds(openStream, repository.tracks.value.itemsOrEmpty)
+            val trackIds = readPlaylistFile(openStream, repository.tracks.value.itemsOrEmpty).entries.map { it.track.id }
             if (trackIds.isNotEmpty()) repository.addTracksToPlaylist(playlistId, trackIds)
             onResult(trackIds.isNotEmpty())
         }
     }
 
-    /** Writes [target]'s own tracks as an M3U file - nothing, for one holding no tracks. */
+    /**
+     * Writes [target]'s own tracks as an M3U file, in the order they are shown - nothing, for one holding
+     * no tracks. A playlist's file also keeps its sort and each track's date added, so importing it
+     * brings the playlist back as it is: see [LibraryRepository.playlistFile].
+     */
     fun exportTracks(target: OptionsTarget, openStream: () -> OutputStream?) {
         viewModelScope.launch {
-            val tracks = entityTracks(target)
-            if (tracks.isEmpty()) return@launch
-            withContext(Dispatchers.IO) { openStream()?.use { stream -> writeM3u(stream, tracks) } }
+            val file = if (target is OptionsTarget.ForPlaylist) {
+                repository.playlistFile(target.playlist.id)
+            } else {
+                PlaylistFile.of(entityTracks(target))
+            }
+            if (file.entries.isEmpty()) return@launch
+            withContext(Dispatchers.IO) { openStream()?.use { stream -> writeM3u(stream, file) } }
         }
     }
 

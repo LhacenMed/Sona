@@ -283,17 +283,22 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 
 ## Priority 10 — Sorting System
 
-- [ ] **10.1 Redesign the sort sheet so it fits every case dynamically**
+- [x] **10.1 Redesign the sort sheet so it fits every case dynamically**
   When a collection has custom sorting, opening the sort sheet currently shows no sorting option selected and the Direction options disabled, while the "apply to" options are not disabled. Improve the sort sheet's logic and behavior to fit every possible case dynamically and globally, with solid system design.
   - Design it clean, smart, simple and logical in UI/UX, and easy to interact with — with default options where needed, and preference options added to the settings system.
   - It should do exactly what is wanted.
+  - **Resolved:** Custom is a real criterion, listed first in every collection's sort sheet, so a list in its own order opens with it selected. Picking it renames Direction to **New tracks** (At the bottom / At the top) - nothing is ever disabled, so the sheet never changes shape. Custom's placement and the other criteria's direction are kept apart while the user hops between them, and Custom starts on the placement the current order implies (see 10.3). "Apply to" reaches every list of a kind for Custom as for any sort - each list then keeps its own arrangement.
+  - Settings > Content > Sorting: where new tracks go in a custom order, which "Apply to" the sheet starts on, and Reset sorting (every list's sort and arrangement, behind a confirmation).
 
-- [ ] **10.2 Send items added to a custom-sorted collection to the bottom**
+- [x] **10.2 Send items added to a custom-sorted collection to the bottom**
   When a collection has been custom sorted by dragging its items, items added to it later automatically go to the bottom.
   - Make sure every collection type has the same exact system: playlists, folders, albums, artists...
+  - **Resolved:** every list's hand-made order lives in one table, `arrangements` (list kind, instance, track, position - `MIGRATION_14_15`, which moves playlists' positions into it unchanged). Playlists, Favorites, albums, artists, genres and folders - video folders included - all drag the same way, from the selection bar, through `TrackListDetail`. A drop stores every track shown, so a track without a row is one that joined since, and is placed as a new track. Removing a track from a playlist drops its row, so adding it back makes it new again; deleting a playlist drops its arrangement and its sort, so a playlist later given the same id starts clean.
 
-- [ ] **10.3 Allow custom ordering combined with a sort option**
+- [x] **10.3 Allow custom ordering combined with a sort option**
   Sometimes a collection (favorites, for example) should be customized by dragging while it is also set to a sorting option at the same time — for example kept sorted by adding time, so future tracks follow that sort.
+  - **Resolved:** a custom order's direction is where tracks added later go: ascending after the arranged ones, oldest first; descending before them, newest first (`Arrangement`). Dragging carries the date sort over by itself: a list sorted by Date added descending becomes Custom with new tracks on top, ascending at the bottom, and any other sort takes the Settings choice.
+  - Export keeps it all: an M3U exported from a playlist is written in the order shown, with its sort (`#SONA-SORT:`) and each track's date added (`#SONA-ADDED:`) in comment lines other players skip. Importing it as a new playlist restores the dates, the order as the arrangement, and the sort - so a custom order with new tracks on top comes back as one. A file without them - another app's, or a non-playlist export - opens in its own order instead of being re-sorted by title; importing into an existing playlist only adds its tracks as new ones.
 
 ---
 

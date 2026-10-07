@@ -22,7 +22,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 
 @HiltViewModel(assistedFactory = PlaylistDetailViewModel.Factory::class)
 class PlaylistDetailViewModel @AssistedInject constructor(
@@ -47,21 +46,6 @@ class PlaylistDetailViewModel @AssistedInject constructor(
 
     override val tracks: StateFlow<LibraryContent<Track>> = repository.playlistTracks(playlistId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryContent.Loading)
-
-    /**
-     * Writes the order a drag ended on and puts the list in it. Called once on drop, never while the
-     * finger moves.
-     *
-     * Arranging by hand is not a sort to be chosen - it is what dragging leaves behind - so the list
-     * is switched into its arranged order here instead of the user having to ask for it. The order is
-     * stored first, so the switch can only ever land on the arrangement this drag just made.
-     */
-    fun setOrder(trackIds: List<Long>) {
-        viewModelScope.launch {
-            repository.setPlaylistOrder(playlistId, trackIds)
-            sort.applyArrangedOrder()
-        }
-    }
 }
 
 @HiltViewModel

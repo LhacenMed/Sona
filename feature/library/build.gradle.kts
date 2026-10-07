@@ -57,6 +57,8 @@ dependencies {
 
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.reorderable)
+
+    testImplementation(libs.junit)
 }
 
 kotlin {

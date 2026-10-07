@@ -73,6 +73,7 @@ import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.motion.rememberRubberBandOverscroll
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.model.sort.SortCriterion
 import com.lhacenmed.sona.core.designsystem.component.DetailHeader
 import com.lhacenmed.sona.core.designsystem.component.DetailScaffold
 import com.lhacenmed.sona.core.designsystem.component.TopBarCollapse
@@ -100,6 +101,7 @@ import com.lhacenmed.sona.feature.library.sort.sortAction
 import com.lhacenmed.sona.feature.scanner.R as ScannerR
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableLazyListState
+import kotlinx.coroutines.flow.flowOf
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 /**
@@ -570,7 +572,6 @@ internal fun TrackListDetail(
     emptyMessage: String,
     collection: OptionsTarget?,
     modifier: Modifier = Modifier,
-    onReorder: ((List<Track>) -> Unit)? = null,
     trackOptionsContext: TrackOptionsContext = TrackOptionsContext.LIST,
     groupsByDisc: Boolean = false,
     trackSubtitle: ((Track) -> String)? = null,
@@ -608,18 +609,26 @@ internal fun TrackListDetail(
     }
 
     // Handles appear with the context bar: dragging is something done to a selection, so an ordinary
-    // tap-to-play list is never cluttered by them. A search has reordered the list already, so a drop
-    // would write an order the user cannot see.
-    val reorder = onReorder.takeIf { searchQuery.isNullOrBlank() && selection.isActive }
-    val reorderableRows = reorder?.let {
-        rememberReorderableRows(visibleTracks.itemsOrEmpty, { track -> track.id }, headerState.listState, it)
+    // tap-to-play list is never cluttered by them. A search has narrowed the list already, so a drop
+    // would write an order missing every track out of sight. Dragging works whatever the list is sorted
+    // by: the drop keeps the order it ended on and puts the list in it, so what was dragged is what stays.
+    val canReorder = sort?.canArrange == true && searchQuery.isNullOrBlank() && selection.isActive
+    val reorderableRows = if (canReorder) {
+        rememberReorderableRows(visibleTracks.itemsOrEmpty, { track -> track.id }, headerState.listState) { reordered ->
+            viewModel.arrange(reordered.map { it.id })
+        }
+    } else {
+        null
     }
 
     // Which sections are folded away - see [section].
     val sectionList = rememberSectionListState()
+    // A hand-made order is the user's across discs, so it is never split up by them.
+    val sortOrder by remember(sort) { sort?.order ?: flowOf(null) }.collectAsStateWithLifecycle(sort?.currentOrder())
+    val isArranged = sortOrder?.criterion == SortCriterion.CUSTOM
     // The tracks by disc, where they are grouped so and span more than one - Auxio's discs.
-    val discs = remember(visibleTracks, groupsByDisc) {
-        visibleTracks.itemsOrEmpty.groupBy { it.discNumber }.takeIf { groupsByDisc && it.size > 1 }
+    val discs = remember(visibleTracks, groupsByDisc, isArranged) {
+        visibleTracks.itemsOrEmpty.groupBy { it.discNumber }.takeIf { groupsByDisc && !isArranged && it.size > 1 }
     }
     // What a drag selects across: the tracks on show, never those folded away out of sight.
     val draggableTracks = remember(visibleTracks, discs, sectionList.collapsedKeys) {

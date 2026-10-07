@@ -266,6 +266,52 @@ val MIGRATION_13_14 = object : Migration(13, 14) {
 }
 
 /**
+ * Every list's hand-made order moves into one table, so albums, artists, genres and folders can be
+ * arranged as playlists are. A playlist's positions become its arrangement as they stand - the order
+ * it shows in its custom sort is unchanged - and its membership keeps only when each track joined.
+ */
+val MIGRATION_14_15 = object : Migration(14, 15) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `arrangements` (
+                `list` TEXT NOT NULL,
+                `instanceId` TEXT NOT NULL,
+                `trackId` INTEGER NOT NULL,
+                `position` INTEGER NOT NULL,
+                PRIMARY KEY(`list`, `instanceId`, `trackId`),
+                FOREIGN KEY(`trackId`) REFERENCES `tracks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent(),
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_arrangements_trackId` ON `arrangements` (`trackId`)")
+        db.execSQL(
+            "INSERT INTO `arrangements` (`list`, `instanceId`, `trackId`, `position`) " +
+                "SELECT 'PLAYLIST_TRACKS', CAST(`playlistId` AS TEXT), `trackId`, `position` FROM `playlist_tracks`",
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `playlist_tracks_new` (
+                `playlistId` INTEGER NOT NULL,
+                `trackId` INTEGER NOT NULL,
+                `addedAt` INTEGER NOT NULL,
+                PRIMARY KEY(`playlistId`, `trackId`),
+                FOREIGN KEY(`playlistId`) REFERENCES `playlists`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE,
+                FOREIGN KEY(`trackId`) REFERENCES `tracks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            "INSERT INTO `playlist_tracks_new` (`playlistId`, `trackId`, `addedAt`) " +
+                "SELECT `playlistId`, `trackId`, `addedAt` FROM `playlist_tracks`",
+        )
+        db.execSQL("DROP TABLE `playlist_tracks`")
+        db.execSQL("ALTER TABLE `playlist_tracks_new` RENAME TO `playlist_tracks`")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_playlist_tracks_trackId` ON `playlist_tracks` (`trackId`)")
+    }
+}
+
+/**
  * Makes sure Favorites exists, every time the database is opened.
  *
  * On open rather than on create, because creation is only one of the ways this database comes to

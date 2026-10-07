@@ -37,9 +37,9 @@ import com.lhacenmed.sona.core.model.sort.SortableList
  * Choosing how a list is sorted: what by, then which way.
  *
  * Nothing changes until OK, so trying options on the way to the one wanted never reorders the list
- * behind the sheet, and OK only enables once the choice differs from the order the sheet opened on. A
- * criterion without a direction leaves the direction buttons where they are but disabled, so picking it
- * never moves the rest of the sheet.
+ * behind the sheet, and OK only enables once the choice differs from the order the sheet opened on.
+ * Every row is always there and always enabled, so no pick moves or greys out the rest of the sheet:
+ * Custom only renames the second row, whose choice there is where tracks added later go.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -49,16 +49,15 @@ internal fun SortSheet(
 ) {
     val initialOrder = remember { sort.currentOrder() }
     var criterion by remember { mutableStateOf(initialOrder.criterion) }
-    var direction by remember { mutableStateOf(initialOrder.direction) }
-    // A sort reaches the list it was chosen in and no further unless it is asked to, so one playlist
-    // sorted by hand leaves every other playlist as it was.
-    var scope by remember { mutableStateOf(SortScope.THIS_LIST) }
-    // A criterion without a direction is always stored ascending, so switching away from one and
-    // back cannot register as a change.
-    val chosenOrder = SortOrder(
-        criterion = criterion,
-        direction = if (criterion.hasDirection) direction else SortDirection.ASCENDING,
-    )
+    // Custom's placement and the other criteria's direction are separate choices, each kept while the
+    // other is tried, so hopping between Custom and a sort never changes what either was set to.
+    var direction by remember {
+        mutableStateOf(if (initialOrder.criterion == SortCriterion.CUSTOM) SortDirection.ASCENDING else initialOrder.direction)
+    }
+    var newTracksDirection by remember { mutableStateOf(sort.customOrderFrom(initialOrder).direction) }
+    var scope by remember { mutableStateOf(sort.defaultScope) }
+    val isCustom = criterion == SortCriterion.CUSTOM
+    val chosenOrder = SortOrder(criterion, if (isCustom) newTracksDirection else direction)
 
     SonaBottomSheet(title = "Sort by", onDismissRequest = onDismiss) {
         Column(modifier = Modifier.selectableGroup()) {
@@ -72,7 +71,7 @@ internal fun SortSheet(
         }
 
         Text(
-            text = "Direction",
+            text = if (isCustom) "New tracks" else "Direction",
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 8.dp),
@@ -85,9 +84,8 @@ internal fun SortSheet(
         ) {
             SortDirection.entries.forEachIndexed { index, option ->
                 ToggleButton(
-                    checked = option == direction,
-                    onCheckedChange = { direction = option },
-                    enabled = criterion.hasDirection,
+                    checked = option == chosenOrder.direction,
+                    onCheckedChange = { if (isCustom) newTracksDirection = option else direction = option },
                     shapes = if (index == 0) {
                         connectedLeadingButtonPressShapes()
                     } else {
@@ -97,7 +95,7 @@ internal fun SortSheet(
                         .weight(1f)
                         .semantics { role = Role.RadioButton },
                 ) {
-                    Text(option.label())
+                    Text(if (isCustom) option.newTracksLabel() else option.label())
                 }
             }
         }
@@ -147,7 +145,7 @@ internal fun SortSheet(
                 actionButton(
                     label = "OK",
                     onClick = {
-                        sort.onApply(chosenOrder, scope)
+                        sort.apply(chosenOrder, scope)
                         dismiss()
                     },
                     // Sending the order this list already has out to every list of its kind is a change
@@ -176,6 +174,12 @@ private fun SortCriterion.label(): String = when (this) {
 private fun SortDirection.label(): String = when (this) {
     SortDirection.ASCENDING -> "Ascending"
     SortDirection.DESCENDING -> "Descending"
+}
+
+/** Where a custom order going this way puts the tracks added to it - see [SortOrder]. */
+private fun SortDirection.newTracksLabel(): String = when (this) {
+    SortDirection.ASCENDING -> "At the bottom"
+    SortDirection.DESCENDING -> "At the top"
 }
 
 /** What "this one" and "all of them" are called, or null for a list that is the only one of its kind. */

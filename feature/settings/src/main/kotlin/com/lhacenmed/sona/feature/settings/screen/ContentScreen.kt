@@ -2,13 +2,20 @@ package com.lhacenmed.sona.feature.settings.screen
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.datastore.CoverMode
+import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDialog
+import com.lhacenmed.sona.core.model.sort.SortDirection
+import com.lhacenmed.sona.core.model.sort.SortScope
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
+import com.lhacenmed.sona.feature.settings.component.SettingsActionItem
 import com.lhacenmed.sona.feature.settings.component.SettingsChoiceItem
 import com.lhacenmed.sona.feature.settings.component.SettingsList
 import com.lhacenmed.sona.feature.settings.component.SettingsNavigationItem
@@ -29,6 +36,9 @@ data object ContentScreen : Screen {
         val intelligentSortingEnabled by viewModel.intelligentSortingEnabled.collectAsStateWithLifecycle()
         val coverMode by viewModel.coverMode.collectAsStateWithLifecycle()
         val forceSquareCovers by viewModel.forceSquareCovers.collectAsStateWithLifecycle()
+        val newTracksDirection by viewModel.newTracksDirection.collectAsStateWithLifecycle()
+        val defaultSortScope by viewModel.defaultSortScope.collectAsStateWithLifecycle()
+        var showResetSortingDialog by rememberSaveable { mutableStateOf(false) }
 
         SettingsList {
             SettingsSection(stringResource(R.string.content_library_section)) {
@@ -63,6 +73,36 @@ data object ContentScreen : Screen {
                 SettingsSwitchItem(
                     title = stringResource(R.string.hide_collaborators_title),
                     summary = stringResource(R.string.hide_collaborators_summary),
+                )
+            }
+
+            SettingsSectionDivider()
+
+            SettingsSection(stringResource(R.string.content_sorting_section)) {
+                SettingsChoiceItem(
+                    title = stringResource(R.string.sort_new_tracks_title),
+                    // In SortDirection's order, so an option's index is its direction.
+                    options = listOf(
+                        stringResource(R.string.sort_new_tracks_bottom),
+                        stringResource(R.string.sort_new_tracks_top),
+                    ),
+                    selectedIndex = newTracksDirection.ordinal,
+                    onSelect = { viewModel.setNewTracksDirection(SortDirection.entries[it]) },
+                )
+                SettingsChoiceItem(
+                    title = stringResource(R.string.sort_default_scope_title),
+                    // In SortScope's order, so an option's index is its scope.
+                    options = listOf(
+                        stringResource(R.string.sort_default_scope_this_list),
+                        stringResource(R.string.sort_default_scope_all_lists),
+                    ),
+                    selectedIndex = defaultSortScope.ordinal,
+                    onSelect = { viewModel.setDefaultSortScope(SortScope.entries[it]) },
+                )
+                SettingsActionItem(
+                    title = stringResource(R.string.sort_reset_title),
+                    summary = stringResource(R.string.sort_reset_summary),
+                    onClick = { showResetSortingDialog = true },
                 )
             }
 
@@ -107,6 +147,18 @@ data object ContentScreen : Screen {
                     ),
                 )
             }
+        }
+
+        if (showResetSortingDialog) {
+            SonaConfirmationDialog(
+                title = stringResource(R.string.sort_reset_title),
+                message = stringResource(R.string.sort_reset_confirm),
+                confirmLabel = stringResource(R.string.sort_reset_action),
+                successMessage = stringResource(R.string.sort_reset_done),
+                failureMessage = stringResource(R.string.sort_reset_failed),
+                onDismiss = { showResetSortingDialog = false },
+                operation = viewModel::resetSorting,
+            )
         }
     }
 }

@@ -12,11 +12,15 @@ import com.lhacenmed.sona.core.model.sort.SortDirection
 import com.lhacenmed.sona.core.model.sort.SortOrder
 import com.lhacenmed.sona.core.model.sort.SortableList
 
-/** A track as a playlist holds it: where the user put it, and when it was added. */
-internal data class PlaylistEntry(
+/**
+ * A track as a collection holds it: where the user dragged it to - null until the collection is
+ * arranged, or when the track joined it since - and when it joined: a playlist, when it was added to
+ * it; any other collection, when its file joined the library.
+ */
+internal data class ListEntry(
     val track: Track,
-    val position: Int,
-    val addedAt: Long,
+    val addedAt: Long = track.dateAddedSeconds,
+    val position: Int? = null,
 )
 
 /**
@@ -24,7 +28,8 @@ internal data class PlaylistEntry(
  *
  * Only what makes sense for the list is offered: an artist's tracks all share one artist, so that list
  * has no "Artist"; an album's tracks have a real order of their own, so that list has "Track number";
- * only a playlist has a hand-made order, and a second date - when a track joined it.
+ * only a playlist has a second date - when a track joined it. Every collection's tracks can be put in
+ * an order of the user's own by dragging, so each of those lists offers Custom too.
  *
  * Every ordering ends in a name or the album's own order, so items that tie on what was chosen - two
  * albums from one year - still come out in one defined order rather than in whatever order the
@@ -55,6 +60,9 @@ internal object LibrarySortSpecs {
     private val tracksByDuration: List<SortField<Track>> = listOf(trackDuration, trackTitle)
     private val tracksByDateAdded: List<SortField<Track>> = listOf(trackDateAdded, trackTitle)
 
+    /** How every collection's tracks are arranged by hand - see [Arrangement]. */
+    private val entryArrangement = Arrangement<ListEntry>(position = { it.position }, addedAt = { it.addedAt })
+
     val tracks = SortSpec(
         list = SortableList.TRACKS,
         default = SortOrder(SortCriterion.DATE_ADDED, SortDirection.DESCENDING),
@@ -83,48 +91,52 @@ internal object LibrarySortSpecs {
         list = SortableList.ALBUM_TRACKS,
         default = SortOrder(SortCriterion.TRACK_NUMBER, SortDirection.ASCENDING),
         orderings = mapOf(
-            SortCriterion.TRACK_NUMBER to trackAlbumOrder,
-            SortCriterion.NAME to tracksByTitle,
-            SortCriterion.DURATION to tracksByDuration,
+            SortCriterion.TRACK_NUMBER to trackAlbumOrder.ofEntry(),
+            SortCriterion.NAME to tracksByTitle.ofEntry(),
+            SortCriterion.DURATION to tracksByDuration.ofEntry(),
         ),
+        arrangement = entryArrangement,
     )
 
     val artistTracks = SortSpec(
         list = SortableList.ARTIST_TRACKS,
         default = nameAscending,
         orderings = mapOf(
-            SortCriterion.NAME to tracksByTitle,
-            SortCriterion.ALBUM to tracksByAlbum,
-            SortCriterion.YEAR to tracksByYear,
-            SortCriterion.DURATION to tracksByDuration,
-            SortCriterion.DATE_ADDED to tracksByDateAdded,
+            SortCriterion.NAME to tracksByTitle.ofEntry(),
+            SortCriterion.ALBUM to tracksByAlbum.ofEntry(),
+            SortCriterion.YEAR to tracksByYear.ofEntry(),
+            SortCriterion.DURATION to tracksByDuration.ofEntry(),
+            SortCriterion.DATE_ADDED to tracksByDateAdded.ofEntry(),
         ),
+        arrangement = entryArrangement,
     )
 
     val genreTracks = SortSpec(
         list = SortableList.GENRE_TRACKS,
         default = nameAscending,
         orderings = mapOf(
-            SortCriterion.NAME to tracksByTitle,
-            SortCriterion.ARTIST to tracksByArtist,
-            SortCriterion.ALBUM to tracksByAlbum,
-            SortCriterion.YEAR to tracksByYear,
-            SortCriterion.DURATION to tracksByDuration,
-            SortCriterion.DATE_ADDED to tracksByDateAdded,
+            SortCriterion.NAME to tracksByTitle.ofEntry(),
+            SortCriterion.ARTIST to tracksByArtist.ofEntry(),
+            SortCriterion.ALBUM to tracksByAlbum.ofEntry(),
+            SortCriterion.YEAR to tracksByYear.ofEntry(),
+            SortCriterion.DURATION to tracksByDuration.ofEntry(),
+            SortCriterion.DATE_ADDED to tracksByDateAdded.ofEntry(),
         ),
+        arrangement = entryArrangement,
     )
 
     val folderTracks = SortSpec(
         list = SortableList.FOLDER_TRACKS,
         default = nameAscending,
         orderings = mapOf(
-            SortCriterion.NAME to tracksByTitle,
-            SortCriterion.ARTIST to tracksByArtist,
-            SortCriterion.ALBUM to tracksByAlbum,
-            SortCriterion.YEAR to tracksByYear,
-            SortCriterion.DURATION to tracksByDuration,
-            SortCriterion.DATE_ADDED to tracksByDateAdded,
+            SortCriterion.NAME to tracksByTitle.ofEntry(),
+            SortCriterion.ARTIST to tracksByArtist.ofEntry(),
+            SortCriterion.ALBUM to tracksByAlbum.ofEntry(),
+            SortCriterion.YEAR to tracksByYear.ofEntry(),
+            SortCriterion.DURATION to tracksByDuration.ofEntry(),
+            SortCriterion.DATE_ADDED to tracksByDateAdded.ofEntry(),
         ),
+        arrangement = entryArrangement,
     )
 
     /**
@@ -136,25 +148,25 @@ internal object LibrarySortSpecs {
         list = SortableList.PLAYLIST_TRACKS,
         default = SortOrder(SortCriterion.DATE_ADDED, SortDirection.DESCENDING),
         orderings = mapOf(
-            SortCriterion.CUSTOM to listOf(SortField.Number<PlaylistEntry> { it.position.toLong() }),
             SortCriterion.NAME to tracksByTitle.ofEntry(),
             SortCriterion.ARTIST to tracksByArtist.ofEntry(),
             SortCriterion.ALBUM to tracksByAlbum.ofEntry(),
             SortCriterion.DURATION to tracksByDuration.ofEntry(),
             SortCriterion.DATE to tracksByDateAdded.ofEntry(),
             SortCriterion.DATE_ADDED to
-                listOf(SortField.Number<PlaylistEntry> { it.addedAt }) + tracksByTitle.ofEntry(),
+                listOf(SortField.Number<ListEntry> { it.addedAt }) + tracksByTitle.ofEntry(),
         ),
+        arrangement = entryArrangement,
     )
 
     /** The same track orderings, read through the entry that holds the track. */
-    private fun List<SortField<Track>>.ofEntry(): List<SortField<PlaylistEntry>> = map { field ->
+    private fun List<SortField<Track>>.ofEntry(): List<SortField<ListEntry>> = map { field ->
         when (field) {
-            is SortField.Name -> SortField.Name<PlaylistEntry>(
+            is SortField.Name -> SortField.Name<ListEntry>(
                 { entry -> field.read(entry.track) },
                 { entry -> field.isPlaceholder(entry.track) },
             )
-            is SortField.Number -> SortField.Number<PlaylistEntry> { entry -> field.read(entry.track) }
+            is SortField.Number -> SortField.Number<ListEntry> { entry -> field.read(entry.track) }
         }
     }
 
