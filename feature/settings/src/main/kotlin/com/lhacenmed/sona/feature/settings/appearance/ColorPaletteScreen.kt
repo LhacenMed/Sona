@@ -39,11 +39,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -61,6 +59,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
+import com.lhacenmed.sona.core.designsystem.component.fab.ExtendedFloatingActionButtonContent
+import com.lhacenmed.sona.core.designsystem.component.fab.SonaExtendedFloatingActionButtons
 import com.lhacenmed.sona.core.designsystem.component.screen.screenList
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.theme.palette.ThemePalette
@@ -123,55 +123,44 @@ data object ColorPaletteScreen : Screen {
             }
         }
 
-        Box(modifier = Modifier.fillMaxSize()) {
-            val scrollState = rememberScrollState()
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .screenList(scrollState)
-                    .verticalScroll(scrollState)
-                    .padding(bottom = LocalBottomContentPadding.current),
-            ) {
-                Spacer(modifier = Modifier.height(16.dp))
-                PalettePreview(
-                    palette = selectedSeeds,
-                    isDarkTheme = theme.mode.isDark(),
-                    modifier = Modifier.padding(horizontal = 24.dp),
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                PaletteCarousel(
-                    palettes = ThemePalettes.all,
-                    selectedId = selectedPresetId,
-                    onSelect = { viewModel.setColorPalette(it.id) },
-                )
-                // Room for the buttons below to clear the last of the content.
-                Spacer(modifier = Modifier.height(160.dp))
-            }
-
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 16.dp, bottom = LocalBottomContentPadding.current),
-            ) {
-                ExtendedFloatingActionButton(
-                    text = { Text(stringResource(R.string.custom_theme)) },
-                    icon = { Icon(Icons.Filled.Palette, contentDescription = null) },
-                    onClick = { navigator.go(ThemeCreatorScreen) },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                )
-                ExtendedFloatingActionButton(
-                    text = { Text(stringResource(R.string.import_theme)) },
-                    icon = { Icon(Icons.Filled.FileOpen, contentDescription = null) },
-                    onClick = { importTheme.launch(ThemeFileTypes) },
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                )
-            }
+        val scrollState = rememberScrollState()
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .fillMaxSize()
+                .screenList(scrollState)
+                .verticalScroll(scrollState)
+                .padding(bottom = LocalBottomContentPadding.current),
+        ) {
+            Spacer(modifier = Modifier.height(16.dp))
+            PalettePreview(
+                palette = selectedSeeds,
+                isDarkTheme = theme.mode.isDark(),
+                modifier = Modifier.padding(horizontal = 24.dp),
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            PaletteCarousel(
+                palettes = ThemePalettes.all,
+                selectedId = selectedPresetId,
+                onSelect = { viewModel.setColorPalette(it.id) },
+            )
         }
+
+        SonaExtendedFloatingActionButtons(
+            listOf(
+                ExtendedFloatingActionButtonContent(
+                    label = stringResource(R.string.custom_theme),
+                    icon = Icons.Filled.Palette,
+                    onClick = { navigator.go(ThemeCreatorScreen) },
+                    isPrimary = true,
+                ),
+                ExtendedFloatingActionButtonContent(
+                    label = stringResource(R.string.import_theme),
+                    icon = Icons.Filled.FileOpen,
+                    onClick = { importTheme.launch(ThemeFileTypes) },
+                ),
+            ),
+        )
     }
 }
 

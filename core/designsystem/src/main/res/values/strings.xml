@@ -11,6 +11,7 @@
     <string name="fab_menu_open">Show choices</string>
     <string name="fab_menu_close">Close</string>
     <string name="fab_scroll_to_top">Scroll to top</string>
+    <string name="fab_scroll_to_playing">Scroll to what\'s playing</string>
 
     <!-- ArchiveTune's preset palettes - see ThemePalettes. -->
     <string name="palette_default">Default</string>

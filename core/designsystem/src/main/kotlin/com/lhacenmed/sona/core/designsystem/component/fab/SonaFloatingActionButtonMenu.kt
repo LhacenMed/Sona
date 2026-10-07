@@ -106,12 +106,15 @@ class FloatingActionButtonMenuContent(
 internal class PrimaryButton(
     private val latestContent: State<() -> FloatingActionButtonMenuContent?>,
     expandedState: MutableState<Boolean>,
-) {
+) : ScreenButtons {
     /** What it is right now, or null while the screen has none - read in the stack's own composition. */
     val content: FloatingActionButtonMenuContent?
         get() = latestContent.value()
 
     var expanded: Boolean by expandedState
+
+    override val height: Dp
+        get() = if (content != null) PrimaryButtonSize else 0.dp
 }
 
 /**
@@ -147,8 +150,8 @@ fun SonaFloatingActionButtonMenu(content: () -> FloatingActionButtonMenuContent?
     val button = remember { PrimaryButton(latestContent, expandedState) }
     BackHandler(enabled = button.expanded) { button.expanded = false }
     DisposableEffect(stack, button) {
-        stack.primaryButton = button
-        onDispose { if (stack.primaryButton === button) stack.primaryButton = null }
+        stack.screenButtons = button
+        onDispose { if (stack.screenButtons === button) stack.screenButtons = null }
     }
 }
 

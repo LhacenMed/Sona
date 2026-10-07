@@ -84,6 +84,8 @@ fun VideosScreen(
         key = { it.id },
         loadingIcon = SonaIcons.Video,
         sectionOf = videoSections,
+        isCurrent = { playback.marks(it) },
+        isPlaying = { playback.isPlaying },
         modifier = modifier,
         listState = listState,
         onRefresh = rememberLibraryRefresh(viewModel),

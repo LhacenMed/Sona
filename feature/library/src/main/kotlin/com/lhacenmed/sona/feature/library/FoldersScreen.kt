@@ -43,6 +43,8 @@ fun FoldersScreen(
         key = { folder -> if (folder.isVideo) "video:${folder.path}" else folder.path },
         loadingIcon = SonaIcons.Folder,
         sectionOf = folderSections,
+        isCurrent = { playback.marks(it) },
+        isPlaying = { playback.isPlaying },
         modifier = modifier,
         listState = listState,
         onRefresh = rememberLibraryRefresh(viewModel),

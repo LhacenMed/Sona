@@ -40,6 +40,8 @@ fun GenresScreen(
         key = { it.id },
         loadingIcon = SonaIcons.Genre,
         sectionOf = genreSections,
+        isCurrent = { playback.marks(it) },
+        isPlaying = { playback.isPlaying },
         modifier = modifier,
         listState = listState,
         onRefresh = rememberLibraryRefresh(viewModel),

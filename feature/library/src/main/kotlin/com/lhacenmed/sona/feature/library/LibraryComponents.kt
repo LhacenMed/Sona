@@ -33,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -51,6 +52,7 @@ import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.CookieShape
 import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
+import com.lhacenmed.sona.core.designsystem.component.screen.PlayingRow
 import com.lhacenmed.sona.core.designsystem.component.refresh.SonaPullToRefreshBox
 import com.lhacenmed.sona.core.designsystem.component.section.rememberSectionListState
 import com.lhacenmed.sona.core.designsystem.component.section.sectionItemAnimation
@@ -169,6 +171,9 @@ internal fun <T> LibraryListContent(
  *
  * Given [headingOf], rows sharing a heading - which [content] keeps together - are laid out in a [section]
  * under it, once the list holds more than one; a single heading would only repeat the tab's name.
+ *
+ * Given [isCurrent] - the rule its rows mark the playing one by - the screen's scroll button offers a way
+ * to that row while it is off screen, showing the playing bars while [isPlaying]: see [PlayingRow].
  */
 @Composable
 internal fun <T> LibraryList(
@@ -186,6 +191,8 @@ internal fun <T> LibraryList(
     sectionOf: ((T) -> String?)? = null,
     onRefresh: (suspend () -> Unit)? = null,
     headingOf: ((T) -> String)? = null,
+    isCurrent: ((T) -> Boolean)? = null,
+    isPlaying: () -> Boolean = { false },
     row: @Composable (T) -> Unit,
 ) {
     val sectionList = rememberSectionListState()
@@ -209,6 +216,14 @@ internal fun <T> LibraryList(
                 List(if (index > 0) 2 else 1) { null } + if (sectionList.isCollapsed(heading)) emptyList() else rows
             }
         }
+        // Found among the rows laid out, and found again only as they or the playing row change.
+        val playingRow = remember(laidOutRows, isCurrent, isPlaying) {
+            derivedStateOf {
+                isCurrent?.let { marks -> laidOutRows.indexOfFirst { row -> row != null && marks(row) } }
+                    ?.takeIf { it >= 0 }
+                    ?.let { index -> PlayingRow(index, isPlaying()) }
+            }
+        }
         // One band for the list, its fast scroller's thumb and its pull to refresh.
         val overscroll = rememberRubberBandOverscroll()
         SonaPullToRefreshBox(overscroll = overscroll, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
@@ -216,6 +231,7 @@ internal fun <T> LibraryList(
                 listState = listState,
                 modifier = Modifier.fillMaxSize(),
                 sectionAt = sectionOf?.let { section -> { index -> laidOutRows.getOrNull(index)?.let(section) } },
+                playingRow = { playingRow.value },
                 overscroll = overscroll,
             ) { overscrollEffect ->
                 if (onReorder != null) {
@@ -743,6 +759,8 @@ internal fun TrackListDetail(
             },
             isHeaderAside = searchQuery != null,
             contentKey = sections to visibleTracks,
+            playingKey = { playback.currentTrack?.id },
+            isPlaying = { playback.isPlaying },
             dragSelection = rememberDragSelection(
                 selection = selection,
                 listState = headerState.listState,

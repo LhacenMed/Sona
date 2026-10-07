@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
+import com.lhacenmed.sona.core.designsystem.component.screen.PlayingRow
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.LocalDragSelection
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
@@ -60,6 +62,12 @@ private sealed interface PlaylistsRow {
     data object MostPlayed : PlaylistsRow
 
     data class OfPlaylist(val playlist: Playlist) : PlaylistsRow
+}
+
+/** Whether [row] is the one playing - the one rule its row and the scroll button to it both go by. */
+private fun LibraryPlayback.marks(row: PlaylistsRow): Boolean = when (row) {
+    PlaylistsRow.MostPlayed -> marks(PlaybackParent.MostPlayed)
+    is PlaylistsRow.OfPlaylist -> marks(row.playlist)
 }
 
 /**
@@ -181,7 +189,19 @@ data object PlaylistsScreen : Screen {
                         items.mapNotNull { (it as? PlaylistsRow.OfPlaylist)?.playlist?.let(::selectionKeyOf) }
                     }
                     val dragSelection = rememberDragSelection(selection, listState, selectableKeys)
-                    FastScroller(listState = listState, modifier = Modifier.fillMaxSize()) { overscrollEffect ->
+                    // Every row is one item of the list, so a row's place among them is its place in the list.
+                    val playingRow = remember(items) {
+                        derivedStateOf {
+                            items.indexOfFirst { row -> playback.marks(row) }
+                                .takeIf { it >= 0 }
+                                ?.let { index -> PlayingRow(index, playback.isPlaying) }
+                        }
+                    }
+                    FastScroller(
+                        listState = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        playingRow = { playingRow.value },
+                    ) { overscrollEffect ->
                         CompositionLocalProvider(LocalDragSelection provides dragSelection) {
                             LazyColumn(
                                 state = listState,
@@ -217,7 +237,7 @@ data object PlaylistsScreen : Screen {
                                                 title = MOST_PLAYED_TITLE,
                                                 trackCount = mostPlayedCount,
                                                 coverArtUris = mostPlayedCoverArtUris,
-                                                isCurrent = { playback.marks(PlaybackParent.MostPlayed) },
+                                                isCurrent = { playback.marks(row) },
                                                 isPlaying = { playback.isPlaying },
                                                 onClick = { navigator.go(MostPlayedScreen) },
                                             )
@@ -225,7 +245,7 @@ data object PlaylistsScreen : Screen {
                                             is PlaylistsRow.OfPlaylist -> PlaylistRow(
                                                 playlist = row.playlist,
                                                 selection = selection,
-                                                isCurrent = { playback.marks(row.playlist) },
+                                                isCurrent = { playback.marks(row) },
                                                 isPlaying = { playback.isPlaying },
                                                 onClick = { navigator.go(PlaylistDetailScreen(row.playlist.id)) },
                                                 onOpenOptions = { optionsTarget = OptionsTarget.ForPlaylist(row.playlist) },

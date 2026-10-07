@@ -51,8 +51,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
+import com.lhacenmed.sona.core.designsystem.component.screen.PlayingRow
 import com.lhacenmed.sona.core.designsystem.component.screen.screenList
 import com.lhacenmed.sona.core.designsystem.component.screen.scrollBackToTop
+import com.lhacenmed.sona.core.designsystem.component.screen.scrollToRow
 import com.lhacenmed.sona.core.designsystem.motion.RubberBandOverscroll
 import com.lhacenmed.sona.core.designsystem.motion.rememberRubberBandOverscroll
 import com.lhacenmed.sona.core.designsystem.theme.LocalFastScrollTouchArea
@@ -113,7 +115,8 @@ private const val POPUP_BASE_ROTATION_DEGREES = 14f
  *
  * The list is its screen's list - see [screenList] - so its screen's FABs follow it, stepping aside while
  * the thumb is dragged, as Auxio's home hides its shuffle button while `isFastScrolling`. [scrollToTop]
- * is what their way back to the top does.
+ * is what their way back to the top does; [playingRow] is the row they offer a way to near the top, and
+ * [scrollToRow] that way.
  *
  * Only while [enabled], and only for a list with somewhere to scroll.
  */
@@ -125,6 +128,8 @@ fun FastScroller(
     enabled: Boolean = true,
     sectionAt: ((index: Int) -> String?)? = null,
     scrollToTop: suspend () -> Unit = { listState.scrollBackToTop() },
+    playingRow: () -> PlayingRow? = { null },
+    scrollToRow: suspend (index: Int) -> Unit = { listState.scrollToRow(it) },
     overscroll: RubberBandOverscroll = rememberRubberBandOverscroll(),
     content: @Composable (overscrollEffect: OverscrollEffect) -> Unit,
 ) {
@@ -155,7 +160,13 @@ fun FastScroller(
 
     Box(
         modifier = modifier
-            .screenList(listState, isFastScrolling = { state.isDragging }, scrollToTop = scrollToTop)
+            .screenList(
+                listState,
+                isFastScrolling = { state.isDragging },
+                scrollToTop = scrollToTop,
+                playingRow = playingRow,
+                scrollToRow = scrollToRow,
+            )
             .pointerInput(state, isActive, isRtl, bottomPaddingPx, edgeWidth) {
                 if (!isActive) return@pointerInput
                 val thumbWidthPx = ThumbWidth.toPx()

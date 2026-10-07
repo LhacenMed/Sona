@@ -172,7 +172,7 @@ private fun CollectionPage(
 ) {
     val navigator = LocalNavigator.current
     when (tab) {
-        CollectionTab.ARTISTS -> PickerList(visible.artists, selection, "No artists found", emptyMessage, key = { it.id }, visible.artistSections) { artist ->
+        CollectionTab.ARTISTS -> PickerList(visible.artists, selection, "No artists found", emptyMessage, key = { it.id }, visible.artistSections, isCurrent = { playback().marks(it) }, isPlaying = { playback().isPlaying }) { artist ->
             ArtistRow(
                 artist = artist,
                 selection = selection,
@@ -183,7 +183,7 @@ private fun CollectionPage(
             )
         }
 
-        CollectionTab.ALBUMS -> PickerList(visible.albums, selection, "No albums found", emptyMessage, key = { it.id }, visible.albumSections) { album ->
+        CollectionTab.ALBUMS -> PickerList(visible.albums, selection, "No albums found", emptyMessage, key = { it.id }, visible.albumSections, isCurrent = { playback().marks(it) }, isPlaying = { playback().isPlaying }) { album ->
             AlbumRow(
                 album = album,
                 selection = selection,
@@ -194,7 +194,7 @@ private fun CollectionPage(
             )
         }
 
-        CollectionTab.GENRES -> PickerList(visible.genres, selection, "No genres found", emptyMessage, key = { it.id }, visible.genreSections) { genre ->
+        CollectionTab.GENRES -> PickerList(visible.genres, selection, "No genres found", emptyMessage, key = { it.id }, visible.genreSections, isCurrent = { playback().marks(it) }, isPlaying = { playback().isPlaying }) { genre ->
             GenreRow(
                 genre = genre,
                 selection = selection,
@@ -205,7 +205,7 @@ private fun CollectionPage(
             )
         }
 
-        CollectionTab.FOLDERS -> PickerList(visible.folders, selection, "No folders found", emptyMessage, key = { it.path }, visible.folderSections) { folder ->
+        CollectionTab.FOLDERS -> PickerList(visible.folders, selection, "No folders found", emptyMessage, key = { it.path }, visible.folderSections, isCurrent = { playback().marks(it) }, isPlaying = { playback().isPlaying }) { folder ->
             FolderRow(
                 folder = folder,
                 selection = selection,
@@ -216,7 +216,7 @@ private fun CollectionPage(
             )
         }
 
-        CollectionTab.PLAYLISTS -> PickerList(visible.playlists, selection, "No other playlists", emptyMessage, key = { it.id }) { playlist ->
+        CollectionTab.PLAYLISTS -> PickerList(visible.playlists, selection, "No other playlists", emptyMessage, key = { it.id }, isCurrent = { playback().marks(it) }, isPlaying = { playback().isPlaying }) { playlist ->
             PlaylistRow(
                 playlist = playlist,
                 selection = selection,
@@ -238,6 +238,8 @@ private fun <T> PickerList(
     emptyMessage: String,
     key: (T) -> Any,
     sectionOf: ((T) -> String?)? = null,
+    isCurrent: ((T) -> Boolean)? = null,
+    isPlaying: () -> Boolean = { false },
     row: @Composable (T) -> Unit,
 ) {
     LibraryList(
@@ -251,6 +253,8 @@ private fun <T> PickerList(
         loadingIcon = SonaIcons.Playlist,
         modifier = Modifier.fillMaxSize(),
         sectionOf = sectionOf,
+        isCurrent = isCurrent,
+        isPlaying = isPlaying,
         row = row,
     )
 }

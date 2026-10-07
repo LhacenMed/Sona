@@ -229,9 +229,11 @@ Ordered from most to least critical. Every entry describes **what** is broken or
   - Add top tabs to the favorites area, similar to the tabs already used in the main activity, so each favorited collection type has its own tab.
   - *Under consideration:* a grid-style listing for favorited Artists/Albums, similar to the grid layout used in the Samsung Music app — flagged as an idea to explore, not a firm requirement.
 
-- [ ] **6.10 Unify the FAB system and make it scroll to the playing track**
+- [x] **6.10 Unify the FAB system and make it scroll to the playing track**
   - Unify the FAB system across the custom color palette screens.
   - Integrate the FAB to scroll to the playing track when it is in the list and the list is already scrolled to the top.
+  - **Resolved:** every FAB is drawn by the one `FloatingActionButtonStack`. A screen's own buttons are `ScreenButtons` - the menu FAB (`SonaFloatingActionButtonMenu`, Quick play) or labelled FABs (`SonaExtendedFloatingActionButtons`, the palette and theme creator screens' Custom theme / Import / Export) - so they stand on the player, step aside with the stack and near the list's end, and the screens need no room of their own for them.
+  - The scroll button has two targets: the list's top once it is a quarter of a screen away, and, nearer the top, the row the list marks as playing while that row is off screen (above the player) - showing the very playing bars that row's cover shows, crossfading between the two. A list hands it a `PlayingRow` (index, playing): `LibraryList` from the rows it lays out (every library tab and the playlist pickers), the Playlists tab from its rows, and `DetailScaffold` by finding the playing track's key in its own content - sections, discs and folded sections included - collapsing the header as it scrolls there.
 
 ---
 

@@ -2,16 +2,19 @@ package com.lhacenmed.sona.core.designsystem.component.screen
 
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.node.CompositionLocalConsumerModifierNode
 import androidx.compose.ui.node.GlobalPositionAwareModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
@@ -20,6 +23,13 @@ import androidx.compose.ui.platform.InspectorInfo
 
 /** How far a list has to be from its top for a way back to be offered: a quarter of a screen. */
 private const val AwayFromTopFraction = 0.25f
+
+/** The row a list marks as playing: where it sits among the list's items, and whether playback is going. */
+@Immutable
+data class PlayingRow(
+    val index: Int,
+    val isPlaying: Boolean,
+)
 
 /**
  * A screen's scrolling list as what stands around the screen follows it - its top app bar, its
@@ -36,8 +46,19 @@ internal abstract class ScreenList {
     var visibleArea by mutableFloatStateOf(0f)
         private set
 
+    /** Where the list's top stands in the window, and the stretch of the window it shows in. */
+    private var windowTopPx by mutableFloatStateOf(0f)
+    private var shownTopPx by mutableFloatStateOf(0f)
+    private var shownBottomPx by mutableFloatStateOf(0f)
+
     var isFastScrolling: () -> Boolean = { false }
     lateinit var scrollToTop: suspend () -> Unit
+
+    /** The row the list marks as playing, if it lays one out - state, so whatever follows it is told when it changes. */
+    var playingRow: () -> PlayingRow? by mutableStateOf({ null })
+
+    /** What the way to the playing row does: brings the row at the index it is given into view. */
+    lateinit var scrollToRow: suspend (index: Int) -> Unit
 
     /** How far the list has scrolled from its top, in pixels. */
     protected abstract val scrolledPx: Float
@@ -61,9 +82,25 @@ internal abstract class ScreenList {
     /** Whether the list has come within [distancePx] of its end - where a stack that tall would cover its last rows. */
     fun isNearEnd(distancePx: Float): Boolean = canScroll && remainingPx < distancePx
 
+    /** Where the row at [index] lies from the list's top, in pixels - null while it is not laid out. */
+    protected open fun rowSpanPx(index: Int): ClosedFloatingPointRange<Float>? = null
+
+    /**
+     * Whether the row at [index] shows whole on screen: laid out within the part of the window the list
+     * shows in, and above [uncoveredBottomPx] - the window's bottom, less whatever stands over it.
+     */
+    fun showsRow(index: Int, uncoveredBottomPx: Float): Boolean {
+        val span = rowSpanPx(index) ?: return false
+        return windowTopPx + span.start >= shownTopPx &&
+            windowTopPx + span.endInclusive <= minOf(shownBottomPx, uncoveredBottomPx)
+    }
+
     fun onPositioned(coordinates: LayoutCoordinates) {
         val bounds = coordinates.boundsInWindow()
         visibleArea = bounds.width * bounds.height
+        windowTopPx = coordinates.positionInWindow().y
+        shownTopPx = bounds.top
+        shownBottomPx = bounds.bottom
     }
 }
 
@@ -98,6 +135,10 @@ private class LazyScreenList(val state: LazyListState) : ScreenList() {
 
     override val isScrolled: Boolean
         get() = state.canScrollBackward
+
+    override fun rowSpanPx(index: Int): ClosedFloatingPointRange<Float>? =
+        state.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
+            ?.let { row -> row.offset.toFloat()..(row.offset + row.size).toFloat() }
 }
 
 private class ScrollScreenList(val state: ScrollState) : ScreenList() {
@@ -149,28 +190,52 @@ suspend fun LazyListState.scrollBackToTop() {
 }
 
 /**
+ * Brings the row at [index] to the list's top in one short glide, however far it is - first jumping to a
+ * screen short of it, as [scrollBackToTop] does on its way back.
+ */
+suspend fun LazyListState.scrollToRow(index: Int) {
+    val rowsOnScreen = layoutInfo.visibleItemsInfo.size
+    when {
+        index > firstVisibleItemIndex + rowsOnScreen -> scrollToItem(index - rowsOnScreen)
+        index < firstVisibleItemIndex - rowsOnScreen -> scrollToItem(index + rowsOnScreen)
+    }
+    animateScrollToItem(index)
+}
+
+/**
  * Makes this the screen's list whenever the window shows more of it than of any other - a list in a pager
  * while its page is the one on screen: the one the screen's top app bar lifts over once it has scrolled,
- * and its FABs follow, stepping aside as it nears its end and offering a way back to its top.
+ * and its FABs follow, stepping aside as it nears its end and offering a way back to its top - or, near
+ * its top, to its [playingRow] while that is off screen.
  *
  * Applied to the layout the list fills. [FastScroller][com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller]
  * applies it itself, so every lazy list with a fast scroller has it. [isFastScrolling] steps the stack
- * aside while it holds; [scrollToTop] is what the way back does.
+ * aside while it holds; [scrollToTop] is what the way back does, and [scrollToRow] the way to the row.
  */
 fun Modifier.screenList(
     state: LazyListState,
     isFastScrolling: () -> Boolean = { false },
     scrollToTop: suspend () -> Unit = { state.scrollBackToTop() },
-): Modifier = this then ScreenListElement(state, isFastScrolling, scrollToTop)
+    playingRow: () -> PlayingRow? = { null },
+    scrollToRow: suspend (index: Int) -> Unit = { state.scrollToRow(it) },
+): Modifier = this then ScreenListElement(state, isFastScrolling, scrollToTop, playingRow, scrollToRow)
 
 /** [screenList] for a column scrolled with `verticalScroll(state)`, applied before it. */
 fun Modifier.screenList(state: ScrollState): Modifier =
-    this then ScreenListElement(state, isFastScrolling = { false }, scrollToTop = { state.animateScrollTo(0) })
+    this then ScreenListElement(
+        state = state,
+        isFastScrolling = { false },
+        scrollToTop = { state.animateScrollTo(0) },
+        playingRow = { null },
+        scrollToRow = {},
+    )
 
 private class ScreenListElement(
     private val state: Any,
     private val isFastScrolling: () -> Boolean,
     private val scrollToTop: suspend () -> Unit,
+    private val playingRow: () -> PlayingRow?,
+    private val scrollToRow: suspend (index: Int) -> Unit,
 ) : ModifierNodeElement<ScreenListNode>() {
 
     override fun create() = ScreenListNode(newList())
@@ -188,11 +253,14 @@ private class ScreenListElement(
     private fun ScreenList.configure(): ScreenList = apply {
         isFastScrolling = this@ScreenListElement.isFastScrolling
         scrollToTop = this@ScreenListElement.scrollToTop
+        playingRow = this@ScreenListElement.playingRow
+        scrollToRow = this@ScreenListElement.scrollToRow
     }
 
     override fun equals(other: Any?): Boolean =
         other is ScreenListElement && other.state === state &&
-            other.isFastScrolling === isFastScrolling && other.scrollToTop === scrollToTop
+            other.isFastScrolling === isFastScrolling && other.scrollToTop === scrollToTop &&
+            other.playingRow === playingRow && other.scrollToRow === scrollToRow
 
     override fun hashCode(): Int = System.identityHashCode(state)
 

@@ -59,7 +59,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.component.screen.PlayingRow
+import com.lhacenmed.sona.core.designsystem.component.screen.indexOfKey
 import com.lhacenmed.sona.core.designsystem.component.screen.scrollBackToTop
+import com.lhacenmed.sona.core.designsystem.component.screen.scrollToRow
 import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
@@ -166,6 +169,18 @@ class DetailHeaderState internal constructor(
         listState.scrollBackToTop()
     }
 
+    /**
+     * Brings the row at [index] to the top of the list with the header collapsing as it goes, as scrolling
+     * there by hand would - out of the way, where a search has set it aside already.
+     */
+    internal suspend fun scrollToRow(index: Int) = coroutineScope {
+        if (!isHeaderAside) {
+            settleJob?.cancel()
+            launch { animate(scrollCollapsedPx, collapseRangePx) { value, _ -> collapsedPx = value } }
+        }
+        listState.scrollToRow(index)
+    }
+
     internal val nestedScrollConnection = object : NestedScrollConnection {
         override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset =
             if (available.y < 0f && !isHeaderAside) Offset(0f, collapseBy(available.y)) else Offset.Zero
@@ -239,6 +254,10 @@ private const val HeaderShrink = 0.12f
  * its rows arrive or change - see the note in the body.
  *
  * [dragSelection], where the list's rows can be selected, lets a long press drag across them.
+ *
+ * [playingKey] is the key of the row the list marks as playing, if any - which the screen's scroll button
+ * offers a way to while it is off screen, showing the playing bars while [isPlaying]: see
+ * [com.lhacenmed.sona.core.designsystem.component.screen.PlayingRow].
  */
 @Composable
 fun DetailScaffold(
@@ -249,9 +268,15 @@ fun DetailScaffold(
     contentKey: Any?,
     modifier: Modifier = Modifier,
     dragSelection: DragSelection? = null,
+    playingKey: () -> Any? = { null },
+    isPlaying: () -> Boolean = { false },
     content: LazyListScope.() -> Unit,
 ) {
     val listState = state.listState
+    // Found among the rows [content] lays out, and found again only as they or the playing row change.
+    val playingRow = remember(content, playingKey, isPlaying) {
+        derivedStateOf { playingKey()?.let(content::indexOfKey)?.let { index -> PlayingRow(index, isPlaying()) } }
+    }
     val barHeight = with(LocalDensity.current) { state.barHeightPx.toDp() }
 
     // A list follows its first visible row wherever that row moves, so rows arriving above it - an
@@ -318,6 +343,8 @@ fun DetailScaffold(
                         modifier = Modifier.fillMaxSize(),
                         enabled = isCollapsed,
                         scrollToTop = state::scrollToTop,
+                        playingRow = { playingRow.value },
+                        scrollToRow = state::scrollToRow,
                     ) { overscrollEffect ->
                         CompositionLocalProvider(LocalDragSelection provides dragSelection) {
                             // The whole room below the header, however few its rows: a drag anywhere in it

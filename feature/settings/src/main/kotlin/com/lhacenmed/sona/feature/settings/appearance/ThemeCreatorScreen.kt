@@ -10,10 +10,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -31,7 +29,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -68,6 +65,8 @@ import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.copyToClipboard
+import com.lhacenmed.sona.core.designsystem.component.fab.ExtendedFloatingActionButtonContent
+import com.lhacenmed.sona.core.designsystem.component.fab.SonaExtendedFloatingActionButtons
 import com.lhacenmed.sona.core.designsystem.component.screen.screenList
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
@@ -205,88 +204,77 @@ data object ThemeCreatorScreen : Screen {
                 ),
             )
 
-            Box(modifier = Modifier.fillMaxSize()) {
-                val scrollState = rememberScrollState()
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .screenList(scrollState)
-                        .verticalScroll(scrollState)
-                        .padding(bottom = LocalBottomContentPadding.current),
-                ) {
-                    PalettePreview(
-                        palette = currentPalette,
-                        isDarkTheme = theme.mode.isDark(),
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-                    )
+            val scrollState = rememberScrollState()
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .screenList(scrollState)
+                    .verticalScroll(scrollState)
+                    .padding(bottom = LocalBottomContentPadding.current),
+            ) {
+                PalettePreview(
+                    palette = currentPalette,
+                    isDarkTheme = theme.mode.isDark(),
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+                )
 
-                    EditorCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-                        Text(text = stringResource(R.string.theme_meta_title), style = MaterialTheme.typography.titleSmall)
-                        OutlinedTextField(
-                            value = themeName,
-                            onValueChange = { themeName = it.take(MaxThemeNameLength) },
-                            label = { Text(stringResource(R.string.theme_name_optional)) },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Button(onClick = ::applyTheme, shapes = buttonPressShapes(), modifier = Modifier.fillMaxWidth()) {
-                            Text(stringResource(R.string.theme_apply_button))
-                        }
+                EditorCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    Text(text = stringResource(R.string.theme_meta_title), style = MaterialTheme.typography.titleSmall)
+                    OutlinedTextField(
+                        value = themeName,
+                        onValueChange = { themeName = it.take(MaxThemeNameLength) },
+                        label = { Text(stringResource(R.string.theme_name_optional)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Button(onClick = ::applyTheme, shapes = buttonPressShapes(), modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.theme_apply_button))
                     }
-
-                    SeedRolePicker(
-                        activeRole = activeRole,
-                        onRoleChange = { activeRole = it },
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
-
-                    SeedColorEditor(
-                        role = activeRole,
-                        color = when (activeRole) {
-                            SeedRole.PRIMARY -> primary
-                            SeedRole.SECONDARY -> secondary
-                            SeedRole.TERTIARY -> tertiary
-                            SeedRole.NEUTRAL -> neutral
-                        },
-                        onColorChange = { color ->
-                            when (activeRole) {
-                                SeedRole.PRIMARY -> primary = color
-                                SeedRole.SECONDARY -> secondary = color
-                                SeedRole.TERTIARY -> tertiary = color
-                                SeedRole.NEUTRAL -> neutral = color
-                            }
-                        },
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
-
-                    // Room for the buttons below to clear the last of the editor.
-                    Spacer(modifier = Modifier.height(96.dp))
                 }
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(start = 16.dp, end = 16.dp, bottom = LocalBottomContentPadding.current),
-                ) {
-                    ExtendedFloatingActionButton(
-                        text = { Text(stringResource(R.string.import_theme)) },
-                        icon = { Icon(Icons.Filled.FileOpen, contentDescription = null) },
-                        onClick = { importTheme.launch(ThemeFileTypes) },
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                    )
-                    ExtendedFloatingActionButton(
-                        text = { Text(stringResource(R.string.export_theme)) },
-                        icon = { Icon(Icons.Filled.Share, contentDescription = null) },
-                        onClick = { exportTheme.launch("${themeFileName(themeName)}.json") },
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                    )
-                }
+                SeedRolePicker(
+                    activeRole = activeRole,
+                    onRoleChange = { activeRole = it },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+
+                SeedColorEditor(
+                    role = activeRole,
+                    color = when (activeRole) {
+                        SeedRole.PRIMARY -> primary
+                        SeedRole.SECONDARY -> secondary
+                        SeedRole.TERTIARY -> tertiary
+                        SeedRole.NEUTRAL -> neutral
+                    },
+                    onColorChange = { color ->
+                        when (activeRole) {
+                            SeedRole.PRIMARY -> primary = color
+                            SeedRole.SECONDARY -> secondary = color
+                            SeedRole.TERTIARY -> tertiary = color
+                            SeedRole.NEUTRAL -> neutral = color
+                        }
+                    },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
             }
         }
+
+        SonaExtendedFloatingActionButtons(
+            listOf(
+                ExtendedFloatingActionButtonContent(
+                    label = stringResource(R.string.import_theme),
+                    icon = Icons.Filled.FileOpen,
+                    onClick = { importTheme.launch(ThemeFileTypes) },
+                ),
+                ExtendedFloatingActionButtonContent(
+                    label = stringResource(R.string.export_theme),
+                    icon = Icons.Filled.Share,
+                    onClick = { exportTheme.launch("${themeFileName(themeName)}.json") },
+                    isPrimary = true,
+                ),
+            ),
+        )
     }
 }
 

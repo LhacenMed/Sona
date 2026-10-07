@@ -40,6 +40,8 @@ fun AlbumsScreen(
         key = { it.id },
         loadingIcon = SonaIcons.Album,
         sectionOf = albumSections,
+        isCurrent = { playback.marks(it) },
+        isPlaying = { playback.isPlaying },
         modifier = modifier,
         listState = listState,
         onRefresh = rememberLibraryRefresh(viewModel),

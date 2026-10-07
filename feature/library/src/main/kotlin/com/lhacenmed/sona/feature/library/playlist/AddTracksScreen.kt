@@ -55,6 +55,8 @@ data class AddTracksScreen(val playlistId: Long) : Screen {
                 key = { it.id },
                 loadingIcon = SonaIcons.Song,
                 sectionOf = trackSections,
+                isCurrent = { playback.marks(it) },
+                isPlaying = { playback.isPlaying },
                 modifier = Modifier.weight(1f).fillMaxWidth(),
             ) { track ->
                 TrackRow(

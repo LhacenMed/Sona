@@ -42,6 +42,8 @@ fun TracksScreen(
         onRefresh = rememberLibraryRefresh(viewModel),
         loadingIcon = SonaIcons.Song,
         sectionOf = trackSections,
+        isCurrent = { playback.marks(it) },
+        isPlaying = { playback.isPlaying },
     ) { track ->
         TrackRow(
             track = track,

@@ -40,6 +40,8 @@ fun ArtistsScreen(
         key = { it.id },
         loadingIcon = SonaIcons.Artist,
         sectionOf = artistSections,
+        isCurrent = { playback.marks(it) },
+        isPlaying = { playback.isPlaying },
         modifier = modifier,
         listState = listState,
         onRefresh = rememberLibraryRefresh(viewModel),
