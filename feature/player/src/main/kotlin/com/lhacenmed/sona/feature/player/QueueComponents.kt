@@ -85,7 +85,8 @@ internal fun CurrentSongHeader(
     shuffleEnabled: Boolean,
     backgroundColor: Color,
     onBackgroundColor: Color,
-    onToggleFavorite: () -> Unit,
+    /** Null for a track that cannot be a favourite, which leaves its button out. */
+    onToggleFavorite: (() -> Unit)?,
     onRepeatClick: () -> Unit,
     onShuffleClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -151,7 +152,7 @@ internal fun CurrentSongHeader(
                     )
                 }
 
-                IconButton(
+                if (onToggleFavorite != null) IconButton(
                     onClick = onToggleFavorite,
                     shapes = iconButtonPressShapes(),
                     modifier = Modifier.size(44.dp),

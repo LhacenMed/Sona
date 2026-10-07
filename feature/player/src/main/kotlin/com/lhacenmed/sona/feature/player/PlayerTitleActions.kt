@@ -34,8 +34,8 @@ internal class PlayerTitleActions(
 internal fun rememberPlayerTitleActions(
     track: Track,
     state: BottomSheetState,
-    onGoToAlbum: (Long) -> Unit,
-    onGoToArtist: (Long) -> Unit,
+    onGoToAlbum: ((Long) -> Unit)?,
+    onGoToArtist: ((Long) -> Unit)?,
 ): PlayerTitleActions {
     val context = LocalContext.current
     val latestOnGoToAlbum by rememberUpdatedState(onGoToAlbum)
@@ -43,13 +43,18 @@ internal fun rememberPlayerTitleActions(
 
     return remember(track, state, context) {
         PlayerTitleActions(
+            // A track with no album or artist to go to - a Private Folder item's - goes nowhere.
             onTitleClick = {
-                state.collapseSoft()
-                latestOnGoToAlbum(track.albumId)
+                latestOnGoToAlbum?.let { goToAlbum ->
+                    state.collapseSoft()
+                    goToAlbum(track.albumId)
+                }
             },
             onArtistClick = {
-                state.collapseSoft()
-                latestOnGoToArtist(track.artistId)
+                latestOnGoToArtist?.let { goToArtist ->
+                    state.collapseSoft()
+                    goToArtist(track.artistId)
+                }
             },
             onCopyTitle = { context.copyToClipboard(track.title, context.getString(R.string.player_copied_title)) },
             onCopyArtists = { context.copyToClipboard(track.artist, context.getString(R.string.player_copied_artist)) },

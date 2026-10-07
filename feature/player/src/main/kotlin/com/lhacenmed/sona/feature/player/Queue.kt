@@ -263,7 +263,7 @@ internal fun Queue(
                     shuffleEnabled = playback.shuffleEnabled,
                     backgroundColor = backgroundColor,
                     onBackgroundColor = onBackgroundColor,
-                    onToggleFavorite = viewModel::onToggleFavorite,
+                    onToggleFavorite = if (uiState.canFavorite) viewModel::onToggleFavorite else null,
                     onRepeatClick = viewModel::onCycleRepeatMode,
                     onShuffleClick = viewModel::onToggleShuffle,
                 )

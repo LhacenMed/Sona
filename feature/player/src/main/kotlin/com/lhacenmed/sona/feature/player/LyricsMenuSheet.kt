@@ -37,7 +37,8 @@ internal fun LyricsMenuSheet(
     onLyricsSyncOffsetChange: (Int) -> Unit,
     showPlayerControls: Boolean,
     onShowPlayerControlsChange: (Boolean) -> Unit,
-    onEditLyrics: () -> Unit,
+    /** Null for lyrics the editor cannot open - a Private Folder item's - which leaves Edit out. */
+    onEditLyrics: (() -> Unit)?,
     onDismissRequest: () -> Unit,
 ) {
     val openedForTrackId = rememberSaveable { track.id }
@@ -59,14 +60,16 @@ internal fun LyricsMenuSheet(
                 )
             },
         ) {
-            SonaOptionRow(
-                label = stringResource(R.string.player_edit),
-                icon = Icons.Filled.Edit,
-                onClick = {
-                    onEditLyrics()
-                    onDismissRequest()
-                },
-            )
+            if (onEditLyrics != null) {
+                SonaOptionRow(
+                    label = stringResource(R.string.player_edit),
+                    icon = Icons.Filled.Edit,
+                    onClick = {
+                        onEditLyrics()
+                        onDismissRequest()
+                    },
+                )
+            }
             SonaOptionRow(
                 label = stringResource(R.string.player_lyrics_sync_offset),
                 icon = Icons.Filled.Speed,

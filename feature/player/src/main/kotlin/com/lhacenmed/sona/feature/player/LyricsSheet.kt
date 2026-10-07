@@ -99,7 +99,7 @@ internal fun LyricsSheetTransition(
     appearance: PlayerAppearance,
     lyricsSyncOffset: Int,
     onLyricsSyncOffsetChange: (Int) -> Unit,
-    onEditLyrics: (trackId: Long) -> Unit,
+    onEditLyrics: ((trackId: Long) -> Unit)?,
     onDismiss: () -> Unit,
     viewModel: PlayerViewModel,
     modifier: Modifier = Modifier,
@@ -171,7 +171,7 @@ private fun LyricsSheet(
     appearance: PlayerAppearance,
     lyricsSyncOffset: Int,
     onLyricsSyncOffsetChange: (Int) -> Unit,
-    onEditLyrics: (trackId: Long) -> Unit,
+    onEditLyrics: ((trackId: Long) -> Unit)?,
     onBackClick: () -> Unit,
     viewModel: PlayerViewModel,
     backHandlerEnabled: Boolean,
@@ -349,7 +349,7 @@ private fun LyricsSheet(
             onLyricsSyncOffsetChange = onLyricsSyncOffsetChange,
             showPlayerControls = showPlayerControls,
             onShowPlayerControlsChange = lyricsViewModel::setShowLyricsPlayerControls,
-            onEditLyrics = { onEditLyrics(track.id) },
+            onEditLyrics = onEditLyrics?.let { editLyrics -> { editLyrics(track.id) } },
             onDismissRequest = { showLyricsMenu = false },
         )
     }

@@ -99,6 +99,7 @@ internal fun CinematicPlayer(
             playback = uiState.playback,
             isLoading = isLoading,
             isFavorite = uiState.isCurrentTrackFavorite,
+            canFavorite = uiState.canFavorite,
             colors = colors,
             sliderPosition = sliderPosition,
             position = position,
@@ -190,6 +191,7 @@ private fun CinematicPlayerControls(
     playback: PlaybackUiState,
     isLoading: Boolean,
     isFavorite: Boolean,
+    canFavorite: Boolean,
     colors: PlayerColors,
     sliderPosition: Long?,
     position: Long,
@@ -222,7 +224,7 @@ private fun CinematicPlayerControls(
         CinematicTrackActions(
             contentColor = contentColor,
             isFavorite = isFavorite,
-            onToggleFavorite = viewModel::onToggleFavorite,
+            onToggleFavorite = if (canFavorite) viewModel::onToggleFavorite else null,
             onMenuClick = onMenuClick,
         )
     }
@@ -267,14 +269,15 @@ private fun CinematicPlayerControls(
 private fun CinematicTrackActions(
     contentColor: Color,
     isFavorite: Boolean,
-    onToggleFavorite: () -> Unit,
+    /** Null for a track that cannot be a favourite, which leaves its card out. */
+    onToggleFavorite: (() -> Unit)?,
     onMenuClick: () -> Unit,
 ) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Surface(
+        if (onToggleFavorite != null) Surface(
             onClick = onToggleFavorite,
             shape = roundedShape(14.dp),
             color =

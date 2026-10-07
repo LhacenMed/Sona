@@ -62,10 +62,10 @@ internal fun BottomSheetPlayer(
     sleepTimer: SleepTimerState,
     viewModel: PlayerViewModel,
     miniPlayerSeekBarRequests: MiniPlayerSeekBarRequests,
-    onGoToAlbum: (Long) -> Unit,
-    onGoToArtist: (Long) -> Unit,
+    onGoToAlbum: ((Long) -> Unit)?,
+    onGoToArtist: ((Long) -> Unit)?,
     onOpenEqualizer: () -> Unit,
-    onEditLyrics: (trackId: Long) -> Unit,
+    onEditLyrics: ((trackId: Long) -> Unit)?,
     trackOptionsSheet: @Composable (track: Track, onDismissRequest: () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
 ) {

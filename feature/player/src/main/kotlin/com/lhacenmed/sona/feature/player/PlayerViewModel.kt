@@ -15,15 +15,21 @@ import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.vault.VaultRepository
 import com.lhacenmed.sona.feature.playback.PlaybackController
+import com.lhacenmed.sona.feature.playback.PlaybackSpace
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
 import com.lhacenmed.sona.feature.playback.QueueEntry
 import com.lhacenmed.sona.feature.playback.SleepTimerState
 import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -56,6 +62,8 @@ data class PlayerUiState(
     val queue: List<QueueTrack> = emptyList(),
     val currentQueueIndex: Int = -1,
     val isCurrentTrackFavorite: Boolean = false,
+    /** Whether the playing track can be a favourite - a library track's, never a Private Folder item's. */
+    val canFavorite: Boolean = false,
     /**
      * Whether the playback and the library have both loaded, so a null [currentTrack] means nothing is
      * playing rather than that it is not known yet.
@@ -69,12 +77,32 @@ data class QueueTrack(
     val track: Track,
 )
 
-@HiltViewModel
-class PlayerViewModel @Inject constructor(
+/**
+ * The player of one [space]: it shows only that space's playback, and none while a video is being watched -
+ * the video player's - so the library's player and the Private Folder's never show each other's tracks.
+ */
+@HiltViewModel(assistedFactory = PlayerViewModel.Factory::class)
+class PlayerViewModel @AssistedInject constructor(
+    @Assisted private val space: PlaybackSpace,
     private val repository: LibraryRepository,
+    private val vault: VaultRepository,
     private val playbackController: PlaybackController,
     playerStyleSettings: PlayerStyleSettings,
 ) : ViewModel() {
+
+    @AssistedFactory
+    interface Factory {
+        fun create(space: PlaybackSpace): PlayerViewModel
+    }
+
+    // The library's tracks, or the Private Folder's - unknown, rather than empty, until read.
+    private val catalog: StateFlow<Map<Long, Track>?> = when (space) {
+        PlaybackSpace.Library -> combine(repository.tracksById, repository.isReady) { tracks, isReady -> tracks.takeIf { isReady } }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, repository.tracksById.value.takeIf { repository.isReady.value })
+        PlaybackSpace.Private -> vault.tracksById.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    }
+
+    private val tracksById: Flow<Map<Long, Track>> = catalog.map { it.orEmpty() }
 
     // The position is the one part of the playback state that moves on its own, ticking twice a second
     // while playing, and nothing drawn from this state shows it: the seek bar and the lyrics follow the
@@ -101,8 +129,8 @@ class PlayerViewModel @Inject constructor(
 
     // Narrowed to the queue itself, so it is not resolved again for a queue that has not changed.
     private val queue = combine(
-        steadyPlaybackState.map { it.queue }.distinctUntilChanged(),
-        repository.tracksById,
+        steadyPlaybackState.map { it.takeIfShown()?.queue.orEmpty() }.distinctUntilChanged(),
+        tracksById,
         ::resolveQueue,
     )
 
@@ -111,9 +139,8 @@ class PlayerViewModel @Inject constructor(
     val uiState: StateFlow<PlayerUiState> = combine(
         steadyPlaybackState,
         queue,
-        repository.tracksById,
+        catalog,
         repository.favoriteTrackIds,
-        repository.isReady,
         ::resolveUiState,
     ).stateIn(
         viewModelScope,
@@ -121,10 +148,9 @@ class PlayerViewModel @Inject constructor(
         playbackController.playbackState.value.withoutPosition().copy(isBuffering = false).let { playback ->
             resolveUiState(
                 playback = playback,
-                queue = resolveQueue(playback.queue, repository.tracksById.value),
-                tracksById = repository.tracksById.value,
+                queue = resolveQueue(playback.takeIfShown()?.queue.orEmpty(), catalog.value.orEmpty()),
+                catalog = catalog.value,
                 favoriteTrackIds = repository.favoriteTrackIds.value,
-                isLibraryReady = repository.isReady.value,
             )
         },
     )
@@ -133,7 +159,10 @@ class PlayerViewModel @Inject constructor(
      * What the queue is playing from, for the line under "Now Playing" - renamed as its collection is.
      * Started from the library already in memory, so the line is right on the player's first frame.
      */
-    internal val playingFrom: StateFlow<PlayingFrom?> = combine(
+    internal val playingFrom: StateFlow<PlayingFrom?> = if (space == PlaybackSpace.Private) {
+        // The Private Folder plays from none of the library's collections.
+        MutableStateFlow(null)
+    } else combine(
         playbackController.playbackState.map { it.parent }.distinctUntilChanged(),
         repository.albums,
         repository.artists,
@@ -193,6 +222,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun onToggleFavorite() {
+        if (!uiState.value.canFavorite) return
         val track = uiState.value.currentTrack ?: return
         val isFavorite = uiState.value.isCurrentTrackFavorite
         viewModelScope.launch(Dispatchers.IO) {
@@ -211,7 +241,16 @@ class PlayerViewModel @Inject constructor(
 
     /** Plays [item] right after the track playing now - moved there, not repeated. */
     fun onPlayQueueItemNext(item: QueueTrack) {
-        playbackController.playNext(listOf(item.track))
+        if (space == PlaybackSpace.Library) {
+            playbackController.playNext(listOf(item.track))
+            return
+        }
+        // A Private Folder item is moved there within its own queue - the library's ways of adding know only its tracks.
+        val state = uiState.value
+        val fromPosition = state.queue.indexOfFirst { it.entry.key == item.entry.key }
+        if (fromPosition < 0 || state.currentQueueIndex < 0) return
+        val toPosition = if (fromPosition > state.currentQueueIndex) state.currentQueueIndex + 1 else state.currentQueueIndex
+        playbackController.moveQueueItem(fromPosition, toPosition)
     }
 
     fun onRemoveQueueItem(item: QueueTrack) {
@@ -223,8 +262,12 @@ class PlayerViewModel @Inject constructor(
         playbackController.restoreQueueItem(item.track, item.entry.mediaItemIndex, playPosition)
     }
 
+    /** The player swiped away: the Private Folder's playback ends, giving the library's queue back; the library's is cleared. */
     fun onStopAndClearQueue() {
-        playbackController.stopAndClearQueue()
+        when (space) {
+            PlaybackSpace.Library -> playbackController.stopAndClearQueue()
+            PlaybackSpace.Private -> playbackController.endPrivatePlayback()
+        }
     }
 
     fun onStartSleepTimer(minutes: Int) {
@@ -264,21 +307,26 @@ class PlayerViewModel @Inject constructor(
     private fun resolveUiState(
         playback: PlaybackUiState,
         queue: List<QueueTrack>,
-        tracksById: Map<Long, Track>,
+        catalog: Map<Long, Track>?,
         favoriteTrackIds: Set<Long>,
-        isLibraryReady: Boolean,
     ): PlayerUiState {
-        val track = playback.currentTrackId?.let(tracksById::get)
-        val currentEntryKey = playback.queue.getOrNull(playback.currentQueueIndex)?.key
+        val shown = playback.takeIfShown()
+        val track = shown?.currentTrackId?.let { catalog?.get(it) }
+        val currentEntryKey = shown?.queue?.getOrNull(shown.currentQueueIndex)?.key
+        val canFavorite = space == PlaybackSpace.Library
         return PlayerUiState(
             playback = playback,
             currentTrack = track,
             queue = queue,
             currentQueueIndex = queue.indexOfFirst { it.entry.key == currentEntryKey },
-            isCurrentTrackFavorite = track != null && track.id in favoriteTrackIds,
-            isResolved = playback.isReady && isLibraryReady,
+            isCurrentTrackFavorite = canFavorite && track != null && track.id in favoriteTrackIds,
+            canFavorite = canFavorite,
+            isResolved = playback.isReady && catalog != null,
         )
     }
+
+    /** [this], where it is this player's to show: its own space's, and listened to rather than watched. */
+    private fun PlaybackUiState.takeIfShown(): PlaybackUiState? = takeIf { it.space == space && !it.isWatching }
 }
 
 /** This playback state with its ticking position dropped - see [PlayerViewModel.steadyPlaybackState]. */

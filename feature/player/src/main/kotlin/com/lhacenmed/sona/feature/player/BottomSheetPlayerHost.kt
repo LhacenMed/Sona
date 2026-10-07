@@ -20,6 +20,7 @@ import com.lhacenmed.sona.core.designsystem.component.LocalPlayerSheetHeight
 import com.lhacenmed.sona.core.designsystem.component.MiniPlayerSeekBarRequests
 import com.lhacenmed.sona.core.designsystem.component.PlayerSheetHeight
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.playback.PlaybackSpace
 
 /**
  * The player an activity lays over its content: a mini player along the bottom that expands into the
@@ -32,18 +33,22 @@ import com.lhacenmed.sona.core.model.Track
  * [content] is the screen it lays itself over, told through [LocalBottomContentPadding] how much of its
  * bottom the mini player covers, and the gap to keep above it, and through [LocalPlayerSheetHeight]
  * how high the player reaches up over it at every moment.
+ *
+ * It plays [space]'s tracks alone - see [PlayerViewModel]. What only the library's tracks have - an album
+ * and an artist to go to, lyrics to edit - is offered where given.
  */
 @Composable
 fun BottomSheetPlayerHost(
-    onGoToAlbum: (Long) -> Unit,
-    onGoToArtist: (Long) -> Unit,
+    space: PlaybackSpace,
+    onGoToAlbum: ((Long) -> Unit)?,
+    onGoToArtist: ((Long) -> Unit)?,
     onOpenEqualizer: () -> Unit,
-    onEditLyrics: (trackId: Long) -> Unit,
+    onEditLyrics: ((trackId: Long) -> Unit)?,
     trackOptionsSheet: @Composable (track: Track, onDismissRequest: () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: PlayerViewModel = hiltViewModel(),
     content: @Composable () -> Unit,
 ) {
+    val viewModel = hiltViewModel<PlayerViewModel, PlayerViewModel.Factory>(creationCallback = { it.create(space) })
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val appearance by viewModel.appearance.collectAsStateWithLifecycle()
     val sleepTimer by viewModel.sleepTimer.collectAsStateWithLifecycle()
