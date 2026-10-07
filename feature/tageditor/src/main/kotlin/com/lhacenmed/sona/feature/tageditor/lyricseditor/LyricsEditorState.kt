@@ -192,7 +192,7 @@ class LyricsEditorState internal constructor(
 
     /** Has the player play the track from [timeMs] - starting it, on its own, where another is playing. */
     private fun playAt(timeMs: Long) {
-        if (playback.value.currentTrackId == track.id) {
+        if (playback.value.libraryTrackId == track.id) {
             playbackController.seekTo(timeMs)
             if (!playback.value.isPlaying) playbackController.togglePlayPause()
         } else {

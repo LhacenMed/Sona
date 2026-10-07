@@ -30,10 +30,12 @@ dependencies {
     implementation(project(":core:datastore"))
     implementation(project(":core:common"))
     implementation(project(":core:designsystem"))
+    implementation(project(":core:vault"))
     implementation(project(":feature:playback"))
     implementation(project(":feature:scanner"))
     implementation(project(":feature:tageditor"))
     implementation(project(":feature:video"))
+    implementation(project(":feature:vault"))
 
     implementation(libs.androidx.core.ktx)
     // The system photo picker a playlist's cover image is chosen with.

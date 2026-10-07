@@ -3,9 +3,11 @@ package com.lhacenmed.sona.feature.video
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.lhacenmed.sona.core.designsystem.SonaActivity
 import com.lhacenmed.sona.core.designsystem.theme.AppCoverStyle
 import com.lhacenmed.sona.core.designsystem.theme.AppFastScrollTouchArea
@@ -14,6 +16,7 @@ import com.lhacenmed.sona.core.designsystem.theme.SonaTheme
 import com.lhacenmed.sona.core.model.ThemeMode
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.launch
 
 /** Opens the video player on whatever plays now - started just before, by the caller. */
 fun Context.openVideoPlayer() {
@@ -29,7 +32,8 @@ fun Context.openVideoPlayer() {
  * so the queue, the notification and the sound go on exactly as they do for music.
  *
  * Left for another app, it pauses - nobody is watching the picture - unless it plays for its sound alone, which
- * is what that is for. Closed, it leaves what plays at its own speed and volume.
+ * is what that is for. Closed, it leaves what plays at its own speed and volume: a video played as audio plays on
+ * in the mini player, and one watched gives way to the queue it replaced.
  */
 @AndroidEntryPoint
 class VideoPlayerActivity : SonaActivity() {
@@ -49,6 +53,12 @@ class VideoPlayerActivity : SonaActivity() {
         super.onCreate(savedInstanceState)
         // Standing as kept from the first frame, rather than turning once the screen is composed.
         requestedOrientation = viewModel.session.value.orientation.activityOrientation
+        // A Private Folder video is kept out of screenshots and the recent apps' preview.
+        lifecycleScope.launch {
+            viewModel.isPrivate.collect { isPrivate ->
+                if (isPrivate) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE) else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+            }
+        }
         setSonaContent {
             val themeConfig by appTheme.config.collectAsStateWithLifecycle()
             val coverStyle by appCoverStyle.style.collectAsStateWithLifecycle()

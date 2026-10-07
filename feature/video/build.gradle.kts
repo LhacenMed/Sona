@@ -29,6 +29,7 @@ dependencies {
     implementation(project(":core:data"))
     implementation(project(":core:datastore"))
     implementation(project(":core:designsystem"))
+    implementation(project(":core:vault"))
     implementation(project(":feature:playback"))
 
     implementation(platform(libs.androidx.compose.bom))

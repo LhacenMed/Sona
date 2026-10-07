@@ -57,6 +57,7 @@ import com.lhacenmed.sona.core.data.contentUri
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.effect.rememberDeviceMusicVolumeController
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.playback.PlaybackSpace
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
 import com.lhacenmed.sona.feature.video.audio.AudioOnlyContent
 import com.lhacenmed.sona.feature.video.capture.captureVideoFrame
@@ -131,11 +132,13 @@ internal fun VideoPlayerScreen(viewModel: VideoPlayerViewModel, onClose: () -> U
     // Held for the screenshot button, which reads the frame straight off it.
     val surface = remember { arrayOfNulls<SurfaceView>(1) }
 
-    // Nothing left to play - the queue cleared from the notification, say - leaves nothing to show. Only once
-    // something was shown: the player can open a moment before the queue it was opened for arrives.
+    // Nothing left to watch - the queue cleared from the notification, or the Private Folder locked - leaves
+    // nothing to show. Only once something was shown: the player can open a moment before the queue it was
+    // opened for arrives.
     val hasShownSomething = remember { booleanArrayOf(false) }
-    LaunchedEffect(current == null) {
-        if (current != null) hasShownSomething[0] = true else if (hasShownSomething[0]) onClose()
+    val isShowing = current != null && playback.isWatching
+    LaunchedEffect(isShowing) {
+        if (isShowing) hasShownSomething[0] = true else if (hasShownSomething[0]) onClose()
     }
     // A new video, or a new fitting, starts unzoomed.
     LaunchedEffect(current?.id, session.aspect) { zoom.reset() }
@@ -364,7 +367,9 @@ private fun PlayerControls(
             if (!isAudioOnly) {
                 VideoControlRail(
                     listOf(
-                        VideoAction(Icons.Rounded.Screenshot, stringResource(R.string.video_screenshot), onScreenshot),
+                        // A Private Folder video is never saved out to the gallery; its place is kept, empty.
+                        VideoAction(Icons.Rounded.Screenshot, stringResource(R.string.video_screenshot), onScreenshot)
+                            .takeIf { playback.space != PlaybackSpace.Private },
                         VideoAction(session.orientation.icon, session.orientation.label(), onCycleOrientation),
                     ),
                 )

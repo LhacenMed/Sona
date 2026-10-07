@@ -237,17 +237,16 @@ class LibraryViewModel @Inject constructor(
      * than passed down so the list can stay keyed by identity rather than by position.
      *
      * A track already playing from this list pauses or resumes instead of starting the queue over -
-     * see [LibraryPlayback.isReselection]. A video is only ever resumed: tapping it opens it in the video
-     * player, where it is watched rather than paused.
+     * see [LibraryPlayback.isReselection]. A video playing as audio is watched again instead, in the video
+     * player; one started opens there - see [PlaybackController.playTracks].
      */
     private fun play(track: Track, list: List<Track>, parent: PlaybackParent?) {
         if (playback.value.isReselection(track, listParent = parent)) {
-            if (!track.isVideo || !playback.value.isPlaying) playbackController.togglePlayPause()
+            if (track.isVideo) playbackController.watchCurrent() else playbackController.togglePlayPause()
             return
         }
         val index = list.indexOfFirst { it.id == track.id }
-        // A video tapped opens in the video player, so its picture is wanted from its first frame.
-        if (index >= 0) playbackController.playTracks(list, index, parent, showsPicture = track.isVideo)
+        if (index >= 0) playbackController.playTracks(list, index, parent)
     }
 
     /** Plays [quickPlay] as the button shows it - see [PlaybackController.quickPlay]. */

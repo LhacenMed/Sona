@@ -54,18 +54,18 @@ abstract class TrackListDetailViewModel(
 
     /**
      * Plays [track] from this list - or, when it is already playing from this very list, pauses or
-     * resumes it rather than starting the queue over. See [LibraryPlayback.isReselection]. A video is only
-     * ever resumed: tapping it opens it in the video player, where it is watched rather than paused.
+     * resumes it rather than starting the queue over. See [LibraryPlayback.isReselection]. A video playing as
+     * audio is watched again instead, in the video player; one started opens there - see
+     * [PlaybackController.playTracks].
      */
     fun onTrackClick(track: Track) {
         if (playback.value.isReselection(track, playbackParent)) {
-            if (!track.isVideo || !playback.value.isPlaying) playbackController.togglePlayPause()
+            if (track.isVideo) playbackController.watchCurrent() else playbackController.togglePlayPause()
             return
         }
         val all = tracks.value.itemsOrEmpty
         val index = all.indexOfFirst { it.id == track.id }
-        // A video tapped opens in the video player, so its picture is wanted from its first frame.
-        if (index >= 0) playbackController.playTracks(all, index, playbackParent, showsPicture = track.isVideo)
+        if (index >= 0) playbackController.playTracks(all, index, playbackParent)
     }
 
     /**

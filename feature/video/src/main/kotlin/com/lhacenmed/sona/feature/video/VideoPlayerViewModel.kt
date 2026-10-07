@@ -9,7 +9,9 @@ import com.lhacenmed.sona.core.datastore.VideoOrientation
 import com.lhacenmed.sona.core.datastore.VideoSettings
 import com.lhacenmed.sona.core.datastore.stateIn
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.vault.VaultRepository
 import com.lhacenmed.sona.feature.playback.PlaybackController
+import com.lhacenmed.sona.feature.playback.PlaybackSpace
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
 import com.lhacenmed.sona.feature.playback.QueueEntry
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -63,10 +65,15 @@ data class VideoGestureSettings(
     val zoomEnabled: Boolean,
 )
 
+/**
+ * The video player, for whichever space is watching - the library's or the Private Folder's - resolved against
+ * that space's own tracks.
+ */
 @HiltViewModel
 class VideoPlayerViewModel @Inject constructor(
     private val playbackController: PlaybackController,
     repository: LibraryRepository,
+    vault: VaultRepository,
     private val videoSettings: VideoSettings,
 ) : ViewModel() {
 
@@ -74,24 +81,42 @@ class VideoPlayerViewModel @Inject constructor(
         .map { it.copy(positionMs = 0L) }
         .distinctUntilChanged()
 
+    private val privateTracksById = vault.tracksById.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
+    private val libraryTracksById = repository.tracksById
+
+    // The tracks of the space playing now - the Private Folder's never looked up among the library's.
+    private val tracksById = combine(
+        playbackWithoutPosition.map { it.space }.distinctUntilChanged(),
+        libraryTracksById,
+        privateTracksById,
+        ::tracksOf,
+    )
+
     // Narrowed to the queue itself, so it is not resolved again for every other change of playback.
     private val queue = combine(
         playbackWithoutPosition.map { it.queue }.distinctUntilChanged(),
-        repository.tracksById,
+        tracksById,
         ::resolveQueue,
     )
 
     // Started from what is already in memory, so the player draws the video on its first frame.
-    val uiState: StateFlow<VideoPlayerUiState> = combine(playbackWithoutPosition, queue, repository.tracksById) { playback, queue, tracksById ->
+    val uiState: StateFlow<VideoPlayerUiState> = combine(playbackWithoutPosition, queue, tracksById) { playback, queue, tracksById ->
         VideoPlayerUiState(playback, playback.currentTrackId?.let(tracksById::get), queue)
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
         playbackController.playbackState.value.copy(positionMs = 0L).let { playback ->
-            val tracksById = repository.tracksById.value
+            val tracksById = tracksOf(playback.space, libraryTracksById.value, privateTracksById.value)
             VideoPlayerUiState(playback, playback.currentTrackId?.let(tracksById::get), resolveQueue(playback.queue, tracksById))
         },
     )
+
+    /** Whether a Private Folder video shows - kept out of screenshots and the recent apps' preview. */
+    val isPrivate: StateFlow<Boolean> = playbackController.playbackState
+        .map { it.space == PlaybackSpace.Private }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, playbackController.playbackState.value.space == PlaybackSpace.Private)
 
     private val _session = MutableStateFlow(
         VideoSession(
@@ -208,12 +233,16 @@ class VideoPlayerViewModel @Inject constructor(
 
     /**
      * The player is closing: its speed and silence were for watching here, so whatever plays next - this video's
-     * sound in the mini player, or music - plays as recorded and heard. The silence is kept for the next video.
+     * sound in the mini player, or the queue it gave way to - plays as recorded and heard. The silence is kept
+     * for the next video. Played as audio, it plays on in the mini player; watched, it ends - see
+     * [PlaybackController.leaveVideoPlayer].
      */
     fun onPlayerClosed() {
         speedBeforeHold = null
         playbackController.setPlaybackSpeed(1f)
         playbackController.setMuted(false)
+        val isHeardOnly = _session.value.isAudioOnly || uiState.value.current?.isVideo == false
+        playbackController.leaveVideoPlayer(keepsPlaying = isHeardOnly)
     }
 
     private fun readGestureSettings() = with(videoSettings) {
@@ -225,6 +254,9 @@ class VideoPlayerViewModel @Inject constructor(
             zoomEnabled = zoomPan.value,
         )
     }
+
+    private fun tracksOf(space: PlaybackSpace, libraryTracks: Map<Long, Track>, privateTracks: Map<Long, Track>): Map<Long, Track> =
+        if (space == PlaybackSpace.Private) privateTracks else libraryTracks
 
     private fun resolveQueue(entries: List<QueueEntry>, tracksById: Map<Long, Track>): List<QueueVideo> =
         entries.mapNotNull { entry -> tracksById[entry.trackId]?.let { QueueVideo(entry, it) } }

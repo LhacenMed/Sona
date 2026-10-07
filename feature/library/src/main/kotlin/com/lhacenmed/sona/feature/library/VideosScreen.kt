@@ -20,7 +20,6 @@ import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
-import com.lhacenmed.sona.feature.video.openVideoPlayer
 
 /**
  * Every video, listed as the tracks tab's tracks are, and opened in the video player when tapped. The folders
@@ -95,10 +94,7 @@ fun VideosScreen(
             isCurrent = { playback.marks(video) },
             isPlaying = { playback.isPlaying },
             selection = selection,
-            onClick = {
-                viewModel.onVideoClick(video)
-                context.openVideoPlayer()
-            },
+            onClick = { viewModel.onVideoClick(video) },
             onOpenOptions = {
                 optionsTarget = OptionsTarget.ForTrack(
                     video,

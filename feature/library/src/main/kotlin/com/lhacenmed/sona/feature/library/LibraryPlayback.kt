@@ -81,7 +81,7 @@ internal fun libraryPlayback(
     playbackController: PlaybackController,
     repository: LibraryRepository,
 ): Flow<LibraryPlayback> = playbackController.playbackState
-    .map { Triple(it.currentTrackId, it.parent, it.isPlaying) }
+    .map { Triple(it.libraryTrackId, it.parent, it.isPlaying) }
     .distinctUntilChanged()
     .combine(repository.tracksById) { (currentTrackId, parent, isPlaying), tracksById ->
         LibraryPlayback(

@@ -7,6 +7,7 @@ import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.datastore.LyricsSettings
 import com.lhacenmed.sona.feature.playback.PlaybackController
+import com.lhacenmed.sona.feature.playback.PlaybackSpace
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
 import com.lhacenmed.sona.feature.tageditor.TrackTagsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -60,7 +61,7 @@ class MissingLyricsFinder @Inject constructor(
     /** The playing track, then the next and the previous in the order the queue plays. */
     private fun tracksAroundPlaying(state: PlaybackUiState): List<Long> {
         val index = state.currentQueueIndex
-        if (index !in state.queue.indices) return emptyList()
+        if (state.space != PlaybackSpace.Library || index !in state.queue.indices) return emptyList()
         return listOf(index, index + 1, index - 1).mapNotNull { state.queue.getOrNull(it)?.trackId }.distinct()
     }
 

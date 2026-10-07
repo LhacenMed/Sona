@@ -79,7 +79,7 @@ class SonaAppTheme @Inject constructor(
     // carries a position that ticks twice a second, and this used to linearly scan the whole track
     // table on every one of those ticks looking for a single row.
     private val currentCoverArtUri = combine(
-        playbackController.playbackState.map { it.currentTrackId }.distinctUntilChanged(),
+        playbackController.playbackState.map { it.libraryTrackId }.distinctUntilChanged(),
         repository.tracksById,
     ) { trackId, tracksById ->
         tracksById[trackId]?.coverArtUri

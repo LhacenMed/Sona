@@ -4,7 +4,16 @@ import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.RepeatMode
 
 /**
+ * Which part of the app the queue belongs to - each has its own players, and shows nothing of the other's.
+ * A queue is all of one or all of the other.
+ */
+enum class PlaybackSpace { Library, Private }
+
+/**
  * Snapshot of playback state exposed to the UI layer.
+ *
+ * Every track id here - [currentTrackId], [queue]'s, [pictureTrackId] - is an id in [space]: a library
+ * track's, or a Private Folder item's. What only knows the library reads [libraryTrackId].
  */
 data class PlaybackUiState(
     /**
@@ -47,4 +56,13 @@ data class PlaybackUiState(
      * starts - so a screen shows a picture only once it is there, at its own size.
      */
     val pictureTrackId: Long? = null,
-)
+    val space: PlaybackSpace = PlaybackSpace.Library,
+    /**
+     * Whether the queue is a video being watched - the video player's, shown by no mini player - rather than
+     * listened to. A video played as audio, from the video player's own choice, is listened to.
+     */
+    val isWatching: Boolean = false,
+) {
+    /** [currentTrackId] where it is the library's - null while the Private Folder plays. */
+    val libraryTrackId: Long? get() = currentTrackId.takeIf { space == PlaybackSpace.Library }
+}

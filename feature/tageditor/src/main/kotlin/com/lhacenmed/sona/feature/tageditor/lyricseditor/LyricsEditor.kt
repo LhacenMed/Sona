@@ -88,7 +88,7 @@ internal fun LyricsEditor(state: LyricsEditorState, confirmAction: TopBarAction,
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val playback by state.playback.collectAsStateWithLifecycle()
-    val isTrackPlaying = playback.currentTrackId == state.track.id
+    val isTrackPlaying = playback.libraryTrackId == state.track.id
 
     var isAddingLyrics by rememberSaveable { mutableStateOf(false) }
     var isSearchingLyrics by rememberSaveable { mutableStateOf(false) }
