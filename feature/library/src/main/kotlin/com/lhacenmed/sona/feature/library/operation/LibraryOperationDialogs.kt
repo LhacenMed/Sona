@@ -1,6 +1,7 @@
 package com.lhacenmed.sona.feature.library.operation
 
 import android.app.Activity
+import android.content.Context
 import android.os.Build
 import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -13,14 +14,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.data.contentUri
+import com.lhacenmed.sona.core.designsystem.component.SonaBottomSheet
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDialog
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.vault.VaultState
 import com.lhacenmed.sona.feature.library.options.OptionsActionsViewModel
 import com.lhacenmed.sona.feature.library.pluralCount
+import com.lhacenmed.sona.feature.vault.VaultSetupFlow
 
 /*
  * The confirmed operations more than one place in the library offers, each written once so its wording
@@ -136,6 +141,95 @@ internal fun DeleteFromDeviceDialog(
     onDismiss: () -> Unit,
     onDeleted: () -> Unit = {},
 ) {
+    val deleteFromDevice = rememberDeviceDeletion(tracks, onDeleted)
+    val isSingle = tracks.size == 1
+    SonaConfirmationDialog(
+        title = if (isSingle) "Delete track" else "Delete ${tracks.size} tracks",
+        message = buildString {
+            append(if (isSingle) "Its file is deleted" else "Their files are deleted")
+            append(" from this device. This cannot be undone.")
+            if (needsAllFilesAccess(LocalContext.current)) {
+                append("\n\nNext, allow Sona to manage all files, and it deletes without Android asking each time.")
+            }
+        },
+        confirmLabel = "Delete",
+        successMessage = deletionOutcome(tracks.size, succeeded = true),
+        failureMessage = deletionOutcome(tracks.size, succeeded = false),
+        onDismiss = onDismiss,
+        operation = deleteFromDevice,
+    )
+}
+
+/**
+ * Adding [track] to the Private Folder - from its options sheet. Creates the folder first if there is
+ * none yet; opening it is not needed to put a file in.
+ */
+@Composable
+internal fun AddToPrivateDialog(
+    track: Track,
+    onDismiss: () -> Unit,
+    onMoved: () -> Unit = {},
+) {
+    val actionsViewModel: OptionsActionsViewModel = hiltViewModel()
+    val vault by actionsViewModel.vaultState.collectAsStateWithLifecycle()
+    when (vault) {
+        VaultState.Loading -> Unit
+        VaultState.NotCreated -> SonaBottomSheet(title = "Create Private Folder", onDismissRequest = onDismiss) {
+            VaultSetupFlow(opensFolder = false)
+        }
+        is VaultState.Created -> MoveToPrivateDialog(track = track, onDismiss = onDismiss, onMoved = onMoved)
+    }
+}
+
+/**
+ * Moves [track] into the Private Folder: copied in first, then deleted from the device exactly as
+ * [DeleteFromDeviceDialog] deletes - and the copy taken back out should that deletion not happen, so the
+ * file is never left in both places.
+ */
+@Composable
+private fun MoveToPrivateDialog(
+    track: Track,
+    onDismiss: () -> Unit,
+    onMoved: () -> Unit,
+) {
+    val actionsViewModel: OptionsActionsViewModel = hiltViewModel()
+    val deleteOriginal = rememberDeviceDeletion(listOf(track), onDeleted = onMoved)
+    SonaConfirmationDialog(
+        title = "Add to Private Folder",
+        message = buildString {
+            append("It leaves your library for the Private Folder, which only its PIN opens.")
+            if (needsAllFilesAccess(LocalContext.current)) {
+                append("\n\nNext, allow Sona to manage all files, and it moves without Android asking each time.")
+            }
+        },
+        confirmLabel = "Add",
+        successMessage = "Added to Private Folder",
+        failureMessage = "Could not add to Private Folder",
+        onDismiss = onDismiss,
+        operation = { onFinished ->
+            actionsViewModel.copyToPrivate(track) { item ->
+                if (item == null) {
+                    onFinished(false)
+                } else {
+                    deleteOriginal { deleted ->
+                        if (!deleted) actionsViewModel.discardPrivateCopy(item)
+                        onFinished(deleted)
+                    }
+                }
+            }
+        },
+    )
+}
+
+/**
+ * How [tracks]' files are deleted from the device once that is confirmed - with whatever permission it
+ * takes, asked for on the way: see [DeleteFromDeviceDialog]. [onDeleted] hears the files go.
+ */
+@Composable
+private fun rememberDeviceDeletion(
+    tracks: List<Track>,
+    onDeleted: () -> Unit,
+): (onFinished: (succeeded: Boolean) -> Unit) -> Unit {
     val context = LocalContext.current
     val actionsViewModel: OptionsActionsViewModel = hiltViewModel()
     // The confirmed deletion waiting on a permission, a settings screen or Android's own request.
@@ -191,39 +285,26 @@ internal fun DeleteFromDeviceDialog(
         if (granted) actionsViewModel.deleteTracks(tracks, reporting(onFinished)) else onFinished(false)
     }
 
-    val isSingle = tracks.size == 1
-    val needsAllFilesAccess =
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !AppPermission.FILE_CHANGES.isGranted(context)
-    SonaConfirmationDialog(
-        title = if (isSingle) "Delete track" else "Delete ${tracks.size} tracks",
-        message = buildString {
-            append(if (isSingle) "Its file is deleted" else "Their files are deleted")
-            append(" from this device. This cannot be undone.")
-            if (needsAllFilesAccess) {
-                append("\n\nNext, allow Sona to manage all files, and it deletes without Android asking each time.")
+    return { onFinished ->
+        val permission = AppPermission.FILE_CHANGES
+        val runtimePermission = permission.runtimePermission
+        when {
+            permission.isGranted(context) -> actionsViewModel.deleteTracks(tracks, reporting(onFinished))
+            runtimePermission != null -> {
+                pendingDeletion = onFinished
+                writePermissionLauncher.launch(runtimePermission)
             }
-        },
-        confirmLabel = "Delete",
-        successMessage = deletionOutcome(tracks.size, succeeded = true),
-        failureMessage = deletionOutcome(tracks.size, succeeded = false),
-        onDismiss = onDismiss,
-        operation = { onFinished ->
-            val permission = AppPermission.FILE_CHANGES
-            val runtimePermission = permission.runtimePermission
-            when {
-                permission.isGranted(context) -> actionsViewModel.deleteTracks(tracks, reporting(onFinished))
-                runtimePermission != null -> {
-                    pendingDeletion = onFinished
-                    writePermissionLauncher.launch(runtimePermission)
-                }
-                else -> {
-                    pendingDeletion = onFinished
-                    allFilesAccessLauncher.launch(permission.settingsIntent(context))
-                }
+            else -> {
+                pendingDeletion = onFinished
+                allFilesAccessLauncher.launch(permission.settingsIntent(context))
             }
-        },
-    )
+        }
+    }
 }
+
+/** Whether deleting from the device first takes the user to Android's settings to allow managing all files. */
+private fun needsAllFilesAccess(context: Context): Boolean =
+    Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !AppPermission.FILE_CHANGES.isGranted(context)
 
 private fun deletionOutcome(count: Int, succeeded: Boolean): String = when {
     succeeded && count == 1 -> "Track deleted"

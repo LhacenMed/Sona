@@ -10,6 +10,7 @@ import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.library.itemCountLabel
 import com.lhacenmed.sona.feature.library.options.OptionsAction.ADD_COLLECTIONS
+import com.lhacenmed.sona.feature.library.options.OptionsAction.ADD_TO_PRIVATE
 import com.lhacenmed.sona.feature.library.options.OptionsAction.ADD_TRACKS
 import com.lhacenmed.sona.feature.library.options.OptionsAction.ALBUM_DETAILS
 import com.lhacenmed.sona.feature.library.options.OptionsAction.ARTIST_DETAILS
@@ -116,7 +117,7 @@ fun OptionsTarget.actions(): List<OptionsAction> = when (this) {
             listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ARTIST_DETAILS, SONG_PROPERTIES, EDIT_TAGS, SHARE)
         TrackOptionsContext.FROM_ARTIST ->
             listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ALBUM_DETAILS, SONG_PROPERTIES, EDIT_TAGS, SHARE)
-    } + listOfNotNull(REMOVE_FROM_PLAYLIST.takeIf { playlist != null }, DELETE_FROM_DEVICE)
+    } + listOfNotNull(REMOVE_FROM_PLAYLIST.takeIf { playlist != null }, ADD_TO_PRIVATE, DELETE_FROM_DEVICE)
 
     is OptionsTarget.ForAlbum -> when (context) {
         AlbumOptionsContext.LIST -> AlbumActions

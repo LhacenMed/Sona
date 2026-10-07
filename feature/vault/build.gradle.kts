@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.lhacenmed.sona.feature.settings"
+    namespace = "com.lhacenmed.sona.feature.vault"
     compileSdk = 37
 
     defaultConfig {
@@ -24,16 +24,14 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:vault"))
     implementation(project(":core:navigation"))
-    implementation(project(":core:datastore"))
-    implementation(project(":core:data"))
-    implementation(project(":core:common"))
     implementation(project(":core:designsystem"))
-    implementation(project(":feature:scanner"))
-    implementation(project(":feature:library"))
-    implementation(project(":feature:player"))
-    implementation(project(":feature:update"))
-    implementation(project(":feature:vault"))
+    implementation(project(":core:common"))
+    implementation(project(":feature:playback"))
+
+    // The storage permission a file moved out needs below Android 10.
+    implementation(libs.androidx.activity.compose)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
@@ -44,18 +42,12 @@ dependencies {
 
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.hilt.navigation.compose)
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
     implementation(libs.kotlinx.coroutines.android)
-
-    implementation(libs.coil.compose)
-    implementation(libs.materialkolor)
-    implementation(libs.androidsvg)
-    implementation(libs.aboutlibraries.core)
 }
 
 kotlin {

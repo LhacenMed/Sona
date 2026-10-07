@@ -4,6 +4,7 @@ import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -29,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onPlaced
@@ -37,6 +39,7 @@ import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.WindowTouchBlocker
 import com.lhacenmed.sona.core.designsystem.component.screen.screenList
 import com.lhacenmed.sona.core.designsystem.component.section.ColumnSection
+import com.lhacenmed.sona.core.designsystem.motion.rememberRubberBandOverscroll
 import com.lhacenmed.sona.core.navigation.LocalScreenEntered
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -76,22 +79,36 @@ private val LocalSettingsScrollTarget = staticCompositionLocalOf<SettingsScrollT
  * the screen has come in, it glides there, bringing the row to the middle, and the row ripples as if
  * pressed so the eye lands on it. Touches are kept from the screen until it arrives, so a stray one
  * cannot stop it short. Once only: a screen recreated after it arrived stays where it is.
+ *
+ * Given [onPrivateFolderRevealed], pulling past the list's own end reveals and can open the Private
+ * Folder - see [PrivateFolderOverscrollReveal]. Left null everywhere but the Settings home screen, which
+ * is the one place that hidden entry point exists.
  */
 @Composable
-fun SettingsList(scrollTo: Any? = null, content: @Composable ColumnScope.() -> Unit) {
+fun SettingsList(
+    scrollTo: Any? = null,
+    onPrivateFolderRevealed: (() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     val scrollState = rememberScrollState()
     val target = remember(scrollTo) { scrollTo?.let(::SettingsScrollTarget) }
     var hasArrived by rememberSaveable { mutableStateOf(scrollTo == null) }
+    val overscroll = rememberRubberBandOverscroll()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .onPlaced { target?.list = it }
-            .screenList(scrollState)
-            .verticalScroll(scrollState)
-            .padding(bottom = LocalBottomContentPadding.current),
-    ) {
-        CompositionLocalProvider(LocalSettingsScrollTarget provides target) { content() }
+    Box(modifier = Modifier.fillMaxSize().clipToBounds()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .onPlaced { target?.list = it }
+                .screenList(scrollState)
+                .verticalScroll(scrollState, overscrollEffect = overscroll)
+                .padding(bottom = LocalBottomContentPadding.current),
+        ) {
+            CompositionLocalProvider(LocalSettingsScrollTarget provides target) { content() }
+        }
+        if (onPrivateFolderRevealed != null) {
+            PrivateFolderOverscrollReveal(overscroll = overscroll, onRevealed = onPrivateFolderRevealed)
+        }
     }
 
     if (target == null) return

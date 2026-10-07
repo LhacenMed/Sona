@@ -8,6 +8,7 @@ import com.lhacenmed.sona.feature.settings.component.SettingsList
 import com.lhacenmed.sona.feature.settings.component.SettingsNavigationItem
 import com.lhacenmed.sona.feature.settings.component.SettingsSection
 import com.lhacenmed.sona.feature.settings.component.SettingsSectionDivider
+import com.lhacenmed.sona.feature.vault.PrivateFolderScreen
 
 /**
  * Settings home: every category, grouped.
@@ -23,7 +24,7 @@ data object SettingsScreen : Screen {
     override fun Content() {
         val navigator = LocalNavigator.current
 
-        SettingsList {
+        SettingsList(onPrivateFolderRevealed = { navigator.go(PrivateFolderScreen) }) {
             SettingsGroup.entries.forEachIndexed { index, group ->
                 if (index > 0) SettingsSectionDivider()
                 SettingsSection(stringResource(group.titleRes)) {

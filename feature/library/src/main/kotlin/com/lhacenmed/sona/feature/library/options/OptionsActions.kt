@@ -32,6 +32,7 @@ import com.lhacenmed.sona.feature.library.M3U_PICKER_MIME_TYPES
 import com.lhacenmed.sona.feature.library.PlaylistDetailScreen
 import com.lhacenmed.sona.feature.library.PlaylistNameDialog
 import com.lhacenmed.sona.feature.library.PlaylistPickerDialog
+import com.lhacenmed.sona.feature.library.operation.AddToPrivateDialog
 import com.lhacenmed.sona.feature.library.operation.DeleteFromDeviceDialog
 import com.lhacenmed.sona.feature.library.operation.DeletePlaylistsDialog
 import com.lhacenmed.sona.feature.library.operation.ExcludeFoldersDialog
@@ -54,6 +55,7 @@ internal sealed interface FollowUp {
     data class ExcludeFolder(override val target: OptionsTarget.ForFolder) : FollowUp
     data class DeletePlaylist(override val target: OptionsTarget.ForPlaylist) : FollowUp
     data class RemoveFromPlaylist(override val target: OptionsTarget.ForTrack) : FollowUp
+    data class AddToPrivate(override val target: OptionsTarget.ForTrack) : FollowUp
     data class DeleteFromDevice(override val target: OptionsTarget) : FollowUp
     data class ImportFile(override val target: OptionsTarget.ForPlaylist) : FollowUp
     data class ExportFile(override val target: OptionsTarget) : FollowUp
@@ -105,6 +107,7 @@ internal class OptionsActions(
             OptionsAction.EXPORT -> followUp = FollowUp.ExportFile(target)
             OptionsAction.DELETE -> followUp = FollowUp.DeletePlaylist(playlistOf(target))
             OptionsAction.REMOVE_FROM_PLAYLIST -> followUp = FollowUp.RemoveFromPlaylist(target as OptionsTarget.ForTrack)
+            OptionsAction.ADD_TO_PRIVATE -> followUp = FollowUp.AddToPrivate(target as OptionsTarget.ForTrack)
             OptionsAction.DELETE_FROM_DEVICE -> followUp = FollowUp.DeleteFromDevice(target)
             OptionsAction.EXCLUDE -> followUp = FollowUp.ExcludeFolder(target as OptionsTarget.ForFolder)
             OptionsAction.SHARE -> if (target is OptionsTarget.ForTrack) {
@@ -216,6 +219,8 @@ internal fun OptionsFollowUps(
             trackIds = listOf(followUp.target.track.id),
             onDismiss = finish,
         )
+
+        is FollowUp.AddToPrivate -> AddToPrivateDialog(track = followUp.target.track, onDismiss = finish, onMoved = finish)
 
         is FollowUp.DeleteFromDevice -> {
             // A collection's tracks are read first; the dialog opens on them once they are known.

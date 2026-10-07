@@ -6,6 +6,7 @@ import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LibraryAdd
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -43,6 +44,7 @@ enum class OptionsAction(val icon: ImageVector, val label: String) {
     EXPORT(Icons.Filled.FileUpload, "Export"),
     DELETE(SonaIcons.Delete, "Delete"),
     REMOVE_FROM_PLAYLIST(Icons.Filled.RemoveCircleOutline, "Remove from playlist"),
+    ADD_TO_PRIVATE(Icons.Filled.Lock, "Add to Private Folder"),
     DELETE_FROM_DEVICE(SonaIcons.Delete, "Delete from device"),
     EXCLUDE(Icons.Filled.Block, "Exclude folder"),
     SHARE(SonaIcons.Share, "Share"),

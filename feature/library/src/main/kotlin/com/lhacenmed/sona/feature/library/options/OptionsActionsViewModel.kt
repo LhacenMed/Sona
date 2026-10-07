@@ -13,6 +13,9 @@ import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.playbackParent
+import com.lhacenmed.sona.core.vault.VaultRepository
+import com.lhacenmed.sona.core.vault.VaultState
+import com.lhacenmed.sona.core.vault.data.VaultItem
 import com.lhacenmed.sona.feature.library.readM3uTrackIds
 import com.lhacenmed.sona.feature.library.writeM3u
 import com.lhacenmed.sona.core.common.coroutines.launchOperation
@@ -27,6 +30,7 @@ import java.io.InputStream
 import java.io.OutputStream
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -50,10 +54,39 @@ class OptionsActionsViewModel @Inject constructor(
     private val playbackController: PlaybackController,
     private val librarySettings: LibrarySettings,
     private val mediaScanner: MediaScanner,
+    private val vaultRepository: VaultRepository,
 ) : ViewModel() {
 
     /** Every playlist there is to add to. */
     val playlists: StateFlow<LibraryContent<Playlist>> = repository.playlists
+
+    /** Where the Private Folder stands - whether "Add to Private Folder" has to create it first. */
+    val vaultState: StateFlow<VaultState> = vaultRepository.state
+
+    /**
+     * Copies [track]'s file into the Private Folder, handing [onCopied] what it became there - null when it
+     * could not be read. The library's copy is still there: deleting it is the dialog's to do, and
+     * [discardPrivateCopy] undoes this should that fail, so a move never leaves the file in both places.
+     */
+    fun copyToPrivate(track: Track, onCopied: (VaultItem?) -> Unit) {
+        viewModelScope.launch {
+            val item = try {
+                withContext(Dispatchers.IO) {
+                    checkNotNull(context.contentResolver.openInputStream(track.contentUri)) { "Cannot read ${track.path}" }
+                        .use { source -> vaultRepository.add(track, source) }
+                }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                null
+            }
+            onCopied(item)
+        }
+    }
+
+    fun discardPrivateCopy(item: VaultItem) {
+        viewModelScope.launch { vaultRepository.delete(item) }
+    }
 
     /**
      * Plays [target] now with shuffle off - Auxio's `playExplicit`. A track plays the list it was opened
