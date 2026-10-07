@@ -1,8 +1,12 @@
-package com.lhacenmed.sona.core.designsystem.component
+package com.lhacenmed.sona.core.designsystem.component.sheet
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
@@ -21,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.effect.ProvideSonaHaptics
 import kotlinx.coroutines.launch
@@ -39,8 +44,8 @@ class SonaBottomSheetScope internal constructor(private val dismissAnimated: () 
  * Closing from inside - Cancel, or a button that confirms - goes through [SonaBottomSheetScope.dismiss],
  * which lets the sheet slide away before [onDismissRequest] removes it; removing it straight away would
  * cut it off the screen mid-frame. It opens fully rather than half-way, because these sheets are short
- * and a half-open one hides the buttons at its bottom. The content scrolls, so a sheet opened in
- * landscape can still reach its last row.
+ * and a half-open one hides the buttons at its bottom. The content scrolls beneath the title, so a sheet
+ * opened in landscape can still reach its last row.
  */
 @Composable
 fun SonaBottomSheet(
@@ -59,7 +64,8 @@ fun SonaBottomSheet(
 
 /**
  * The same sheet, with [header] standing in for the plain title - an options sheet's cover, type,
- * name and info line, in place of a single line of text.
+ * name and info line, in place of a single line of text. The header stays put while the content
+ * beneath it scrolls.
  */
 @Composable
 fun SonaBottomSheet(
@@ -69,8 +75,8 @@ fun SonaBottomSheet(
     content: @Composable SonaBottomSheetScope.() -> Unit,
 ) {
     SheetFrame(onDismissRequest, modifier) { sheetScope ->
+        header()
         Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-            header()
             sheetScope.content()
         }
     }
@@ -103,7 +109,15 @@ private fun SheetTitle(title: String) {
     )
 }
 
-/** The modal sheet every variant is: opened fully, closed animated from inside, with its own window's haptics. */
+/**
+ * The modal sheet every variant is: opened fully, closed animated from inside, with its own window's haptics.
+ *
+ * Its height never changes while it is dragged. Material's own top inset is the status bar less however far
+ * the sheet has been dragged down, so a sheet whose content reaches the status bar would grow and shrink
+ * with every pixel of a drag - and, with its height, the place it rests at - pulling itself back under the
+ * finger instead of following it. Only a list longer than the screen by more than the status bar hid that.
+ * The content is held below the status bar by a gap fixed at the bar's height instead.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SheetFrame(
@@ -119,11 +133,13 @@ private fun SheetFrame(
             coroutineScope.launch { sheetState.hide() }.invokeOnCompletion { latestOnDismissRequest() }
         }
     }
+    val statusBarGap = with(LocalDensity.current) { WindowInsets.safeDrawing.getTop(this).toDp() }
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
-        modifier = modifier,
+        modifier = modifier.padding(top = statusBarGap),
         sheetState = sheetState,
+        contentWindowInsets = { WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom) },
     ) {
         // Its own window, with its own haptics: gated as every window's are.
         ProvideSonaHaptics {

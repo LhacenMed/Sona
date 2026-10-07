@@ -27,7 +27,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.common.storage.documentPathOrNull
 import com.lhacenmed.sona.core.data.itemsOrEmpty
-import com.lhacenmed.sona.core.designsystem.component.SonaBottomSheet
+import com.lhacenmed.sona.core.designsystem.component.sheet.SonaBottomSheet
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.feature.library.M3U_PICKER_MIME_TYPES
 import com.lhacenmed.sona.feature.library.PlaylistNameDialog

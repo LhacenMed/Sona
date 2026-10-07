@@ -22,9 +22,9 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.component.SonaActionButtonGroup
-import com.lhacenmed.sona.core.designsystem.component.SonaBottomSheet
 import com.lhacenmed.sona.core.designsystem.component.SonaChoiceRow
 import com.lhacenmed.sona.core.designsystem.component.actionButton
+import com.lhacenmed.sona.core.designsystem.component.sheet.SonaBottomSheet
 import com.lhacenmed.sona.core.designsystem.theme.connectedLeadingButtonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.connectedTrailingButtonPressShapes
 import com.lhacenmed.sona.core.model.sort.SortCriterion

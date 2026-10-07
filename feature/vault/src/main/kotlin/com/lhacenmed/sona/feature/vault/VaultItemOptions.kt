@@ -21,11 +21,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.common.coroutines.launchOperation
 import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
-import com.lhacenmed.sona.core.designsystem.component.SonaBottomSheet
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverArt
-import com.lhacenmed.sona.core.designsystem.component.SonaOptionRow
-import com.lhacenmed.sona.core.designsystem.component.SonaOptionsSheetHeader
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDialog
+import com.lhacenmed.sona.core.designsystem.component.sheet.SonaBottomSheet
+import com.lhacenmed.sona.core.designsystem.component.sheet.SonaOptionRow
+import com.lhacenmed.sona.core.designsystem.component.sheet.SonaOptionsSheetHeader
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.vault.VaultRepository

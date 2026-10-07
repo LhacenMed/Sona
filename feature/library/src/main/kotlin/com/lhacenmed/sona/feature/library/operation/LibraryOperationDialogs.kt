@@ -17,8 +17,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.data.contentUri
-import com.lhacenmed.sona.core.designsystem.component.SonaBottomSheet
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDialog
+import com.lhacenmed.sona.core.designsystem.component.sheet.SonaBottomSheet
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track

@@ -5,8 +5,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import com.lhacenmed.sona.core.designsystem.component.SonaLazyBottomSheet
 import com.lhacenmed.sona.core.designsystem.component.SonaTrackRow
+import com.lhacenmed.sona.core.designsystem.component.sheet.SonaLazyBottomSheet
 import com.lhacenmed.sona.feature.video.QueueVideo
 import com.lhacenmed.sona.feature.video.R
 import com.lhacenmed.sona.feature.video.formatVideoTime

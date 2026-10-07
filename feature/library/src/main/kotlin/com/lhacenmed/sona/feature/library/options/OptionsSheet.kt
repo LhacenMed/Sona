@@ -7,14 +7,14 @@ import com.lhacenmed.sona.core.common.cover.rankedCoverArtUris
 import com.lhacenmed.sona.core.designsystem.component.CoverArtDefaults
 import com.lhacenmed.sona.core.designsystem.component.SonaAlbumCover
 import com.lhacenmed.sona.core.designsystem.component.SonaArtistCover
-import com.lhacenmed.sona.core.designsystem.component.SonaBottomSheet
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverArt
 import com.lhacenmed.sona.core.designsystem.component.SonaFolderCover
 import com.lhacenmed.sona.core.designsystem.component.SonaGenreCover
-import com.lhacenmed.sona.core.designsystem.component.SonaOptionRow
-import com.lhacenmed.sona.core.designsystem.component.SonaOptionsSheetHeader
 import com.lhacenmed.sona.core.designsystem.component.SonaPlaylistCover
 import com.lhacenmed.sona.core.designsystem.component.SonaSelectionCover
+import com.lhacenmed.sona.core.designsystem.component.sheet.SonaBottomSheet
+import com.lhacenmed.sona.core.designsystem.component.sheet.SonaOptionRow
+import com.lhacenmed.sona.core.designsystem.component.sheet.SonaOptionsSheetHeader
 
 /**
  * The sheet every song, album, artist, genre, folder and playlist opens for its overflow button - Auxio's

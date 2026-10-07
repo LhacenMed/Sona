@@ -4,8 +4,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.lhacenmed.sona.core.designsystem.component.SonaBottomSheet
 import com.lhacenmed.sona.core.designsystem.component.SonaChoiceRow
+import com.lhacenmed.sona.core.designsystem.component.sheet.SonaBottomSheet
 
 /**
  * The app's sheet picking one of [options] - the playback speed, say - the [selected] one's radio on, as every

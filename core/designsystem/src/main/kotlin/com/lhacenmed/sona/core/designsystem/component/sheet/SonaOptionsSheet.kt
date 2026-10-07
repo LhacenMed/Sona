@@ -1,4 +1,4 @@
-package com.lhacenmed.sona.core.designsystem.component
+package com.lhacenmed.sona.core.designsystem.component.sheet
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column

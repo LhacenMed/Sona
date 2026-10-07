@@ -13,10 +13,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import com.lhacenmed.sona.core.designsystem.component.CoverArtDefaults
-import com.lhacenmed.sona.core.designsystem.component.SonaBottomSheet
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverArt
-import com.lhacenmed.sona.core.designsystem.component.SonaOptionRow
-import com.lhacenmed.sona.core.designsystem.component.SonaOptionsSheetHeader
+import com.lhacenmed.sona.core.designsystem.component.sheet.SonaBottomSheet
+import com.lhacenmed.sona.core.designsystem.component.sheet.SonaOptionRow
+import com.lhacenmed.sona.core.designsystem.component.sheet.SonaOptionsSheetHeader
 import com.lhacenmed.sona.core.model.Track
 
 /**

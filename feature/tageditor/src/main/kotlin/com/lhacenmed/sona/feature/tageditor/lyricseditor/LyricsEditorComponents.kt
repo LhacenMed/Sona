@@ -58,12 +58,12 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
-import com.lhacenmed.sona.core.designsystem.component.SonaBottomSheet
-import com.lhacenmed.sona.core.designsystem.component.SonaOptionRow
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.core.designsystem.component.selectableRow
+import com.lhacenmed.sona.core.designsystem.component.sheet.SonaBottomSheet
+import com.lhacenmed.sona.core.designsystem.component.sheet.SonaOptionRow
 import com.lhacenmed.sona.feature.tageditor.LyricsResultCard
 import com.lhacenmed.sona.feature.tageditor.LyricsSearchStatus
 import com.lhacenmed.sona.feature.tageditor.lyrics.FoundLyrics
