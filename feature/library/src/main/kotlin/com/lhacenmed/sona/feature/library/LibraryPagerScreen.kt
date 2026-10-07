@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -40,6 +41,10 @@ import com.lhacenmed.sona.core.designsystem.component.SonaTabRow
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
+import com.lhacenmed.sona.core.designsystem.component.header.collapsingHeader
+import com.lhacenmed.sona.core.designsystem.component.header.collapsingHeaderDrag
+import com.lhacenmed.sona.core.designsystem.component.header.rememberCollapsingHeaderState
+import com.lhacenmed.sona.core.designsystem.component.topBarBackground
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.feature.library.operation.ExcludeFoldersDialog
@@ -101,6 +106,11 @@ fun LibraryPagerScreen(
         // Each tab's list position, held here rather than inside the list so a tap on the tab can
         // reach it. Saved, so a list keeps its place across a configuration change as before.
         val listStates = visibleTabs.associateWith { rememberLazyListState() }
+
+        // The shortcuts collapse as a detail screen's header does, over whichever tab is on screen: one
+        // collapse for every tab, as Auxio's app bar is one over its pager. Each tab's list drives it - see
+        // [LocalLibraryShortcutsHeader] - and a drag on the shortcuts drives the tab's list in turn.
+        val shortcutsHeader = rememberCollapsingHeaderState()
 
         // The tab a tap asked for, held until the pager has actually come to rest on it. A swipe
         // leaves this null: the pager is then its own authority and the strip simply follows it,
@@ -192,94 +202,116 @@ fun LibraryPagerScreen(
                     .background(MaterialTheme.colorScheme.surface),
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    val sortTabAction = sortAction { sortingTab = selectedTab }
-                    SonaTopAppBar(
-                        // One background whatever its tabs' lists do, for now.
-                        liftsOnScroll = false,
-                        // The app's own label, so the bar reads exactly what the launcher does - "Sona Debug"
-                        // on a debug build, which :app sets per build type.
-                        title = stringResource(LocalContext.current.applicationInfo.labelRes),
-                        // The library's own two first, so they are the ones always drawn as icons: both act
-                        // on the tab on screen, while the shell's actions are the ones that can fold into
-                        // the menu.
-                        actions = listOf(
-                            TopBarAction(label = "Search", icon = Icons.Filled.Search) {
-                                viewModel.onSearchQueryChange("")
+                    // The bar, the shortcuts and the tabs are one section, lifting as one: once the list on
+                    // screen leaves its top, or the shortcuts start collapsing over it.
+                    Column(modifier = Modifier.topBarBackground { shortcutsHeader.fraction > 0f }) {
+                        val sortTabAction = sortAction { sortingTab = selectedTab }
+                        SonaTopAppBar(
+                            drawsBackground = false,
+                            // The app's own label, so the bar reads exactly what the launcher does - "Sona Debug"
+                            // on a debug build, which :app sets per build type.
+                            title = stringResource(LocalContext.current.applicationInfo.labelRes),
+                            // The library's own two first, so they are the ones always drawn as icons: both act
+                            // on the tab on screen, while the shell's actions are the ones that can fold into
+                            // the menu.
+                            actions = listOf(
+                                TopBarAction(label = "Search", icon = Icons.Filled.Search) {
+                                    viewModel.onSearchQueryChange("")
+                                },
+                                sortAction { sortingTab = selectedTab },
+                            ) + actions,
+                            // Sorting stays beside the field: a search narrows a tab, it does not reorder it.
+                            search = searchQuery?.let { query ->
+                                TopBarSearch(
+                                    query = query,
+                                    onQueryChange = { viewModel.onSearchQueryChange(it) },
+                                    onClose = { viewModel.onSearchQueryChange(null) },
+                                    actions = listOf(sortTabAction),
+                                )
                             },
-                            sortAction { sortingTab = selectedTab },
-                        ) + actions,
-                        // Sorting stays beside the field: a search narrows a tab, it does not reorder it.
-                        search = searchQuery?.let { query ->
-                            TopBarSearch(
-                                query = query,
-                                onQueryChange = { viewModel.onSearchQueryChange(it) },
-                                onClose = { viewModel.onSearchQueryChange(null) },
-                                actions = listOf(sortTabAction),
-                            )
-                        },
-                        selection = selection.toLibraryTopBarSelection(
-                            listKeys = { viewModel.selectableKeys(selectedTab) },
-                            actions = excludeFolderActions(selection) { excludingFolders = it },
-                            onMoreOptions = openSelectionOptions,
-                        ),
-                    )
-
-                    LibraryShortcuts(
-                        modifier = Modifier.padding(horizontal = SonaComponentStyle.ContentHorizontalPadding),
-                    )
-
-                    if (visibleTabs.size > 1) {
-                        SonaTabRow(
-                            tabTitles = tabTitles,
-                            // Passed as a lambda so the swipe position is read inside the tab row, not
-                            // here - otherwise every frame of a swipe would recompose the pager below.
-                            selectedPosition = {
-                                if (pillLeads) {
-                                    pillPosition.value
-                                } else {
-                                    pagerState.currentPage + pagerState.currentPageOffsetFraction
-                                }
-                            },
-                            // Tapping the tab already chosen takes its list back to the top instead.
-                            onTabClick = { page ->
-                                if (page == destinationPage) {
-                                    scope.launch { listStates.getValue(visibleTabs[page]).glideToTop() }
-                                } else {
-                                    requestedPage = page
-                                }
-                            },
-                            modifier = Modifier.padding(
-                                horizontal = SonaComponentStyle.ContentHorizontalPadding,
-                                vertical = 8.dp,
+                            selection = selection.toLibraryTopBarSelection(
+                                listKeys = { viewModel.selectableKeys(selectedTab) },
+                                actions = excludeFolderActions(selection) { excludingFolders = it },
+                                onMoreOptions = openSelectionOptions,
                             ),
                         )
+
+                        // The gap down to the tabs collapses with the shortcuts, so collapsed the tabs sit right
+                        // under the bar.
+                        LibraryShortcuts(
+                            modifier = Modifier
+                                .collapsingHeader(shortcutsHeader)
+                                .collapsingHeaderDrag(
+                                    shortcutsHeader,
+                                    list = { listStates[visibleTabs[pagerState.currentPage]] },
+                                )
+                                .padding(
+                                    start = SonaComponentStyle.ContentHorizontalPadding,
+                                    end = SonaComponentStyle.ContentHorizontalPadding,
+                                    bottom = if (visibleTabs.size > 1) TabRowGap else 0.dp,
+                                ),
+                        )
+
+                        if (visibleTabs.size > 1) {
+                            SonaTabRow(
+                                tabTitles = tabTitles,
+                                // Passed as a lambda so the swipe position is read inside the tab row, not
+                                // here - otherwise every frame of a swipe would recompose the pager below.
+                                selectedPosition = {
+                                    if (pillLeads) {
+                                        pillPosition.value
+                                    } else {
+                                        pagerState.currentPage + pagerState.currentPageOffsetFraction
+                                    }
+                                },
+                                // Tapping the tab already chosen takes its list back to the top instead,
+                                // opening the shortcuts as it goes.
+                                onTabClick = { page ->
+                                    if (page == destinationPage) {
+                                        scope.launch {
+                                            launch { shortcutsHeader.animateTo(collapsed = false) }
+                                            listStates.getValue(visibleTabs[page]).glideToTop()
+                                        }
+                                    } else {
+                                        requestedPage = page
+                                    }
+                                },
+                                modifier = Modifier.padding(
+                                    start = SonaComponentStyle.ContentHorizontalPadding,
+                                    end = SonaComponentStyle.ContentHorizontalPadding,
+                                    bottom = TabRowGap,
+                                ),
+                            )
+                        }
                     }
 
-                    HorizontalPager(
-                        state = pagerState,
-                        modifier = Modifier.fillMaxSize(),
-                        // No band past the first or last tab: the pager simply stops there.
-                        overscrollEffect = null,
-                        // Enough to hold every tab, so none is ever disposed while the library is open.
-                        // Disposing one cancels whatever its list was doing: leave a tab mid-fling and it
-                        // would freeze where it stood, then reappear stopped dead when you came back.
-                        // Kept alive, it keeps flinging and settles exactly where it would have. The whole
-                        // library is already in memory, so an off-screen tab costs composition and nothing
-                        // else - the same reason all five can be built on the launch frame.
-                        beyondViewportPageCount = visibleTabs.size - 1,
-                        // Stable page keys, so a tab keeps its scroll position and composition when the
-                        // visible set is unchanged but the pager recomposes.
-                        key = { page -> visibleTabs[page].name },
-                    ) { page ->
-                        val tab = visibleTabs[page]
-                        val listState = listStates.getValue(tab)
-                        when (tab) {
-                            LibraryTab.TRACKS -> TracksScreen(viewModel, selection, listState)
-                            LibraryTab.ARTISTS -> ArtistsScreen(viewModel, selection, listState)
-                            LibraryTab.ALBUMS -> AlbumsScreen(viewModel, selection, listState)
-                            LibraryTab.GENRES -> GenresScreen(viewModel, selection, listState)
-                            LibraryTab.FOLDERS -> FoldersScreen(viewModel, selection, listState)
-                            LibraryTab.VIDEOS -> VideosScreen(viewModel, selection, listState)
+                    CompositionLocalProvider(LocalLibraryShortcutsHeader provides shortcutsHeader) {
+                        HorizontalPager(
+                            state = pagerState,
+                            modifier = Modifier.fillMaxSize(),
+                            // No band past the first or last tab: the pager simply stops there.
+                            overscrollEffect = null,
+                            // Enough to hold every tab, so none is ever disposed while the library is open.
+                            // Disposing one cancels whatever its list was doing: leave a tab mid-fling and it
+                            // would freeze where it stood, then reappear stopped dead when you came back.
+                            // Kept alive, it keeps flinging and settles exactly where it would have. The whole
+                            // library is already in memory, so an off-screen tab costs composition and nothing
+                            // else - the same reason all five can be built on the launch frame.
+                            beyondViewportPageCount = visibleTabs.size - 1,
+                            // Stable page keys, so a tab keeps its scroll position and composition when the
+                            // visible set is unchanged but the pager recomposes.
+                            key = { page -> visibleTabs[page].name },
+                        ) { page ->
+                            val tab = visibleTabs[page]
+                            val listState = listStates.getValue(tab)
+                            when (tab) {
+                                LibraryTab.TRACKS -> TracksScreen(viewModel, selection, listState)
+                                LibraryTab.ARTISTS -> ArtistsScreen(viewModel, selection, listState)
+                                LibraryTab.ALBUMS -> AlbumsScreen(viewModel, selection, listState)
+                                LibraryTab.GENRES -> GenresScreen(viewModel, selection, listState)
+                                LibraryTab.FOLDERS -> FoldersScreen(viewModel, selection, listState)
+                                LibraryTab.VIDEOS -> VideosScreen(viewModel, selection, listState)
+                            }
                         }
                     }
                 }
@@ -327,6 +359,9 @@ private fun excludeFolderActions(selection: SelectionState, onExclude: (folderPa
         TopBarAction(label = "Exclude folder", icon = Icons.Filled.Block) { onExclude(folderPaths) },
     )
 }
+
+/** The room above and below the tab strip. */
+private val TabRowGap = 8.dp
 
 /**
  * The motion a tap gives the pager and the pill. They share one spec because they cover different

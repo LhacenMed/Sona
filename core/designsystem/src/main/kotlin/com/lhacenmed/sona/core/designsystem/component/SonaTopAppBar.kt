@@ -32,6 +32,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -150,10 +151,10 @@ private sealed interface BarContent {
  * around the bar moves while it transitions.
  *
  * It lifts - tinted as Material's lift-on-scroll tints it - once the screen's list has scrolled from its
- * top: the list marked with `screenList`, read here without the screen having to say anything. Over a
- * header that collapses into it - [collapse], a detail screen's - it lifts the same way, as its list
- * only scrolls once the header is out of the way. A bar that keeps one background whatever scrolls
- * beneath it - the library's, for now - sets [liftsOnScroll] false.
+ * top: see [topBarBackground]. Over a header that collapses into it - [collapse], a detail screen's - it
+ * lifts the same way, as its list only scrolls once the header is out of the way. A bar standing at the
+ * top of a larger section that lifts as one - the library's, with its shortcuts and tabs - sets
+ * [drawsBackground] false and leaves the background to that section.
  *
  * Searching replaces the title rather than sitting beside it, which is what makes it feel like the
  * bar became the search rather than grew one. A selection outranks a search: if rows get picked
@@ -177,7 +178,7 @@ fun SonaTopAppBar(
     selection: TopBarSelection? = null,
     search: TopBarSearch? = null,
     collapse: TopBarCollapse? = null,
-    liftsOnScroll: Boolean = true,
+    drawsBackground: Boolean = true,
 ) {
     val content: BarContent = when {
         selection != null -> BarContent.Selecting(selection)
@@ -203,22 +204,9 @@ fun SonaTopAppBar(
         scrolledContainerColor = Color.Transparent,
     )
 
-    // Only how lifted the bar is animates - never the colours themselves. The two are mixed from the
-    // theme as it is on each frame, so a theme change repaints the bar on the same frame as the rest of
-    // the screen; animating the colour would have chased every step of the theme's own transition, a
-    // beat behind it.
-    val screenLists = LocalScreenLists.current
-    val isLifted by remember(screenLists, liftsOnScroll) {
-        derivedStateOf { liftsOnScroll && screenLists?.current?.isScrolled == true }
-    }
-    val liftFraction by animateFloatAsState(targetValue = if (isLifted) 1f else 0f, label = "topAppBarLift")
-    val colorScheme = MaterialTheme.colorScheme
-
     AnimatedContent(
         targetState = content,
-        modifier = modifier.drawBehind {
-            drawRect(lerp(colorScheme.surface, colorScheme.surfaceContainer, liftFraction))
-        },
+        modifier = if (drawsBackground) modifier.topBarBackground() else modifier,
         // Keyed on the *mode*, not the value: typing a letter or picking another row must re-render
         // the bar it is already in, not animate a fresh one in over it.
         contentKey = { it::class },
@@ -291,6 +279,28 @@ fun SonaTopAppBar(
             )
         }
     }
+}
+
+/**
+ * The background of a top bar - or of a whole top section, a bar with what stands pinned beneath it - tinted
+ * as Material's lift-on-scroll tints it: `surface` at rest, lifting to `surfaceContainer` once the screen's
+ * list has scrolled from its top - the list marked with `screenList`, read here without the screen having
+ * to say anything - or while [isLifted] says so as well, as a header collapsing over the list does.
+ *
+ * Only how lifted it is animates - never the colours themselves. The two are mixed from the theme as it is
+ * on each frame, so a theme change repaints it on the same frame as the rest of the screen; animating the
+ * colour would have chased every step of the theme's own transition, a beat behind it.
+ */
+@Composable
+fun Modifier.topBarBackground(isLifted: () -> Boolean = { false }): Modifier {
+    val screenLists = LocalScreenLists.current
+    val currentIsLifted by rememberUpdatedState(isLifted)
+    val isLiftedNow by remember(screenLists) {
+        derivedStateOf { currentIsLifted() || screenLists?.current?.isScrolled == true }
+    }
+    val liftFraction by animateFloatAsState(targetValue = if (isLiftedNow) 1f else 0f, label = "topBarLift")
+    val colorScheme = MaterialTheme.colorScheme
+    return drawBehind { drawRect(lerp(colorScheme.surface, colorScheme.surfaceContainer, liftFraction)) }
 }
 
 /** Fades and raises the content in as [collapse] reveals it; leaves it be on a bar with no header. */

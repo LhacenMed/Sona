@@ -8,6 +8,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -38,6 +39,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -153,6 +156,8 @@ private fun ButtonGroupScope.shortcutCard(
         Surface(
             modifier = Modifier
                 .weight(1f)
+                // As tall as the row lets it be: its own height at rest, less as the shortcuts collapse.
+                .fillMaxHeight()
                 .animateWidth(interactionSource)
                 // No indication here: a clickable Surface draws its ripple beneath its content, where
                 // a cover would hide it. The ripple is drawn over everything instead, below.
@@ -267,7 +272,8 @@ private fun Modifier.stretchedFromWidth(restingWidthPx: Int) = layout { measurab
  *
  * Every card's content moves this way, even on the card at the row's start edge, whose start never
  * moves: its content drifts toward the width it gains, the way a squeezed neighbour's drifts back. The
- * height is the one the content has at rest, so the row never changes height. Until the row has been
+ * height is the one the content has at rest, and the card is as tall: as the shortcuts collapse, the card
+ * shrinks over its content, cutting it off from the bottom rather than squeezing it. Until the row has been
  * measured there is no resting width, and the content is laid out as it is.
  */
 private fun Modifier.shiftedWithWidth(restingWidthPx: Int) = layout { measurable, constraints ->
@@ -275,9 +281,11 @@ private fun Modifier.shiftedWithWidth(restingWidthPx: Int) = layout { measurable
         val placeable = measurable.measure(constraints)
         return@layout layout(placeable.width, placeable.height) { placeable.place(0, 0) }
     }
-    val placeable = measurable.measure(constraints.copy(minWidth = restingWidthPx, maxWidth = restingWidthPx))
+    val placeable = measurable.measure(
+        Constraints(minWidth = restingWidthPx, maxWidth = restingWidthPx),
+    )
     val width = constraints.maxWidth
-    layout(width, placeable.height) {
+    layout(width, constraints.constrainHeight(placeable.height)) {
         placeable.placeWithLayer(0, 0) {
             translationX = (width - restingWidthPx) / 2f
         }

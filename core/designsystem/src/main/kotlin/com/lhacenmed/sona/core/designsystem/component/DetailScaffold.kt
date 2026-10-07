@@ -3,9 +3,6 @@
 package com.lhacenmed.sona.core.designsystem.component
 
 import androidx.compose.animation.core.animate
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,18 +35,14 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
@@ -57,13 +50,14 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.component.screen.PlayingRow
 import com.lhacenmed.sona.core.designsystem.component.screen.indexOfKey
 import com.lhacenmed.sona.core.designsystem.component.screen.scrollBackToTop
 import com.lhacenmed.sona.core.designsystem.component.screen.scrollToRow
 import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
+import com.lhacenmed.sona.core.designsystem.component.header.CollapsingHeaderState
+import com.lhacenmed.sona.core.designsystem.component.header.collapsingHeaderDrag
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
@@ -75,43 +69,32 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
 /**
- * How far a detail screen's header has collapsed into its bar - Auxio's `AppBarLayout` offset.
- *
- * The header is not part of the list: it collapses by taking the scroll before the list does
- * ([nestedScrollConnection]), as an `exitUntilCollapsed` app bar does. Scrolling up collapses it
- * first and scrolls the list after; scrolling down scrolls the list back to its top first and opens
- * the header after. So it collapses the same over one row as over a thousand, and nothing about the
- * list's length or contents can leave it stuck part-way. Every value here is read while laying out
- * or drawing, never in composition, so a collapse recomposes nothing.
+ * How far a detail screen's header has collapsed into its bar - a [CollapsingHeaderState], collapsing
+ * through the header's height less the bar's, and set aside out of the way while the screen is searched.
  */
 @Stable
 class DetailHeaderState internal constructor(
     val listState: LazyListState,
     private val scope: CoroutineScope,
 ) {
+    internal val header = CollapsingHeaderState(scope)
 
-    internal var headerHeightPx by mutableIntStateOf(0)
-    internal var barHeightPx by mutableIntStateOf(0)
-
-    /** How far scrolling has collapsed the header, 0 when open. Kept within [collapseRangePx] when read. */
-    private var collapsedPx by mutableFloatStateOf(0f)
+    internal var headerHeightPx: Int by header::heightPx
+    internal var barHeightPx: Int by header::pinnedPx
 
     /**
      * How far the header has stepped aside for a search, 0 in place and 1 collapsed out of the way -
-     * apart from [collapsedPx], so stepping aside never changes what scrolling did.
+     * apart from the scroll's collapse, so stepping aside never changes what scrolling did.
      */
     private var asideFraction by mutableFloatStateOf(0f)
 
     /** The header's height less the bar's: how far it collapses before the list moves. */
     internal val collapseRangePx: Float
-        get() = (headerHeightPx - barHeightPx).coerceAtLeast(0).toFloat()
-
-    private val scrollCollapsedPx: Float
-        get() = collapsedPx.coerceIn(0f, collapseRangePx)
+        get() = header.rangePx
 
     /** How far the header is shown collapsed: as far as scrolling took it, or further while stepping aside. */
     internal val collapsedOffsetPx: Float
-        get() = (1 - asideFraction) * scrollCollapsedPx + asideFraction * collapseRangePx
+        get() = (1 - asideFraction) * header.offsetPx + asideFraction * collapseRangePx
 
     /** [collapsedOffsetPx] as a fraction: 0 with the header shown open, 1 once it is out of the way. */
     internal val shownCollapse: Float
@@ -123,38 +106,11 @@ class DetailHeaderState internal constructor(
      * turns into the search as the header goes, and one on its way out must not reveal them in passing.
      */
     val collapse: Float
-        get() = if (collapseRangePx == 0f) 0f else scrollCollapsedPx / collapseRangePx
+        get() = header.fraction
 
     /** Whether the header is held collapsed out of the way - see [DetailScaffold]'s `isHeaderAside`. */
     internal var isHeaderAside = false
         private set
-
-    private var settleJob: Job? = null
-
-    /**
-     * Collapses the header by [delta] of a scroll - negative up, positive down - as far as it goes,
-     * and returns how much of [delta] that took. Any settle in flight gives way: the finger has it.
-     */
-    internal fun collapseBy(delta: Float): Float {
-        settleJob?.cancel()
-        val before = scrollCollapsedPx
-        collapsedPx = (before - delta).coerceIn(0f, collapseRangePx)
-        return before - collapsedPx
-    }
-
-    /**
-     * Settles a header let go part-way open or collapsed, whichever is nearer - Auxio's `snap`.
-     *
-     * In a job of its own, which the next touch cancels ([collapseBy]); whatever watches the scroll
-     * never runs the settle itself, so interrupting one can never stop the next.
-     */
-    internal fun settle() {
-        val from = scrollCollapsedPx
-        val range = collapseRangePx
-        if (from <= 0f || from >= range) return
-        val target = if (from < range / 2) 0f else range
-        settleJob = scope.launch { animate(from, target) { value, _ -> collapsedPx = value } }
-    }
 
     /**
      * Takes the list back to its first row with the header opening as it goes - the screen as it opened.
@@ -162,10 +118,7 @@ class DetailHeaderState internal constructor(
      * for a search, it stays aside.
      */
     internal suspend fun scrollToTop() = coroutineScope {
-        if (!isHeaderAside) {
-            settleJob?.cancel()
-            launch { animate(scrollCollapsedPx, 0f) { value, _ -> collapsedPx = value } }
-        }
+        if (!isHeaderAside) launch { header.animateTo(collapsed = false) }
         listState.scrollBackToTop()
     }
 
@@ -174,25 +127,11 @@ class DetailHeaderState internal constructor(
      * there by hand would - out of the way, where a search has set it aside already.
      */
     internal suspend fun scrollToRow(index: Int) = coroutineScope {
-        if (!isHeaderAside) {
-            settleJob?.cancel()
-            launch { animate(scrollCollapsedPx, collapseRangePx) { value, _ -> collapsedPx = value } }
-        }
+        if (!isHeaderAside) launch { header.animateTo(collapsed = true) }
         listState.scrollToRow(index)
     }
 
-    internal val nestedScrollConnection = object : NestedScrollConnection {
-        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset =
-            if (available.y < 0f && !isHeaderAside) Offset(0f, collapseBy(available.y)) else Offset.Zero
-
-        override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset =
-            if (available.y > 0f && !isHeaderAside) Offset(0f, collapseBy(available.y)) else Offset.Zero
-
-        override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-            settle()
-            return Velocity.Zero
-        }
-    }
+    internal val nestedScrollConnection = header.nestedScrollConnection(isEnabled = { !isHeaderAside })
 
     /** Where the list stood when the header was set aside, to be put back after. */
     private var listPositionBeforeAside: Pair<Int, Int>? = null
@@ -300,11 +239,6 @@ fun DetailScaffold(
         onDispose {}
     }
 
-    val headerDrag = rememberDraggableState { delta ->
-        val remaining = delta - state.collapseBy(delta)
-        if (remaining != 0f) listState.dispatchRawDelta(-remaining)
-    }
-
     Box(modifier = modifier.fillMaxSize()) {
         Layout(
             contents = listOf(
@@ -313,12 +247,7 @@ fun DetailScaffold(
                         modifier = Modifier
                             .fillMaxWidth()
                             .onSizeChanged { state.headerHeightPx = it.height }
-                            .draggable(
-                                state = headerDrag,
-                                orientation = Orientation.Vertical,
-                                enabled = !isHeaderAside,
-                                onDragStopped = { state.settle() },
-                            )
+                            .collapsingHeaderDrag(state.header, list = { listState }, enabled = !isHeaderAside)
                             // Beneath the bar: the header starts where the bar ends, as Auxio's pads
                             // itself by the toolbar's height.
                             .padding(top = barHeight)

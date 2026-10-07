@@ -216,8 +216,11 @@ Ordered from most to least critical. Every entry describes **what** is broken or
   - The scroller has its own package, `component/fastscroll/`: `FastScroller` (drawing and touch), `FastScrollerState` (shown/dragging) and `ListScrollMetrics` (the reckoning).
 - [x] **6.5 Add pull-to-refresh to trigger a library rescan**
   For lists inside collection tabs, pulling down should trigger a rescan.
-- [ ] **6.6 Collapse the main activity's top section on scroll**
+- [x] **6.6 Collapse the main activity's top section on scroll**
   Matching Auxio's exact behavior.
+  - **Resolved:** the shortcut cards collapse as a detail screen's header does - one `CollapsingHeaderState` (`core:designsystem` `component/header`) drives both, with one nested scroll and one header drag: scrolling up collapses them before the list moves; what scrolling down leaves at the list's top opens them, ahead of pull to refresh and the overscroll stretch, as each tab's list nests the collapse right around itself; a drag on the cards collapses them and carries on into the tab's list; let go part-way, they spring open or shut (`exitUntilCollapsed|snap`). The cards shrink in height, fading out over the first half, and the gap down to the tabs collapses with them, so collapsed the tabs sit right under the bar, which stays pinned with them. One collapse serves every tab, as Auxio's app bar does over its pager. The detail header keeps Auxio's parallax.
+  - The bar, the shortcuts and the tabs are one top section and lift as one (`Modifier.topBarBackground`, the bar's own lift-on-scroll, shared): `surfaceContainer` once the tab's list leaves its top or the shortcuts start collapsing.
+  - Every scroll made for the user carries them along: the tab tapped again and the FAB's scroll to top open them, scrolling to the playing row collapses them - as a detail screen's header does.
 - [ ] **6.7 Fetch and display real artist profile images**
   Replace the current stacked-cover thumbnail on artist list items with each artist's fetched profile image.
 - [x] **6.8 Integrate a Khamah-style iOS swipe gesture**

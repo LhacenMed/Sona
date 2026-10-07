@@ -41,8 +41,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -52,7 +54,10 @@ import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.CookieShape
 import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
+import com.lhacenmed.sona.core.designsystem.component.header.CollapsingHeaderState
 import com.lhacenmed.sona.core.designsystem.component.screen.PlayingRow
+import com.lhacenmed.sona.core.designsystem.component.screen.scrollBackToTop
+import com.lhacenmed.sona.core.designsystem.component.screen.scrollToRow
 import com.lhacenmed.sona.core.designsystem.component.refresh.SonaPullToRefreshBox
 import com.lhacenmed.sona.core.designsystem.component.section.rememberSectionListState
 import com.lhacenmed.sona.core.designsystem.component.section.sectionItemAnimation
@@ -103,7 +108,9 @@ import com.lhacenmed.sona.feature.library.sort.sortAction
 import com.lhacenmed.sona.feature.scanner.R as ScannerR
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableLazyListState
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 /**
@@ -156,6 +163,15 @@ internal fun <T> LibraryListContent(
 }
 
 /**
+ * The library's shortcuts, collapsing over the tab lists - provided by [LibraryPagerScreen] around its tabs.
+ * A tab's list drives them as a detail screen's list drives its header - nested right around the list, so
+ * they have its scroll before its pull to refresh or its overscroll - and carries them along when it is
+ * scrolled for the user: open as it goes back to its top, collapsed as it goes to its playing row. Null for
+ * a list beneath none.
+ */
+internal val LocalLibraryShortcutsHeader = staticCompositionLocalOf<CollapsingHeaderState?> { null }
+
+/**
  * [LibraryListContent] plus the `LazyColumn` every list screen was writing out by hand.
  *
  * Centralising it is what makes stable [key]s and a [contentType] non-optional. Without a key, Lazy
@@ -196,6 +212,8 @@ internal fun <T> LibraryList(
     row: @Composable (T) -> Unit,
 ) {
     val sectionList = rememberSectionListState()
+    val shortcutsHeader = LocalLibraryShortcutsHeader.current
+    val shortcutsCollapse = remember(shortcutsHeader) { shortcutsHeader?.nestedScrollConnection() }
     LibraryListContent(
         content = content,
         hasPermission = hasPermission,
@@ -229,9 +247,23 @@ internal fun <T> LibraryList(
         SonaPullToRefreshBox(overscroll = overscroll, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
             FastScroller(
                 listState = listState,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(shortcutsCollapse?.let(Modifier::nestedScroll) ?: Modifier),
                 sectionAt = sectionOf?.let { section -> { index -> laidOutRows.getOrNull(index)?.let(section) } },
+                scrollToTop = {
+                    coroutineScope {
+                        shortcutsHeader?.let { launch { it.animateTo(collapsed = false) } }
+                        listState.scrollBackToTop()
+                    }
+                },
                 playingRow = { playingRow.value },
+                scrollToRow = { index ->
+                    coroutineScope {
+                        shortcutsHeader?.let { launch { it.animateTo(collapsed = true) } }
+                        listState.scrollToRow(index)
+                    }
+                },
                 overscroll = overscroll,
             ) { overscrollEffect ->
                 if (onReorder != null) {
