@@ -36,7 +36,7 @@ fun AppShell(playerOverlay: PlayerOverlay, modifier: Modifier = Modifier) {
         // The expandable player overlays the whole screen - collapsed, it's just a mini-bar pinned to the
         // bottom; expanded, it covers everything. Each list keeps its own end clear of it, rather than the
         // screen being cut short above it, so rows still scroll behind the mini player.
-        playerOverlay.Content {
+        playerOverlay.Content(isPrivate = false) {
             // Inside the player, so the screen's FABs stand clear of it.
             FloatingActionButtonStack {
                 // No top bar slot and no content insets: the library's own bar handles the status bar

@@ -1,6 +1,7 @@
 package com.lhacenmed.sona.core.navigation
 
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -85,6 +86,7 @@ class HostActivity : SonaActivity() {
             finish()
             return
         }
+        if (screen.isPrivate) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
 
         setSonaContent {
             val themeConfig by appTheme.config.collectAsStateWithLifecycle()
@@ -105,7 +107,7 @@ class HostActivity : SonaActivity() {
                     CompositionLocalProvider(LocalNavigator provides navigator, LocalScreenEntered provides hasEntered) {
                         // Over the player too, so a screen can lay something over the whole window.
                         WindowOverlayHost {
-                            playerOverlay.Content {
+                            playerOverlay.Content(isPrivate = screen.isPrivate) {
                                 // Inside the player, so the screen's FABs stand clear of it.
                                 FloatingActionButtonStack {
                                     Scaffold(

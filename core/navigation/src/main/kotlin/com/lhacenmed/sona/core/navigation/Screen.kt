@@ -21,6 +21,12 @@ interface Screen : Serializable {
     @get:StringRes val titleRes: Int? get() = null
     fun title(context: Context): String? = titleRes?.let(context::getString)
 
+    /**
+     * Whether this is a Private Folder screen: the player over it plays the folder's media alone, and the window
+     * is kept out of screenshots and the recent apps' preview.
+     */
+    val isPrivate: Boolean get() = false
+
     @Composable
     fun Content()
 }

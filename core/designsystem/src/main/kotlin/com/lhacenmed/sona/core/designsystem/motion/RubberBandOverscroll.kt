@@ -126,6 +126,9 @@ class RubberBandOverscroll internal constructor() : OverscrollEffect {
     /** What holds the band open past its start when it is let go there, if anything does. */
     var startHold: StartHold? = null
 
+    /** What holds the band open past its end when it is let go there, if anything does - see [startHold]. */
+    var endHold: StartHold? = null
+
     /** Whether a finger is moving the list - and so the band, once it is past an end - right now. */
     var isDragged by mutableStateOf(false)
         private set
@@ -181,7 +184,7 @@ class RubberBandOverscroll internal constructor() : OverscrollEffect {
         isDragged = false
         if (pull != 0f) {
             performFling(Velocity.Zero)
-            val hold = startHold.takeIf { pull > 0f }
+            val hold = if (pull > 0f) startHold else endHold
             hold?.onRelease(stretch)
             release { settle(to = hold?.restingStretch ?: 0f) }
             return

@@ -10,8 +10,11 @@ import androidx.compose.runtime.Composable
  *
  * It wraps the activity's [content] rather than sitting beside it, so it can tell the screen how much
  * of its bottom it covers - which every scrolling list keeps clear at its end.
+ *
+ * Over a [Screen.isPrivate] screen - [isPrivate] - it is the Private Folder's player, showing nothing of the
+ * library's playback; over any other, the library's, showing nothing of the folder's.
  */
 interface PlayerOverlay {
     @Composable
-    fun Content(content: @Composable () -> Unit)
+    fun Content(isPrivate: Boolean, content: @Composable () -> Unit)
 }
