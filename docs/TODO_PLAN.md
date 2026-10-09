@@ -309,15 +309,14 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 
 ---
 
-## Priority 11 — Downloads, Video Player & Private Storage
+## Priority 11 — Downloads & Video Player
 
 - [ ] **11.1 Clone Seal's downloading system, combined with some YTDLnis features**
   Clone the exact Seal downloading system with a combination of some features from YTDLnis. It should support the exact same fast download sheets from Seal, with improvements.
   - *Note: the original request ends at "should support." with nothing after it — needs clarification on what else it should support.*
 
-- [x] **11.2 Add a video player cloned from PLAYit, with a private audio/video folder system**
+- [x] **11.2 Add a video player cloned from PLAYit**
   - Clone the video player from PLAYit.
-  - Best high-privacy audio/video private folder system, not easily reachable from external storage (may be stored in app data).
   - **Resolved (the video player):** `:feature:video` - one full-screen activity on the one player the music plays on, which decodes a video's picture only while a surface shows it. Controls show and hide with a tap and lock away; speed, aspect (Crop, Stretch, 16:9, 18:9, 4:3, Original, Fit to screen), screenshot of the current frame, three-state rotation, play as audio, the queue, mute; gestures (seek, brightness, volume, double-tap seek, long-press speed-up, zoom pan); per-video resume; FFmpeg behind the device's decoders for the audio it cannot play. Settings > Video holds PLAYit's preferences.
   - Still to come, already in place without an action: the floating window (its button, Auto pop-up play), the more-actions sheet, subtitles (Subtitle customization). Skipped: subtitles' CC button, video cutting, YouTube pop-up play.
 
