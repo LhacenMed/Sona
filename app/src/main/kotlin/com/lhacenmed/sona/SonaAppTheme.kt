@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.os.Build
 import android.os.SystemClock
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import coil3.SingletonImageLoader
 import coil3.request.ImageRequest
 import coil3.request.SuccessResult
@@ -13,6 +14,7 @@ import coil3.toBitmap
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.designsystem.theme.AppTheme
+import com.lhacenmed.sona.core.designsystem.theme.CustomFontLoader
 import com.lhacenmed.sona.core.designsystem.theme.DefaultThemeColor
 import com.lhacenmed.sona.core.designsystem.theme.ThemeColors
 import com.lhacenmed.sona.core.designsystem.theme.ThemeConfig
@@ -20,6 +22,7 @@ import com.lhacenmed.sona.core.designsystem.theme.extractThemeColor
 import com.lhacenmed.sona.core.designsystem.theme.palette.ThemePalettes
 import com.lhacenmed.sona.core.datastore.ThemeChoices
 import com.lhacenmed.sona.core.datastore.ThemeSettings
+import com.lhacenmed.sona.core.model.AppFont
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.player.swiper.CoverSlideDurationMillis
 import dagger.Binds
@@ -34,15 +37,19 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.flow.withIndex
 import kotlinx.coroutines.withContext
 
@@ -113,11 +120,38 @@ class SonaAppTheme @Inject constructor(
             }
         }
 
+    /**
+     * The picked font while the theme is set in it, and null otherwise - or when it cannot be read. Read
+     * from the moment the theme exists, alongside the library, and kept for the process, so no screen
+     * ever reads it again or waits for it.
+     */
+    private val customFontFamily: Flow<FontFamily?> = themeSettings.choices.flow
+        .map { choices -> choices.customFont?.uri?.takeIf { choices.font == AppFont.CUSTOM } }
+        .distinctUntilChanged()
+        .mapLatest { uri -> uri?.let { CustomFontLoader.loadFontFamily(context, it) } }
+        .shareIn(scope, SharingStarted.Eagerly, replay = 1)
+
+    /** Whether [config] has been fully worked out at least once - what [awaitReady] waits for. */
+    private val isResolved = MutableStateFlow(false)
+
     // Kept warm briefly after the last screen stops reading it, which is exactly what spans an activity
     // handover: the pushed screen starts from an already-resolved config instead of re-extracting the
     // cover's colour and animating up from the default on the way in.
-    override val config: StateFlow<ThemeConfig> = combine(themeSettings.choices.flow, coverColor, ::configOf)
-        .stateIn(scope, SharingStarted.WhileSubscribed(5000), configOf(themeSettings.choices.value, coverColor = null))
+    override val config: StateFlow<ThemeConfig> = combine(themeSettings.choices.flow, coverColor, customFontFamily, ::configOf)
+        // Marked resolved only once the config is in place, so whatever waits for it finds it there.
+        .transform { config ->
+            emit(config)
+            isResolved.value = true
+        }
+        .stateIn(
+            scope,
+            SharingStarted.WhileSubscribed(5000),
+            configOf(themeSettings.choices.value, coverColor = null, customFontFamily = null),
+        )
+
+    override suspend fun awaitReady() {
+        isResolved.first { it }
+    }
 
     private suspend fun loadBitmap(uri: String): Bitmap? = withContext(Dispatchers.IO) {
         val imageLoader = SingletonImageLoader.get(context)
@@ -132,12 +166,12 @@ class SonaAppTheme @Inject constructor(
 /** Dynamic colours are the wallpaper's and the cover's together; without them, each is the user's to choose. */
 private val ThemeChoices.usesCoverColors: Boolean get() = dynamicColors || coverColors
 
-private fun configOf(choices: ThemeChoices, coverColor: Color?) = ThemeConfig(
+private fun configOf(choices: ThemeChoices, coverColor: Color?, customFontFamily: FontFamily?) = ThemeConfig(
     mode = choices.mode,
     pureBlack = choices.pureBlack,
     colors = colorsOf(choices, coverColor),
     font = choices.font,
-    customFontUri = choices.customFont?.uri,
+    customFontFamily = customFontFamily,
 )
 
 /**

@@ -53,6 +53,8 @@ class VideoPlayerActivity : SonaActivity() {
         super.onCreate(savedInstanceState)
         // Standing as kept from the first frame, rather than turning once the screen is composed.
         requestedOrientation = viewModel.session.value.orientation.activityOrientation
+        // Opened from another app, the process may only just have started: the theme is worked out first.
+        holdFirstFrameUntil(appTheme::awaitReady)
         // A Private Folder video is kept out of screenshots and the recent apps' preview.
         lifecycleScope.launch {
             viewModel.isPrivate.collect { isPrivate ->

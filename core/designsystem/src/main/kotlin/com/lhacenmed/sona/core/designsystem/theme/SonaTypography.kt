@@ -3,10 +3,7 @@ package com.lhacenmed.sona.core.designsystem.theme
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -30,21 +27,10 @@ private val InterFontFamily = FontFamily(
 /** Material's type scale, as it is, for [AppFont.SYSTEM]. */
 private val SystemTypography = Typography()
 
-/**
- * The type scale [font] sets the app's text in. A custom font is read off the main thread, so the default
- * font stands in until it is ready - or for good, when it cannot be read.
- */
+/** The type scale [font] sets the app's text in. A custom font that cannot be read gives way to the default font. */
 @Composable
-internal fun rememberTypography(font: AppFont, customFontUri: String?): Typography {
-    val context = LocalContext.current
-    val customFontFamily by produceState<FontFamily?>(null, font, customFontUri) {
-        value = if (font == AppFont.CUSTOM && customFontUri != null) {
-            CustomFontLoader.loadFontFamily(context.applicationContext, customFontUri)
-        } else {
-            null
-        }
-    }
-    return remember(font, customFontFamily) {
+internal fun rememberTypography(font: AppFont, customFontFamily: FontFamily?): Typography =
+    remember(font, customFontFamily) {
         when (font) {
             AppFont.POPPINS -> typographyFor(PoppinsFontFamily)
             AppFont.SYSTEM -> SystemTypography
@@ -52,7 +38,6 @@ internal fun rememberTypography(font: AppFont, customFontUri: String?): Typograp
             AppFont.CUSTOM -> typographyFor(customFontFamily ?: PoppinsFontFamily)
         }
     }
-}
 
 /** Material's type scale, every style - the expressive emphasized ones too - set in [fontFamily]. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)

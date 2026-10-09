@@ -2,6 +2,8 @@ package com.lhacenmed.sona.core.designsystem
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
+import android.view.ViewTreeObserver
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -10,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.compositionContext
 import androidx.compose.ui.platform.createLifecycleAwareWindowRecomposer
+import androidx.lifecycle.lifecycleScope
 import com.lhacenmed.sona.core.designsystem.effect.ApplyRefreshRate
 import com.lhacenmed.sona.core.designsystem.effect.ProvideSonaHaptics
 import com.lhacenmed.sona.core.designsystem.effect.SonaEffects
@@ -17,6 +20,17 @@ import com.lhacenmed.sona.core.designsystem.effect.isHighRefreshRate
 import com.lhacenmed.sona.core.designsystem.effect.rememberSupportedHighestFps
 import com.lhacenmed.sona.core.designsystem.gesture.holdClaimedFingers
 import com.lhacenmed.sona.core.designsystem.motion.ProvideRubberBandOverscroll
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
+
+/**
+ * How long a window's first frame may be held - see [SonaActivity.holdFirstFrameUntil].
+ *
+ * It is a safety valve, not a budget: what is waited for is normally ready in a few milliseconds. If
+ * something is genuinely slow (a first run with no cache, a device under memory pressure), showing the
+ * app with its loading placeholders beats holding a frozen launch screen indefinitely.
+ */
+private const val MaxFirstFrameHoldMillis = 1_200L
 
 /**
  * The activity every Sona screen is hosted in.
@@ -60,6 +74,30 @@ abstract class SonaActivity : ComponentActivity() {
                     Box(modifier = Modifier.holdClaimedFingers(), propagateMinConstraints = true) { content() }
                 }
             }
+        }
+    }
+
+    /**
+     * Holds this window's first frame until [awaitReady] returns, so the first thing the user sees is the
+     * app as they set it up - their font, their colours, their library - rather than defaults corrected a
+     * moment later. On Android 12+ the system launch screen stays up for as long as the frame is held.
+     * What is already ready costs nothing: the frame is released before it was ever due.
+     */
+    protected fun holdFirstFrameUntil(awaitReady: suspend () -> Unit) {
+        var isHeld = true
+        val content = findViewById<View>(android.R.id.content)
+        content.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
+            override fun onPreDraw(): Boolean {
+                if (isHeld) return false
+                content.viewTreeObserver.removeOnPreDrawListener(this)
+                return true
+            }
+        })
+        lifecycleScope.launch {
+            withTimeoutOrNull(MaxFirstFrameHoldMillis) { awaitReady() }
+            isHeld = false
+            // A held frame never draws, so nothing else asks for the next one.
+            content.invalidate()
         }
     }
 

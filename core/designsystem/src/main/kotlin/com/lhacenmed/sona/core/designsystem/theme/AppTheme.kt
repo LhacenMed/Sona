@@ -2,6 +2,7 @@ package com.lhacenmed.sona.core.designsystem.theme
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import com.lhacenmed.sona.core.designsystem.theme.palette.ThemeSeedPalette
 import com.lhacenmed.sona.core.model.AppFont
 import com.lhacenmed.sona.core.model.ThemeMode
@@ -15,8 +16,8 @@ data class ThemeConfig(
     val pureBlack: Boolean,
     val colors: ThemeColors,
     val font: AppFont,
-    /** The picked font file while [font] is [AppFont.CUSTOM]; the default font stands in until it loads. */
-    val customFontUri: String?,
+    /** The picked font, already read, while [font] is [AppFont.CUSTOM]; the default font stands in when it cannot be read. */
+    val customFontFamily: FontFamily?,
 )
 
 /** Where the theme's colours come from, once every colour setting and the playing cover are accounted for. */
@@ -44,4 +45,10 @@ sealed interface ThemeColors {
  */
 interface AppTheme {
     val config: StateFlow<ThemeConfig>
+
+    /**
+     * Returns once [config] is fully worked out - the custom font and the playing cover's colour are read off
+     * the main thread - so a window can hold its first frame until it draws the app as the user set it up.
+     */
+    suspend fun awaitReady()
 }

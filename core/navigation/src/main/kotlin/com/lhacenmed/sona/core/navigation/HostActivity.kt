@@ -87,6 +87,9 @@ class HostActivity : SonaActivity() {
             return
         }
         if (screen.isPrivate) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        // Normally already worked out by the activity below; only a process restored straight onto this
+        // screen has it to wait for.
+        holdFirstFrameUntil(appTheme::awaitReady)
 
         setSonaContent {
             val themeConfig by appTheme.config.collectAsStateWithLifecycle()

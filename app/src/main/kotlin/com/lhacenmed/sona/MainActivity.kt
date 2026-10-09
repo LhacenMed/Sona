@@ -2,14 +2,11 @@ package com.lhacenmed.sona
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.View
-import android.view.ViewTreeObserver
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.lifecycleScope
 import com.lhacenmed.sona.core.common.network.NetworkMonitor
 import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.data.LibraryRepository
@@ -30,18 +27,6 @@ import com.lhacenmed.sona.feature.update.notification.UpdateNotifier
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
-
-/**
- * How long the launch screen may be held waiting for the library.
- *
- * It is a safety valve, not a budget: with the library shared from the application scope the wait is
- * normally a few milliseconds. If something is genuinely slow (a first run with no cache, a device
- * under memory pressure), showing the app with its loading placeholders beats holding a frozen
- * launch screen indefinitely.
- */
-private const val MAX_SPLASH_WAIT_MS = 1_200L
 
 @AndroidEntryPoint
 class MainActivity : SonaActivity() {
@@ -81,23 +66,12 @@ class MainActivity : SonaActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // The first frame is held until the library is in memory, so the first thing the user sees
-        // is a populated list rather than an empty one that fills in a moment later. On Android 12+
-        // the system launch screen stays up for as long as the frame is held.
-        var isLibraryPending = true
-        val content = findViewById<View>(android.R.id.content)
-        content.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
-            override fun onPreDraw(): Boolean {
-                if (isLibraryPending) return false
-                content.viewTreeObserver.removeOnPreDrawListener(this)
-                return true
-            }
-        })
-        lifecycleScope.launch {
-            withTimeoutOrNull(MAX_SPLASH_WAIT_MS) { libraryRepository.isReady.first { it } }
-            isLibraryPending = false
-            // A held frame never draws, so nothing else asks for the next one.
-            content.invalidate()
+        // The first frame is held until the library is in memory and the theme is worked out, so the
+        // first thing the user sees is a populated list in their own font and colours, rather than an
+        // empty one in the defaults that fills in and restyles itself a moment later.
+        holdFirstFrameUntil {
+            libraryRepository.isReady.first { it }
+            appTheme.awaitReady()
         }
 
         if (AppPermission.AUDIO_LIBRARY.isGranted(this)) {

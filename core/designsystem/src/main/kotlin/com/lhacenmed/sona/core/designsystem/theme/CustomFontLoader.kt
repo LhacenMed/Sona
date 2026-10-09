@@ -14,8 +14,9 @@ import kotlinx.coroutines.withContext
 /**
  * A `.ttf` the user picked, made into a font family. ArchiveTune's `CustomFontLoader`.
  *
- * The file is copied into the app's own storage before it is read, because a typeface is made from a
- * file path and a picked document is only a uri.
+ * The file is copied into the app's own storage the first time it is read, because a typeface is made from
+ * a file path and a picked document is only a uri. Later launches read that copy, which is quick and does
+ * not need the picked document to still be there.
  */
 object CustomFontLoader {
     /** What the picker offers: the types a `.ttf` goes by, and the catch-all some file managers give it. */
@@ -47,9 +48,13 @@ object CustomFontLoader {
     suspend fun loadFontFamily(context: Context, uriString: String): FontFamily? =
         withContext(Dispatchers.IO) {
             try {
-                val uri = Uri.parse(uriString)
-                if (!isSupportedTtf(context, uri)) return@withContext null
-                FontFamily(Typeface(AndroidTypeface.createFromFile(copyToPrivateFontFile(context, uri, uriString))))
+                val fontFile = privateFontFile(context, uriString)
+                if (!fontFile.exists()) {
+                    val uri = Uri.parse(uriString)
+                    if (!isSupportedTtf(context, uri)) return@withContext null
+                    copyToPrivateFontFile(context, uri, fontFile)
+                }
+                FontFamily(Typeface(AndroidTypeface.createFromFile(fontFile)))
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -57,13 +62,24 @@ object CustomFontLoader {
             }
         }
 
-    private fun copyToPrivateFontFile(context: Context, uri: Uri, uriString: String): File {
-        val fontDirectory = File(context.filesDir, "custom_fonts").apply { mkdirs() }
-        val fontFile = File(fontDirectory, "${Integer.toHexString(uriString.hashCode())}.ttf")
+    private fun privateFontFile(context: Context, uriString: String): File =
+        File(fontDirectory(context), "${Integer.toHexString(uriString.hashCode())}.ttf")
+
+    private fun fontDirectory(context: Context): File = File(context.filesDir, "custom_fonts")
+
+    /**
+     * Copies the font at [uri] to [fontFile], in place of any font copied before - only the font in use is
+     * kept. Written beside it and then renamed, so an interrupted copy never leaves a broken font to be read.
+     */
+    private fun copyToPrivateFontFile(context: Context, uri: Uri, fontFile: File) {
+        val fontDirectory = fontDirectory(context)
+        fontDirectory.deleteRecursively()
+        fontDirectory.mkdirs()
+        val partialFile = File(fontDirectory, "${fontFile.name}.partial")
         context.contentResolver.openInputStream(uri).use { inputStream ->
             requireNotNull(inputStream)
-            fontFile.outputStream().use { inputStream.copyTo(it) }
+            partialFile.outputStream().use { inputStream.copyTo(it) }
         }
-        return fontFile
+        check(partialFile.renameTo(fontFile))
     }
 }

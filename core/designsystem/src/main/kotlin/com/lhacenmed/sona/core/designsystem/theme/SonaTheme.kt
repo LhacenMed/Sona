@@ -87,7 +87,7 @@ fun SonaTheme(
     MaterialTheme(
         colorScheme = animateColorSchemeAsState(targetColorScheme),
         shapes = if (coverStyle.isRounded) MaterialTheme.shapes else SquareShapes,
-        typography = rememberTypography(config.font, config.customFontUri),
+        typography = rememberTypography(config.font, config.customFontFamily),
     ) {
         CompositionLocalProvider(
             LocalIsRounded provides coverStyle.isRounded,
