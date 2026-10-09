@@ -71,14 +71,14 @@ private data object RubberBandOverscrollFactory : OverscrollFactory {
 }
 
 /**
- * Holds a band let go past its start open, rather than letting it settle to rest - a pull to refresh,
- * over its indicator while it refreshes.
+ * Holds a band let go past one of its ends open, rather than letting it settle to rest - a pull to
+ * refresh, over its indicator while it refreshes. See `OverscrollTrigger`.
  */
-interface StartHold {
-    /** A finger let the band go [stretch] past its start - a fling's bounce is never this. */
+interface OverscrollHold {
+    /** A finger let the band go [stretch] past its end - a fling's bounce is never this. */
     fun onRelease(stretch: Float)
 
-    /** Where the band comes to rest past its start now: 0, unless held open. */
+    /** Where the band comes to rest past its end now: 0, unless held open. */
     val restingStretch: Float
 }
 
@@ -93,8 +93,8 @@ interface StartHold {
  *   damped spring. At rest the curve's slope is 1, so the content leaves the edge at the list's speed.
  * - **Caught while settling or bouncing**, it stops where it is and the new drag takes it from there: a
  *   release is the band's own, and a drag ends it.
- * - **Held open past its start** by a [startHold] - a pull to refresh, over its indicator while it
- *   refreshes - it settles there instead of at rest, and back to rest once it is let go of.
+ * - **Held open past an end** by a [startHold] or [endHold] - a pull to refresh, over its indicator while
+ *   it refreshes - it settles there instead of at rest, and back to rest once it is let go of.
  *
  * A band stretches along one axis for as long as it is stretched: which one is only decided at rest.
  *
@@ -117,17 +117,17 @@ class RubberBandOverscroll internal constructor() : OverscrollEffect {
     private var releaseJob: Job? = null
 
     /**
-     * Whether the band rests open where a [startHold] holds it - stretched, but not in progress: a list
+     * Whether the band rests open where a hold holds it - stretched, but not in progress: a list
      * held open for a refresh answers a touch as any list at rest does, a tap as a tap and a sideways
      * swipe as the pager's, rather than the band taking the finger straight away.
      */
     private var isRestingOpen = false
 
     /** What holds the band open past its start when it is let go there, if anything does. */
-    var startHold: StartHold? = null
+    var startHold: OverscrollHold? = null
 
     /** What holds the band open past its end when it is let go there, if anything does - see [startHold]. */
-    var endHold: StartHold? = null
+    var endHold: OverscrollHold? = null
 
     /** Whether a finger is moving the list - and so the band, once it is past an end - right now. */
     var isDragged by mutableStateOf(false)
@@ -184,7 +184,7 @@ class RubberBandOverscroll internal constructor() : OverscrollEffect {
         isDragged = false
         if (pull != 0f) {
             performFling(Velocity.Zero)
-            val hold = if (pull > 0f) startHold else endHold
+            val hold = holdPast(pull)
             hold?.onRelease(stretch)
             release { settle(to = hold?.restingStretch ?: 0f) }
             return
@@ -193,26 +193,29 @@ class RubberBandOverscroll internal constructor() : OverscrollEffect {
         if (abs(remaining) > MovementThreshold && stretchLimit > 0f) release { bounce(remaining) }
     }
 
+    private fun holdPast(pull: Float): OverscrollHold? = if (pull > 0f) startHold else endHold
+
     /**
-     * Runs [animation] as the band's release, at [ReleasePace], waiting for it - unless a drag stops it
-     * first.
+     * Runs [animation] as the band's release, at [ReleasePace], waiting for it - unless a drag, or a newer
+     * release, stops it first.
      */
     private suspend fun release(animation: suspend () -> Unit) = coroutineScope {
+        releaseJob?.cancel()
         releaseJob = launch(ReleasePace) { animation() }
     }
 
     /**
-     * Settles a band open past its start to where its [startHold] now has it rest - back to rest, once a
+     * Settles a band open past either end to where the hold there now has it rest - back to rest, once a
      * refresh it was held open for is over. A band a finger is moving is left to the finger: it settles
      * there when let go.
      */
     suspend fun settleToRest() {
-        if (isDragged || pull <= 0f) return
-        release { settle(to = startHold?.restingStretch ?: 0f) }
+        if (isDragged || pull == 0f) return
+        release { settle(to = holdPast(pull)?.restingStretch ?: 0f) }
     }
 
     /**
-     * To [to] from wherever the band was let go - rest, or where a [startHold] holds it open - the way
+     * To [to] from wherever the band was let go - rest, or where a hold holds it open - the way
      * every released band settles.
      */
     private suspend fun settle(to: Float) {

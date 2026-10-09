@@ -58,7 +58,7 @@ import com.lhacenmed.sona.core.designsystem.component.header.CollapsingHeaderSta
 import com.lhacenmed.sona.core.designsystem.component.screen.PlayingRow
 import com.lhacenmed.sona.core.designsystem.component.screen.scrollBackToTop
 import com.lhacenmed.sona.core.designsystem.component.screen.scrollToRow
-import com.lhacenmed.sona.core.designsystem.component.refresh.SonaPullToRefreshBox
+import com.lhacenmed.sona.core.designsystem.component.overscroll.SonaPullToRefreshBox
 import com.lhacenmed.sona.core.designsystem.component.section.rememberSectionListState
 import com.lhacenmed.sona.core.designsystem.component.section.sectionItemAnimation
 import com.lhacenmed.sona.core.designsystem.component.section.section

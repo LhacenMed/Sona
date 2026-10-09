@@ -80,7 +80,7 @@ private val LocalSettingsScrollTarget = staticCompositionLocalOf<SettingsScrollT
  * pressed so the eye lands on it. Touches are kept from the screen until it arrives, so a stray one
  * cannot stop it short. Once only: a screen recreated after it arrived stays where it is.
  *
- * Given [onPrivateFolderRevealed], pulling past the list's own end reveals and can open the Private
+ * Given [onPrivateFolderRevealed], pulling down past the list's top reveals and can open the Private
  * Folder - see [PrivateFolderOverscrollReveal]. Left null everywhere but the Settings home screen, which
  * is the one place that hidden entry point exists.
  */
