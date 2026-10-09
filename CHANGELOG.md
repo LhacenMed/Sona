@@ -6,6 +6,29 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.6.5] - 2026-10-09
+
+### Added
+
+- Add full-screen video player cloned from PLAYit.
+- Manage video-watching lifecycle and auto-open the video player.
+- Pass a per-screen flag to the player overlay.
+- Let every collection be arranged by hand and keep new tracks in order.
+- Unify every screen's FABs in one stack and scroll to the playing row.
+- Collapse the shortcuts on scroll as a detail header does.
+- Let albums, artists, genres, folders and playlists be favorited.
+- Hold the first frame until the theme and custom font are ready.
+
+### Changed
+
+- Scope PlayerViewModel to a PlaybackSpace.
+- Move bottom sheets into a sheet package and fix their drag height.
+- Unify overscroll triggers in one edge-aware system.
+
+### Fixed
+
+- Decode HTML entities in SimpMusic lyrics.
+
 ## [1.6.4] - 2026-10-05
 
 ### Added
