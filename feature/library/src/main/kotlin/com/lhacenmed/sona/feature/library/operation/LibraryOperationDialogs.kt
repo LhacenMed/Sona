@@ -14,18 +14,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.data.contentUri
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDialog
-import com.lhacenmed.sona.core.designsystem.component.sheet.SonaBottomSheet
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
-import com.lhacenmed.sona.core.vault.VaultState
 import com.lhacenmed.sona.feature.library.options.OptionsActionsViewModel
 import com.lhacenmed.sona.feature.library.pluralCount
-import com.lhacenmed.sona.feature.vault.VaultSetupFlow
 
 /*
  * The confirmed operations more than one place in the library offers, each written once so its wording
@@ -161,36 +157,16 @@ internal fun DeleteFromDeviceDialog(
 }
 
 /**
- * Adding [track] to the Private Folder - from its options sheet. Creates the folder first if there is
- * none yet; opening it is not needed to put a file in.
+ * Moves [track] into the Private Folder - from its options sheet, which offers it only once the folder is
+ * set up, so opening it is not needed to put a file in. Copied in first, then deleted from the device
+ * exactly as [DeleteFromDeviceDialog] deletes - and the copy taken back out should that deletion not
+ * happen, so the file is never left in both places.
  */
 @Composable
 internal fun AddToPrivateDialog(
     track: Track,
     onDismiss: () -> Unit,
     onMoved: () -> Unit = {},
-) {
-    val actionsViewModel: OptionsActionsViewModel = hiltViewModel()
-    val vault by actionsViewModel.vaultState.collectAsStateWithLifecycle()
-    when (vault) {
-        VaultState.Loading -> Unit
-        VaultState.NotCreated -> SonaBottomSheet(title = "Create Private Folder", onDismissRequest = onDismiss) {
-            VaultSetupFlow(opensFolder = false)
-        }
-        is VaultState.Created -> MoveToPrivateDialog(track = track, onDismiss = onDismiss, onMoved = onMoved)
-    }
-}
-
-/**
- * Moves [track] into the Private Folder: copied in first, then deleted from the device exactly as
- * [DeleteFromDeviceDialog] deletes - and the copy taken back out should that deletion not happen, so the
- * file is never left in both places.
- */
-@Composable
-private fun MoveToPrivateDialog(
-    track: Track,
-    onDismiss: () -> Unit,
-    onMoved: () -> Unit,
 ) {
     val actionsViewModel: OptionsActionsViewModel = hiltViewModel()
     val deleteOriginal = rememberDeviceDeletion(listOf(track), onDeleted = onMoved)

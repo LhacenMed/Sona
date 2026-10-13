@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -81,8 +82,10 @@ class OptionsActionsViewModel @Inject constructor(
         viewModelScope.launch { repository.setFavorites(items.trackIds, items.collections, isFavorite) }
     }
 
-    /** Where the Private Folder stands - whether "Add to Private Folder" has to create it first. */
-    val vaultState: StateFlow<VaultState> = vaultRepository.state
+    /** Whether the Private Folder is set up - what offering "Add to Private Folder" waits on: see [OptionsTarget.actions]. */
+    val hasPrivateFolder: StateFlow<Boolean> = vaultRepository.state
+        .map { it is VaultState.Created }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), vaultRepository.state.value is VaultState.Created)
 
     /**
      * Copies [track]'s file into the Private Folder, handing [onCopied] what it became there - null when it

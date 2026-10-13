@@ -16,12 +16,9 @@ internal class VaultAccessViewModel @Inject constructor(private val vault: Vault
 
     val state: StateFlow<VaultState> = vault.state
 
-    /** [opens]: whether the vault is unlocked once created - inside the Private Folder, but not when created to move a file in. */
-    fun create(pin: String, question: String, answer: String, opens: Boolean) {
-        viewModelScope.launch {
-            vault.create(pin, question, answer)
-            if (opens) vault.unlock(pin)
-        }
+    /** The folder opens as it is created, so there is nothing more to hear back. */
+    fun create(pin: String, question: String, answer: String) {
+        viewModelScope.launch { vault.create(pin, question, answer) }
     }
 
     fun unlock(pin: String, onResult: (VaultAccessResult) -> Unit) {

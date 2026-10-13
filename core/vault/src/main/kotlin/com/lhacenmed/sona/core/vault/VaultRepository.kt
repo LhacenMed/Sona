@@ -87,8 +87,12 @@ class VaultRepository @Inject internal constructor(
         isUnlocked.value = false
     }
 
-    /** Creates the vault, locked - opening it is still [unlock]'s to do. */
+    /**
+     * Creates the vault, open - it is only ever created from inside the Private Folder, by whoever just chose
+     * its PIN. Opened before its credentials are written, so it is never seen created and locked on the way.
+     */
     suspend fun create(pin: String, question: String, answer: String) = withContext(Dispatchers.Default) {
+        isUnlocked.value = true
         val pinSalt = VaultSecrets.newSalt()
         val answerSalt = VaultSecrets.newSalt()
         settings.create(

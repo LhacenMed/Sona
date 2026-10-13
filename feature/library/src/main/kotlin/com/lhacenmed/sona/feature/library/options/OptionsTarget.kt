@@ -115,8 +115,11 @@ private val FolderActions =
 /**
  * The rows an options sheet or a collection's menu lists, top to bottom - Auxio's inflated menu XML, chosen by
  * target and context. Favoriting is the heart in the sheet's header rather than a row - see [OptionsSheet].
+ *
+ * A track offers to go into the Private Folder only once [hasPrivateFolder]: until it is set up, from past
+ * the end of Settings, nothing in the library gives it away.
  */
-fun OptionsTarget.actions(): List<OptionsAction> = when (this) {
+fun OptionsTarget.actions(hasPrivateFolder: Boolean): List<OptionsAction> = when (this) {
     is OptionsTarget.ForTrack -> when (context) {
         TrackOptionsContext.LIST ->
             listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ARTIST_DETAILS, ALBUM_DETAILS, SONG_PROPERTIES, EDIT_TAGS, SHARE)
@@ -124,7 +127,7 @@ fun OptionsTarget.actions(): List<OptionsAction> = when (this) {
             listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ARTIST_DETAILS, SONG_PROPERTIES, EDIT_TAGS, SHARE)
         TrackOptionsContext.FROM_ARTIST ->
             listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ALBUM_DETAILS, SONG_PROPERTIES, EDIT_TAGS, SHARE)
-    } + listOfNotNull(REMOVE_FROM_PLAYLIST.takeIf { playlist != null }, ADD_TO_PRIVATE, DELETE_FROM_DEVICE)
+    } + listOfNotNull(REMOVE_FROM_PLAYLIST.takeIf { playlist != null }, ADD_TO_PRIVATE.takeIf { hasPrivateFolder }, DELETE_FROM_DEVICE)
 
     is OptionsTarget.ForAlbum -> when (context) {
         AlbumOptionsContext.LIST -> AlbumActions

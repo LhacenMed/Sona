@@ -17,6 +17,8 @@ import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.core.vault.VaultState
 
+private enum class ChangePinStep { CURRENT_PIN, NEW_PIN }
+
 /** Changing the Private Folder's PIN, from inside it: the current PIN again, then the new one. */
 data object VaultChangePinScreen : Screen {
     override val isPrivate: Boolean get() = true
@@ -33,17 +35,22 @@ data object VaultChangePinScreen : Screen {
             SonaTopAppBar(title = "Change PIN", onNavigateBack = navigator::back)
             val current = vault as? VaultState.Created ?: return@Column
             // Locked while away, the current PIN is asked for again before a new one is taken.
-            if (isCurrentPinGiven && current.isUnlocked) {
-                PinChooserFlow(
-                    onChosen = { newPin ->
-                        viewModel.changePin(newPin) {
-                            context.toast("PIN changed")
-                            navigator.back()
-                        }
-                    },
-                )
-            } else {
-                PinEntry(title = "Enter your current PIN", vault = current, onGranted = { isCurrentPinGiven = true })
+            val step = if (isCurrentPinGiven && current.isUnlocked) ChangePinStep.NEW_PIN else ChangePinStep.CURRENT_PIN
+            VaultSteps(step = step) { shownStep ->
+                when (shownStep) {
+                    ChangePinStep.CURRENT_PIN ->
+                        PinEntry(title = "Enter your current PIN", vault = current, onGranted = { isCurrentPinGiven = true })
+
+                    ChangePinStep.NEW_PIN -> PinChooserFlow(
+                        onChosen = { newPin ->
+                            viewModel.changePin(newPin) {
+                                context.toast("PIN changed")
+                                // Not back(), which the PIN's confirmation would answer by stepping back to it.
+                                navigator.close()
+                            }
+                        },
+                    )
+                }
             }
         }
     }
