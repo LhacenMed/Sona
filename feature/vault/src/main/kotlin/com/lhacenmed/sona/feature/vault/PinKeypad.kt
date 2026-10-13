@@ -21,10 +21,6 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -32,7 +28,7 @@ import com.lhacenmed.sona.core.designsystem.component.SonaIconButton
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 
 /** How many digits a PIN can have. */
-private val PinLengths = 4..8
+internal val PinLengths = 4..8
 
 /** Every key of the keypad, and the gap between them. */
 private val KeySize = 72.dp
@@ -145,68 +141,5 @@ private fun DigitKey(digit: Char, enabled: Boolean, onClick: () -> Unit) {
         contentPadding = PaddingValues(0.dp),
     ) {
         Text(text = digit.toString(), style = MaterialTheme.typography.headlineMedium)
-    }
-}
-
-private enum class PinChooserStep { CHOOSE, CONFIRM }
-
-/**
- * Picks a 4-8 digit PIN and confirms it, then hands the result to [onChosen] - the one flow vault
- * creation, "forgot PIN" recovery, and changing an existing PIN all share. Back from confirming goes back
- * to the PIN as it was typed.
- */
-@Composable
-internal fun PinChooserFlow(onChosen: (String) -> Unit, modifier: Modifier = Modifier) {
-    var step by remember { mutableStateOf(PinChooserStep.CHOOSE) }
-    var pin by remember { mutableStateOf("") }
-    var confirmPin by remember { mutableStateOf("") }
-    var mismatch by remember { mutableStateOf(false) }
-
-    VaultSteps(
-        step = step,
-        modifier = modifier,
-        onBack = if (step == PinChooserStep.CONFIRM) {
-            {
-                step = PinChooserStep.CHOOSE
-                confirmPin = ""
-                mismatch = false
-            }
-        } else {
-            null
-        },
-    ) { shownStep ->
-        when (shownStep) {
-            PinChooserStep.CHOOSE -> PinPad(
-                title = "Choose a PIN (${PinLengths.first}-${PinLengths.last} digits)",
-                dotCount = maxOf(pin.length, PinLengths.first),
-                filledDots = pin.length,
-                message = null,
-                onDigit = { if (pin.length < PinLengths.last) pin += it },
-                onBackspace = { pin = pin.dropLast(1) },
-                onDone = { step = PinChooserStep.CONFIRM },
-                isDoneEnabled = pin.length in PinLengths,
-            )
-
-            PinChooserStep.CONFIRM -> PinPad(
-                title = "Confirm your PIN",
-                dotCount = pin.length,
-                filledDots = confirmPin.length.coerceAtMost(pin.length),
-                message = if (mismatch) "PINs don't match" else null,
-                onDigit = { digit ->
-                    if (confirmPin.length < pin.length) {
-                        confirmPin += digit
-                        if (confirmPin.length == pin.length) {
-                            if (confirmPin == pin) {
-                                onChosen(pin)
-                            } else {
-                                mismatch = true
-                                confirmPin = ""
-                            }
-                        }
-                    }
-                },
-                onBackspace = { confirmPin = confirmPin.dropLast(1) },
-            )
-        }
     }
 }

@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Password
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,10 +55,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
- * The Private Folder - reached by pulling past the end of Settings. One screen for all it can be: set up the
- * first time, asking for the PIN while locked, and its Videos and Tracks once open. Locking it - leaving the
- * app, or leaving this screen - brings the PIN back in place, and ends whatever of it was playing, with
- * nothing of what it held left showing or heard.
+ * The Private Folder, open: its Videos and Tracks. Settings opens it on the screen it stands at - see
+ * [rememberPrivateFolderOpener] - so setting it up and its PIN are screens of their own before this one.
+ * Locking it - leaving the app, or leaving this screen - ends whatever of it was playing, and shows nothing
+ * of what it held: locked while away, it hands its place back to the PIN screen as the app returns.
  *
  * Its media plays in the app's own players - the video player, and the player over this screen, which is
  * the folder's alone: see [Screen.isPrivate].
@@ -70,8 +71,15 @@ data object PrivateFolderScreen : Screen {
         val navigator = LocalNavigator.current
         val viewModel: PrivateFolderViewModel = hiltViewModel()
         val vault by viewModel.state.collectAsStateWithLifecycle()
-        val current = vault
-        val isOpen = current is VaultState.Created && current.isUnlocked
+        val entryScreen = vault.entryScreen()
+        val isOpen = entryScreen == PrivateFolderScreen
+
+        LaunchedEffect(entryScreen) {
+            if (entryScreen != null && !isOpen) {
+                navigator.go(entryScreen)
+                navigator.close()
+            }
+        }
 
         Column(modifier = Modifier.fillMaxSize()) {
             SonaTopAppBar(
@@ -83,27 +91,10 @@ data object PrivateFolderScreen : Screen {
                     emptyList()
                 },
             )
-            val step = when (current) {
-                VaultState.Loading -> null
-                VaultState.NotCreated -> FolderStep.SETUP
-                is VaultState.Created -> if (current.isUnlocked) FolderStep.OPEN else FolderStep.LOCKED
-            }
-            // Locking cuts straight back to the PIN, so nothing the folder held is seen leaving.
-            if (step != null) {
-                VaultSteps(step = step, modifier = Modifier.fillMaxSize(), cutsBack = true) { shownStep ->
-                    when (shownStep) {
-                        FolderStep.SETUP -> VaultSetupFlow()
-                        FolderStep.LOCKED -> (vault as? VaultState.Created)?.let { VaultUnlockFlow(it) }
-                        FolderStep.OPEN -> PrivateFolderContent(viewModel)
-                    }
-                }
-            }
+            if (isOpen) PrivateFolderContent(viewModel)
         }
     }
 }
-
-/** What the folder shows, in the order it is gone through. */
-private enum class FolderStep { SETUP, LOCKED, OPEN }
 
 @Composable
 private fun PrivateFolderContent(viewModel: PrivateFolderViewModel) {
@@ -113,25 +104,23 @@ private fun PrivateFolderContent(viewModel: PrivateFolderViewModel) {
     val playingItemId by viewModel.playingItemId.collectAsStateWithLifecycle()
     var optionsItem by remember { mutableStateOf<VaultItem?>(null) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        SonaTabRow(
-            tabTitles = tabTitles,
-            selectedPosition = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
-            onTabClick = { page -> scope.launch { pagerState.animateScrollToPage(page) } },
-            modifier = Modifier.padding(horizontal = SonaComponentStyle.ContentHorizontalPadding, vertical = 8.dp),
+    SonaTabRow(
+        tabTitles = tabTitles,
+        selectedPosition = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
+        onTabClick = { page -> scope.launch { pagerState.animateScrollToPage(page) } },
+        modifier = Modifier.padding(horizontal = SonaComponentStyle.ContentHorizontalPadding, vertical = 8.dp),
+    )
+    HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), beyondViewportPageCount = 1) { page ->
+        val isVideo = page == 0
+        val items by (if (isVideo) viewModel.videos else viewModel.tracks).collectAsStateWithLifecycle()
+        VaultItemList(
+            items = items,
+            isVideo = isVideo,
+            playingItemId = playingItemId,
+            coverOf = viewModel::coverOf,
+            onPlay = { item -> viewModel.play(item, items.orEmpty()) },
+            onOpenOptions = { optionsItem = it },
         )
-        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), beyondViewportPageCount = 1) { page ->
-            val isVideo = page == 0
-            val items by (if (isVideo) viewModel.videos else viewModel.tracks).collectAsStateWithLifecycle()
-            VaultItemList(
-                items = items,
-                isVideo = isVideo,
-                playingItemId = playingItemId,
-                coverOf = viewModel::coverOf,
-                onPlay = { item -> viewModel.play(item, items.orEmpty()) },
-                onOpenOptions = { optionsItem = it },
-            )
-        }
     }
 
     optionsItem?.let { item -> VaultItemOptions(item = item, onDismissRequest = { optionsItem = null }) }
