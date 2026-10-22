@@ -1,6 +1,7 @@
 package com.lhacenmed.sona.core.designsystem.component.fab
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.WindowInsets
@@ -133,8 +134,9 @@ internal val LocalFloatingActionButtonStack = staticCompositionLocalOf<FloatingA
  * The whole stack steps aside together: while the player is raised over the screen, while the list is
  * fast scrolled, and once the list has come within the stack's height of its end - where the stack would
  * cover its last rows - so a list needs no room of its own for it. How tall it is is set by which buttons
- * the screen has rather than which are showing, so one showing never moves the others - while a screen whose
- * own FAB is turned off has none, and the way back to the top takes its place.
+ * the screen shows rather than which the stack is showing, so the stack stepping aside never moves one -
+ * while a screen whose own FAB is turned off or hidden, as the library's is while searched, has none, and the
+ * way back to the top glides down into its place.
  *
  * The scroll button takes the list back to its top once it is a quarter of a screen from it. Nearer the top,
  * it takes the list to the row it marks as playing instead, while that row is off screen - see
@@ -164,6 +166,12 @@ private fun BoxScope.FloatingActionButtons(stack: FloatingActionButtonStackState
         // Read here, in the stack's own composition, so a change to them is drawn in the frame it happens in.
         val screenButtonsHeight = screenButtons?.height ?: 0.dp
         val scrollButtonLift = if (screenButtonsHeight > 0.dp) screenButtonsHeight + StackSpacing else 0.dp
+        // Glides between the two places rather than jumping, as the screen's own button grows in or shrinks away.
+        val shownScrollButtonLift = animateDpAsState(
+            targetValue = scrollButtonLift,
+            animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+            label = "scrollButtonLift",
+        )
         val density = LocalDensity.current
         val stackHeightPx = with(density) { (scrollButtonLift + ScrollButtonSize).toPx() }
         val windowHeightPx = LocalWindowInfo.current.containerSize.height.toFloat()
@@ -206,7 +214,7 @@ private fun BoxScope.FloatingActionButtons(stack: FloatingActionButtonStackState
                     }
                 }
             },
-            modifier = anchor.padding(bottom = scrollButtonLift),
+            modifier = anchor.offset { IntOffset(0, -shownScrollButtonLift.value.roundToPx()) },
         )
         when (screenButtons) {
             is PrimaryButton -> screenButtons.content?.let { content ->

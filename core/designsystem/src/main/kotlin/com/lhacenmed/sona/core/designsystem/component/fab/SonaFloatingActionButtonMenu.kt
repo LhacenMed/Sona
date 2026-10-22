@@ -88,8 +88,8 @@ class FloatingActionButtonMenuChoice(
 
 /**
  * What a screen's FAB is at this moment: its [icon], what it does at a tap - [onClick] - and the [choices] its
- * long press opens. [visible] is whether the screen has it showing right now; it steps aside without the
- * stack giving up its place.
+ * long press opens. [visible] is whether the screen has it showing right now; hidden, it gives up its place in
+ * the stack, which closes the gap under it.
  */
 class FloatingActionButtonMenuContent(
     val icon: ImageVector,
@@ -114,7 +114,7 @@ internal class PrimaryButton(
     var expanded: Boolean by expandedState
 
     override val height: Dp
-        get() = if (content != null) PrimaryButtonSize else 0.dp
+        get() = if (content?.visible == true) PrimaryButtonSize else 0.dp
 }
 
 /**
@@ -124,7 +124,7 @@ internal class PrimaryButton(
  * shrinking into its centre, as Auxio's does.
  *
  * [content] is what it is at this moment - null while the screen has no FAB at all, such as one the user has
- * turned off, which the stack closes the gap under. It is read where the stack draws it, in the stack's own
+ * turned off. The stack closes the gap under it then, as it does while the screen hides it. It is read where the stack draws it, in the stack's own
  * composition, so it reads whatever changes from state - as a window overlay's content does - rather than
  * capturing values: then a change is drawn in the very frame the state changes in, without the screen
  * recomposing for it.
