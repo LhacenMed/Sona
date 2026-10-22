@@ -42,10 +42,11 @@ import com.lhacenmed.sona.feature.library.LibraryPlayback
 import com.lhacenmed.sona.feature.library.PlaylistDetailScreen
 import com.lhacenmed.sona.feature.library.PlaylistRow
 import com.lhacenmed.sona.feature.library.filterItems
-import com.lhacenmed.sona.feature.library.matchesSearch
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
 import com.lhacenmed.sona.feature.library.searchEmptyMessage
+import com.lhacenmed.sona.feature.library.searchedFor
+import com.lhacenmed.sona.feature.library.whileNotSearched
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import kotlinx.coroutines.launch
 
@@ -66,10 +67,10 @@ private class VisibleCollections(
     val folders: LibraryContent<Folder>,
     val playlists: LibraryContent<Playlist>,
     /** The section each tab's rows sit in, as their library tab sorts them - what its fast scroller names. */
-    val artistSections: (Artist) -> String?,
-    val albumSections: (Album) -> String?,
-    val genreSections: (Genre) -> String?,
-    val folderSections: (Folder) -> String?,
+    val artistSections: ((Artist) -> String?)?,
+    val albumSections: ((Album) -> String?)?,
+    val genreSections: ((Genre) -> String?)?,
+    val folderSections: ((Folder) -> String?)?,
 ) {
     /** The keys of [tab]'s rows that can be picked - what its Select all selects. */
     fun selectableKeys(tab: CollectionTab): List<SelectionKey> = when (tab) {
@@ -111,15 +112,15 @@ data class AddCollectionsScreen(val playlistId: Long) : Screen {
         var optionsTarget by remember { mutableStateOf<OptionsTarget?>(null) }
 
         val visible = VisibleCollections(
-            artists = artists.filterItems { matchesSearch(searchQuery, it.name) },
-            albums = albums.filterItems { matchesSearch(searchQuery, it.title, it.artistName) },
-            genres = genres.filterItems { matchesSearch(searchQuery, it.name) },
-            folders = folders.filterItems { matchesSearch(searchQuery, it.name) },
-            playlists = playlists.filterItems { it.id != playlistId && matchesSearch(searchQuery, it.name) },
-            artistSections = artistSections,
-            albumSections = albumSections,
-            genreSections = genreSections,
-            folderSections = folderSections,
+            artists = artists.searchedFor(searchQuery) { listOf(it.name) },
+            albums = albums.searchedFor(searchQuery) { listOf(it.title, it.artistName) },
+            genres = genres.searchedFor(searchQuery) { listOf(it.name) },
+            folders = folders.searchedFor(searchQuery) { listOf(it.name) },
+            playlists = playlists.filterItems { it.id != playlistId }.searchedFor(searchQuery) { listOf(it.name) },
+            artistSections = artistSections.whileNotSearched(searchQuery),
+            albumSections = albumSections.whileNotSearched(searchQuery),
+            genreSections = genreSections.whileNotSearched(searchQuery),
+            folderSections = folderSections.whileNotSearched(searchQuery),
         )
 
         PlaylistTrackPicker(

@@ -27,6 +27,7 @@ fun TracksScreen(
     val playback by viewModel.playback.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val trackSections by viewModel.trackSections.collectAsStateWithLifecycle()
+    val trackLyricLines by viewModel.trackLyricLines.collectAsStateWithLifecycle()
     var optionsTarget by remember { mutableStateOf<OptionsTarget.ForTrack?>(null) }
 
     LibraryList(
@@ -55,6 +56,8 @@ fun TracksScreen(
             onOpenOptions = {
                 optionsTarget = OptionsTarget.ForTrack(track, queueSource = tracks.itemsOrEmpty)
             },
+            // A track the search found by its lyrics alone says why, with the line it found.
+            subtitle = trackLyricLines[track.id]?.let { line -> "♪ $line" },
         )
     }
 

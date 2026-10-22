@@ -15,11 +15,11 @@ import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.library.LibraryList
 import com.lhacenmed.sona.feature.library.TrackRow
-import com.lhacenmed.sona.feature.library.filterItems
-import com.lhacenmed.sona.feature.library.matchesSearch
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
 import com.lhacenmed.sona.feature.library.searchEmptyMessage
+import com.lhacenmed.sona.feature.library.searchedFor
+import com.lhacenmed.sona.feature.library.whileNotSearched
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 
 /** Picking tracks one by one from the whole library, to add to the playlist [playlistId]. */
@@ -34,7 +34,7 @@ data class AddTracksScreen(val playlistId: Long) : Screen {
         val selection = rememberSelectionState()
         var searchQuery by remember { mutableStateOf<String?>(null) }
         var optionsTarget by remember { mutableStateOf<OptionsTarget.ForTrack?>(null) }
-        val visibleTracks = tracks.filterItems { matchesSearch(searchQuery, it.title, it.artist) }
+        val visibleTracks = tracks.searchedFor(searchQuery) { listOf(it.title, it.artist, it.album) }
 
         PlaylistTrackPicker(
             title = "Add tracks",
@@ -54,7 +54,7 @@ data class AddTracksScreen(val playlistId: Long) : Screen {
                 emptyMessage = searchEmptyMessage(searchQuery),
                 key = { it.id },
                 loadingIcon = SonaIcons.Song,
-                sectionOf = trackSections,
+                sectionOf = trackSections.whileNotSearched(searchQuery),
                 isCurrent = { playback.marks(it) },
                 isPlaying = { playback.isPlaying },
                 modifier = Modifier.weight(1f).fillMaxWidth(),

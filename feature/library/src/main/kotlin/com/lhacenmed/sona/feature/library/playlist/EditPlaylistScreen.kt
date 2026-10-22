@@ -63,10 +63,9 @@ import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.library.LibraryListContent
 import com.lhacenmed.sona.feature.library.PLAYLIST_NAME_TAKEN_MESSAGE
-import com.lhacenmed.sona.feature.library.filterItems
 import com.lhacenmed.sona.feature.library.isPlaylistNameTaken
-import com.lhacenmed.sona.feature.library.matchesSearch
 import com.lhacenmed.sona.feature.library.searchEmptyMessage
+import com.lhacenmed.sona.feature.library.searchedFor
 
 /**
  * Editing the playlist [playlistId]: its name and its cover, previewed as they are changed and saved
@@ -296,9 +295,9 @@ private fun CoverTrackChooser(
                 TopBarSearch(query = query, onQueryChange = { searchQuery = it }, onClose = { searchQuery = null })
             },
         )
-        val visiblePlaylistTracks = playlistTracks.filter { matchesSearch(searchQuery, it.title, it.artist) }
+        val visiblePlaylistTracks = playlistTracks.searchedFor(searchQuery) { listOf(it.title, it.artist, it.album) }
         LibraryListContent(
-            content = libraryTracks.filterItems { matchesSearch(searchQuery, it.title, it.artist) },
+            content = libraryTracks.searchedFor(searchQuery) { listOf(it.title, it.artist, it.album) },
             // Reached from a playlist, so the library has already loaded and been permitted.
             hasPermission = true,
             isScanning = false,

@@ -29,8 +29,9 @@ import com.lhacenmed.sona.feature.library.GenreRow
 import com.lhacenmed.sona.feature.library.LibraryList
 import com.lhacenmed.sona.feature.library.PlaylistRow
 import com.lhacenmed.sona.feature.library.filterItems
-import com.lhacenmed.sona.feature.library.matchesSearch
 import com.lhacenmed.sona.feature.library.searchEmptyMessage
+import com.lhacenmed.sona.feature.library.searchedFor
+import com.lhacenmed.sona.feature.library.whileNotSearched
 
 /**
  * Choosing which [kind] of collection quick play plays - opened from the settings once the kind is
@@ -68,7 +69,7 @@ data class QuickPlaySourcePickerScreen(val kind: QuickPlaySourceKind) : Screen {
                 QuickPlaySourceKind.PLAYLIST -> {
                     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
                     PickerList(
-                        content = playlists.filterItems { it.trackCount > 0 && matchesSearch(searchQuery, it.name) },
+                        content = playlists.filterItems { it.trackCount > 0 }.searchedFor(searchQuery) { listOf(it.name) },
                         emptyTitle = "No playlists found",
                         searchQuery = searchQuery,
                         loadingIcon = kind.icon,
@@ -90,12 +91,12 @@ data class QuickPlaySourcePickerScreen(val kind: QuickPlaySourceKind) : Screen {
                     val artists by viewModel.artists.collectAsStateWithLifecycle()
                     val sections by viewModel.artistSections.collectAsStateWithLifecycle()
                     PickerList(
-                        content = artists.filterItems { it.trackCount > 0 && matchesSearch(searchQuery, it.name) },
+                        content = artists.filterItems { it.trackCount > 0 }.searchedFor(searchQuery) { listOf(it.name) },
                         emptyTitle = "No artists found",
                         searchQuery = searchQuery,
                         loadingIcon = kind.icon,
                         key = { it.id },
-                        sectionOf = sections,
+                        sectionOf = sections.whileNotSearched(searchQuery),
                     ) { artist ->
                         val parent = PlaybackParent.Artist(artist.id)
                         ArtistRow(
@@ -113,12 +114,12 @@ data class QuickPlaySourcePickerScreen(val kind: QuickPlaySourceKind) : Screen {
                     val albums by viewModel.albums.collectAsStateWithLifecycle()
                     val sections by viewModel.albumSections.collectAsStateWithLifecycle()
                     PickerList(
-                        content = albums.filterItems { matchesSearch(searchQuery, it.title, it.artistName) },
+                        content = albums.searchedFor(searchQuery) { listOf(it.title, it.artistName) },
                         emptyTitle = "No albums found",
                         searchQuery = searchQuery,
                         loadingIcon = kind.icon,
                         key = { it.id },
-                        sectionOf = sections,
+                        sectionOf = sections.whileNotSearched(searchQuery),
                     ) { album ->
                         val parent = PlaybackParent.Album(album.id)
                         AlbumRow(
@@ -136,12 +137,12 @@ data class QuickPlaySourcePickerScreen(val kind: QuickPlaySourceKind) : Screen {
                     val genres by viewModel.genres.collectAsStateWithLifecycle()
                     val sections by viewModel.genreSections.collectAsStateWithLifecycle()
                     PickerList(
-                        content = genres.filterItems { matchesSearch(searchQuery, it.name) },
+                        content = genres.searchedFor(searchQuery) { listOf(it.name) },
                         emptyTitle = "No genres found",
                         searchQuery = searchQuery,
                         loadingIcon = kind.icon,
                         key = { it.id },
-                        sectionOf = sections,
+                        sectionOf = sections.whileNotSearched(searchQuery),
                     ) { genre ->
                         val parent = PlaybackParent.Genre(genre.id)
                         GenreRow(
@@ -159,12 +160,12 @@ data class QuickPlaySourcePickerScreen(val kind: QuickPlaySourceKind) : Screen {
                     val folders by viewModel.folders.collectAsStateWithLifecycle()
                     val sections by viewModel.folderSections.collectAsStateWithLifecycle()
                     PickerList(
-                        content = folders.filterItems { matchesSearch(searchQuery, it.name) },
+                        content = folders.searchedFor(searchQuery) { listOf(it.name) },
                         emptyTitle = "No folders found",
                         searchQuery = searchQuery,
                         loadingIcon = kind.icon,
                         key = { it.path },
-                        sectionOf = sections,
+                        sectionOf = sections.whileNotSearched(searchQuery),
                     ) { folder ->
                         val parent = folder.playbackParent
                         FolderRow(

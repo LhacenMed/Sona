@@ -23,6 +23,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.itemsOrEmpty
+import com.lhacenmed.sona.core.data.search.matchesSearch
 import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.screen.PlayingRow
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
@@ -108,11 +109,8 @@ data object PlaylistsScreen : Screen {
 
         // Most played is a row here rather than a playlist, so it is matched on its own title -
         // otherwise typing "most" would hide the very row it names.
-        val query = searchQuery.orEmpty()
-        fun matchesQuery(text: String) = query.isBlank() || text.contains(query, ignoreCase = true)
-
-        val visiblePlaylists = playlists.filterItems { !it.isBuiltIn && matchesQuery(it.name) }
-        val showsMostPlayed = mostPlayedCount > 0 && matchesQuery(MOST_PLAYED_TITLE)
+        val visiblePlaylists = playlists.filterItems { !it.isBuiltIn }.searchedFor(searchQuery) { listOf(it.name) }
+        val showsMostPlayed = mostPlayedCount > 0 && matchesSearch(searchQuery, MOST_PLAYED_TITLE)
         val rows: LibraryContent<PlaylistsRow> = when (visiblePlaylists) {
             is LibraryContent.Loading -> LibraryContent.Loading
             is LibraryContent.Ready -> LibraryContent.Ready(

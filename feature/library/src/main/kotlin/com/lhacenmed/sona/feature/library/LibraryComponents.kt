@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.itemsOrEmpty
+import com.lhacenmed.sona.core.data.search.SearchIndex
 import com.lhacenmed.sona.core.designsystem.component.CookieShape
 import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
@@ -653,14 +654,9 @@ internal fun TrackListDetail(
         if (uri != null) viewModel.exportTo { context.contentResolver.openOutputStream(uri) }
     }
 
-    // Filtering the list rather than re-querying: the rows are already here, and a playlist's
-    // order has to survive being searched.
-    val visibleTracks = tracks.filterItems { track ->
-        val query = searchQuery.orEmpty()
-        query.isBlank() ||
-            track.title.contains(query, ignoreCase = true) ||
-            track.artist.contains(query, ignoreCase = true)
-    }
+    // Searching the list rather than re-querying: the rows are already here, and a playlist's order is
+    // still the order its equally good matches keep.
+    val visibleTracks = tracks.searchedFor(searchQuery) { listOf(it.title, it.artist, it.album) }
 
     // Handles appear with the context bar: dragging is something done to a selection, so an ordinary
     // tap-to-play list is never cluttered by them. A search has narrowed the list already, so a drop
@@ -680,9 +676,11 @@ internal fun TrackListDetail(
     // A hand-made order is the user's across discs, so it is never split up by them.
     val sortOrder by remember(sort) { sort?.order ?: flowOf(null) }.collectAsStateWithLifecycle(sort?.currentOrder())
     val isArranged = sortOrder?.criterion == SortCriterion.CUSTOM
-    // The tracks by disc, where they are grouped so and span more than one - Auxio's discs.
-    val discs = remember(visibleTracks, groupsByDisc, isArranged) {
-        visibleTracks.itemsOrEmpty.groupBy { it.discNumber }.takeIf { groupsByDisc && !isArranged && it.size > 1 }
+    // The tracks by disc, where they are grouped so and span more than one - Auxio's discs. Not while
+    // searched: the results are ranked, best first, across every disc.
+    val isSearched = !searchQuery.isNullOrBlank()
+    val discs = remember(visibleTracks, groupsByDisc, isArranged, isSearched) {
+        visibleTracks.itemsOrEmpty.groupBy { it.discNumber }.takeIf { groupsByDisc && !isArranged && !isSearched && it.size > 1 }
     }
     // What a drag selects across: the tracks on show, never those folded away out of sight.
     val draggableTracks = remember(visibleTracks, discs, sectionList.collapsedKeys) {
@@ -968,9 +966,26 @@ internal fun <T> LibraryContent<T>.filterItems(predicate: (T) -> Boolean): Libra
         is LibraryContent.Ready -> LibraryContent.Ready(items.filter(predicate))
     }
 
-/** Whether a row showing [texts] belongs on screen while [query] is being searched for. */
-internal fun matchesSearch(query: String?, vararg texts: String): Boolean =
-    query.isNullOrBlank() || texts.any { it.contains(query, ignoreCase = true) }
+/**
+ * The rows [query] finds, best first, each searched by its [texts] - see [SearchIndex]; every row while the
+ * search is blank or closed. Indexed once per list, so a keystroke only searches.
+ */
+@Composable
+internal fun <T> List<T>.searchedFor(query: String?, texts: (T) -> List<String>): List<T> {
+    val index = remember(this) { SearchIndex(this, texts) }
+    return remember(index, query) { if (query.isNullOrBlank()) this else index.search(query).items }
+}
+
+/** A loaded list as [query] leaves it - see the list's [searchedFor] - and "still loading" as it is. */
+@Composable
+internal fun <T> LibraryContent<T>.searchedFor(query: String?, texts: (T) -> List<String>): LibraryContent<T> =
+    when (this) {
+        is LibraryContent.Loading -> this
+        is LibraryContent.Ready -> LibraryContent.Ready(items.searchedFor(query, texts))
+    }
+
+/** A list's sections, while it shows them: not while it is searched, its rows then ranked rather than sorted. */
+internal fun <T> ((T) -> String?).whileNotSearched(query: String?): ((T) -> String?)? = takeIf { query.isNullOrBlank() }
 
 /** What an empty list says - the library being empty, or the search matching nothing. */
 internal fun searchEmptyMessage(query: String?): String =

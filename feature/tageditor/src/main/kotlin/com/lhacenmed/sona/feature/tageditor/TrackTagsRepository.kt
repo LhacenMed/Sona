@@ -45,6 +45,7 @@ class TrackTagsRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val mediaScanner: MediaScanner,
     private val trackFiles: TrackFiles,
+    private val lyricsSearchIndex: LyricsSearchIndex,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
 
@@ -107,7 +108,7 @@ class TrackTagsRepository @Inject constructor(
 
     /**
      * Has [write] change [track]'s file - the player reading on from it as it was - and Android read it again;
-     * then tells whatever shows its lyrics to read them again.
+     * then tells whatever shows its lyrics to read them again, search among them.
      */
     private suspend fun writeFile(track: Track, write: () -> Unit) {
         withContext(ioDispatcher) {
@@ -115,6 +116,7 @@ class TrackTagsRepository @Inject constructor(
             scanFile(track.path)
         }
         writtenTrackIds.emit(track.id)
+        lyricsSearchIndex.reindex(track)
     }
 
     /** Has the library read [track]'s file back - a file MediaStore has not indexed only by walking storage, which a refresh leaves be. */

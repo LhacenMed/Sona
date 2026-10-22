@@ -10,6 +10,7 @@ import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.data.plus
 import com.lhacenmed.sona.core.data.quickplay.QuickPlay
 import com.lhacenmed.sona.core.data.quickplay.QuickPlaySourceRepository
+import com.lhacenmed.sona.core.data.search.SearchIndex
 import com.lhacenmed.sona.core.data.sort.LibrarySortOrders
 import com.lhacenmed.sona.core.datastore.LibrarySettings
 import com.lhacenmed.sona.core.datastore.LibraryTab
@@ -27,11 +28,16 @@ import com.lhacenmed.sona.feature.library.sort.SortControl
 import com.lhacenmed.sona.feature.library.sort.control
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.scanner.MediaScanner
+import com.lhacenmed.sona.feature.tageditor.LyricsMatches
+import com.lhacenmed.sona.feature.tageditor.LyricsSearchIndex
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -40,6 +46,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 
 private val CANONICAL_TAB_ORDER = listOf(
@@ -52,6 +59,12 @@ private val CANONICAL_TAB_ORDER = listOf(
 )
 
 private fun Set<LibraryTab>.inCanonicalOrder(): List<LibraryTab> = CANONICAL_TAB_ORDER.filter { it in this }
+
+/** How long typing pauses before the search looks in the lyrics - see [LibraryViewModel]'s lyrics matches. */
+private const val LYRICS_SEARCH_DELAY_MS = 150L
+
+/** The Tracks tab as a search leaves it, and the lyric line each track found by its lyrics alone shows. */
+private class SearchedTracks(val content: LibraryContent<Track>, val lyricLines: Map<Long, String> = emptyMap())
 
 private fun LibraryTab.sortableList(): SortableList = when (this) {
     LibraryTab.TRACKS -> SortableList.TRACKS
@@ -81,6 +94,7 @@ class LibraryViewModel @Inject constructor(
     private val quickPlaySources: QuickPlaySourceRepository,
     private val mediaScanner: MediaScanner,
     private val playbackController: PlaybackController,
+    private val lyricsSearchIndex: LyricsSearchIndex,
     sortOrders: LibrarySortOrders,
 ) : ViewModel() {
 
@@ -89,51 +103,97 @@ class LibraryViewModel @Inject constructor(
     /** What the bar is being searched for, or null while its search is closed. */
     val searchQuery: StateFlow<String?> = _searchQuery.asStateFlow()
 
-    val tracks: StateFlow<LibraryContent<Track>> =
-        repository.tracks.narrowedBySearch { track, query -> matchesSearch(query, track.title, track.artist) }
+    /**
+     * What the lyrics hold of the search - see [LyricsSearchIndex] - asked once typing pauses, so a word
+     * still being typed is not looked for in every song's lyrics on each letter.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val lyricsMatches: StateFlow<LyricsMatches> = _searchQuery
+        .mapLatest { query ->
+            delay(LYRICS_SEARCH_DELAY_MS)
+            lyricsSearchIndex.search(query)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LyricsMatches(query = null, lines = emptyMap()))
+
+    /**
+     * The Tracks tab as the search leaves it, with the lyric line of each track it found by its lyrics alone.
+     * Those come after every track found by its title, artist or album, as the lyrics are searched once
+     * typing pauses: the rows found first never move for them.
+     */
+    private val searchedTracks: StateFlow<SearchedTracks> =
+        combine(repository.tracks.indexedForSearch { listOf(it.title, it.artist, it.album) }, _searchQuery, lyricsMatches) { (content, index), query, lyrics ->
+            // Lyrics found for an earlier query are never shown under a later one.
+            val lyricLines = if (lyrics.query == query) lyrics.lines else emptyMap()
+            if (query.isNullOrBlank() || content !is LibraryContent.Ready) {
+                SearchedTracks(content)
+            } else {
+                val result = index.search(query) { it.id in lyricLines }
+                SearchedTracks(LibraryContent.Ready(result.items), result.foundOtherwise.associate { it.id to lyricLines.getValue(it.id) })
+            }
+        }
+            .flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchedTracks(repository.tracks.value))
+
+    val tracks: StateFlow<LibraryContent<Track>> = searchedTracks
+        .map { it.content }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), searchedTracks.value.content)
+
+    /** The lyric line each track the search found by its lyrics alone shows in place of its artist and album. */
+    val trackLyricLines: StateFlow<Map<Long, String>> = searchedTracks
+        .map { it.lyricLines }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
     val albums: StateFlow<LibraryContent<Album>> =
-        repository.albums.narrowedBySearch { album, query -> matchesSearch(query, album.title, album.artistName) }
+        repository.albums.narrowedBySearch { listOf(it.title, it.artistName) }
     val artists: StateFlow<LibraryContent<Artist>> =
-        repository.artists.narrowedBySearch { artist, query -> matchesSearch(query, artist.name) }
+        repository.artists.narrowedBySearch { listOf(it.name) }
     val genres: StateFlow<LibraryContent<Genre>> =
-        repository.genres.narrowedBySearch { genre, query -> matchesSearch(query, genre.name) }
+        repository.genres.narrowedBySearch { listOf(it.name) }
     /** The Folders tab: the folders of music, then those of videos, each kind a section of its own. */
     val folders: StateFlow<LibraryContent<Folder>> =
         combine(repository.folders, repository.videoFolders, LibraryContent<Folder>::plus)
             .stateIn(viewModelScope, SharingStarted.Eagerly, repository.folders.value + repository.videoFolders.value)
-            .narrowedBySearch { folder, query -> matchesSearch(query, folder.name) }
+            .narrowedBySearch { listOf(it.name) }
     val videos: StateFlow<LibraryContent<Track>> =
-        repository.videos.narrowedBySearch { video, query -> matchesSearch(query, video.title, video.artist) }
+        repository.videos.narrowedBySearch { listOf(it.title, it.artist, it.album) }
 
-    /** The section each tab's rows sit in under its sort - what the fast scroller's popup names. */
-    val trackSections: StateFlow<(Track) -> String?> = repository.trackSections
-    val videoSections: StateFlow<(Track) -> String?> = repository.videoSections
-    val albumSections: StateFlow<(Album) -> String?> = repository.albumSections
-    val artistSections: StateFlow<(Artist) -> String?> = repository.artistSections
-    val genreSections: StateFlow<(Genre) -> String?> = repository.genreSections
-    val folderSections: StateFlow<(Folder) -> String?> = repository.folderSections
+    /** The section each tab's rows sit in under its sort - what the fast scroller's popup names - see [whileNotSearched]. */
+    val trackSections: StateFlow<((Track) -> String?)?> = repository.trackSections.shownWhileNotSearched()
+    val videoSections: StateFlow<((Track) -> String?)?> = repository.videoSections.shownWhileNotSearched()
+    val albumSections: StateFlow<((Album) -> String?)?> = repository.albumSections.shownWhileNotSearched()
+    val artistSections: StateFlow<((Artist) -> String?)?> = repository.artistSections.shownWhileNotSearched()
+    val genreSections: StateFlow<((Genre) -> String?)?> = repository.genreSections.shownWhileNotSearched()
+    val folderSections: StateFlow<((Folder) -> String?)?> = repository.folderSections.shownWhileNotSearched()
+
+    /** A tab's rows, each with its [texts] indexed for search - once per change to the tab, not per keystroke. */
+    private fun <T> StateFlow<LibraryContent<T>>.indexedForSearch(
+        texts: (T) -> List<String>,
+    ): Flow<Pair<LibraryContent<T>, SearchIndex<T>>> = map { content -> content to SearchIndex(content.itemsOrEmpty, texts) }
 
     /**
-     * A tab's rows as the search leaves them.
+     * A tab's rows as the search leaves them: those it finds, best first - see [SearchIndex].
      *
-     * One query narrows every tab at once, so swiping across them shows the same search answered five
-     * ways. The lists are already in memory and pre-sorted, so this is a filter rather than a query -
-     * which is what lets a tab keep its own order while being searched, and what makes every tab
-     * answer a keystroke on the same frame.
+     * One query searches every tab at once, so swiping across them shows the same search answered five
+     * ways. The lists are already in memory, so this is a search of them rather than a query - which is
+     * what makes every tab answer a keystroke on the same frame.
      *
      * Because the tabs read these rather than the repository's, everything downstream follows the
      * search for free: what a row plays from, and what Select all selects.
      */
     private fun <T> StateFlow<LibraryContent<T>>.narrowedBySearch(
-        matches: (T, String?) -> Boolean,
-    ): StateFlow<LibraryContent<T>> = combine(this, _searchQuery) { content, query ->
-        if (query.isNullOrBlank()) content else content.filterItems { matches(it, query) }
+        texts: (T) -> List<String>,
+    ): StateFlow<LibraryContent<T>> = combine(indexedForSearch(texts), _searchQuery) { (content, index), query ->
+        if (query.isNullOrBlank() || content !is LibraryContent.Ready) content else LibraryContent.Ready(index.search(query).items)
     }
-        // Off the main thread: a large library is tens of thousands of rows, and a keystroke narrows
+        // Off the main thread: a large library is tens of thousands of rows, and a keystroke searches
         // every tab at once. The initial value is still read synchronously, so the first frame is
         // unaffected.
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), value)
+
+    private fun <T> StateFlow<(T) -> String?>.shownWhileNotSearched(): StateFlow<((T) -> String?)?> =
+        combine(this, _searchQuery) { sections, query -> sections.whileNotSearched(query) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), value.whileNotSearched(_searchQuery.value))
 
     private val tabSorts: Map<LibraryTab, SortControl> =
         LibraryTab.entries.associateWith { tab -> sortOrders.control(tab.sortableList()) }

@@ -322,6 +322,21 @@ val MIGRATION_15_16 = object : Migration(15, 16) {
 }
 
 /**
+ * What search reads each track's lyrics from - see `LyricsIndexEntity`. A new table and nothing else, so
+ * every row kept so far - the playlists, play counts, queue and favorites - is untouched; it starts empty
+ * and fills in the background from the files, which still alone hold the lyrics.
+ */
+val MIGRATION_16_17 = object : Migration(16, 17) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE VIRTUAL TABLE IF NOT EXISTS `lyrics_index` USING FTS4(`lyrics` TEXT NOT NULL, " +
+                "`searchText` TEXT NOT NULL, `signature` INTEGER NOT NULL, tokenize=unicode61, " +
+                "notindexed=`lyrics`, notindexed=`signature`)",
+        )
+    }
+}
+
+/**
  * Makes sure Favorites exists, every time the database is opened.
  *
  * On open rather than on create, because creation is only one of the ways this database comes to
