@@ -28,14 +28,15 @@ import kotlinx.coroutines.withContext
  * track, disc, path, size, duration, format, bit rate and sample rate. ReplayGain, its last two rows,
  * is left out because nothing here reads or applies it.
  *
- * Size, format, bit rate and sample rate are read from the file once the dialog opens rather than
- * carried on every track; they fill in beneath the rest, and stay off if the file has since moved or
- * lost its permission.
+ * Size, format, bit rate and sample rate are read from the file when asked for rather than carried on
+ * every track, and stay off if the file has since moved or lost its permission. The dialog opens once
+ * they are read - a moment's read - so every row shows at once, the dialog never growing under them.
  */
 @Composable
 internal fun TrackPropertiesDialog(track: Track, onDismiss: () -> Unit) {
     var fileProperties by remember(track.path) { mutableStateOf<FileProperties?>(null) }
     LaunchedEffect(track.path) { fileProperties = readFileProperties(track.path) }
+    val properties = fileProperties ?: return
 
     SonaDialog(
         onDismissRequest = onDismiss,
@@ -50,11 +51,11 @@ internal fun TrackPropertiesDialog(track: Track, onDismiss: () -> Unit) {
         track.trackNumber?.let { PropertyRow("Track", it.toString()) }
         track.discNumber?.let { PropertyRow("Disc", it.toString()) }
         PropertyRow("Path", track.path)
-        fileProperties?.sizeBytes?.let { PropertyRow("Size", formatFileSize(it)) }
+        properties.sizeBytes?.let { PropertyRow("Size", formatFileSize(it)) }
         PropertyRow("Duration", formatDurationMs(track.durationMs))
-        fileProperties?.format?.let { PropertyRow("Format", it) }
-        fileProperties?.bitrateKbps?.let { PropertyRow("Bit rate", "$it kbps") }
-        fileProperties?.sampleRateHz?.let { PropertyRow("Sample rate", "$it Hz") }
+        properties.format?.let { PropertyRow("Format", it) }
+        properties.bitrateKbps?.let { PropertyRow("Bit rate", "$it kbps") }
+        properties.sampleRateHz?.let { PropertyRow("Sample rate", "$it Hz") }
     }
 }
 
