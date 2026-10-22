@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -32,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleStartEffect
 import com.lhacenmed.sona.core.designsystem.component.CoverArtDefaults
+import com.lhacenmed.sona.core.designsystem.component.KeyboardAwareBackHandler
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverImage
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
@@ -97,9 +99,10 @@ data class TagEditorScreen(val trackId: Long) : Screen {
         val scrollState = rememberScrollState()
 
         // The whole window held while the file is written and the library reads it back - and back with it, so
-        // the save is never left halfway, with the file changed and the lists not yet showing it.
+        // the save is never left halfway, with the file changed and the lists not yet showing it. Putting the
+        // keyboard away is never asking to leave - see [KeyboardAwareBackHandler].
         WindowBusyOverlay(isBusy = viewModel.isSaving)
-        BackHandler(enabled = viewModel.hasChanges && !viewModel.isSaving) { isConfirmingDiscard = true }
+        KeyboardAwareBackHandler(enabled = viewModel.hasChanges && !viewModel.isSaving) { isConfirmingDiscard = true }
         BackHandler(enabled = viewModel.isSaving) {}
 
         if (isConfirmingDiscard) {
@@ -140,6 +143,8 @@ data class TagEditorScreen(val trackId: Long) : Screen {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    // Above the keyboard, so the field it opens for is scrolled into view rather than the window slid.
+                    .imePadding()
                     .screenList(scrollState)
                     .verticalScroll(scrollState)
                     .padding(bottom = LocalBottomContentPadding.current),

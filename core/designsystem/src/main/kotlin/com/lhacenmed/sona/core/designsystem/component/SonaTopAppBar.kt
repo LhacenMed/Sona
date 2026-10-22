@@ -1,6 +1,5 @@
 package com.lhacenmed.sona.core.designsystem.component
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.animateFloatAsState
@@ -189,9 +188,10 @@ fun SonaTopAppBar(
     // Back leaves the mode rather than the screen, which is what both a context bar and a search
     // field are expected to do. Handling it here means no screen can adopt either and forget it -
     // except where the mode is the screen and there is no mode to leave, which is what a search
-    // declares by clearing `closesWithBack`.
+    // declares by clearing `closesWithBack`. A back that closes the keyboard only closes the keyboard - so
+    // putting it away to see what a search found never ends the search.
     val searchHandlesBack = search != null && search.closesWithBack
-    BackHandler(enabled = selection != null || searchHandlesBack) {
+    KeyboardAwareBackHandler(enabled = selection != null || searchHandlesBack) {
         selection?.onDismiss?.invoke() ?: search?.onClose?.invoke()
     }
 

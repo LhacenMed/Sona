@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.view.ViewTreeObserver
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -58,6 +59,12 @@ abstract class SonaActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
+        // The keyboard is one more inset, never a reason to slide the window: left to pan, Android would push
+        // the whole screen up - its top bar off the top - to clear a field. The screens whose fields it would
+        // cover make room for it themselves, so a field it opens for is scrolled into view beneath the bar.
+        // Deprecated only for windows that fit the system bars; an edge-to-edge window still needs it not to pan.
+        @Suppress("DEPRECATION")
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         super.onCreate(savedInstanceState)
         window.decorView.compositionContext =
             window.decorView.createLifecycleAwareWindowRecomposer(SonaEffects.motionDurationScale, lifecycle)

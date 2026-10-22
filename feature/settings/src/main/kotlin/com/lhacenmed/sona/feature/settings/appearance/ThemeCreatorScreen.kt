@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -208,6 +209,8 @@ data object ThemeCreatorScreen : Screen {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    // Above the keyboard, so the field it opens for is scrolled into view rather than the window slid.
+                    .imePadding()
                     .screenList(scrollState)
                     .verticalScroll(scrollState)
                     .padding(bottom = LocalBottomContentPadding.current),
