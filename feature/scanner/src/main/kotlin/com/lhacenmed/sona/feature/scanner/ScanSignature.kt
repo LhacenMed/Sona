@@ -9,7 +9,7 @@ import com.lhacenmed.sona.core.common.permission.AppPermission
  * Bump whenever a change makes previously-scanned rows wrong (a new column, a different id scheme,
  * a corrected parsing rule). It invalidates every stored signature, forcing one full rescan.
  */
-private const val SCANNER_SCHEMA_VERSION = 8
+private const val SCANNER_SCHEMA_VERSION = 9
 
 /**
  * A cheap fingerprint of "what a scan of this device would find right now".
@@ -28,7 +28,7 @@ private const val SCANNER_SCHEMA_VERSION = 8
  * still runs on those devices, but it is now a diff (see `LibraryWriter`) and so still writes
  * nothing when nothing changed.
  */
-fun scanSignatureOf(context: Context, excludedFolders: Set<String>): String {
+fun scanSignatureOf(context: Context, excludedFolders: Set<String>, separatesArtists: Boolean): String {
     val version = runCatching { MediaStore.getVersion(context) }.getOrDefault("unknown")
     val generation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         runCatching {
@@ -42,7 +42,8 @@ fun scanSignatureOf(context: Context, excludedFolders: Set<String>): String {
     val exclusions = excludedFolders.sorted().joinToString(" ")
     // Videos are read only once they may be: granting that changes what a scan finds, without a file changing.
     val readsVideos = AppPermission.VIDEO_LIBRARY.isGranted(context)
-    return "$SCANNER_SCHEMA_VERSION|$version|$generation|${exclusions.hashCode()}|$readsVideos"
+    // Separating artists or not changes every artist a scan makes of the same files.
+    return "$SCANNER_SCHEMA_VERSION|$version|$generation|${exclusions.hashCode()}|$readsVideos|$separatesArtists"
 }
 
 /** `true` when [scanSignatureOf] produced something that may legitimately be trusted for skipping. */

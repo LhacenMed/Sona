@@ -44,7 +44,7 @@ data class LibraryPlayback(
         parent == PlaybackParent.Album(album.id) && currentTrack?.albumId == album.id
 
     fun marks(artist: Artist): Boolean =
-        parent == PlaybackParent.Artist(artist.id) && currentTrack?.artistId == artist.id
+        parent == PlaybackParent.Artist(artist.id) && currentTrack?.artistIds?.contains(artist.id) == true
 
     fun marks(genre: Genre): Boolean =
         parent == PlaybackParent.Genre(genre.id) && currentTrack?.genreId == genre.id

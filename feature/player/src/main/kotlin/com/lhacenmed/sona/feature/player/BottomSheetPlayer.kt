@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -268,7 +269,9 @@ internal fun BottomSheetPlayer(
         )
 
         if (track != null) {
-            val titleActions = rememberPlayerTitleActions(track, state, onGoToAlbum, onGoToArtist)
+            val artistsById by viewModel.artistsById.collectAsState()
+            val creditedArtists = remember(track, artistsById) { track.artistIds.mapNotNull(artistsById::get) }
+            val titleActions = rememberPlayerTitleActions(track, creditedArtists, state, onGoToAlbum, onGoToArtist)
             val onMenuClick = { menuTrack = track }
 
             playerStyle.ExpandedPlayer(

@@ -10,6 +10,7 @@ import com.lhacenmed.sona.core.data.contentUri
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.data.playlist.PlaylistFile
 import com.lhacenmed.sona.core.datastore.LibrarySettings
+import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
@@ -66,6 +67,9 @@ class OptionsActionsViewModel @Inject constructor(
 
     /** Every playlist there is to add to. */
     val playlists: StateFlow<LibraryContent<Playlist>> = repository.playlists
+
+    /** Every artist by id, which names those a track or album is credited to. */
+    val artistsById: StateFlow<Map<Long, Artist>> = repository.artistsById
 
     /** What Favorites holds, for the heart of whatever is shown - see [Favorites]. */
     internal val favorites: StateFlow<Favorites> =

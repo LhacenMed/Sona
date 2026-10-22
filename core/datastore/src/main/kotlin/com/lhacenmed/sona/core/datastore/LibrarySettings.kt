@@ -30,6 +30,8 @@ private val FAST_SCROLL_TOUCH_AREA = stringPreferencesKey("fast_scroll_touch_are
 
 private val PULL_TO_REFRESH_ENABLED = booleanPreferencesKey("pull_to_refresh_enabled")
 
+private val SEPARATE_ARTISTS = booleanPreferencesKey("separate_artists")
+
 @Singleton
 class LibrarySettings @Inject constructor(
     @ApplicationContext context: Context,
@@ -88,5 +90,15 @@ class LibrarySettings @Inject constructor(
 
     suspend fun setPullToRefreshEnabled(enabled: Boolean) {
         dataStore.edit { it[PULL_TO_REFRESH_ENABLED] = enabled }
+    }
+
+    /**
+     * Whether a credit naming several artists - "Justin Bieber, Benny Blanco & Billie Eilish" - is read as each
+     * of them, an artist of their own, rather than as one artist by that whole name.
+     */
+    val separateArtists: Setting<Boolean> = cache.setting { it[SEPARATE_ARTISTS] ?: true }
+
+    suspend fun setSeparateArtists(enabled: Boolean) {
+        dataStore.edit { it[SEPARATE_ARTISTS] = enabled }
     }
 }

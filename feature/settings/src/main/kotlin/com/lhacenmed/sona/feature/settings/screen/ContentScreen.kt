@@ -22,7 +22,6 @@ import com.lhacenmed.sona.feature.settings.component.SettingsNavigationItem
 import com.lhacenmed.sona.feature.settings.component.SettingsSection
 import com.lhacenmed.sona.feature.settings.component.SettingsSectionDivider
 import com.lhacenmed.sona.feature.settings.component.SettingsSwitchItem
-import com.lhacenmed.sona.feature.settings.component.SettingsTextFieldItem
 import com.lhacenmed.sona.feature.settings.manage.ExcludedFoldersScreen
 
 /** Where the library comes from, what it is called, and what it is allowed to look like. */
@@ -34,6 +33,7 @@ data object ContentScreen : Screen {
         val navigator = LocalNavigator.current
         val viewModel: ContentSettingsViewModel = hiltViewModel()
         val intelligentSortingEnabled by viewModel.intelligentSortingEnabled.collectAsStateWithLifecycle()
+        val separateArtists by viewModel.separateArtists.collectAsStateWithLifecycle()
         val coverMode by viewModel.coverMode.collectAsStateWithLifecycle()
         val forceSquareCovers by viewModel.forceSquareCovers.collectAsStateWithLifecycle()
         val newTracksDirection by viewModel.newTracksDirection.collectAsStateWithLifecycle()
@@ -60,9 +60,11 @@ data object ContentScreen : Screen {
             SettingsSectionDivider()
 
             SettingsSection(stringResource(R.string.content_tags_section)) {
-                SettingsTextFieldItem(
-                    title = stringResource(R.string.separators_title),
-                    summary = stringResource(R.string.separators_summary),
+                SettingsSwitchItem(
+                    title = stringResource(R.string.separate_artists_title),
+                    summary = stringResource(R.string.separate_artists_summary),
+                    checked = separateArtists,
+                    onCheckedChange = viewModel::setSeparateArtists,
                 )
                 SettingsSwitchItem(
                     title = stringResource(R.string.intelligent_sorting_title),

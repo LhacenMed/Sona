@@ -21,4 +21,9 @@ data class Track(
     val isManuallyScanned: Boolean,
     /** A video file, of which only the sound is played - listed in the Videos tab, never among the music. */
     val isVideo: Boolean,
+    /**
+     * Every artist the track is credited to, [artistId] - the one [artist] names first - leading: more than
+     * one where its credit names several and the library separates them.
+     */
+    val artistIds: List<Long> = listOf(artistId),
 )

@@ -184,6 +184,10 @@ class PlayerViewModel @AssistedInject constructor(
         ),
     )
 
+    /** Every artist by id, naming those the track playing is credited to - none for the Private Folder's, which have none to go to. */
+    val artistsById: StateFlow<Map<Long, Artist>> =
+        if (space == PlaybackSpace.Private) MutableStateFlow(emptyMap()) else repository.artistsById
+
     val appearance: StateFlow<PlayerAppearance> = playerStyleSettings.appearance.stateIn(viewModelScope)
 
     val sleepTimer: StateFlow<SleepTimerState> = playbackController.sleepTimer

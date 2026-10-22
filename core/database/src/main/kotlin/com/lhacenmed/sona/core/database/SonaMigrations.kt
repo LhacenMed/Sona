@@ -337,6 +337,20 @@ val MIGRATION_16_17 = object : Migration(16, 17) {
 }
 
 /**
+ * Every track and album can be credited to more than one artist. Each keeps the one artist it had, so every
+ * row - and the artists, playlists, play counts and favorites they lead to - reads on exactly as before; the
+ * next scan separates the credits that name several.
+ */
+val MIGRATION_17_18 = object : Migration(17, 18) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `tracks` ADD COLUMN `artistIds` TEXT NOT NULL DEFAULT ''")
+        db.execSQL("UPDATE `tracks` SET `artistIds` = ',' || `artistId` || ','")
+        db.execSQL("ALTER TABLE `albums` ADD COLUMN `artistIds` TEXT NOT NULL DEFAULT ''")
+        db.execSQL("UPDATE `albums` SET `artistIds` = ',' || `artistId` || ','")
+    }
+}
+
+/**
  * Makes sure Favorites exists, every time the database is opened.
  *
  * On open rather than on create, because creation is only one of the ways this database comes to

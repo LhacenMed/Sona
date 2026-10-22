@@ -9,4 +9,6 @@ data class Album(
     val year: Int?,
     val trackCount: Int,
     val dateAddedSeconds: Long,
+    /** Every artist the album is credited to, [artistId] leading - as a track's [Track.artistIds] are. */
+    val artistIds: List<Long> = listOf(artistId),
 )

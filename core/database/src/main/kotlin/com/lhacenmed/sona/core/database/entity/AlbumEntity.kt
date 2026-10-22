@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.core.database.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.lhacenmed.sona.core.model.Album
@@ -14,6 +15,7 @@ data class AlbumEntity(
     val year: Int?,
     val trackCount: Int,
     val dateAddedSeconds: Long,
+    @ColumnInfo(defaultValue = "") val artistIds: List<Long>,
 )
 
 fun AlbumEntity.toDomain() = Album(
@@ -25,6 +27,7 @@ fun AlbumEntity.toDomain() = Album(
     year = year,
     trackCount = trackCount,
     dateAddedSeconds = dateAddedSeconds,
+    artistIds = artistIds,
 )
 
 fun Album.toEntity() = AlbumEntity(
@@ -36,4 +39,5 @@ fun Album.toEntity() = AlbumEntity(
     year = year,
     trackCount = trackCount,
     dateAddedSeconds = dateAddedSeconds,
+    artistIds = artistIds,
 )

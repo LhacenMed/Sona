@@ -267,8 +267,8 @@
     <string name="filename_as_title_title">Show filename as track title</string>
     <string name="filename_as_title_summary">If title is not available</string>
     <string name="content_tags_section">Tags</string>
-    <string name="separators_title">Multi-value separators</string>
-    <string name="separators_summary">Configure characters that denote multiple tag values</string>
+    <string name="separate_artists_title">Separate artists</string>
+    <string name="separate_artists_summary">Read a track credited to several artists, like \"A, B &amp; C\" or \"A × B\", as each of them</string>
     <string name="intelligent_sorting_title">Intelligent sorting</string>
     <string name="intelligent_sorting_summary">Correctly sort names that begin with numbers or words like \"the\" (works best with english-language music)</string>
     <string name="hide_collaborators_title">Hide collaborators</string>

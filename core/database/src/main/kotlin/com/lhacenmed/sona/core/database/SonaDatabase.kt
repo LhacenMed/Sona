@@ -42,10 +42,10 @@ import com.lhacenmed.sona.core.database.entity.TrackEntity
         FavoriteCollectionEntity::class,
         LyricsIndexEntity::class,
     ],
-    version = 17,
+    version = 18,
     exportSchema = true,
 )
-@TypeConverters(CoverArtUrisConverter::class)
+@TypeConverters(CoverArtUrisConverter::class, ArtistIdsConverter::class)
 abstract class SonaDatabase : RoomDatabase() {
     abstract fun trackDao(): TrackDao
     abstract fun albumDao(): AlbumDao

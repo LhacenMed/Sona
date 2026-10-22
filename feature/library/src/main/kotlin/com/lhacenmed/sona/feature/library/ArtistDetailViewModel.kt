@@ -53,9 +53,9 @@ class ArtistDetailViewModel @AssistedInject constructor(
     override val sections: StateFlow<List<DetailSection>> = combine(repository.albums, tracks) { albums, tracks ->
         val albumIdsWithTracks = tracks.itemsOrEmpty.mapTo(HashSet()) { it.albumId }
         val (own, appearances) = albums.itemsOrEmpty
-            .filter { it.artistId == artistId || it.id in albumIdsWithTracks }
+            .filter { artistId in it.artistIds || it.id in albumIdsWithTracks }
             .sortedWith(ArtistAlbumOrder)
-            .partition { it.artistId == artistId }
+            .partition { artistId in it.artistIds }
         listOfNotNull(
             own.takeIf { it.isNotEmpty() }?.let { DetailSection.Albums("Albums", it) },
             appearances.takeIf { it.isNotEmpty() }?.let { DetailSection.Albums("Appears on", it) },

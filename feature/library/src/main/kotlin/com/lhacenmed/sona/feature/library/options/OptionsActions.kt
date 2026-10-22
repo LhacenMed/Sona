@@ -18,6 +18,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.contentUri
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.toast
+import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.navigation.AppNavigator
@@ -59,6 +60,7 @@ internal sealed interface FollowUp {
     data class DeleteFromDevice(override val target: OptionsTarget) : FollowUp
     data class ImportFile(override val target: OptionsTarget.ForPlaylist) : FollowUp
     data class ExportFile(override val target: OptionsTarget) : FollowUp
+    data class ChooseArtist(override val target: OptionsTarget, val artists: List<Artist>) : FollowUp
 }
 
 /**
@@ -95,7 +97,12 @@ internal class OptionsActions(
                 context.toast("Added to queue")
             }
             OptionsAction.PLAYLIST_ADD -> followUp = FollowUp.PlaylistPicker(target)
-            OptionsAction.ARTIST_DETAILS -> navigator.go(ArtistDetailScreen(artistIdOf(target)))
+            // A track or album credited to several artists asks which of them to go to.
+            OptionsAction.ARTIST_DETAILS -> {
+                val artistIds = artistIdsOf(target)
+                val artists = artistIds.mapNotNull(viewModel.artistsById.value::get)
+                if (artists.size > 1) followUp = FollowUp.ChooseArtist(target, artists) else navigator.go(ArtistDetailScreen(artistIds.first()))
+            }
             OptionsAction.ALBUM_DETAILS -> navigator.go(AlbumDetailScreen(albumIdOf(target)))
             OptionsAction.SONG_PROPERTIES -> followUp = FollowUp.Properties(target as OptionsTarget.ForTrack)
             OptionsAction.EDIT_TAGS -> navigator.go(TagEditorScreen((target as OptionsTarget.ForTrack).track.id))
@@ -203,6 +210,18 @@ internal fun OptionsFollowUps(
 
         is FollowUp.Properties -> TrackPropertiesDialog(track = followUp.target.track, onDismiss = finish)
 
+        is FollowUp.ChooseArtist -> {
+            val navigator = LocalNavigator.current
+            ArtistPickerDialog(
+                artists = followUp.artists,
+                onDismiss = finish,
+                onArtistSelected = { artist ->
+                    finish()
+                    navigator.go(ArtistDetailScreen(artist.id))
+                },
+            )
+        }
+
         is FollowUp.ExcludeFolder -> ExcludeFoldersDialog(
             folderPaths = listOf(followUp.target.folder.path),
             onDismiss = finish,
@@ -266,9 +285,9 @@ internal fun OptionsFollowUps(
     }
 }
 
-private fun artistIdOf(target: OptionsTarget): Long = when (target) {
-    is OptionsTarget.ForTrack -> target.track.artistId
-    is OptionsTarget.ForAlbum -> target.album.artistId
+private fun artistIdsOf(target: OptionsTarget): List<Long> = when (target) {
+    is OptionsTarget.ForTrack -> target.track.artistIds
+    is OptionsTarget.ForAlbum -> target.album.artistIds
     else -> error("$target has no artist to go to")
 }
 

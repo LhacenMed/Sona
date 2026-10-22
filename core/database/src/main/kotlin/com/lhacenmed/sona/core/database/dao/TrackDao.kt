@@ -46,7 +46,8 @@ interface TrackDao {
     @Query("SELECT * FROM tracks WHERE albumId = :albumId")
     fun observeByAlbum(albumId: Long): Flow<List<TrackEntity>>
 
-    @Query("SELECT * FROM tracks WHERE artistId = :artistId")
+    /** Every track credited to [artistId], whichever of its artists that is - see [com.lhacenmed.sona.core.database.ArtistIdsConverter]. */
+    @Query("SELECT * FROM tracks WHERE artistIds LIKE '%,' || :artistId || ',%'")
     fun observeByArtist(artistId: Long): Flow<List<TrackEntity>>
 
     @Query("SELECT * FROM tracks WHERE genreId = :genreId")

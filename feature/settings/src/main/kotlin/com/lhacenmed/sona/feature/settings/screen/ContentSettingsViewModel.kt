@@ -51,6 +51,14 @@ class ContentSettingsViewModel @Inject constructor(
         viewModelScope.launch { librarySettings.setIntelligentSortingEnabled(enabled) }
     }
 
+    /** Whether a credit naming several artists is each of them - the library rescans itself as it changes, see `MediaScanner`. */
+    val separateArtists: StateFlow<Boolean> = librarySettings.separateArtists.flow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), librarySettings.separateArtists.value)
+
+    fun setSeparateArtists(enabled: Boolean) {
+        viewModelScope.launch { librarySettings.setSeparateArtists(enabled) }
+    }
+
     val newTracksDirection: StateFlow<SortDirection> = sortSettings.newTracksDirection.flow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), sortSettings.newTracksDirection.value)
 

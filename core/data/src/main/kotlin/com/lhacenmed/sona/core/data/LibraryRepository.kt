@@ -145,6 +145,12 @@ class LibraryRepository @Inject constructor(
         .flowOn(defaultDispatcher)
         .stateIn(scope, SharingStarted.Eagerly, emptyMap())
 
+    /** Artist lookup by id - what names the artists a track or album is credited to - derived from [artists] as [tracksById] is. */
+    val artistsById: StateFlow<Map<Long, Artist>> = artists
+        .map { artists -> artists.itemsOrEmpty.associateBy { it.id } }
+        .flowOn(defaultDispatcher)
+        .stateIn(scope, SharingStarted.Eagerly, emptyMap())
+
     /**
      * The section each row of a library tab sits in under that tab's current sort - what a fast
      * scroller's popup names it by. Kept in step with the sort the list itself is in.

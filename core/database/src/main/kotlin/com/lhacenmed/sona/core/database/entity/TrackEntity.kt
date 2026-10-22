@@ -52,6 +52,7 @@ data class TrackEntity(
     val coverArtUri: String?,
     val isManuallyScanned: Boolean,
     @ColumnInfo(defaultValue = "0") val isVideo: Boolean,
+    @ColumnInfo(defaultValue = "") val artistIds: List<Long>,
 )
 
 fun TrackEntity.toDomain() = Track(
@@ -74,6 +75,7 @@ fun TrackEntity.toDomain() = Track(
     coverArtUri = coverArtUri,
     isManuallyScanned = isManuallyScanned,
     isVideo = isVideo,
+    artistIds = artistIds,
 )
 
 fun Track.toEntity() = TrackEntity(
@@ -96,4 +98,5 @@ fun Track.toEntity() = TrackEntity(
     coverArtUri = coverArtUri,
     isManuallyScanned = isManuallyScanned,
     isVideo = isVideo,
+    artistIds = artistIds,
 )

@@ -108,7 +108,9 @@ internal fun PlayerTitleSection(
 
     ClickableArtist(
         artist = track.artist,
-        onArtistClick = titleActions.onArtistClick,
+        creditedArtists = titleActions.creditedArtists,
+        onClick = { titleActions.onArtistClick(track.artistId) },
+        onCreditedArtistClick = titleActions.onArtistClick,
         style = MaterialTheme.typography.titleMedium.copy(color = textBackgroundColor, fontSize = 16.sp),
         onLongClick = titleActions.onCopyArtists,
         modifier =
