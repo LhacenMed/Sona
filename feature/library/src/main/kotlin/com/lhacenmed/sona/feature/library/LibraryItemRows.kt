@@ -32,6 +32,7 @@ import com.lhacenmed.sona.core.designsystem.component.SonaGenreCover
 import com.lhacenmed.sona.core.designsystem.component.SonaIconButton
 import com.lhacenmed.sona.core.designsystem.component.SonaListRow
 import com.lhacenmed.sona.core.designsystem.component.SonaTrackRow
+import com.lhacenmed.sona.core.designsystem.component.SonaVideoRow
 import com.lhacenmed.sona.core.designsystem.component.SonaPlaylistCover
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.model.Album
@@ -64,7 +65,8 @@ private const val SELECTED_ROW_FADE_OUT_MILLIS = 100
 private val DragHandleTouchSize = 48.dp
 
 /**
- * A track row: cover art, title over "artist - album".
+ * A track row: cover art, title over "artist - album" - or, for a video, the video row, its cover showing
+ * how far it was watched from [resumePositionMs].
  *
  * [isCurrent] and [isPlaying] are lambdas, not values, on purpose. Passed as `Boolean`s, every row in
  * the list recomposes whenever the playing track changes, because each row's parameters changed.
@@ -81,7 +83,22 @@ internal fun TrackRow(
     onOpenOptions: (() -> Unit)?,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
+    resumePositionMs: () -> Long = { 0L },
 ) {
+    if (track.isVideo) {
+        SonaVideoRow(
+            video = track,
+            resumePositionMs = resumePositionMs,
+            isCurrent = isCurrent,
+            isPlaying = isPlaying,
+            selection = selection,
+            selectionKey = selectionKeyOf(track),
+            onClick = onClick,
+            onOpenOptions = onOpenOptions,
+            modifier = modifier,
+        )
+        return
+    }
     SonaTrackRow(
         track = track,
         isCurrent = isCurrent,

@@ -157,6 +157,9 @@ class LibraryViewModel @Inject constructor(
     val videos: StateFlow<LibraryContent<Track>> =
         repository.videos.narrowedBySearch { listOf(it.title, it.artist, it.album) }
 
+    /** Where each video was left - see [LibraryRepository.resumePositionsMs]. */
+    val resumePositionsMs: StateFlow<Map<Long, Long>> = repository.resumePositionsMs
+
     /** The section each tab's rows sit in under its sort - what the fast scroller's popup names - see [whileNotSearched]. */
     val trackSections: StateFlow<((Track) -> String?)?> = repository.trackSections.shownWhileNotSearched()
     val videoSections: StateFlow<((Track) -> String?)?> = repository.videoSections.shownWhileNotSearched()

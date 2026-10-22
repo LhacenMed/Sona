@@ -35,10 +35,12 @@ import com.lhacenmed.sona.core.designsystem.component.SonaCoverArt
 import com.lhacenmed.sona.core.designsystem.component.SonaListRow
 import com.lhacenmed.sona.core.designsystem.component.SonaTabRow
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
+import com.lhacenmed.sona.core.designsystem.component.SonaVideoRow
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.screen.screenList
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.navigation.LocalNavigator
+import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.core.vault.VaultRepository
 import com.lhacenmed.sona.core.vault.VaultState
@@ -102,6 +104,7 @@ private fun PrivateFolderContent(viewModel: PrivateFolderViewModel) {
     val pagerState = rememberPagerState(pageCount = { tabTitles.size })
     val scope = rememberCoroutineScope()
     val playingItemId by viewModel.playingItemId.collectAsStateWithLifecycle()
+    val resumePositionsMs = viewModel.resumePositionsMs.collectAsStateWithLifecycle()
     var optionsItem by remember { mutableStateOf<VaultItem?>(null) }
 
     SonaTabRow(
@@ -117,7 +120,8 @@ private fun PrivateFolderContent(viewModel: PrivateFolderViewModel) {
             items = items,
             isVideo = isVideo,
             playingItemId = playingItemId,
-            coverOf = viewModel::coverOf,
+            resumePositionMsOf = { item -> resumePositionsMs.value[item.id] ?: 0L },
+            trackOf = viewModel::trackOf,
             onPlay = { item -> viewModel.play(item, items.orEmpty()) },
             onOpenOptions = { optionsItem = it },
         )
@@ -132,7 +136,8 @@ private fun VaultItemList(
     items: List<VaultItem>?,
     isVideo: Boolean,
     playingItemId: Long?,
-    coverOf: (VaultItem) -> String?,
+    resumePositionMsOf: (VaultItem) -> Long,
+    trackOf: (VaultItem) -> Track,
     onPlay: (VaultItem) -> Unit,
     onOpenOptions: (VaultItem) -> Unit,
 ) {
@@ -159,6 +164,20 @@ private fun VaultItemList(
     ) {
         items(items, key = VaultItem::id) { item ->
             val isCurrent = item.id == playingItemId
+            val track = remember(item) { trackOf(item) }
+            if (item.isVideo) {
+                SonaVideoRow(
+                    video = track,
+                    resumePositionMs = { resumePositionMsOf(item) },
+                    isCurrent = { isCurrent },
+                    isPlaying = { false },
+                    selection = null,
+                    selectionKey = null,
+                    onClick = { onPlay(item) },
+                    onOpenOptions = { onOpenOptions(item) },
+                )
+                return@items
+            }
             SonaListRow(
                 title = item.title,
                 subtitle = item.subtitle,
@@ -168,7 +187,7 @@ private fun VaultItemList(
                 onOpenOptions = { onOpenOptions(item) },
                 isCurrent = isCurrent,
             ) {
-                SonaCoverArt(coverArtUri = coverOf(item), contentDescription = null, isCurrent = isCurrent)
+                SonaCoverArt(coverArtUri = track.coverArtUri, contentDescription = null, isCurrent = isCurrent)
             }
         }
     }
@@ -188,6 +207,10 @@ internal class PrivateFolderViewModel @Inject constructor(
     val tracks: StateFlow<List<VaultItem>?> =
         vault.items(isVideo = false).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /** Where each video was left - see [VaultRepository.resumePositionsMs]. */
+    val resumePositionsMs: StateFlow<Map<Long, Long>> =
+        vault.resumePositionsMs.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
     /** The item playing, which its row marks - null while the library plays. */
     val playingItemId: StateFlow<Long?> = playbackController.playbackState
         .map { playback -> playback.currentTrackId.takeIf { playback.space == PlaybackSpace.Private } }
@@ -203,7 +226,7 @@ internal class PrivateFolderViewModel @Inject constructor(
         }
     }
 
-    fun coverOf(item: VaultItem): String? = vault.trackOf(item).coverArtUri
+    fun trackOf(item: VaultItem): Track = vault.trackOf(item)
 
     /**
      * Plays [items] - the tab's - from [item], as a library list plays: a video watched in the video player, a

@@ -15,11 +15,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.common.format.formatDuration
+import com.lhacenmed.sona.core.common.format.formatFileSize
 import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.core.model.Track
 import java.io.File
-import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -52,7 +53,7 @@ internal fun TrackPropertiesDialog(track: Track, onDismiss: () -> Unit) {
         track.discNumber?.let { PropertyRow("Disc", it.toString()) }
         PropertyRow("Path", track.path)
         properties.sizeBytes?.let { PropertyRow("Size", formatFileSize(it)) }
-        PropertyRow("Duration", formatDurationMs(track.durationMs))
+        PropertyRow("Duration", formatDuration(track.durationMs))
         properties.format?.let { PropertyRow("Format", it) }
         properties.bitrateKbps?.let { PropertyRow("Bit rate", "$it kbps") }
         properties.sampleRateHz?.let { PropertyRow("Sample rate", "$it Hz") }
@@ -105,30 +106,4 @@ private suspend fun readFileProperties(path: String): FileProperties = withConte
     extractor.release()
 
     FileProperties(sizeBytes, format, bitrateKbps, sampleRateHz)
-}
-
-private const val BYTES_PER_KB = 1024.0
-
-/** "3.4 MB"/"512 KB" - a file size in whichever unit reads best. */
-private fun formatFileSize(bytes: Long): String {
-    val kb = bytes / BYTES_PER_KB
-    val mb = kb / BYTES_PER_KB
-    return when {
-        mb >= 1.0 -> String.format(Locale.getDefault(), "%.1f MB", mb)
-        kb >= 1.0 -> String.format(Locale.getDefault(), "%.0f KB", kb)
-        else -> "$bytes B"
-    }
-}
-
-/** "m:ss", or "h:mm:ss" from the hour on. */
-internal fun formatDurationMs(durationMs: Long): String {
-    val totalSeconds = durationMs.coerceAtLeast(0L) / 1000
-    val hours = totalSeconds / 3600
-    val minutes = totalSeconds % 3600 / 60
-    val seconds = totalSeconds % 60
-    return if (hours > 0) {
-        String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds)
-    } else {
-        String.format(Locale.getDefault(), "%d:%02d", minutes, seconds)
-    }
 }

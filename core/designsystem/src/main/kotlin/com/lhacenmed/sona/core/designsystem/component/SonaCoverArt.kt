@@ -2,10 +2,14 @@ package com.lhacenmed.sona.core.designsystem.component
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -13,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -22,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -37,6 +43,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import coil3.compose.AsyncImage
@@ -44,6 +51,7 @@ import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.maxBitmapSize
 import com.lhacenmed.sona.core.common.cover.DefaultCover
+import com.lhacenmed.sona.core.common.format.formatDuration
 import com.lhacenmed.sona.core.designsystem.component.cover.CoverArrangement
 import com.lhacenmed.sona.core.designsystem.component.cover.CoverComposition
 import com.lhacenmed.sona.core.designsystem.component.cover.CoverCompositionFetcher
@@ -58,6 +66,9 @@ object CoverArtDefaults {
 
     /** The size a track's cover takes in a list row: Auxio's `size_touchable_small`. */
     val ListSize = 48.dp
+
+    /** The size a video's cover takes in a list row: 16:9, as tall as a collection's cover nearly is. */
+    val VideoListSize = DpSize(96.dp, 54.dp)
 
     /** The size an album's, artist's, genre's, playlist's or folder's cover takes: Auxio's `size_touchable_medium`. */
     val CollectionListSize = 56.dp
@@ -74,6 +85,12 @@ object CoverArtDefaults {
     /** The corners a detail screen's header cover is cut with: Auxio's `Corner.ExtraLarge`. */
     val DetailHeaderCornerRadius = 28.dp
 
+    /** The line along a video cover's foot that shows how far the video was watched. */
+    internal val WatchedLineHeight = 3.dp
+
+    /** How far a video cover's length badge sits in from its bottom end. */
+    internal val DurationBadgeInset = 4.dp
+
     /** The icon a collection's cover shows while it has no image: Auxio's `size_icon_medium`. */
     internal val CollectionGlyphSize = 32.dp
 
@@ -88,6 +105,9 @@ private const val SELECTION_BADGE_HIDDEN_SCALE = 0.9f
 
 /** How dark the current track's cover is dimmed beneath its playing indicator: ArchiveTune's `ActiveBoxAlpha`. */
 private const val ACTIVE_COVER_SCRIM_ALPHA = 0.6f
+
+/** How dark a video cover's length badge and the unwatched part of its line are, over whatever frame shows. */
+private const val VIDEO_OVERLAY_SCRIM_ALPHA = 0.6f
 
 /** The shape a cover with [cornerRadius] is cut to - square corners when round mode is off. */
 fun CoverStyle.shape(cornerRadius: Dp): Shape = RoundedCornerShape(if (isRounded) cornerRadius else 0.dp)
@@ -204,7 +224,7 @@ fun SonaCoverArt(
 ) {
     val style = LocalCoverStyle.current
     ListCoverFrame(
-        size = size,
+        size = DpSize(size, size),
         shape = style.shape(CoverArtDefaults.ListCornerRadius),
         isCurrent = isCurrent,
         isPlaying = isPlaying,
@@ -216,6 +236,69 @@ fun SonaCoverArt(
             contentDescription = contentDescription,
             cornerRadius = CoverArtDefaults.ListCornerRadius,
             style = style,
+        )
+    }
+}
+
+/**
+ * A video's list cover: a frame of it at 16:9, its length on a badge in the bottom end corner and - once left
+ * part-way - how far it was watched as a line along its foot. Otherwise a track's cover exactly: dimmed
+ * beneath the playing indicator while current, badged while selected.
+ *
+ * [watchedFraction] is read only while drawing, so a position saved meanwhile redraws the line alone.
+ */
+@Composable
+fun SonaVideoCover(
+    coverArtUri: String?,
+    durationMs: Long,
+    watchedFraction: () -> Float,
+    modifier: Modifier = Modifier,
+    isCurrent: Boolean = false,
+    isPlaying: Boolean = false,
+    isSelected: Boolean = false,
+) {
+    val style = LocalCoverStyle.current
+    ListCoverFrame(
+        size = CoverArtDefaults.VideoListSize,
+        shape = style.shape(CoverArtDefaults.ListCornerRadius),
+        isCurrent = isCurrent,
+        isPlaying = isPlaying,
+        isSelected = isSelected,
+        modifier = modifier,
+    ) {
+        CoverPicture(
+            request = rememberCoverRequest(coverArtUri, style),
+            contentDescription = null,
+            cornerRadius = CoverArtDefaults.ListCornerRadius,
+            style = style,
+        )
+        if (durationMs > 0L) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(CoverArtDefaults.DurationBadgeInset)
+                    .background(Color.Black.copy(alpha = VIDEO_OVERLAY_SCRIM_ALPHA), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Icon(imageVector = SonaIcons.Play, contentDescription = null, tint = Color.White, modifier = Modifier.size(10.dp))
+                Text(text = formatDuration(durationMs), style = MaterialTheme.typography.labelSmall, color = Color.White)
+            }
+        }
+        val watchedColor = MaterialTheme.colorScheme.primary
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(CoverArtDefaults.WatchedLineHeight)
+                .drawBehind {
+                    val fraction = watchedFraction().coerceIn(0f, 1f)
+                    if (fraction > 0f) {
+                        drawRect(Color.Black.copy(alpha = VIDEO_OVERLAY_SCRIM_ALPHA))
+                        drawRect(watchedColor, size = Size(size.width * fraction, size.height))
+                    }
+                },
         )
     }
 }
@@ -406,7 +489,7 @@ private fun CollectionCover(
 ) {
     val style = LocalCoverStyle.current
     ListCoverFrame(
-        size = size,
+        size = DpSize(size, size),
         shape = if (isCircular) style.circularShape() else style.shape(cornerRadius),
         isCurrent = isCurrent,
         isPlaying = isPlaying,
@@ -436,7 +519,7 @@ private fun CollectionCover(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ListCoverFrame(
-    size: Dp,
+    size: DpSize,
     shape: Shape,
     isCurrent: Boolean,
     isPlaying: Boolean,

@@ -16,7 +16,8 @@ private const val VAULT_DISPLAY_TITLE = "Private Folder"
  * local file is.
  *
  * Its media id is not a number, and every record keyed by a library track - play history, the saved queue,
- * resume positions - reads ids as numbers and skips what is not, so the file reaches none of them.
+ * the library's resume positions - reads ids as numbers and skips what is not, so the file reaches none of
+ * them. Where it was left is the vault's own to keep - see [ResumePositionRecorder].
  */
 internal fun vaultMediaItem(track: Track): MediaItem =
     MediaItem.Builder()
@@ -25,6 +26,7 @@ internal fun vaultMediaItem(track: Track): MediaItem =
         .setMediaMetadata(
             MediaMetadata.Builder()
                 .setTitle(VAULT_DISPLAY_TITLE)
+                .setDurationMs(track.durationMs)
                 .setMediaType(if (track.isVideo) MediaMetadata.MEDIA_TYPE_VIDEO else MediaMetadata.MEDIA_TYPE_MUSIC)
                 .build(),
         )

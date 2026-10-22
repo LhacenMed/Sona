@@ -20,6 +20,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.common.coroutines.launchOperation
+import com.lhacenmed.sona.core.common.format.formatDuration
 import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverArt
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDialog
@@ -32,7 +33,6 @@ import com.lhacenmed.sona.core.vault.VaultRepository
 import com.lhacenmed.sona.core.vault.data.VaultItem
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.util.Locale
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -154,18 +154,6 @@ private fun Context.needsStoragePermission(): Boolean =
 /** A video's length; a track's artist and album, as the library's own rows read. */
 internal val VaultItem.subtitle: String
     get() = if (isVideo) formatDuration(durationMs) else "$artist$InfoSeparator$album"
-
-private fun formatDuration(durationMs: Long): String {
-    val totalSeconds = durationMs.coerceAtLeast(0L) / 1000
-    val hours = totalSeconds / 3600
-    val minutes = totalSeconds % 3600 / 60
-    val seconds = totalSeconds % 60
-    return if (hours > 0) {
-        String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds)
-    } else {
-        String.format(Locale.getDefault(), "%d:%02d", minutes, seconds)
-    }
-}
 
 @HiltViewModel
 internal class VaultItemOptionsViewModel @Inject constructor(

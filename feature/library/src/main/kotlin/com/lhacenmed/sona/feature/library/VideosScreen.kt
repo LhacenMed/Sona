@@ -72,6 +72,7 @@ fun VideosScreen(
     val playback by viewModel.playback.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val videoSections by viewModel.videoSections.collectAsStateWithLifecycle()
+    val resumePositionsMs = viewModel.resumePositionsMs.collectAsStateWithLifecycle()
     var optionsTarget by remember { mutableStateOf<OptionsTarget.ForTrack?>(null) }
 
     LibraryList(
@@ -97,6 +98,7 @@ fun VideosScreen(
             isPlaying = { playback.isPlaying },
             selection = selection,
             onClick = { viewModel.onVideoClick(video) },
+            resumePositionMs = { resumePositionsMs.value[video.id] ?: 0L },
             onOpenOptions = {
                 optionsTarget = OptionsTarget.ForTrack(
                     video,

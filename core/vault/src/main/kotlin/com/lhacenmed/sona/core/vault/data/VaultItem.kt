@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.core.vault.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -20,4 +21,7 @@ data class VaultItem(
     val album: String,
     val durationMs: Long,
     val addedAt: Long,
+    /** A video's frame, in pixels - 0 for a track, or where it is not known. */
+    @ColumnInfo(defaultValue = "0") val width: Int = 0,
+    @ColumnInfo(defaultValue = "0") val height: Int = 0,
 )

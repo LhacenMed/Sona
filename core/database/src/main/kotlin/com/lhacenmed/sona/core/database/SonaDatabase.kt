@@ -42,7 +42,7 @@ import com.lhacenmed.sona.core.database.entity.TrackEntity
         FavoriteCollectionEntity::class,
         LyricsIndexEntity::class,
     ],
-    version = 18,
+    version = 19,
     exportSchema = true,
 )
 @TypeConverters(CoverArtUrisConverter::class, ArtistIdsConverter::class)

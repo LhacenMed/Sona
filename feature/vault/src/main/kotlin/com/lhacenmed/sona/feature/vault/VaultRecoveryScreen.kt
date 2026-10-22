@@ -43,7 +43,7 @@ internal data object VaultRecoveryScreen : Screen {
 
         VaultStepScaffold(title = PinPurpose.RESET.title) {
             val current = vault as? VaultState.Created ?: return@VaultStepScaffold
-            val secondsLockedOut = rememberSecondsUntil(current.lockedUntilEpochMs)
+            val lockoutMessage = rememberLockoutMessage(current.lockedUntilEpochMs)
             Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(current.securityQuestion, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(16.dp))
@@ -56,7 +56,7 @@ internal data object VaultRecoveryScreen : Screen {
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = if (secondsLockedOut > 0) "Too many tries - wait ${secondsLockedOut}s" else error.orEmpty(),
+                    text = lockoutMessage ?: error.orEmpty(),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium,
                 )
@@ -76,7 +76,7 @@ internal data object VaultRecoveryScreen : Screen {
                                 }
                             }
                         },
-                        enabled = answer.isNotBlank() && !isChecking && secondsLockedOut == 0L,
+                        enabled = answer.isNotBlank() && !isChecking && lockoutMessage == null,
                     )
                 }
             }

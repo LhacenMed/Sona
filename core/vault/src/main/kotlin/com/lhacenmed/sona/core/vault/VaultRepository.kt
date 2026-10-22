@@ -6,6 +6,8 @@ import com.lhacenmed.sona.core.common.lifecycle.isAppInForeground
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.vault.data.VaultItem
 import com.lhacenmed.sona.core.vault.data.VaultItemDao
+import com.lhacenmed.sona.core.vault.data.VaultResumePosition
+import com.lhacenmed.sona.core.vault.data.VaultResumePositionDao
 import java.io.File
 import java.io.InputStream
 import javax.inject.Inject
@@ -67,6 +69,7 @@ class VaultRepository @Inject internal constructor(
     private val settings: VaultSettings,
     private val files: VaultFiles,
     private val itemDao: VaultItemDao,
+    private val resumePositionDao: VaultResumePositionDao,
     @ApplicationScope scope: CoroutineScope,
 ) {
     private val isUnlocked = MutableStateFlow(false)
@@ -133,7 +136,8 @@ class VaultRepository @Inject internal constructor(
         val now = System.currentTimeMillis()
         if (now < credentials.lockedUntilEpochMs) return VaultAccessResult.LockedOut
         if (!withContext(Dispatchers.Default) { matches(credentials) }) {
-            settings.recordFailedAttempt { failedAttempts -> now + lockoutMillisFor(failedAttempts) }
+            // A free guess locks nothing, so it leaves no time behind for the keypad to count down to.
+            settings.recordFailedAttempt { failedAttempts -> lockoutMillisFor(failedAttempts).let { if (it == 0L) 0L else now + it } }
             return VaultAccessResult.WrongSecret
         }
         settings.clearFailedAttempts()
@@ -182,7 +186,26 @@ class VaultRepository @Inject internal constructor(
             coverArtUri = Uri.fromFile(file).toString(),
             isManuallyScanned = true,
             isVideo = item.isVideo,
+            width = item.width,
+            height = item.height,
+            sizeBytes = file.length(),
         )
+    }
+
+    /** Where each video part-way through was left, by its id - what its row's progress line shows. */
+    val resumePositionsMs: Flow<Map<Long, Long>> =
+        resumePositionDao.observeAll().map { rows -> rows.associate { it.itemId to it.positionMs } }
+
+    /** Read by the player as it starts, written as each video is left - see `ResumePositionRecorder`. */
+    suspend fun resumePositions(): Map<Long, Long> =
+        resumePositionDao.getAll().associate { it.itemId to it.positionMs }
+
+    suspend fun saveResumePosition(itemId: Long, positionMs: Long) {
+        resumePositionDao.upsert(VaultResumePosition(itemId, positionMs))
+    }
+
+    suspend fun forgetResumePosition(itemId: Long) {
+        resumePositionDao.delete(itemId)
     }
 
     /** Copies [track]'s file in from [source]. The library's copy is the caller's to delete once this returns. */
@@ -198,6 +221,8 @@ class VaultRepository @Inject internal constructor(
             album = track.album,
             durationMs = track.durationMs,
             addedAt = System.currentTimeMillis(),
+            width = track.width,
+            height = track.height,
         )
         item.copy(id = itemDao.insert(item))
     }

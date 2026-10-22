@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.common.format.formatDuration
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.data.search.SearchIndex
@@ -92,7 +93,6 @@ import com.lhacenmed.sona.core.designsystem.theme.SquareShape
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.feature.library.operation.RemoveFromPlaylistDialog
 import com.lhacenmed.sona.feature.library.favorite.favoriteItemsOf
-import com.lhacenmed.sona.feature.library.options.formatDurationMs
 import com.lhacenmed.sona.feature.library.options.OptionsFollowUps
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsSwipe
@@ -589,11 +589,11 @@ internal class DetailHeaderContent(
 
 /** "12 tracks • 45:12" - a list's track count and how long it all plays for. */
 internal fun trackCountAndDuration(tracks: List<Track>): String =
-    listOf(trackCountLabel(tracks.size), formatDurationMs(tracks.sumOf { it.durationMs })).joinToString(InfoSeparator)
+    listOf(trackCountLabel(tracks.size), formatDuration(tracks.sumOf { it.durationMs })).joinToString(InfoSeparator)
 
 /** [trackCountAndDuration] for a list of videos. */
 internal fun videoCountAndDuration(videos: List<Track>): String =
-    listOf(pluralCount(videos.size, "video"), formatDurationMs(videos.sumOf { it.durationMs })).joinToString(InfoSeparator)
+    listOf(pluralCount(videos.size, "video"), formatDuration(videos.sumOf { it.durationMs })).joinToString(InfoSeparator)
 
 /**
  * The whole body of a detail screen: a header that collapses into the bar, then the collection's
@@ -630,6 +630,7 @@ internal fun TrackListDetail(
     val tracks by viewModel.tracks.collectAsStateWithLifecycle()
     val sections by viewModel.sections.collectAsStateWithLifecycle()
     val playback by viewModel.playback.collectAsStateWithLifecycle()
+    val resumePositionsMs = viewModel.resumePositionsMs.collectAsStateWithLifecycle()
     val selection = rememberSelectionState()
     val context = LocalContext.current
     val navigator = LocalNavigator.current
@@ -724,6 +725,7 @@ internal fun TrackListDetail(
                     )
                 },
                 subtitle = trackSubtitle?.invoke(track),
+                resumePositionMs = { resumePositionsMs.value[track.id] ?: 0L },
             )
         }
     }

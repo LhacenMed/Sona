@@ -26,4 +26,9 @@ data class Track(
      * one where its credit names several and the library separates them.
      */
     val artistIds: List<Long> = listOf(artistId),
+    /** A video's frame, in pixels - 0 for a track, or where it is not known. */
+    val width: Int = 0,
+    val height: Int = 0,
+    /** The file's size - 0 where it is not known. */
+    val sizeBytes: Long = 0L,
 )

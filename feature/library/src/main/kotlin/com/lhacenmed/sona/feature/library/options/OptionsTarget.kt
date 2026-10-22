@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.feature.library.options
 
+import com.lhacenmed.sona.core.common.format.formatDuration
 import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
@@ -218,7 +219,7 @@ fun OptionsTarget.infoLine(): String = when (this) {
         artistCountLabel(genre.artistCount) + InfoSeparator + trackCountLabel(genre.trackCount)
     is OptionsTarget.ForPlaylist -> trackCountLabel(playlist.trackCount)
     is OptionsTarget.ForFolder -> folder.itemCountLabel()
-    is OptionsTarget.ForSelection -> formatDurationMs(tracks.sumOf { it.durationMs })
+    is OptionsTarget.ForSelection -> formatDuration(tracks.sumOf { it.durationMs })
 }
 
 /** A count of albums, or Auxio's `def_album_count` for one that holds none. */

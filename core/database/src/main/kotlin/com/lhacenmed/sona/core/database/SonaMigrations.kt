@@ -351,6 +351,18 @@ val MIGRATION_17_18 = object : Migration(17, 18) {
 }
 
 /**
+ * What a video row tells of its file - its frame and its size. Every row reads on as before, these unknown,
+ * until the next scan fills them in.
+ */
+val MIGRATION_18_19 = object : Migration(18, 19) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `tracks` ADD COLUMN `width` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `tracks` ADD COLUMN `height` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `tracks` ADD COLUMN `sizeBytes` INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
+/**
  * Makes sure Favorites exists, every time the database is opened.
  *
  * On open rather than on create, because creation is only one of the ways this database comes to

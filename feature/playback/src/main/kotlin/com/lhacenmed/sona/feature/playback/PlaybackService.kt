@@ -38,6 +38,7 @@ import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.datastore.ShuffleSettings
 import com.lhacenmed.sona.core.datastore.VideoSettings
 import com.lhacenmed.sona.core.model.RepeatMode
+import com.lhacenmed.sona.core.vault.VaultRepository
 import com.lhacenmed.sona.core.model.Track
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -96,6 +97,9 @@ class PlaybackService : MediaSessionService() {
     lateinit var resumePositionDao: ResumePositionDao
 
     @Inject
+    lateinit var vaultRepository: VaultRepository
+
+    @Inject
     @ApplicationScope
     lateinit var applicationScope: CoroutineScope
 
@@ -105,7 +109,7 @@ class PlaybackService : MediaSessionService() {
     private lateinit var forwardingPlayer: PlaybackForwardingPlayer
     private lateinit var mediaSession: MediaSession
     private lateinit var playHistoryRecorder: PlayHistoryRecorder
-    private lateinit var resumePositionRecorder: ResumePositionRecorder
+    private lateinit var resumePositionRecorders: List<ResumePositionRecorder>
 
     // Live-updated snapshots read synchronously from Player.Listener / the forwarding player -
     // DataStore is Flow/suspend-based, so runtime changes are mirrored into these volatile fields
@@ -349,13 +353,18 @@ class PlaybackService : MediaSessionService() {
 
         // On the player itself, so a listen is recorded however it was started and with no screen open.
         playHistoryRecorder = PlayHistoryRecorder(exoPlayer, serviceScope, playStatsDao).also { it.attach() }
-        resumePositionRecorder = ResumePositionRecorder(
-            player = exoPlayer,
-            writeScope = applicationScope,
-            resumePositionDao = resumePositionDao,
-            isEnabled = { videoSettings.resume.value },
-            durationMsOf = { trackId -> libraryRepository.tracksById.value[trackId]?.durationMs },
-        ).also { it.attach() }
+        resumePositionRecorders = listOf(
+            PlaybackSpace.Library to resumePositionDao.asResumePositionStore(),
+            PlaybackSpace.Private to vaultRepository.asResumePositionStore(),
+        ).map { (space, store) ->
+            ResumePositionRecorder(
+                player = exoPlayer,
+                space = space,
+                writeScope = applicationScope,
+                store = store,
+                isEnabled = { videoSettings.resume.value },
+            ).also { it.attach() }
+        }
 
         forwardingPlayer = PlaybackForwardingPlayer(exoPlayer) { forwardingSettings }
 
@@ -578,7 +587,7 @@ class PlaybackService : MediaSessionService() {
     override fun onDestroy() {
         unregisterReceiver(headsetReceiver)
         playHistoryRecorder.detach()
-        resumePositionRecorder.detach()
+        resumePositionRecorders.forEach { it.detach() }
         serviceScope.cancel()
         mediaSession.release()
         // Before the player, while the audio session the effect is attached to still exists.

@@ -49,6 +49,9 @@ abstract class TrackListDetailViewModel(
     /** What this screen lists above its tracks - see [DetailSection]. Nothing, for most of them. */
     internal open val sections: StateFlow<List<DetailSection>> = MutableStateFlow(emptyList())
 
+    /** Where each video was left - see [LibraryRepository.resumePositionsMs]. */
+    val resumePositionsMs: StateFlow<Map<Long, Long>> = repository.resumePositionsMs
+
     /** What this list marks as playing - see [LibraryPlayback]. */
     val playback: StateFlow<LibraryPlayback> = libraryPlayback(playbackController, repository)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryPlayback())

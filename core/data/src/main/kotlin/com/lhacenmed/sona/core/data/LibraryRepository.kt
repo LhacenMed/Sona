@@ -20,6 +20,7 @@ import com.lhacenmed.sona.core.database.FAVORITES_PLAYLIST_ID
 import com.lhacenmed.sona.core.database.dao.GenreDao
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.PlaylistDao
+import com.lhacenmed.sona.core.database.dao.ResumePositionDao
 import com.lhacenmed.sona.core.database.entity.FavoriteCollectionEntity
 import com.lhacenmed.sona.core.database.entity.PlaylistEntity
 import com.lhacenmed.sona.core.database.entity.PlaylistTrackEntity
@@ -92,6 +93,7 @@ class LibraryRepository @Inject constructor(
     private val arrangementDao: ArrangementDao,
     private val favoriteCollectionDao: FavoriteCollectionDao,
     private val playStatsDao: PlayStatsDao,
+    resumePositionDao: ResumePositionDao,
     private val playlistCoverImages: PlaylistCoverImages,
     private val sortOrders: LibrarySortOrders,
     librarySettings: LibrarySettings,
@@ -116,6 +118,11 @@ class LibraryRepository @Inject constructor(
     val videos: StateFlow<LibraryContent<Track>> = trackDao.observeAll(isVideo = true)
         .sortedFor(LibrarySortSpecs.videos) { rows -> rows.map { it.toDomain() } }
         .shareContent()
+
+    /** Where each video part-way through was left, by its id - what its row's progress line shows. */
+    val resumePositionsMs: StateFlow<Map<Long, Long>> = resumePositionDao.observeAll()
+        .map { rows -> rows.associate { it.trackId to it.positionMs } }
+        .stateIn(scope, SharingStarted.Eagerly, emptyMap())
 
     val albums: StateFlow<LibraryContent<Album>> = albumDao.observeAll()
         .sortedFor(LibrarySortSpecs.albums) { rows -> rows.map { it.toDomain() } }

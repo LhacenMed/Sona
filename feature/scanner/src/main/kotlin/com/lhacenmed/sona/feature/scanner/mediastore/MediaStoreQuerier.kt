@@ -203,6 +203,9 @@ class MediaStoreQuerier @Inject constructor(
             MediaStore.Video.Media.ARTIST,
             MediaStore.Video.Media.DURATION,
             MediaStore.Video.Media.DATE_ADDED,
+            MediaStore.Video.Media.WIDTH,
+            MediaStore.Video.Media.HEIGHT,
+            MediaStore.Video.Media.SIZE,
             FILE_VERSION_COLUMN,
         )
 
@@ -234,6 +237,9 @@ class MediaStoreQuerier @Inject constructor(
                     coverArtUri = ContentUris.withAppendedId(uri, mediaStoreId).withCoverVersion(cursor.long(FILE_VERSION_COLUMN)),
                     isManuallyScanned = false,
                     isVideo = true,
+                    width = cursor.int(MediaStore.Video.Media.WIDTH),
+                    height = cursor.int(MediaStore.Video.Media.HEIGHT),
+                    sizeBytes = cursor.long(MediaStore.Video.Media.SIZE),
                 )
             }
         }

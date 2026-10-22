@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.common.format.formatFileSize
 import com.lhacenmed.sona.core.designsystem.component.swipe.LocalSwipeActions
 import com.lhacenmed.sona.core.designsystem.component.swipe.SwipeActionsBox
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
@@ -264,3 +265,51 @@ fun SonaTrackRow(
         )
     }
 }
+
+/**
+ * A video row: its 16:9 cover - its length, and how far it was watched - title over its frame and file size,
+ * "1080p • 111.6 MB". Laid out as every row is, so a video reads as one of the library's own wherever it
+ * is listed.
+ *
+ * [resumePositionMs] is where it was left, 0 for none: a lambda, as [isCurrent] is, read only as the cover's
+ * line is drawn - see [SonaTrackRow].
+ */
+@Composable
+fun SonaVideoRow(
+    video: Track,
+    resumePositionMs: () -> Long,
+    isCurrent: () -> Boolean,
+    isPlaying: () -> Boolean,
+    selection: SelectionState?,
+    selectionKey: Any?,
+    onClick: () -> Unit,
+    onOpenOptions: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    val current = isCurrent()
+    SonaListRow(
+        title = video.title,
+        subtitle = video.videoFacts(),
+        selection = selection,
+        selectionKey = selectionKey,
+        onClick = onClick,
+        onOpenOptions = onOpenOptions,
+        modifier = modifier,
+        isCurrent = current,
+    ) { isSelected ->
+        SonaVideoCover(
+            coverArtUri = video.coverArtUri,
+            durationMs = video.durationMs,
+            watchedFraction = { if (video.durationMs > 0L) resumePositionMs().toFloat() / video.durationMs else 0f },
+            isCurrent = current,
+            isPlaying = isPlaying(),
+            isSelected = isSelected,
+        )
+    }
+}
+
+/** "1080p • 111.6 MB" - its frame by its shorter side, as a video's quality is named, and its size; what is known of them. */
+private fun Track.videoFacts(): String = listOfNotNull(
+    minOf(width, height).takeIf { it > 0 }?.let { "${it}p" },
+    sizeBytes.takeIf { it > 0L }?.let(::formatFileSize),
+).joinToString(InfoSeparator)

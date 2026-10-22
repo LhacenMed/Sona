@@ -53,6 +53,9 @@ data class TrackEntity(
     val isManuallyScanned: Boolean,
     @ColumnInfo(defaultValue = "0") val isVideo: Boolean,
     @ColumnInfo(defaultValue = "") val artistIds: List<Long>,
+    @ColumnInfo(defaultValue = "0") val width: Int,
+    @ColumnInfo(defaultValue = "0") val height: Int,
+    @ColumnInfo(defaultValue = "0") val sizeBytes: Long,
 )
 
 fun TrackEntity.toDomain() = Track(
@@ -76,6 +79,9 @@ fun TrackEntity.toDomain() = Track(
     isManuallyScanned = isManuallyScanned,
     isVideo = isVideo,
     artistIds = artistIds,
+    width = width,
+    height = height,
+    sizeBytes = sizeBytes,
 )
 
 fun Track.toEntity() = TrackEntity(
@@ -99,4 +105,7 @@ fun Track.toEntity() = TrackEntity(
     isManuallyScanned = isManuallyScanned,
     isVideo = isVideo,
     artistIds = artistIds,
+    width = width,
+    height = height,
+    sizeBytes = sizeBytes,
 )

@@ -19,6 +19,7 @@ internal fun Track.toMediaItem(): MediaItem {
         .setTitle(title)
         .setArtist(artist)
         .setAlbumTitle(album)
+        .setDurationMs(durationMs)
         .setMediaType(if (isVideo) MediaMetadata.MEDIA_TYPE_VIDEO else MediaMetadata.MEDIA_TYPE_MUSIC)
         .apply {
             coverArtUri?.let { setArtworkUri(Uri.parse(it)) }

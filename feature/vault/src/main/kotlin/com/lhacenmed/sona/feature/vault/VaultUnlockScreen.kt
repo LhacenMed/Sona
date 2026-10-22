@@ -61,37 +61,52 @@ internal fun PinEntry(title: String, vault: VaultState.Created, onGranted: () ->
     var pin by remember { mutableStateOf("") }
     var isChecking by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    val secondsLockedOut = rememberSecondsUntil(vault.lockedUntilEpochMs)
+    val lockoutMessage = rememberLockoutMessage(vault.lockedUntilEpochMs)
 
     PinPad(
         title = title,
         dotCount = vault.pinLength,
         filledDots = pin.length,
-        message = if (secondsLockedOut > 0) "Too many tries - wait ${secondsLockedOut}s" else error,
+        message = lockoutMessage ?: error,
         modifier = modifier,
-        enabled = secondsLockedOut == 0L && !isChecking,
+        // Only a lockout greys the keys: the check itself takes a moment, which input is ignored for instead,
+        // so the keypad never flickers as each PIN is checked.
+        enabled = lockoutMessage == null,
         onDigit = { digit ->
-            pin += digit
-            if (pin.length == vault.pinLength) {
-                isChecking = true
-                viewModel.unlock(pin) { result ->
-                    isChecking = false
-                    pin = ""
-                    error = if (result == VaultAccessResult.WrongSecret) "Wrong PIN" else null
-                    if (result == VaultAccessResult.Granted) onGranted()
+            if (!isChecking) {
+                pin += digit
+                if (pin.length == vault.pinLength) {
+                    isChecking = true
+                    viewModel.unlock(pin) { result ->
+                        isChecking = false
+                        pin = ""
+                        error = if (result == VaultAccessResult.WrongSecret) "Wrong PIN" else null
+                        if (result == VaultAccessResult.Granted) onGranted()
+                    }
                 }
             }
         },
-        onBackspace = { pin = pin.dropLast(1) },
+        onBackspace = { if (!isChecking) pin = pin.dropLast(1) },
     )
+}
+
+/**
+ * What a guess is refused with until [lockedUntilEpochMs], counting down each second - null once guesses
+ * are taken again. Every PIN and answer step shows the vault's one lockout through this.
+ */
+@Composable
+internal fun rememberLockoutMessage(lockedUntilEpochMs: Long): String? {
+    val seconds = rememberSecondsUntil(lockedUntilEpochMs)
+    return if (seconds > 0) "Too many tries - wait ${seconds}s" else null
 }
 
 /** Whole seconds left until [epochMs], ticking down to 0 - 0 straight away for a time already past. */
 @Composable
-internal fun rememberSecondsUntil(epochMs: Long): Long {
-    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+private fun rememberSecondsUntil(epochMs: Long): Long {
+    // Read afresh for each new time, in the same frame it arrives: a clock kept from before it would put
+    // the time seconds ahead for that frame, and show a lockout that is not there.
+    var now by remember(epochMs) { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(epochMs) {
-        now = System.currentTimeMillis()
         while (now < epochMs) {
             // Wakes as the shown second turns over, not on a fixed tick that drifts from it.
             delay((epochMs - now - 1) % 1_000L + 1)
