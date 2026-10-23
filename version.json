@@ -1,6 +1,6 @@
 {
-  "versionCode": 106069000,
-  "versionName": "1.6.6",
-  "apkUrl": "https://github.com/LhacenMed/Sona/releases/download/v1.6.6/sona-1.6.6-release-universal.apk",
-  "notes": "### Added\n\n- A Now Playing widget for your home screen: the cover, title and artist, a timeline, and repeat, previous, play/pause and next. Tap it to open the list that's playing, right where the current track is.\n- Search forgives typos and puts the best matches first.\n- Search finds tracks by their lyrics, and shows the matching line under each one.\n- Tracks credited to several artists, like \"A, B & C\" or \"A × B\", now appear under each of those artists. In the player, tap a name to open that artist. This is on by default; turn it off under Settings > Content > Separate artists.\n- Videos are listed with a widescreen thumbnail showing their length and how far you've watched, and with their quality and file size, like \"1080p • 111.6 MB\".\n\n### Changed\n\n- Smoother screen transitions and snappier button presses.\n- The skip buttons now use skip icons instead of fast-forward and rewind icons.\n\n### Fixed\n\n- Titles, artists and albums whose tags were saved with the wrong text encoding now show their accented letters correctly: \"Señorita\" instead of \"SeÃ±orita\".\n- In the tag editor, swiping back while typing only closes the keyboard and no longer asks you to discard your changes. The field you're editing stays visible above the keyboard.\n- The top bar stays in place when the keyboard opens.\n- Track properties show every detail at once instead of filling in one by one.\n- While searching, the scroll button moves into the quick play button's place instead of leaving a gap."
+  "versionCode": 106079000,
+  "versionName": "1.6.7",
+  "apkUrl": "https://github.com/LhacenMed/Sona/releases/download/v1.6.7/sona-1.6.7-release-universal.apk",
+  "notes": "### Added\n\n- A Mini player widget, one row tall: the cover, title and artist, with shuffle, previous, play/pause, next and repeat.\n\n### Changed\n\n- The widget picker previews Sona's widgets in its own colours."
 }

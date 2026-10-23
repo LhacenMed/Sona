@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.6.7] - 2026-10-23
+
+### Added
+
+- A Mini player widget, one row tall: the cover, title and artist, with shuffle, previous, play/pause, next and repeat.
+
+### Changed
+
+- The widget picker previews Sona's widgets in its own colours.
+
 ## [1.6.6] - 2026-10-23
 
 ### Added
