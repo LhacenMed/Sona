@@ -13,13 +13,16 @@ import com.lhacenmed.sona.core.designsystem.component.WindowOverlayHost
 import com.lhacenmed.sona.core.designsystem.component.fab.FloatingActionButtonStack
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.PlayerOverlay
+import com.lhacenmed.sona.core.navigation.ScreenArrival
 import com.lhacenmed.sona.feature.library.LibraryPagerScreen
+import com.lhacenmed.sona.feature.library.LibraryTabArrival
 import com.lhacenmed.sona.feature.settings.SettingsScreen
 import com.lhacenmed.sona.feature.settings.screen.PlaybackScreen
 import com.lhacenmed.sona.feature.settings.screen.PlaybackSetting
 
+/** [tabArrival] opens the library on the tab the queue plays from, to do what it asks there - see [LibraryTabArrival]. */
 @Composable
-fun AppShell(playerOverlay: PlayerOverlay, modifier: Modifier = Modifier) {
+fun AppShell(playerOverlay: PlayerOverlay, tabArrival: LibraryTabArrival?, modifier: Modifier = Modifier) {
     val navigator = LocalNavigator.current
 
     // The library owns the top bar rather than this Scaffold, because the bar has to become a
@@ -36,7 +39,7 @@ fun AppShell(playerOverlay: PlayerOverlay, modifier: Modifier = Modifier) {
         // The expandable player overlays the whole screen - collapsed, it's just a mini-bar pinned to the
         // bottom; expanded, it covers everything. Each list keeps its own end clear of it, rather than the
         // screen being cut short above it, so rows still scroll behind the mini player.
-        playerOverlay.Content(isPrivate = false) {
+        playerOverlay.Content(isPrivate = false, expandsPlayer = tabArrival?.arrival == ScreenArrival.ExpandPlayer) {
             // Inside the player, so the screen's FABs stand clear of it.
             FloatingActionButtonStack {
                 // No top bar slot and no content insets: the library's own bar handles the status bar
@@ -46,6 +49,7 @@ fun AppShell(playerOverlay: PlayerOverlay, modifier: Modifier = Modifier) {
                         onChooseQuickPlaySource = { navigator.go(PlaybackScreen(scrollTo = PlaybackSetting.QUICK_PLAY_SOURCE)) },
                         modifier = Modifier.padding(innerPadding),
                         actions = libraryActions,
+                        arrival = tabArrival,
                     )
                 }
             }

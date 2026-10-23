@@ -8,8 +8,8 @@ import java.io.File
 
 private const val VAULT_MEDIA_ID_PREFIX = "vault:"
 
-/** What the notification and the lock screen show for a Private Folder file - never its own title. */
-private const val VAULT_DISPLAY_TITLE = "Private Folder"
+/** What the notification, the lock screen and the widget show for a Private Folder file - never its own title. */
+const val VAULT_DISPLAY_TITLE = "Private Folder"
 
 /**
  * A Private Folder [track] - its id the item's, its path the file's - played straight from its file, as any

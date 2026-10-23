@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The part of the timeline played, and the dot at its end. A widget cannot draw a seek bar, so its view's
+    level stands for how far it has played - 0 to 10000 - which scales the line from the start.
+
+    The view is padded at its end by the dot's size, so the line is scaled across all but that much of it, and
+    the dot reaches that much past where the scaled line ends: its centre runs from half its size in from the
+    start to half its size in from the end, so it never leaves the timeline, and the played line - reaching
+    half as far - ends under the dot's centre.
+
+    The dot is inset at its start by its own size too. Where it sits is set by its end alone, but its width plus
+    its insets is the width the whole drawable reports, and an ImageView draws nothing for a drawable 0 wide.
+-->
+<scale xmlns:android="http://schemas.android.com/apk/res/android"
+    android:scaleGravity="start|center_vertical"
+    android:scaleWidth="100%">
+    <layer-list>
+        <item
+            android:end="@dimen/widget_timeline_line_overhang"
+            android:height="2dp"
+            android:gravity="center_vertical|fill_horizontal">
+            <shape android:shape="rectangle">
+                <corners android:radius="1dp" />
+                <solid android:color="@android:color/white" />
+            </shape>
+        </item>
+        <item
+            android:width="@dimen/widget_timeline_thumb_size"
+            android:height="@dimen/widget_timeline_thumb_size"
+            android:start="@dimen/widget_timeline_thumb_size"
+            android:end="@dimen/widget_timeline_thumb_overhang"
+            android:gravity="end|center_vertical">
+            <shape android:shape="oval">
+                <solid android:color="@android:color/white" />
+            </shape>
+        </item>
+    </layer-list>
+</scale>

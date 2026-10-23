@@ -3,7 +3,6 @@ package com.lhacenmed.sona.feature.settings.component
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -37,22 +36,14 @@ import androidx.compose.ui.layout.onPlaced
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.WindowTouchBlocker
+import com.lhacenmed.sona.core.designsystem.component.screen.MaxArrivalWaitMillis
+import com.lhacenmed.sona.core.designsystem.component.screen.highlightArrival
 import com.lhacenmed.sona.core.designsystem.component.screen.screenList
 import com.lhacenmed.sona.core.designsystem.component.section.ColumnSection
 import com.lhacenmed.sona.core.designsystem.motion.rememberRubberBandOverscroll
 import com.lhacenmed.sona.core.navigation.LocalScreenEntered
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
-
-/** How long an arrived-at row's ripple is held before it fades - long enough to be seen spreading. */
-private const val HighlightHoldMillis = 500L
-
-/**
- * The longest a screen waits for its enter animation to report finishing before scrolling anyway - so a
- * device that never reports it cannot leave the screen's touches blocked.
- */
-private const val MaxEnterWaitMillis = 1_000L
 
 /**
  * The row a [SettingsList] opens scrolled to - by its [key], as [settingsScrollTarget] marks it - and
@@ -118,7 +109,7 @@ fun SettingsList(
     val scrollSpec = MaterialTheme.motionScheme.slowSpatialSpec<Float>()
     LaunchedEffect(target) {
         if (hasArrived) return@LaunchedEffect
-        withTimeoutOrNull(MaxEnterWaitMillis) { snapshotFlow { hasEntered.value }.first { it } }
+        withTimeoutOrNull(MaxArrivalWaitMillis) { snapshotFlow { hasEntered.value }.first { it } }
         val list = target.list
         val row = target.row
         if (list == null || row == null || !list.isAttached || !row.isAttached) {
@@ -128,10 +119,7 @@ fun SettingsList(
         val rowTop = list.localPositionOf(row, Offset.Zero).y
         scrollState.animateScrollBy(rowTop - (list.size.height - row.size.height) / 2f, scrollSpec)
         hasArrived = true
-        val press = PressInteraction.Press(Offset(row.size.width / 2f, row.size.height / 2f))
-        target.interactionSource.emit(press)
-        delay(HighlightHoldMillis)
-        target.interactionSource.emit(PressInteraction.Release(press))
+        target.interactionSource.highlightArrival(row.size)
     }
 }
 

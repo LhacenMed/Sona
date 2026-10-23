@@ -23,6 +23,14 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:theme="@style/Theme.Sona">
 
+        <!--
+            The version of the app's HyperOS widgets - see the widget's receiver below. Only ever raised, whenever a
+            widget is added or what one does changes, as Xiaomi's widget specification asks.
+        -->
+        <meta-data
+            android:name="miuiWidgetVersion"
+            android:value="1" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -31,6 +39,29 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+            The "Now Playing" widget - see NowPlayingWidget. Marked as a HyperOS widget, so Xiaomi's launcher names it
+            by its label under it, as it does its own. A player widget, it is left in the app's own process with no
+            refresh as it comes into view - the two things Xiaomi's specification asks of one; playback updates it.
+        -->
+        <receiver
+            android:name=".widget.NowPlayingWidgetProvider"
+            android:exported="false"
+            android:label="@string/player_now_playing">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="miui.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="miuiWidget"
+                android:value="true" />
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_now_playing_info" />
+        </receiver>
 
     </application>
 

@@ -38,7 +38,7 @@ class SonaPlayerOverlay @Inject constructor(
 ) : PlayerOverlay {
 
     @Composable
-    override fun Content(isPrivate: Boolean, content: @Composable () -> Unit) {
+    override fun Content(isPrivate: Boolean, expandsPlayer: Boolean, content: @Composable () -> Unit) {
         val navigator = LocalNavigator.current
         val context = LocalContext.current
         val lifecycleOwner = LocalLifecycleOwner.current
@@ -56,6 +56,7 @@ class SonaPlayerOverlay @Inject constructor(
                 onOpenEqualizer = { navigator.go(EqualizerScreen) },
                 onEditLyrics = null,
                 trackOptionsSheet = { track, onDismissRequest -> VaultTrackOptionsSheet(track, onDismissRequest) },
+                expandsOnOpen = expandsPlayer,
                 content = content,
             )
         } else {
@@ -74,6 +75,7 @@ class SonaPlayerOverlay @Inject constructor(
                         onDismissRequest = onDismissRequest,
                     )
                 },
+                expandsOnOpen = expandsPlayer,
                 content = content,
             )
         }

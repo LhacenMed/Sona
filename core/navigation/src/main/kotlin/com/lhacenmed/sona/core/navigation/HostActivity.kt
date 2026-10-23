@@ -23,6 +23,7 @@ import com.lhacenmed.sona.core.designsystem.component.NetworkStatusHost
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.WindowOverlayHost
 import com.lhacenmed.sona.core.designsystem.component.fab.FloatingActionButtonStack
+import com.lhacenmed.sona.core.designsystem.component.screen.PlayingRowReveal
 import com.lhacenmed.sona.core.designsystem.theme.AppCoverStyle
 import com.lhacenmed.sona.core.designsystem.theme.AppFastScrollTouchArea
 import com.lhacenmed.sona.core.designsystem.theme.AppTheme
@@ -44,6 +45,9 @@ class HostActivity : SonaActivity() {
 
     companion object {
         const val EXTRA_SCREEN = "extra_screen"
+
+        /** What the screen does once it is in, if anything - see [ScreenArrival]. */
+        const val EXTRA_ARRIVAL = "extra_arrival"
     }
 
     /** The same process-wide theme the main activity uses, so a pushed screen is drawn exactly as the library behind it is. */
@@ -87,6 +91,7 @@ class HostActivity : SonaActivity() {
             return
         }
         if (screen.isPrivate) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        val arrival = IntentCompat.getSerializableExtra(intent, EXTRA_ARRIVAL, ScreenArrival::class.java)
         // Normally already worked out by the activity below; only a process restored straight onto this
         // screen has it to wait for.
         holdFirstFrameUntil(appTheme::awaitReady)
@@ -110,9 +115,13 @@ class HostActivity : SonaActivity() {
                     CompositionLocalProvider(LocalNavigator provides navigator, LocalScreenEntered provides hasEntered) {
                         // Over the player too, so a screen can lay something over the whole window.
                         WindowOverlayHost {
-                            playerOverlay.Content(isPrivate = screen.isPrivate) {
+                            playerOverlay.Content(
+                                isPrivate = screen.isPrivate,
+                                expandsPlayer = arrival == ScreenArrival.ExpandPlayer,
+                            ) {
                                 // Inside the player, so the screen's FABs stand clear of it.
                                 FloatingActionButtonStack {
+                                    if (arrival == ScreenArrival.RevealPlaying) PlayingRowReveal(hasEntered = { hasEntered.value })
                                     Scaffold(
                                         topBar = {
                                             if (hostedTitle != null) {

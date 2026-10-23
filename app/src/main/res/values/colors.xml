@@ -1,4 +1,9 @@
 <resources>
     <!-- The launch screen's placeholder note, before the gradient fills it. -->
     <color name="splash_placeholder">#FFC4C4C4</color>
+
+    <!-- The widget as the design draws it, for the widget picker's preview: black over its white card. -->
+    <color name="widget_preview_content">#FF000000</color>
+    <color name="widget_preview_secondary">#FF3C3C3C</color>
+    <color name="widget_preview_track">#FF9E9E9E</color>
 </resources>

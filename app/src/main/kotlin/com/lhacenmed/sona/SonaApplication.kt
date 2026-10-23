@@ -16,6 +16,7 @@ import com.lhacenmed.sona.core.designsystem.effect.SonaEffects
 import com.lhacenmed.sona.feature.tageditor.lyrics.MissingLyricsFinder
 import com.lhacenmed.sona.feature.update.UpdateMonitor
 import com.lhacenmed.sona.feature.update.notification.UpdateNotifier
+import com.lhacenmed.sona.widget.NowPlayingWidget
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 import javax.inject.Provider
@@ -36,6 +37,9 @@ class SonaApplication : Application(), SingletonImageLoader.Factory {
 
     @Inject
     lateinit var missingLyricsFinder: Provider<MissingLyricsFinder>
+
+    @Inject
+    lateinit var nowPlayingWidget: Provider<NowPlayingWidget>
 
     @Inject
     @ApplicationScope
@@ -79,6 +83,8 @@ class SonaApplication : Application(), SingletonImageLoader.Factory {
         updateMonitor.start()
         // The tracks around the one playing are given the lyrics their files lack, whichever screen is open.
         missingLyricsFinder.get().start()
+        // A widget on the home screen follows playback from the moment the process starts, whatever started it.
+        nowPlayingWidget.get().takeIf { it.isPlaced }?.start()
         // The background update check runs exactly while its notifications are on.
         applicationScope.launch { updateSettings.notifications.flow.collect { UpdateNotifier.follow(this@SonaApplication, it) } }
         // The launcher shortcut is named and drawn for how quick play plays, so it follows that as it changes.

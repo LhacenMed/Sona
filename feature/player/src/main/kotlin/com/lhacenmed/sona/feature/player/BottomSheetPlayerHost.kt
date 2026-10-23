@@ -9,7 +9,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -36,6 +39,9 @@ import com.lhacenmed.sona.feature.playback.PlaybackSpace
  *
  * It plays [space]'s tracks alone - see [PlayerViewModel]. What only the library's tracks have - an album
  * and an artist to go to, lyrics to edit - is offered where given.
+ *
+ * [expandsOnOpen] rises into the full player, rather than the mini player, once there is a track to show -
+ * once only, so a screen recreated after it rose is left as the user then left the player.
  */
 @Composable
 fun BottomSheetPlayerHost(
@@ -45,6 +51,7 @@ fun BottomSheetPlayerHost(
     onOpenEqualizer: () -> Unit,
     onEditLyrics: ((trackId: Long) -> Unit)?,
     trackOptionsSheet: @Composable (track: Track, onDismissRequest: () -> Unit) -> Unit,
+    expandsOnOpen: Boolean,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
@@ -68,11 +75,19 @@ fun BottomSheetPlayerHost(
                 initialAnchor = if (hasTrack == true) COLLAPSED_ANCHOR else DISMISSED_ANCHOR,
             )
 
+        // Keyed on what it is asked, so an ask arriving after the sheet is composed is carried out too.
+        var isExpandPending by rememberSaveable(expandsOnOpen) { mutableStateOf(expandsOnOpen) }
+
         // Read from where the sheet is going rather than where it is, so a track arriving while the sheet
         // is still sliding away brings it back instead of being missed.
-        LaunchedEffect(hasTrack) {
+        LaunchedEffect(hasTrack, isExpandPending) {
             when (hasTrack) {
-                true -> if (state.isDismissedOrDismissing) state.collapseSoft()
+                true -> if (isExpandPending) {
+                    state.expandSoft()
+                    isExpandPending = false
+                } else if (state.isDismissedOrDismissing) {
+                    state.collapseSoft()
+                }
                 false -> if (!state.isDismissedOrDismissing) state.dismiss()
                 null -> Unit
             }

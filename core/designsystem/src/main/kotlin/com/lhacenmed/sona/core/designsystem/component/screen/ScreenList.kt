@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.positionInWindow
@@ -46,8 +47,10 @@ internal abstract class ScreenList {
     var visibleArea by mutableFloatStateOf(0f)
         private set
 
-    /** Where the list's top stands in the window, and the stretch of the window it shows in. */
+    /** Where the list's top and sides stand in the window, and the stretch of the window it shows in. */
     private var windowTopPx by mutableFloatStateOf(0f)
+    private var windowLeftPx by mutableFloatStateOf(0f)
+    private var widthPx by mutableFloatStateOf(0f)
     private var shownTopPx by mutableFloatStateOf(0f)
     private var shownBottomPx by mutableFloatStateOf(0f)
 
@@ -95,10 +98,19 @@ internal abstract class ScreenList {
             windowTopPx + span.endInclusive <= minOf(shownBottomPx, uncoveredBottomPx)
     }
 
+    /** Where the row at [index] is laid out in the window, the list's whole width - null while it is not laid out. */
+    fun rowBoundsInWindow(index: Int): Rect? {
+        val span = rowSpanPx(index) ?: return null
+        return Rect(windowLeftPx, windowTopPx + span.start, windowLeftPx + widthPx, windowTopPx + span.endInclusive)
+    }
+
     fun onPositioned(coordinates: LayoutCoordinates) {
         val bounds = coordinates.boundsInWindow()
         visibleArea = bounds.width * bounds.height
-        windowTopPx = coordinates.positionInWindow().y
+        val position = coordinates.positionInWindow()
+        windowTopPx = position.y
+        windowLeftPx = position.x
+        widthPx = coordinates.size.width.toFloat()
         shownTopPx = bounds.top
         shownBottomPx = bounds.bottom
     }

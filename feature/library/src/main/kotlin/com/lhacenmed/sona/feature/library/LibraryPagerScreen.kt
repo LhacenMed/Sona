@@ -27,6 +27,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
@@ -46,7 +47,9 @@ import com.lhacenmed.sona.core.designsystem.component.header.collapsingHeaderDra
 import com.lhacenmed.sona.core.designsystem.component.header.rememberCollapsingHeaderState
 import com.lhacenmed.sona.core.designsystem.component.topBarBackground
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
+import com.lhacenmed.sona.core.designsystem.component.screen.PlayingRowReveal
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
+import com.lhacenmed.sona.core.navigation.ScreenArrival
 import com.lhacenmed.sona.feature.library.operation.ExcludeFoldersDialog
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.selection.SelectionOptionsHost
@@ -58,6 +61,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
 
@@ -77,12 +81,15 @@ import kotlinx.coroutines.launch
  * they can all exist at once without competing for the launch frame.
  *
  * [onChooseQuickPlaySource] opens where the quick play button's source is chosen, which the shell knows.
+ *
+ * [arrival] opens the library on a tab - while it is shown - to do what it asks there once the tab is in.
  */
 @Composable
 fun LibraryPagerScreen(
     onChooseQuickPlaySource: () -> Unit,
     modifier: Modifier = Modifier,
     actions: List<TopBarAction> = emptyList(),
+    arrival: LibraryTabArrival? = null,
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
     val visibleTabs by viewModel.visibleTabs.collectAsStateWithLifecycle()
@@ -179,6 +186,17 @@ fun LibraryPagerScreen(
                     pillLeads = false
                 }
         }
+
+        // Slid to as a tap on it would be, and revealed in only once the pager has come to rest there.
+        var isRevealDue by rememberSaveable { mutableStateOf(false) }
+        LaunchedEffect(arrival) {
+            val requested = arrival ?: return@LaunchedEffect
+            val page = visibleTabs.indexOf(requested.tab).takeIf { it >= 0 } ?: return@LaunchedEffect
+            requestedPage = page
+            snapshotFlow { requestedPage == null && pagerState.settledPage == page }.first { it }
+            if (requested.arrival == ScreenArrival.RevealPlaying) isRevealDue = true
+        }
+        if (isRevealDue) PlayingRowReveal()
 
         val selectedTab = visibleTabs[pagerState.settledPage]
 

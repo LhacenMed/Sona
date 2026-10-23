@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        The "Now Playing" widget's measures. One rule lines it up: everything's visible edge sits on the content's
+        edge - the cover's, the text's, the timeline's, the outer controls' glyphs - so the card's margin is the same
+        all round. Where a button's touch target is wider than its glyph, it reaches past the edge by the difference,
+        given here as an overhang.
+    -->
+
+    <!-- The card's margin around its content, on every side. -->
+    <dimen name="widget_padding">14dp</dimen>
+    <!-- Between the cover and the column beside it. -->
+    <dimen name="widget_cover_gap">16dp</dimen>
+
+    <!-- A button's touch target, around its 24dp glyph, and how far it reaches past the edge: (24 - 36) / 2. -->
+    <dimen name="widget_button_size">36dp</dimen>
+    <dimen name="widget_button_overhang">-6dp</dimen>
+    <!-- The ⋮ button, as wide as its glyph's box: its dots are drawn at the box's end, on the edge. -->
+    <dimen name="widget_menu_button_width">24dp</dimen>
+    <dimen name="widget_play_button_size">44dp</dimen>
+
+    <!-- The timeline: its dot's size, and how far the dot and the played line reach past the scaled line's end. -->
+    <dimen name="widget_timeline_height">12dp</dimen>
+    <dimen name="widget_timeline_thumb_size">10dp</dimen>
+    <dimen name="widget_timeline_thumb_overhang">-10dp</dimen>
+    <dimen name="widget_timeline_line_overhang">-5dp</dimen>
+</resources>

@@ -693,24 +693,8 @@ class PlaybackService : MediaSessionService() {
                 RepeatMode.OFF -> CommandButton.ICON_REPEAT_OFF
             },
         )
-            .setDisplayName(
-                getString(
-                    when (repeatMode) {
-                        RepeatMode.STOP_AFTER_CURRENT -> R.string.playback_action_repeat_one_stop
-                        RepeatMode.ONE -> R.string.playback_action_repeat_one
-                        RepeatMode.ALL -> R.string.playback_action_repeat_all
-                        RepeatMode.OFF -> R.string.playback_action_repeat_off
-                    },
-                ),
-            )
-            .setCustomIconResId(
-                when (repeatMode) {
-                    RepeatMode.STOP_AFTER_CURRENT -> R.drawable.repeat_one_stop
-                    RepeatMode.ONE -> R.drawable.repeat_one_on
-                    RepeatMode.ALL -> R.drawable.repeat_on
-                    RepeatMode.OFF -> R.drawable.repeat
-                },
-            )
+            .setDisplayName(getString(repeatMode.labelRes))
+            .setCustomIconResId(repeatMode.iconRes)
             .setSessionCommand(PlaybackSessionCommands.toggleRepeatModeCommand)
             .build()
 

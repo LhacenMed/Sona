@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The timeline's whole length: a thin line across the middle of its view. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:height="2dp"
+        android:gravity="center_vertical|fill_horizontal">
+        <shape android:shape="rectangle">
+            <corners android:radius="1dp" />
+            <solid android:color="@android:color/white" />
+        </shape>
+    </item>
+</layer-list>

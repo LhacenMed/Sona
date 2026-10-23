@@ -4,4 +4,7 @@
     <string name="quick_play_shortcut_shuffle_long">Shuffle all</string>
     <string name="quick_play_shortcut_play_short">Play</string>
     <string name="quick_play_shortcut_play_long">Play all</string>
+    <string name="widget_description">Daily song picks for easier listening</string>
+    <string name="widget_nothing_playing">Nothing playing</string>
+    <string name="widget_open_player">Open player</string>
 </resources>

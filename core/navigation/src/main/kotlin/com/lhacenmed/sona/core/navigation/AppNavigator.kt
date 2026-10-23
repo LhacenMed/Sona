@@ -69,11 +69,22 @@ class IntentNavigator(
     }
 
     override fun go(screen: Screen) {
+        open(screen, arrival = null)
+    }
+
+    /** Opens [screen] to do [arrival] once it is in - see [ScreenArrival]. */
+    fun go(screen: Screen, arrival: ScreenArrival) {
+        open(screen, arrival)
+    }
+
+    private fun open(screen: Screen, arrival: ScreenArrival?) {
         if (screen == currentScreen || isOpeningScreen) return
         isOpeningScreen = true
         onNavigateListeners.toList().forEach { it() }
         activity.startActivity(
-            Intent(activity, HostActivity::class.java).putExtra(HostActivity.EXTRA_SCREEN, screen),
+            Intent(activity, HostActivity::class.java)
+                .putExtra(HostActivity.EXTRA_SCREEN, screen)
+                .putExtra(HostActivity.EXTRA_ARRIVAL, arrival),
         )
     }
 
