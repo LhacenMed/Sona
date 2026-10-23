@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.storage.StorageManager
 import com.lhacenmed.sona.core.common.cover.withCoverVersion
+import com.lhacenmed.sona.core.common.format.repairedTagText
 import com.lhacenmed.sona.core.database.stableIdOf
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.UnknownNames
@@ -97,26 +98,26 @@ class ManualFileWalker @Inject constructor(
 
             // What a video is told by - its extension alone cannot, an .mp4 or a .webm being either.
             val isVideo = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_HAS_VIDEO) == "yes"
-            val title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+            val title = retriever.tagText(MediaMetadataRetriever.METADATA_KEY_TITLE)
                 ?: path.substringAfterLast('/')
             if (title.isEmpty()) {
                 return null
             }
 
-            val artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
-                ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
+            val artist = retriever.tagText(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+                ?: retriever.tagText(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
                 ?: UnknownNames.ARTIST
             val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
             val folderPath = File(path).parent.orEmpty()
             val folderName = folderPath.substringAfterLast('/').ifEmpty { UnknownNames.ALBUM }
-            val album = if (isVideo) folderName else retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: folderName
+            val album = if (isVideo) folderName else retriever.tagText(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: folderName
             val trackNumber = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER).firstNumber()
             val discNumber = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DISC_NUMBER).firstNumber()
             // A date may be written whole - "2019-05-03" - as MP4 keeps it: its year is what leads it.
             val year = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_YEAR)
                 ?.let { Regex("\\d{4}").find(it)?.value?.toInt() }
                 ?.takeIf { it > 0 }
-            val genre = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_GENRE).takeUnless { isVideo }
+            val genre = retriever.tagText(MediaMetadataRetriever.METADATA_KEY_GENRE).takeUnless { isVideo }
             val dateAddedSeconds = runCatching { File(path).lastModified() / 1000L }.getOrDefault(0L)
 
             return Track(
@@ -198,6 +199,9 @@ private fun String.isMediaFile(): Boolean =
     substringAfterLast('.', missingDelimiterValue = "").lowercase() in MEDIA_EXTENSIONS
 
 private fun File.containsNoMedia(): Boolean = File(this, ".nomedia").exists()
+
+/** A tag the file holds, as it meant it - see [repairedTagText]. */
+private fun MediaMetadataRetriever.tagText(key: Int): String? = extractMetadata(key)?.repairedTagText()
 
 private fun String?.firstNumber(): Int? =
     this?.trim()

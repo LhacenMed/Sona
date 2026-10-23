@@ -7,6 +7,7 @@ import com.kyant.taglib.AudioPropertiesReadStyle
 import com.kyant.taglib.Picture
 import com.kyant.taglib.PropertyMap
 import com.kyant.taglib.TagLib
+import com.lhacenmed.sona.core.common.format.repairedTagText
 import java.io.File
 
 /** What the editor reads of a file: its [tags], and its [bitrateKbps] where it can be told. */
@@ -198,7 +199,7 @@ internal object TagFile {
      * keeps both in one tag, and a disc number likewise; each field shows its own half.
      */
     private fun tagsOf(properties: PropertyMap): TrackTags {
-        fun first(field: TagField) = properties[field.key]?.firstOrNull()?.trim().orEmpty()
+        fun first(field: TagField) = properties[field.key]?.firstOrNull()?.repairedTagText()?.trim().orEmpty()
         val track = first(TagField.TRACK_NUMBER)
         return TagField.entries.fold(TrackTags()) { tags, field ->
             val value = when (field) {

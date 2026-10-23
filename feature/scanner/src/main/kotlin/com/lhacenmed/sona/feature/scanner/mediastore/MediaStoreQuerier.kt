@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import com.lhacenmed.sona.core.common.cover.withCoverVersion
+import com.lhacenmed.sona.core.common.format.repairedTagText
 import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Genre
@@ -108,7 +109,7 @@ class MediaStoreQuerier @Inject constructor(
 
         context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
             while (cursor.moveToNext()) {
-                val title = cursor.stringOrNull(MediaStore.Audio.Media.TITLE)
+                val title = cursor.tagTextOrNull(MediaStore.Audio.Media.TITLE)
                 if (title.isNullOrEmpty()) continue
 
                 val path = cursor.stringOrNull(MediaStore.Audio.Media.DATA)
@@ -116,9 +117,9 @@ class MediaStoreQuerier @Inject constructor(
 
                 val mediaStoreId = cursor.long(MediaStore.Audio.Media._ID)
                 val durationMs = cursor.long(MediaStore.Audio.Media.DURATION)
-                val artist = cursor.stringOrNull(MediaStore.Audio.Media.ARTIST).orUnknown(UnknownNames.ARTIST)
+                val artist = cursor.tagTextOrNull(MediaStore.Audio.Media.ARTIST).orUnknown(UnknownNames.ARTIST)
                 val folderPath = File(path).parent.orEmpty()
-                val album = cursor.stringOrNull(MediaStore.Audio.Media.ALBUM)
+                val album = cursor.tagTextOrNull(MediaStore.Audio.Media.ALBUM)
                     .orUnknown(folderPath.substringAfterLast('/').ifEmpty { UnknownNames.ALBUM })
                 val albumId = cursor.long(MediaStore.Audio.Media.ALBUM_ID)
                 val artistId = cursor.long(MediaStore.Audio.Media.ARTIST_ID)
@@ -134,7 +135,7 @@ class MediaStoreQuerier @Inject constructor(
                 var genreId: Long? = null
                 var discNumber: Int? = null
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    genre = cursor.stringOrNull(MediaStore.Audio.Media.GENRE)
+                    genre = cursor.tagTextOrNull(MediaStore.Audio.Media.GENRE)
                     genreId = cursor.longOrNull(MediaStore.Audio.Media.GENRE_ID)
                     discNumber = cursor.stringOrNull(MediaStore.Audio.Media.DISC_NUMBER).firstNumber()
                 }
@@ -219,9 +220,9 @@ class MediaStoreQuerier @Inject constructor(
                 videos += Track(
                     id = stableIdOf(path),
                     mediaStoreId = mediaStoreId,
-                    title = cursor.stringOrNull(MediaStore.Video.Media.TITLE)?.takeIf { it.isNotBlank() }
+                    title = cursor.tagTextOrNull(MediaStore.Video.Media.TITLE)?.takeIf { it.isNotBlank() }
                         ?: File(path).nameWithoutExtension,
-                    artist = cursor.stringOrNull(MediaStore.Video.Media.ARTIST).orUnknown(UnknownNames.ARTIST),
+                    artist = cursor.tagTextOrNull(MediaStore.Video.Media.ARTIST).orUnknown(UnknownNames.ARTIST),
                     artistId = 0L,
                     album = folderPath.substringAfterLast('/').ifEmpty { UnknownNames.ALBUM },
                     albumId = 0L,
@@ -260,7 +261,7 @@ class MediaStoreQuerier @Inject constructor(
         context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
             while (cursor.moveToNext()) {
                 val id = cursor.long(MediaStore.Audio.Artists._ID)
-                val name = cursor.stringOrNull(MediaStore.Audio.Artists.ARTIST).orUnknown(UnknownNames.ARTIST)
+                val name = cursor.tagTextOrNull(MediaStore.Audio.Artists.ARTIST).orUnknown(UnknownNames.ARTIST)
                 val trackCount = cursor.int(MediaStore.Audio.Artists.NUMBER_OF_TRACKS)
                 val albumCount = cursor.int(MediaStore.Audio.Artists.NUMBER_OF_ALBUMS)
                 if (trackCount > 0 && albumCount > 0) {
@@ -291,8 +292,8 @@ class MediaStoreQuerier @Inject constructor(
                 if (trackCount <= 0) continue
 
                 val id = cursor.long(MediaStore.Audio.Albums._ID)
-                val artistName = cursor.stringOrNull(MediaStore.Audio.Albums.ARTIST).orUnknown(UnknownNames.ARTIST)
-                val title = cursor.stringOrNull(MediaStore.Audio.Albums.ALBUM).orUnknown(UnknownNames.ALBUM)
+                val artistName = cursor.tagTextOrNull(MediaStore.Audio.Albums.ARTIST).orUnknown(UnknownNames.ARTIST)
+                val title = cursor.tagTextOrNull(MediaStore.Audio.Albums.ALBUM).orUnknown(UnknownNames.ALBUM)
                 val coverArtUri = albumArtUriOf(id, coverVersions[id])
 
                 // ARTIST_ID was only added to Audio.Albums on API 29 (Q). Below that, join by name
@@ -329,7 +330,7 @@ class MediaStoreQuerier @Inject constructor(
         context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
             while (cursor.moveToNext()) {
                 val id = cursor.long(MediaStore.Audio.Genres._ID)
-                val name = cursor.stringOrNull(MediaStore.Audio.Genres.NAME)
+                val name = cursor.tagTextOrNull(MediaStore.Audio.Genres.NAME)
                 if (!name.isNullOrEmpty()) {
                     genres += Genre(id = id, name = name, trackCount = 0, artistCount = 0, coverArtUris = emptyList())
                 }
@@ -373,6 +374,9 @@ private fun Cursor.stringOrNull(column: String): String? {
     val index = getColumnIndex(column)
     return if (index == -1 || isNull(index)) null else getString(index)
 }
+
+/** A tag MediaStore read from the file, as the file meant it - see [repairedTagText]. */
+private fun Cursor.tagTextOrNull(column: String): String? = stringOrNull(column)?.repairedTagText()
 
 private fun Cursor.long(column: String): Long {
     val index = getColumnIndex(column)
