@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    One row tall and four cells wide - the system's own music widgets' size. It widens with the grid, but stays a
+    single row: every row height a launcher draws, it fills - see widget_mini_player.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_mini_player_description"
+    android:initialLayout="@layout/widget_mini_player"
+    android:minWidth="250dp"
+    android:minHeight="40dp"
+    android:minResizeWidth="250dp"
+    android:previewLayout="@layout/widget_mini_player_preview"
+    android:resizeMode="horizontal"
+    android:targetCellWidth="4"
+    android:targetCellHeight="1"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen" />

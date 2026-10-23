@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The widget's card, white so it takes whatever colour it is tinted. -->
+<!--
+    The widget's card: the brand's gradient, as the widget picker previews it. The widget tints it with the playing cover's
+    colour as it draws it, all of it.
+-->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
     <corners android:radius="24dp" />
-    <solid android:color="@android:color/white" />
+    <gradient
+        android:angle="270"
+        android:endColor="@color/brand_gradient_end"
+        android:startColor="@color/brand_gradient_start" />
 </shape>

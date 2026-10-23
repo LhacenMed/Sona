@@ -57,6 +57,7 @@
 
                     <TextView
                         android:id="@+id/widget_title"
+                        android:text="@string/app_name"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:ellipsize="end"
@@ -69,6 +70,7 @@
 
                     <TextView
                         android:id="@+id/widget_artist"
+                        android:text="@string/widget_preview_subtitle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
@@ -143,6 +145,7 @@
 
                 <TextView
                     android:id="@+id/widget_elapsed"
+                    android:text="@string/widget_preview_time"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
@@ -153,6 +156,7 @@
 
                 <TextView
                     android:id="@+id/widget_duration"
+                    android:text="@string/widget_preview_time"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif"
@@ -215,6 +219,7 @@
 
                     <ImageView
                         android:id="@+id/widget_play_pause_icon"
+                        android:tint="@color/brand_gradient_end"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center"

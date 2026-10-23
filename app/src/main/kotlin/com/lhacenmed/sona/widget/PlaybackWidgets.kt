@@ -65,9 +65,6 @@ import com.lhacenmed.sona.feature.player.R as PlayerR
 /** The side a cover is loaded at: as sharp as the widget ever shows it, and well within what a widget may hold. */
 private const val CoverSizePx = 512
 
-/** How round the cover's corners are, as a share of its side. */
-private const val CoverCornerFraction = 0.07f
-
 /** The timeline's level once played to its end - see `widget_progress`. */
 private const val MaxTimelineLevel = 10_000
 
@@ -76,9 +73,9 @@ private const val ACTION_ARRIVE = "${BuildConfig.APPLICATION_ID}.widget.action.A
 private const val EXTRA_ARRIVAL = "${BuildConfig.APPLICATION_ID}.widget.extra.ARRIVAL"
 
 /**
- * The home screen's "Now Playing" widget, kept in step with playback - Auxio's `WidgetComponent` with its
- * `WidgetProvider`'s layouts: the playing track's cover, title and artist, its timeline and the player's
- * controls, all in the colours of its cover.
+ * The home screen's widgets, kept in step with playback - Auxio's `WidgetComponent` with its `WidgetProvider`'s
+ * layouts: "Now Playing", the playing track's cover, title and artist, its timeline and the player's controls, and
+ * the one-row "Mini player" - see [WidgetKind] - all in the colours of its cover.
  *
  * Drawn from what the app itself shows: the playback state every screen reads, the library's tracks and
  * favorites, and whether covers are shown. The colours are the scheme the theme grows from the cover - see
@@ -93,7 +90,7 @@ private const val EXTRA_ARRIVAL = "${BuildConfig.APPLICATION_ID}.widget.extra.AR
  * the player over that list - see [arrivalOf].
  */
 @Singleton
-class NowPlayingWidget @Inject constructor(
+class PlaybackWidgets @Inject constructor(
     @ApplicationContext private val context: Context,
     @ApplicationScope private val scope: CoroutineScope,
     private val playbackController: PlaybackController,
@@ -101,7 +98,7 @@ class NowPlayingWidget @Inject constructor(
     private val imageSettings: ImageSettings,
 ) {
     private val widgetManager = AppWidgetManager.getInstance(context)
-    private val component = ComponentName(context, NowPlayingWidgetProvider::class.java)
+    private val components = WidgetKind.entries.associateWith { ComponentName(context, it.provider) }
     private val powerManager = context.getSystemService(PowerManager::class.java)
 
     private val isStarted = AtomicBoolean(false)
@@ -113,9 +110,9 @@ class NowPlayingWidget @Inject constructor(
     /** The last cover drawn, kept so a press of play does not load it again. */
     private var artwork: Artwork? = null
 
-    /** Whether the widget is on the home screen at all. */
+    /** Whether any of the widgets is on the home screen at all. */
     val isPlaced: Boolean
-        get() = widgetManager.getAppWidgetIds(component).isNotEmpty()
+        get() = components.values.any { widgetManager.getAppWidgetIds(it).isNotEmpty() }
 
     /** Follows playback from now on, drawing every widget placed; asked again, draws them all once more. */
     fun start() {
@@ -182,23 +179,30 @@ class NowPlayingWidget @Inject constructor(
         .map { Timeline(elapsedSeconds = it.positionMs / 1000, durationSeconds = it.durationMs / 1000) }
         .distinctUntilChanged()
 
+    /** Draws each kind of widget placed, from the one content - each in its own layout, with the views it has. */
     private suspend fun drawWidget(content: WidgetContent) {
-        if (!isPlaced) return
+        val placed = components.filterValues { widgetManager.getAppWidgetIds(it).isNotEmpty() }
+        if (placed.isEmpty()) return
         val artwork = artworkFor(content)
         val playback = playbackController.playbackState.value
-        val views = RemoteViews(context.packageName, R.layout.widget_now_playing).apply {
-            bindContent(content, artwork)
-            bindTimeline(Timeline(playback.positionMs / 1000, playback.durationMs / 1000))
+        for ((kind, component) in placed) {
+            val views = RemoteViews(context.packageName, kind.layoutRes).apply {
+                bindContent(kind, content, artwork)
+                if (kind.hasTimeline) bindTimeline(Timeline(playback.positionMs / 1000, playback.durationMs / 1000))
+            }
+            widgetManager.updateAppWidget(component, views)
         }
-        widgetManager.updateAppWidget(component, views)
     }
 
     private fun drawTimeline(timeline: Timeline) {
         if (!powerManager.isInteractive) return
-        val ids = widgetManager.getAppWidgetIds(component)
-        if (ids.isEmpty()) return
-        val views = RemoteViews(context.packageName, R.layout.widget_now_playing).apply { bindTimeline(timeline) }
-        widgetManager.partiallyUpdateAppWidget(ids, views)
+        for ((kind, component) in components) {
+            if (!kind.hasTimeline) continue
+            val ids = widgetManager.getAppWidgetIds(component)
+            if (ids.isEmpty()) continue
+            val views = RemoteViews(context.packageName, kind.layoutRes).apply { bindTimeline(timeline) }
+            widgetManager.partiallyUpdateAppWidget(ids, views)
+        }
     }
 
     /** [content]'s cover and the colours grown from it - the last ones again while they are the same cover's. */
@@ -210,7 +214,7 @@ class NowPlayingWidget @Inject constructor(
         return withContext(Dispatchers.Default) {
             val source = coverArtUri?.let { loadCover(it) } ?: drawDefaultCover(context, content.isNight, CoverSizePx)
             val scheme = materialKolorDynamicColorScheme(source.extractThemeColor(), content.isNight)
-            Artwork(key, source.toWidgetCover(), WidgetColors(scheme))
+            Artwork(key, WidgetKind.entries.associateWith { source.toWidgetCover(it.coverCornerFraction) }, WidgetColors(scheme))
         }.also { artwork = it }
     }
 
@@ -225,20 +229,18 @@ class NowPlayingWidget @Inject constructor(
         (SingletonImageLoader.get(context).execute(request) as? SuccessResult)?.image?.toBitmap()
     }
 
-    private fun RemoteViews.bindContent(content: WidgetContent, artwork: Artwork) {
+    private fun RemoteViews.bindContent(kind: WidgetKind, content: WidgetContent, artwork: Artwork) {
         val colors = artwork.colors
         val track = content.track
         setInt(R.id.widget_card, "setColorFilter", colors.card)
-        setImageViewBitmap(R.id.widget_cover, artwork.cover)
+        setImageViewBitmap(R.id.widget_cover, artwork.covers.getValue(kind))
 
-        setTextViewText(
-            R.id.widget_title,
-            when {
-                content.isPrivate -> VAULT_DISPLAY_TITLE
-                track != null -> track.title
-                else -> context.getString(R.string.widget_nothing_playing)
-            },
-        )
+        val title = when {
+            content.isPrivate -> VAULT_DISPLAY_TITLE
+            track != null -> track.title
+            else -> context.getString(R.string.widget_nothing_playing)
+        }
+        setTextViewText(R.id.widget_title, title)
         setTextViewText(R.id.widget_artist, track?.artist.orEmpty())
         setTextColor(R.id.widget_title, colors.title)
         setTextColor(R.id.widget_artist, colors.subtitle)
@@ -263,7 +265,10 @@ class NowPlayingWidget @Inject constructor(
         )
         setImageViewResource(R.id.widget_repeat, content.repeatMode.iconRes)
         setContentDescription(R.id.widget_repeat, context.getString(content.repeatMode.labelRes))
-        setImageViewResource(R.id.widget_play_pause_icon, if (content.isPlaying) PlayerR.drawable.pause else PlayerR.drawable.play)
+        val playPauseIcon = if (content.isPlaying) PlayerR.drawable.pause else PlayerR.drawable.play
+        setImageViewResource(R.id.widget_play_pause_icon, playPauseIcon)
+        // The mini player's, a glyph alone in the icon colour - no circle round it.
+        setImageViewResource(R.id.widget_play_pause_glyph, playPauseIcon)
         setContentDescription(
             R.id.widget_play_pause,
             context.getString(if (content.isPlaying) PlayerR.string.player_pause else PlayerR.string.player_play),
@@ -318,7 +323,7 @@ class NowPlayingWidget @Inject constructor(
     }
 }
 
-/** Everything the widget shows but its timeline - see [NowPlayingWidget]. */
+/** Everything the widget shows but its timeline - see [PlaybackWidgets]. */
 private data class WidgetContent(
     /** The library's track playing - null while the Private Folder plays, or nothing does. */
     val track: Track?,
@@ -339,7 +344,8 @@ private data class Timeline(val elapsedSeconds: Long, val durationSeconds: Long)
 /** What a cover is drawn for: the same cover in the other mode grows other colours. */
 private data class ArtworkKey(val coverArtUri: String?, val isNight: Boolean)
 
-private class Artwork(val key: ArtworkKey, val cover: Bitmap, val colors: WidgetColors)
+/** A cover and its colours, the cover cut once for each kind of widget, in the shape it draws it in. */
+private class Artwork(val key: ArtworkKey, val covers: Map<WidgetKind, Bitmap>, val colors: WidgetColors)
 
 /** What the widget is drawn in, taken from the scheme its cover grows - its roles where the app's player has them. */
 private class WidgetColors(scheme: ColorScheme) {
@@ -361,19 +367,20 @@ private val TintedIcons = intArrayOf(
     R.id.widget_previous,
     R.id.widget_next,
     R.id.widget_repeat,
+    R.id.widget_play_pause_glyph,
 )
 
 private val Configuration.isNight: Boolean
     get() = uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
 
-/** This cut to the square at its centre, its corners rounded - the cover as the widget shows it. */
-private fun Bitmap.toWidgetCover(): Bitmap {
+/** This cut to the square at its centre, its corners rounded by [cornerFraction] of its side - a cover as a widget shows it. */
+private fun Bitmap.toWidgetCover(cornerFraction: Float): Bitmap {
     val side = minOf(width, height)
     val cover = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888)
     val shader = BitmapShader(this, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply {
         setLocalMatrix(Matrix().apply { setTranslate(-(width - side) / 2f, -(height - side) / 2f) })
     }
-    val radius = side * CoverCornerFraction
+    val radius = side * cornerFraction
     Canvas(cover).drawRoundRect(
         0f,
         0f,

@@ -29,7 +29,7 @@
         -->
         <meta-data
             android:name="miuiWidgetVersion"
-            android:value="1" />
+            android:value="2" />
 
         <activity
             android:name=".MainActivity"
@@ -41,7 +41,7 @@
         </activity>
 
         <!--
-            The "Now Playing" widget - see NowPlayingWidget. Marked as a HyperOS widget, so Xiaomi's launcher names it
+            The "Now Playing" widget - see PlaybackWidgets. Marked as a HyperOS widget, so Xiaomi's launcher names it
             by its label under it, as it does its own. A player widget, it is left in the app's own process with no
             refresh as it comes into view - the two things Xiaomi's specification asks of one; playback updates it.
         -->
@@ -61,6 +61,24 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_now_playing_info" />
+        </receiver>
+
+        <!--
+            The "Mini player" widget, one row tall - see PlaybackWidgets. A plain Android widget, not a HyperOS one:
+            Xiaomi's widgets come 2x2, 4x2 and 4x4 alone, and its launcher leaves one marked so in any other size out
+            of its widget picker. Unmarked, it is listed there as any app's widget is - without its name under it.
+        -->
+        <receiver
+            android:name=".widget.MiniPlayerWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_mini_player_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_mini_player_info" />
         </receiver>
 
     </application>

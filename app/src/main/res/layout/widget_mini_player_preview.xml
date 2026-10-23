@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The "Mini player" widget as the widget picker previews it: the widget itself, at a row's height. A picker draws
+    every preview in a box of its own choosing - HyperOS's as tall as a two-row widget's - which the widget would
+    otherwise fill, previewed as tall as the "Now Playing" one.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <include
+        layout="@layout/widget_mini_player"
+        android:layout_width="match_parent"
+        android:layout_height="72dp"
+        android:layout_gravity="center_vertical" />
+</FrameLayout>

@@ -30,7 +30,7 @@ import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.scanner.MediaScanner
 import com.lhacenmed.sona.feature.settings.updates.UpdatesScreen
 import com.lhacenmed.sona.feature.update.notification.UpdateNotifier
-import com.lhacenmed.sona.widget.NowPlayingWidget
+import com.lhacenmed.sona.widget.PlaybackWidgets
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
@@ -143,11 +143,11 @@ class MainActivity : SonaActivity() {
 
     /**
      * Opens the list the queue plays from when [intent] is the widget's - its own screen, or the library's tab -
-     * to do there what the widget asked: see [NowPlayingWidget.arrivalOf]. Read once the queue is known, so a
+     * to do there what the widget asked: see [PlaybackWidgets.arrivalOf]. Read once the queue is known, so a
      * process the tap started opens the list the restored queue plays from.
      */
     private fun arriveFromWidget(intent: Intent) {
-        val arrival = NowPlayingWidget.arrivalOf(intent) ?: return
+        val arrival = PlaybackWidgets.arrivalOf(intent) ?: return
         lifecycleScope.launch {
             val playback = playbackController.playbackState.first { it.isReady }
             if (playback.libraryTrackId == null) return@launch

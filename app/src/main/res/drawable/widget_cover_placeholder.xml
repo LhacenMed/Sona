@@ -1,10 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Square, so the cover keeps its square place before the first cover is drawn - in the widget picker's preview. -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="rectangle">
-    <size
+<!--
+    The cover before the first is drawn - in the widget picker's preview: a pane over the gradient with Sona's mark.
+    Sized, so a cover view keeps its square place for it.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
         android:width="48dp"
-        android:height="48dp" />
-    <corners android:radius="4dp" />
-    <solid android:color="#1F000000" />
-</shape>
+        android:height="48dp">
+        <shape android:shape="rectangle">
+            <corners android:radius="4dp" />
+            <solid android:color="@color/widget_preview_cover" />
+        </shape>
+    </item>
+    <item
+        android:width="20dp"
+        android:height="20dp"
+        android:drawable="@drawable/ic_stat_sona"
+        android:gravity="center" />
+</layer-list>
