@@ -6,6 +6,25 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.6.6] - 2026-10-23
+
+### Added
+
+- Rank typo-tolerant search results and find tracks by their lyrics.
+- Separate the artists of a credit naming several.
+- Add a Now Playing home screen widget.
+
+### Changed
+
+- Smoother screen transitions and snappier button presses.
+
+### Fixed
+
+- Let the scroll button take a hidden quick play button's place.
+- Keep the top bar in place and let back only close the keyboard.
+- Show every track property at once.
+- Read UTF-8 tags that claim to be Latin-1 as written.
+
 ## [1.6.5] - 2026-10-09
 
 ### Added
