@@ -33,8 +33,9 @@ import com.lhacenmed.sona.core.common.format.formatDuration
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.datastore.CoverMode
 import com.lhacenmed.sona.core.datastore.ImageSettings
-import com.lhacenmed.sona.core.designsystem.theme.extractThemeColor
-import com.lhacenmed.sona.core.designsystem.theme.materialKolorDynamicColorScheme
+import com.lhacenmed.sona.core.designsystem.theme.AppTheme
+import com.lhacenmed.sona.core.designsystem.theme.colorScheme
+import com.lhacenmed.sona.core.designsystem.theme.isDark
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.navigation.ScreenArrival
@@ -58,6 +59,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -78,12 +81,12 @@ private const val EXTRA_ARRIVAL = "${BuildConfig.APPLICATION_ID}.widget.extra.AR
 /**
  * The home screen's widgets, kept in step with playback - Auxio's `WidgetComponent` with its `WidgetProvider`'s
  * layouts: "Now Playing", the playing track's cover, title and artist, its timeline and the player's controls, and
- * the one-row "Mini player" - see [WidgetKind] - all in the colours of its cover.
+ * the one-row "Mini player" - see [WidgetKind] - all in the app's own colours.
  *
  * Drawn from what the app itself shows: the playback state every screen reads, the library's tracks and
- * favorites, and whether covers are shown. The colours are the scheme the theme grows from the cover - see
- * [extractThemeColor] - in light or dark as the system is; a track without one is drawn in the default
- * cover's. The Private Folder's media is named as the notification names it, and shows no cover.
+ * favorites, whether covers are shown, and the app's theme - its mode and colours, the playing cover's while the
+ * theme takes them, as [AppTheme] works them out for the app. The Private Folder's media is named as the
+ * notification names it, and shows no cover.
  *
  * Two kinds of draw, because a widget is a picture sent to the launcher rather than a view: the whole widget,
  * cover included, whenever anything on it but the timeline changes; and the timeline alone each second it
@@ -99,13 +102,14 @@ class PlaybackWidgets @Inject constructor(
     private val playbackController: PlaybackController,
     private val repository: LibraryRepository,
     private val imageSettings: ImageSettings,
+    private val appTheme: AppTheme,
 ) {
     private val widgetManager = AppWidgetManager.getInstance(context)
     private val components = WidgetKind.entries.associateWith { ComponentName(context, it.provider) }
     private val powerManager = context.getSystemService(PowerManager::class.java)
 
     private val isStarted = AtomicBoolean(false)
-    private val isNight = MutableStateFlow(context.resources.configuration.isNight)
+    private val configuration = MutableStateFlow(Configuration(context.resources.configuration))
 
     /** Counts the launcher's asks for the widgets to be drawn again - one just placed among them. */
     private val redraws = MutableStateFlow(0)
@@ -126,7 +130,7 @@ class PlaybackWidgets @Inject constructor(
         context.registerComponentCallbacks(
             object : ComponentCallbacks {
                 override fun onConfigurationChanged(newConfig: Configuration) {
-                    isNight.value = newConfig.isNight
+                    configuration.value = Configuration(newConfig)
                 }
 
                 @Deprecated("Deprecated in Java")
@@ -164,8 +168,8 @@ class PlaybackWidgets @Inject constructor(
         repository.loadedTracksById,
         repository.favoriteTrackIds,
         imageSettings.coverMode.flow,
-        combine(isNight, redraws, ::Pair),
-    ) { playback, tracksById, favoriteTrackIds, coverMode, (isNight, redraw) ->
+        combine(widgetTheme(), redraws, ::Pair),
+    ) { playback, tracksById, favoriteTrackIds, coverMode, (theme, redraw) ->
         if (!playback.isReady || tracksById == null) return@combine null
         val trackId = playback.libraryTrackId
         WidgetContent(
@@ -176,10 +180,23 @@ class PlaybackWidgets @Inject constructor(
             repeatMode = playback.repeatMode,
             isFavorite = trackId != null && trackId in favoriteTrackIds,
             showsCover = coverMode != CoverMode.OFF,
-            isNight = isNight,
+            theme = theme,
             redraw = redraw,
         )
     }.filterNotNull().distinctUntilChanged()
+
+    /**
+     * The app's theme as the widgets draw it, worked out again as the system's dark mode or wallpaper colours
+     * change - nothing until [AppTheme] has worked it out in full, so no widget is drawn in a default first.
+     */
+    private fun widgetTheme(): Flow<WidgetTheme> = combine(
+        appTheme.config,
+        flow { emit(appTheme.awaitReady()) },
+        configuration,
+    ) { config, _, configuration ->
+        val isDark = config.isDark(isSystemDark = configuration.isNight)
+        WidgetTheme(isDark, WidgetColors(config.colorScheme(context, isDark)))
+    }.flowOn(Dispatchers.Default)
 
     private fun timeline(): Flow<Timeline> = combine(playbackController.playbackState, repository.loadedTracksById, ::timelineOf)
         .filterNotNull()
@@ -221,16 +238,15 @@ class PlaybackWidgets @Inject constructor(
         }
     }
 
-    /** [content]'s cover and the colours grown from it - the last ones again while they are the same cover's. */
+    /** [content]'s cover - the last one again while it is the same. */
     private suspend fun artworkFor(content: WidgetContent): Artwork {
         val coverArtUri = content.track?.coverArtUri
             ?.takeIf { it.isNotEmpty() && content.showsCover && !content.isPrivate }
-        val key = ArtworkKey(coverArtUri, content.isNight)
+        val key = ArtworkKey(coverArtUri, content.theme.isDark)
         artwork?.takeIf { it.key == key }?.let { return it }
         return withContext(Dispatchers.Default) {
-            val source = coverArtUri?.let { loadCover(it) } ?: drawDefaultCover(context, content.isNight, CoverSizePx)
-            val scheme = materialKolorDynamicColorScheme(source.extractThemeColor(), content.isNight)
-            Artwork(key, WidgetKind.entries.associateWith { source.toWidgetCover(it.coverCornerFraction) }, WidgetColors(scheme))
+            val source = coverArtUri?.let { loadCover(it) } ?: drawDefaultCover(context, content.theme.isDark, CoverSizePx)
+            Artwork(key, WidgetKind.entries.associateWith { source.toWidgetCover(it.coverCornerFraction) })
         }.also { artwork = it }
     }
 
@@ -239,14 +255,14 @@ class PlaybackWidgets @Inject constructor(
             .data(uri)
             .size(CoverSizePx)
             .scale(Scale.FILL)
-            // Read for its colours, and sent to the launcher - neither of which a hardware bitmap allows.
+            // Cut to the widget's shape, and sent to the launcher - neither of which a hardware bitmap allows.
             .allowHardware(false)
             .build()
         (SingletonImageLoader.get(context).execute(request) as? SuccessResult)?.image?.toBitmap()
     }
 
     private fun RemoteViews.bindContent(kind: WidgetKind, content: WidgetContent, artwork: Artwork) {
-        val colors = artwork.colors
+        val colors = content.theme.colors
         val track = content.track
         setInt(R.id.widget_card, "setColorFilter", colors.card)
         setImageViewBitmap(R.id.widget_cover, artwork.covers.getValue(kind))
@@ -352,7 +368,7 @@ private data class WidgetContent(
     val repeatMode: RepeatMode,
     val isFavorite: Boolean,
     val showsCover: Boolean,
-    val isNight: Boolean,
+    val theme: WidgetTheme,
     /** Changes with each ask to draw the widgets again, so the same content is drawn once more. */
     val redraw: Int,
 )
@@ -360,13 +376,16 @@ private data class WidgetContent(
 /** The timeline, to the second it shows. */
 private data class Timeline(val elapsedSeconds: Long, val durationSeconds: Long)
 
-/** What a cover is drawn for: the same cover in the other mode grows other colours. */
-private data class ArtworkKey(val coverArtUri: String?, val isNight: Boolean)
+/** What a cover is drawn for: the default cover is drawn for the mode it is shown in. */
+private data class ArtworkKey(val coverArtUri: String?, val isDark: Boolean)
 
-/** A cover and its colours, the cover cut once for each kind of widget, in the shape it draws it in. */
-private class Artwork(val key: ArtworkKey, val covers: Map<WidgetKind, Bitmap>, val colors: WidgetColors)
+/** A cover, cut once for each kind of widget, in the shape it draws it in. */
+private class Artwork(val key: ArtworkKey, val covers: Map<WidgetKind, Bitmap>)
 
-/** What the widget is drawn in, taken from the scheme its cover grows - its roles where the app's player has them. */
+/** The app's theme as the widgets draw it: dark or not, and its colours - one per change of theme, so drawn once. */
+private class WidgetTheme(val isDark: Boolean, val colors: WidgetColors)
+
+/** What the widget is drawn in, taken from the app's colour scheme - its roles where the app's player has them. */
 private class WidgetColors(scheme: ColorScheme) {
     val card = scheme.surface.toArgb()
     val title = scheme.onSurface.toArgb()

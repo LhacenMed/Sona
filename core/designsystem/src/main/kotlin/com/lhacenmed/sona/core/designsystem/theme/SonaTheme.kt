@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.core.designsystem.theme
 
+import android.content.Context
 import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -51,34 +52,11 @@ fun SonaTheme(
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
-    val darkTheme = when (config.mode) {
-        ThemeMode.SYSTEM -> isSystemInDarkTheme()
-        ThemeMode.LIGHT -> false
-        ThemeMode.DARK -> true
-    }
+    val darkTheme = config.isDark(isSystemDark = isSystemInDarkTheme())
 
     // Generated once per change rather than once per frame: an HCT scheme is dozens of tone solves,
     // and the transition below only ever needs its two ends.
-    val targetColorScheme = remember(config.colors, config.pureBlack, darkTheme) {
-        val scheme = when (val colors = config.colors) {
-            ThemeColors.Wallpaper ->
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-                } else {
-                    materialKolorDynamicColorScheme(seedColor = DefaultThemeColor, isDark = darkTheme)
-                }
-            is ThemeColors.Seed -> materialKolorDynamicColorScheme(seedColor = colors.color, isDark = darkTheme)
-            is ThemeColors.Palette -> paletteColorScheme(seeds = colors.seeds, isDark = darkTheme)
-        }
-        // Every bar, row and sheet is `surface`, while a Scaffold - and any screen that paints nothing
-        // itself - shows `background`. The two match on most devices but not all, and where they differ
-        // content sits in bands of another shade. One colour for both, here, keeps every screen whole.
-        if (darkTheme && config.pureBlack) {
-            scheme.copy(surface = Color.Black, background = Color.Black, onBackground = scheme.onSurface)
-        } else {
-            scheme.copy(background = scheme.surface, onBackground = scheme.onSurface)
-        }
-    }
+    val targetColorScheme = remember(config.colors, config.pureBlack, darkTheme) { config.colorScheme(context, darkTheme) }
 
     SystemBarsFollowing(darkTheme)
 
@@ -95,6 +73,38 @@ fun SonaTheme(
             LocalFastScrollTouchArea provides fastScrollTouchArea,
             content = content,
         )
+    }
+}
+
+/** Whether this config draws the app dark, the system being dark or not - [isSystemDark]. */
+fun ThemeConfig.isDark(isSystemDark: Boolean): Boolean = when (mode) {
+    ThemeMode.SYSTEM -> isSystemDark
+    ThemeMode.LIGHT -> false
+    ThemeMode.DARK -> true
+}
+
+/**
+ * The colour scheme this config draws the app in, [isDark] or not - what [SonaTheme] moves to, and what the home
+ * screen widgets are drawn in, so they are always in the app's own colours.
+ */
+fun ThemeConfig.colorScheme(context: Context, isDark: Boolean): ColorScheme {
+    val scheme = when (colors) {
+        ThemeColors.Wallpaper ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            } else {
+                materialKolorDynamicColorScheme(seedColor = DefaultThemeColor, isDark = isDark)
+            }
+        is ThemeColors.Seed -> materialKolorDynamicColorScheme(seedColor = colors.color, isDark = isDark)
+        is ThemeColors.Palette -> paletteColorScheme(seeds = colors.seeds, isDark = isDark)
+    }
+    // Every bar, row and sheet is `surface`, while a Scaffold - and any screen that paints nothing
+    // itself - shows `background`. The two match on most devices but not all, and where they differ
+    // content sits in bands of another shade. One colour for both, here, keeps every screen whole.
+    return if (isDark && pureBlack) {
+        scheme.copy(surface = Color.Black, background = Color.Black, onBackground = scheme.onSurface)
+    } else {
+        scheme.copy(background = scheme.surface, onBackground = scheme.onSurface)
     }
 }
 
