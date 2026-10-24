@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     The "Mini player" widget, one row tall, as the system's own music widget draws it: a pill, the cover a circle at
-    its start, and beside it the title over the artist, over shuffle, previous, play, next and repeat. Drawn by
+    its start, and beside it the title alone - no artist - over shuffle, previous, play, next and repeat. Drawn by
     PlaybackWidgets as the "Now Playing" widget is, from the views the two share. What is given here is a preview's -
     the brand's gradient, white placeholders - all of it replaced as the widget is drawn.
 
-    Everything lines up on the column's edges: the title, the artist, shuffle's glyph at its start and repeat's at its
+    Everything lines up on the column's edges: the title, shuffle's glyph at its start and repeat's at its
     end, the other controls spread evenly between. The cover is inset from the pill's end as from its top and bottom,
     so its circle sits in the pill's round end. The controls take the height left under the text, each at most 28dp
     - play 32dp - and smaller in a short row, rather than cut.
@@ -60,19 +60,6 @@
                 android:textColor="@color/widget_preview_content"
                 android:textSize="16sp"
                 android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/widget_artist"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:ellipsize="end"
-                android:fontFamily="sans-serif"
-                android:includeFontPadding="false"
-                android:maxLines="1"
-                android:text="@string/widget_preview_subtitle"
-                android:textColor="@color/widget_preview_secondary"
-                android:textSize="12sp" />
 
             <!-- Shuffle, previous, play, next and repeat, reading left to right in every language as the player's own do. -->
             <LinearLayout
