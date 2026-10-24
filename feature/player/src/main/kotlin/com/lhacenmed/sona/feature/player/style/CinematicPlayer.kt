@@ -58,6 +58,7 @@ import com.lhacenmed.sona.feature.player.Thumbnail
 import com.lhacenmed.sona.feature.player.background.PlayerColors
 import com.lhacenmed.sona.feature.player.favoriteIconRes
 import com.lhacenmed.sona.feature.player.playPauseIconRes
+import com.lhacenmed.sona.feature.player.InactiveToggleAlpha
 import com.lhacenmed.sona.feature.player.transportIconRes
 import com.lhacenmed.sona.feature.playback.R as PlaybackR
 
@@ -422,7 +423,7 @@ private fun CinematicTransportControls(
                         Icon(
                             painter = painterResource(PlaybackR.drawable.shuffle),
                             contentDescription = null,
-                            tint = contentColor.copy(alpha = if (shuffleEnabled) 1f else 0.6f),
+                            tint = contentColor.copy(alpha = if (shuffleEnabled) 1f else InactiveToggleAlpha),
                             modifier = Modifier.size(smallIcon),
                         )
                     }
@@ -519,7 +520,7 @@ private fun CinematicTransportControls(
                         Icon(
                             painter = painterResource(repeatMode.transportIconRes()),
                             contentDescription = null,
-                            tint = contentColor.copy(alpha = if (repeatMode == RepeatMode.OFF) 0.6f else 1f),
+                            tint = contentColor.copy(alpha = if (repeatMode == RepeatMode.OFF) InactiveToggleAlpha else 1f),
                             modifier = Modifier.size(smallIcon),
                         )
                     }

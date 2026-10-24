@@ -41,8 +41,9 @@ import com.lhacenmed.sona.core.navigation.ScreenArrival
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.playback.PlaybackSpace
 import com.lhacenmed.sona.feature.playback.VAULT_DISPLAY_TITLE
-import com.lhacenmed.sona.feature.playback.iconRes
 import com.lhacenmed.sona.feature.playback.labelRes
+import com.lhacenmed.sona.feature.player.InactiveToggleAlpha
+import com.lhacenmed.sona.feature.player.transportIconRes
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
@@ -59,6 +60,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 import com.lhacenmed.sona.feature.playback.R as PlaybackR
 import com.lhacenmed.sona.feature.player.R as PlayerR
 
@@ -258,12 +260,15 @@ class PlaybackWidgets @Inject constructor(
                 if (content.isFavorite) PlaybackR.string.playback_action_remove_favorite else PlaybackR.string.playback_action_add_favorite,
             ),
         )
-        setImageViewResource(R.id.widget_shuffle, if (content.isShuffled) PlaybackR.drawable.shuffle_on else PlaybackR.drawable.shuffle)
+        // The toggles as the player draws them: one glyph each, whole while on and faint while off - see InactiveToggleAlpha.
+        setImageViewResource(R.id.widget_shuffle, PlaybackR.drawable.shuffle)
+        setInt(R.id.widget_shuffle, "setImageAlpha", toggleAlpha(isOn = content.isShuffled))
         setContentDescription(
             R.id.widget_shuffle,
             context.getString(if (content.isShuffled) PlaybackR.string.playback_action_shuffle_off else PlaybackR.string.playback_action_shuffle_on),
         )
-        setImageViewResource(R.id.widget_repeat, content.repeatMode.iconRes)
+        setImageViewResource(R.id.widget_repeat, content.repeatMode.transportIconRes())
+        setInt(R.id.widget_repeat, "setImageAlpha", toggleAlpha(isOn = content.repeatMode != RepeatMode.OFF))
         setContentDescription(R.id.widget_repeat, context.getString(content.repeatMode.labelRes))
         val playPauseIcon = if (content.isPlaying) PlayerR.drawable.pause else PlayerR.drawable.play
         setImageViewResource(R.id.widget_play_pause_icon, playPauseIcon)
@@ -358,6 +363,9 @@ private class WidgetColors(scheme: ColorScheme) {
     val timeline = scheme.onSurface.toArgb()
     val timelineTrack = scheme.outlineVariant.toArgb()
 }
+
+/** A toggle's image alpha, out of 255: whole while [isOn], [InactiveToggleAlpha] of it while off. */
+private fun toggleAlpha(isOn: Boolean): Int = if (isOn) 255 else (InactiveToggleAlpha * 255).roundToInt()
 
 /** The icons drawn in the plain icon colour. */
 private val TintedIcons = intArrayOf(

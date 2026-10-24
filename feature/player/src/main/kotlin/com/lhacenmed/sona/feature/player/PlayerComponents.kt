@@ -41,9 +41,15 @@ internal fun PlaybackUiState.playPauseIconRes(): Int =
         else -> R.drawable.play
     }
 
+/**
+ * How faint a toggle that is off - shuffle, repeat - is drawn beside the controls, in the player and its widgets.
+ * On, it is drawn whole: the glyph stays the same, so the toggle never changes size as it is turned on.
+ */
+const val InactiveToggleAlpha = 0.6f
+
 /** The repeat glyph of a transport row, with Sona's stop-after-current mode drawn as the notification draws it. */
 @DrawableRes
-internal fun RepeatMode.transportIconRes(): Int =
+fun RepeatMode.transportIconRes(): Int =
     when (this) {
         RepeatMode.OFF, RepeatMode.ALL -> PlaybackR.drawable.repeat
         RepeatMode.ONE -> R.drawable.repeat_one
