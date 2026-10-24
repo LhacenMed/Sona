@@ -69,22 +69,25 @@ class IntentNavigator(
     }
 
     override fun go(screen: Screen) {
-        open(screen, arrival = null)
+        open(screen, arrivesAtPlaying = false)
     }
 
-    /** Opens [screen] to do [arrival] once it is in - see [ScreenArrival]. */
-    fun go(screen: Screen, arrival: ScreenArrival) {
-        open(screen, arrival)
+    /**
+     * Opens [screen] at its playing row, the full player over it - the list the queue plays from, as the home
+     * screen widget opens it. Once only: a screen recreated after it arrived stays as it is.
+     */
+    fun goToPlaying(screen: Screen) {
+        open(screen, arrivesAtPlaying = true)
     }
 
-    private fun open(screen: Screen, arrival: ScreenArrival?) {
+    private fun open(screen: Screen, arrivesAtPlaying: Boolean) {
         if (screen == currentScreen || isOpeningScreen) return
         isOpeningScreen = true
         onNavigateListeners.toList().forEach { it() }
         activity.startActivity(
             Intent(activity, HostActivity::class.java)
                 .putExtra(HostActivity.EXTRA_SCREEN, screen)
-                .putExtra(HostActivity.EXTRA_ARRIVAL, arrival),
+                .putExtra(HostActivity.EXTRA_ARRIVES_AT_PLAYING, arrivesAtPlaying),
         )
     }
 

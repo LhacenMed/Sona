@@ -15,7 +15,7 @@ import androidx.compose.runtime.Composable
  * library's playback; over any other, the library's, showing nothing of the folder's.
  *
  * [expandsPlayer] opens the full player over [content] as soon as there is a track to show - see
- * [ScreenArrival.ExpandPlayer].
+ * [IntentNavigator.goToPlaying].
  */
 interface PlayerOverlay {
     @Composable

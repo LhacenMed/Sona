@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     The "Now Playing" widget: the cover on the left; the title and artist over the timeline and the controls
-    on the right, the heart and the player's button beside the title. Every colour is set as it is drawn, from
-    the playing cover - the drawables are white so a tint can take them to any colour. The colours given here are
-    the design's own, for the widget picker's preview, which shows the layout as it is written.
+    on the right, the heart beside the title. Every colour is set as it is drawn, from the app's theme - the
+    drawables are white so a tint can take them to any colour. The colours given here are the design's own, for
+    the widget picker's preview, which shows the layout as it is written.
 
     Everything lines up on the content's edges - see widget_padding: the cover, the text, the timeline, and the
     outer controls' glyphs, whose buttons reach past the edge by widget_button_overhang. The controls are spread
@@ -87,20 +87,10 @@
                     android:layout_width="@dimen/widget_button_size"
                     android:layout_height="@dimen/widget_button_size"
                     android:layout_marginTop="@dimen/widget_button_overhang"
+                    android:layout_marginEnd="@dimen/widget_button_overhang"
                     android:background="?android:attr/selectableItemBackgroundBorderless"
                     android:scaleType="center"
                     android:src="@drawable/favorite_border"
-                    android:tint="@color/widget_preview_content" />
-
-                <ImageView
-                    android:id="@+id/widget_open_player"
-                    android:layout_width="@dimen/widget_menu_button_width"
-                    android:layout_height="@dimen/widget_button_size"
-                    android:layout_marginTop="@dimen/widget_button_overhang"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/widget_open_player"
-                    android:scaleType="center"
-                    android:src="@drawable/widget_more_vert"
                     android:tint="@color/widget_preview_content" />
             </LinearLayout>
 

@@ -15,8 +15,6 @@
     <!-- A button's touch target, around its 24dp glyph, and how far it reaches past the edge: (24 - 36) / 2. -->
     <dimen name="widget_button_size">36dp</dimen>
     <dimen name="widget_button_overhang">-6dp</dimen>
-    <!-- The ⋮ button, as wide as its glyph's box: its dots are drawn at the box's end, on the edge. -->
-    <dimen name="widget_menu_button_width">24dp</dimen>
     <dimen name="widget_play_button_size">44dp</dimen>
 
     <!-- The timeline: its dot's size, and how far the dot and the played line reach past the scaled line's end. -->

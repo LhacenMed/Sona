@@ -17,7 +17,6 @@ import android.os.PowerManager
 import android.widget.RemoteViews
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.toArgb
-import androidx.core.content.IntentCompat
 import coil3.SingletonImageLoader
 import coil3.request.ImageRequest
 import coil3.request.SuccessResult
@@ -38,7 +37,6 @@ import com.lhacenmed.sona.core.designsystem.theme.colorScheme
 import com.lhacenmed.sona.core.designsystem.theme.isDark
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
-import com.lhacenmed.sona.core.navigation.ScreenArrival
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.playback.PlaybackSpace
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
@@ -74,9 +72,8 @@ private const val CoverSizePx = 512
 /** The timeline's level once played to its end - see `widget_progress`. */
 private const val MaxTimelineLevel = 10_000
 
-/** The action the widget opens the app with, carrying what the app does as it opens - see [ScreenArrival]. */
+/** The action the widget opens the app with - see [PlaybackWidgets.isOpenedFromWidget]. */
 private const val ACTION_ARRIVE = "${BuildConfig.APPLICATION_ID}.widget.action.ARRIVE"
-private const val EXTRA_ARRIVAL = "${BuildConfig.APPLICATION_ID}.widget.extra.ARRIVAL"
 
 /**
  * The home screen's widgets, kept in step with playback - Auxio's `WidgetComponent` with its `WidgetProvider`'s
@@ -92,8 +89,8 @@ private const val EXTRA_ARRIVAL = "${BuildConfig.APPLICATION_ID}.widget.extra.AR
  * cover included, whenever anything on it but the timeline changes; and the timeline alone each second it
  * moves by, while the screen is on - a few numbers rather than a cover each time.
  *
- * Tapping it opens the app on the list the queue plays from, its playing row brought into view; its ⋮ opens
- * the player over that list - see [arrivalOf].
+ * Tapping it opens the app on the list the queue plays from, its playing row brought into view and the full
+ * player over it - see [isOpenedFromWidget].
  */
 @Singleton
 class PlaybackWidgets @Inject constructor(
@@ -315,8 +312,7 @@ class PlaybackWidgets @Inject constructor(
         setInt(R.id.widget_progress, "setColorFilter", colors.timeline)
         setInt(R.id.widget_progress_track, "setColorFilter", colors.timelineTrack)
 
-        setOnClickPendingIntent(android.R.id.background, openApp(content.isPrivate, ScreenArrival.RevealPlaying))
-        setOnClickPendingIntent(R.id.widget_open_player, openApp(content.isPrivate, ScreenArrival.ExpandPlayer))
+        setOnClickPendingIntent(android.R.id.background, openApp(content.isPrivate))
         for (action in WidgetAction.entries) setOnClickPendingIntent(action.viewId, action.pendingIntent(context))
     }
 
@@ -329,32 +325,33 @@ class PlaybackWidgets @Inject constructor(
     }
 
     /**
-     * The app opened from the widget, to do [arrival] on the list the queue plays from - in a task of its own,
+     * The app opened from the widget, on the list the queue plays from - in a task of its own,
      * as the launcher's quick play shortcut opens it, so it opens on that list whatever screen it was left on.
      * While the Private Folder plays, the app is only brought back as it was left: nothing of the folder is
      * named outside it, and its screens stay open.
      */
-    private fun openApp(isPrivate: Boolean, arrival: ScreenArrival): PendingIntent {
+    private fun openApp(isPrivate: Boolean): PendingIntent {
         val intent = Intent(context, MainActivity::class.java)
         if (isPrivate) {
             intent.setAction(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         } else {
             intent.setAction(ACTION_ARRIVE)
-                .putExtra(EXTRA_ARRIVAL, arrival)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
         }
         return PendingIntent.getActivity(
             context,
-            arrival.ordinal,
+            0,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
     }
 
     companion object {
-        /** What [intent] asks the app to do as it opens, when it is the widget's - see [ScreenArrival]. */
-        fun arrivalOf(intent: Intent): ScreenArrival? =
-            if (intent.action == ACTION_ARRIVE) IntentCompat.getSerializableExtra(intent, EXTRA_ARRIVAL, ScreenArrival::class.java) else null
+        /**
+         * Whether [intent] is the widget's, opening the app on the list the queue plays from: at its playing row,
+         * the full player over it.
+         */
+        fun isOpenedFromWidget(intent: Intent): Boolean = intent.action == ACTION_ARRIVE
     }
 }
 
@@ -403,7 +400,6 @@ private fun toggleAlpha(isOn: Boolean): Int = if (isOn) 255 else (InactiveToggle
 /** The icons drawn in the plain icon colour. */
 private val TintedIcons = intArrayOf(
     R.id.widget_favorite,
-    R.id.widget_open_player,
     R.id.widget_shuffle,
     R.id.widget_previous,
     R.id.widget_next,

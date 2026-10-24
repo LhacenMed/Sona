@@ -13,6 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import com.lhacenmed.sona.core.common.network.NetworkMonitor
 import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.data.LibraryRepository
+import com.lhacenmed.sona.core.datastore.LibraryTab
 import com.lhacenmed.sona.core.designsystem.SonaActivity
 import com.lhacenmed.sona.core.designsystem.component.NetworkStatusHost
 import com.lhacenmed.sona.core.designsystem.theme.AppCoverStyle
@@ -23,7 +24,6 @@ import com.lhacenmed.sona.core.navigation.AppPrompts
 import com.lhacenmed.sona.core.navigation.IntentNavigator
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.PlayerOverlay
-import com.lhacenmed.sona.feature.library.LibraryTabArrival
 import com.lhacenmed.sona.feature.library.PlayingList
 import com.lhacenmed.sona.feature.library.playingListOf
 import com.lhacenmed.sona.feature.playback.PlaybackController
@@ -66,8 +66,8 @@ class MainActivity : SonaActivity() {
     @Inject
     lateinit var playbackController: PlaybackController
 
-    /** The library's tab the widget opened the app on, and what to do there - see [arriveFromWidget]. */
-    private var tabArrival by mutableStateOf<LibraryTabArrival?>(null)
+    /** The library's tab the widget opened the app on - see [arriveFromWidget]. */
+    private var playingTab by mutableStateOf<LibraryTab?>(null)
 
     private val launchPermissionsLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
@@ -127,7 +127,7 @@ class MainActivity : SonaActivity() {
                 val navigator = remember { IntentNavigator(this, currentScreen = null) }
                 CompositionLocalProvider(LocalNavigator provides navigator) {
                     NetworkStatusHost(networkBanner) {
-                        AppShell(playerOverlay = playerOverlay, tabArrival = tabArrival)
+                        AppShell(playerOverlay = playerOverlay, playingTab = playingTab)
                         appPrompts.Content()
                     }
                 }
@@ -143,17 +143,17 @@ class MainActivity : SonaActivity() {
 
     /**
      * Opens the list the queue plays from when [intent] is the widget's - its own screen, or the library's tab -
-     * to do there what the widget asked: see [PlaybackWidgets.arrivalOf]. Read once the queue is known, so a
-     * process the tap started opens the list the restored queue plays from.
+     * at its playing row, the full player over it: see [PlaybackWidgets.isOpenedFromWidget]. Read once the queue
+     * is known, so a process the tap started opens the list the restored queue plays from.
      */
     private fun arriveFromWidget(intent: Intent) {
-        val arrival = PlaybackWidgets.arrivalOf(intent) ?: return
+        if (!PlaybackWidgets.isOpenedFromWidget(intent)) return
         lifecycleScope.launch {
             val playback = playbackController.playbackState.first { it.isReady }
             if (playback.libraryTrackId == null) return@launch
             when (val list = playingListOf(playback.parent)) {
-                is PlayingList.OnScreen -> IntentNavigator(this@MainActivity, currentScreen = null).go(list.screen, arrival)
-                is PlayingList.OnTab -> tabArrival = LibraryTabArrival(list.tab, arrival)
+                is PlayingList.OnScreen -> IntentNavigator(this@MainActivity, currentScreen = null).goToPlaying(list.screen)
+                is PlayingList.OnTab -> playingTab = list.tab
             }
         }
     }

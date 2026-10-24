@@ -49,7 +49,6 @@ import com.lhacenmed.sona.core.designsystem.component.topBarBackground
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.component.screen.PlayingRowReveal
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
-import com.lhacenmed.sona.core.navigation.ScreenArrival
 import com.lhacenmed.sona.feature.library.operation.ExcludeFoldersDialog
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.selection.SelectionOptionsHost
@@ -82,14 +81,15 @@ import kotlinx.coroutines.launch
  *
  * [onChooseQuickPlaySource] opens where the quick play button's source is chosen, which the shell knows.
  *
- * [arrival] opens the library on a tab - while it is shown - to do what it asks there once the tab is in.
+ * [playingTab] opens the library on that tab - while it is shown - at its playing row once the tab is in, the full
+ * player over it - see [IntentNavigator.goToPlaying][com.lhacenmed.sona.core.navigation.IntentNavigator.goToPlaying].
  */
 @Composable
 fun LibraryPagerScreen(
     onChooseQuickPlaySource: () -> Unit,
     modifier: Modifier = Modifier,
     actions: List<TopBarAction> = emptyList(),
-    arrival: LibraryTabArrival? = null,
+    playingTab: LibraryTab? = null,
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
     val visibleTabs by viewModel.visibleTabs.collectAsStateWithLifecycle()
@@ -189,12 +189,11 @@ fun LibraryPagerScreen(
 
         // Slid to as a tap on it would be, and revealed in only once the pager has come to rest there.
         var isRevealDue by rememberSaveable { mutableStateOf(false) }
-        LaunchedEffect(arrival) {
-            val requested = arrival ?: return@LaunchedEffect
-            val page = visibleTabs.indexOf(requested.tab).takeIf { it >= 0 } ?: return@LaunchedEffect
+        LaunchedEffect(playingTab) {
+            val page = playingTab?.let(visibleTabs::indexOf)?.takeIf { it >= 0 } ?: return@LaunchedEffect
             requestedPage = page
             snapshotFlow { requestedPage == null && pagerState.settledPage == page }.first { it }
-            if (requested.arrival == ScreenArrival.RevealPlaying) isRevealDue = true
+            isRevealDue = true
         }
         if (isRevealDue) PlayingRowReveal()
 

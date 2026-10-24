@@ -46,8 +46,8 @@ class HostActivity : SonaActivity() {
     companion object {
         const val EXTRA_SCREEN = "extra_screen"
 
-        /** What the screen does once it is in, if anything - see [ScreenArrival]. */
-        const val EXTRA_ARRIVAL = "extra_arrival"
+        /** Whether the screen opens at its playing row, the full player over it - see [IntentNavigator.goToPlaying]. */
+        const val EXTRA_ARRIVES_AT_PLAYING = "extra_arrives_at_playing"
     }
 
     /** The same process-wide theme the main activity uses, so a pushed screen is drawn exactly as the library behind it is. */
@@ -91,7 +91,7 @@ class HostActivity : SonaActivity() {
             return
         }
         if (screen.isPrivate) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        val arrival = IntentCompat.getSerializableExtra(intent, EXTRA_ARRIVAL, ScreenArrival::class.java)
+        val arrivesAtPlaying = intent.getBooleanExtra(EXTRA_ARRIVES_AT_PLAYING, false)
         // Normally already worked out by the activity below; only a process restored straight onto this
         // screen has it to wait for.
         holdFirstFrameUntil(appTheme::awaitReady)
@@ -117,11 +117,11 @@ class HostActivity : SonaActivity() {
                         WindowOverlayHost {
                             playerOverlay.Content(
                                 isPrivate = screen.isPrivate,
-                                expandsPlayer = arrival == ScreenArrival.ExpandPlayer,
+                                expandsPlayer = arrivesAtPlaying,
                             ) {
                                 // Inside the player, so the screen's FABs stand clear of it.
                                 FloatingActionButtonStack {
-                                    if (arrival == ScreenArrival.RevealPlaying) PlayingRowReveal(hasEntered = { hasEntered.value })
+                                    if (arrivesAtPlaying) PlayingRowReveal(hasEntered = { hasEntered.value })
                                     Scaffold(
                                         topBar = {
                                             if (hostedTitle != null) {

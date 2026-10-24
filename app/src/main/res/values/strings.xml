@@ -6,7 +6,6 @@
     <string name="quick_play_shortcut_play_long">Play all</string>
     <string name="widget_description">Daily song picks for easier listening</string>
     <string name="widget_nothing_playing">Nothing playing</string>
-    <string name="widget_open_player">Open player</string>
     <string name="widget_mini_player_label">Mini player</string>
     <!-- Where the widgets' track goes, in the widget picker's preview. -->
     <string name="widget_preview_subtitle">Turn on the music</string>
