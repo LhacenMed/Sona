@@ -97,8 +97,7 @@ class PlayerViewModel @AssistedInject constructor(
 
     // The library's tracks, or the Private Folder's - unknown, rather than empty, until read.
     private val catalog: StateFlow<Map<Long, Track>?> = when (space) {
-        PlaybackSpace.Library -> combine(repository.tracksById, repository.isReady) { tracks, isReady -> tracks.takeIf { isReady } }
-            .stateIn(viewModelScope, SharingStarted.Eagerly, repository.tracksById.value.takeIf { repository.isReady.value })
+        PlaybackSpace.Library -> repository.loadedTracksById
         PlaybackSpace.Private -> vault.tracksById.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     }
 

@@ -142,14 +142,22 @@ class LibraryRepository @Inject constructor(
     val videoFolders: StateFlow<LibraryContent<Folder>> = foldersOf(isVideo = true)
 
     /**
+     * [tracksById], or null until the tracks and the videos have both been read - for what must tell a track not in
+     * the library from one not read yet, rather than show it missing for a moment.
+     */
+    val loadedTracksById: StateFlow<Map<Long, Track>?> = tracks
+        .combine(videos) { tracks, videos -> (tracks + videos).itemsOrNull?.associateBy { it.id } }
+        .flowOn(defaultDispatcher)
+        .stateIn(scope, SharingStarted.Eagerly, null)
+
+    /**
      * Track lookup by id - the videos' too, as they are queued like any track - for the player and the
      * notification theme. Derived from [tracks] so it costs one pass per library change rather than a
      * fresh query - and crucially, so a playback event (which fires several times a second) never
      * re-reads the database at all.
      */
-    val tracksById: StateFlow<Map<Long, Track>> = tracks
-        .combine(videos) { tracks, videos -> (tracks.itemsOrEmpty + videos.itemsOrEmpty).associateBy { it.id } }
-        .flowOn(defaultDispatcher)
+    val tracksById: StateFlow<Map<Long, Track>> = loadedTracksById
+        .map { it.orEmpty() }
         .stateIn(scope, SharingStarted.Eagerly, emptyMap())
 
     /** Artist lookup by id - what names the artists a track or album is credited to - derived from [artists] as [tracksById] is. */

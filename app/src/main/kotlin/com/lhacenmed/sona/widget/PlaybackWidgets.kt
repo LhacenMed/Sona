@@ -40,6 +40,7 @@ import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.navigation.ScreenArrival
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.playback.PlaybackSpace
+import com.lhacenmed.sona.feature.playback.PlaybackUiState
 import com.lhacenmed.sona.feature.playback.VAULT_DISPLAY_TITLE
 import com.lhacenmed.sona.feature.playback.labelRes
 import com.lhacenmed.sona.feature.player.InactiveToggleAlpha
@@ -55,8 +56,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -156,13 +157,16 @@ class PlaybackWidgets @Inject constructor(
         }
     }
 
+    // Nothing is drawn until the queue and the library are both known - see [timelineOf] too: until then the launcher
+    // goes on showing what was drawn last, the track left playing, rather than nothing playing as the process starts.
     private fun widgetContent(): Flow<WidgetContent> = combine(
         playbackController.playbackState,
-        repository.tracksById,
+        repository.loadedTracksById,
         repository.favoriteTrackIds,
         imageSettings.coverMode.flow,
         combine(isNight, redraws, ::Pair),
     ) { playback, tracksById, favoriteTrackIds, coverMode, (isNight, redraw) ->
+        if (!playback.isReady || tracksById == null) return@combine null
         val trackId = playback.libraryTrackId
         WidgetContent(
             track = trackId?.let(tracksById::get),
@@ -175,22 +179,32 @@ class PlaybackWidgets @Inject constructor(
             isNight = isNight,
             redraw = redraw,
         )
-    }.distinctUntilChanged()
+    }.filterNotNull().distinctUntilChanged()
 
-    private fun timeline(): Flow<Timeline> = playbackController.playbackState
-        .map { Timeline(elapsedSeconds = it.positionMs / 1000, durationSeconds = it.durationMs / 1000) }
+    private fun timeline(): Flow<Timeline> = combine(playbackController.playbackState, repository.loadedTracksById, ::timelineOf)
+        .filterNotNull()
         .distinctUntilChanged()
+
+    /**
+     * The timeline [playback] is at, once it and [tracksById] are known - its length the track's, as the player
+     * shows it, so a track put back is not shown 0:00 long until the player has read it.
+     */
+    private fun timelineOf(playback: PlaybackUiState, tracksById: Map<Long, Track>?): Timeline? {
+        if (!playback.isReady || tracksById == null) return null
+        val durationMs = playback.libraryTrackId?.let(tracksById::get)?.durationMs?.takeIf { it > 0L } ?: playback.durationMs
+        return Timeline(elapsedSeconds = playback.positionMs / 1000, durationSeconds = durationMs / 1000)
+    }
 
     /** Draws each kind of widget placed, from the one content - each in its own layout, with the views it has. */
     private suspend fun drawWidget(content: WidgetContent) {
         val placed = components.filterValues { widgetManager.getAppWidgetIds(it).isNotEmpty() }
         if (placed.isEmpty()) return
         val artwork = artworkFor(content)
-        val playback = playbackController.playbackState.value
+        val timeline = timelineOf(playbackController.playbackState.value, repository.loadedTracksById.value)
         for ((kind, component) in placed) {
             val views = RemoteViews(context.packageName, kind.layoutRes).apply {
                 bindContent(kind, content, artwork)
-                if (kind.hasTimeline) bindTimeline(Timeline(playback.positionMs / 1000, playback.durationMs / 1000))
+                if (kind.hasTimeline && timeline != null) bindTimeline(timeline)
             }
             widgetManager.updateAppWidget(component, views)
         }
