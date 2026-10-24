@@ -11,7 +11,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.IntOffset
 import com.lhacenmed.sona.core.datastore.MiniPlayerBackgroundStyle
@@ -48,9 +47,7 @@ internal fun MiniPlayer(
         coverArtUri = track?.coverArtUri,
         enabled = appearance.miniPlayerBackground != MiniPlayerBackgroundStyle.FOLLOW_THEME,
     )
-    // A cover style draws the theme's surface until the cover has colours to give - and so do its contents.
-    val drawsCover = appearance.miniPlayerBackground != MiniPlayerBackgroundStyle.FOLLOW_THEME && gradientColors.isNotEmpty()
-    val contentColors = rememberMiniPlayerContentColors(useArtworkBackground = drawsCover)
+    val contentColors = rememberMiniPlayerContentColors()
 
     SwipeableMiniPlayerBox(
         hasPreviousTrack = playback.hasPreviousTrack,
@@ -89,39 +86,26 @@ internal fun MiniPlayer(
     }
 }
 
-/** ArchiveTune's mini player colours: white over the cover's colours, the theme's own over its surface. */
+/**
+ * The mini player's colours: the theme's own, over every background - each is drawn in the theme's tones, see
+ * [MiniPlayerBackground].
+ */
 @Composable
-private fun rememberMiniPlayerContentColors(useArtworkBackground: Boolean): MiniPlayerContentColors {
+private fun rememberMiniPlayerContentColors(): MiniPlayerContentColors {
     val colorScheme = MaterialTheme.colorScheme
-    return remember(useArtworkBackground, colorScheme) {
-        if (useArtworkBackground) {
-            MiniPlayerContentColors(
-                title = Color.White,
-                secondary = Color.White.copy(alpha = 0.72f),
-                progress = Color.White,
-                progressTrack = Color.White.copy(alpha = 0.24f),
-                artworkContainer = Color.White.copy(alpha = 0.14f),
-                artworkBorder = Color.White.copy(alpha = 0.22f),
-                primaryButtonContainer = Color.White.copy(alpha = 0.92f),
-                primaryButtonIcon = Color.Black,
-                secondaryButtonContainer = Color.Black.copy(alpha = 0.22f),
-                buttonIcon = Color.White,
-                disabledButtonIcon = Color.White.copy(alpha = 0.38f),
-            )
-        } else {
-            MiniPlayerContentColors(
-                title = colorScheme.onSurface,
-                secondary = colorScheme.onSurfaceVariant,
-                progress = colorScheme.primary,
-                progressTrack = colorScheme.outline.copy(alpha = 0.18f),
-                artworkContainer = colorScheme.surfaceVariant,
-                artworkBorder = colorScheme.outline.copy(alpha = 0.2f),
-                primaryButtonContainer = colorScheme.primary,
-                primaryButtonIcon = colorScheme.onPrimary,
-                secondaryButtonContainer = colorScheme.surfaceContainerHighest,
-                buttonIcon = colorScheme.onSurface,
-                disabledButtonIcon = colorScheme.onSurface.copy(alpha = 0.38f),
-            )
-        }
+    return remember(colorScheme) {
+        MiniPlayerContentColors(
+            title = colorScheme.onSurface,
+            secondary = colorScheme.onSurfaceVariant,
+            progress = colorScheme.primary,
+            progressTrack = colorScheme.outline.copy(alpha = 0.18f),
+            artworkContainer = colorScheme.surfaceVariant,
+            artworkBorder = colorScheme.outline.copy(alpha = 0.2f),
+            primaryButtonContainer = colorScheme.primary,
+            primaryButtonIcon = colorScheme.onPrimary,
+            secondaryButtonContainer = colorScheme.surfaceContainerHighest,
+            buttonIcon = colorScheme.onSurface,
+            disabledButtonIcon = colorScheme.onSurface.copy(alpha = 0.38f),
+        )
     }
 }

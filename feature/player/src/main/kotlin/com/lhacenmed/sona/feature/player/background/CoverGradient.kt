@@ -2,10 +2,13 @@ package com.lhacenmed.sona.feature.player.background
 
 import android.content.Context
 import android.util.LruCache
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.palette.graphics.Palette
@@ -17,6 +20,7 @@ import com.lhacenmed.sona.feature.player.PlayerColorExtractor
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import android.graphics.Color as AndroidColor
 
 /** How many covers' colours are kept: a queue's worth of skipping back and forth. */
 private const val CachedCoverCount = 24
@@ -60,9 +64,10 @@ private object CoverGradients {
 }
 
 /**
- * The colours drawn from [coverArtUri], empty while there are none - no cover, one that cannot be read,
- * or while not [enabled], when nothing is loaded at all. A new cover's colours replace the last ones once
- * they are ready, so what they colour moves from one cover to the next rather than through nothing.
+ * The colours drawn from [coverArtUri], toned for the app's theme - see [tonedFor] - and empty while there are
+ * none: no cover, one that cannot be read, or while not [enabled], when nothing is loaded at all. A new cover's
+ * colours replace the last ones once they are ready, so what they colour moves from one cover to the next rather
+ * than through nothing; a change of theme tones them anew.
  */
 @Composable
 internal fun rememberCoverGradientColors(coverArtUri: String?, enabled: Boolean): List<Color> {
@@ -74,5 +79,23 @@ internal fun rememberCoverGradientColors(coverArtUri: String?, enabled: Boolean)
     ) {
         value = if (enabled && coverArtUri != null) CoverGradients.load(context.applicationContext, coverArtUri) else emptyList()
     }
-    return colors
+    // Whether the theme is dark rather than its colours, which move through every frame of a change of theme.
+    val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    return remember(colors, isDarkTheme) { colors.map { it.tonedFor(isDarkTheme) } }
+}
+
+/**
+ * This colour at a tone the theme's own text reads over - ArchiveTune's comfortable colours, for either theme:
+ * deep and vivid under a dark one, pale under a light one.
+ */
+private fun Color.tonedFor(isDarkTheme: Boolean): Color {
+    val hsv = FloatArray(3).also { AndroidColor.colorToHSV(toArgb(), it) }
+    if (isDarkTheme) {
+        hsv[1] = hsv[1].coerceAtLeast(0.32f)
+        hsv[2] = hsv[2].coerceIn(0.15f, 0.58f)
+    } else {
+        hsv[1] = hsv[1].coerceAtMost(0.45f)
+        hsv[2] = hsv[2].coerceIn(0.85f, 0.97f)
+    }
+    return Color(AndroidColor.HSVToColor(hsv))
 }

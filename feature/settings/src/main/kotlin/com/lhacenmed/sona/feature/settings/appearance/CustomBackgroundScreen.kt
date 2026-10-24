@@ -44,7 +44,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -64,8 +63,8 @@ import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
-import com.lhacenmed.sona.feature.player.background.CustomBackgroundScrimAlpha
 import com.lhacenmed.sona.feature.player.background.customBackgroundColorFilter
+import com.lhacenmed.sona.feature.player.background.customBackgroundScrim
 import com.lhacenmed.sona.feature.settings.R
 import kotlin.math.roundToInt
 
@@ -259,7 +258,7 @@ private fun PreviewPane(
                     colorFilter = colorFilter,
                     modifier = Modifier.matchParentSize().blur(blur.dp),
                 )
-                Box(modifier = Modifier.matchParentSize().background(Color.Black.copy(alpha = CustomBackgroundScrimAlpha)))
+                Box(modifier = Modifier.matchParentSize().background(customBackgroundScrim))
                 Image(
                     painter = painterResource(overlayRes),
                     contentDescription = null,

@@ -14,6 +14,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -25,7 +26,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -34,7 +34,6 @@ import com.lhacenmed.sona.core.datastore.PlayerBackgroundStyle
 import kotlin.math.PI
 import kotlin.math.floor
 import kotlin.math.sin
-import android.graphics.Color as AndroidColor
 
 /** How far the cover is blurred behind the player: ArchiveTune's default blur intensity. */
 private val CoverBlurRadius = 48.dp
@@ -42,9 +41,6 @@ private val CoverBlurRadius = 48.dp
 private const val CrossfadeMillis = 1000
 private const val GlowCrossfadeMillis = 1200
 private const val GlowCycleMillis = 20_000
-
-/** The near-black the glows are drawn over. */
-private val GlowBase = Color(0xFF050505)
 
 /** The backgrounds drawn in the cover's colours - ArchiveTune extracts them for these alone. */
 private val CoverColoredBackgrounds = setOf(
@@ -60,8 +56,9 @@ private val CoverColoredBackgrounds = setOf(
  * `PlayerBackground`. [PlayerBackgroundStyle.FOLLOW_THEME] draws nothing, leaving the theme's own surface
  * the sheet is.
  *
- * The styles in the cover's colours read them through [rememberCoverGradientColors]. Every style fades from
- * one cover to the next.
+ * Every style is drawn in the theme's tones, so the theme's own text reads over each - see [playerColors]: the
+ * cover's colours as [rememberCoverGradientColors] tones them, and whatever dims or fades them in the theme's
+ * surface - deep under a dark theme, pale under a light one. Every style fades from one cover to the next.
  */
 @Composable
 internal fun PlayerBackground(
@@ -71,6 +68,7 @@ internal fun PlayerBackground(
     modifier: Modifier = Modifier,
 ) {
     val gradientColors = rememberCoverGradientColors(coverArtUri, enabled = style in CoverColoredBackgrounds)
+    val scrim = MaterialTheme.colorScheme.surface
     Box(modifier = modifier.fillMaxSize()) {
         when (style) {
             PlayerBackgroundStyle.FOLLOW_THEME -> Unit
@@ -80,9 +78,9 @@ internal fun PlayerBackground(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Brush.verticalGradient(colorStops = blurOverlayStops(gradientColors))),
+                            .background(Brush.verticalGradient(colorStops = blurOverlayStops(gradientColors, scrim))),
                     )
-                    Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.08f)))
+                    Box(modifier = Modifier.fillMaxSize().background(scrim.copy(alpha = BlurredCoverVeilAlpha)))
                 }
 
             PlayerBackgroundStyle.BLUR_GRADIENT ->
@@ -92,21 +90,27 @@ internal fun PlayerBackground(
                             .fillMaxSize()
                             .background(Brush.verticalGradient(colorStops = blurGradientStops(gradientColors))),
                     )
-                    Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.05f)))
+                    Box(modifier = Modifier.fillMaxSize().background(scrim.copy(alpha = BlurredCoverVeilAlpha)))
                 }
 
-            PlayerBackgroundStyle.GRADIENT -> GradientBackground(gradientColors)
+            PlayerBackgroundStyle.GRADIENT -> GradientBackground(gradientColors, scrim)
 
-            PlayerBackgroundStyle.COLORING -> ColoringBackground(gradientColors)
+            PlayerBackgroundStyle.COLORING -> ColoringBackground(gradientColors, scrim)
 
             PlayerBackgroundStyle.CUSTOM -> CustomImageBackground(customBackground)
 
-            PlayerBackgroundStyle.GLOW -> GlowBackground(gradientColors)
+            PlayerBackgroundStyle.GLOW -> GlowBackground(gradientColors, scrim)
 
-            PlayerBackgroundStyle.GLOW_ANIMATED -> AnimatedGlowBackground(gradientColors)
+            PlayerBackgroundStyle.GLOW_ANIMATED -> AnimatedGlowBackground(gradientColors, scrim)
         }
     }
 }
+
+/**
+ * How far a blurred cover is veiled in the theme's surface, over its colours' own: the cover itself is as light or
+ * dark as it is, whatever the theme, so it is taken most of the way to the theme's tone for its text to read.
+ */
+private const val BlurredCoverVeilAlpha = 0.3f
 
 /** The cover, blurred to fill the player, with [overlay] over it. */
 @Composable
@@ -131,7 +135,7 @@ private fun BlurredCover(coverArtUri: String?, overlay: @Composable () -> Unit) 
 }
 
 @Composable
-private fun GradientBackground(gradientColors: List<Color>) {
+private fun GradientBackground(gradientColors: List<Color>, scrim: Color) {
     AnimatedContent(
         targetState = gradientColors,
         transitionSpec = { fadeIn(tween(CrossfadeMillis)) togetherWith fadeOut(tween(CrossfadeMillis)) },
@@ -150,35 +154,35 @@ private fun GradientBackground(gradientColors: List<Color>) {
                         arrayOf(
                             0.0f to colors[0].copy(alpha = 0.9f),
                             0.6f to colors[0].copy(alpha = 0.55f),
-                            1.0f to Color.Black.copy(alpha = 0.7f),
+                            1.0f to scrim.copy(alpha = 0.7f),
                         )
                     }
                 Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(colorStops = colorStops)))
-                // A gentle dark overlay keeps the text readable over bright artwork.
-                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.18f)))
+                // A gentle veil in the theme's surface keeps its text readable over the cover's colours.
+                Box(modifier = Modifier.fillMaxSize().background(scrim.copy(alpha = 0.18f)))
             }
         }
     }
 }
 
-/** The cover's dominant colour, darkened down the player. */
+/** The cover's dominant colour, fading into the theme's surface down the player. */
 @Composable
-private fun ColoringBackground(gradientColors: List<Color>) {
+private fun ColoringBackground(gradientColors: List<Color>, scrim: Color) {
     AnimatedContent(
         targetState = gradientColors,
         transitionSpec = { fadeIn(tween(CrossfadeMillis)) togetherWith fadeOut(tween(CrossfadeMillis)) },
         label = "coloring-background",
     ) { colors ->
         if (colors.isNotEmpty()) {
-            val baseColor = ensureComfortableColor(colors.first())
+            val baseColor = colors.first()
             Box(modifier = Modifier.fillMaxSize()) {
                 Box(modifier = Modifier.fillMaxSize().background(baseColor))
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Brush.verticalGradient(colorStops = coloringStops(baseColor))),
+                        .background(Brush.verticalGradient(colorStops = coloringStops(baseColor, scrim))),
                 )
-                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.25f)))
+                Box(modifier = Modifier.fillMaxSize().background(scrim.copy(alpha = 0.25f)))
             }
         }
     }
@@ -204,18 +208,19 @@ private fun CustomImageBackground(customBackground: CustomBackground) {
                     colorFilter = colorFilter,
                     modifier = Modifier.fillMaxSize().blur(customBackground.blur.dp),
                 )
-                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = CustomBackgroundScrimAlpha)))
+                Box(modifier = Modifier.fillMaxSize().background(customBackgroundScrim))
             }
         }
     }
 }
 
-/** The dimming over the custom image, so the player's white text stays readable on any picture. */
-const val CustomBackgroundScrimAlpha = 0.4f
+/** The veil over the custom image, in the theme's surface, so the theme's text stays readable on any picture. */
+val customBackgroundScrim: Color
+    @Composable get() = MaterialTheme.colorScheme.surface.copy(alpha = 0.4f)
 
-/** Six soft lights in the cover's colours, one in each corner and edge, over near-black. */
+/** Six soft lights in the cover's colours, one in each corner and edge, over the theme's surface - [scrim]. */
 @Composable
-private fun GlowBackground(gradientColors: List<Color>) {
+private fun GlowBackground(gradientColors: List<Color>, scrim: Color) {
     AnimatedContent(
         targetState = gradientColors,
         transitionSpec = { fadeIn(tween(GlowCrossfadeMillis)) togetherWith fadeOut(tween(GlowCrossfadeMillis)) },
@@ -243,7 +248,7 @@ private fun GlowBackground(gradientColors: List<Color>) {
                             glow(color6, 0.6f, 0.3f, Offset(width * 0.5f, height * 0.95f), width * 0.9f),
                         )
                         onDrawBehind {
-                            drawRect(color = GlowBase)
+                            drawRect(color = scrim)
                             brushes.forEach { drawRect(brush = it) }
                         }
                     },
@@ -257,7 +262,7 @@ private fun GlowBackground(gradientColors: List<Color>) {
  * they are drawn, so each frame of the loop redraws the lights and recomposes nothing.
  */
 @Composable
-private fun AnimatedGlowBackground(gradientColors: List<Color>) {
+private fun AnimatedGlowBackground(gradientColors: List<Color>, scrim: Color) {
     AnimatedContent(
         targetState = gradientColors,
         transitionSpec = { fadeIn(tween(GlowCrossfadeMillis)) togetherWith fadeOut(tween(GlowCrossfadeMillis)) },
@@ -279,7 +284,7 @@ private fun AnimatedGlowBackground(gradientColors: List<Color>) {
                     .drawWithCache {
                         val brushes = animatedGlowBrushes(colors, progress.value, size.width, size.height)
                         onDrawBehind {
-                            drawRect(color = GlowBase)
+                            drawRect(color = scrim)
                             brushes.forEach { drawRect(brush = it) }
                         }
                     },
@@ -338,43 +343,21 @@ fun customBackgroundColorFilter(contrast: Float, brightness: Float): ColorFilter
     )
 }
 
-// ArchiveTune's `PlayerBackgroundColorUtils`: the cover's colours, kept within what is comfortable to
-// read white text over.
+// The gradients the styles above are drawn in: the cover's colours, already toned for the theme - see
+// [rememberCoverGradientColors] - fading into the theme's surface, [scrim].
 
-private fun ensureComfortableColor(
-    color: Color,
-    minBrightness: Float = 0.15f,
-    maxBrightness: Float = 0.58f,
-    minSaturation: Float = 0.32f,
-): Color {
-    val hsv = color.toHsv()
-    hsv[1] = hsv[1].coerceAtLeast(minSaturation)
-    hsv[2] = hsv[2].coerceIn(minBrightness, maxBrightness)
-    return hsv.toColor()
-}
+private fun coloringStops(baseColor: Color, scrim: Color): Array<Pair<Float, Color>> = arrayOf(
+    0f to baseColor.copy(alpha = 0.97f),
+    0.4f to lerp(baseColor, scrim, 0.18f).copy(alpha = 0.94f),
+    0.75f to lerp(baseColor, scrim, 0.4f).copy(alpha = 0.92f),
+    1f to scrim.copy(alpha = 0.88f),
+)
 
-private fun darkenColor(color: Color, factor: Float): Color {
-    val hsv = color.toHsv()
-    hsv[2] = (hsv[2] * factor).coerceAtLeast(0f)
-    return hsv.toColor()
-}
-
-private fun coloringStops(baseColor: Color): Array<Pair<Float, Color>> {
-    val comfortable = ensureComfortableColor(baseColor, minBrightness = 0.18f, maxBrightness = 0.5f)
-    return arrayOf(
-        0f to comfortable.copy(alpha = 0.97f),
-        0.4f to darkenColor(comfortable, 0.82f).copy(alpha = 0.94f),
-        0.75f to darkenColor(comfortable, 0.6f).copy(alpha = 0.92f),
-        1f to Color.Black.copy(alpha = 0.88f),
-    )
-}
-
-private fun blurOverlayStops(colors: List<Color>): Array<Pair<Float, Color>> {
-    if (colors.isEmpty()) return arrayOf(0f to Color.Black.copy(alpha = 0.35f), 1f to Color.Black.copy(alpha = 0.45f))
-    val comfortable = colors.map { ensureComfortableColor(it) }
-    val first = comfortable[0]
-    val second = comfortable.getOrNull(1) ?: first
-    val third = comfortable.getOrNull(2) ?: second
+private fun blurOverlayStops(colors: List<Color>, scrim: Color): Array<Pair<Float, Color>> {
+    if (colors.isEmpty()) return arrayOf(0f to scrim.copy(alpha = 0.35f), 1f to scrim.copy(alpha = 0.45f))
+    val first = colors[0]
+    val second = colors.getOrNull(1) ?: first
+    val third = colors.getOrNull(2) ?: second
     return arrayOf(
         0f to first.copy(alpha = 0.45f),
         0.4f to lerp(first, second, 0.5f).copy(alpha = 0.38f),
@@ -385,10 +368,9 @@ private fun blurOverlayStops(colors: List<Color>): Array<Pair<Float, Color>> {
 
 private fun blurGradientStops(colors: List<Color>): Array<Pair<Float, Color>> {
     if (colors.isEmpty()) return arrayOf(0f to Color.Transparent, 1f to Color.Transparent)
-    val comfortable = colors.map { ensureComfortableColor(it) }
-    val first = comfortable[0]
-    val second = comfortable.getOrNull(1) ?: first
-    val third = comfortable.getOrNull(2) ?: second
+    val first = colors[0]
+    val second = colors.getOrNull(1) ?: first
+    val third = colors.getOrNull(2) ?: second
     return arrayOf(
         0f to first.copy(alpha = 0.55f),
         0.2f to lerp(first, second, 0.3f).copy(alpha = 0.48f),
@@ -397,7 +379,3 @@ private fun blurGradientStops(colors: List<Color>): Array<Pair<Float, Color>> {
         1f to third.copy(alpha = 0.35f),
     )
 }
-
-private fun Color.toHsv(): FloatArray = FloatArray(3).also { AndroidColor.colorToHSV(toArgb(), it) }
-
-private fun FloatArray.toColor(): Color = Color(AndroidColor.HSVToColor(this))

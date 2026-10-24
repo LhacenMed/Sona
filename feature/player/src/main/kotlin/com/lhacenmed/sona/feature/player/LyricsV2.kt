@@ -71,6 +71,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -858,6 +859,8 @@ internal fun LyricsV2(
             }
         }
         if (isSelectionModeActive) {
+            // In the lyrics' own colour, whatever they are drawn over; what is drawn on it, light or dark against it.
+            val onTextColor = if (textColor.luminance() > 0.5f) Color.Black else Color.White
             Box(
                 modifier =
                     Modifier
@@ -874,7 +877,7 @@ internal fun LyricsV2(
                             Modifier
                                 .size(48.dp)
                                 .background(
-                                    color = Color.Black.copy(alpha = 0.3f),
+                                    color = textColor.copy(alpha = 0.15f),
                                     shape = pillShape,
                                 ).clickable {
                                     isSelectionModeActive = false
@@ -885,7 +888,7 @@ internal fun LyricsV2(
                         Icon(
                             painter = painterResource(id = R.drawable.close),
                             contentDescription = stringResource(R.string.player_close),
-                            tint = Color.White,
+                            tint = textColor,
                             modifier = Modifier.size(20.dp),
                         )
                     }
@@ -896,9 +899,9 @@ internal fun LyricsV2(
                                 .background(
                                     color =
                                         if (selectedIndices.isNotEmpty()) {
-                                            Color.White.copy(alpha = 0.9f)
+                                            textColor.copy(alpha = 0.9f)
                                         } else {
-                                            Color.White.copy(alpha = 0.5f)
+                                            textColor.copy(alpha = 0.5f)
                                         },
                                     shape = roundedShape(24.dp),
                                 ).clickable(enabled = selectedIndices.isNotEmpty()) {
@@ -920,12 +923,12 @@ internal fun LyricsV2(
                         Icon(
                             painter = painterResource(id = R.drawable.share),
                             contentDescription = null,
-                            tint = Color.Black,
+                            tint = onTextColor,
                             modifier = Modifier.size(20.dp),
                         )
                         Text(
                             text = stringResource(R.string.player_share),
-                            color = Color.Black,
+                            color = onTextColor,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                         )

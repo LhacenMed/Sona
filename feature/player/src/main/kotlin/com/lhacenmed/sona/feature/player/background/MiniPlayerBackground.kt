@@ -14,7 +14,9 @@ import com.lhacenmed.sona.core.datastore.MiniPlayerBackgroundStyle
 
 /**
  * What the mini player is drawn over: ArchiveTune's `MiniPlayerBackground`. A cover style with no cover
- * colours to draw from - nothing playing, or a cover that cannot be read - is drawn as the theme's.
+ * colours to draw from - nothing playing, or a cover that cannot be read - is drawn as the theme's. Every style
+ * is drawn in the theme's tones, as the expanded player's are - see [PlayerBackground] - veiled in the mini
+ * player's own surface, so the theme's text reads over each.
  */
 @Composable
 internal fun MiniPlayerBackground(
@@ -22,9 +24,10 @@ internal fun MiniPlayerBackground(
     gradientColors: List<Color>,
     modifier: Modifier = Modifier,
 ) {
+    val surface = MaterialTheme.colorScheme.surfaceContainerHigh
     val first = gradientColors.firstOrNull()
     if (style == MiniPlayerBackgroundStyle.FOLLOW_THEME || first == null) {
-        Box(modifier = modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh))
+        Box(modifier = modifier.background(surface))
         return
     }
     val second = gradientColors.getOrElse(1) { first }
@@ -47,7 +50,7 @@ internal fun MiniPlayerBackground(
                             ),
                         ),
                 )
-                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.32f)))
+                Box(modifier = Modifier.fillMaxSize().background(surface.copy(alpha = 0.32f)))
             }
 
         MiniPlayerBackgroundStyle.GLOW ->
@@ -76,12 +79,12 @@ internal fun MiniPlayerBackground(
                         radius = width * 0.54f,
                     )
                     onDrawBehind {
-                        drawRect(Color.Black)
+                        drawRect(surface)
                         drawRect(startGlow)
                         drawRect(endGlow)
                         drawRect(topGlow)
                         drawRect(bottomGlow)
-                        drawRect(Color.Black.copy(alpha = 0.24f))
+                        drawRect(surface.copy(alpha = 0.24f))
                     }
                 },
             )

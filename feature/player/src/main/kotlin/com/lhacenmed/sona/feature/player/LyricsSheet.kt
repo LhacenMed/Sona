@@ -190,7 +190,7 @@ private fun LyricsSheet(
     val lyrics by remember(track) { lyricsViewModel.lyrics(track) }.collectAsStateWithLifecycle(initialValue = null)
 
     // Drawn in the player's colours, over the player's own background.
-    val foregroundColor = playerColors(appearance.background).content
+    val foregroundColor = playerColors().content
     val showPlayerControls by lyricsViewModel.showLyricsPlayerControls.collectAsStateWithLifecycle()
 
     var position by remember(track.id) { mutableLongStateOf(viewModel.currentPositionMs()) }

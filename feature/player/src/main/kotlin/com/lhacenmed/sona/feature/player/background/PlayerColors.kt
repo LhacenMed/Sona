@@ -4,7 +4,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
-import com.lhacenmed.sona.core.datastore.PlayerBackgroundStyle
 
 /**
  * What the expanded player draws its text and controls in - ArchiveTune's `TextBackgroundColor`,
@@ -21,14 +20,14 @@ internal data class PlayerColors(
 )
 
 /**
- * The theme's own colours over its own surface; white over any other background, which is drawn dark
- * enough to read it - and the play button and seek bar in the theme's secondary colour, over either.
+ * The theme's own colours, over every background - each is drawn in the theme's tones, see [PlayerBackground] -
+ * and the play button and seek bar in the theme's secondary colour.
  */
 @Composable
-internal fun playerColors(background: PlayerBackgroundStyle): PlayerColors {
+internal fun playerColors(): PlayerColors {
     val colorScheme = MaterialTheme.colorScheme
     return PlayerColors(
-        content = if (background == PlayerBackgroundStyle.FOLLOW_THEME) colorScheme.onBackground else Color.White,
+        content = colorScheme.onBackground,
         button = colorScheme.secondary,
         onButton = colorScheme.onSecondary,
     )

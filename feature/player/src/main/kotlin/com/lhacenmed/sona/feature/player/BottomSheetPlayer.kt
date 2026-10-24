@@ -73,7 +73,7 @@ internal fun BottomSheetPlayer(
     val playback = uiState.playback
     val track = uiState.currentTrack
     val playerStyle = appearance.style
-    val playerColors = playerColors(appearance.background)
+    val playerColors = playerColors()
 
     val deviceMusicVolumeController = rememberDeviceMusicVolumeController()
 
