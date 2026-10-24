@@ -9,151 +9,171 @@
     end, the other controls spread evenly between. The cover is inset from the pill's end as from its top and bottom,
     so its circle sits in the pill's round end. The controls take the height left under the text, each at most 28dp
     - play 32dp - and smaller in a short row, rather than cut.
+
+    The pill is as tall as widget_pill_height, centred in the row - or the row's height, in a row less tall - as the
+    system's own one-row widgets are: a launcher's rows run from under 60dp to over 100dp tall (One UI's), and a pill
+    filling them would grow with them, its cover most of all. The widget picker's preview is this same layout.
 -->
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@android:id/background"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <!-- The pill's height, centred in the row: its own, or the row's where that is less. -->
     <ImageView
-        android:id="@+id/widget_card"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:id="@+id/widget_pill_height"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
         android:importantForAccessibility="no"
-        android:scaleType="fitXY"
-        android:src="@drawable/widget_pill_card" />
+        android:src="@drawable/widget_pill_height" />
 
-    <LinearLayout
+    <FrameLayout
+        android:id="@android:id/background"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="horizontal"
-        android:paddingStart="8dp"
-        android:paddingTop="8dp"
-        android:paddingEnd="20dp"
-        android:paddingBottom="8dp">
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@id/widget_pill_height"
+        android:layout_alignBottom="@id/widget_pill_height">
 
         <ImageView
-            android:id="@+id/widget_cover"
-            android:layout_width="wrap_content"
+            android:id="@+id/widget_card"
+            android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:adjustViewBounds="true"
             android:importantForAccessibility="no"
-            android:scaleType="fitCenter"
-            android:src="@drawable/widget_cover_placeholder_round" />
+            android:scaleType="fitXY"
+            android:src="@drawable/widget_pill_card" />
 
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_marginStart="12dp"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="8dp">
 
-            <TextView
-                android:id="@+id/widget_title"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:fontFamily="sans-serif"
-                android:includeFontPadding="false"
-                android:maxLines="1"
-                android:text="@string/app_name"
-                android:textColor="@color/widget_preview_content"
-                android:textSize="16sp"
-                android:textStyle="bold" />
+            <ImageView
+                android:id="@+id/widget_cover"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:adjustViewBounds="true"
+                android:importantForAccessibility="no"
+                android:scaleType="fitCenter"
+                android:src="@drawable/widget_cover_placeholder_round" />
 
-            <!-- Shuffle, previous, play, next and repeat, reading left to right in every language as the player's own do. -->
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="12dp"
                 android:layout_weight="1"
-                android:gravity="center_vertical"
-                android:layoutDirection="ltr"
-                android:orientation="horizontal">
+                android:orientation="vertical">
 
-                <ImageView
-                    android:id="@+id/widget_shuffle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:adjustViewBounds="true"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:maxWidth="28dp"
-                    android:scaleType="fitCenter"
-                    android:src="@drawable/shuffle"
-                    android:tint="@color/widget_preview_content" />
+                <TextView
+                    android:id="@+id/widget_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:fontFamily="sans-serif"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:text="@string/app_name"
+                    android:textColor="@color/widget_preview_content"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
 
-                <FrameLayout
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1" />
-
-                <ImageView
-                    android:id="@+id/widget_previous"
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:adjustViewBounds="true"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/player_previous"
-                    android:maxWidth="28dp"
-                    android:scaleType="fitCenter"
-                    android:src="@drawable/skip_previous"
-                    android:tint="@color/widget_preview_content" />
-
-                <FrameLayout
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1" />
-
-                <FrameLayout
-                    android:id="@+id/widget_play_pause"
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:background="?android:attr/selectableItemBackgroundBorderless">
+                <!-- Shuffle, previous, play, next and repeat, reading left to right in every language as the player's own do. -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:layoutDirection="ltr"
+                    android:orientation="horizontal">
 
                     <ImageView
-                        android:id="@+id/widget_play_pause_glyph"
+                        android:id="@+id/widget_shuffle"
                         android:layout_width="wrap_content"
                         android:layout_height="match_parent"
                         android:adjustViewBounds="true"
-                        android:importantForAccessibility="no"
-                        android:maxWidth="32dp"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:maxWidth="28dp"
                         android:scaleType="fitCenter"
-                        android:src="@drawable/play"
+                        android:src="@drawable/shuffle"
                         android:tint="@color/widget_preview_content" />
-                </FrameLayout>
 
-                <FrameLayout
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1" />
+                    <FrameLayout
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1" />
 
-                <ImageView
-                    android:id="@+id/widget_next"
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:adjustViewBounds="true"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/player_next"
-                    android:maxWidth="28dp"
-                    android:scaleType="fitCenter"
-                    android:src="@drawable/skip_next"
-                    android:tint="@color/widget_preview_content" />
+                    <ImageView
+                        android:id="@+id/widget_previous"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:adjustViewBounds="true"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/player_previous"
+                        android:maxWidth="28dp"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/skip_previous"
+                        android:tint="@color/widget_preview_content" />
 
-                <FrameLayout
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1" />
+                    <FrameLayout
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1" />
 
-                <ImageView
-                    android:id="@+id/widget_repeat"
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:adjustViewBounds="true"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:maxWidth="28dp"
-                    android:scaleType="fitCenter"
-                    android:src="@drawable/repeat"
-                    android:tint="@color/widget_preview_content" />
+                    <FrameLayout
+                        android:id="@+id/widget_play_pause"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:background="?android:attr/selectableItemBackgroundBorderless">
+
+                        <ImageView
+                            android:id="@+id/widget_play_pause_glyph"
+                            android:layout_width="wrap_content"
+                            android:layout_height="match_parent"
+                            android:adjustViewBounds="true"
+                            android:importantForAccessibility="no"
+                            android:maxWidth="32dp"
+                            android:scaleType="fitCenter"
+                            android:src="@drawable/play"
+                            android:tint="@color/widget_preview_content" />
+                    </FrameLayout>
+
+                    <FrameLayout
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1" />
+
+                    <ImageView
+                        android:id="@+id/widget_next"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:adjustViewBounds="true"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/player_next"
+                        android:maxWidth="28dp"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/skip_next"
+                        android:tint="@color/widget_preview_content" />
+
+                    <FrameLayout
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1" />
+
+                    <ImageView
+                        android:id="@+id/widget_repeat"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:adjustViewBounds="true"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:maxWidth="28dp"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/repeat"
+                        android:tint="@color/widget_preview_content" />
+                </LinearLayout>
             </LinearLayout>
         </LinearLayout>
-    </LinearLayout>
-</FrameLayout>
+    </FrameLayout>
+</RelativeLayout>
