@@ -28,6 +28,9 @@ class PlaybackSettingsViewModel @Inject constructor(
     val rewindBeforeSkipBack: StateFlow<Boolean> = playbackSettings.rewindBeforeSkipBack.flow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), playbackSettings.rewindBeforeSkipBack.value)
 
+    val persistedPlaybackNotification: StateFlow<Boolean> = playbackSettings.persistedPlaybackNotification.flow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), playbackSettings.persistedPlaybackNotification.value)
+
     val stopAfterCurrentEnabled: StateFlow<Boolean> = playbackSettings.stopAfterCurrentEnabled.flow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), playbackSettings.stopAfterCurrentEnabled.value)
 
@@ -50,6 +53,10 @@ class PlaybackSettingsViewModel @Inject constructor(
 
     fun setRewindBeforeSkipBack(enabled: Boolean) {
         viewModelScope.launch { playbackSettings.setRewindBeforeSkipBack(enabled) }
+    }
+
+    fun setPersistedPlaybackNotification(enabled: Boolean) {
+        viewModelScope.launch { playbackSettings.setPersistedPlaybackNotification(enabled) }
     }
 
     fun setStopAfterCurrentEnabled(enabled: Boolean) {

@@ -17,6 +17,7 @@ import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.quickplay.QuickPlaySourceRepository
+import com.lhacenmed.sona.core.common.lifecycle.isAppInForeground
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
 import com.lhacenmed.sona.core.database.entity.QueueItemEntity
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
@@ -83,6 +84,15 @@ class PlaybackController @Inject constructor(
     @Volatile private var storedParent: PlaybackParent? = playbackSettings.playbackParent.value
 
     private val hasRestoredQueue = AtomicBoolean(false)
+
+    /** Whether the queue put back is still to be prepared - see [restoreSavedQueue]. */
+    private var isRestoredQueueUnprepared = false
+
+    /**
+     * Whether any of the app's screens is started - what a queue put back waits for to be prepared while the
+     * session does not persist, see [PlaybackSettings.persistedPlaybackNotification].
+     */
+    private var isAppInFront = false
 
     /** See [PlaybackUiState.pictureTrackId]. */
     private var pictureTrackId: Long? = null
@@ -182,6 +192,13 @@ class PlaybackController @Inject constructor(
             playbackSettings.playbackParent.flow.collect { parent ->
                 storedParent = parent
                 controller?.let(::updateUiState)
+            }
+        }
+
+        scope.launch {
+            isAppInForeground().collect { inForeground ->
+                isAppInFront = inForeground
+                if (inForeground) prepareRestoredQueue()
             }
         }
 
@@ -706,7 +723,18 @@ class PlaybackController @Inject constructor(
             mediaController.sendCustomCommand(PlaybackSessionCommands.restoreShuffleOrderCommand, args)
         }
         mediaController.setMediaItems(savedQueue.mediaItems, savedQueue.currentIndex, savedQueue.startPositionMs)
-        mediaController.prepare()
+        // A prepared queue shows its notification, and the process also starts for what runs in the background -
+        // an update check, a widget drawn again. So while the session does not persist, it is prepared only once
+        // the app is in front, or by a press of play - which prepares whatever it plays.
+        isRestoredQueueUnprepared = true
+        if (isAppInFront || playbackSettings.persistedPlaybackNotification.value) prepareRestoredQueue()
+    }
+
+    private fun prepareRestoredQueue() {
+        val mediaController = controller ?: return
+        if (!isRestoredQueueUnprepared) return
+        isRestoredQueueUnprepared = false
+        if (mediaController.playbackState == Player.STATE_IDLE) mediaController.prepare()
     }
 
     /** Marks the queue known and publishes it, whether or not anything was restored. */

@@ -213,6 +213,8 @@
     <string name="quick_play_source_folder">Folder</string>
     <string name="quick_play_note">The library button and the launcher shortcut both play this way. Hold the button to play something else.</string>
     <string name="playback_queue_section">Queue</string>
+    <string name="persisted_playback_notification_title">Persisted playback notification</string>
+    <string name="persisted_playback_notification_summary">Keep the last track in a notification when Sona is closed, ready for headphones and Bluetooth to resume</string>
     <string name="persistent_queue_title">Restore the queue</string>
     <string name="persistent_queue_summary">Bring the queue back when the app reopens</string>
     <string name="skip_on_error_title">Skip unplayable tracks</string>

@@ -22,6 +22,7 @@ internal val Context.playbackDataStore by preferencesDataStore(name = "playback_
 private val REMEMBER_PAUSE = booleanPreferencesKey("remember_pause")
 private val REWIND_BEFORE_SKIP_BACK = booleanPreferencesKey("rewind_before_skip_back")
 private val HEADSET_AUTOPLAY = booleanPreferencesKey("headset_autoplay")
+private val PERSISTED_PLAYBACK_NOTIFICATION = booleanPreferencesKey("persisted_playback_notification")
 private val REPEAT_MODE = stringPreferencesKey("repeat_mode")
 private val STOP_AFTER_CURRENT_ENABLED = booleanPreferencesKey("stop_after_current_enabled")
 private val PLAYBACK_PARENT = stringPreferencesKey("playback_parent")
@@ -67,6 +68,18 @@ class PlaybackSettings @Inject constructor(
 
     suspend fun setHeadsetAutoplay(enabled: Boolean) {
         dataStore.edit { it[HEADSET_AUTOPLAY] = enabled }
+    }
+
+    /**
+     * Whether the last session outlives the app: put back ready to play whenever the process starts - for an
+     * update check, a widget drawn again - so its notification shows the last track, and a press of play from a
+     * headset, earbuds or a car plays it on while Sona is closed. Off, nothing of Sona's appears or plays unless
+     * the user starts it: the queue put back waits for the app to be opened, or for a press of play of its own.
+     */
+    val persistedPlaybackNotification: Setting<Boolean> = cache.setting { it[PERSISTED_PLAYBACK_NOTIFICATION] ?: true }
+
+    suspend fun setPersistedPlaybackNotification(enabled: Boolean) {
+        dataStore.edit { it[PERSISTED_PLAYBACK_NOTIFICATION] = enabled }
     }
 
     /**

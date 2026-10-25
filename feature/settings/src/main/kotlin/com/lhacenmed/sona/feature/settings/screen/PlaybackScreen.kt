@@ -45,6 +45,7 @@ data class PlaybackScreen(val scrollTo: PlaybackSetting? = null) : Screen {
         val viewModel: PlaybackSettingsViewModel = hiltViewModel()
         val rewindBeforeSkipBack by viewModel.rewindBeforeSkipBack.collectAsStateWithLifecycle()
         val stopAfterCurrentEnabled by viewModel.stopAfterCurrentEnabled.collectAsStateWithLifecycle()
+        val persistedPlaybackNotification by viewModel.persistedPlaybackNotification.collectAsStateWithLifecycle()
         val keepShuffle by viewModel.keepShuffle.collectAsStateWithLifecycle()
         val reshuffleEachTime by viewModel.reshuffleEachTime.collectAsStateWithLifecycle()
         val rememberShuffleOrder by viewModel.rememberShuffleOrder.collectAsStateWithLifecycle()
@@ -83,6 +84,12 @@ data class PlaybackScreen(val scrollTo: PlaybackSetting? = null) : Screen {
             SettingsSectionDivider()
 
             SettingsSection(stringResource(R.string.playback_queue_section)) {
+                SettingsSwitchItem(
+                    title = stringResource(R.string.persisted_playback_notification_title),
+                    summary = stringResource(R.string.persisted_playback_notification_summary),
+                    checked = persistedPlaybackNotification,
+                    onCheckedChange = viewModel::setPersistedPlaybackNotification,
+                )
                 SettingsSwitchItem(
                     title = stringResource(R.string.persistent_queue_title),
                     summary = stringResource(R.string.persistent_queue_summary),
