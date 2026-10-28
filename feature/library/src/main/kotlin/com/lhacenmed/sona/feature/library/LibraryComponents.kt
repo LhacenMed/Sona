@@ -5,16 +5,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.OverscrollEffect
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
@@ -24,12 +19,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -55,6 +46,8 @@ import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.data.search.SearchIndex
 import com.lhacenmed.sona.core.designsystem.component.CookieShape
 import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
+import com.lhacenmed.sona.core.designsystem.component.EmptyStateAction
+import com.lhacenmed.sona.core.designsystem.component.SonaEmptyState
 import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.header.CollapsingHeaderState
 import com.lhacenmed.sona.core.designsystem.component.screen.PlayingRow
@@ -80,7 +73,6 @@ import com.lhacenmed.sona.core.designsystem.component.swipe.LocalSwipeActions
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.motion.rememberRubberBandOverscroll
-import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.sort.SortCriterion
 import com.lhacenmed.sona.core.designsystem.component.DetailHeader
@@ -158,7 +150,7 @@ internal fun <T> LibraryListContent(
                     emptyTitle = emptyTitle,
                     emptyMessage = emptyMessage,
                 )
-                EmptyLibraryState(title = title, message = message, action = emptyAction)
+                SonaEmptyState(title = title, message = message, action = emptyAction)
             }
             content is LibraryContent.Ready -> body(content.items)
         }
@@ -535,47 +527,6 @@ internal fun emptyLibraryStateContent(
     else -> emptyTitle to emptyMessage
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-internal fun EmptyLibraryState(
-    title: String,
-    message: String,
-    modifier: Modifier = Modifier,
-    action: EmptyStateAction? = null,
-) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (action != null) {
-            Button(
-                onClick = action.onClick,
-                shapes = buttonPressShapes(),
-                modifier = Modifier.padding(top = 16.dp),
-            ) {
-                Icon(action.icon, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
-                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                Text(action.label)
-            }
-        }
-    }
-}
-
-/** A button an empty list offers, to fill it - the playlists' "Create playlist". */
-internal class EmptyStateAction(val label: String, val icon: ImageVector, val onClick: () -> Unit)
-
 /**
  * What a detail screen's header says about its collection - see [DetailHeader]. [cover] is drawn at
  * the header's size; [subhead] is left out where there is nothing to say, as Auxio hides its line.
@@ -915,7 +866,7 @@ internal fun TrackListDetail(
                 when {
                     visibleTracks is LibraryContent.Loading -> Unit
                     rows.isEmpty() -> item(key = "empty-tracks") {
-                        EmptyLibraryState(title = "No tracks found", message = emptyMessage)
+                        SonaEmptyState(title = "No tracks found", message = emptyMessage)
                     }
                     reorderableRows != null -> reorderableRows(reorderableRows, { track -> track.id }, trackRow)
                     // Auxio's discs: the sorted tracks grouped by disc, each disc where its first track fell.
