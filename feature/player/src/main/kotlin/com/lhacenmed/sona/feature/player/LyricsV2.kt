@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -36,6 +37,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -167,13 +169,15 @@ private fun isRtlText(text: String): Boolean {
 /**
  * Synced lyrics with a liquid word fill, glow and bounce - ArchiveTune's `LyricsV2`.
  *
- * [lyrics] is null while the track's file is being read, and blank where it holds none.
+ * [lyrics] is null while the track's file is being read, and blank where it holds none - [isFindingLyrics] while
+ * they are being looked for on the web, to show the moment they are written into the file.
  */
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 internal fun LyricsV2(
     track: Track,
     lyrics: String?,
+    isFindingLyrics: Boolean,
     durationMs: Long,
     positionMsProvider: () -> Long,
     sliderPositionProvider: () -> Long?,
@@ -403,16 +407,41 @@ internal fun LyricsV2(
         }
 
         if (entriesWithWords.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = stringResource(R.string.player_lyrics_not_found),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = textColor.copy(alpha = 0.6f),
-                    textAlign = TextAlign.Center,
-                )
+            // The search and its end cross-fade in place: found lyrics replace the whole pane once written.
+            Crossfade(targetState = isFindingLyrics, modifier = Modifier.fillMaxSize(), label = "lyricsFinding") { isFinding ->
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    if (isFinding) {
+                        CircularWavyProgressIndicator(
+                            color = textColor,
+                            trackColor = textColor.copy(alpha = 0.2f),
+                            modifier = Modifier.size(48.dp),
+                        )
+                        Text(
+                            text = stringResource(R.string.player_lyrics_finding),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = textColor,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(top = 20.dp),
+                        )
+                        Text(
+                            text = stringResource(R.string.player_lyrics_finding_body),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = textColor.copy(alpha = 0.6f),
+                            textAlign = TextAlign.Center,
+                        )
+                    } else {
+                        Text(
+                            text = stringResource(R.string.player_lyrics_not_found),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = textColor.copy(alpha = 0.6f),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
             }
             return@BoxWithConstraints
         }

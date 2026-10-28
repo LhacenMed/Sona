@@ -8,6 +8,7 @@ import com.lhacenmed.sona.core.datastore.LyricsSettings
 import com.lhacenmed.sona.core.datastore.Setting
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.tageditor.TrackTagsRepository
+import com.lhacenmed.sona.feature.tageditor.lyrics.MissingLyricsFinder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
@@ -23,6 +24,7 @@ class LyricsViewModel @Inject constructor(
     private val trackTagsRepository: TrackTagsRepository,
     private val lyricsSettings: LyricsSettings,
     japaneseDictionary: JapaneseDictionary,
+    private val missingLyricsFinder: MissingLyricsFinder,
 ) : ViewModel() {
 
     val lyricsClick: StateFlow<Boolean> = lyricsSettings.lyricsClick.state()
@@ -46,6 +48,9 @@ class LyricsViewModel @Inject constructor(
 
     /** The lyrics [track]'s file holds, read again whenever Sona writes them - blank where it holds none. */
     fun lyrics(track: Track): Flow<String> = trackTagsRepository.lyrics(track)
+
+    /** Whether [track]'s lyrics are being looked for on the web this moment, to be written into its file once found. */
+    fun isFindingLyrics(track: Track): Flow<Boolean> = missingLyricsFinder.searchingTrackId.map { it == track.id }
 
     fun setShowLyricsPlayerControls(enabled: Boolean) {
         viewModelScope.launch { lyricsSettings.setShowLyricsPlayerControls(enabled) }

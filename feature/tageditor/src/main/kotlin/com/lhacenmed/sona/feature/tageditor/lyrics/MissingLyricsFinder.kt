@@ -15,6 +15,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -45,6 +48,11 @@ class MissingLyricsFinder @Inject constructor(
     /** The tracks looked for this run of the app - those given lyrics, and those for which none were found. */
     private val lookedForTrackIds = mutableSetOf<Long>()
 
+    private val _searchingTrackId = MutableStateFlow<Long?>(null)
+
+    /** The track whose lyrics are being looked for this moment, or null while none is - what the lyrics sheet shows. */
+    val searchingTrackId: StateFlow<Long?> = _searchingTrackId.asStateFlow()
+
     fun start() {
         scope.launch {
             combine(
@@ -71,8 +79,13 @@ class MissingLyricsFinder @Inject constructor(
         val track = libraryRepository.tracksById.value[trackId]?.takeUnless { it.isVideo } ?: return
         try {
             if (trackTagsRepository.readLyrics(track).isBlank()) {
-                val found = lyricsQueryOf(track)?.let { OnlineLyrics.best(it, track.durationMs) }
-                if (found != null) trackTagsRepository.saveLyrics(track, found.lyrics.text)
+                _searchingTrackId.value = trackId
+                try {
+                    val found = lyricsQueryOf(track)?.let { OnlineLyrics.best(it, track.durationMs) }
+                    if (found != null) trackTagsRepository.saveLyrics(track, found.lyrics.text)
+                } finally {
+                    _searchingTrackId.value = null
+                }
             }
             lookedForTrackIds += trackId
         } catch (cancellation: CancellationException) {

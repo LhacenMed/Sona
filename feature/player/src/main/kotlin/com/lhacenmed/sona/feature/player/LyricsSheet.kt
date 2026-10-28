@@ -188,6 +188,7 @@ private fun LyricsSheet(
         }
     // Null while the file is being read. Keyed by the whole track, so it is read again as the library reads it anew.
     val lyrics by remember(track) { lyricsViewModel.lyrics(track) }.collectAsStateWithLifecycle(initialValue = null)
+    val isFindingLyrics by remember(track) { lyricsViewModel.isFindingLyrics(track) }.collectAsStateWithLifecycle(initialValue = false)
 
     // Drawn in the player's colours, over the player's own background.
     val foregroundColor = playerColors().content
@@ -251,6 +252,7 @@ private fun LyricsSheet(
         LyricsV2(
             track = track,
             lyrics = lyrics,
+            isFindingLyrics = isFindingLyrics,
             durationMs = durationMs,
             positionMsProvider = viewModel::currentPositionMs,
             sliderPositionProvider = { sliderPosition },
