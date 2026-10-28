@@ -78,7 +78,7 @@ private const val CurrentLineViewportFraction = 1f / 3
  * plain ones come in untimed, every line at the start. The flow is the player's: play the track from the mini
  * player below, and press each line's clock as it is sung, which times it at that moment; then nudge any time a
  * step either way, or type it in, which plays from there. A line's plus opens what else can be done to it, and a
- * swipe towards its start takes it out, as a queue's row is - undone from the bar. The lines changed by hand are
+ * swipe towards its start takes it out, as a queue's row is - undone from the bar - and one towards its end plays from it. The lines changed by hand are
  * marked down their start, and the lines after one taken out glide up into its place, as a queue's rows do. While the
  * track plays, the list follows the line it is on - unless that is turned off on the mini player, which the editor
  * remembers - and the mini player beneath shows its seek bar to move through it closely.
@@ -216,7 +216,8 @@ internal fun LyricsEditor(state: LyricsEditorState, confirmAction: TopBarAction,
                         // Held still while lines are selected, as every swiping row in the app is.
                         SwipeActionsBox(
                             actions = SwipeActions(
-                                startToEnd = null,
+                                // Rightwards plays from the line, as its menu's Play from here does - heard at once.
+                                startToEnd = SwipeAction(SonaIcons.Play, SwipeActionTone.Primary) { state.playFrom(line.id) },
                                 endToStart = SwipeAction(SonaIcons.Delete, SwipeActionTone.Danger) { state.remove(line.id) },
                             ).takeUnless { selection.isActive },
                         ) {
