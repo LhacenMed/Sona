@@ -278,7 +278,7 @@ class PlaybackService : MediaSessionService() {
         ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
             val future = SettableFuture.create<MediaSession.MediaItemsWithStartPosition>()
             serviceScope.launch {
-                val savedQueue = loadSavedQueue(queueItemDao, libraryRepository)
+                val savedQueue = loadSavedQueue(queueItemDao, libraryRepository, playbackSettings.playbackParent.value)
                 if (savedQueue == null) {
                     future.setException(UnsupportedOperationException())
                     return@launch
@@ -352,7 +352,7 @@ class PlaybackService : MediaSessionService() {
         equalizer.attach(exoPlayer.audioSessionId)
 
         // On the player itself, so a listen is recorded however it was started and with no screen open.
-        playHistoryRecorder = PlayHistoryRecorder(exoPlayer, serviceScope, playStatsDao).also { it.attach() }
+        playHistoryRecorder = PlayHistoryRecorder(exoPlayer, serviceScope, playStatsDao, playbackSettings).also { it.attach() }
         resumePositionRecorders = listOf(
             PlaybackSpace.Library to resumePositionDao.asResumePositionStore(),
             PlaybackSpace.Private to vaultRepository.asResumePositionStore(),
@@ -515,7 +515,7 @@ class PlaybackService : MediaSessionService() {
     private fun refreshQueueMetadata(tracksById: Map<Long, Track>) {
         val queue = List(exoPlayer.mediaItemCount, exoPlayer::getMediaItemAt)
         val refreshed = queue.map { queued ->
-            val current = queued.mediaId.toLongOrNull()?.let(tracksById::get)?.toMediaItem()
+            val current = queued.mediaId.toLongOrNull()?.let(tracksById::get)?.toMediaItem(queued.playbackParent)
             if (current == null || current.mediaMetadata.isShownAs(queued.mediaMetadata)) queued else current
         }
         if (refreshed.indices.any { refreshed[it] !== queue[it] }) exoPlayer.replaceMediaItems(0, queue.size, refreshed)

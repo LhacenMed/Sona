@@ -2,6 +2,8 @@ package com.lhacenmed.sona.feature.library.options
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.automirrored.filled.TrendingFlat
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.EditNote
@@ -38,6 +40,8 @@ enum class OptionsAction(val icon: ImageVector, val label: String) {
     SONG_PROPERTIES(SonaIcons.Details, "View properties"),
     EDIT_TAGS(Icons.Filled.EditNote, "Edit tags"),
     AUTO_TAG(Icons.Filled.AutoFixHigh, "Auto-tag"),
+    STOP_COUNTING_PLAYS(Icons.AutoMirrored.Filled.TrendingFlat, "Don't count in Most played"),
+    COUNT_PLAYS(Icons.AutoMirrored.Filled.TrendingUp, "Count in Most played"),
     VIEW_DETAILS(SonaIcons.Details, "View"),
     ADD_TRACKS(Icons.AutoMirrored.Filled.PlaylistAdd, "Add tracks"),
     ADD_COLLECTIONS(Icons.Filled.LibraryAdd, "Add from collections"),

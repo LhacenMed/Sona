@@ -14,9 +14,11 @@ import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.library.quickplay.QuickPlaySourceKind
 import com.lhacenmed.sona.feature.library.quickplay.QuickPlaySourcePickerScreen
 import com.lhacenmed.sona.feature.library.quickplay.quickPlaySourceKind
+import com.lhacenmed.sona.feature.library.uncounted.UncountedCollectionsScreen
 import com.lhacenmed.sona.feature.settings.R
 import com.lhacenmed.sona.feature.settings.component.SettingsChoiceItem
 import com.lhacenmed.sona.feature.settings.component.SettingsList
+import com.lhacenmed.sona.feature.settings.component.SettingsNavigationItem
 import com.lhacenmed.sona.feature.settings.component.SettingsNote
 import com.lhacenmed.sona.feature.settings.component.SettingsSection
 import com.lhacenmed.sona.feature.settings.component.SettingsSectionDivider
@@ -103,6 +105,16 @@ data class PlaybackScreen(val scrollTo: PlaybackSetting? = null) : Screen {
                 SettingsSwitchItem(
                     title = stringResource(R.string.stop_on_task_clear_title),
                     summary = stringResource(R.string.stop_on_task_clear_summary),
+                )
+            }
+
+            SettingsSectionDivider()
+
+            SettingsSection(stringResource(R.string.playback_history_section)) {
+                SettingsNavigationItem(
+                    title = stringResource(R.string.uncounted_collections_title),
+                    summary = stringResource(R.string.uncounted_collections_summary),
+                    onClick = { navigator.go(UncountedCollectionsScreen) },
                 )
             }
 

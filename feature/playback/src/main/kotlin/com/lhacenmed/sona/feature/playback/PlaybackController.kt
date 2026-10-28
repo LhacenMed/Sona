@@ -248,7 +248,7 @@ class PlaybackController @Inject constructor(
         val watches = tracks.getOrNull(startIndex)?.isVideo == true
         beginQueue(mediaController, if (watches) VideoWatch.OverQueue else VideoWatch.None)
         if (watches) watchedParent = parent else scope.launch { playbackSettings.setPlaybackParent(parent) }
-        startQueue(mediaController, tracks.map(Track::toMediaItem), startIndex, startPositionMs, shuffled, watches)
+        startQueue(mediaController, tracks.map { it.toMediaItem(parent) }, startIndex, startPositionMs, shuffled, watches)
     }
 
     /**
@@ -716,7 +716,7 @@ class PlaybackController @Inject constructor(
     }
 
     private suspend fun restoreSavedQueue(mediaController: MediaController) {
-        val savedQueue = loadSavedQueue(queueItemDao, repository) ?: return
+        val savedQueue = loadSavedQueue(queueItemDao, repository, storedParent) ?: return
         // Ahead of the items, so the order is waiting on the player when they arrive.
         savedQueue.shuffleOrder?.let { order ->
             val args = Bundle().apply { putIntArray(PlaybackSessionCommands.EXTRA_SHUFFLE_ORDER, order) }

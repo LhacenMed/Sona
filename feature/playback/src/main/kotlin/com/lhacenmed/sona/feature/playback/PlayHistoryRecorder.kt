@@ -6,6 +6,7 @@ import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
+import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -27,7 +28,8 @@ private const val CountedListenFraction = 0.8
  *  - It is made recent the moment it actually starts playing - never merely by being put in the queue, as
  *    a queue restored at launch is.
  *  - It counts towards Most played once it has been listened to for [CountedListenFraction] of its length,
- *    and only once. What counts is time actually played: seeking skips what it passes over, a pause stops
+ *    and only once - unless it is played from a collection whose plays the user keeps out of Most played, see
+ *    [PlaybackSettings.uncountedParents]: the same track counts as ever played from anywhere else. What counts is time actually played: seeking skips what it passes over, a pause stops
  *    the clock without starting it over, and the playback speed is followed - so skimming to the end or
  *    skipping after the opening bars never counts, and a whole listen at any speed does.
  *
@@ -40,6 +42,7 @@ internal class PlayHistoryRecorder(
     private val player: Player,
     private val scope: CoroutineScope,
     private val playStatsDao: PlayStatsDao,
+    private val playbackSettings: PlaybackSettings,
 ) : Player.Listener {
 
     /** The track of the listen under way, or null with nothing loaded. */
@@ -150,6 +153,8 @@ internal class PlayHistoryRecorder(
 
     private fun count(id: Long) {
         isCounted = true
+        // Looked at as the mark is reached, so a collection kept out of Most played mid-listen is followed at once.
+        if (player.currentMediaItem?.playbackParent in playbackSettings.uncountedParents.value) return
         val playedAt = System.currentTimeMillis()
         scope.launch(Dispatchers.IO) { playStatsDao.recordPlayCounted(id, playedAt) }
     }

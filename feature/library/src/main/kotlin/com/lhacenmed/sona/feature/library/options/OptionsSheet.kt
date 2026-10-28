@@ -44,6 +44,7 @@ fun OptionsSheet(
     val disabledActions = target.disabledActions()
     val favorites by actions.viewModel.favorites.collectAsStateWithLifecycle()
     val hasPrivateFolder by actions.viewModel.hasPrivateFolder.collectAsStateWithLifecycle()
+    val uncountedParents by actions.viewModel.uncountedParents.collectAsStateWithLifecycle()
     val favoriteItems = remember(target) { target.favoriteItems() }
 
     if (!actions.isFollowingUp) {
@@ -66,7 +67,7 @@ fun OptionsSheet(
                 )
             },
         ) {
-            target.actions(hasPrivateFolder).forEach { action ->
+            target.actions(hasPrivateFolder, uncountedParents).forEach { action ->
                 SonaOptionRow(
                     label = action.label,
                     icon = action.icon,

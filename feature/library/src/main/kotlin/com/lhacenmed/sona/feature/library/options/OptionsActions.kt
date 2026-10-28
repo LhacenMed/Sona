@@ -112,6 +112,14 @@ internal class OptionsActions(
             } else {
                 viewModel.loadTracks(target) { tracks -> navigator.go(AutoTagScreen(tracks.map { it.id })) }
             }
+            OptionsAction.STOP_COUNTING_PLAYS -> {
+                viewModel.setPlaysCounted(target, counted = false)
+                context.toast("Plays from here won't count in Most played")
+            }
+            OptionsAction.COUNT_PLAYS -> {
+                viewModel.setPlaysCounted(target, counted = true)
+                context.toast("Plays from here count in Most played")
+            }
             OptionsAction.VIEW_DETAILS -> navigator.go(detailScreenOf(target))
             OptionsAction.ADD_TRACKS -> navigator.go(AddTracksScreen(playlistOf(target).playlist.id))
             OptionsAction.ADD_COLLECTIONS -> navigator.go(AddCollectionsScreen(playlistOf(target).playlist.id))

@@ -7,6 +7,7 @@ import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Folder
 import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.PlaybackParent
+import com.lhacenmed.sona.core.model.playbackParent
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.library.itemCountLabel
@@ -16,6 +17,7 @@ import com.lhacenmed.sona.feature.library.options.OptionsAction.ADD_TRACKS
 import com.lhacenmed.sona.feature.library.options.OptionsAction.ALBUM_DETAILS
 import com.lhacenmed.sona.feature.library.options.OptionsAction.ARTIST_DETAILS
 import com.lhacenmed.sona.feature.library.options.OptionsAction.AUTO_TAG
+import com.lhacenmed.sona.feature.library.options.OptionsAction.COUNT_PLAYS
 import com.lhacenmed.sona.feature.library.options.OptionsAction.DELETE
 import com.lhacenmed.sona.feature.library.options.OptionsAction.DELETE_FROM_DEVICE
 import com.lhacenmed.sona.feature.library.options.OptionsAction.EDIT
@@ -31,6 +33,7 @@ import com.lhacenmed.sona.feature.library.options.OptionsAction.REMOVE_FROM_PLAY
 import com.lhacenmed.sona.feature.library.options.OptionsAction.SHARE
 import com.lhacenmed.sona.feature.library.options.OptionsAction.SHUFFLE
 import com.lhacenmed.sona.feature.library.options.OptionsAction.SONG_PROPERTIES
+import com.lhacenmed.sona.feature.library.options.OptionsAction.STOP_COUNTING_PLAYS
 import com.lhacenmed.sona.feature.library.options.OptionsAction.VIEW_DETAILS
 import com.lhacenmed.sona.feature.library.pluralCount
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
@@ -114,14 +117,36 @@ private val PlaylistActions =
 private val FolderActions =
     listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, AUTO_TAG, EXPORT, EXCLUDE, DELETE_FROM_DEVICE)
 
+/** What [this] plays as - null for a selection, which Auxio plays from no collection at all. */
+internal val OptionsTarget.playbackParent: PlaybackParent?
+    get() = when (this) {
+        is OptionsTarget.ForTrack -> queueParent
+        is OptionsTarget.ForAlbum -> PlaybackParent.Album(album.id)
+        is OptionsTarget.ForArtist -> PlaybackParent.Artist(artist.id)
+        is OptionsTarget.ForGenre -> PlaybackParent.Genre(genre.id)
+        is OptionsTarget.ForPlaylist -> PlaybackParent.Playlist(playlist.id)
+        is OptionsTarget.ForFolder -> folder.playbackParent
+        is OptionsTarget.ForSelection -> null
+    }
+
 /**
  * The rows an options sheet or a collection's menu lists, top to bottom - Auxio's inflated menu XML, chosen by
  * target and context. Favoriting is the heart in the sheet's header rather than a row - see [OptionsSheet].
  *
  * A track offers to go into the Private Folder only once [hasPrivateFolder]: until it is set up, from past
- * the end of Settings, nothing in the library gives it away.
+ * the end of Settings, nothing in the library gives it away. A collection offers to keep its plays out of Most
+ * played, or - among [uncountedParents] - to count them again, beside exporting it.
  */
-fun OptionsTarget.actions(hasPrivateFolder: Boolean): List<OptionsAction> = when (this) {
+fun OptionsTarget.actions(hasPrivateFolder: Boolean, uncountedParents: Set<PlaybackParent>): List<OptionsAction> =
+    collectionActions(hasPrivateFolder).flatMap { action ->
+        if (action == EXPORT && this !is OptionsTarget.ForSelection) {
+            listOf(if (playbackParent in uncountedParents) COUNT_PLAYS else STOP_COUNTING_PLAYS, action)
+        } else {
+            listOf(action)
+        }
+    }
+
+private fun OptionsTarget.collectionActions(hasPrivateFolder: Boolean): List<OptionsAction> = when (this) {
     is OptionsTarget.ForTrack -> when (context) {
         TrackOptionsContext.LIST ->
             listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ARTIST_DETAILS, ALBUM_DETAILS, SONG_PROPERTIES, EDIT_TAGS, SHARE)

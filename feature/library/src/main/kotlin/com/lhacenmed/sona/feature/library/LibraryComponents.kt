@@ -596,6 +596,7 @@ internal fun TrackListDetail(
     val sort = viewModel.sort
     val favorites by collectionActions.viewModel.favorites.collectAsStateWithLifecycle()
     val hasPrivateFolder by collectionActions.viewModel.hasPrivateFolder.collectAsStateWithLifecycle()
+    val uncountedParents by collectionActions.viewModel.uncountedParents.collectAsStateWithLifecycle()
     // Known from the screen itself rather than its collection, so the heart takes its place on the first frame.
     val favoriteItems = remember(viewModel) { favoriteItemsOf(viewModel.playbackParent) }
     val hasTracks = tracks.itemsOrEmpty.isNotEmpty()
@@ -699,7 +700,7 @@ internal fun TrackListDetail(
                         }
                         collection?.let { target ->
                             val disabledActions = target.disabledActions()
-                            target.actions(hasPrivateFolder).forEach { action ->
+                            target.actions(hasPrivateFolder, uncountedParents).forEach { action ->
                                 add(
                                     TopBarAction(label = action.label, icon = action.icon, enabled = action !in disabledActions) {
                                         collectionActions.perform(target, action)

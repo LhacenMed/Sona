@@ -3,6 +3,7 @@ package com.lhacenmed.sona.feature.playback
 import androidx.media3.common.MediaItem
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
+import com.lhacenmed.sona.core.model.PlaybackParent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -21,8 +22,12 @@ internal class SavedQueue(
     val shuffleOrder: IntArray?,
 )
 
-/** The saved queue, or null when there is none or none of its tracks are in the library any more. */
-internal suspend fun loadSavedQueue(queueItemDao: QueueItemDao, repository: LibraryRepository): SavedQueue? {
+/**
+ * The saved queue, or null when there is none or none of its tracks are in the library any more - every item as
+ * queued from [parent], the collection it was played from: which of its tracks were added to it one by one is not
+ * kept.
+ */
+internal suspend fun loadSavedQueue(queueItemDao: QueueItemDao, repository: LibraryRepository, parent: PlaybackParent?): SavedQueue? {
     val items = withContext(Dispatchers.IO) { queueItemDao.getAll() }
     if (items.isEmpty()) return null
     // Track ids are derived from file paths and so survive a rescan. Before that, a scan
@@ -45,7 +50,7 @@ internal suspend fun loadSavedQueue(queueItemDao: QueueItemDao, repository: Libr
         null
     }
     return SavedQueue(
-        mediaItems = restored.map { it.second.toMediaItem() },
+        mediaItems = restored.map { it.second.toMediaItem(parent) },
         currentIndex = currentIndex,
         startPositionMs = restored[currentIndex].first.lastPositionMs,
         shuffleOrder = shuffleOrder,

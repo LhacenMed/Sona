@@ -10,11 +10,12 @@ import com.lhacenmed.sona.core.data.contentUri
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.data.playlist.PlaylistFile
 import com.lhacenmed.sona.core.datastore.LibrarySettings
+import com.lhacenmed.sona.core.datastore.PlaybackSettings
+import com.lhacenmed.sona.core.datastore.stateIn
 import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
-import com.lhacenmed.sona.core.model.playbackParent
 import com.lhacenmed.sona.core.vault.VaultRepository
 import com.lhacenmed.sona.core.vault.VaultState
 import com.lhacenmed.sona.core.vault.data.VaultItem
@@ -63,6 +64,7 @@ class OptionsActionsViewModel @Inject constructor(
     private val librarySettings: LibrarySettings,
     private val mediaScanner: MediaScanner,
     private val vaultRepository: VaultRepository,
+    private val playbackSettings: PlaybackSettings,
 ) : ViewModel() {
 
     /** Every playlist there is to add to. */
@@ -84,6 +86,15 @@ class OptionsActionsViewModel @Inject constructor(
     /** Puts [items] in Favorites - or, while not [isFavorite], takes them out - each its own way: see [FavoriteItems]. */
     internal fun setFavorite(items: FavoriteItems, isFavorite: Boolean) {
         viewModelScope.launch { repository.setFavorites(items.trackIds, items.collections, isFavorite) }
+    }
+
+    /** The collections whose plays are kept out of Most played - what a collection's options offer to change. */
+    val uncountedParents: StateFlow<Set<PlaybackParent>> = playbackSettings.uncountedParents.stateIn(viewModelScope)
+
+    /** Has plays from [target] count towards Most played where [counted], or keeps them out of it otherwise. */
+    fun setPlaysCounted(target: OptionsTarget, counted: Boolean) {
+        val parent = target.playbackParent ?: return
+        viewModelScope.launch { playbackSettings.setPlaysCounted(listOf(parent), counted) }
     }
 
     /** Whether the Private Folder is set up - what offering "Add to Private Folder" waits on: see [OptionsTarget.actions]. */
@@ -290,7 +301,7 @@ class OptionsActionsViewModel @Inject constructor(
     private fun startPlayback(target: OptionsTarget, shuffled: Boolean) {
         viewModelScope.launch {
             if (target !is OptionsTarget.ForTrack) {
-                playWhole(entityTracks(target), parentOf(target), shuffled)
+                playWhole(entityTracks(target), target.playbackParent, shuffled)
                 return@launch
             }
             val tracks = target.queueSource
@@ -315,17 +326,6 @@ class OptionsActionsViewModel @Inject constructor(
         is OptionsTarget.ForPlaylist -> readyTracks(repository.playlistTracks(target.playlist.id))
         is OptionsTarget.ForFolder -> readyTracks(repository.folderTracks(target.folder.path, target.folder.isVideo))
         is OptionsTarget.ForSelection -> target.tracks
-    }
-
-    /** What [target] plays as - null for a selection, which Auxio plays from no collection at all. */
-    private fun parentOf(target: OptionsTarget): PlaybackParent? = when (target) {
-        is OptionsTarget.ForTrack -> target.queueParent
-        is OptionsTarget.ForAlbum -> PlaybackParent.Album(target.album.id)
-        is OptionsTarget.ForArtist -> PlaybackParent.Artist(target.artist.id)
-        is OptionsTarget.ForGenre -> PlaybackParent.Genre(target.genre.id)
-        is OptionsTarget.ForPlaylist -> PlaybackParent.Playlist(target.playlist.id)
-        is OptionsTarget.ForFolder -> target.folder.playbackParent
-        is OptionsTarget.ForSelection -> null
     }
 
     /** Waits for the query to actually have rows rather than [LibraryContent.Loading]'s empty first emission. */

@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.model.PlaybackParent
@@ -26,6 +27,7 @@ private val PERSISTED_PLAYBACK_NOTIFICATION = booleanPreferencesKey("persisted_p
 private val REPEAT_MODE = stringPreferencesKey("repeat_mode")
 private val STOP_AFTER_CURRENT_ENABLED = booleanPreferencesKey("stop_after_current_enabled")
 private val PLAYBACK_PARENT = stringPreferencesKey("playback_parent")
+private val UNCOUNTED_PARENTS = stringSetPreferencesKey("uncounted_parents")
 
 /**
  * Audio-playback behavior settings (ported from Auxio's `PlaybackSettings`) plus restart-only
@@ -92,6 +94,23 @@ class PlaybackSettings @Inject constructor(
     suspend fun setPlaybackParent(parent: PlaybackParent?) {
         dataStore.edit {
             if (parent == null) it.remove(PLAYBACK_PARENT) else it[PLAYBACK_PARENT] = parent.toStorageKey()
+        }
+    }
+
+    /**
+     * The collections whose plays are not counted towards Most played: a track listened to from one of them is
+     * still made recent, but counts only where it is played from anywhere else - the whole library, or another
+     * collection it is in.
+     */
+    val uncountedParents: Setting<Set<PlaybackParent>> =
+        cache.setting { preferences -> preferences[UNCOUNTED_PARENTS].orEmpty().mapNotNullTo(mutableSetOf(), ::playbackParentOf) }
+
+    /** Has plays from [parents] count towards Most played again where [counted], or stop counting otherwise - in one write. */
+    suspend fun setPlaysCounted(parents: Collection<PlaybackParent>, counted: Boolean) {
+        val keys = parents.map { it.toStorageKey() }.toSet()
+        dataStore.edit {
+            val stored = it[UNCOUNTED_PARENTS].orEmpty()
+            it[UNCOUNTED_PARENTS] = if (counted) stored - keys else stored + keys
         }
     }
 
