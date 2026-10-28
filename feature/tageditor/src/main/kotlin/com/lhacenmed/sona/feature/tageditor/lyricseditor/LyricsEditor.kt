@@ -57,6 +57,8 @@ import com.lhacenmed.sona.core.designsystem.component.swipe.SwipeActionTone
 import com.lhacenmed.sona.core.designsystem.component.swipe.SwipeActions
 import com.lhacenmed.sona.core.designsystem.component.swipe.SwipeActionsBox
 import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
+import com.lhacenmed.sona.core.designsystem.component.fab.ExtendedFloatingActionButtonContent
+import com.lhacenmed.sona.core.designsystem.component.fab.SonaExtendedFloatingActionButtons
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import kotlinx.coroutines.delay
@@ -77,11 +79,13 @@ private const val CurrentLineViewportFraction = 1f / 3
  * player below, and press each line's clock as it is sung, which times it at that moment; then nudge any time a
  * step either way, or type it in, which plays from there. A line's plus opens what else can be done to it, and a
  * swipe towards its start takes it out, as a queue's row is - undone from the bar. The lines changed by hand are
- * marked down their start. While the track plays, the list follows the line it is on,
- * and the mini player beneath shows its seek bar to move through it closely.
+ * marked down their start, and the lines after one taken out glide up into its place, as a queue's rows do. While the
+ * track plays, the list follows the line it is on - unless that is turned off on the mini player, which the editor
+ * remembers - and the mini player beneath shows its seek bar to move through it closely.
  *
- * [confirmAction] is what keeps the lyrics - saving them, or handing them back. Leaving otherwise, by back or the
- * bar's arrow, calls [onLeave] - asking first while there are changes it would lose.
+ * [confirmAction] is what keeps the lyrics - saving them, or handing them back - the screen's button, shown once
+ * there is something to keep; undo and redo lead the bar. Leaving otherwise, by back or the bar's arrow, calls
+ * [onLeave] - asking first while there are changes it would lose.
  */
 @Composable
 internal fun LyricsEditor(state: LyricsEditorState, confirmAction: TopBarAction, onLeave: () -> Unit) {
@@ -97,17 +101,28 @@ internal fun LyricsEditor(state: LyricsEditorState, confirmAction: TopBarAction,
     var isEditingAsText by rememberSaveable { mutableStateOf(false) }
     var isConfirmingDelete by rememberSaveable { mutableStateOf(false) }
     var isBatchEditing by rememberSaveable { mutableStateOf(false) }
-    var isFollowingPlayback by rememberSaveable { mutableStateOf(true) }
+    val isFollowingPlayback by state.followsPlayback.flow.collectAsStateWithLifecycle(initialValue = state.followsPlayback.value)
     val selection = rememberSelectionState()
     val selectedLineIds = selection.selectedKeys.filterIsInstance<Long>().toSet()
 
     // Beside play and pause on the mini player: whether the list follows the line the player is on.
     ShowMiniPlayerSeekBar(
         action = if (isFollowingPlayback) {
-            TopBarAction(label = "Stop following the playing line", icon = Icons.Filled.Sync) { isFollowingPlayback = false }
+            TopBarAction(label = "Stop following the playing line", icon = Icons.Filled.Sync) { state.setFollowsPlayback(false) }
         } else {
-            TopBarAction(label = "Follow the playing line", icon = Icons.Filled.SyncDisabled) { isFollowingPlayback = true }
+            TopBarAction(label = "Follow the playing line", icon = Icons.Filled.SyncDisabled) { state.setFollowsPlayback(true) }
         },
+    )
+    SonaExtendedFloatingActionButtons(
+        listOf(
+            ExtendedFloatingActionButtonContent(
+                label = confirmAction.label,
+                icon = confirmAction.icon,
+                onClick = confirmAction.onClick,
+                isPrimary = true,
+                isVisible = confirmAction.enabled,
+            ),
+        ),
     )
 
     val requestLeave = { if (state.hasChanges) isConfirmingDiscard = true else onLeave() }
@@ -174,8 +189,7 @@ internal fun LyricsEditor(state: LyricsEditorState, confirmAction: TopBarAction,
                 onMoreOptions = null,
             ),
             actions = listOf(
-                // Undo beside keeping, where it is reached for most; the bar folds what does not fit into its menu.
-                confirmAction,
+                // Undo and redo first, where they are reached for most; the bar folds what does not fit into its menu.
                 TopBarAction(label = "Undo", icon = Icons.AutoMirrored.Filled.Undo, enabled = state.canUndo, onClick = state::undo),
                 TopBarAction(label = "Redo", icon = Icons.AutoMirrored.Filled.Redo, enabled = state.canRedo, onClick = state::redo),
                 TopBarAction(label = "Add lyrics", icon = Icons.Filled.Add) { isAddingLyrics = true },
@@ -197,38 +211,41 @@ internal fun LyricsEditor(state: LyricsEditorState, confirmAction: TopBarAction,
                 contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
             ) {
                 items(state.lines, key = { it.id }) { line ->
-                    // Held still while lines are selected, as every swiping row in the app is.
-                    SwipeActionsBox(
-                        actions = SwipeActions(
-                            startToEnd = null,
-                            endToStart = SwipeAction(SonaIcons.Delete, SwipeActionTone.Danger) { state.remove(line.id) },
-                        ).takeUnless { selection.isActive },
-                    ) {
-                        LyricsLineRow(
-                            line = line,
-                            isCurrent = line.id == currentLineId,
-                            isEdited = state.isEdited(line),
-                            canStamp = isTrackPlaying,
-                            selection = selection,
-                            actions = listOf(
-                                TopBarAction(label = "Play from here", icon = Icons.Filled.PlayArrow) { state.playFrom(line.id) },
-                                TopBarAction(label = "Add row above", icon = Icons.Filled.ArrowUpward) {
-                                    state.addLine(line.id, below = false)
-                                },
-                                TopBarAction(label = "Add row below", icon = Icons.Filled.ArrowDownward) {
-                                    state.addLine(line.id, below = true)
-                                },
-                                TopBarAction(label = "Reset timestamp", icon = Icons.Filled.RestartAlt, enabled = line.timeMs != 0L) {
-                                    state.resetTime(line.id)
-                                },
-                                TopBarAction(label = "Remove", icon = Icons.Filled.DeleteOutline) { state.remove(line.id) },
-                            ),
-                            onSetTime = { timeMs -> state.setTime(line.id, timeMs) },
-                            onStamp = { state.stamp(line.id) },
-                            onEditText = { editingLineId = line.id },
-                        )
+                    // The lines around one added or taken out glide to their places, as a queue's rows do.
+                    Column(modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)) {
+                        // Held still while lines are selected, as every swiping row in the app is.
+                        SwipeActionsBox(
+                            actions = SwipeActions(
+                                startToEnd = null,
+                                endToStart = SwipeAction(SonaIcons.Delete, SwipeActionTone.Danger) { state.remove(line.id) },
+                            ).takeUnless { selection.isActive },
+                        ) {
+                            LyricsLineRow(
+                                line = line,
+                                isCurrent = line.id == currentLineId,
+                                isEdited = state.isEdited(line),
+                                canStamp = isTrackPlaying,
+                                selection = selection,
+                                actions = listOf(
+                                    TopBarAction(label = "Play from here", icon = Icons.Filled.PlayArrow) { state.playFrom(line.id) },
+                                    TopBarAction(label = "Add row above", icon = Icons.Filled.ArrowUpward) {
+                                        state.addLine(line.id, below = false)
+                                    },
+                                    TopBarAction(label = "Add row below", icon = Icons.Filled.ArrowDownward) {
+                                        state.addLine(line.id, below = true)
+                                    },
+                                    TopBarAction(label = "Reset timestamp", icon = Icons.Filled.RestartAlt, enabled = line.timeMs != 0L) {
+                                        state.resetTime(line.id)
+                                    },
+                                    TopBarAction(label = "Remove", icon = Icons.Filled.DeleteOutline) { state.remove(line.id) },
+                                ),
+                                onSetTime = { timeMs -> state.setTime(line.id, timeMs) },
+                                onStamp = { pressedAtUptimeMs -> state.stamp(line.id, pressedAtUptimeMs) },
+                                onEditText = { editingLineId = line.id },
+                            )
+                        }
+                        HorizontalDivider()
                     }
-                    HorizontalDivider()
                 }
             }
         }

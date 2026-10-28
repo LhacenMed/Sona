@@ -29,6 +29,7 @@ private val LYRICS_ROMANIZE_CHINESE = booleanPreferencesKey("lyricsRomanizeChine
 private val LYRICS_ROMANIZE_HINDI = booleanPreferencesKey("lyricsRomanizeHindi")
 private val LYRICS_ROMANIZE_OTHER_LANGUAGES = booleanPreferencesKey("lyricsRomanizeOtherLanguages")
 private val FIND_MISSING_LYRICS = booleanPreferencesKey("find_missing_lyrics")
+private val LYRICS_EDITOR_FOLLOWS_PLAYBACK = booleanPreferencesKey("lyrics_editor_follows_playback")
 
 /**
  * How lyrics look and behave (ported from ArchiveTune's lyrics preferences, under the same keys and
@@ -119,4 +120,9 @@ class LyricsSettings @Inject constructor(
     val findMissingLyrics: Setting<Boolean> = cache.setting { it[FIND_MISSING_LYRICS] ?: true }
 
     suspend fun setFindMissingLyrics(enabled: Boolean) = set(FIND_MISSING_LYRICS, enabled)
+
+    /** Whether the lyrics editor's list follows the line the player is on - kept, so it opens as it was left. */
+    val lyricsEditorFollowsPlayback: Setting<Boolean> = cache.setting { it[LYRICS_EDITOR_FOLLOWS_PLAYBACK] ?: true }
+
+    suspend fun setLyricsEditorFollowsPlayback(enabled: Boolean) = set(LYRICS_EDITOR_FOLLOWS_PLAYBACK, enabled)
 }

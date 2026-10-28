@@ -1,6 +1,9 @@
 package com.lhacenmed.sona.feature.tageditor.lyricseditor
 
+import android.os.SystemClock
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,6 +51,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextRange
@@ -86,7 +91,8 @@ private val EditedMarkWidth = 4.dp
 /**
  * One line of the editor: its time on the left, each part typed in or nudged - a step later from the button above,
  * earlier from the one below; its words, which a tap opens for writing; and on the right the [actions] menu, and the
- * button that times it at where the player is - only while the track is the one playing, [canStamp]. The line the
+ * button that times it at where the player is - only while the track is the one playing, [canStamp] - told to
+ * [onStamp] by when the finger came down on it, so the line is timed at the press rather than the lift. The line the
  * player is on, [isCurrent], is marked, and one changed by hand, [isEdited], carries a mark down its start.
  *
  * It joins [selection] as every row in the app does: a long press selects it, and while lines are selected a tap
@@ -102,9 +108,12 @@ internal fun LyricsLineRow(
     selection: SelectionState,
     actions: List<TopBarAction>,
     onSetTime: (Long) -> Unit,
-    onStamp: () -> Unit,
+    onStamp: (pressedAtUptimeMs: Long) -> Unit,
     onEditText: () -> Unit,
 ) {
+    // When the finger last came down on the stamp button - taken as it lands, ahead of the button's own handling,
+    // which a list delays to tell a tap from a scroll. Null for a press that came another way, a key's.
+    var stampPressedAtUptimeMs by remember { mutableStateOf<Long?>(null) }
     val editedColor = MaterialTheme.colorScheme.primary
     val surface = MaterialTheme.colorScheme.surface
     val color = when {
@@ -133,7 +142,18 @@ internal fun LyricsLineRow(
             )
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 LineActionsMenu(actions)
-                IconButton(onClick = onStamp, enabled = canStamp) {
+                IconButton(
+                    onClick = {
+                        onStamp(stampPressedAtUptimeMs ?: SystemClock.uptimeMillis())
+                        stampPressedAtUptimeMs = null
+                    },
+                    enabled = canStamp,
+                    modifier = Modifier.pointerInput(Unit) {
+                        awaitEachGesture {
+                            stampPressedAtUptimeMs = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial).uptimeMillis
+                        }
+                    },
+                ) {
                     Icon(Icons.Outlined.Schedule, contentDescription = "Time to now")
                 }
             }

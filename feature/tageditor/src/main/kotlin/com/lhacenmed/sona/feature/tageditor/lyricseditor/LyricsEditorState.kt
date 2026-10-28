@@ -2,11 +2,14 @@ package com.lhacenmed.sona.feature.tageditor.lyricseditor
 
 import android.content.ContentResolver
 import android.net.Uri
+import android.os.SystemClock
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.lhacenmed.sona.core.datastore.LyricsSettings
+import com.lhacenmed.sona.core.datastore.Setting
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
@@ -41,6 +44,7 @@ class LyricsEditorState internal constructor(
     val track: Track,
     initialLyrics: String?,
     private val playbackController: PlaybackController,
+    private val lyricsSettings: LyricsSettings,
     private val scope: CoroutineScope,
 ) {
     private var lastLineId = 0L
@@ -92,6 +96,13 @@ class LyricsEditorState internal constructor(
 
     private var searchJob: Job? = null
 
+    /** Whether the list follows the line the player is on - stored, so the editor opens as it was left. */
+    val followsPlayback: Setting<Boolean> = lyricsSettings.lyricsEditorFollowsPlayback
+
+    fun setFollowsPlayback(enabled: Boolean) {
+        scope.launch { lyricsSettings.setLyricsEditorFollowsPlayback(enabled) }
+    }
+
     /** Where the player is in the track now - read from it, finer than [playback]'s ticks. */
     fun currentPositionMs(): Long = playbackController.currentPositionMs()
 
@@ -106,12 +117,23 @@ class LyricsEditorState internal constructor(
     }
 
     /**
-     * Times the line at where the player is now - the moment its stamp button is pressed, while the track plays - and
-     * plays on from there: going there again would only stutter.
+     * Times the line at where the player was the moment its stamp button was pressed - [pressedAtUptimeMs], on the
+     * clock touches are timed by - and plays on from there: going there again would only stutter.
+     *
+     * Not where it is as the press is handled, a frame or more on, nor once the finger lifts, which a tap takes a
+     * different time to do each time: while the track plays, what it has played since the press is taken back off,
+     * at its speed - so a line is timed where it was heard, the same however the button is pressed.
      */
-    fun stamp(lineId: Long) {
-        update(lineId) { it.copy(timeMs = currentPositionMs()) }
-        if (!playback.value.isPlaying) playbackController.togglePlayPause()
+    fun stamp(lineId: Long, pressedAtUptimeMs: Long) {
+        val state = playback.value
+        val sincePressMs = if (state.isPlaying) {
+            ((SystemClock.uptimeMillis() - pressedAtUptimeMs).coerceAtLeast(0L) * state.playbackSpeed).toLong()
+        } else {
+            0L
+        }
+        val timeMs = (currentPositionMs() - sincePressMs).coerceAtLeast(0L)
+        update(lineId) { it.copy(timeMs = timeMs) }
+        if (!state.isPlaying) playbackController.togglePlayPause()
     }
 
     fun resetTime(lineId: Long) = update(lineId) { it.copy(timeMs = 0L) }

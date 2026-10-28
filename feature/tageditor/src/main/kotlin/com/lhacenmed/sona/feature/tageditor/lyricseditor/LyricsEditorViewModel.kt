@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.LibraryRepository
+import com.lhacenmed.sona.core.datastore.LyricsSettings
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.tageditor.OpenTagDrafts
@@ -34,6 +35,7 @@ class LyricsEditorViewModel @AssistedInject constructor(
     libraryRepository: LibraryRepository,
     private val trackTagsRepository: TrackTagsRepository,
     private val playbackController: PlaybackController,
+    private val lyricsSettings: LyricsSettings,
     openTagDrafts: OpenTagDrafts,
 ) : ViewModel() {
 
@@ -60,7 +62,7 @@ class LyricsEditorViewModel @AssistedInject constructor(
 
     init {
         if (draft != null) {
-            editor = LyricsEditorState(draft.track, draft.tags[TagField.LYRICS], playbackController, viewModelScope)
+            editor = LyricsEditorState(draft.track, draft.tags[TagField.LYRICS], playbackController, lyricsSettings, viewModelScope)
         } else if (!editsTagDraft) {
             // The library's own copy of the track is already in memory, so the editor is whole from its first frame.
             libraryRepository.tracksById.value[trackId]?.let(::openOnFile)
@@ -70,7 +72,7 @@ class LyricsEditorViewModel @AssistedInject constructor(
 
     /** Opens the editor on [track] at once, its lines following as the file is read. */
     private fun openOnFile(track: Track) {
-        val editor = LyricsEditorState(track, initialLyrics = null, playbackController, viewModelScope)
+        val editor = LyricsEditorState(track, initialLyrics = null, playbackController, lyricsSettings, viewModelScope)
         this.editor = editor
         viewModelScope.launch { editor.takeFileLyrics(trackTagsRepository.readLyrics(track)) }
     }
