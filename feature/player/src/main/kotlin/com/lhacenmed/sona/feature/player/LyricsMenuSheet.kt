@@ -1,7 +1,11 @@
 package com.lhacenmed.sona.feature.player
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.Switch
@@ -18,9 +22,11 @@ import com.lhacenmed.sona.core.designsystem.component.sheet.SonaBottomSheet
 import com.lhacenmed.sona.core.designsystem.component.sheet.SonaOptionRow
 import com.lhacenmed.sona.core.designsystem.component.sheet.SonaOptionsSheetHeader
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.playback.R as PlaybackR
 
 /**
- * The lyrics sheet's overflow menu: ArchiveTune's `LyricsMenu` without the actions that go online - editing
+ * The open lyrics' overflow menu: first what the player puts away while its lyrics are open - the favourite,
+ * the queue and the sleep timer - then ArchiveTune's `LyricsMenu` without the actions that go online - editing
  * the lyrics, nudging their timing, and showing or hiding the player controls beneath them - laid out as
  * every options sheet in the app is: the track's cover, what the menu is for, its name and artist, then its
  * options.
@@ -33,6 +39,11 @@ import com.lhacenmed.sona.core.model.Track
 @Composable
 internal fun LyricsMenuSheet(
     track: Track,
+    isFavorite: Boolean,
+    /** Null for a track that cannot be a favourite, which leaves Favourite out. */
+    onToggleFavorite: (() -> Unit)?,
+    onOpenQueue: () -> Unit,
+    onSleepTimerClick: () -> Unit,
     lyricsSyncOffset: Int,
     onLyricsSyncOffsetChange: (Int) -> Unit,
     showPlayerControls: Boolean,
@@ -60,6 +71,34 @@ internal fun LyricsMenuSheet(
                 )
             },
         ) {
+            if (onToggleFavorite != null) {
+                SonaOptionRow(
+                    label = stringResource(
+                        if (isFavorite) PlaybackR.string.playback_action_remove_favorite else PlaybackR.string.playback_action_add_favorite,
+                    ),
+                    icon = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                    onClick = {
+                        onToggleFavorite()
+                        onDismissRequest()
+                    },
+                )
+            }
+            SonaOptionRow(
+                label = stringResource(R.string.player_queue),
+                icon = Icons.AutoMirrored.Filled.QueueMusic,
+                onClick = {
+                    onOpenQueue()
+                    onDismissRequest()
+                },
+            )
+            SonaOptionRow(
+                label = stringResource(R.string.player_sleep_timer),
+                icon = Icons.Filled.Bedtime,
+                onClick = {
+                    onSleepTimerClick()
+                    onDismissRequest()
+                },
+            )
             if (onEditLyrics != null) {
                 SonaOptionRow(
                     label = stringResource(R.string.player_edit),

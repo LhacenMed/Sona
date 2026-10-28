@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** The lyrics sheet's lyrics and the stored settings it is drawn with. */
+/** The player's lyrics - its pill and the lyrics it opens into - and the stored settings they are drawn with. */
 @HiltViewModel
 class LyricsViewModel @Inject constructor(
     private val trackTagsRepository: TrackTagsRepository,

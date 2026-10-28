@@ -6,6 +6,7 @@ import androidx.compose.ui.unit.Dp
 import com.lhacenmed.sona.core.datastore.PlayerAppearance
 import com.lhacenmed.sona.core.datastore.PlayerStyle
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.player.PlayerLyricsState
 import com.lhacenmed.sona.feature.player.PlayerTitleActions
 import com.lhacenmed.sona.feature.player.PlayerUiState
 import com.lhacenmed.sona.feature.player.PlayerViewModel
@@ -13,7 +14,8 @@ import com.lhacenmed.sona.feature.player.background.PlayerColors
 
 // The one place a player style is looked up. Each style draws three things - the sheet behind it, the
 // expanded player, and the queue bar along its bottom - and the rest of the player (mini player,
-// queue, lyrics, gestures, seeking) is shared by every style. These `when`s are exhaustive, so a new
+// queue, lyrics, gestures, seeking) is shared by every style: a style only places the lyrics pill and
+// makes way for the lyrics it opens into. These `when`s are exhaustive, so a new
 // PlayerStyle entry does not compile until it has a branch in each.
 
 /** The colour of the sheet the expanded player is drawn on. */
@@ -23,7 +25,10 @@ internal fun PlayerStyle.sheetColor(): Color =
         PlayerStyle.CINEMATIC -> CinematicPlayerColors.sheet
     }
 
-/** The expanded player above the queue bar, leaving [queueBarHeight] clear at its bottom for it. */
+/**
+ * The expanded player above the queue bar, leaving [queueBarHeight] clear at its bottom for it, with the
+ * [lyrics] pill in it and room made for the lyrics while they are open.
+ */
 @Composable
 internal fun PlayerStyle.ExpandedPlayer(
     track: Track,
@@ -37,6 +42,7 @@ internal fun PlayerStyle.ExpandedPlayer(
     duration: Long,
     queueBarHeight: Dp,
     titleActions: PlayerTitleActions,
+    lyrics: PlayerLyricsState,
     onMenuClick: () -> Unit,
     onCollapse: () -> Unit,
     onOpenEqualizer: () -> Unit,
@@ -58,6 +64,7 @@ internal fun PlayerStyle.ExpandedPlayer(
                 duration = duration,
                 queueBarHeight = queueBarHeight,
                 titleActions = titleActions,
+                lyrics = lyrics,
                 onMenuClick = onMenuClick,
                 onCollapse = onCollapse,
                 onOpenEqualizer = onOpenEqualizer,
@@ -68,7 +75,7 @@ internal fun PlayerStyle.ExpandedPlayer(
     }
 }
 
-/** The bar the queue sheet shows while collapsed: the way into the queue, the sleep timer and lyrics. */
+/** The bar the queue sheet shows while collapsed: the way into the queue, and the sleep timer. */
 @Composable
 internal fun PlayerStyle.QueueBar(
     contentColor: Color,
@@ -76,7 +83,6 @@ internal fun PlayerStyle.QueueBar(
     sleepTimerTimeLeft: Long,
     onExpandQueue: () -> Unit,
     onSleepTimerClick: () -> Unit,
-    onShowLyrics: () -> Unit,
 ) {
     when (this) {
         PlayerStyle.CINEMATIC ->
@@ -86,7 +92,6 @@ internal fun PlayerStyle.QueueBar(
                 sleepTimerTimeLeft = sleepTimerTimeLeft,
                 onExpandQueue = onExpandQueue,
                 onSleepTimerClick = onSleepTimerClick,
-                onShowLyrics = onShowLyrics,
             )
     }
 }

@@ -56,6 +56,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
@@ -92,14 +93,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.lhacenmed.sona.core.data.lyrics.LyricsEntry
 import com.lhacenmed.sona.core.data.lyrics.LyricsRomanizationPreferences
-import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.findCurrentLineIndex
-import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.insertInstrumentalBreaks
-import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.isLineSyncedLrc
-import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.isTtml
-import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.parseLyrics
-import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.parseTtml
 import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.providedRomanizedTextForEntry
 import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.romanizeLyricsLine
 import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.shouldRomanizeLyricsLine
@@ -119,6 +113,7 @@ import kotlin.math.sin
 import kotlin.random.Random
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -127,22 +122,11 @@ import kotlinx.coroutines.withContext
 // Constants
 // ──────────────────────────────────────────────────────────────────────
 
-/** Lead time offset for LRC-style line-synced lyrics (ms). */
-private const val LRC_LEAD_MS = 300L
-
-/** Lead time offset for TTML word-synced lyrics (ms). */
-private const val TTML_LEAD_MS = 0L
-
-private const val LYRIC_VISUAL_TUNING_OFFSET_MS = 150L
-
 /** Seconds to wait before auto-scroll resumes after manual scroll. */
 private const val MANUAL_SCROLL_TIMEOUT_MS = 3000L
 
 /** How many lines can be selected to share at once. */
 private const val MAX_SELECTION_LIMIT = 5
-
-/** Sentinel entry prepended so auto-scroll has headroom above the first line. */
-private val HEAD_LYRICS_ENTRY = LyricsEntry(time = 0L, text = "")
 
 private fun isRtlText(text: String): Boolean {
     for (ch in text) {
@@ -169,16 +153,15 @@ private fun isRtlText(text: String): Boolean {
 /**
  * Synced lyrics with a liquid word fill, glow and bounce - ArchiveTune's `LyricsV2`.
  *
- * [lyrics] is null while the track's file is being read, and blank where it holds none - [isFindingLyrics] while
- * they are being looked for on the web, to show the moment they are written into the file.
+ * [timeline] is null while the track's file is being read, and has no lines where it holds none - [isFindingLyrics]
+ * while they are being looked for on the web, to show the moment they are written into the file.
  */
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 internal fun LyricsV2(
     track: Track,
-    lyrics: String?,
+    timeline: LyricsTimeline?,
     isFindingLyrics: Boolean,
-    durationMs: Long,
     positionMsProvider: () -> Long,
     sliderPositionProvider: () -> Long?,
     lyricsSyncOffset: Int,
@@ -228,36 +211,9 @@ internal fun LyricsV2(
     var isSelectionModeActive by rememberSaveable { mutableStateOf(false) }
     val selectedIndices = remember { mutableStateListOf<Int>() }
 
-    // ── Parse lyrics into entries ──
-    val isSynced = remember(lyrics) { lyrics != null && (isLineSyncedLrc(lyrics) || isTtml(lyrics)) }
-    val isTtmlFormat = remember(lyrics) { lyrics != null && isTtml(lyrics) }
-
-    val entriesWithWords: List<LyricsEntry> =
-        remember(lyrics) {
-            if (lyrics.isNullOrBlank()) return@remember emptyList()
-            val parsed =
-                when {
-                    isTtml(lyrics) -> {
-                        parseTtml(lyrics)
-                    }
-
-                    isLineSyncedLrc(lyrics) -> {
-                        insertInstrumentalBreaks(parseLyrics(lyrics), durationMs.coerceAtLeast(0L))
-                    }
-
-                    else -> {
-                        lyrics
-                            .lines()
-                            .filter { it.isNotBlank() }
-                            .map { line -> LyricsEntry(time = -1L, text = line.trim()) }
-                    }
-                }
-            if (parsed.isNotEmpty() && parsed.first().time >= 0) {
-                listOf(HEAD_LYRICS_ENTRY) + parsed
-            } else {
-                parsed
-            }
-        }
+    val isSynced = timeline?.isSynced == true
+    val isTtmlFormat = timeline?.isWordSynced == true
+    val entriesWithWords = timeline?.entries.orEmpty()
 
     // ── Romanization ──
     LaunchedEffect(entriesWithWords, romanizationPreferences) {
@@ -301,21 +257,26 @@ internal fun LyricsV2(
     }
 
     // ── Playback position tracking ──
-    val leadMs = if (isTtmlFormat) TTML_LEAD_MS else LRC_LEAD_MS
     var currentPositionMs by remember { mutableLongStateOf(0L) }
     var playbackPositionMs by remember { mutableLongStateOf(0L) }
-    var currentLineIndex by remember { mutableIntStateOf(0) }
+    // Read at once, so the lyrics open on the line playing rather than scrolling to it from the top.
+    var currentLineIndex by remember(timeline) {
+        mutableIntStateOf(
+            if (timeline != null && isSynced && entriesWithWords.isNotEmpty()) {
+                timeline.lineIndexAt(timeline.lyricsPositionMs(sliderPositionProvider() ?: positionMsProvider(), lyricsSyncOffset))
+            } else {
+                0
+            },
+        )
+    }
 
-    LaunchedEffect(entriesWithWords, isSynced, leadMs, lyricsSyncOffset) {
-        if (!isSynced || entriesWithWords.isEmpty()) return@LaunchedEffect
+    LaunchedEffect(timeline, lyricsSyncOffset) {
+        if (timeline == null || !isSynced || entriesWithWords.isEmpty()) return@LaunchedEffect
         val pollIntervalMs = if (isTtmlFormat) 16L else 50L
         while (isActive) {
-            val pos = sliderPositionProvider() ?: positionMsProvider()
-
-            playbackPositionMs = (pos + lyricsSyncOffset.toLong()).coerceAtLeast(0L)
-            currentPositionMs = (playbackPositionMs + leadMs + LYRIC_VISUAL_TUNING_OFFSET_MS).coerceAtLeast(0L)
-
-            currentLineIndex = findCurrentLineIndex(entriesWithWords, currentPositionMs, 0L)
+            playbackPositionMs = timeline.lyricsPositionMs(sliderPositionProvider() ?: positionMsProvider(), lyricsSyncOffset)
+            currentPositionMs = timeline.highlightPositionMs(playbackPositionMs)
+            currentLineIndex = timeline.lineIndexAt(playbackPositionMs)
             delay(pollIntervalMs)
         }
     }
@@ -351,13 +312,19 @@ internal fun LyricsV2(
     }
 
     // Auto-scroll to active line
+    var hasReachedActiveLine by remember(timeline) { mutableStateOf(false) }
     LaunchedEffect(currentLineIndex, isManualScrolling, lyricsScroll) {
         if (!lyricsScroll || isManualScrolling || !isSynced) return@LaunchedEffect
         if (currentLineIndex < 0 || currentLineIndex >= entriesWithWords.size) return@LaunchedEffect
 
-        val visibleInfo = listState.layoutInfo
-        val viewportHeight = visibleInfo.viewportSize.height
+        // Measured before the first scroll, which is where the lyrics open - placed there, not scrolled to.
+        val viewportHeight = snapshotFlow { listState.layoutInfo.viewportSize.height }.first { it > 0 }
         val targetOffset = (viewportHeight * 0.35f).toInt() // Center bias at 35% from top
+        if (!hasReachedActiveLine) {
+            listState.scrollToItem(currentLineIndex, -targetOffset)
+            hasReachedActiveLine = true
+            return@LaunchedEffect
+        }
 
         val distance = abs(currentLineIndex - (listState.firstVisibleItemIndex))
         if (distance > 15) {
@@ -397,7 +364,7 @@ internal fun LyricsV2(
                 .fillMaxSize()
                 .padding(bottom = 12.dp),
     ) {
-        if (lyrics == null) {
+        if (timeline == null) {
             ShimmerHost {
                 repeat(6) {
                     TextPlaceholder()

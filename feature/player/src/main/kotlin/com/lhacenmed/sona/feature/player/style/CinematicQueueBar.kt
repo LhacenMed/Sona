@@ -1,17 +1,16 @@
 package com.lhacenmed.sona.feature.player.style
 
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
@@ -30,17 +29,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.lhacenmed.sona.core.designsystem.theme.pillShape
 import com.lhacenmed.sona.core.designsystem.theme.roundedShape
+import com.lhacenmed.sona.feature.player.PlayerPillCornerRadius
+import com.lhacenmed.sona.feature.player.PlayerPillHeight
+import com.lhacenmed.sona.feature.player.PlayerPillTintAlpha
 import com.lhacenmed.sona.feature.player.R
 import com.lhacenmed.sona.feature.player.makeTimeString
 
 /**
- * The Cinematic player's queue bar: queue and lyrics pills either side of the sleep timer. Ported from
- * ArchiveTune's `QueueCollapsedContentV4`.
+ * The Cinematic player's queue bar: the queue and the sleep timer, side by side in the player's pills - the
+ * timer's showing the time it has left while it runs. Ported from ArchiveTune's `QueueCollapsedContentV4`.
  */
 @Composable
 internal fun CinematicQueueBar(
@@ -49,7 +48,6 @@ internal fun CinematicQueueBar(
     sleepTimerTimeLeft: Long,
     onExpandQueue: () -> Unit,
     onSleepTimerClick: () -> Unit,
-    onShowLyrics: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -66,114 +64,66 @@ internal fun CinematicQueueBar(
                         ),
                     ),
         ) {
-            val buttonSize = 48.dp
-            val iconSize = 22.dp
-
-            // Queue button (pill)
-            Box(
-                modifier =
-                    Modifier
-                        .height(buttonSize)
-                        .weight(1f)
-                        .clip(roundedShape(16.dp))
-                        .background(contentColor.copy(alpha = 0.1f))
-                        .clickable { onExpandQueue() },
-                contentAlignment = Alignment.Center,
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.queue_music),
-                        contentDescription = null,
-                        modifier = Modifier.size(iconSize),
-                        tint = contentColor,
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(id = R.string.player_queue),
-                        color = contentColor,
-                        style = MaterialTheme.typography.labelLarge,
-                        maxLines = 1,
-                    )
-                }
-            }
+            QueueBarPill(
+                iconRes = R.drawable.queue_music,
+                label = stringResource(R.string.player_queue),
+                contentColor = contentColor,
+                onClick = onExpandQueue,
+            )
 
             Spacer(modifier = Modifier.width(10.dp))
 
-            // Sleep timer button (circle)
-            Box(
-                modifier =
-                    Modifier
-                        .size(buttonSize)
-                        .clip(pillShape)
-                        .background(contentColor.copy(alpha = if (sleepTimerEnabled) 0.2f else 0.1f))
-                        .clickable { onSleepTimerClick() },
-                contentAlignment = Alignment.Center,
-            ) {
-                AnimatedContent(
-                    label = "sleepTimer",
-                    targetState = sleepTimerEnabled,
-                ) { enabled ->
-                    if (enabled) {
-                        Text(
-                            text = makeTimeString(sleepTimerTimeLeft),
-                            color = contentColor,
-                            style = MaterialTheme.typography.labelSmall,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            textAlign = TextAlign.Center,
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .basicMarquee(),
-                        )
-                    } else {
-                        Icon(
-                            painter = painterResource(id = R.drawable.bedtime),
-                            contentDescription = null,
-                            modifier = Modifier.size(iconSize),
-                            tint = contentColor,
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.width(10.dp))
-
-            // Lyrics button (pill)
-            Box(
-                modifier =
-                    Modifier
-                        .height(buttonSize)
-                        .weight(1f)
-                        .clip(roundedShape(16.dp))
-                        .background(contentColor.copy(alpha = 0.1f))
-                        .clickable { onShowLyrics() },
-                contentAlignment = Alignment.Center,
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.lyrics),
-                        contentDescription = null,
-                        modifier = Modifier.size(iconSize),
-                        tint = contentColor,
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(id = R.string.player_lyrics),
-                        color = contentColor,
-                        style = MaterialTheme.typography.labelLarge,
-                        maxLines = 1,
+            AnimatedContent(
+                label = "sleepTimer",
+                targetState = sleepTimerEnabled,
+                modifier = Modifier.weight(1f),
+            ) { enabled ->
+                Row {
+                    QueueBarPill(
+                        iconRes = R.drawable.bedtime,
+                        label = if (enabled) makeTimeString(sleepTimerTimeLeft) else stringResource(R.string.player_sleep_timer),
+                        contentColor = contentColor,
+                        isActive = enabled,
+                        onClick = onSleepTimerClick,
                     )
                 }
             }
         }
+    }
+}
+
+/** One of the bar's pills: an icon beside its label, a shade brighter while what it stands for is on. */
+@Composable
+private fun RowScope.QueueBarPill(
+    @DrawableRes iconRes: Int,
+    label: String,
+    contentColor: Color,
+    onClick: () -> Unit,
+    isActive: Boolean = false,
+) {
+    Row(
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+        modifier =
+            Modifier
+                .weight(1f)
+                .height(PlayerPillHeight)
+                .clip(roundedShape(PlayerPillCornerRadius))
+                .background(contentColor.copy(alpha = if (isActive) PlayerPillTintAlpha * 2 else PlayerPillTintAlpha))
+                .clickable(onClick = onClick),
+    ) {
+        Icon(
+            painter = painterResource(id = iconRes),
+            contentDescription = null,
+            modifier = Modifier.size(22.dp),
+            tint = contentColor,
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = label,
+            color = contentColor,
+            style = MaterialTheme.typography.labelLarge,
+            maxLines = 1,
+        )
     }
 }

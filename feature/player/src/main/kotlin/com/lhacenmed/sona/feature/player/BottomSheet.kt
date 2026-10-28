@@ -69,6 +69,9 @@ import kotlinx.coroutines.launch
  * instead - the queue in the player. Expanded, this sheet is as tall as it goes, so the swipe would
  * otherwise move nothing; downward, the swipe still closes this one. The same detector serves both, so
  * the swipe still has a single owner.
+ *
+ * Without [isCollapsedContentEnabled] the collapsed bar is neither tapped nor dragged, leaving what is
+ * drawn under it to be.
  */
 @Composable
 internal fun BottomSheet(
@@ -80,6 +83,7 @@ internal fun BottomSheet(
     onCollapsedContentClick: (() -> Unit)? = null,
     isContentDraggable: Boolean = true,
     swipeUpSheet: BottomSheetState? = null,
+    isCollapsedContentEnabled: Boolean = true,
     content: @Composable BoxScope.() -> Unit,
 ) {
     // Material puts a content colour on every surface it draws; this sheet is a Box and draws its own,
@@ -138,11 +142,18 @@ internal fun BottomSheet(
                         Modifier
                             .graphicsLayer {
                                 alpha = 1f - (state.progress * 4).coerceAtMost(1f)
-                            }.bottomSheetDraggable(state, onDismiss)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = onCollapsedContentClick ?: state::expandSoft,
+                            }.then(
+                                if (isCollapsedContentEnabled) {
+                                    Modifier
+                                        .bottomSheetDraggable(state, onDismiss)
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null,
+                                            onClick = onCollapsedContentClick ?: state::expandSoft,
+                                        )
+                                } else {
+                                    Modifier
+                                },
                             ).fillMaxWidth()
                             .height(state.collapsedBound),
                     content = collapsedContent,

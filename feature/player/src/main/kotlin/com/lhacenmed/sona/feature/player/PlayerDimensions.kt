@@ -21,6 +21,11 @@ internal val QueuePeekHeight = 64.dp
 internal val QueueItemHeight = 72.dp
 internal val PlayerHorizontalPadding = 32.dp
 
+/** The player's pills - the queue bar's and the lyrics line's - one family: one height, corner and tint. */
+internal val PlayerPillHeight = 48.dp
+internal val PlayerPillCornerRadius = 16.dp
+internal const val PlayerPillTintAlpha = 0.1f
+
 internal val BottomSheetAnimationSpec = spring<Dp>(
     dampingRatio = Spring.DampingRatioNoBouncy,
     stiffness = Spring.StiffnessMediumLow,

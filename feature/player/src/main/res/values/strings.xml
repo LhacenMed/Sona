@@ -29,8 +29,6 @@
     <string name="player_pause">Pause</string>
     <string name="player_previous">Previous</string>
     <string name="player_next">Next</string>
-    <string name="player_minimum_volume">Minimum Volume</string>
-    <string name="player_maximum_volume">Maximum Volume</string>
     <string name="player_seek_forward">+%1$d seconds forwards</string>
     <string name="player_seek_backward">-%1$d seconds backwards</string>
     <string name="player_removed_song_from_queue">Removed \"%s\" from queue</string>

@@ -27,6 +27,7 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
@@ -52,8 +53,8 @@ private const val KeyboardVolumeStep = 0.05f
  * The full player: the mini player as the sheet's collapsed content, expanding into the chosen player
  * style over its queue. Ported from ArchiveTune's `BottomSheetPlayer`.
  *
- * Everything here is shared by every style - the sheets, seeking, keyboard control, lyrics and the
- * track menu. What a style draws is looked up in `style/PlayerStyles.kt`.
+ * Everything here is shared by every style - the sheets, seeking, keyboard control, the lyrics the
+ * player opens into, the sleep timer and the track menu. What a style draws is looked up in `style/PlayerStyles.kt`.
  */
 @Composable
 internal fun BottomSheetPlayer(
@@ -69,6 +70,7 @@ internal fun BottomSheetPlayer(
     onEditLyrics: ((trackId: Long) -> Unit)?,
     trackOptionsSheet: @Composable (track: Track, onDismissRequest: () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
+    lyricsViewModel: LyricsViewModel = hiltViewModel(),
 ) {
     val playback = uiState.playback
     val track = uiState.currentTrack
@@ -123,7 +125,13 @@ internal fun BottomSheetPlayer(
             initialAnchor = DISMISSED_ANCHOR,
         )
 
-    var isLyricsSheetVisible by rememberSaveable { mutableStateOf(false) }
+    val lyrics = rememberPlayerLyricsState(lyricsViewModel)
+
+    // Asked from the queue bar and from the lyrics' menu alike: a running timer is stopped, otherwise one is set.
+    var isSleepTimerDialogShown by remember { mutableStateOf(false) }
+    val onSleepTimerClick = {
+        if (sleepTimer.isActive) viewModel.onClearSleepTimer() else isSleepTimerDialogShown = true
+    }
 
     BackHandler(
         enabled =
@@ -131,7 +139,6 @@ internal fun BottomSheetPlayer(
                 state.isExpandedOrExpanding,
     ) {
         when {
-            isLyricsSheetVisible && state.isExpandedOrExpanding -> isLyricsSheetVisible = false
             queueSheetState.isExpandedOrExpanding -> queueSheetState.collapseSoft()
             state.isExpandedOrExpanding -> state.collapseSoft()
         }
@@ -162,8 +169,9 @@ internal fun BottomSheetPlayer(
 
     BottomSheet(
         state = state,
-        // A swipe up anywhere on the open player raises the queue, not only one begun on its bar.
-        swipeUpSheet = queueSheetState,
+        // A swipe up anywhere on the open player raises the queue, not only one begun on its bar - save over
+        // its lyrics, which the swipe scrolls.
+        swipeUpSheet = queueSheetState.takeUnless { lyrics.isOpen },
         modifier =
             modifier
                 .focusRequester(focusRequester)
@@ -286,6 +294,7 @@ internal fun BottomSheetPlayer(
                 duration = duration,
                 queueBarHeight = queueSheetState.collapsedBound,
                 titleActions = titleActions,
+                lyrics = lyrics,
                 onMenuClick = onMenuClick,
                 onCollapse = state::collapseSoft,
                 // Collapsed on the way, as going to the album or the artist is.
@@ -296,6 +305,27 @@ internal fun BottomSheetPlayer(
                 viewModel = viewModel,
                 onSliderValueChange = onSliderValueChange,
                 onSliderValueChangeFinished = onSliderValueChangeFinished,
+            )
+        }
+
+        track?.let { currentTrack ->
+            PlayerLyrics(
+                state = lyrics,
+                track = currentTrack,
+                durationMs = duration,
+                contentColor = playerColors.content,
+                positionMsProvider = viewModel::currentPositionMs,
+                sliderPositionProvider = { sliderPosition },
+                seekBarPositionMs = { sliderPosition ?: position },
+                lyricsSyncOffset = lyricsSyncOffset,
+                onLyricsSyncOffsetChange = { lyricsSyncOffset = it },
+                onSeek = viewModel::onSeek,
+                isFavorite = uiState.isCurrentTrackFavorite,
+                onToggleFavorite = if (uiState.canFavorite) viewModel::onToggleFavorite else null,
+                onOpenQueue = queueSheetState::expandSoft,
+                onSleepTimerClick = onSleepTimerClick,
+                onEditLyrics = onEditLyrics,
+                lyricsViewModel = lyricsViewModel,
             )
         }
 
@@ -310,25 +340,24 @@ internal fun BottomSheetPlayer(
             backgroundColor = MaterialTheme.colorScheme.surfaceContainer,
             onBackgroundColor = MaterialTheme.colorScheme.onSurface,
             onMenuClick = { menuTrack = it },
-            onShowLyrics = { isLyricsSheetVisible = true },
+            onSleepTimerClick = onSleepTimerClick,
+            lyrics = lyrics,
             viewModel = viewModel,
         )
+    }
 
-        track?.let { currentTrack ->
-            LyricsSheetTransition(
-                visible = isLyricsSheetVisible,
-                backHandlerEnabled = isLyricsSheetVisible && state.isExpandedOrExpanding,
-                track = currentTrack,
-                playback = playback,
-                durationMs = duration,
-                appearance = appearance,
-                lyricsSyncOffset = lyricsSyncOffset,
-                onLyricsSyncOffsetChange = { lyricsSyncOffset = it },
-                onEditLyrics = onEditLyrics,
-                onDismiss = { isLyricsSheetVisible = false },
-                viewModel = viewModel,
-            )
-        }
+    if (isSleepTimerDialogShown) {
+        SleepTimerDialog(
+            onDismiss = { isSleepTimerDialogShown = false },
+            onConfirm = { minutes ->
+                isSleepTimerDialogShown = false
+                viewModel.onStartSleepTimer(minutes)
+            },
+            onEndOfSong = {
+                isSleepTimerDialogShown = false
+                viewModel.onStartSleepTimerAtEndOfTrack()
+            },
+        )
     }
 
     menuTrack?.let { menuFor ->

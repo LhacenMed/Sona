@@ -41,6 +41,7 @@ import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -63,8 +64,8 @@ import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 /**
- * The queue: a bar along the bottom of the full player - queue, sleep timer and lyrics, in the player
- * style's own shape - that expands into the queue itself, where every row plays when tapped, moves by its
+ * The queue: a bar along the bottom of the full player - queue and sleep timer, in the player style's own
+ * shape, sliding out of the way while the player's [lyrics] are open - that expands into the queue itself, where every row plays when tapped, moves by its
  * handle, and is swiped towards its end to play next or towards its start to leave the queue, shuffled or
  * not. Ported from ArchiveTune's `Queue`.
  *
@@ -86,7 +87,8 @@ internal fun Queue(
     backgroundColor: Color,
     onBackgroundColor: Color,
     onMenuClick: (Track) -> Unit,
-    onShowLyrics: () -> Unit,
+    onSleepTimerClick: () -> Unit,
+    lyrics: PlayerLyricsState,
     viewModel: PlayerViewModel,
     modifier: Modifier = Modifier,
 ) {
@@ -98,7 +100,6 @@ internal fun Queue(
     var dismissJob: Job? by remember { mutableStateOf(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    var showSleepTimerDialog by remember { mutableStateOf(false) }
     val sleepTimerEnabled = sleepTimer.isActive
     var sleepTimerTimeLeft by remember { mutableLongStateOf(0L) }
     val latestDurationMs by rememberUpdatedState(durationMs)
@@ -123,42 +124,29 @@ internal fun Queue(
                 state.expandSoft()
             }
         }
-    val onSleepTimerClick = {
-        if (sleepTimerEnabled) {
-            viewModel.onClearSleepTimer()
-        } else {
-            showSleepTimerDialog = true
-        }
-    }
     BottomSheet(
         state = state,
         backgroundColor = Color.Unspecified,
         modifier = modifier,
         onCollapsedContentClick = openQueue,
+        isCollapsedContentEnabled = !lyrics.isOpen,
         // The queue list owns every gesture over it, handing the sheet only what it cannot scroll;
         // the header below is what the sheet itself is dragged by.
         isContentDraggable = false,
         collapsedContent = {
-            playerStyle.QueueBar(
-                contentColor = barContentColor,
-                sleepTimerEnabled = sleepTimerEnabled,
-                sleepTimerTimeLeft = sleepTimerTimeLeft,
-                onExpandQueue = openQueue,
-                onSleepTimerClick = onSleepTimerClick,
-                onShowLyrics = onShowLyrics,
-            )
-
-            if (showSleepTimerDialog) {
-                SleepTimerDialog(
-                    onDismiss = { showSleepTimerDialog = false },
-                    onConfirm = { minutes ->
-                        showSleepTimerDialog = false
-                        viewModel.onStartSleepTimer(minutes)
+            Box(
+                modifier =
+                    Modifier.graphicsLayer {
+                        alpha = 1f - lyrics.phase(0f, 0.3f)
+                        translationY = size.height * lyrics.phase(0f, 0.45f)
                     },
-                    onEndOfSong = {
-                        showSleepTimerDialog = false
-                        viewModel.onStartSleepTimerAtEndOfTrack()
-                    },
+            ) {
+                playerStyle.QueueBar(
+                    contentColor = barContentColor,
+                    sleepTimerEnabled = sleepTimerEnabled,
+                    sleepTimerTimeLeft = sleepTimerTimeLeft,
+                    onExpandQueue = openQueue,
+                    onSleepTimerClick = onSleepTimerClick,
                 )
             }
         },
