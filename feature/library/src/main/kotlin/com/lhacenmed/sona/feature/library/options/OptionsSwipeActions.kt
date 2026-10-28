@@ -12,7 +12,9 @@ import com.lhacenmed.sona.feature.library.options.OptionsAction.EXCLUDE
 import com.lhacenmed.sona.feature.library.options.OptionsAction.PLAY
 import com.lhacenmed.sona.feature.library.options.OptionsAction.PLAY_NEXT
 import com.lhacenmed.sona.feature.library.options.OptionsAction.QUEUE_ADD
+import com.lhacenmed.sona.feature.library.options.OptionsAction.REMOVE_FROM_MOST_PLAYED
 import com.lhacenmed.sona.feature.library.options.OptionsAction.REMOVE_FROM_PLAYLIST
+import com.lhacenmed.sona.feature.library.options.OptionsAction.REMOVE_FROM_RECENTLY_PLAYED
 import com.lhacenmed.sona.feature.library.options.OptionsAction.SHUFFLE
 
 /**
@@ -61,6 +63,7 @@ private fun OptionsSwipe.toSwipeActions(
 private val OptionsAction.swipeTone: SwipeActionTone
     get() = when (this) {
         PLAY, PLAY_NEXT -> SwipeActionTone.Primary
-        DELETE, DELETE_FROM_DEVICE, REMOVE_FROM_PLAYLIST, EXCLUDE -> SwipeActionTone.Danger
+        DELETE, DELETE_FROM_DEVICE, REMOVE_FROM_PLAYLIST, REMOVE_FROM_RECENTLY_PLAYED, REMOVE_FROM_MOST_PLAYED, EXCLUDE ->
+            SwipeActionTone.Danger
         else -> SwipeActionTone.Secondary
     }

@@ -21,6 +21,7 @@ import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.library.options.OptionsActionsViewModel
+import com.lhacenmed.sona.feature.library.options.RemovableTrackList
 import com.lhacenmed.sona.feature.library.pluralCount
 
 /*
@@ -92,13 +93,13 @@ internal fun DeletePlaylistsDialog(
 }
 
 /**
- * Removing [trackIds] from [playlist] - from a track's options sheet inside the playlist, or the
- * playlist's selection bar. [onConfirmed] runs the moment the removal starts, which is when a selection
- * that asked for it ends.
+ * Removing [trackIds] from [list] - a playlist or a listening history - from a track's options sheet inside it, or
+ * its selection bar. [onConfirmed] runs the moment the removal starts, which is when a selection that asked for it
+ * ends.
  */
 @Composable
-internal fun RemoveFromPlaylistDialog(
-    playlist: Playlist,
+internal fun RemoveFromListDialog(
+    list: RemovableTrackList,
     trackIds: List<Long>,
     onDismiss: () -> Unit,
     onConfirmed: () -> Unit = {},
@@ -107,14 +108,14 @@ internal fun RemoveFromPlaylistDialog(
     val isSingle = trackIds.size == 1
     SonaConfirmationDialog(
         title = if (isSingle) "Remove track" else "Remove ${trackIds.size} tracks",
-        message = "From ${playlist.name}. The files themselves are not deleted.",
+        message = list.removalMessage,
         confirmLabel = "Remove",
         successMessage = if (isSingle) "Track removed" else "${trackIds.size} tracks removed",
         failureMessage = if (isSingle) "Could not remove track" else "Could not remove tracks",
         onDismiss = onDismiss,
         operation = { onFinished ->
             onConfirmed()
-            actionsViewModel.removeFromPlaylist(playlist.id, trackIds, onFinished)
+            actionsViewModel.removeFrom(list, trackIds, onFinished)
         },
     )
 }

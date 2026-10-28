@@ -31,11 +31,12 @@ interface PlayStatsDao {
     )
     suspend fun recordPlayCounted(trackId: Long, playedAt: Long)
 
-    /** "Recent" - what was played last, most recent first. */
+    /** "Recent" - what was played last, most recent first; a track taken out of it, by [forgetLastPlayed], is not. */
     @Query(
         """
         SELECT t.* FROM tracks t
         INNER JOIN play_stats s ON s.trackId = t.id
+        WHERE s.lastPlayedAt > 0
         ORDER BY s.lastPlayedAt DESC
         """,
     )
@@ -51,6 +52,14 @@ interface PlayStatsDao {
         """,
     )
     fun observeMostPlayed(): Flow<List<TrackEntity>>
+
+    /** Takes [trackIds] out of "Recent", their play counts kept - the next time one starts playing puts it back. */
+    @Query("UPDATE play_stats SET lastPlayedAt = 0 WHERE trackId IN (:trackIds)")
+    suspend fun forgetLastPlayed(trackIds: List<Long>)
+
+    /** Takes [trackIds] out of "Most played" by counting their listens from zero again. */
+    @Query("UPDATE play_stats SET playCount = 0 WHERE trackId IN (:trackIds)")
+    suspend fun resetPlayCounts(trackIds: List<Long>)
 
     @Query("SELECT COUNT(*) FROM play_stats WHERE playCount > 0")
     fun observeMostPlayedCount(): Flow<Int>

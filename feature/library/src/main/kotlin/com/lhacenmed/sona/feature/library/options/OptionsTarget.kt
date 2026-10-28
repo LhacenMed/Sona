@@ -29,7 +29,6 @@ import com.lhacenmed.sona.feature.library.options.OptionsAction.PLAY
 import com.lhacenmed.sona.feature.library.options.OptionsAction.PLAYLIST_ADD
 import com.lhacenmed.sona.feature.library.options.OptionsAction.PLAY_NEXT
 import com.lhacenmed.sona.feature.library.options.OptionsAction.QUEUE_ADD
-import com.lhacenmed.sona.feature.library.options.OptionsAction.REMOVE_FROM_PLAYLIST
 import com.lhacenmed.sona.feature.library.options.OptionsAction.SHARE
 import com.lhacenmed.sona.feature.library.options.OptionsAction.SHUFFLE
 import com.lhacenmed.sona.feature.library.options.OptionsAction.SONG_PROPERTIES
@@ -53,15 +52,15 @@ sealed interface OptionsTarget {
      * list from here, the same as tapping the row does; Play next, Add to queue and Add to playlist
      * only ever touch [track] itself, whatever list it came from.
      *
-     * [playlist] is the playlist the track is listed in, when it was opened from one - what it can be
-     * removed from.
+     * [removableFrom] is the list the track is listed in, when it was opened from one it can be removed
+     * from - a playlist, or a listening history.
      */
     data class ForTrack(
         val track: Track,
         val context: TrackOptionsContext = TrackOptionsContext.LIST,
         val queueSource: List<Track> = listOf(track),
         val queueParent: PlaybackParent? = null,
-        val playlist: Playlist? = null,
+        val removableFrom: RemovableTrackList? = null,
     ) : OptionsTarget
 
     data class ForAlbum(
@@ -154,7 +153,7 @@ private fun OptionsTarget.collectionActions(hasPrivateFolder: Boolean): List<Opt
             listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ARTIST_DETAILS, SONG_PROPERTIES, EDIT_TAGS, SHARE)
         TrackOptionsContext.FROM_ARTIST ->
             listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ALBUM_DETAILS, SONG_PROPERTIES, EDIT_TAGS, SHARE)
-    } + listOfNotNull(REMOVE_FROM_PLAYLIST.takeIf { playlist != null }, ADD_TO_PRIVATE.takeIf { hasPrivateFolder }, DELETE_FROM_DEVICE)
+    } + listOfNotNull(removableFrom?.removeAction, ADD_TO_PRIVATE.takeIf { hasPrivateFolder }, DELETE_FROM_DEVICE)
 
     is OptionsTarget.ForAlbum -> when (context) {
         AlbumOptionsContext.LIST -> AlbumActions

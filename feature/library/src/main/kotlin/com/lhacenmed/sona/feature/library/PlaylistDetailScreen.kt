@@ -13,6 +13,7 @@ import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
 import com.lhacenmed.sona.feature.library.options.PlaylistOptionsContext
+import com.lhacenmed.sona.feature.library.options.RemovableTrackList
 
 /**
  * One playlist's tracks, in the order they are sorted - the ones added last first, until the user picks
@@ -71,6 +72,7 @@ data object RecentlyPlayedScreen : Screen {
             viewModel = viewModel,
             emptyMessage = "Nothing has been played yet.",
             collection = null,
+            removableList = RemovableTrackList.RecentlyPlayed,
         )
     }
 }
@@ -91,6 +93,7 @@ data object MostPlayedScreen : Screen {
             viewModel = viewModel,
             emptyMessage = "Nothing has been played right through yet.",
             collection = null,
+            removableList = RemovableTrackList.MostPlayed,
         )
     }
 }

@@ -50,6 +50,8 @@ enum class OptionsAction(val icon: ImageVector, val label: String) {
     EXPORT(Icons.Filled.FileUpload, "Export"),
     DELETE(SonaIcons.Delete, "Delete"),
     REMOVE_FROM_PLAYLIST(Icons.Filled.RemoveCircleOutline, "Remove from playlist"),
+    REMOVE_FROM_RECENTLY_PLAYED(Icons.Filled.RemoveCircleOutline, "Remove from Recently played"),
+    REMOVE_FROM_MOST_PLAYED(Icons.Filled.RemoveCircleOutline, "Remove from Most played"),
     ADD_TO_PRIVATE(Icons.Filled.Lock, "Add to Private Folder"),
     DELETE_FROM_DEVICE(SonaIcons.Delete, "Delete from device"),
     EXCLUDE(Icons.Filled.Block, "Exclude folder"),

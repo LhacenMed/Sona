@@ -37,7 +37,7 @@ import com.lhacenmed.sona.feature.library.operation.AddToPrivateDialog
 import com.lhacenmed.sona.feature.library.operation.DeleteFromDeviceDialog
 import com.lhacenmed.sona.feature.library.operation.DeletePlaylistsDialog
 import com.lhacenmed.sona.feature.library.operation.ExcludeFoldersDialog
-import com.lhacenmed.sona.feature.library.operation.RemoveFromPlaylistDialog
+import com.lhacenmed.sona.feature.library.operation.RemoveFromListDialog
 import com.lhacenmed.sona.feature.library.playlist.AddCollectionsScreen
 import com.lhacenmed.sona.feature.library.playlist.AddTracksScreen
 import com.lhacenmed.sona.feature.library.playlist.EditPlaylistScreen
@@ -56,7 +56,7 @@ internal sealed interface FollowUp {
     data class Properties(override val target: OptionsTarget.ForTrack) : FollowUp
     data class ExcludeFolder(override val target: OptionsTarget.ForFolder) : FollowUp
     data class DeletePlaylist(override val target: OptionsTarget.ForPlaylist) : FollowUp
-    data class RemoveFromPlaylist(override val target: OptionsTarget.ForTrack) : FollowUp
+    data class RemoveFromList(override val target: OptionsTarget.ForTrack, val list: RemovableTrackList) : FollowUp
     data class AddToPrivate(override val target: OptionsTarget.ForTrack) : FollowUp
     data class DeleteFromDevice(override val target: OptionsTarget) : FollowUp
     data class ImportFile(override val target: OptionsTarget.ForPlaylist) : FollowUp
@@ -127,7 +127,10 @@ internal class OptionsActions(
             OptionsAction.IMPORT -> followUp = FollowUp.ImportFile(playlistOf(target))
             OptionsAction.EXPORT -> followUp = FollowUp.ExportFile(target)
             OptionsAction.DELETE -> followUp = FollowUp.DeletePlaylist(playlistOf(target))
-            OptionsAction.REMOVE_FROM_PLAYLIST -> followUp = FollowUp.RemoveFromPlaylist(target as OptionsTarget.ForTrack)
+            OptionsAction.REMOVE_FROM_PLAYLIST,
+            OptionsAction.REMOVE_FROM_RECENTLY_PLAYED,
+            OptionsAction.REMOVE_FROM_MOST_PLAYED,
+            -> (target as OptionsTarget.ForTrack).let { followUp = FollowUp.RemoveFromList(it, checkNotNull(it.removableFrom)) }
             OptionsAction.ADD_TO_PRIVATE -> followUp = FollowUp.AddToPrivate(target as OptionsTarget.ForTrack)
             OptionsAction.DELETE_FROM_DEVICE -> followUp = FollowUp.DeleteFromDevice(target)
             OptionsAction.EXCLUDE -> followUp = FollowUp.ExcludeFolder(target as OptionsTarget.ForFolder)
@@ -247,8 +250,8 @@ internal fun OptionsFollowUps(
             onDeleted = onCollectionDeleted,
         )
 
-        is FollowUp.RemoveFromPlaylist -> RemoveFromPlaylistDialog(
-            playlist = checkNotNull(followUp.target.playlist),
+        is FollowUp.RemoveFromList -> RemoveFromListDialog(
+            list = followUp.list,
             trackIds = listOf(followUp.target.track.id),
             onDismiss = finish,
         )

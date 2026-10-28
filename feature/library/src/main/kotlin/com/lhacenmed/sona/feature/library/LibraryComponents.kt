@@ -17,7 +17,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FileUpload
-import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -83,12 +82,13 @@ import com.lhacenmed.sona.core.designsystem.component.rememberDetailHeaderState
 import com.lhacenmed.sona.core.designsystem.theme.LocalIsRounded
 import com.lhacenmed.sona.core.designsystem.theme.SquareShape
 import com.lhacenmed.sona.core.navigation.LocalNavigator
-import com.lhacenmed.sona.feature.library.operation.RemoveFromPlaylistDialog
+import com.lhacenmed.sona.feature.library.operation.RemoveFromListDialog
 import com.lhacenmed.sona.feature.library.favorite.favoriteItemsOf
 import com.lhacenmed.sona.feature.library.options.OptionsFollowUps
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsSwipe
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
+import com.lhacenmed.sona.feature.library.options.RemovableTrackList
 import com.lhacenmed.sona.feature.library.options.TrackOptionsContext
 import com.lhacenmed.sona.feature.library.options.actions
 import com.lhacenmed.sona.feature.library.options.disabledActions
@@ -562,8 +562,8 @@ internal fun videoCountAndDuration(videos: List<Track>): String =
  * out; a screen that closes once its collection is deleted goes back. A list that is no collection of
  * its own - Recent, Most played - offers Export in their place. Searching narrows the tracks alone, in
  * a field in the bar with the results straight under it: the header and the other sections step
- * aside. A [collection] that is a playlist is the one list with membership to remove from: its tracks'
- * sheets and its selection bar both offer removing, which asks first and reports how it went.
+ * aside. A [removableList] - a playlist's, or a listening history - is one tracks can be taken out of: its
+ * tracks' sheets and its selection bar both offer removing, which asks first and reports how it went.
  */
 @Composable
 internal fun TrackListDetail(
@@ -577,6 +577,7 @@ internal fun TrackListDetail(
     trackOptionsContext: TrackOptionsContext = TrackOptionsContext.LIST,
     groupsByDisc: Boolean = false,
     trackSubtitle: ((Track) -> String)? = null,
+    removableList: RemovableTrackList? = (collection as? OptionsTarget.ForPlaylist)?.let { RemovableTrackList.Playlist(it.playlist) },
 ) {
     val tracks by viewModel.tracks.collectAsStateWithLifecycle()
     val sections by viewModel.sections.collectAsStateWithLifecycle()
@@ -592,7 +593,6 @@ internal fun TrackListDetail(
     var optionsTarget by remember { mutableStateOf<OptionsTarget?>(null) }
     // The selected tracks waiting on the user to confirm removing them, in the order they were selected.
     var removingTracks by remember { mutableStateOf<List<Track>>(emptyList()) }
-    val playlist = (collection as? OptionsTarget.ForPlaylist)?.playlist
     val sort = viewModel.sort
     val favorites by collectionActions.viewModel.favorites.collectAsStateWithLifecycle()
     val hasPrivateFolder by collectionActions.viewModel.hasPrivateFolder.collectAsStateWithLifecycle()
@@ -673,7 +673,7 @@ internal fun TrackListDetail(
                         context = trackOptionsContext,
                         queueSource = tracks.itemsOrEmpty,
                         queueParent = viewModel.playbackParent,
-                        playlist = playlist,
+                        removableFrom = removableList,
                     )
                 },
                 subtitle = trackSubtitle?.invoke(track),
@@ -718,10 +718,9 @@ internal fun TrackListDetail(
                     },
                     selection = selection.toLibraryTopBarSelection(
                         listKeys = viewModel::selectableKeys,
-                        // Only a real playlist has membership to remove from.
                         actions = listOfNotNull(
-                            playlist?.let {
-                                TopBarAction(label = "Remove from playlist", icon = Icons.Filled.RemoveCircleOutline) {
+                            removableList?.removeAction?.let { action ->
+                                TopBarAction(label = action.label, icon = action.icon) {
                                     val tracksById = tracks.itemsOrEmpty.associateBy { it.id }
                                     removingTracks = selection.selectedKeys.filterIsInstance<SelectionKey.Track>()
                                         .mapNotNull { tracksById[it.trackId] }
@@ -898,9 +897,9 @@ internal fun TrackListDetail(
     // Nothing is left here to show once the collection this screen is showing has been deleted.
     OptionsFollowUps(actions = collectionActions, onCollectionDeleted = onBack)
 
-    if (playlist != null && removingTracks.isNotEmpty()) {
-        RemoveFromPlaylistDialog(
-            playlist = playlist,
+    if (removableList != null && removingTracks.isNotEmpty()) {
+        RemoveFromListDialog(
+            list = removableList,
             trackIds = removingTracks.map { it.id },
             onDismiss = { removingTracks = emptyList() },
             // The selection ends once the removal is confirmed; cancelling leaves every row picked.

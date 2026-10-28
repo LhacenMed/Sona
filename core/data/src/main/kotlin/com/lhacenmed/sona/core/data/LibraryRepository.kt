@@ -389,6 +389,16 @@ class LibraryRepository @Inject constructor(
         playlistDao.addTracks(playlistId, membershipsOf(playlistId, trackIds, addedAt), addedAt)
     }
 
+    /** Takes [trackIds] out of "Recent", leaving how often they were played - see [PlayStatsDao.forgetLastPlayed]. */
+    suspend fun removeFromRecentlyPlayed(trackIds: List<Long>) {
+        playStatsDao.forgetLastPlayed(trackIds)
+    }
+
+    /** Takes [trackIds] out of "Most played", their play counts reset to zero. */
+    suspend fun removeFromMostPlayed(trackIds: List<Long>) {
+        playStatsDao.resetPlayCounts(trackIds)
+    }
+
     /** "Recent" and "Most played" - ordered by the statistics, so likewise never re-sorted. */
     fun recentlyPlayedTracks(): Flow<LibraryContent<Track>> =
         playStatsDao.observeRecentlyPlayed().map { entities ->

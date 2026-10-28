@@ -187,9 +187,15 @@ class OptionsActionsViewModel @Inject constructor(
         }
     }
 
-    /** Drops [trackIds] out of the playlist [playlistId]. The files themselves are untouched. */
-    fun removeFromPlaylist(playlistId: Long, trackIds: List<Long>, onFinished: (succeeded: Boolean) -> Unit) {
-        viewModelScope.launchOperation(onFinished) { repository.removeTracksFromPlaylist(playlistId, trackIds) }
+    /** Takes [trackIds] out of [list] - see [RemovableTrackList]. The files themselves are untouched. */
+    fun removeFrom(list: RemovableTrackList, trackIds: List<Long>, onFinished: (succeeded: Boolean) -> Unit) {
+        viewModelScope.launchOperation(onFinished) {
+            when (list) {
+                is RemovableTrackList.Playlist -> repository.removeTracksFromPlaylist(list.playlist.id, trackIds)
+                RemovableTrackList.RecentlyPlayed -> repository.removeFromRecentlyPlayed(trackIds)
+                RemovableTrackList.MostPlayed -> repository.removeFromMostPlayed(trackIds)
+            }
+        }
     }
 
     /**
