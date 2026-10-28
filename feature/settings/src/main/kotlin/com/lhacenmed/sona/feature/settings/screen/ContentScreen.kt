@@ -23,6 +23,7 @@ import com.lhacenmed.sona.feature.settings.component.SettingsSection
 import com.lhacenmed.sona.feature.settings.component.SettingsSectionDivider
 import com.lhacenmed.sona.feature.settings.component.SettingsSwitchItem
 import com.lhacenmed.sona.feature.settings.manage.ExcludedFoldersScreen
+import com.lhacenmed.sona.feature.tageditor.autotag.AutoTagScreen
 
 /** Where the library comes from, what it is called, and what it is allowed to look like. */
 data object ContentScreen : Screen {
@@ -50,6 +51,11 @@ data object ContentScreen : Screen {
                     title = stringResource(R.string.excluded_folders_title),
                     summary = stringResource(R.string.excluded_folders_summary),
                     onClick = { navigator.go(ExcludedFoldersScreen) },
+                )
+                SettingsNavigationItem(
+                    title = stringResource(R.string.auto_tag_title),
+                    summary = stringResource(R.string.auto_tag_summary),
+                    onClick = { navigator.go(AutoTagScreen()) },
                 )
                 SettingsSwitchItem(
                     title = stringResource(R.string.filename_as_title_title),

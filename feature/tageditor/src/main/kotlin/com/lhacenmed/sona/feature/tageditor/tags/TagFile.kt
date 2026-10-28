@@ -42,6 +42,16 @@ internal object TagFile {
     }.getOrDefault(TagFileInfo(TrackTags(), bitrateKbps = null))
 
     /**
+     * Whether the file at [uri] - [path] on storage - holds a cover of its own; false for one that cannot be read.
+     * Apart from [read], as it loads the pictures themselves, which a file can carry megabytes of.
+     */
+    fun hasCover(context: Context, uri: Uri, path: String): Boolean = runCatching {
+        val layout = layoutOf(context, uri, path)
+        if (!layout.needsCopy) return@runCatching open(context, uri, "r").use(::holdsCover)
+        withCopy(context, uri, layout) { copy -> ParcelFileDescriptor.open(copy, ParcelFileDescriptor.MODE_READ_ONLY).use(::holdsCover) }
+    }.getOrDefault(false)
+
+    /**
      * Writes [tags] - and [cover], when one was chosen - into the file at [uri], [path] on storage: through a
      * content uri, so a file Android granted that way rather than by its path can be written at all.
      *
@@ -65,6 +75,8 @@ internal object TagFile {
         val bitrate = TagLib.getAudioProperties(file.dup().detachFd(), AudioPropertiesReadStyle.Fast)?.bitrate
         return TagFileInfo(properties?.let(::tagsOf) ?: TrackTags(), bitrate?.toLong()?.takeIf { it > 0 })
     }
+
+    private fun holdsCover(file: ParcelFileDescriptor): Boolean = TagLib.getPictures(file.dup().detachFd()).isNotEmpty()
 
     private fun writeTags(file: ParcelFileDescriptor, tags: TrackTags, cover: ByteArray?) {
         val properties = checkNotNull(TagLib.getMetadata(file.dup().detachFd(), readPictures = false)) {

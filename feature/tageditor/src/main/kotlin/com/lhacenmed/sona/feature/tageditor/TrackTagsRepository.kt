@@ -21,6 +21,7 @@ import java.io.ByteArrayOutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -29,6 +30,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+
+/** One file [TrackTagsRepository.saveAll] writes: [tags] into [track]'s file, with the picture [cover] embeds. */
+class TrackEdit(val track: Track, val tags: TrackTags, val cover: CoverChoice)
 
 /** The longest side a picture from the device is embedded at - a catalogue's own size. */
 private const val DeviceCoverMaxSidePx = 1200
@@ -55,6 +59,10 @@ class TrackTagsRepository @Inject constructor(
     /** What [track]'s file holds. */
     suspend fun read(track: Track): TagFileInfo =
         withContext(ioDispatcher) { TagFile.read(context, track.contentUri, track.path) }
+
+    /** Whether [track]'s file holds a cover of its own - read only where that is wanted, as it loads the pictures. */
+    suspend fun hasCover(track: Track): Boolean =
+        withContext(ioDispatcher) { TagFile.hasCover(context, track.contentUri, track.path) }
 
     /** The lyrics [track]'s file holds, as written - blank where it holds none. */
     suspend fun readLyrics(track: Track): String = read(track).tags[TagField.LYRICS]
@@ -93,7 +101,37 @@ class TrackTagsRepository @Inject constructor(
      */
     suspend fun save(track: Track, tags: TrackTags, cover: ByteArray?) {
         writeFile(track) { TagFile.write(context, track.contentUri, track.path, tags, cover) }
-        refreshLibrary(track)
+        refreshLibrary(listOf(track))
+    }
+
+    /**
+     * Writes every one of [edits] into its file, as [save] does, [onWritten] hearing of each - with what kept it out
+     * of its file where something did - then has the library read them all back at once: one refresh for the lot,
+     * where a file at a time would be one each. Edits sharing a cover are written one after another, so each cover
+     * is had once and held no longer than its own files need it.
+     */
+    suspend fun saveAll(edits: List<TrackEdit>, onWritten: (TrackEdit, Exception?) -> Unit) {
+        edits.groupBy { it.cover }.forEach { (choice, sharing) ->
+            val cover = try {
+                Result.success(coverBytes(choice))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+            sharing.forEach { edit ->
+                val failure = try {
+                    writeFile(edit.track) { TagFile.write(context, edit.track.contentUri, edit.track.path, edit.tags, cover.getOrThrow()) }
+                    null
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    e
+                }
+                onWritten(edit, failure)
+            }
+        }
+        refreshLibrary(edits.map { it.track })
     }
 
     /** Writes [lyrics] into [track]'s file as its lyrics, every other tag left as the file holds it, then as [save]. */
@@ -103,7 +141,7 @@ class TrackTagsRepository @Inject constructor(
             val tags = TagFile.read(context, track.contentUri, track.path).tags.with(TagField.LYRICS, lyrics)
             TagFile.write(context, track.contentUri, track.path, tags, cover = null)
         }
-        refreshLibrary(track)
+        refreshLibrary(listOf(track))
     }
 
     /**
@@ -119,9 +157,9 @@ class TrackTagsRepository @Inject constructor(
         lyricsSearchIndex.reindex(track)
     }
 
-    /** Has the library read [track]'s file back - a file MediaStore has not indexed only by walking storage, which a refresh leaves be. */
-    private suspend fun refreshLibrary(track: Track) {
-        if (track.isManuallyScanned) mediaScanner.rescan() else mediaScanner.refresh()
+    /** Has the library read [tracks]' files back - a file MediaStore has not indexed only by walking storage, which a refresh leaves be. */
+    private suspend fun refreshLibrary(tracks: List<Track>) {
+        if (tracks.any { it.isManuallyScanned }) mediaScanner.rescan() else mediaScanner.refresh()
     }
 
     /** The picture at [uri] as a JPEG no larger than [DeviceCoverMaxSidePx] - a photo is many times what a cover needs. */

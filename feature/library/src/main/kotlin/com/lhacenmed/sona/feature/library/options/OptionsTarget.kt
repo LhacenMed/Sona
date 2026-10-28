@@ -15,6 +15,7 @@ import com.lhacenmed.sona.feature.library.options.OptionsAction.ADD_TO_PRIVATE
 import com.lhacenmed.sona.feature.library.options.OptionsAction.ADD_TRACKS
 import com.lhacenmed.sona.feature.library.options.OptionsAction.ALBUM_DETAILS
 import com.lhacenmed.sona.feature.library.options.OptionsAction.ARTIST_DETAILS
+import com.lhacenmed.sona.feature.library.options.OptionsAction.AUTO_TAG
 import com.lhacenmed.sona.feature.library.options.OptionsAction.DELETE
 import com.lhacenmed.sona.feature.library.options.OptionsAction.DELETE_FROM_DEVICE
 import com.lhacenmed.sona.feature.library.options.OptionsAction.EDIT
@@ -105,13 +106,13 @@ sealed interface OptionsTarget {
  * library's, not the playlist's.
  */
 private val AlbumActions =
-    listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ARTIST_DETAILS, EXPORT, DELETE_FROM_DEVICE)
-private val ArtistActions = listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, EXPORT, DELETE_FROM_DEVICE)
-private val GenreActions = listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, EXPORT, DELETE_FROM_DEVICE)
+    listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ARTIST_DETAILS, AUTO_TAG, EXPORT, DELETE_FROM_DEVICE)
+private val ArtistActions = listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, AUTO_TAG, EXPORT, DELETE_FROM_DEVICE)
+private val GenreActions = listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, AUTO_TAG, EXPORT, DELETE_FROM_DEVICE)
 private val PlaylistActions =
     listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, ADD_TRACKS, ADD_COLLECTIONS, EDIT, IMPORT, EXPORT, DELETE)
 private val FolderActions =
-    listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, EXPORT, EXCLUDE, DELETE_FROM_DEVICE)
+    listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, AUTO_TAG, EXPORT, EXCLUDE, DELETE_FROM_DEVICE)
 
 /**
  * The rows an options sheet or a collection's menu lists, top to bottom - Auxio's inflated menu XML, chosen by
@@ -156,7 +157,7 @@ fun OptionsTarget.actions(hasPrivateFolder: Boolean): List<OptionsAction> = when
         FolderOptionsContext.FROM_DETAIL -> FolderActions - VIEW_DETAILS
     }
 
-    is OptionsTarget.ForSelection -> listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, SHARE, DELETE_FROM_DEVICE)
+    is OptionsTarget.ForSelection -> listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, AUTO_TAG, SHARE, DELETE_FROM_DEVICE)
 }
 
 /**
@@ -179,10 +180,12 @@ fun OptionsTarget.disabledActions(): Set<OptionsAction> = when (this) {
         if (playlist.trackCount == 0) addAll(listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, EXPORT))
     }
 
+    // Videos are played for their sound, and are seldom songs to have tags found for.
+    is OptionsTarget.ForFolder -> if (folder.isVideo) setOf(AUTO_TAG) else emptySet()
+
     is OptionsTarget.ForTrack,
     is OptionsTarget.ForAlbum,
     is OptionsTarget.ForGenre,
-    is OptionsTarget.ForFolder,
     is OptionsTarget.ForSelection,
     -> emptySet()
 }

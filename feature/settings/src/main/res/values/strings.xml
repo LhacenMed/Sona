@@ -266,6 +266,8 @@
     <string name="automatic_reloading_title">Automatic reloading</string>
     <string name="automatic_reloading_summary">Reload the music library whenever it changes</string>
     <string name="excluded_folders_summary">Skip folders when your library is scanned</string>
+    <string name="auto_tag_title">Auto-tag library</string>
+    <string name="auto_tag_summary">Find accurate tags, covers and lyrics for many tracks at once</string>
     <string name="filename_as_title_title">Show filename as track title</string>
     <string name="filename_as_title_summary">If title is not available</string>
     <string name="content_tags_section">Tags</string>

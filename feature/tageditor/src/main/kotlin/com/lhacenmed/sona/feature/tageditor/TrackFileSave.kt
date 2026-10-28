@@ -46,9 +46,7 @@ internal suspend fun saveOutcomeOf(failureMessage: String, write: suspend () -> 
 
 /**
  * What a screen that saves into [track]'s file needs to do so - what its save button calls, which gets whatever
- * Android wants first, then [save]s. Sona writes freely where it may manage all files; elsewhere Android asks the
- * user first, once for this file - and a file MediaStore has not indexed, which Android's request cannot name,
- * needs that access outright.
+ * Android wants first - see [rememberFileChangeRequest] - then [save]s.
  *
  * The save's [outcome] is acted on once it arrives: [onSaved] once done, the user asked where Android wants
  * consent - saving again once given - and why where it failed; then [onOutcomeHandled] clears it.
@@ -68,12 +66,7 @@ internal fun rememberTrackFileSave(
     val consentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) latestSave()
     }
-    val allFilesAccessLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        if (AppPermission.FILE_CHANGES.isGranted(context)) latestSave()
-    }
-    val writePermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) latestSave()
-    }
+    val requestChange = rememberFileChangeRequest(onGranted = save)
 
     LaunchedEffect(outcome) {
         when (outcome) {
@@ -85,19 +78,41 @@ internal fun rememberTrackFileSave(
         latestOnOutcomeHandled()
     }
 
-    return {
+    return { if (track != null) requestChange(listOf(track)) }
+}
+
+/**
+ * Gets whatever Android wants before Sona changes the files of the tracks it is called with, then calls [onGranted].
+ * Sona writes freely where it may manage all files; elsewhere Android asks the user first, once for all of them -
+ * and a file MediaStore has not indexed, which Android's request cannot name, needs that access outright.
+ */
+@Composable
+internal fun rememberFileChangeRequest(onGranted: () -> Unit): (List<Track>) -> Unit {
+    val context = LocalContext.current
+    val latestOnGranted by rememberUpdatedState(onGranted)
+    val consentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) latestOnGranted()
+    }
+    val allFilesAccessLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (AppPermission.FILE_CHANGES.isGranted(context)) latestOnGranted()
+    }
+    val writePermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) latestOnGranted()
+    }
+
+    return { tracks ->
         val permission = AppPermission.FILE_CHANGES
         val runtimePermission = permission.runtimePermission
         when {
-            track == null -> Unit
-            permission.isGranted(context) -> latestSave()
+            tracks.isEmpty() -> Unit
+            permission.isGranted(context) -> latestOnGranted()
             runtimePermission != null -> writePermissionLauncher.launch(runtimePermission)
-            track.isManuallyScanned -> allFilesAccessLauncher.launch(permission.settingsIntent(context))
+            tracks.any { it.isManuallyScanned } -> allFilesAccessLauncher.launch(permission.settingsIntent(context))
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
-                val request = MediaStore.createWriteRequest(context.contentResolver, listOf(track.contentUri))
+                val request = MediaStore.createWriteRequest(context.contentResolver, tracks.map { it.contentUri })
                 consentLauncher.launch(IntentSenderRequest.Builder(request.intentSender).build())
             }
-            else -> latestSave()
+            else -> latestOnGranted()
         }
     }
 }

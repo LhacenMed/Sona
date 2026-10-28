@@ -55,6 +55,9 @@ data class TrackTags(private val values: Map<TagField, String> = emptyMap()) {
     /** These tags with every field [other] fills taken from it, the rest left as they are. */
     fun overlaidWith(other: TrackTags): TrackTags = TrackTags(values + other.values)
 
+    /** These tags with every field they leave blank taken from [other], the rest left as they are. */
+    fun filledFrom(other: TrackTags): TrackTags = TrackTags(other.values + values)
+
     /** The fields that carry something, in [TagField]'s order. */
     val filledFields: List<TagField> get() = TagField.entries.filter { it in values }
 }

@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.common.format.formatFileSize
@@ -96,7 +97,8 @@ fun Modifier.selectableRow(
  * wherever it is listed.
  *
  * [cover] draws whatever stands for the row, told whether it is selected. [onOpenOptions] is null for
- * a row with no options of its own, which then draws no options button; [selection] is null for a list
+ * a row with no options of its own, which then draws no options button - drawn as [optionsIcon], named
+ * [optionsLabel], for a row whose button opens something other than a menu; [selection] is null for a list
  * that cannot be selected from, whose rows are plainly clickable. [isPinned] marks a row held at the top
  * of its list, with a pin where an options button would be.
  *
@@ -118,6 +120,8 @@ fun SonaListRow(
     onLongClick: (() -> Unit)? = null,
     containerColor: Color = MaterialTheme.colorScheme.surface,
     contentColor: Color = LocalContentColor.current,
+    optionsIcon: ImageVector = Icons.Filled.MoreHoriz,
+    optionsLabel: String = "More options",
     cover: @Composable (isSelected: Boolean) -> Unit,
 ) {
     val isSelected = selectionKey != null && selection?.isSelected(selectionKey) == true
@@ -208,8 +212,8 @@ fun SonaListRow(
                 if (onOpenOptions != null) {
                     SonaIconButton(
                         onClick = onOpenOptions,
-                        icon = Icons.Filled.MoreHoriz,
-                        contentDescription = "More options",
+                        icon = optionsIcon,
+                        contentDescription = optionsLabel,
                     )
                 }
             }

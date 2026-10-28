@@ -34,6 +34,7 @@ dependencies {
     implementation(project(":feature:player"))
     implementation(project(":feature:update"))
     implementation(project(":feature:vault"))
+    implementation(project(":feature:tageditor"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

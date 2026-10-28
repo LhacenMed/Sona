@@ -22,7 +22,8 @@ import kotlinx.coroutines.withContext
 
 /**
  * [track]'s lyrics being timed by hand, as lines - ArchiveTune's synced lyrics editor - starting from
- * [initialLyrics]: synced or plain, from the file or the tag editor's draft. Held by the view model of the screen
+ * [initialLyrics]: synced or plain, from the tag editor's draft - or null for the file's, read while the editor is
+ * already showing, and taken with [takeFileLyrics]. Held by the view model of the screen
  * it is shown on, which decides what becomes of [lyrics] once it is done - see [LyricsEditor].
  *
  * The lines are snapshot state, so a change shows in the frame it is made in. They keep the order they are sung in:
@@ -38,16 +39,20 @@ import kotlinx.coroutines.withContext
 @Stable
 class LyricsEditorState internal constructor(
     val track: Track,
-    initialLyrics: String,
+    initialLyrics: String?,
     private val playbackController: PlaybackController,
     private val scope: CoroutineScope,
 ) {
     private var lastLineId = 0L
 
-    var lines by mutableStateOf(lyricsLinesOf(initialLyrics, ::nextLineId).orEmpty())
+    var lines by mutableStateOf(initialLyrics?.let { lyricsLinesOf(it, ::nextLineId) }.orEmpty())
         private set
 
-    private val initialText = lyricsTextOf(lines)
+    /** Whether the lyrics it starts from are in - false only while the file's are still being read. */
+    var isLoaded by mutableStateOf(initialLyrics != null)
+        private set
+
+    private var initialText by mutableStateOf(lyricsTextOf(lines))
 
     /** Each line as it came in, by its id - what [isEdited] compares with. */
     private var arrivedLines: Map<Long, LyricsLine> = lines.associateBy { it.id }
@@ -66,6 +71,14 @@ class LyricsEditorState internal constructor(
     val lyrics: String by derivedStateOf { lyricsTextOf(lines) }
 
     val hasChanges: Boolean by derivedStateOf { lyrics != initialText }
+
+    /** Starts from [lyrics], the file's, as they were read - where the editor starts, not a change to undo. */
+    fun takeFileLyrics(lyrics: String) {
+        lines = lyricsLinesOf(lyrics, ::nextLineId).orEmpty()
+        arrivedLines = lines.associateBy { it.id }
+        initialText = lyricsTextOf(lines)
+        isLoaded = true
+    }
 
     /** Every set of lyrics found on the web so far, best first. */
     var foundLyrics by mutableStateOf<List<FoundLyrics>>(emptyList())

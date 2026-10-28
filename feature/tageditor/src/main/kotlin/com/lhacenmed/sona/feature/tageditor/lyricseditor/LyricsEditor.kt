@@ -188,7 +188,8 @@ internal fun LyricsEditor(state: LyricsEditorState, confirmAction: TopBarAction,
             ),
         )
         if (state.lines.isEmpty()) {
-            NoLyrics()
+            // Nothing while the file's lyrics are still being read, rather than saying it has none.
+            if (state.isLoaded) NoLyrics()
         } else {
             LazyColumn(
                 state = listState,

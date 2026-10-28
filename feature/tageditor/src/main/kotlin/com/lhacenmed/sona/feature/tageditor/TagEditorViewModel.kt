@@ -1,140 +1,70 @@
 package com.lhacenmed.sona.feature.tageditor
 
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.UnknownNames
 import com.lhacenmed.sona.feature.playback.PlaybackController
-import com.lhacenmed.sona.feature.tageditor.lookup.CatalogueMatch
-import com.lhacenmed.sona.feature.tageditor.lookup.TagLookup
-import com.lhacenmed.sona.feature.tageditor.lookup.TrackMatcher
+import com.lhacenmed.sona.feature.tageditor.autotag.AutoTagger
 import com.lhacenmed.sona.feature.tageditor.lookup.TrackQueries
-import com.lhacenmed.sona.feature.tageditor.lookup.TrackQuery
-import com.lhacenmed.sona.feature.tageditor.lyrics.FoundLyrics
-import com.lhacenmed.sona.feature.tageditor.lyrics.LyricsQuery
-import com.lhacenmed.sona.feature.tageditor.lyrics.OnlineLyrics
-import com.lhacenmed.sona.feature.tageditor.lyricseditor.LyricsEditorState
 import com.lhacenmed.sona.feature.tageditor.tags.CoverChoice
-import com.lhacenmed.sona.feature.tageditor.tags.TagField
-import com.lhacenmed.sona.feature.tageditor.tags.TrackTags
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** Where the lookup of a track's tags in the catalogues stands. */
-sealed interface MatchLookup {
-    data object Searching : MatchLookup
-
-    /** Every song the catalogues answered with, best first. */
-    data class Found(val matches: List<CatalogueMatch>) : MatchLookup
-
-    data object NotFound : MatchLookup
-
-    /** No catalogue could be reached - the one outcome worth trying again. */
-    data object Unreachable : MatchLookup
-}
-
 /**
- * The track [trackId]'s tags as a draft that reaches its file only on [save] - AutomaTag's editor.
+ * The track [trackId]'s tags as a [TrackTagDraft] - AutomaTag's editor - and what keeping them does.
  *
- * The moment it opens, the track is looked up in the catalogues and its lyrics on the web, both at once, under
- * the likeliest reading of its names - which is then laid out as [queryArtist] and [queryTitle], to be changed
- * and searched again. What is found can be narrowed to one catalogue or one lyrics source without asking
- * anything again. Every match applies in one press, every set of lyrics in another, and any field can be
- * changed by hand, before or after.
- *
- * The draft is snapshot state, so a field is updated in the frame it is typed in.
+ * Opened on the track itself, the draft is made from its file and reaches it only on [save]: the moment it opens,
+ * the track is looked up in the catalogues and its lyrics on the web, both at once, under the likeliest reading of
+ * its names. [isInAutoTagRun], it is the run's draft for the track, already filled - see [AutoTagger] - and keeping
+ * it keeps it in the run, to be saved with the rest.
  */
 @HiltViewModel(assistedFactory = TagEditorViewModel.Factory::class)
 class TagEditorViewModel @AssistedInject constructor(
     @Assisted private val trackId: Long,
+    @Assisted val isInAutoTagRun: Boolean,
     libraryRepository: LibraryRepository,
     private val trackTagsRepository: TrackTagsRepository,
     private val playbackController: PlaybackController,
+    private val autoTagger: AutoTagger,
+    private val openTagDrafts: OpenTagDrafts,
 ) : ViewModel() {
 
     @AssistedFactory
     interface Factory {
-        fun create(trackId: Long): TagEditorViewModel
+        fun create(trackId: Long, isInAutoTagRun: Boolean): TagEditorViewModel
     }
 
-    val catalogueNames: List<String> = TagLookup.catalogueNames
-    val lyricsSourceNames: List<String> = OnlineLyrics.sourceNames
-
-    var track by mutableStateOf<Track?>(null)
+    /**
+     * The draft - null until the file's tags have been read, or for a run's track the run no longer holds. Held
+     * open while the editor is, for the lyrics editor opened over it - see [OpenTagDrafts].
+     */
+    var draft by mutableStateOf<TrackTagDraft?>(null)
         private set
 
-    /** The tags the file holds, or null until they have been read. */
-    var original by mutableStateOf<TrackTags?>(null)
-        private set
+    private var releaseDraft: () -> Unit = {}
 
-    var bitrateKbps by mutableStateOf<Long?>(null)
-        private set
-
-    var draft by mutableStateOf(TrackTags())
-        private set
-
-    var cover by mutableStateOf<CoverChoice>(CoverChoice.Own)
-        private set
-
-    /** The picture picked from the gallery, kept among the covers once picked, or null before one is. */
-    var deviceCoverUri by mutableStateOf<String?>(null)
-        private set
-
-    var queryArtist by mutableStateOf("")
-    var queryTitle by mutableStateOf("")
-
-    var matchLookup by mutableStateOf<MatchLookup>(MatchLookup.Searching)
-        private set
-
-    /** The catalogue the matches are narrowed to, or null for all of them. */
-    var catalogueFilter by mutableStateOf<String?>(null)
-        private set
-
-    /** The matches as they are narrowed - the first is the one offered as the best. */
-    val matches: List<CatalogueMatch> by derivedStateOf {
-        (matchLookup as? MatchLookup.Found)?.matches.orEmpty().filter { catalogueFilter == null || it.catalogue == catalogueFilter }
-    }
-
-    /** Matches with every tag their catalogue knows - asked for the best one as soon as it is shown. */
-    private val completedMatches = mutableStateMapOf<CatalogueMatch, CatalogueMatch>()
-
-    /** The match whose tags the draft took last, as it is listed, or null for none. */
-    var appliedMatch by mutableStateOf<CatalogueMatch?>(null)
-        private set
-
-    /** The match being completed before it is applied. */
-    var applyingMatch by mutableStateOf<CatalogueMatch?>(null)
-        private set
-
-    /** Every set of lyrics found so far, best first. */
-    var lyricsResults by mutableStateOf<List<FoundLyrics>>(emptyList())
-        private set
-
-    var isSearchingLyrics by mutableStateOf(true)
-        private set
-
-    /** The lyrics source the results are narrowed to, or null for all of them. */
-    var lyricsFilter by mutableStateOf<String?>(null)
-        private set
-
-    val visibleLyrics: List<FoundLyrics> by derivedStateOf {
-        lyricsResults.filter { lyricsFilter == null || it.source == lyricsFilter }
-    }
+    /**
+     * What the draft held as the editor opened it - what leaving without keeping goes back to. Snapshot state, as
+     * [hasChanges] is read against it: set once the file has been read, it has the screen look again.
+     */
+    private var opened by mutableStateOf<TrackTagDraft.Edits?>(null)
 
     var isSaving by mutableStateOf(false)
         private set
@@ -146,178 +76,100 @@ class TagEditorViewModel @AssistedInject constructor(
     var saveOutcome by mutableStateOf<SaveOutcome?>(null)
         private set
 
-    val hasChanges: Boolean get() = original.let { it != null && (it != draft || cover != CoverChoice.Own) }
+    /** Whether the draft was changed since the editor opened it. */
+    val hasChanges: Boolean
+        get() {
+            val draft = draft ?: return false
+            val opened = opened ?: return false
+            return draft.tags != opened.tags || draft.cover != opened.cover
+        }
 
-    /** The lyrics editor, while it is open over the tags - see [openLyricsEditor]. */
-    var lyricsEditor by mutableStateOf<LyricsEditorState?>(null)
-        private set
-
-    /** Opens the lyrics editor over the tags, on the lyrics as the draft has them - found on the web, or typed. */
-    fun openLyricsEditor() {
-        val track = track ?: return
-        lyricsEditor = LyricsEditorState(track, draft[TagField.LYRICS], playbackController, viewModelScope)
-    }
-
-    /** Closes the lyrics editor, the lyrics it ends with put into the draft where they are [kept], to be saved with the tags. */
-    fun closeLyricsEditor(kept: Boolean) {
-        val editor = lyricsEditor ?: return
-        editor.stopSearching()
-        if (kept) setField(TagField.LYRICS, editor.lyrics)
-        lyricsEditor = null
-    }
+    /** Whether the track is the one playing, and playing. */
+    val isPlaying: StateFlow<Boolean> = playbackController.playbackState
+        .map { it.libraryTrackId == trackId && it.isPlaying }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     /** Has the playing track repeat while the editor is in front - see [PlaybackController.holdCurrentTrack]. */
     fun holdPlayingTrack(): () -> Unit = playbackController.holdCurrentTrack()
 
+    /** Pauses or plays on the track where it is the one playing; otherwise starts it, on its own. */
+    fun togglePlayback() {
+        val track = draft?.track ?: return
+        if (playbackController.playbackState.value.libraryTrackId == track.id) {
+            playbackController.togglePlayPause()
+        } else {
+            playbackController.playTracks(listOf(track), startIndex = 0, shuffled = false, startPositionMs = 0L)
+        }
+    }
+
     /**
-     * The chosen [cover]'s picture, on its way from the moment it is chosen - downloaded or scaled down while
-     * the rest is edited, so saving seldom waits for it. Null for the file's own.
+     * The chosen cover's picture, on its way from the moment it is chosen - downloaded or scaled down while the
+     * rest is edited, so saving seldom waits for it. Null for the file's own.
      */
     private var preparedCover: Deferred<ByteArray?>? = null
 
-    private var matchJob: Job? = null
-    private var lyricsJob: Job? = null
-
     init {
-        viewModelScope.launch {
-            val found = libraryRepository.tracksById.map { it[trackId] }.filterNotNull().first()
-            track = found
-            // Read before anything can be applied over them - a matter of milliseconds, as the file is local.
-            val info = trackTagsRepository.read(found)
-            original = info.tags
-            draft = info.tags
-            bitrateKbps = info.bitrateKbps
-            val readings = TrackQueries.of(found)
-            readings.firstOrNull()?.let {
-                queryArtist = it.artist
-                queryTitle = it.title
-            }
-            search(readings, album = found.album.takeUnless { it == UnknownNames.ALBUM })
+        if (isInAutoTagRun) {
+            draft = autoTagger.session?.items?.firstOrNull { it.track.id == trackId }?.draft
+            opened = draft?.edits
+            draft?.let { releaseDraft = openTagDrafts.hold(it) }
+        } else {
+            // The library's own copy of the track is already in memory, so the editor is whole from its first frame.
+            libraryRepository.tracksById.value[trackId]?.let(::openOnFile)
+                ?: viewModelScope.launch { openOnFile(libraryRepository.tracksById.map { it[trackId] }.filterNotNull().first()) }
         }
     }
 
-    /** Looks up [queryArtist] and [queryTitle] as they now stand - the search, pressed. */
-    fun search() {
-        if (queryTitle.isBlank()) return
-        // Without the album: one typed in is a new search, which the file's album may no longer fit.
-        search(listOf(TrackQuery(queryArtist.trim(), queryTitle.trim(), TrackMatcher.versionOf(queryTitle))), album = null)
+    /** Makes the draft for [track] at once, then has it take what its file holds, and looks the track up. */
+    private fun openOnFile(track: Track) {
+        val draft = TrackTagDraft(track, viewModelScope)
+        this.draft = draft
+        releaseDraft = openTagDrafts.hold(draft)
+        viewModelScope.launch {
+            // Read before anything can be applied over them - a matter of milliseconds, as the file is local.
+            draft.takeFile(trackTagsRepository.read(track))
+            opened = draft.edits
+            draft.lookUp(TrackQueries.of(track), album = track.album.takeUnless { it == UnknownNames.ALBUM })
+            snapshotFlow { draft.cover }.collect(::prepareCover)
+        }
     }
 
-    fun filterCatalogue(name: String?) {
-        catalogueFilter = name
-        completeBest()
-    }
-
-    fun filterLyrics(source: String?) {
-        lyricsFilter = source
-    }
-
-    fun setField(field: TagField, value: String) {
-        draft = draft.with(field, if (field.isNumeric) value.filter(Char::isDigit) else value)
-    }
-
-    fun chooseCover(choice: CoverChoice) {
-        cover = choice
-        preparedCover?.cancel()
-        preparedCover = if (choice == CoverChoice.Own) null else viewModelScope.async { trackTagsRepository.coverBytes(choice) }
-    }
-
-    fun pickDeviceCover(uri: String) {
-        deviceCoverUri = uri
-        chooseCover(CoverChoice.Device(uri))
-    }
-
-    /** [match] with every tag its catalogue knows, where that is already known. */
-    fun completed(match: CatalogueMatch): CatalogueMatch = completedMatches[match] ?: match
-
-    /** Takes every tag [match] has, and its cover, into the draft - completing it first where it is not yet. */
-    fun apply(match: CatalogueMatch) {
-        completedMatches[match]?.let {
-            applyComplete(it, listed = match)
+    /** Writes the draft into the file - or, [isInAutoTagRun], keeps it in the run; [saveOutcome] tells how it went. */
+    fun save() {
+        val draft = draft ?: return
+        if (isSaving) return
+        if (isInAutoTagRun) {
+            autoTagger.keepReview(trackId)
+            saveOutcome = SaveOutcome.Saved
             return
         }
-        applyingMatch = match
-        viewModelScope.launch {
-            val complete = complete(match)
-            if (applyingMatch == match) {
-                applyingMatch = null
-                applyComplete(complete, listed = match)
-            }
-        }
-    }
-
-    fun applyLyrics(found: FoundLyrics) {
-        setField(TagField.LYRICS, found.lyrics.text)
-    }
-
-    /** Writes the draft into the file; [saveOutcome] tells how it went. */
-    fun save() {
-        val track = track ?: return
-        if (isSaving) return
         isSaving = true
         viewModelScope.launch {
             val outcome = saveOutcomeOf("The tags could not be saved") {
-                trackTagsRepository.save(track, draft, preparedCover?.await())
+                trackTagsRepository.save(draft.track, draft.tags, preparedCover?.await())
             }
             // A cover that could not be had is fetched afresh, so saving again tries it again.
-            if (outcome != SaveOutcome.Saved && preparedCover?.isCancelled == true) chooseCover(cover)
+            if (outcome != SaveOutcome.Saved && preparedCover?.isCancelled == true) prepareCover(draft.cover)
             isSaving = false
             saveOutcome = outcome
         }
+    }
+
+    /** Leaves the draft as the editor opened it - for a run's, which outlives the editor. */
+    fun discardChanges() {
+        opened?.let { draft?.restore(it) }
     }
 
     fun onSaveOutcomeHandled() {
         saveOutcome = null
     }
 
-    private fun applyComplete(match: CatalogueMatch, listed: CatalogueMatch) {
-        draft = draft.overlaidWith(match.tags)
-        match.coverUrl.takeIf { it.isNotBlank() }?.let { chooseCover(CoverChoice.Web(it)) }
-        appliedMatch = listed
+    override fun onCleared() {
+        releaseDraft()
     }
 
-    private suspend fun complete(match: CatalogueMatch): CatalogueMatch =
-        completedMatches[match] ?: TagLookup.complete(match).also { completedMatches[match] = it }
-
-    /** Completes the match now offered as the best, so its card shows every tag it would fill in. */
-    private fun completeBest() {
-        val best = matches.firstOrNull() ?: return
-        if (best !in completedMatches) viewModelScope.launch { complete(best) }
-    }
-
-    /** Looks [readings] up in the catalogues, and the first of them - on [album] - for lyrics on the web, both at once. */
-    private fun search(readings: List<TrackQuery>, album: String?) {
-        val track = track ?: return
-        val reading = readings.firstOrNull() ?: return
-
-        matchJob?.cancel()
-        matchLookup = MatchLookup.Searching
-        appliedMatch = null
-        matchJob = viewModelScope.launch {
-            val found = TagLookup.search(readings)
-            matchLookup = when {
-                found == null -> MatchLookup.Unreachable
-                found.isEmpty() -> MatchLookup.NotFound
-                else -> MatchLookup.Found(found)
-            }
-            completeBest()
-        }
-
-        lyricsJob?.cancel()
-        lyricsResults = emptyList()
-        isSearchingLyrics = true
-        val query = LyricsQuery(
-            title = reading.title,
-            artist = reading.artist,
-            album = album,
-            durationSeconds = (track.durationMs / 1000).toInt().takeIf { it > 0 } ?: -1,
-        )
-        val order = OnlineLyrics.order(track.durationMs)
-        lyricsJob = viewModelScope.launch {
-            OnlineLyrics.search(query).collect { found ->
-                lyricsResults = (lyricsResults + found).sortedWith(order)
-            }
-            isSearchingLyrics = false
-        }
+    private fun prepareCover(choice: CoverChoice) {
+        preparedCover?.cancel()
+        preparedCover = if (choice == CoverChoice.Own) null else viewModelScope.async { trackTagsRepository.coverBytes(choice) }
     }
 }

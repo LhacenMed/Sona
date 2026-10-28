@@ -9,4 +9,6 @@
     <string name="notification_channel_update_download_description">The progress of an update being downloaded</string>
     <string name="notification_channel_library_scan">Library scan</string>
     <string name="notification_channel_library_scan_description">The progress of a library rescan</string>
+    <string name="notification_channel_auto_tag">Auto-tagging</string>
+    <string name="notification_channel_auto_tag_description">The progress of finding and saving tags for many tracks</string>
 </resources>

@@ -37,6 +37,11 @@ class ExtendedFloatingActionButtonContent(
     val onClick: () -> Unit,
     /** The screen's main action, filled with the primary colour; the others stand back on a surface. */
     val isPrimary: Boolean = false,
+    /**
+     * Whether it is offered right now - an action only there is something for, a Save with changes to keep. It is
+     * kept rather than left out while it is not, so it grows in and shrinks away as the stack's own buttons do.
+     */
+    val isVisible: Boolean = true,
 )
 
 /** A screen's labelled FABs as [FloatingActionButtonStack] holds them: handed over once, read where it draws them. */
@@ -45,7 +50,10 @@ internal class ExtendedButtons(private val latestButtons: State<List<ExtendedFlo
         get() = latestButtons.value
 
     override val height: Dp
-        get() = if (buttons.isEmpty()) 0.dp else ExtendedButtonHeight * buttons.size + StackSpacing * (buttons.size - 1)
+        get() {
+            val count = buttons.count { it.isVisible }
+            return if (count == 0) 0.dp else ExtendedButtonHeight * count + StackSpacing * (count - 1)
+        }
 }
 
 /**
@@ -73,7 +81,7 @@ internal fun ExtendedButtonColumn(buttons: List<ExtendedFloatingActionButtonCont
         verticalArrangement = Arrangement.spacedBy(StackSpacing),
         modifier = anchor,
     ) {
-        buttons.forEach { button -> ExtendedButton(button, visible = isShown) }
+        buttons.forEach { button -> ExtendedButton(button, visible = isShown && button.isVisible) }
     }
 }
 

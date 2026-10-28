@@ -27,6 +27,12 @@ data class FoundLyrics(val lyrics: LyricsText, val source: String, val durationM
     /** Whether these lyrics were timed to a recording as long as a track [trackDurationMs] long. */
     fun fits(trackDurationMs: Long): Boolean =
         durationDifferenceMs(trackDurationMs)?.let { abs(it) <= FittingDurationMarginMs } == true
+
+    /**
+     * Whether these lyrics can be given a track [trackDurationMs] long unasked: plain, or timed to a recording not
+     * known to be of another length.
+     */
+    fun isTrustedFor(trackDurationMs: Long): Boolean = lyrics.timing == LyricsTiming.NONE || durationMs == null || fits(trackDurationMs)
 }
 
 /**
@@ -68,12 +74,11 @@ internal object OnlineLyrics {
 
     /**
      * The lyrics to give a track [trackDurationMs] long unasked, once every source has answered for [query]: the
-     * first in [order] among those that can be trusted to fit it - plain, or timed to a recording not known to be of
-     * another length. Null where none can.
+     * first in [order] among those that can be trusted to fit it - see [FoundLyrics.isTrustedFor]. Null where none can.
      */
     suspend fun best(query: LyricsQuery, trackDurationMs: Long): FoundLyrics? =
         search(query).toList()
-            .filter { it.lyrics.timing == LyricsTiming.NONE || it.durationMs == null || it.fits(trackDurationMs) }
+            .filter { it.isTrustedFor(trackDurationMs) }
             .minWithOrNull(order(trackDurationMs))
 
     /**

@@ -49,6 +49,14 @@ enum class SonaNotificationChannel(
         descriptionRes = R.string.notification_channel_library_scan_description,
         importance = NotificationManagerCompat.IMPORTANCE_LOW,
     ),
+
+    /** An auto-tag run looking tracks up or saving them, while it works. */
+    AUTO_TAG(
+        id = "auto_tag",
+        nameRes = R.string.notification_channel_auto_tag,
+        descriptionRes = R.string.notification_channel_auto_tag_description,
+        importance = NotificationManagerCompat.IMPORTANCE_LOW,
+    ),
 }
 
 /** Every notification's id, in one place so no two features ever post under the same one. */
@@ -57,5 +65,6 @@ object SonaNotificationId {
     const val UPDATE_DOWNLOAD = 4200
     const val UPDATE_DOWNLOAD_RESULT = 4201
     const val LIBRARY_SCAN = 4300
+    const val AUTO_TAG = 4400
     const val UPDATE_AVAILABLE = 9999
 }

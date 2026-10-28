@@ -11,13 +11,13 @@ import androidx.compose.ui.unit.IntSize
 
 /**
  * How a section folds and unfolds, lazy or not - one motion for both, so a settings screen's sections move
- * as a detail screen's do.
+ * as a detail screen's do - and whatever else folds away over a list, which then moves as a fold moves it.
  *
  * What moves - rows sliding up into the room a fold left, a column closing - does so on a spring that never
  * overshoots: the expressive scheme's spatial springs bounce, and a bouncing list reads as unsteady. What
  * fades does so on the scheme's own fast effects.
  */
-internal object SectionMotion {
+object SectionMotion {
     val placement: FiniteAnimationSpec<IntOffset> =
         spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMedium, IntOffset.VisibilityThreshold)
 
