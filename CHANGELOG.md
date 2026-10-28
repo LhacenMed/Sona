@@ -6,6 +6,33 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.6.8] - 2026-10-28
+
+### Added
+
+- Draw the widgets in the app's theme colours.
+- Tone cover backgrounds to the theme so its own text reads over them.
+- Open the playing list under the full player, dropping the ⋮ button.
+- Add a setting to keep the playback notification while Sona is closed.
+- The lyrics sheet shows when lyrics for the playing track are being looked for online, and fills in by itself the moment they are found.
+- Auto-tag finds accurate tags, covers and lyrics for a whole library, a folder or a selection at once, to review and save together.
+- A play button in the tag editor plays the track whose tags are edited.
+
+### Changed
+
+- The Mini player widget shows the track's title alone, without the artist.
+- Excluded folders are added several at a time from a sheet that sorts them into Music and Videos, and let back in several at a time too.
+- The tag editor's Save is now the screen's button, appearing once there are changes, and Edit lyrics opens the lyrics editor as its own screen.
+- Lyrics lines are timed exactly when their clock is pressed, and the lyrics editor remembers whether it follows the playing line.
+
+### Fixed
+
+- Shuffle and repeat on the home screen widgets no longer grow or get cut off when turned on.
+- The widgets no longer flash "Nothing playing" before showing the last played track as the app starts.
+- The Mini player widget no longer grows tall on Samsung phones.
+- Centre every empty state's message under its title.
+- Tag lookups no longer say "No match found" when Deezer was too busy to answer; they offer to try again instead.
+
 ## [1.6.7] - 2026-10-23
 
 ### Added
