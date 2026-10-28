@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import com.lhacenmed.sona.core.designsystem.R
+import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.LocalPlayerSheetHeight
 import com.lhacenmed.sona.core.designsystem.component.PlayerSheetHeight
 import com.lhacenmed.sona.core.designsystem.component.SonaPlayingIndicatorBox
@@ -114,6 +115,16 @@ internal class FloatingActionButtonStackState {
      */
     val standingHeight: Dp
         get() = coveredHeight + StackSpacing
+
+    /**
+     * The room a list keeps at its end for the stack - see [FloatingActionButtonStack]: the screen's own buttons, if
+     * any, and the scroll button above them, as they stand once all of them show, with a FAB's margin over them.
+     */
+    val reservedHeight: Dp
+        get() {
+            val buttonsHeight = screenButtons?.height ?: 0.dp
+            return (if (buttonsHeight > 0.dp) buttonsHeight + StackSpacing else 0.dp) + ScrollButtonSize + StackSpacing
+        }
 }
 
 internal val LocalFloatingActionButtonStack = staticCompositionLocalOf<FloatingActionButtonStackState?> { null }
@@ -131,12 +142,14 @@ internal val LocalFloatingActionButtonStack = staticCompositionLocalOf<FloatingA
  * the navigation bar while there is no mini player, and follows it frame by frame: it rides up as the
  * mini player slides in and back down as it slides away, and rides the player's top as it is dragged up.
  *
- * The whole stack steps aside together: while the player is raised over the screen, while the list is
- * fast scrolled, and once the list has come within the stack's height of its end - where the stack would
- * cover its last rows - so a list needs no room of its own for it. How tall it is is set by which buttons
- * the screen shows rather than which the stack is showing, so the stack stepping aside never moves one -
- * while a screen whose own FAB is turned off or hidden, as the library's is while searched, has none, and the
- * way back to the top glides down into its place.
+ * Every list keeps room for the stack at its end - [LocalBottomContentPadding] is given to [content] with the
+ * stack's [FloatingActionButtonStackState.reservedHeight] added, so whatever list a screen shows ends with it, with
+ * nothing asked of the screen - so its last row always scrolls clear of the buttons, and they never have to step
+ * aside from it: a list too short to scroll past them would otherwise have them gone for good. The whole stack steps
+ * aside together only while the player is raised over the screen, and while the list is fast scrolled. How tall it
+ * is is set by which buttons the screen shows rather than which the stack is showing, so the stack stepping aside
+ * never moves one - while a screen whose own FAB is turned off or hidden, as the library's is while searched, has
+ * none, and the way back to the top glides down into its place.
  *
  * The scroll button takes the list back to its top once it is a quarter of a screen from it. Nearer the top,
  * it takes the list to the row it marks as playing instead, while that row is off screen - see
@@ -153,6 +166,7 @@ fun FloatingActionButtonStack(content: @Composable () -> Unit) {
     CompositionLocalProvider(
         LocalFloatingActionButtonStack provides stack,
         LocalScreenLists provides stack.screenLists,
+        LocalBottomContentPadding provides LocalBottomContentPadding.current + stack.reservedHeight,
         content = content,
     )
     WindowOverlay { FloatingActionButtons(stack) }
@@ -173,13 +187,10 @@ private fun BoxScope.FloatingActionButtons(stack: FloatingActionButtonStackState
             label = "scrollButtonLift",
         )
         val density = LocalDensity.current
-        val stackHeightPx = with(density) { (scrollButtonLift + ScrollButtonSize).toPx() }
         val windowHeightPx = LocalWindowInfo.current.containerSize.height.toFloat()
-        val isShownState = remember(stack, stackHeightPx) {
+        val isShownState = remember(stack) {
             derivedStateOf {
-                val list = stack.screenLists.current
-                !stack.playerSheet.isRaised && list?.isFastScrolling?.invoke() != true &&
-                    list?.isNearEnd(stackHeightPx) != true
+                !stack.playerSheet.isRaised && stack.screenLists.current?.isFastScrolling?.invoke() != true
             }
         }
         val scrollTarget by remember(stack, isShownState, density, windowHeightPx) {

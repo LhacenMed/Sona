@@ -63,9 +63,6 @@ internal abstract class ScreenList {
     /** How far the list has scrolled from its top, in pixels. */
     protected abstract val scrolledPx: Float
 
-    /** How far the list can still scroll towards its end, in pixels - infinite while its end is not laid out. */
-    protected abstract val remainingPx: Float
-
     /** How tall the part of the list on screen is, in pixels. */
     protected abstract val viewportPx: Float
 
@@ -78,9 +75,6 @@ internal abstract class ScreenList {
     /** Whether the list is far enough from its top for a way back to be worth offering. */
     val isAwayFromTop: Boolean
         get() = canScroll && scrolledPx > viewportPx * AwayFromTopFraction
-
-    /** Whether the list has come within [distancePx] of its end - where a stack that tall would cover its last rows. */
-    fun isNearEnd(distancePx: Float): Boolean = canScroll && remainingPx < distancePx
 
     /** Where the row at [index] lies from the list's top, in pixels - null while it is not laid out. */
     protected open fun rowSpanPx(index: Int): ClosedFloatingPointRange<Float>? = null
@@ -118,15 +112,6 @@ private class LazyScreenList(val state: LazyListState) : ScreenList() {
             return state.firstVisibleItemIndex * rowHeight + state.firstVisibleItemScrollOffset
         }
 
-    override val remainingPx: Float
-        get() {
-            val layoutInfo = state.layoutInfo
-            val lastRow = layoutInfo.visibleItemsInfo.lastOrNull() ?: return Float.POSITIVE_INFINITY
-            if (lastRow.index != layoutInfo.totalItemsCount - 1) return Float.POSITIVE_INFINITY
-            val contentEnd = lastRow.offset + lastRow.size + layoutInfo.afterContentPadding
-            return (contentEnd - layoutInfo.viewportEndOffset).coerceAtLeast(0).toFloat()
-        }
-
     override val viewportPx: Float
         get() = state.layoutInfo.viewportSize.height.toFloat()
 
@@ -146,9 +131,6 @@ private class ScrollScreenList(val state: ScrollState) : ScreenList() {
 
     override val scrolledPx: Float
         get() = state.value.toFloat()
-
-    override val remainingPx: Float
-        get() = (state.maxValue - state.value).toFloat()
 
     override val viewportPx: Float
         get() = state.viewportSize.toFloat()
@@ -205,8 +187,8 @@ suspend fun LazyListState.scrollToRow(index: Int) {
 /**
  * Makes this the screen's list whenever the window shows more of it than of any other - a list in a pager
  * while its page is the one on screen: the one the screen's top app bar lifts over once it has scrolled,
- * and its FABs follow, stepping aside as it nears its end and offering a way back to its top - or, near
- * its top, to its [playingRow] while that is off screen.
+ * and its FABs follow, offering a way back to its top - or, near its top, to its [playingRow] while that is
+ * off screen.
  *
  * Applied to the layout the list fills. [FastScroller][com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller]
  * applies it itself, so every lazy list with a fast scroller has it. [isFastScrolling] steps the stack

@@ -59,8 +59,8 @@ internal class ExtendedButtons(private val latestButtons: State<List<ExtendedFlo
 /**
  * A screen's own FABs where each says what it does - Material's extended FAB - stacked up the end edge in
  * [buttons]' order, standing at the bottom of the screen's [FloatingActionButtonStack]: drawn over the whole
- * window, on the player, and stepped aside with the rest of the stack - so the screen needs no room of its own
- * for them. A screen has these or a [SonaFloatingActionButtonMenu], not both.
+ * window, on the player, and stepped aside with the rest of the stack - its list keeping room for them at its end
+ * with nothing asked of the screen. A screen has these or a [SonaFloatingActionButtonMenu], not both.
  */
 @Composable
 fun SonaExtendedFloatingActionButtons(buttons: List<ExtendedFloatingActionButtonContent>) {

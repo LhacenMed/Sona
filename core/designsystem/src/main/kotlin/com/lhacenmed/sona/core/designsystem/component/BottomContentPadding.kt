@@ -9,7 +9,8 @@ import androidx.compose.ui.unit.Dp
  * a small gap above the player rather than against it.
  *
  * Provided by the player that covers the screen, which is the one thing that knows how much it
- * covers, and read by each scrolling container - a list as its bottom content padding, a scrolling
+ * covers - with room for the screen's floating buttons added by the stack that holds them, see
+ * [com.lhacenmed.sona.core.designsystem.component.fab.FloatingActionButtonStack] - and read by each scrolling container - a list as its bottom content padding, a scrolling
  * column as padding inside its scroll. Content still draws behind the player and the bar; only its
  * end is held clear of them.
  */
