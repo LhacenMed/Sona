@@ -24,6 +24,8 @@ internal object DeezerCatalogue : Catalogue {
 
     override suspend fun search(query: String, limit: Int): List<CatalogueMatch>? =
         Http.json("$Api/search?q=${Http.encode(query)}&limit=$limit")
+            // Over its quota, Deezer still answers - with an error in place of the songs, which is not "none".
+            ?.takeUnless { it.has("error") }
             ?.objects("data")
             ?.map { it.toMatch() }
             ?.filter { it.isUsable }
