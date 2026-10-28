@@ -24,19 +24,11 @@ abstract class PlaybackWidgetProvider : AppWidgetProvider() {
         widget.start()
     }
 
-    // HyperOS asks its widgets to draw again with an action of its own, which AppWidgetProvider does not know.
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        if (intent.action == ACTION_MIUI_APPWIDGET_UPDATE) {
-            widget.start()
-            return
-        }
         WidgetAction.entries.firstOrNull { it.intentAction == intent.action }?.let(widget::perform)
     }
 }
-
-/** Xiaomi's own ask for its widgets to be drawn again - see the receivers in the manifest. */
-private const val ACTION_MIUI_APPWIDGET_UPDATE = "miui.appwidget.action.APPWIDGET_UPDATE"
 
 /**
  * A button on the widgets, by the view it is drawn as - see [PlaybackWidgets.perform] for what each does. A widget
