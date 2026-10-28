@@ -29,33 +29,30 @@ class ExcludedFoldersViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), librarySettings.excludedFolders.value.sorted())
 
     /**
-     * What can be excluded: every folder the library found music or videos in, and not excluded already - so
-     * the choice is among the folders that matter, never the whole of the device's storage.
+     * What can be excluded: every folder the library found music in, and every one it found videos in - a folder of
+     * both among each - not excluded already, so the choice is among the folders that matter, never the whole of the
+     * device's storage.
      */
-    val excludableFolders: StateFlow<List<String>> = combine(
-        repository.folders,
-        repository.videoFolders,
-        librarySettings.excludedFolders.flow,
-        ::excludableFoldersOf,
-    ).stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5000),
-        excludableFoldersOf(repository.folders.value, repository.videoFolders.value, librarySettings.excludedFolders.value),
-    )
+    val excludableMusicFolders: StateFlow<List<Folder>> = excludable(repository.folders)
+    val excludableVideoFolders: StateFlow<List<Folder>> = excludable(repository.videoFolders)
 
-    fun addFolder(path: String) {
+    fun exclude(paths: Set<String>) {
         viewModelScope.launch {
-            librarySettings.addExcludedFolder(path)
+            librarySettings.addExcludedFolders(paths)
             requestRescan()
         }
     }
 
-    fun removeFolder(path: String) {
+    fun include(paths: Set<String>) {
         viewModelScope.launch {
-            librarySettings.removeExcludedFolder(path)
+            librarySettings.removeExcludedFolders(paths)
             requestRescan()
         }
     }
+
+    private fun excludable(folders: StateFlow<LibraryContent<Folder>>): StateFlow<List<Folder>> =
+        combine(folders, librarySettings.excludedFolders.flow, ::excludableFoldersOf)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), excludableFoldersOf(folders.value, librarySettings.excludedFolders.value))
 
     /**
      * Runs on the scanner's own application scope rather than this ViewModel's, so navigating away
@@ -67,10 +64,6 @@ class ExcludedFoldersViewModel @Inject constructor(
     }
 }
 
-/** The paths of [musicFolders] and [videoFolders], each once, less those [excluded] - in path order. */
-private fun excludableFoldersOf(
-    musicFolders: LibraryContent<Folder>,
-    videoFolders: LibraryContent<Folder>,
-    excluded: Set<String>,
-): List<String> =
-    (musicFolders.itemsOrEmpty + videoFolders.itemsOrEmpty).map { it.path }.distinct().filterNot { it in excluded }.sorted()
+/** [folders], less those [excluded] - by name. */
+private fun excludableFoldersOf(folders: LibraryContent<Folder>, excluded: Set<String>): List<Folder> =
+    folders.itemsOrEmpty.filterNot { it.path in excluded }.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })

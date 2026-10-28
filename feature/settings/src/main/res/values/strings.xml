@@ -449,9 +449,27 @@
     <string name="excluded_folders_title">Excluded Folders</string>
     <string name="excluded_folders_empty_title">No excluded folders</string>
     <string name="excluded_folders_empty_body">Folders you exclude are skipped when your library is scanned - their music and videos alike.</string>
-    <string name="excluded_folders_add">Add folder</string>
-    <string name="excluded_folders_remove">Remove folder</string>
+    <string name="excluded_folders_add">Exclude folders</string>
     <string name="excluded_folders_none_left">No other folder holds music or videos.</string>
+    <string name="excluded_folders_confirm">Exclude</string>
+    <string name="excluded_folders_music">Music</string>
+    <string name="excluded_folders_videos_tab">Videos</string>
+    <plurals name="excluded_folders_confirm_count">
+        <item quantity="one">Exclude %d folder</item>
+        <item quantity="other">Exclude %d folders</item>
+    </plurals>
+    <plurals name="excluded_folders_include_count">
+        <item quantity="one">Include %d folder</item>
+        <item quantity="other">Include %d folders</item>
+    </plurals>
+    <plurals name="excluded_folders_tracks">
+        <item quantity="one">%d track</item>
+        <item quantity="other">%d tracks</item>
+    </plurals>
+    <plurals name="excluded_folders_videos">
+        <item quantity="one">%d video</item>
+        <item quantity="other">%d videos</item>
+    </plurals>
     <string name="manage_tabs_title">Manage Tabs</string>
 
     <!-- Video -->

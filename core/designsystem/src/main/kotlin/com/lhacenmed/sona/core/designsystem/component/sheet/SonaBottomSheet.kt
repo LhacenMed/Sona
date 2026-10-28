@@ -101,7 +101,7 @@ fun SonaLazyBottomSheet(
 }
 
 @Composable
-private fun SheetTitle(title: String) {
+internal fun SheetTitle(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleLarge,
@@ -120,7 +120,7 @@ private fun SheetTitle(title: String) {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SheetFrame(
+internal fun SheetFrame(
     onDismissRequest: () -> Unit,
     modifier: Modifier,
     content: @Composable ColumnScope.(SonaBottomSheetScope) -> Unit,

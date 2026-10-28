@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
@@ -38,6 +37,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.datastore.LibraryTab
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
+import com.lhacenmed.sona.core.designsystem.component.SonaTabPager
 import com.lhacenmed.sona.core.designsystem.component.SonaTabRow
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
@@ -303,20 +303,11 @@ fun LibraryPagerScreen(
                     }
 
                     CompositionLocalProvider(LocalLibraryShortcutsHeader provides shortcutsHeader) {
-                        HorizontalPager(
+                        // Every tab kept alive - the whole library is already in memory, so an off-screen tab costs
+                        // composition and nothing else, the same reason all five can be built on the launch frame.
+                        SonaTabPager(
                             state = pagerState,
                             modifier = Modifier.fillMaxSize(),
-                            // No band past the first or last tab: the pager simply stops there.
-                            overscrollEffect = null,
-                            // Enough to hold every tab, so none is ever disposed while the library is open.
-                            // Disposing one cancels whatever its list was doing: leave a tab mid-fling and it
-                            // would freeze where it stood, then reappear stopped dead when you came back.
-                            // Kept alive, it keeps flinging and settles exactly where it would have. The whole
-                            // library is already in memory, so an off-screen tab costs composition and nothing
-                            // else - the same reason all five can be built on the launch frame.
-                            beyondViewportPageCount = visibleTabs.size - 1,
-                            // Stable page keys, so a tab keeps its scroll position and composition when the
-                            // visible set is unchanged but the pager recomposes.
                             key = { page -> visibleTabs[page].name },
                         ) { page ->
                             val tab = visibleTabs[page]

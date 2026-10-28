@@ -1,171 +1,151 @@
 package com.lhacenmed.sona.feature.settings.manage
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
+import android.content.res.Resources
+import androidx.activity.compose.BackHandler
+import androidx.annotation.PluralsRes
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Restore
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
+import com.lhacenmed.sona.core.designsystem.component.SonaEmptyState
+import com.lhacenmed.sona.core.designsystem.component.SonaFolderCover
+import com.lhacenmed.sona.core.designsystem.component.SonaListRow
+import com.lhacenmed.sona.core.designsystem.component.fab.ExtendedFloatingActionButtonContent
+import com.lhacenmed.sona.core.designsystem.component.fab.SonaExtendedFloatingActionButtons
+import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.component.screen.screenList
-import com.lhacenmed.sona.core.designsystem.component.sheet.SonaBottomSheet
-import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
-import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
-import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
+import com.lhacenmed.sona.core.designsystem.component.sheet.FolderChoice
+import com.lhacenmed.sona.core.designsystem.component.sheet.FolderPickerTab
+import com.lhacenmed.sona.core.designsystem.component.sheet.SonaFolderPickerSheet
+import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
 
 /**
- * "Excluded Folders" screen: view/add/remove folders that the media scanner should skip - their music and
- * videos alike. A folder is added from the ones the library found media in, never picked out of the device's
- * whole storage.
+ * "Excluded Folders" screen: the folders the media scanner skips - their music and videos alike - and the way to
+ * change them, many at a time.
+ *
+ * Its one button excludes more: a sheet of the folders the library found media in, never the device's whole
+ * storage - its music's and its videos' under tabs of their own, as the library keeps them - picked together and
+ * excluded in one go. Pressing excluded folders picks
+ * them, as a list's rows are selected, and the button then lets the picked ones back in instead.
  */
 data object ExcludedFoldersScreen : Screen {
     override val titleRes: Int get() = R.string.excluded_folders_title
 
     @Composable
     override fun Content() {
+        val context = LocalContext.current
         val viewModel: ExcludedFoldersViewModel = hiltViewModel()
         val excludedFolders by viewModel.excludedFolders.collectAsStateWithLifecycle()
-        var isPickingFolder by remember { mutableStateOf(false) }
+        val excludableMusicFolders by viewModel.excludableMusicFolders.collectAsStateWithLifecycle()
+        val excludableVideoFolders by viewModel.excludableVideoFolders.collectAsStateWithLifecycle()
+        val picks = rememberSelectionState()
+        var isPickingFolders by rememberSaveable { mutableStateOf(false) }
+
+        BackHandler(enabled = picks.isActive) { picks.clear() }
+
+        SonaExtendedFloatingActionButtons(
+            listOf(
+                if (picks.isActive) {
+                    ExtendedFloatingActionButtonContent(
+                        label = pluralStringResource(R.plurals.excluded_folders_include_count, picks.count, picks.count),
+                        icon = Icons.Filled.Restore,
+                        onClick = {
+                            viewModel.include(picks.selectedKeys.filterIsInstance<String>().toSet())
+                            picks.clear()
+                        },
+                        isPrimary = true,
+                    )
+                } else {
+                    ExtendedFloatingActionButtonContent(
+                        label = stringResource(R.string.excluded_folders_add),
+                        icon = Icons.Filled.Block,
+                        onClick = {
+                            if (excludableMusicFolders.isEmpty() && excludableVideoFolders.isEmpty()) context.toast(R.string.excluded_folders_none_left) else isPickingFolders = true
+                        },
+                        isPrimary = true,
+                    )
+                },
+            ),
+        )
 
         // Box keeps the screen's root layout shape identical whether showing the empty state or
         // the list, so switching between the two never reflows surrounding chrome.
         Box(modifier = Modifier.fillMaxSize()) {
             if (excludedFolders.isEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(
-                        text = stringResource(R.string.excluded_folders_empty_title),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Text(
-                        text = stringResource(R.string.excluded_folders_empty_body),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Button(
-                        onClick = { isPickingFolder = true },
-                        shapes = buttonPressShapes(),
-                        modifier = Modifier.padding(top = 16.dp),
-                    ) {
-                        Icon(Icons.Filled.Add, contentDescription = null)
-                        Text(text = stringResource(R.string.excluded_folders_add), modifier = Modifier.padding(start = 8.dp))
-                    }
-                }
+                SonaEmptyState(
+                    title = stringResource(R.string.excluded_folders_empty_title),
+                    message = stringResource(R.string.excluded_folders_empty_body),
+                )
             } else {
-                // The add button stays put at the bottom, so the whole column ends above the mini player.
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = LocalBottomContentPadding.current),
+                val listState = rememberLazyListState()
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize().screenList(listState),
+                    contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
                 ) {
-                    val listState = rememberLazyListState()
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier
-                            .weight(1f)
-                            .screenList(listState),
-                    ) {
-                        items(excludedFolders) { path ->
-                            ListItem(
-                                headlineContent = { Text(path) },
-                                trailingContent = {
-                                    IconButton(onClick = { viewModel.removeFolder(path) }, shapes = iconButtonPressShapes()) {
-                                        Icon(
-                                            imageVector = Icons.Filled.Delete,
-                                            contentDescription = stringResource(R.string.excluded_folders_remove),
-                                        )
-                                    }
-                                },
-                            )
-                            HorizontalDivider()
-                        }
-                    }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.Center,
-                    ) {
-                        Button(onClick = { isPickingFolder = true }, shapes = buttonPressShapes()) {
-                            Icon(Icons.Filled.Add, contentDescription = null)
-                            Text(text = stringResource(R.string.excluded_folders_add), modifier = Modifier.padding(start = 8.dp))
-                        }
+                    items(excludedFolders, key = { it }) { path ->
+                        SonaListRow(
+                            title = path.substringAfterLast('/'),
+                            subtitle = path.substringBeforeLast('/'),
+                            selection = picks,
+                            selectionKey = path,
+                            onClick = { picks.toggle(path) },
+                            onOpenOptions = null,
+                            // An excluded folder is out of the library, its covers with it: the folder glyph stands for it.
+                            cover = { isSelected -> SonaFolderCover(coverArtUris = emptyList(), seed = path.hashCode(), isSelected = isSelected) },
+                        )
                     }
                 }
             }
         }
 
-        if (isPickingFolder) {
-            val excludableFolders by viewModel.excludableFolders.collectAsStateWithLifecycle()
-            ExcludableFoldersSheet(
-                folders = excludableFolders,
-                onFolderChosen = viewModel::addFolder,
-                onDismissRequest = { isPickingFolder = false },
+        if (isPickingFolders) {
+            SonaFolderPickerSheet(
+                title = stringResource(R.string.excluded_folders_add),
+                // A kind with no folder left to exclude has no tab: there is nothing to pick under it.
+                tabs = listOf(
+                    FolderPickerTab(
+                        stringResource(R.string.excluded_folders_music),
+                        excludableMusicFolders.map { FolderChoice(it, context.resources.countOf(R.plurals.excluded_folders_tracks, it.trackCount)) },
+                    ),
+                    FolderPickerTab(
+                        stringResource(R.string.excluded_folders_videos_tab),
+                        excludableVideoFolders.map { FolderChoice(it, context.resources.countOf(R.plurals.excluded_folders_videos, it.trackCount)) },
+                    ),
+                ).filter { it.choices.isNotEmpty() },
+                initiallySelected = emptySet(),
+                confirmLabel = { count ->
+                    if (count == 0) {
+                        context.getString(R.string.excluded_folders_confirm)
+                    } else {
+                        context.resources.getQuantityString(R.plurals.excluded_folders_confirm_count, count, count)
+                    }
+                },
+                onConfirm = viewModel::exclude,
+                onDismissRequest = { isPickingFolders = false },
             )
         }
     }
 }
 
-/** The folders holding music or videos, one row each - a press excludes it and closes the sheet. */
-@Composable
-private fun ExcludableFoldersSheet(folders: List<String>, onFolderChosen: (String) -> Unit, onDismissRequest: () -> Unit) {
-    SonaBottomSheet(title = stringResource(R.string.excluded_folders_add), onDismissRequest = onDismissRequest) {
-        if (folders.isEmpty()) {
-            Text(
-                text = stringResource(R.string.excluded_folders_none_left),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
-            )
-        }
-        folders.forEach { path ->
-            ListItem(
-                headlineContent = { Text(path.substringAfterLast('/')) },
-                supportingContent = { Text(path) },
-                leadingContent = { Icon(SonaIcons.Folder, contentDescription = null, modifier = Modifier.size(24.dp)) },
-                // The sheet already paints its own background; a row painting its own would seam against it.
-                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                modifier = Modifier.clickable {
-                    onFolderChosen(path)
-                    dismiss()
-                },
-            )
-        }
-    }
-}
+/** [count] as [plurals] words it: "12 tracks". */
+private fun Resources.countOf(@PluralsRes plurals: Int, count: Int): String = getQuantityString(plurals, count, count)

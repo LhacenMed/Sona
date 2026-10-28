@@ -45,12 +45,14 @@ class LibrarySettings @Inject constructor(
 
     val excludedFolders: Setting<Set<String>> = cache.setting { it[EXCLUDED_FOLDERS] ?: emptySet() }
 
-    suspend fun addExcludedFolder(path: String) {
-        dataStore.edit { it[EXCLUDED_FOLDERS] = (it[EXCLUDED_FOLDERS] ?: emptySet()) + path }
+    /** Keeps [paths] out of the library, all in one write. */
+    suspend fun addExcludedFolders(paths: Collection<String>) {
+        dataStore.edit { it[EXCLUDED_FOLDERS] = (it[EXCLUDED_FOLDERS] ?: emptySet()) + paths }
     }
 
-    suspend fun removeExcludedFolder(path: String) {
-        dataStore.edit { it[EXCLUDED_FOLDERS] = (it[EXCLUDED_FOLDERS] ?: emptySet()) - path }
+    /** Lets [paths] back into the library, all in one write. */
+    suspend fun removeExcludedFolders(paths: Collection<String>) {
+        dataStore.edit { it[EXCLUDED_FOLDERS] = (it[EXCLUDED_FOLDERS] ?: emptySet()) - paths.toSet() }
     }
 
     val visibleTabs: Setting<Set<LibraryTab>> = cache.setting { preferences ->
