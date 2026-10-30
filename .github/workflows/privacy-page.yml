@@ -1,0 +1,49 @@
+name: Privacy page
+
+# Keeps the privacy policy published on GitHub Pages - https://lhacenmed.github.io/Sona/privacy/, the link
+# Google's consent screen shows - the same as PRIVACY.md on main, the policy of the released app.
+#
+# The site lives on the gh-pages branch; this rewrites its privacy/index.md from PRIVACY.md, with the front
+# matter Jekyll needs, and commits only when the text changed.
+on:
+  push:
+    branches: [main]
+    paths: [PRIVACY.md]
+  workflow_dispatch:
+
+concurrency:
+  group: privacy-page
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Publish PRIVACY.md
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v7
+        with:
+          path: source
+
+      - name: Check out the site
+        uses: actions/checkout@v7
+        with:
+          ref: gh-pages
+          path: site
+
+      - name: Update the privacy page
+        run: |
+          mkdir -p site/privacy
+          { printf -- '---\ntitle: Privacy Policy\n---\n\n'; cat source/PRIVACY.md; } > site/privacy/index.md
+          cd site
+          if git diff --quiet; then
+            echo "The privacy page is already up to date."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "site: privacy policy from ${GITHUB_SHA::7}"
+          git push
