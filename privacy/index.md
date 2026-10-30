@@ -42,9 +42,9 @@ You can encrypt backups with a passphrase (off by default). Encrypted backups ar
 
 ### Google Drive
 
-Connecting Google Drive is optional. When you connect it, Sona asks Google only for permission to see, create and delete the files Sona itself creates in your Drive (the `drive.file` scope). Sona cannot see any other file in your Drive. It also asks for your account's email address, only to show in Settings which account is connected; it stays on your device. Sona does not ask for your name or profile. Google keeps the sign-in; Sona stores no password or token of its own.
+Connecting Google Drive is optional. When you connect it, Sona asks Google only for permission to see, create and delete the files Sona itself creates in your Drive (the `drive.file` scope). Sona cannot see any other file in your Drive, and asks for nothing else about your account. It reads the account's email address from Drive, only to show in Settings which account is connected; it stays on your device. Google keeps the sign-in; Sona stores no password or token of its own.
 
-Sona uses this access only to upload, list, download and delete its own backups and files, at your request or on your backup schedule. It sends this data only to your own Google Drive, never to the developer or anyone else, and does not use it for advertising, analytics or any other purpose. You can disconnect Drive in Sona, or remove Sona's access at any time from your Google Account's security settings.
+Sona uses this access only to upload, list, download and delete its own backups and files, at your request or on your backup schedule. It sends this data only to your own Google Drive, never to the developer or anyone else, and does not use it for advertising, analytics or any other purpose. Disconnecting Drive in Sona takes this access back; you can also remove it at any time from your Google Account's security settings.
 
 Sona's use and transfer of information received from Google APIs adheres to the [Google API Services User Data Policy](https://developers.google.com/terms/api-services-user-data-policy), including the Limited Use requirements.
 
