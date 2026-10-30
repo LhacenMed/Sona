@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.6.12] - 2026-10-30
+
+### Fixed
+
+- Back up to Google Drive again, and keep it connected while offline.
+
 ## [1.6.11] - 2026-10-30
 
 ### Fixed
