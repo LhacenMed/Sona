@@ -66,11 +66,19 @@ Sona plays the music stored on your device. It has no accounts, no streaming, no
 - Line-by-line and word-by-word highlighting with adjustable animation.
 - Romanization for Japanese, Korean, Chinese and Hindi.
 - Lyrics for upcoming queue items are preloaded.
+- Optionally looks online for lyrics a track's file lacks, and writes the best match into it (off by default).
 
 **Appearance**
 
 - Material 3 with colours taken from the playing track's artwork, in light and dark themes.
 - Composed covers for collections, in several styles.
+
+**Backup and restore**
+
+- Back up playlists, favorites, play history, settings, and the covers, background and font you chose - by hand, daily or weekly.
+- Backups are kept in `Android/media/com.lhacenmed.sona/Backup`, the last five, and can be encrypted with a passphrase.
+- Connect Google Drive to keep backups there too, with one copy of each music and video file from the folders you choose (uploaded over Wi-Fi). A restore brings back only the files a device is missing, compared by their contents, so nothing is duplicated.
+- Restoring adds to what is on the device; nothing there is removed.
 
 **Updates**
 
@@ -103,7 +111,7 @@ Sona is not on Google Play or F-Droid.
 | Music and audio (`READ_MEDIA_AUDIO`; `READ_EXTERNAL_STORAGE` on Android 12 and older) | Read your music library. |
 | Notifications (`POST_NOTIFICATIONS`) | Show the playback and update-download notifications. |
 | Install unknown apps (`REQUEST_INSTALL_PACKAGES`) | Install downloaded updates. Android asks you to grant this the first time. |
-| Internet and network state | Check for and download updates. Nothing else uses the network. |
+| Internet and network state | Check for and download updates, look up lyrics and tags, and back up to Google Drive once you connect it. |
 | Foreground service, wake lock, audio settings | Keep playing in the background and apply the equalizer. |
 
 Details in [PRIVACY.md](PRIVACY.md).
@@ -162,6 +170,7 @@ keyPassword=...
 | `:feature:settings` | Settings screens |
 | `:feature:equalizer` | Equalizer screen |
 | `:feature:update` | In-app update check, download service and prompt |
+| `:feature:backup` | Backup and restore: the backup format, local and Google Drive backups, media comparison and restore |
 
 ## Built with
 

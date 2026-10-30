@@ -155,6 +155,15 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 - [x] **4.8 Fix disabled dropdown menu items not shown as disabled**
   Dropdown menu items that are disabled are correctly non-selectable, but they aren't visually grayed out — they look identical to enabled items, which is misleading.
 
+- [ ] **4.9 Simplify every settings screen's rows and texts**
+  Settings rows are too wordy: nearly every one carries a subtitle restating what its title already says. A clear, short title is often enough on its own.
+  - A subtitle only where it says what the title cannot: a state or a value - the account connected, the option chosen, when something last happened, how far something is - the row's purpose when the short title doesn't say everything like when there's an exception or when functionality can't be described as whole in one short title.
+  - Titles short and plain, in the words other apps use for the same thing ("Back up using mobile data", not a sentence about it).
+  - A toggle for what turns on and off - connecting an account included - with its state, not an explanation, under it.
+  - Notes at the end of a section only for what the user must know and no row can show, kept to a sentence or two.
+  - `SettingsActionItem` and `SettingsSwitchItem` already take no subtitle; Backup & restore follows this and is the reference. Go through every other screen - Appearance, Playback, Video, Lyrics, Content, Behavior, Listening stats, Permissions, Storage, Updates, About - the same way.
+  - The same for the dialogs too across the app.
+
 ---
 
 ## Priority 5 — Player UI Consolidation & Polish
@@ -324,10 +333,14 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 
 ## Priority 12 — Backup & Sync
 
-- [ ] **12.1 Back up media, app settings, playlists and data to the cloud**
+- [x] **12.1 Back up media, app settings, playlists and data to the cloud**
   Back up media, app settings, playlists, data... to the cloud dynamically and for free.
   - Let the user choose between Google Drive, GitHub or another cloud storage provider.
+  - **Resolved:** two destinations behind one `BackupDestination` - the device (`Android/media/<package>/Backup`, the last five, no permission needed) and Google Drive (a visible "Sona Backup" folder, `drive.file` only, no backend and no account of Sona's own). GitHub was dropped: a token in the app, and listening history on a code host, fit neither privacy nor ease.
+  - A backup holds what the user made - playlists, favorites, hand-made orders, play history, resume positions - every settings file (`SettingsFiles.kt` lists them in one place), and the user's covers, background and font. Encryption with a passphrase is off by default (Tink's streaming AES-GCM).
+  - Media is not in a backup: it lists the library's files by fingerprint (SHA-256, cached in `media_hashes`), and Drive keeps one copy of each, uploaded over Wi-Fi. A restore compares the list with the device by fingerprint - never by tags - and brings back only what is missing, never over a file already there.
+  - A restore merges, keeping what the device has (`planLibraryMerge`), so it can run again after being cut short and arrive at the same library. Playlists that take new ids are followed by their favorites, orders and sort settings.
 
 ---
 
-**Total: 58 items** across bug fixes, flow fixes, visual fixes, player polish, and new features.
+**Total: 59 items** across bug fixes, flow fixes, visual fixes, player polish, and new features.
