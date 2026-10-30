@@ -6,14 +6,11 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
-
-private val Context.videoDataStore by preferencesDataStore(name = "video_settings")
 
 private val ORIENTATION = stringPreferencesKey("orientation")
 private val KEEP_ORIENTATION = booleanPreferencesKey("keep_orientation")

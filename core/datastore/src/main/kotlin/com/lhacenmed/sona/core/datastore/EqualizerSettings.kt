@@ -7,7 +7,6 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.common.di.IoDispatcher
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -17,8 +16,6 @@ import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.withContext
-
-private val Context.equalizerDataStore by preferencesDataStore(name = "equalizer_settings")
 
 private val ENABLED = booleanPreferencesKey("enabled")
 private val CONTROL_MODE = stringPreferencesKey("control_mode")

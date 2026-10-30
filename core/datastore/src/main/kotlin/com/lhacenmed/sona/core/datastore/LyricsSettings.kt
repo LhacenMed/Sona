@@ -5,14 +5,11 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
-
-private val Context.lyricsDataStore by preferencesDataStore(name = "lyrics_settings")
 
 private val LYRICS_CLICK = booleanPreferencesKey("lyricsClick")
 private val LYRICS_SCROLL = booleanPreferencesKey("lyricsScrollKey")

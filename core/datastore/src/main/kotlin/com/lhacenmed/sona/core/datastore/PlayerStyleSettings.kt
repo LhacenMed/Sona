@@ -6,14 +6,11 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
-
-private val Context.playerStyleDataStore by preferencesDataStore(name = "player_style_settings")
 
 private val PLAYER_STYLE = stringPreferencesKey("player_style")
 private val PLAYER_SLIDER_STYLE = stringPreferencesKey("player_slider_style")

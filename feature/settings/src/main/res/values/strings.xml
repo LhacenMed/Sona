@@ -46,6 +46,8 @@
     <string name="permission_app_installs_purpose">Install a downloaded update of Sona</string>
     <string name="storage_title">Storage</string>
     <string name="storage_summary">Caches the app keeps on disk</string>
+    <string name="backup_title">Backup &amp; restore</string>
+    <string name="backup_summary">Your playlists, history and settings, kept safe</string>
     <string name="updates_title">Updates</string>
     <string name="updates_summary">Check for new versions</string>
     <string name="about_title">About</string>
@@ -153,8 +155,7 @@
     <string name="custom_background_brightness">Brightness</string>
     <string name="custom_background_blur_value">%1$d dp</string>
     <string name="custom_background_scale_value">%1$d%%</string>
-    <string name="custom_background_permission_error">Sona could not keep access to this image.</string>
-    <string name="custom_background_permission_cleanup_error">The previous image\'s access could not be released.</string>
+    <string name="custom_background_read_error">Sona could not read this image.</string>
 
     <!-- Playback -->
     <string name="playback_controls_section">Controls</string>
@@ -388,6 +389,64 @@
     <string name="storage_clear_image_cache_done">Image cache cleared</string>
     <string name="storage_clear_image_cache_failed">Could not clear the image cache</string>
     <string name="storage_note">Clearing a cache never removes music. Only files the app made are deleted.</string>
+
+    <!-- Backup and restore -->
+    <string name="backup_section">Backup</string>
+    <string name="backup_now_title">Back up now</string>
+    <string name="backup_last">Last backup: %1$s</string>
+    <string name="backup_none">No backup yet</string>
+    <string name="backup_done">Backup saved</string>
+    <string name="backup_failed">Could not back up</string>
+    <string name="backup_schedule_title">Automatic backups</string>
+    <string name="backup_schedule_off">Off</string>
+    <string name="backup_schedule_daily">Daily</string>
+    <string name="backup_schedule_weekly">Weekly</string>
+    <string name="backup_encrypt_title">Encrypt backups</string>
+    <string name="backup_encrypt_summary">Lock backups with a passphrase</string>
+    <string name="backup_location_title">Saved in</string>
+    <string name="backup_note">A backup holds your playlists, favorites, play history, settings, and the covers, background and font you chose. Music and video files stay where they are: a backup lists them, and a restore shows which ones this device is missing. Android deletes this folder if Sona is uninstalled.</string>
+    <string name="backup_passphrase_title">Set a passphrase</string>
+    <string name="backup_passphrase_hint">Passphrase</string>
+    <string name="backup_passphrase_repeat_hint">Repeat passphrase</string>
+    <string name="backup_passphrase_mismatch">The passphrases don\'t match</string>
+    <string name="backup_passphrase_note">An encrypted backup can only be opened with this passphrase. Sona can\'t recover it if you forget it.</string>
+    <string name="backup_passphrase_set">Backups will be encrypted</string>
+    <string name="backup_passphrase_failed">Could not set the passphrase</string>
+    <string name="backup_encryption_off">Backups won\'t be encrypted</string>
+    <string name="restore_section">Restore</string>
+    <string name="restore_from_file_title">Restore from a file</string>
+    <string name="restore_from_file_summary">Open a backup saved anywhere on this device</string>
+    <string name="restore_done">Backup restored</string>
+    <string name="restore_failed">Could not restore the backup</string>
+    <string name="restore_opening">Opening the backup…</string>
+    <string name="restore_passphrase_title">Enter the passphrase</string>
+    <string name="restore_passphrase_wrong">That passphrase doesn\'t open this backup</string>
+    <string name="restore_unsupported">This backup was made by a newer version of Sona. Update Sona to restore it.</string>
+    <string name="restore_unreadable">This file isn\'t a Sona backup, or it\'s damaged.</string>
+    <string name="restore_dialog_title">Restore backup</string>
+    <string name="restore_made_on">Made %1$s</string>
+    <string name="restore_settings">All settings</string>
+    <string name="restore_merge_note">Restoring adds to what\'s on this device. Nothing here is removed.</string>
+    <string name="restore_files_to_restore">Restore these files from the cloud</string>
+    <string name="restore_action">Restore</string>
+    <string name="restore_file_access_needed">Allow Sona to manage files, then restore again</string>
+    <string name="restore_ok">OK</string>
+    <plurals name="restore_playlists">
+        <item quantity="one">%d playlist</item>
+        <item quantity="other">%d playlists</item>
+    </plurals>
+    <plurals name="restore_played_tracks">
+        <item quantity="one">Play history of %d track</item>
+        <item quantity="other">Play history of %d tracks</item>
+    </plurals>
+    <plurals name="restore_files_present">
+        <item quantity="one">%d music or video file is already on this device</item>
+        <item quantity="other">%d music and video files are already on this device</item>
+    </plurals>
+    <plurals name="restore_files_unavailable">
+        <item quantity="one">%d file isn\'t on this device, and can\'t be restored</item>
+        <item quantity="other">%d files aren\'t on this device, and can\'t be restored</item>
+    </plurals>
 
     <!-- Updates -->
     <string name="updates_current_version">Current version</string>

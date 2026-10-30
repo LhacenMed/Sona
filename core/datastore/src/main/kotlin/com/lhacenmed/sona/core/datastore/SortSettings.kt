@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.model.sort.SortCriterion
 import com.lhacenmed.sona.core.model.sort.SortDirection
@@ -16,8 +15,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
-
-private val Context.sortDataStore by preferencesDataStore(name = "sort_settings")
 
 private const val ORDER_SEPARATOR = ':'
 private const val INSTANCE_SEPARATOR = '@'
@@ -122,7 +119,7 @@ private fun SortableList.preferenceKey() = stringPreferencesKey("${name.lowercas
 private fun SortTarget.instanceKey() =
     instanceId?.let { stringPreferencesKey("${list.instanceKeyPrefix()}$it") }
 
-private fun SortableList.instanceKeyPrefix() = "${name.lowercase()}_sort$INSTANCE_SEPARATOR"
+internal fun SortableList.instanceKeyPrefix() = "${name.lowercase()}_sort$INSTANCE_SEPARATOR"
 
 /** Drops what each list of [list]'s kind was set to on its own, so they all follow the kind's order. */
 private fun MutablePreferences.clearInstanceOrders(list: SortableList) {

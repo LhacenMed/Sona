@@ -5,15 +5,12 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.model.FastScrollTouchArea
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
-
-private val Context.dataStore by preferencesDataStore(name = "library_settings")
 
 private val EXCLUDED_FOLDERS = stringSetPreferencesKey("excluded_folders")
 
@@ -38,7 +35,7 @@ class LibrarySettings @Inject constructor(
     @ApplicationScope scope: CoroutineScope,
 ) {
 
-    private val dataStore = context.dataStore
+    private val dataStore = context.libraryDataStore
     private val cache = PreferencesCache(dataStore, scope)
 
     internal suspend fun awaitLoaded() = cache.awaitLoaded()

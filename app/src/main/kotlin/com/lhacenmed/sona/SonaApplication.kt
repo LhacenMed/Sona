@@ -13,6 +13,8 @@ import com.lhacenmed.sona.core.datastore.SettingsLoader
 import com.lhacenmed.sona.core.datastore.UpdateSettings
 import com.lhacenmed.sona.core.designsystem.component.cover.MediaThumbnailFetcher
 import com.lhacenmed.sona.core.designsystem.effect.SonaEffects
+import com.lhacenmed.sona.feature.backup.BackupSettings
+import com.lhacenmed.sona.feature.backup.work.BackupWork
 import com.lhacenmed.sona.feature.tageditor.lyrics.MissingLyricsFinder
 import com.lhacenmed.sona.feature.update.UpdateMonitor
 import com.lhacenmed.sona.feature.update.notification.UpdateNotifier
@@ -57,6 +59,9 @@ class SonaApplication : Application(), SingletonImageLoader.Factory {
     @Inject
     lateinit var updateMonitor: UpdateMonitor
 
+    @Inject
+    lateinit var backupSettings: BackupSettings
+
     /** Coil's own loader, drawing a track's or a video's cover from Android's thumbnail of its file - see [MediaThumbnailFetcher]. */
     override fun newImageLoader(context: PlatformContext): ImageLoader =
         ImageLoader.Builder(context)
@@ -87,6 +92,8 @@ class SonaApplication : Application(), SingletonImageLoader.Factory {
         playbackWidgets.get().takeIf { it.isPlaced }?.start()
         // The background update check runs exactly while its notifications are on.
         applicationScope.launch { updateSettings.notifications.flow.collect { UpdateNotifier.follow(this@SonaApplication, it) } }
+        // Automatic backups are made exactly as often as the user chose.
+        applicationScope.launch { backupSettings.schedule.collect { BackupWork.follow(this@SonaApplication, it) } }
         // The launcher shortcut is named and drawn for how quick play plays, so it follows that as it changes.
         // Calls to the system's shortcut service, so off the main thread as well.
         applicationScope.launch { quickPlaySettings.mode.flow.collect { QuickPlayShortcut.publish(this@SonaApplication, it) } }

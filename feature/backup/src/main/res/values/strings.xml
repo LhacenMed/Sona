@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="backup_notification_title">Backing up</string>
+    <string name="restore_notification_title">Restoring</string>
+    <string name="backup_progress_fingerprinting">Reading files: %1$d of %2$d</string>
+    <string name="backup_progress_writing">Writing the backup</string>
+    <string name="restore_progress_library">Restoring your library and settings</string>
+    <string name="restore_progress_files">Restoring files: %1$d of %2$d</string>
+</resources>

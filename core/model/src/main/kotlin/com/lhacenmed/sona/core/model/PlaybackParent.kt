@@ -43,6 +43,16 @@ fun PlaybackParent.toStorageKey(): String = when (this) {
     PlaybackParent.MostPlayed -> "mostPlayed"
 }
 
+/**
+ * [storageKey] with the playlist it names - if it names one [playlistIds] renames - under its new id; any other
+ * key as it is. How a key brought over from a backup follows its playlist to the id it has on this device.
+ */
+fun withRenamedPlaylist(storageKey: String, playlistIds: Map<Long, Long>): String {
+    val playlist = playbackParentOf(storageKey) as? PlaybackParent.Playlist ?: return storageKey
+    val renamedId = playlistIds[playlist.playlistId] ?: return storageKey
+    return PlaybackParent.Playlist(renamedId).toStorageKey()
+}
+
 /** [toStorageKey] read back, or null for anything this version no longer recognises. */
 fun playbackParentOf(storageKey: String): PlaybackParent? {
     val value = storageKey.substringAfter(':', missingDelimiterValue = "")

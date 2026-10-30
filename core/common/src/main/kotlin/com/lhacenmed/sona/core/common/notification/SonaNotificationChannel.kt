@@ -57,6 +57,14 @@ enum class SonaNotificationChannel(
         descriptionRes = R.string.notification_channel_auto_tag_description,
         importance = NotificationManagerCompat.IMPORTANCE_LOW,
     ),
+
+    /** A backup or a restore the user started, while it runs. */
+    BACKUP(
+        id = "backup",
+        nameRes = R.string.notification_channel_backup,
+        descriptionRes = R.string.notification_channel_backup_description,
+        importance = NotificationManagerCompat.IMPORTANCE_LOW,
+    ),
 }
 
 /** Every notification's id, in one place so no two features ever post under the same one. */
@@ -66,5 +74,6 @@ object SonaNotificationId {
     const val UPDATE_DOWNLOAD_RESULT = 4201
     const val LIBRARY_SCAN = 4300
     const val AUTO_TAG = 4400
+    const val BACKUP = 4500
     const val UPDATE_AVAILABLE = 9999
 }

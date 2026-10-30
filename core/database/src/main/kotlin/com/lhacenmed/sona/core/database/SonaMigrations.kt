@@ -363,6 +363,19 @@ val MIGRATION_18_19 = object : Migration(18, 19) {
 }
 
 /**
+ * The fingerprints backups compare files by. A table of its own, starting empty and filled as files are first
+ * read; every row kept so far is untouched.
+ */
+val MIGRATION_19_20 = object : Migration(19, 20) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `media_hashes` (`path` TEXT NOT NULL, `sizeBytes` INTEGER NOT NULL, " +
+                "`modifiedAt` INTEGER NOT NULL, `fingerprint` TEXT NOT NULL, PRIMARY KEY(`path`))",
+        )
+    }
+}
+
+/**
  * Makes sure Favorites exists, every time the database is opened.
  *
  * On open rather than on create, because creation is only one of the ways this database comes to

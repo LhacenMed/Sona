@@ -3,14 +3,11 @@ package com.lhacenmed.sona.core.datastore
 import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-
-private val Context.scanDataStore by preferencesDataStore(name = "scan_state")
 
 private val LAST_SCAN_SIGNATURE = stringPreferencesKey("last_scan_signature")
 

@@ -4,14 +4,11 @@ import android.app.ActivityManager
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.preferencesDataStore
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
-
-private val Context.effectDataStore by preferencesDataStore(name = "effect_settings")
 
 private val DISABLE_ANIMATIONS = booleanPreferencesKey("disable_animations")
 private val FORCE_HIGH_REFRESH_RATE = booleanPreferencesKey("force_high_refresh_rate")

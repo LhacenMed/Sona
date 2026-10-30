@@ -2,6 +2,7 @@ package com.lhacenmed.sona.feature.settings
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ShowChart
+import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lyrics
@@ -16,6 +17,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.about.AboutScreen
 import com.lhacenmed.sona.feature.settings.appearance.AppearanceScreen
+import com.lhacenmed.sona.feature.settings.backup.BackupScreen
 import com.lhacenmed.sona.feature.settings.screen.BehaviorScreen
 import com.lhacenmed.sona.feature.settings.screen.ContentScreen
 import com.lhacenmed.sona.feature.settings.screen.ListeningStatsScreen
@@ -109,6 +111,13 @@ enum class SettingsCategory(
         summaryRes = R.string.storage_summary,
         icon = Icons.Filled.Storage,
         screen = StorageScreen,
+    ),
+    Backup(
+        group = SettingsGroup.App,
+        titleRes = R.string.backup_title,
+        summaryRes = R.string.backup_summary,
+        icon = Icons.Filled.Backup,
+        screen = BackupScreen,
     ),
     Updates(
         group = SettingsGroup.App,

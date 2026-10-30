@@ -4,14 +4,11 @@ import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
-
-private val Context.imageDataStore by preferencesDataStore(name = "image_settings")
 
 private val COVER_MODE = stringPreferencesKey("cover_mode")
 private val FORCE_SQUARE_COVERS = booleanPreferencesKey("force_square_covers")

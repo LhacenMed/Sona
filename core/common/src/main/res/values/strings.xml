@@ -11,4 +11,6 @@
     <string name="notification_channel_library_scan_description">The progress of a library rescan</string>
     <string name="notification_channel_auto_tag">Auto-tagging</string>
     <string name="notification_channel_auto_tag_description">The progress of finding and saving tags for many tracks</string>
+    <string name="notification_channel_backup">Backup</string>
+    <string name="notification_channel_backup_description">The progress of a backup or a restore</string>
 </resources>

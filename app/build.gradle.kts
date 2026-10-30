@@ -229,6 +229,7 @@ dependencies {
     implementation(project(":feature:tageditor"))
     implementation(project(":feature:video"))
     implementation(project(":feature:vault"))
+    implementation(project(":feature:backup"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

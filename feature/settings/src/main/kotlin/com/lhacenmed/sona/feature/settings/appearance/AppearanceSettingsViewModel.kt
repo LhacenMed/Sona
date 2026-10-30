@@ -2,6 +2,8 @@ package com.lhacenmed.sona.feature.settings.appearance
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lhacenmed.sona.core.common.coroutines.launchOperation
+import com.lhacenmed.sona.core.data.background.CustomBackgroundImages
 import com.lhacenmed.sona.core.datastore.CustomFont
 import com.lhacenmed.sona.core.datastore.EffectSettings
 import com.lhacenmed.sona.core.datastore.MiniPlayerBackgroundStyle
@@ -29,6 +31,7 @@ class AppearanceSettingsViewModel @Inject constructor(
     private val themeSettings: ThemeSettings,
     private val playerStyleSettings: PlayerStyleSettings,
     private val effectSettings: EffectSettings,
+    private val customBackgroundImages: CustomBackgroundImages,
 ) : ViewModel() {
 
     val theme: StateFlow<ThemeChoices> = themeSettings.choices.stateIn(viewModelScope)
@@ -58,7 +61,18 @@ class AppearanceSettingsViewModel @Inject constructor(
         write { playerStyleSettings.setMiniPlayerBackground(style) }
     fun setHideThumbnail(enabled: Boolean) = write { playerStyleSettings.setHideThumbnail(enabled) }
     fun setSwipeToChangeTrack(enabled: Boolean) = write { playerStyleSettings.setSwipeToChangeTrack(enabled) }
-    fun setCustomBackgroundImage(uri: String?) = write { playerStyleSettings.setCustomBackgroundImage(uri) }
+    /**
+     * Makes a copy of the image at [sourceUri] - or none, for null - the background's image, letting go of the one
+     * it had. [onFinished] hears whether it worked: an image that cannot be read leaves the background as it was.
+     */
+    fun setCustomBackgroundImage(sourceUri: String?, onFinished: (succeeded: Boolean) -> Unit) {
+        viewModelScope.launchOperation(onFinished) {
+            val previousImage = player.value.customBackground.imageUri
+            val image = sourceUri?.let { customBackgroundImages.import(it) }
+            playerStyleSettings.setCustomBackgroundImage(image)
+            previousImage?.let { customBackgroundImages.release(it) }
+        }
+    }
     fun setCustomBackgroundBlur(blur: Float) = write { playerStyleSettings.setCustomBackgroundBlur(blur) }
     fun setCustomBackgroundContrast(contrast: Float) = write { playerStyleSettings.setCustomBackgroundContrast(contrast) }
     fun setCustomBackgroundBrightness(brightness: Float) =

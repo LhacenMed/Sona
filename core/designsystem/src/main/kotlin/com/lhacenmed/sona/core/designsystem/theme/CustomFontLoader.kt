@@ -65,7 +65,8 @@ object CustomFontLoader {
     private fun privateFontFile(context: Context, uriString: String): File =
         File(fontDirectory(context), "${Integer.toHexString(uriString.hashCode())}.ttf")
 
-    private fun fontDirectory(context: Context): File = File(context.filesDir, "custom_fonts")
+    /** Where the copy of the font in use is kept - which a backup carries, so a restored font needs no picking again. */
+    fun fontDirectory(context: Context): File = File(context.filesDir, "custom_fonts")
 
     /**
      * Copies the font at [uri] to [fontFile], in place of any font copied before - only the font in use is

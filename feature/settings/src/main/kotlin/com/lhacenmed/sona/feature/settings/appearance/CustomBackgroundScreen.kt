@@ -1,7 +1,5 @@
 package com.lhacenmed.sona.feature.settings.appearance
 
-import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -80,7 +78,7 @@ private const val LyricsPreviewAspectRatio = 720f / 1386f
  * The image the custom player background draws, and how it is adjusted - ArchiveTune's
  * `CustomizeBackground`: previewed under the player and the lyrics as it is adjusted.
  *
- * The image is kept as it is picked. An adjustment is shown as it is dragged and kept once let go, so a
+ * The image is copied in as it is picked. An adjustment is shown as it is dragged and kept once let go, so a
  * drag writes the setting once rather than on every frame of it.
  */
 data object CustomBackgroundScreen : Screen {
@@ -99,14 +97,8 @@ data object CustomBackgroundScreen : Screen {
 
         val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri == null) return@rememberLauncherForActivityResult
-            if (!persistReadPermission(context, uri)) {
-                context.toast(R.string.custom_background_permission_error)
-                return@rememberLauncherForActivityResult
-            }
-            val previousUri = stored.imageUri
-            viewModel.setCustomBackgroundImage(uri.toString())
-            if (previousUri != null && previousUri != uri.toString() && !releaseReadPermission(context, previousUri)) {
-                context.toast(R.string.custom_background_permission_cleanup_error)
+            viewModel.setCustomBackgroundImage(uri.toString()) { succeeded ->
+                if (!succeeded) context.toast(R.string.custom_background_read_error)
             }
         }
 
@@ -138,13 +130,7 @@ data object CustomBackgroundScreen : Screen {
             ImageActions(
                 hasImage = stored.imageUri != null,
                 onChooseImage = { pickImage.launch(arrayOf("image/*")) },
-                onRemoveImage = {
-                    val released = stored.imageUri?.let { releaseReadPermission(context, it) } ?: true
-                    viewModel.setCustomBackgroundImage(null)
-                    if (!released) {
-                        context.toast(R.string.custom_background_permission_cleanup_error)
-                    }
-                },
+                onRemoveImage = { viewModel.setCustomBackgroundImage(null) {} },
             )
         }
 
@@ -392,29 +378,5 @@ private fun AdjustmentSlider(
             valueRange = valueRange,
             modifier = Modifier.fillMaxWidth().semantics { contentDescription = label },
         )
-    }
-}
-
-/** Keeps the picked image readable across restarts; false when the provider will not allow it. */
-private fun persistReadPermission(context: Context, uri: Uri): Boolean =
-    try {
-        context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        true
-    } catch (_: SecurityException) {
-        false
-    }
-
-/** Lets go of whatever grant is held on [uriString]; false when it could not be released. */
-private fun releaseReadPermission(context: Context, uriString: String): Boolean {
-    val uri = Uri.parse(uriString)
-    val permission = context.contentResolver.persistedUriPermissions.firstOrNull { it.uri == uri } ?: return true
-    val flags = (if (permission.isReadPermission) Intent.FLAG_GRANT_READ_URI_PERMISSION else 0) or
-        (if (permission.isWritePermission) Intent.FLAG_GRANT_WRITE_URI_PERMISSION else 0)
-    if (flags == 0) return true
-    return try {
-        context.contentResolver.releasePersistableUriPermission(uri, flags)
-        true
-    } catch (_: SecurityException) {
-        false
     }
 }
