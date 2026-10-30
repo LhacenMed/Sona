@@ -292,13 +292,11 @@ private fun RunOutcomeToast(run: BackupRun?, @StringRes successRes: Int, @String
             when (run) {
                 is BackupRun.Succeeded -> context.toast(if (run.areFilesWaiting) filesWaitingRes else successRes)
                 BackupRun.Stopped -> context.toast(R.string.backup_stopped)
-                is BackupRun.Failed -> context.toast(
-                    when (run.reason) {
-                        BackupFailure.DRIVE_FULL -> R.string.backup_failed_drive_full
-                        BackupFailure.DRIVE_ACCESS_LOST -> R.string.backup_failed_drive_access
-                        null -> failureRes
-                    },
-                )
+                is BackupRun.Failed -> when (run.reason) {
+                    BackupFailure.DRIVE_FULL -> context.toast(R.string.backup_failed_drive_full)
+                    BackupFailure.DRIVE_ACCESS_LOST -> context.toast(R.string.backup_failed_drive_access)
+                    null -> context.toast(listOfNotNull(context.getString(failureRes), run.detail).joinToString(": "))
+                }
                 else -> Unit
             }
         }

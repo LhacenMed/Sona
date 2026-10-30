@@ -208,6 +208,11 @@ internal class DriveApi @Inject constructor(
             response.close()
             access.forget(token)
             response = http.newCall(request.header("Authorization", "Bearer ${access.token()}").build()).execute()
+            if (response.code == HTTP_UNAUTHORIZED) {
+                // Refused with a fresh token too: the access is gone - taken back - whatever Google still hands out.
+                response.close()
+                access.lose()
+            }
         }
         if (!response.isSuccessful && response.code != HTTP_RESUME_INCOMPLETE) {
             val message = response.body?.string()

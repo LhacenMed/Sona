@@ -29,6 +29,7 @@ private const val KEY_STEP = "step"
 private const val KEY_DONE = "done"
 private const val KEY_TOTAL = "total"
 internal const val KEY_FAILURE = "failure"
+internal const val KEY_FAILURE_DETAIL = "failureDetail"
 internal const val KEY_FILES_WAITING = "filesWaiting"
 
 /** Why a backup or a restore failed, where it is something the user can act on. */
@@ -48,8 +49,8 @@ sealed interface BackupRun {
     /** Done - [areFilesWaiting] where its music and videos still wait for Wi-Fi to go to Drive. */
     data class Succeeded(val areFilesWaiting: Boolean) : BackupRun
 
-    /** Failed - for [reason], where it is one the user can act on. */
-    data class Failed(val reason: BackupFailure?) : BackupRun
+    /** Failed - for [reason], where it is one the user can act on; else with [detail], what went wrong, where known. */
+    data class Failed(val reason: BackupFailure?, val detail: String?) : BackupRun
 
     /** Stopped by the user. */
     data object Stopped : BackupRun
@@ -122,7 +123,10 @@ object BackupWork {
                 WorkInfo.State.SUCCEEDED -> BackupRun.Succeeded(info.outputData.getBoolean(KEY_FILES_WAITING, false))
                 WorkInfo.State.CANCELLED -> BackupRun.Stopped
                 WorkInfo.State.FAILED ->
-                    BackupRun.Failed(info.outputData.getString(KEY_FAILURE)?.let { name -> BackupFailure.entries.firstOrNull { it.name == name } })
+                    BackupRun.Failed(
+                        reason = info.outputData.getString(KEY_FAILURE)?.let { name -> BackupFailure.entries.firstOrNull { it.name == name } },
+                        detail = info.outputData.getString(KEY_FAILURE_DETAIL),
+                    )
             }
         }
 }

@@ -84,15 +84,20 @@ internal class RestoreWorker(context: Context, params: WorkerParameters) : Corou
     }
 }
 
-/** A run failed by [exception] - with the reason, where it is one the user can act on. */
+/** A run failed by [exception] - with the reason, where it is one the user can act on, else with what went wrong. */
 private fun failure(exception: Exception): ListenableWorker.Result {
     val reason = when (exception) {
         is DriveFullException -> BackupFailure.DRIVE_FULL
         is DriveAccessLostException -> BackupFailure.DRIVE_ACCESS_LOST
-        else -> return ListenableWorker.Result.failure()
+        else -> return ListenableWorker.Result.failure(workDataOf(KEY_FAILURE_DETAIL to exception.detail()))
     }
     return ListenableWorker.Result.failure(workDataOf(KEY_FAILURE to reason.name))
 }
+
+/** What went wrong, in a line: the kind of failure and its message, short enough to show. */
+private fun Exception.detail(): String = listOfNotNull(this::class.simpleName, message).joinToString(": ").take(MAX_DETAIL_LENGTH)
+
+private const val MAX_DETAIL_LENGTH = 200
 
 /** What [progress] says it is doing, for its notification and its screen. */
 fun backupProgressText(context: Context, progress: BackupProgress?, isRestore: Boolean): String? = when (progress) {

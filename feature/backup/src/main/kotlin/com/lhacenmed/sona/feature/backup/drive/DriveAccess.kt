@@ -41,9 +41,9 @@ sealed interface DriveConnection {
 
 /**
  * Sona's access to the user's Google Drive: given once, from the Backup screen, then used by every backup and
- * restore. Google keeps the grant and its tokens; Sona keeps only that it was given, and to which account - by the
- * email address Drive gives for it, which stays on the device - and asks Google for that account's token each
- * time it needs one.
+ * restore. Google keeps the grant and its tokens, and the account it was given for - the one last picked in its
+ * account picker, which a request naming no account is answered for. Sona keeps only that access was given, and
+ * the account's email address as Drive gives it, to show it.
  */
 @Singleton
 class DriveAccess @Inject internal constructor(
@@ -53,6 +53,9 @@ class DriveAccess @Inject internal constructor(
     private val api: Lazy<DriveApi>,
 ) {
     private val client = Identity.getAuthorizationClient(context)
+
+    /** What every backup and restore asks for, naming no account - see [token]. */
+    private val request = AuthorizationRequest.builder().setRequestedScopes(listOf(DRIVE_FILE_SCOPE)).build()
 
     val isConnected: StateFlow<Boolean> = backupSettings.isDriveConnected
 
@@ -96,21 +99,30 @@ class DriveAccess @Inject internal constructor(
         backupSettings.setDriveDisconnected()
     }
 
-    /** A current token for the connected account, without asking the user anything - Google renews it as needed. */
+    /**
+     * A current token for the connected account, without asking the user anything - Google renews it as needed.
+     *
+     * No account is named: Google answers for the one picked when connecting, which is what it is built to do. Naming
+     * it would ask Google to match the email Drive gives against the device's accounts, which is not always the same
+     * text. Only Google wanting the user's consent again means the access is gone; anything else - no connection, a
+     * busy service - is a failure like any other, for the run to try again later, still connected.
+     */
     internal suspend fun token(): String {
-        val account = backupSettings.driveAccountNow()
-        val request = AuthorizationRequest.builder()
-            .setRequestedScopes(listOf(DRIVE_FILE_SCOPE))
-            .apply { account?.let { setAccount(Account(it, GOOGLE_ACCOUNT_TYPE)) } }
-            .build()
-        val result: AuthorizationResult = client.authorize(request).await()
-        val token = result.accessToken.takeUnless { result.hasResolution() } ?: run {
-            backupSettings.setDriveDisconnected()
-            throw DriveAccessLostException()
+        val result: AuthorizationResult = try {
+            client.authorize(request).await()
+        } catch (e: ApiException) {
+            throw IOException("Google gave no token for Drive", e)
         }
-        // Connected before the account was kept: kept now, so the next token is that account's for certain.
-        if (account == null) connected(token)
+        val token = result.accessToken.takeUnless { result.hasResolution() } ?: lose()
+        // Connected before its email address was kept: kept now, to show which account it is.
+        if (backupSettings.driveAccountNow() == null) connected(token)
         return token
+    }
+
+    /** Forgets the connection, which no longer holds, and says so - for the user to connect again. */
+    internal suspend fun lose(): Nothing {
+        backupSettings.setDriveDisconnected()
+        throw DriveAccessLostException()
     }
 
     /** Lets go of [token], which Drive refused, so the next [token] is a fresh one. */
