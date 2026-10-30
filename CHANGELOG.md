@@ -6,6 +6,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.6.9] - 2026-10-30
+
+### Added
+
+- Keep plays from chosen collections out of Most played.
+- Swipe right on a lyrics line to play from it.
+- Remove tracks from Recently played and Most played.
+- Tap the lyrics line above the seek bar to open the full lyrics right in the player, instead of in a separate sheet.
+- Back up your playlists, favorites, play history and settings, automatically or by hand, and restore them on any device.
+- Choose between the Default player, with the lyrics in a sheet of their own, and the Immersive one, with the lyrics opening in place.
+
+### Fixed
+
+- Reserve FAB stack height in the list's bottom padding.
+- Drop HyperOS widget registration and resize to 4 cells.
+
 ## [1.6.8] - 2026-10-28
 
 ### Added
