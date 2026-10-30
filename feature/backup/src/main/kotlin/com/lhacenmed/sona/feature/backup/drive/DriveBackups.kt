@@ -15,7 +15,14 @@ import java.io.InputStream
 import java.io.OutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
+import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -25,6 +32,10 @@ private const val KIND = "sona"
 private const val ROOT_FOLDER = "folder"
 private const val BACKUP = "backup"
 private const val MEDIA_FILE = "mediaFile"
+private const val SEALED_MEDIA_FILE = "sealedMediaFile"
+
+/** How many files upload at once: enough to keep a connection full, few enough for what Drive takes from one app. */
+private const val PARALLEL_UPLOADS = 4
 
 private const val ROOT_FOLDER_NAME = "Sona Backup"
 
@@ -48,8 +59,8 @@ private enum class MediaFolder(val kind: String, val folderName: String) {
     }
 }
 
-/** Drive has no room for the files a backup would add. */
-class DriveFullException : IOException()
+/** How uploading the library's files ended: how many did not go - for want of room in Drive, or for an error. */
+internal data class MediaUpload(val leftForSpace: Int, val failed: Int)
 
 /**
  * Backups kept in the user's Google Drive, in a "Sona Backup" folder they can see: the backups themselves, and -
@@ -112,6 +123,9 @@ class DriveBackups @Inject internal constructor(
 /**
  * The library's files in Drive - music in one folder, videos in another - each kept once under its fingerprint,
  * or, sealed with [key], under a name made from it with the key, so the name says nothing of which file it is.
+ *
+ * A file is kept once it is anywhere in Drive under its name and kind - whatever folder holds it - so nothing is
+ * uploaded twice; a copy beyond the first, left by an older version, is let go of when Drive is tidied.
  */
 internal class DriveMedia(
     private val api: DriveApi,
@@ -121,8 +135,15 @@ internal class DriveMedia(
     private val folderId: suspend (isVideo: Boolean) -> String,
 ) : CloudMediaStore {
 
+    /** Plain and sealed files are told apart by kind, so tidying the one never takes the other. */
+    private val fileKind = if (key == null) MEDIA_FILE else SEALED_MEDIA_FILE
+
     /** Every file kept, music and videos alike, by name to its id - read once, then kept up to date. */
     private var stored: MutableMap<String, String>? = null
+
+    /** The ids of copies of a file beyond its first. */
+    private val extraCopies = mutableListOf<String>()
+    private val storedLock = Mutex()
 
     override suspend fun keeps(fingerprints: Collection<String>): Set<String> {
         val stored = stored()
@@ -147,27 +168,48 @@ internal class DriveMedia(
     }
 
     /**
-     * Uploads each of [media] not kept yet - into the music or the videos folder - [onProgress] hearing how many of
-     * how many are done, having first made sure Drive has room for them all, so a backup never stops halfway for
-     * want of space.
+     * Uploads each of [media] not kept yet - into the music or the videos folder - [PARALLEL_UPLOADS] at a time,
+     * [onProgress] hearing how many of how many are done. As many go as Drive has room for, not none when not all
+     * fit; one that fails is left for the next backup, and the rest go on.
      */
-    suspend fun upload(media: List<BackedUpMedia>, onProgress: (done: Int, total: Int) -> Unit) {
+    suspend fun upload(media: List<BackedUpMedia>, onProgress: (done: Int, total: Int) -> Unit): MediaUpload = coroutineScope {
         val stored = stored()
         val missing = media.distinctBy { it.fingerprint }.filter { nameOf(it.fingerprint) !in stored }
-        if (missing.isEmpty()) return
-        api.freeBytes()?.let { free -> if (free < missing.sumOf { it.sizeBytes }) throw DriveFullException() }
-        missing.forEachIndexed { index, item ->
-            onProgress(index, missing.size)
-            val name = nameOf(item.fingerprint)
-            stored[name] = upload(File(item.path), name, folderId(item.isVideo)).id
-        }
+        if (missing.isEmpty()) return@coroutineScope MediaUpload(leftForSpace = 0, failed = 0)
+        var room = api.freeBytes() ?: Long.MAX_VALUE
+        val fitting = missing.filter { item -> (item.sizeBytes <= room).also { fits -> if (fits) room -= item.sizeBytes } }
+        val done = AtomicInteger()
+        val failed = AtomicInteger()
+        val slots = Semaphore(PARALLEL_UPLOADS)
+        onProgress(0, fitting.size)
+        fitting.map { item ->
+            launch {
+                slots.withPermit {
+                    val name = nameOf(item.fingerprint)
+                    try {
+                        val id = upload(File(item.path), name, folderId(item.isVideo)).id
+                        storedLock.withLock { stored[name] = id }
+                    } catch (e: DriveAccessLostException) {
+                        throw e // No file can go on without access: every upload stops.
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        failed.incrementAndGet()
+                    }
+                }
+                onProgress(done.incrementAndGet(), fitting.size)
+            }
+        }.joinAll()
+        MediaUpload(leftForSpace = missing.size - fitting.size, failed = failed.get())
     }
 
-    /** Deletes every file kept here that is not one of [fingerprints]. */
+    /** Deletes every file kept here that is not one of [fingerprints], and every copy of a file beyond its first. */
     suspend fun keepOnly(fingerprints: Set<String>) {
         val wanted = fingerprints.mapTo(HashSet(), ::nameOf)
         val stored = stored()
-        stored.keys.filter { it !in wanted }.forEach { name -> api.delete(stored.remove(name)!!) }
+        (stored.filterKeys { it !in wanted }.values + extraCopies).forEach { api.delete(it) }
+        stored.keys.retainAll(wanted)
+        extraCopies.clear()
     }
 
     /**
@@ -175,7 +217,7 @@ internal class DriveMedia(
      * is done: sealing is never the same twice, so an upload carried on in a later run must send the same copy.
      */
     private suspend fun upload(file: File, name: String, folder: String): DriveFile {
-        if (key == null) return api.upload(file, name, folder, mapOf(KIND to MEDIA_FILE))
+        if (key == null) return api.upload(file, name, folder, mapOf(KIND to fileKind))
         val sealed = File(cacheDir, "$name.sealed")
         if (!sealed.isFile) {
             val partial = File(cacheDir, "$name.sealed.part")
@@ -186,13 +228,12 @@ internal class DriveMedia(
                 if (!partial.renameTo(sealed)) throw IOException("Could not seal $name")
             }
         }
-        return api.upload(sealed, name, folder, mapOf(KIND to MEDIA_FILE)).also { sealed.delete() }
+        return api.upload(sealed, name, folder, mapOf(KIND to fileKind)).also { sealed.delete() }
     }
 
+    /** Every file of this kind in Drive, wherever it is - one for each name, the copies beyond it set aside. */
     private suspend fun stored(): MutableMap<String, String> = stored ?: mutableMapOf<String, String>().also { all ->
-        listOf(false, true).forEach { isVideo ->
-            api.find(mapOf(KIND to MEDIA_FILE), folderId(isVideo)).associateTo(all) { it.name to it.id }
-        }
+        api.find(mapOf(KIND to fileKind)).forEach { file -> if (all.putIfAbsent(file.name, file.id) != null) extraCopies += file.id }
         stored = all
     }
 

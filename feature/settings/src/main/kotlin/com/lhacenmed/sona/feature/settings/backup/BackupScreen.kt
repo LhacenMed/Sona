@@ -33,6 +33,7 @@ import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDia
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.backup.BackupOutcome
 import com.lhacenmed.sona.feature.backup.BackupSchedule
 import com.lhacenmed.sona.feature.backup.work.BackupFailure
 import com.lhacenmed.sona.feature.backup.work.BackupRun
@@ -87,8 +88,8 @@ data object BackupScreen : Screen {
         val isBackingUp = backupRun is BackupRun.Running
         val isRestoring = restoreRun is BackupRun.Running
 
-        RunOutcomeToast(backupRun, successRes = R.string.backup_done, failureRes = R.string.backup_failed, filesWaitingRes = R.string.backup_done_files_waiting)
-        RunOutcomeToast(restoreRun, successRes = R.string.restore_done, failureRes = R.string.restore_failed, filesWaitingRes = R.string.restore_done)
+        RunOutcomeToast(backupRun, successRes = R.string.backup_done, failureRes = R.string.backup_failed)
+        RunOutcomeToast(restoreRun, successRes = R.string.restore_done, failureRes = R.string.restore_failed)
         // Over - with this screen open or not - so nothing is left asking about it.
         if (!isBackingUp) isStoppingBackup = false
 
@@ -272,6 +273,15 @@ private fun RestorableBackupItem(backup: RestorableBackup, onClick: () -> Unit, 
     )
 }
 
+/** What a backup that ended so says, where it says more than that it was saved. */
+private val BackupOutcome.messageRes: Int?
+    @StringRes get() = when (this) {
+        BackupOutcome.SAVED_FILES_WAITING -> R.string.backup_done_files_waiting
+        BackupOutcome.SAVED_FILES_LEFT -> R.string.backup_done_files_left
+        BackupOutcome.SAVED_DRIVE_FULL -> R.string.backup_done_drive_full
+        BackupOutcome.SAVED, BackupOutcome.UNCHANGED -> null
+    }
+
 private val BackupSchedule.labelRes: Int
     @StringRes get() = when (this) {
         BackupSchedule.OFF -> R.string.backup_schedule_off
@@ -284,16 +294,15 @@ private val BackupSchedule.labelRes: Int
  * for a failure the user can do something about, what.
  */
 @Composable
-private fun RunOutcomeToast(run: BackupRun?, @StringRes successRes: Int, @StringRes failureRes: Int, @StringRes filesWaitingRes: Int) {
+private fun RunOutcomeToast(run: BackupRun?, @StringRes successRes: Int, @StringRes failureRes: Int) {
     val context = LocalContext.current
     var wasRunning by remember { mutableStateOf(false) }
     LaunchedEffect(run) {
         if (wasRunning) {
             when (run) {
-                is BackupRun.Succeeded -> context.toast(if (run.areFilesWaiting) filesWaitingRes else successRes)
+                is BackupRun.Succeeded -> context.toast(run.outcome?.messageRes ?: successRes)
                 BackupRun.Stopped -> context.toast(R.string.backup_stopped)
                 is BackupRun.Failed -> when (run.reason) {
-                    BackupFailure.DRIVE_FULL -> context.toast(R.string.backup_failed_drive_full)
                     BackupFailure.DRIVE_ACCESS_LOST -> context.toast(R.string.backup_failed_drive_access)
                     null -> context.toast(listOfNotNull(context.getString(failureRes), run.detail).joinToString(": "))
                 }

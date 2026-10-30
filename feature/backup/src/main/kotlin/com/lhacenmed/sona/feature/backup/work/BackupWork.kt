@@ -13,6 +13,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import com.lhacenmed.sona.feature.backup.BackupOutcome
 import com.lhacenmed.sona.feature.backup.BackupProgress
 import com.lhacenmed.sona.feature.backup.BackupSchedule
 import java.util.concurrent.TimeUnit
@@ -30,13 +31,10 @@ private const val KEY_DONE = "done"
 private const val KEY_TOTAL = "total"
 internal const val KEY_FAILURE = "failure"
 internal const val KEY_FAILURE_DETAIL = "failureDetail"
-internal const val KEY_FILES_WAITING = "filesWaiting"
+internal const val KEY_OUTCOME = "outcome"
 
 /** Why a backup or a restore failed, where it is something the user can act on. */
 enum class BackupFailure {
-    /** Google Drive has no room for the files the backup would add. */
-    DRIVE_FULL,
-
     /** Access to Google Drive was taken back from the user's Google Account. */
     DRIVE_ACCESS_LOST,
 }
@@ -46,8 +44,8 @@ sealed interface BackupRun {
     /** Under way - at [progress], once it has said where it is. */
     data class Running(val progress: BackupProgress?) : BackupRun
 
-    /** Done - [areFilesWaiting] where its music and videos still wait for Wi-Fi to go to Drive. */
-    data class Succeeded(val areFilesWaiting: Boolean) : BackupRun
+    /** Done - a backup, as [outcome] says; a restore, with none. */
+    data class Succeeded(val outcome: BackupOutcome?) : BackupRun
 
     /** Failed - for [reason], where it is one the user can act on; else with [detail], what went wrong, where known. */
     data class Failed(val reason: BackupFailure?, val detail: String?) : BackupRun
@@ -91,7 +89,7 @@ object BackupWork {
         WorkManager.getInstance(context).cancelUniqueWork(BACKUP)
     }
 
-    /** Backs up again - quietly - once the device is on Wi-Fi, for a backup whose music and videos waited for it. */
+    /** Backs up again - quietly - once the device is on Wi-Fi, for a backup whose music and videos did not all go. */
     internal fun backUpOnWifi(context: Context) {
         val request = OneTimeWorkRequestBuilder<BackupWorker>()
             .setInputData(workDataOf(KEY_AUTOMATIC to true))
@@ -120,7 +118,8 @@ object BackupWork {
             val info = infos.lastOrNull() ?: return@map null
             when (info.state) {
                 WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED, WorkInfo.State.RUNNING -> BackupRun.Running(info.progress.toBackupProgress())
-                WorkInfo.State.SUCCEEDED -> BackupRun.Succeeded(info.outputData.getBoolean(KEY_FILES_WAITING, false))
+                WorkInfo.State.SUCCEEDED ->
+                    BackupRun.Succeeded(info.outputData.getString(KEY_OUTCOME)?.let { name -> BackupOutcome.entries.firstOrNull { it.name == name } })
                 WorkInfo.State.CANCELLED -> BackupRun.Stopped
                 WorkInfo.State.FAILED ->
                     BackupRun.Failed(

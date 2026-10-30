@@ -42,6 +42,8 @@ import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -76,6 +78,12 @@ enum class BackupOutcome {
 
     /** Saved, its music and videos waiting for Wi-Fi to go to Drive. */
     SAVED_FILES_WAITING,
+
+    /** Saved, some of its music and videos not uploaded for an error - for the next backup to try again. */
+    SAVED_FILES_LEFT,
+
+    /** Saved, some of its music and videos not uploaded for want of room in Drive. */
+    SAVED_DRIVE_FULL,
 }
 
 /** What restoring an opened backup would do, worked out before anything changes. */
@@ -131,6 +139,12 @@ class BackupRepository @Inject constructor(
     private val backupFolders: BackupFolders,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
+    /**
+     * One backup at a time - a user's, an automatic one, the one waiting for Wi-Fi - and no deleting while one runs:
+     * two at once would upload the same files twice, and tidying Drive could take files a backup is still uploading.
+     */
+    private val runs = Mutex()
+
     /** Where an opened backup is unpacked until it is restored - kept across a restart, so a restore can resume. */
     private val restoreDirectory get() = File(context.noBackupFilesDir, RESTORE_DIRECTORY_NAME)
 
@@ -145,7 +159,7 @@ class BackupRepository @Inject constructor(
      * uploaded over Wi-Fi, or on mobile data too where the user allows it. [skipIfUnchanged] - for an automatic one -
      * writes nothing when the last backup already holds the same and is everywhere it should be.
      */
-    suspend fun backUp(skipIfUnchanged: Boolean, onProgress: (BackupProgress) -> Unit): BackupOutcome = withContext(ioDispatcher) {
+    suspend fun backUp(skipIfUnchanged: Boolean, onProgress: (BackupProgress) -> Unit): BackupOutcome = runs.withLock { withContext(ioDispatcher) {
         val isDriveConnected = backupSettings.isDriveConnectedNow()
         val foldersLeftOut = backupSettings.foldersLeftOutNow()
         val trackFiles = backupDao.trackFiles()
@@ -214,33 +228,38 @@ class BackupRepository @Inject constructor(
             BackupArchive.write(key?.let { BackupCipher.encrypting(output, it) } ?: output, manifest, library, settings, files)
         }
         keep(localBackups, name, write)
-        var isComplete = true
+        var outcome = BackupOutcome.SAVED
         if (isDriveConnected) {
             // The files go first, so the backup Drive keeps never lists one it does not have yet.
-            if (backupSettings.usesMobileDataNow() || isOnWifi()) {
-                driveBackups.media(key).upload(media.filter { it.isKeptInDrive }) { done, total ->
+            outcome = if (backupSettings.usesMobileDataNow() || isOnWifi()) {
+                val upload = driveBackups.media(key).upload(media.filter { it.isKeptInDrive }) { done, total ->
                     onProgress(BackupProgress.UploadingFiles(done, total))
                 }
+                when {
+                    upload.leftForSpace > 0 -> BackupOutcome.SAVED_DRIVE_FULL
+                    upload.failed > 0 -> BackupOutcome.SAVED_FILES_LEFT
+                    else -> BackupOutcome.SAVED
+                }
             } else {
-                isComplete = false
+                BackupOutcome.SAVED_FILES_WAITING
             }
             onProgress(BackupProgress.Working)
             keep(driveBackups, name, write)
             collectDriveMedia(key)
         }
-        // A backup whose files still wait for Wi-Fi is not the last word: the next automatic one is made all the same.
-        if (!isComplete) return@withContext BackupOutcome.SAVED_FILES_WAITING
+        // A backup whose files did not all go is not the last word: the next automatic one is made all the same.
+        if (outcome != BackupOutcome.SAVED) return@withContext outcome
         backupSettings.recordBackup(createdAt, content)
         BackupOutcome.SAVED
-    }
+    } }
 
     /**
      * Deletes a backup from this device, as [onDevice], and from Drive, as [inDrive] - each where given - and then from
      * Drive the files no backup kept still lists.
      */
-    suspend fun delete(onDevice: StoredBackup?, inDrive: StoredBackup?) {
+    suspend fun delete(onDevice: StoredBackup?, inDrive: StoredBackup?) = runs.withLock {
         onDevice?.let { localBackups.delete(it) }
-        if (inDrive == null) return
+        if (inDrive == null) return@withLock
         driveBackups.delete(inDrive)
         collectDriveMedia(backupSettings.key())
     }

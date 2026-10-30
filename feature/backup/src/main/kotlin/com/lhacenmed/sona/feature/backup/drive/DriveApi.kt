@@ -11,14 +11,17 @@ import java.time.Instant
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.random.Random
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okio.BufferedSink
@@ -32,13 +35,25 @@ private const val FILE_FIELDS = "id,name,size,createdTime,appProperties"
 private const val FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 
 /** What an upload sends at a time - a multiple of 256 KiB, as resumable uploads require. */
-private const val CHUNK_BYTES = 8L * 1024 * 1024
+private const val CHUNK_BYTES = 16L * 1024 * 1024
+
+/** Up to this size a file goes in one request, its details with it - two for each song is what slowed a library. */
+private const val ONE_REQUEST_MAX_BYTES = 5L * 1024 * 1024
+
+/** How many times a request Drive asked to slow down for, or one cut off, is sent before it fails. */
+private const val CALL_ATTEMPTS = 6
+private const val FIRST_BACKOFF_MS = 1_000L
+private const val MAX_JITTER_MS = 500L
 
 /** How many times a chunk is sent again after a dropped connection before the upload gives up. */
 private const val CHUNK_ATTEMPTS = 5
 private const val RETRY_DELAY_MS = 2_000L
 
 private const val HTTP_UNAUTHORIZED = 401
+private const val HTTP_FORBIDDEN = 403
+private const val HTTP_TOO_MANY_REQUESTS = 429
+private const val HTTP_SERVER_ERROR = 500
+private const val RATE_LIMIT_PEEK_BYTES = 4_096L
 private const val HTTP_NOT_FOUND = 404
 private const val HTTP_GONE = 410
 private const val HTTP_RESUME_INCOMPLETE = 308
@@ -103,11 +118,13 @@ internal class DriveApi @Inject constructor(
     }
 
     /**
-     * Uploads [file] as [name] into [parentId] - in chunks, each sent again where the connection dropped, and
-     * carried on from where an earlier run left it, so a large file is never started over.
+     * Uploads [file] as [name] into [parentId]: a small one in a single request, a large one in chunks - each sent
+     * again where the connection dropped, and carried on from where an earlier run left it, so it is never started
+     * over.
      */
     suspend fun upload(file: File, name: String, parentId: String, properties: Map<String, String>): DriveFile {
         val size = file.length()
+        if (size <= ONE_REQUEST_MAX_BYTES) return uploadAtOnce(file, name, parentId, properties)
         val key = "$name:$size:${file.lastModified()}"
         var session = uploads.getString(key, null)
         var isResuming = session != null
@@ -143,12 +160,24 @@ internal class DriveApi @Inject constructor(
                     offset = it.rangeEnd()
                 }
                 failures = 0
+            } catch (e: DriveAccessLostException) {
+                throw e
             } catch (e: IOException) {
                 if (++failures >= CHUNK_ATTEMPTS) throw e
                 isResuming = session != null
                 delay(failures * RETRY_DELAY_MS)
             }
         }
+    }
+
+    /** [file] uploaded as [name] in one request, its details and its bytes together. */
+    private suspend fun uploadAtOnce(file: File, name: String, parentId: String, properties: Map<String, String>): DriveFile {
+        val body = MultipartBody.Builder()
+            .setType("multipart/related".toMediaType())
+            .addPart(metadata(name, properties, parentId).toString().toRequestBody(JSON))
+            .addPart(file.asRequestBody(BINARY))
+            .build()
+        return json(Request.Builder().url("$UPLOAD_URL?uploadType=multipart&fields=$FILE_FIELDS").post(body)).toDriveFile()
     }
 
     /** Begins an upload of [size] bytes as [name], and returns where its bytes go. */
@@ -198,10 +227,38 @@ internal class DriveApi @Inject constructor(
     private suspend fun json(request: Request.Builder): JSONObject = call(request).use { JSONObject(it.body!!.string()) }
 
     /**
-     * Sends [request] with a current token - once more with a fresh one if Drive refused it - and fails on any
-     * answer other than success or "resume incomplete".
+     * Sends [request], and fails on any answer other than success or "resume incomplete" - after sending it again,
+     * waiting longer each time, while Drive asks to slow down or briefly fails, as Drive asks of every app. One cut
+     * off is sent again too, unless it makes a file: sent twice, that would make two.
      */
-    private suspend fun call(request: Request.Builder): Response = withContext(ioDispatcher) {
+    private suspend fun call(request: Request.Builder): Response {
+        var attempt = 0
+        while (true) {
+            val response = try {
+                send(request)
+            } catch (e: DriveAccessLostException) {
+                throw e
+            } catch (e: IOException) {
+                if (request.build().method == "POST" || ++attempt >= CALL_ATTEMPTS) throw e
+                delay(backoff(attempt))
+                continue
+            }
+            if (response.isTransient() && ++attempt < CALL_ATTEMPTS) {
+                response.close()
+                delay(backoff(attempt))
+                continue
+            }
+            if (!response.isSuccessful && response.code != HTTP_RESUME_INCOMPLETE) {
+                val message = response.body?.string()
+                response.close()
+                throw DriveHttpException(response.code, "Drive answered ${response.code}: $message")
+            }
+            return response
+        }
+    }
+
+    /** Sends [request] with a current token - once more with a fresh one if Drive refused it. */
+    private suspend fun send(request: Request.Builder): Response = withContext(ioDispatcher) {
         val token = access.token()
         var response = http.newCall(request.header("Authorization", "Bearer $token").build()).execute()
         if (response.code == HTTP_UNAUTHORIZED) {
@@ -214,14 +271,17 @@ internal class DriveApi @Inject constructor(
                 access.lose()
             }
         }
-        if (!response.isSuccessful && response.code != HTTP_RESUME_INCOMPLETE) {
-            val message = response.body?.string()
-            response.close()
-            throw DriveHttpException(response.code, "Drive answered ${response.code}: $message")
-        }
         response
     }
 }
+
+/** Whether Drive asked to slow down, or failed for the moment - what it asks to be sent again, a little later. */
+private fun Response.isTransient(): Boolean =
+    code == HTTP_TOO_MANY_REQUESTS || code >= HTTP_SERVER_ERROR ||
+        (code == HTTP_FORBIDDEN && peekBody(RATE_LIMIT_PEEK_BYTES).string().contains("ratelimitexceeded", ignoreCase = true))
+
+/** How long to wait before the [attempt]th try again: doubling from a second, with a little chance in it. */
+private fun backoff(attempt: Int): Long = (FIRST_BACKOFF_MS shl (attempt - 1)) + Random.nextLong(MAX_JITTER_MS)
 
 private fun metadata(name: String, properties: Map<String, String>, parentId: String?) = JSONObject()
     .put("name", name)

@@ -19,7 +19,6 @@ import com.lhacenmed.sona.feature.backup.BackupProgress
 import com.lhacenmed.sona.feature.backup.BackupRepository
 import com.lhacenmed.sona.feature.backup.R
 import com.lhacenmed.sona.feature.backup.drive.DriveAccessLostException
-import com.lhacenmed.sona.feature.backup.drive.DriveFullException
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -44,8 +43,11 @@ internal class BackupWorker(context: Context, params: WorkerParameters) : Corout
         val reporter = ProgressReporter(this, R.string.backup_notification_title, isRestore = false, showsNotification = isForeground, stop = stop)
         return try {
             val outcome = repositoryOf(applicationContext).backUp(skipIfUnchanged = isAutomatic, onProgress = reporter::report)
-            if (outcome == BackupOutcome.SAVED_FILES_WAITING) BackupWork.backUpOnWifi(applicationContext)
-            Result.success(workDataOf(KEY_FILES_WAITING to (outcome == BackupOutcome.SAVED_FILES_WAITING)))
+            // Files that waited for Wi-Fi, or failed this time, go with the next backup on Wi-Fi, whenever that is.
+            if (outcome == BackupOutcome.SAVED_FILES_WAITING || outcome == BackupOutcome.SAVED_FILES_LEFT) {
+                BackupWork.backUpOnWifi(applicationContext)
+            }
+            Result.success(workDataOf(KEY_OUTCOME to outcome.name))
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (e: Exception) {
@@ -87,7 +89,6 @@ internal class RestoreWorker(context: Context, params: WorkerParameters) : Corou
 /** A run failed by [exception] - with the reason, where it is one the user can act on, else with what went wrong. */
 private fun failure(exception: Exception): ListenableWorker.Result {
     val reason = when (exception) {
-        is DriveFullException -> BackupFailure.DRIVE_FULL
         is DriveAccessLostException -> BackupFailure.DRIVE_ACCESS_LOST
         else -> return ListenableWorker.Result.failure(workDataOf(KEY_FAILURE_DETAIL to exception.detail()))
     }
@@ -121,6 +122,8 @@ private class ProgressReporter(
 ) {
     private var reported: Pair<String, Int>? = null
 
+    // Uploads report from several at once.
+    @Synchronized
     fun report(progress: BackupProgress) {
         val percent = progress.fraction()?.let { (it * 100).roundToInt() } ?: -1
         val step = progress::class.simpleName.orEmpty() to percent

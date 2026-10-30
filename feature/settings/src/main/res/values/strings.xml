@@ -399,8 +399,9 @@
     <string name="backup_none">No backup yet</string>
     <string name="backup_done">Backup saved</string>
     <string name="backup_done_files_waiting">Backup saved. Music and videos will upload on Wi-Fi</string>
+    <string name="backup_done_files_left">Backup saved. Some music and videos didn\'t upload, and will with the next backup</string>
+    <string name="backup_done_drive_full">Backup saved, but Google Drive is full: some music and videos didn\'t upload</string>
     <string name="backup_failed">Could not back up</string>
-    <string name="backup_failed_drive_full">Google Drive is full</string>
     <string name="backup_failed_drive_access">Google Drive is disconnected. Connect it again</string>
     <string name="backup_stopped">Backup stopped</string>
     <string name="backup_schedule_title">Automatic backups</string>
