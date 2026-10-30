@@ -36,13 +36,13 @@ Backups are made only when you ask for one, or on the schedule you turn on in Se
 | Where | What is kept |
 | --- | --- |
 | On your device, in `Android/media/com.lhacenmed.sona/Backup` | Your last five backups. Android deletes this folder when Sona is uninstalled. |
-| In your Google Drive, only if you connect it | Your backups, and one copy of each of your music and video files, in a folder Sona creates |
+| In your Google Drive, only if you connect it | Your backups, and one copy of each music and video file from the folders you choose, in a folder Sona creates |
 
 You can encrypt backups with a passphrase (off by default). Encrypted backups are sealed with AES-256-GCM using a key made from your passphrase; your passphrase is never stored or sent anywhere, and without it an encrypted backup cannot be opened, by Sona or by anyone else.
 
 ### Google Drive
 
-Connecting Google Drive is optional. When you connect it, Sona asks Google only for permission to see, create and delete the files Sona itself creates in your Drive (the `drive.file` scope). Sona cannot see any other file in your Drive, and does not ask for your name, email address or profile. Google keeps the sign-in; Sona stores no password or token of its own.
+Connecting Google Drive is optional. When you connect it, Sona asks Google only for permission to see, create and delete the files Sona itself creates in your Drive (the `drive.file` scope). Sona cannot see any other file in your Drive. It also asks for your account's email address, only to show in Settings which account is connected; it stays on your device. Sona does not ask for your name or profile. Google keeps the sign-in; Sona stores no password or token of its own.
 
 Sona uses this access only to upload, list, download and delete its own backups and files, at your request or on your backup schedule. It sends this data only to your own Google Drive, never to the developer or anyone else, and does not use it for advertising, analytics or any other purpose. You can disconnect Drive in Sona, or remove Sona's access at any time from your Google Account's security settings.
 
@@ -57,7 +57,7 @@ Sona has no server of its own. It connects only to the services below, each for 
 | Update check | At launch and when the connection returns, if a release build is online; when you tap **Check now** in Settings › Updates | Nothing | `raw.githubusercontent.com` |
 | Update download | When you tap **Update** in the update dialog | Nothing | `github.com`, which redirects to GitHub's download servers |
 | Changelog, commits and avatars | When you open Settings › Updates or About | Nothing | `api.github.com`, `github.com` |
-| **Find missing lyrics** (on by default, in Settings › Lyrics) | While music plays and the device is online, for the playing, next and previous tracks whose files have no lyrics | Title, artist, album, length | The lyrics services below |
+| **Find missing lyrics** (off by default, in Settings › Lyrics) | While music plays and the device is online, for the playing, next and previous tracks whose files have no lyrics | Title, artist, album, length | The lyrics services below |
 | Lyrics search in the tag editor | When you search for a track's lyrics | Title, artist, album, length | The lyrics services below |
 | Tag lookup in the tag editor | When you look up a track's tags, or auto-tag tracks | Title, artist, album | `api.deezer.com`, `itunes.apple.com`, and their cover image servers |
 | Japanese romanization | When you choose to download its dictionary (13 MB) in Settings › Lyrics | Nothing | `repo1.maven.org` |
@@ -84,10 +84,6 @@ Tracks are shared only when you choose Share, and only with the app you pick in 
 | Install unknown apps | Installing a downloaded update; Android asks for your approval |
 | Foreground service, wake lock | Playing, downloading, backing up and restoring while the app is in the background |
 | Modify audio settings | The equalizer |
-
-## Changes
-
-Changes to this policy are made in this file and are visible in the repository's history.
 
 ## Contact
 
