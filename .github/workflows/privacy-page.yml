@@ -5,10 +5,16 @@ name: Privacy page
 #
 # The site lives on the gh-pages branch; this rewrites its privacy/index.md from PRIVACY.md, with the front
 # matter Jekyll needs, and commits only when the text changed.
+#
+# Main is written by the release pipelines, and a push a workflow makes starts no other workflow - so this
+# runs when one of them finishes, as well as on a push made by hand.
 on:
   push:
     branches: [main]
     paths: [PRIVACY.md]
+  workflow_run:
+    workflows: [Stable release]
+    types: [completed]
   workflow_dispatch:
 
 concurrency:
@@ -26,6 +32,7 @@ jobs:
       - name: Check out main
         uses: actions/checkout@v7
         with:
+          ref: main
           path: source
 
       - name: Check out the site
@@ -45,5 +52,5 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -am "site: privacy policy from ${GITHUB_SHA::7}"
+          git commit -am "site: privacy policy from main"
           git push
