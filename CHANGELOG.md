@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.6.10] - 2026-10-30
+
+### Added
+
+- Look online for missing lyrics only once turned on.
+- Back up to Google Drive, with the music and videos of the folders you choose.
+
 ## [1.6.9] - 2026-10-30
 
 ### Added

@@ -1,6 +1,6 @@
 {
-  "versionCode": 106099000,
-  "versionName": "1.6.9",
-  "apkUrl": "https://github.com/LhacenMed/Sona/releases/download/v1.6.9/sona-1.6.9-release-universal.apk",
-  "notes": "### Added\n\n- Keep plays from chosen collections out of Most played.\n- Swipe right on a lyrics line to play from it.\n- Remove tracks from Recently played and Most played.\n- Tap the lyrics line above the seek bar to open the full lyrics right in the player, instead of in a separate sheet.\n- Back up your playlists, favorites, play history and settings, automatically or by hand, and restore them on any device.\n- Choose between the Default player, with the lyrics in a sheet of their own, and the Immersive one, with the lyrics opening in place.\n\n### Fixed\n\n- Reserve FAB stack height in the list's bottom padding.\n- Drop HyperOS widget registration and resize to 4 cells."
+  "versionCode": 106109000,
+  "versionName": "1.6.10",
+  "apkUrl": "https://github.com/LhacenMed/Sona/releases/download/v1.6.10/sona-1.6.10-release-universal.apk",
+  "notes": "### Added\n\n- Look online for missing lyrics only once turned on.\n- Back up to Google Drive, with the music and videos of the folders you choose."
 }
