@@ -71,14 +71,16 @@ internal data class MediaUpload(val leftForSpace: Int, val failed: Int)
 class DriveBackups @Inject internal constructor(
     @ApplicationContext private val context: Context,
     private val api: DriveApi,
+    private val access: DriveAccess,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : BackupDestination {
 
     private val folderIds = mutableMapOf<String, String>()
+    private var folderAccount: String? = null
     private val folderLock = Mutex()
 
     override suspend fun list(): List<StoredBackup> =
-        api.find(mapOf(KIND to BACKUP), rootFolder())
+        inFolder(::rootFolder) { folderId -> api.find(mapOf(KIND to BACKUP), folderId) }
             .map { StoredBackup(it.id, it.name, it.createdAt, it.sizeBytes) }
             .sortedByDescending { it.createdAt }
 
@@ -86,7 +88,7 @@ class DriveBackups @Inject internal constructor(
         val file = File(context.cacheDir, name)
         try {
             withContext(ioDispatcher) { file.outputStream().buffered().use(write) }
-            api.upload(file, name, rootFolder(), mapOf(KIND to BACKUP))
+            inFolder(::rootFolder) { folderId -> api.upload(file, name, folderId, mapOf(KIND to BACKUP)) }
         } finally {
             file.delete()
         }
@@ -97,9 +99,9 @@ class DriveBackups @Inject internal constructor(
     override suspend fun delete(backup: StoredBackup) = api.delete(backup.id)
 
     /** The library's files kept here for backups sealed with [key] - or plain ones, for null. */
-    internal fun media(key: BackupKey?) = DriveMedia(api, key, context.cacheDir, ioDispatcher) { isVideo ->
+    internal fun media(key: BackupKey?) = DriveMedia(api, key, context.cacheDir, ioDispatcher) { isVideo, upload ->
         val folder = MediaFolder.of(isSealed = key != null, isVideo)
-        folder(folder.kind, folder.folderName, rootFolder())
+        inFolder({ folder(folder.kind, folder.folderName, rootFolder()) }, upload)
     }
 
     /** Deletes the folders of sealed files - and them with them - once no encrypted backup is kept to need them. */
@@ -112,8 +114,30 @@ class DriveBackups @Inject internal constructor(
 
     private suspend fun rootFolder() = folder(ROOT_FOLDER, ROOT_FOLDER_NAME, parentId = null)
 
-    /** The folder of [kind] - found, or made the first time - remembered for as long as the app runs. */
+    /**
+     * [block] run in the folder [folderOf] gives - and once more, in the folder found or made again, where Drive says
+     * it is gone: deleted in Drive since it was found, it and the folders remembered with it are let go of.
+     */
+    private suspend fun <T> inFolder(folderOf: suspend () -> String, block: suspend (folderId: String) -> T): T {
+        val folderId = folderOf()
+        return try {
+            block(folderId)
+        } catch (e: DriveHttpException) {
+            if (e.code != HTTP_NOT_FOUND) throw e
+            // Only the first of the uploads under way to find it gone lets go; the rest use what that one found again.
+            folderLock.withLock { if (folderId in folderIds.values) folderIds.clear() }
+            block(folderOf())
+        }
+    }
+
+    /** The folder of [kind] - found, or made the first time - remembered for as long as the app runs, for its account. */
     private suspend fun folder(kind: String, name: String, parentId: String?): String = folderLock.withLock {
+        // Another account has folders of its own: those found for the last one are let go of.
+        val account = access.account.value
+        if (account != folderAccount) {
+            folderIds.clear()
+            folderAccount = account
+        }
         folderIds.getOrPut(kind) {
             api.find(mapOf(KIND to kind)).firstOrNull()?.id ?: api.createFolder(name, mapOf(KIND to kind), parentId)
         }
@@ -132,7 +156,8 @@ internal class DriveMedia(
     private val key: BackupKey?,
     private val cacheDir: File,
     private val ioDispatcher: CoroutineDispatcher,
-    private val folderId: suspend (isVideo: Boolean) -> String,
+    /** Runs an upload in the music or the videos folder - see [DriveBackups.inFolder]. */
+    private val inFolder: suspend (isVideo: Boolean, upload: suspend (folderId: String) -> DriveFile) -> DriveFile,
 ) : CloudMediaStore {
 
     /** Plain and sealed files are told apart by kind, so tidying the one never takes the other. */
@@ -187,7 +212,7 @@ internal class DriveMedia(
                 slots.withPermit {
                     val name = nameOf(item.fingerprint)
                     try {
-                        val id = upload(File(item.path), name, folderId(item.isVideo)).id
+                        val id = inFolder(item.isVideo) { folderId -> upload(File(item.path), name, folderId) }.id
                         storedLock.withLock { stored[name] = id }
                     } catch (e: DriveAccessLostException) {
                         throw e // No file can go on without access: every upload stops.

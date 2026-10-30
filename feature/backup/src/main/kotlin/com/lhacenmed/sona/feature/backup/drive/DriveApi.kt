@@ -54,7 +54,7 @@ private const val HTTP_FORBIDDEN = 403
 private const val HTTP_TOO_MANY_REQUESTS = 429
 private const val HTTP_SERVER_ERROR = 500
 private const val RATE_LIMIT_PEEK_BYTES = 4_096L
-private const val HTTP_NOT_FOUND = 404
+internal const val HTTP_NOT_FOUND = 404
 private const val HTTP_GONE = 410
 private const val HTTP_RESUME_INCOMPLETE = 308
 
@@ -84,7 +84,7 @@ internal class DriveApi @Inject constructor(
 
     /**
      * Where each upload under way can carry on - by the file's name, size and last change, so a file that changed
-     * since is never sent on the end of what its old bytes began. Kept on disk, so an upload a run did not finish -
+     * since is never sent on the end of what its old bytes began, and by account, so it never ends in another's Drive. Kept on disk, so an upload a run did not finish -
      * stopped, cut off, or the app closed - carries on where Drive stopped, in whichever run comes next.
      */
     private val uploads = context.getSharedPreferences("drive_uploads", Context.MODE_PRIVATE)
@@ -125,7 +125,7 @@ internal class DriveApi @Inject constructor(
     suspend fun upload(file: File, name: String, parentId: String, properties: Map<String, String>): DriveFile {
         val size = file.length()
         if (size <= ONE_REQUEST_MAX_BYTES) return uploadAtOnce(file, name, parentId, properties)
-        val key = "$name:$size:${file.lastModified()}"
+        val key = "$name:$size:${file.lastModified()}:${access.account.value}"
         var session = uploads.getString(key, null)
         var isResuming = session != null
         var offset = 0L
