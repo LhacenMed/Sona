@@ -20,13 +20,14 @@ Sona keeps the following **only on your device**, in its private app storage:
 | Playback state: the queue, current track and position | Resume where you left off |
 | Settings | Your preferences |
 | Lyrics cache | Avoid re-reading lyrics from files |
+| The Japanese romanization dictionary, once you download it | Show Japanese lyrics in Latin script |
 | A downloaded update APK, while an update is pending | Install the update; deleted once installed |
 
 All of it is deleted when you uninstall Sona. You can clear it earlier in Android's app settings (Storage › Clear data).
 
 **Android backup:** Sona allows Android's system backup. If backup is enabled on your device, Android may include this app data in your device backup, for example Google's. That backup is handled by Android and your backup provider, not by Sona. You can turn it off in Android's settings.
 
-Sona reads your music files but never modifies or deletes them. The only files it writes outside its own storage are playlists you export, to the location you choose, backups (below), and music and videos a restore puts back.
+Sona changes your music files only when you ask it to - editing their tags, or deleting tracks you choose - and, while **Find missing lyrics** is on, to write lyrics it found into a file that had none. Outside its own storage it otherwise writes only playlists you export, to the location you choose, backups (below), and music and videos a restore puts back.
 
 ## Backups
 
@@ -49,16 +50,22 @@ Sona's use and transfer of information received from Google APIs adheres to the 
 
 ## Network use
 
-Sona uses the network **only for app updates**, and for **Google Drive** once you connect it:
+Sona has no server of its own. It connects only to the services below, each for one feature, and sends none of them anything that identifies you. The only content it sends is a track's title, artist, album and length, when it looks up that track's lyrics or tags.
 
-| When | Request | To |
-| --- | --- | --- |
-| At launch and when the connection returns, if a release build is online | Download the version manifest (`version.json`) | `raw.githubusercontent.com` |
-| When you tap **Check now** in Settings › Updates | Download the version manifest | `raw.githubusercontent.com` |
-| When you tap **Update** in the update dialog | Download the new APK | `github.com`, which redirects to GitHub's download servers |
-| When you back up or restore with Google Drive connected | Upload, list, download or delete Sona's own files | `googleapis.com`, your Google Drive |
+| Feature | When | What is sent | To |
+| --- | --- | --- | --- |
+| Update check | At launch and when the connection returns, if a release build is online; when you tap **Check now** in Settings › Updates | Nothing | `raw.githubusercontent.com` |
+| Update download | When you tap **Update** in the update dialog | Nothing | `github.com`, which redirects to GitHub's download servers |
+| Changelog, commits and avatars | When you open Settings › Updates or About | Nothing | `api.github.com`, `github.com` |
+| **Find missing lyrics** (on by default, in Settings › Lyrics) | While music plays and the device is online, for the playing, next and previous tracks whose files have no lyrics | Title, artist, album, length | The lyrics services below |
+| Lyrics search in the tag editor | When you search for a track's lyrics | Title, artist, album, length | The lyrics services below |
+| Tag lookup in the tag editor | When you look up a track's tags, or auto-tag tracks | Title, artist, album | `api.deezer.com`, `itunes.apple.com`, and their cover image servers |
+| Japanese romanization | When you choose to download its dictionary (13 MB) in Settings › Lyrics | Nothing | `repo1.maven.org` |
+| Google Drive backup | When you back up or restore with Google Drive connected | Your backups and files | `googleapis.com`, your own Google Drive |
 
-The update requests send no personal data. Like any web request, they reveal your IP address and a standard HTTP user agent to GitHub, which handles them under the [GitHub Privacy Statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement). Google Drive requests carry your backups to your own Drive, under the [Google Privacy Policy](https://policies.google.com/privacy).
+The lyrics services are LRCLIB (`lrclib.net`), Musixmatch (`apic-desktop.musixmatch.com`), NetEase Cloud Music (`music.163.com`), KuGou (`mobileservice.kugou.com`, `lyrics.kugou.com`), Genius (`genius.com`), SimpMusic (`api-lyrics.simpmusic.org`), BetterLyrics and Unison (`lyrics-api.boidu.dev`, `unison.boidu.dev`), and YouLyPlus (`lyricsplus.binimum.org`, `lyricsplus.prjktla.my.id`, `lyricsplus.prjktla.workers.dev`, `lyricsplus.atomix.one`, `lyricsplus-seven.vercel.app`). Turn off **Find missing lyrics** and Sona contacts them only when you search in the tag editor.
+
+Like any web request, each of these reveals your IP address and a standard HTTP user agent to the service it goes to, which handles it under its own privacy policy - GitHub's under the [GitHub Privacy Statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement), Google Drive's under the [Google Privacy Policy](https://policies.google.com/privacy).
 
 Nothing else in the app uses the network.
 
@@ -72,8 +79,8 @@ Tracks are shared only when you choose Share, and only with the app you pick in 
 | --- | --- |
 | Music and audio (`READ_MEDIA_AUDIO`; `READ_EXTERNAL_STORAGE` on Android 12 and older) | Reading your music files |
 | Notifications | Playback controls and update download progress |
-| Internet, network state | The update and Google Drive requests above |
-| All files access | Editing tags and deleting tracks you choose, and putting restored music and videos back where they were |
+| Internet, network state | The requests listed under Network use |
+| All files access | Editing tags and deleting tracks you choose, writing found lyrics into files, and putting restored music and videos back where they were |
 | Install unknown apps | Installing a downloaded update; Android asks for your approval |
 | Foreground service, wake lock | Playing, downloading, backing up and restoring while the app is in the background |
 | Modify audio settings | The equalizer |
