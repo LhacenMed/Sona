@@ -114,7 +114,7 @@ class LyricsSettings @Inject constructor(
      * Whether the playing track, and the ones either side of it in the queue, have lyrics looked for on the web
      * when their files hold none - the best found written into them.
      */
-    val findMissingLyrics: Setting<Boolean> = cache.setting { it[FIND_MISSING_LYRICS] ?: true }
+    val findMissingLyrics: Setting<Boolean> = cache.setting { it[FIND_MISSING_LYRICS] ?: false }
 
     suspend fun setFindMissingLyrics(enabled: Boolean) = set(FIND_MISSING_LYRICS, enabled)
 
