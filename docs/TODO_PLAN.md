@@ -160,7 +160,7 @@ Ordered from most to least critical. Every entry describes **what** is broken or
 ## Priority 5 — Player UI Consolidation & Polish
 
 - [x] **5.1 Add and consolidate the equalizer entry point**
-  - Add an equalizer button to the cinematic player, in the queue bottom-sheet header, next to the existing lyrics and sleep-timer controls.
+  - Add an equalizer button to the default player, in the queue bottom-sheet header, next to the existing lyrics and sleep-timer controls.
   - This becomes the single default way to reach the equalizer.
   - All other existing equalizer entry points should be removed.
 

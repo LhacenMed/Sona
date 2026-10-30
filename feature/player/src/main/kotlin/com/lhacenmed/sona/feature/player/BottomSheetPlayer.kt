@@ -39,6 +39,7 @@ import com.lhacenmed.sona.feature.playback.SleepTimerState
 import com.lhacenmed.sona.feature.player.background.PlayerBackground
 import com.lhacenmed.sona.feature.player.background.playerColors
 import com.lhacenmed.sona.feature.player.style.ExpandedPlayer
+import com.lhacenmed.sona.feature.player.style.lyricsPresentation
 import com.lhacenmed.sona.feature.player.style.sheetColor
 import kotlin.math.abs
 import kotlinx.coroutines.delay
@@ -53,8 +54,9 @@ private const val KeyboardVolumeStep = 0.05f
  * The full player: the mini player as the sheet's collapsed content, expanding into the chosen player
  * style over its queue. Ported from ArchiveTune's `BottomSheetPlayer`.
  *
- * Everything here is shared by every style - the sheets, seeking, keyboard control, the lyrics the
- * player opens into, the sleep timer and the track menu. What a style draws is looked up in `style/PlayerStyles.kt`.
+ * Everything here is shared by every style - the sheets, seeking, keyboard control, the lyrics - opened in
+ * the player or in a sheet of their own, as the style's `lyricsPresentation` says - and their menu, the sleep
+ * timer and the track menu. What a style draws is looked up in `style/PlayerStyles.kt`.
  */
 @Composable
 internal fun BottomSheetPlayer(
@@ -125,7 +127,7 @@ internal fun BottomSheetPlayer(
             initialAnchor = DISMISSED_ANCHOR,
         )
 
-    val lyrics = rememberPlayerLyricsState(lyricsViewModel)
+    val lyrics = rememberPlayerLyricsState(lyricsViewModel, presentation = playerStyle.lyricsPresentation)
 
     // Asked from the queue bar and from the lyrics' menu alike: a running timer is stopped, otherwise one is set.
     var isSleepTimerDialogShown by remember { mutableStateOf(false) }
@@ -308,23 +310,18 @@ internal fun BottomSheetPlayer(
             )
         }
 
-        track?.let { currentTrack ->
+        // Lyrics in the player are drawn under the queue; their sheet covers it, as it does the whole player.
+        if (track != null && lyrics.opensInPlayer) {
             PlayerLyrics(
                 state = lyrics,
-                track = currentTrack,
+                track = track,
                 durationMs = duration,
                 contentColor = playerColors.content,
                 positionMsProvider = viewModel::currentPositionMs,
                 sliderPositionProvider = { sliderPosition },
                 seekBarPositionMs = { sliderPosition ?: position },
                 lyricsSyncOffset = lyricsSyncOffset,
-                onLyricsSyncOffsetChange = { lyricsSyncOffset = it },
                 onSeek = viewModel::onSeek,
-                isFavorite = uiState.isCurrentTrackFavorite,
-                onToggleFavorite = if (uiState.canFavorite) viewModel::onToggleFavorite else null,
-                onOpenQueue = queueSheetState::expandSoft,
-                onSleepTimerClick = onSleepTimerClick,
-                onEditLyrics = onEditLyrics,
                 lyricsViewModel = lyricsViewModel,
             )
         }
@@ -343,6 +340,40 @@ internal fun BottomSheetPlayer(
             onSleepTimerClick = onSleepTimerClick,
             lyrics = lyrics,
             viewModel = viewModel,
+        )
+
+        if (track != null && !lyrics.opensInPlayer) {
+            LyricsSheetTransition(
+                state = lyrics,
+                backHandlerEnabled = lyrics.isOpen && state.isExpandedOrExpanding,
+                track = track,
+                playback = playback,
+                durationMs = duration,
+                appearance = appearance,
+                lyricsSyncOffset = lyricsSyncOffset,
+                viewModel = viewModel,
+                lyricsViewModel = lyricsViewModel,
+            )
+        }
+    }
+
+    if (track != null && lyrics.isMenuShown) {
+        LyricsMenuSheet(
+            track = track,
+            isFavorite = uiState.isCurrentTrackFavorite,
+            onToggleFavorite = if (uiState.canFavorite) viewModel::onToggleFavorite else null,
+            onOpenQueue = {
+                // The queue rises over lyrics in the player, but under their sheet - which makes way for it.
+                if (!lyrics.opensInPlayer) lyrics.close()
+                queueSheetState.expandSoft()
+            },
+            onSleepTimerClick = onSleepTimerClick,
+            lyricsSyncOffset = lyricsSyncOffset,
+            onLyricsSyncOffsetChange = { lyricsSyncOffset = it },
+            showPlayerControls = lyrics.showsPlayerControls,
+            onShowPlayerControlsChange = lyricsViewModel::setShowLyricsPlayerControls,
+            onEditLyrics = onEditLyrics?.let { editLyrics -> { editLyrics(track.id) } },
+            onDismissRequest = lyrics::hideMenu,
         )
     }
 

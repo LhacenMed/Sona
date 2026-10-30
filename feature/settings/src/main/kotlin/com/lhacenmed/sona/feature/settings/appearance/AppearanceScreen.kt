@@ -286,7 +286,8 @@ private fun fontLabel(font: AppFont): String =
 @Composable
 private fun playerStyleLabel(style: PlayerStyle): String =
     when (style) {
-        PlayerStyle.CINEMATIC -> stringResource(R.string.player_style_cinematic)
+        PlayerStyle.DEFAULT -> stringResource(R.string.player_style_default)
+        PlayerStyle.IMMERSIVE -> stringResource(R.string.player_style_immersive)
     }
 
 @Composable

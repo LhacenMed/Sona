@@ -6,6 +6,7 @@ import androidx.compose.ui.unit.Dp
 import com.lhacenmed.sona.core.datastore.PlayerAppearance
 import com.lhacenmed.sona.core.datastore.PlayerStyle
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.player.LyricsPresentation
 import com.lhacenmed.sona.feature.player.PlayerLyricsState
 import com.lhacenmed.sona.feature.player.PlayerTitleActions
 import com.lhacenmed.sona.feature.player.PlayerUiState
@@ -13,21 +14,30 @@ import com.lhacenmed.sona.feature.player.PlayerViewModel
 import com.lhacenmed.sona.feature.player.background.PlayerColors
 
 // The one place a player style is looked up. Each style draws three things - the sheet behind it, the
-// expanded player, and the queue bar along its bottom - and the rest of the player (mini player,
-// queue, lyrics, gestures, seeking) is shared by every style: a style only places the lyrics pill and
-// makes way for the lyrics it opens into. These `when`s are exhaustive, so a new
-// PlayerStyle entry does not compile until it has a branch in each.
+// expanded player, and the queue bar along its bottom - and says where its lyrics open; the rest of the
+// player (mini player, queue, lyrics, gestures, seeking) is shared by every style. Where the lyrics open in
+// the player, a style places their pill and makes way for the lyrics it opens into; where they open in their
+// own sheet, its queue bar offers the way into it. These `when`s are exhaustive, so a new PlayerStyle entry
+// does not compile until it has a branch in each.
+
+/** Where the style's lyrics open. */
+internal val PlayerStyle.lyricsPresentation: LyricsPresentation
+    get() =
+        when (this) {
+            PlayerStyle.DEFAULT -> LyricsPresentation.SHEET
+            PlayerStyle.IMMERSIVE -> LyricsPresentation.IN_PLAYER
+        }
 
 /** The colour of the sheet the expanded player is drawn on. */
 @Composable
 internal fun PlayerStyle.sheetColor(): Color =
     when (this) {
-        PlayerStyle.CINEMATIC -> CinematicPlayerColors.sheet
+        PlayerStyle.DEFAULT, PlayerStyle.IMMERSIVE -> DefaultPlayerColors.sheet
     }
 
 /**
- * The expanded player above the queue bar, leaving [queueBarHeight] clear at its bottom for it, with the
- * [lyrics] pill in it and room made for the lyrics while they are open.
+ * The expanded player above the queue bar, leaving [queueBarHeight] clear at its bottom for it - with the
+ * [lyrics] pill in it and room made for the lyrics while they are open, where they open in the player.
  */
 @Composable
 internal fun PlayerStyle.ExpandedPlayer(
@@ -51,8 +61,8 @@ internal fun PlayerStyle.ExpandedPlayer(
     onSliderValueChangeFinished: () -> Unit,
 ) {
     when (this) {
-        PlayerStyle.CINEMATIC ->
-            CinematicPlayer(
+        PlayerStyle.DEFAULT, PlayerStyle.IMMERSIVE ->
+            DefaultPlayer(
                 track = track,
                 uiState = uiState,
                 appearance = appearance,
@@ -75,7 +85,10 @@ internal fun PlayerStyle.ExpandedPlayer(
     }
 }
 
-/** The bar the queue sheet shows while collapsed: the way into the queue, and the sleep timer. */
+/**
+ * The bar the queue sheet shows while collapsed: the way into the queue, the sleep timer and - with
+ * [onShowLyrics], for lyrics that open in their own sheet - the lyrics.
+ */
 @Composable
 internal fun PlayerStyle.QueueBar(
     contentColor: Color,
@@ -83,15 +96,17 @@ internal fun PlayerStyle.QueueBar(
     sleepTimerTimeLeft: Long,
     onExpandQueue: () -> Unit,
     onSleepTimerClick: () -> Unit,
+    onShowLyrics: (() -> Unit)?,
 ) {
     when (this) {
-        PlayerStyle.CINEMATIC ->
-            CinematicQueueBar(
+        PlayerStyle.DEFAULT, PlayerStyle.IMMERSIVE ->
+            DefaultQueueBar(
                 contentColor = contentColor,
                 sleepTimerEnabled = sleepTimerEnabled,
                 sleepTimerTimeLeft = sleepTimerTimeLeft,
                 onExpandQueue = onExpandQueue,
                 onSleepTimerClick = onSleepTimerClick,
+                onShowLyrics = onShowLyrics,
             )
     }
 }

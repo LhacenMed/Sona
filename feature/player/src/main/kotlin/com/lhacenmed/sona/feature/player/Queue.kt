@@ -64,8 +64,9 @@ import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 /**
- * The queue: a bar along the bottom of the full player - queue and sleep timer, in the player style's own
- * shape, sliding out of the way while the player's [lyrics] are open - that expands into the queue itself, where every row plays when tapped, moves by its
+ * The queue: a bar along the bottom of the full player - queue and sleep timer, and the way into the [lyrics]
+ * where they open in a sheet of their own, in the player style's own shape, sliding out of the way while they
+ * are open in the player - that expands into the queue itself, where every row plays when tapped, moves by its
  * handle, and is swiped towards its end to play next or towards its start to leave the queue, shuffled or
  * not. Ported from ArchiveTune's `Queue`.
  *
@@ -129,7 +130,7 @@ internal fun Queue(
         backgroundColor = Color.Unspecified,
         modifier = modifier,
         onCollapsedContentClick = openQueue,
-        isCollapsedContentEnabled = !lyrics.isOpen,
+        isCollapsedContentEnabled = !lyrics.isOpenInPlayer,
         // The queue list owns every gesture over it, handing the sheet only what it cannot scroll;
         // the header below is what the sheet itself is dragged by.
         isContentDraggable = false,
@@ -147,6 +148,7 @@ internal fun Queue(
                     sleepTimerTimeLeft = sleepTimerTimeLeft,
                     onExpandQueue = openQueue,
                     onSleepTimerClick = onSleepTimerClick,
+                    onShowLyrics = if (lyrics.opensInPlayer) null else lyrics::open,
                 )
             }
         },

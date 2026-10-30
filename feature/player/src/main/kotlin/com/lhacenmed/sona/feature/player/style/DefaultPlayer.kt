@@ -78,23 +78,27 @@ import com.lhacenmed.sona.feature.player.playPauseIconRes
 import com.lhacenmed.sona.feature.player.transportIconRes
 import com.lhacenmed.sona.feature.playback.R as PlaybackR
 
-/** The sheet the Cinematic player is drawn on: the app theme's own surface, black under a black theme. */
-internal object CinematicPlayerColors {
+/** The sheet the default player is drawn on: the app theme's own surface, black under a black theme. */
+internal object DefaultPlayerColors {
     val sheet: Color
         @Composable get() = MaterialTheme.colorScheme.surface
 }
 
 /**
- * The Cinematic player: the artwork above its title, lyrics pill, seek bar and transport - side by side in
- * landscape. ArchiveTune's Cinematic player.
+ * The default player: the artwork above its title, seek bar and transport - side by side in landscape. Ported
+ * from ArchiveTune's Cinematic player. Both `PlayerStyle.DEFAULT` and `IMMERSIVE` are drawn with it,
+ * told apart by where their [lyrics] open.
  *
- * Opening the [lyrics] grows them over the artwork, which recedes: in portrait the title goes with it, and
- * the seek bar and transport glide down into the room the queue bar leaves; in landscape they stay beside the
- * lyrics. Shuffle becomes the lyrics' menu and repeat their close, in place. With the player controls hidden
- * under the lyrics, the seek bar and the middle of the transport fade, and the lyrics take their room too.
+ * Lyrics that open in a sheet of their own - the default style's - leave the player as it is under them.
+ *
+ * Lyrics that open in the player - the immersive style's - show their line in a pill above the seek bar, and
+ * grow from it over the artwork, which recedes: in portrait the title goes with it, and the seek bar and
+ * transport glide down into the room the queue bar leaves; in landscape they stay beside the lyrics. Shuffle
+ * becomes the lyrics' menu and repeat their close, in place. With the player controls hidden under the lyrics,
+ * the seek bar and the middle of the transport fade, and the lyrics take their room too.
  */
 @Composable
-internal fun CinematicPlayer(
+internal fun DefaultPlayer(
     track: Track,
     uiState: PlayerUiState,
     appearance: PlayerAppearance,
@@ -148,7 +152,7 @@ internal fun CinematicPlayer(
             .onSizeChanged { seekBarHeightPx = it.height }
 
     val titleRow: @Composable (Modifier) -> Unit = { modifier ->
-        CinematicTitleRow(
+        DefaultTitleRow(
             track = track,
             isFavorite = uiState.isCurrentTrackFavorite,
             canFavorite = uiState.canFavorite,
@@ -160,7 +164,7 @@ internal fun CinematicPlayer(
         )
     }
     val seekBar: @Composable () -> Unit = {
-        CinematicSeekBar(
+        DefaultSeekBar(
             sliderStyle = appearance.sliderStyle,
             isPlaying = uiState.playback.isPlaying,
             colors = colors,
@@ -173,7 +177,7 @@ internal fun CinematicPlayer(
         )
     }
     val transport: @Composable (Modifier) -> Unit = { modifier ->
-        CinematicTransportControls(
+        DefaultTransportControls(
             playback = uiState.playback,
             isLoading = isLoading,
             colors = colors,
@@ -182,6 +186,13 @@ internal fun CinematicPlayer(
             viewModel = viewModel,
             modifier = modifier,
         )
+    }
+    // Only lyrics that open in the player have a pill; their sheet is opened from the queue bar.
+    val lyricsPill: @Composable () -> Unit = {
+        if (lyrics.opensInPlayer) {
+            LyricsPillSlot(lyrics, Modifier.padding(horizontal = PlayerHorizontalPadding))
+            Spacer(Modifier.height(12.dp))
+        }
     }
     val thumbnail: @Composable (Modifier) -> Unit = { modifier ->
         Thumbnail(
@@ -227,8 +238,7 @@ internal fun CinematicPlayer(
 
                 titleRow(Modifier)
                 Spacer(Modifier.height(12.dp))
-                LyricsPillSlot(lyrics, Modifier.padding(horizontal = PlayerHorizontalPadding))
-                Spacer(Modifier.height(12.dp))
+                lyricsPill()
                 seekBar()
                 transport(Modifier)
 
@@ -259,8 +269,7 @@ internal fun CinematicPlayer(
                 }
                 titleRow(titleRecede)
                 Spacer(Modifier.height(12.dp))
-                LyricsPillSlot(lyrics, Modifier.padding(horizontal = PlayerHorizontalPadding))
-                Spacer(Modifier.height(12.dp))
+                lyricsPill()
             }
 
             seekBar()
@@ -273,7 +282,7 @@ internal fun CinematicPlayer(
 
 /** The title and artist, with the track's actions beside them. */
 @Composable
-private fun CinematicTitleRow(
+private fun DefaultTitleRow(
     track: Track,
     isFavorite: Boolean,
     canFavorite: Boolean,
@@ -301,7 +310,7 @@ private fun CinematicTitleRow(
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        CinematicTrackActions(
+        DefaultTrackActions(
             contentColor = contentColor,
             isFavorite = isFavorite,
             onToggleFavorite = if (canFavorite) viewModel::onToggleFavorite else null,
@@ -312,7 +321,7 @@ private fun CinematicTitleRow(
 
 /** The seek bar and its times, with the gap down to the transport. */
 @Composable
-private fun CinematicSeekBar(
+private fun DefaultSeekBar(
     sliderStyle: PlayerSliderStyle,
     isPlaying: Boolean,
     colors: PlayerColors,
@@ -353,7 +362,7 @@ private fun CinematicSeekBar(
  * more opens, so the title keeps the room a third card would take.
  */
 @Composable
-private fun CinematicTrackActions(
+private fun DefaultTrackActions(
     contentColor: Color,
     isFavorite: Boolean,
     /** Null for a track that cannot be a favourite, which leaves its card out. */
@@ -414,11 +423,11 @@ private fun CinematicTrackActions(
  * Shuffle, previous, play/pause, next and repeat, scaled down together to fit a narrow screen. The
  * play/pause button squares off while playing.
  *
- * While the [lyrics] are open, shuffle is their menu and repeat their close; with [hidesControls], the three
- * in the middle fade, leaving the two corners to the lyrics.
+ * While the [lyrics] are open in the player, shuffle is their menu and repeat their close; with [hidesControls],
+ * the three in the middle fade, leaving the two corners to the lyrics.
  */
 @Composable
-private fun CinematicTransportControls(
+private fun DefaultTransportControls(
     playback: PlaybackUiState,
     isLoading: Boolean,
     colors: PlayerColors,
@@ -435,7 +444,7 @@ private fun CinematicTransportControls(
     val repeatMode = playback.repeatMode
     val canSkipPrevious = playback.canSkipPrevious
     val canSkipNext = playback.canSkipNext
-    val areMiddleControlsAway = hidesControls && lyrics.isOpen
+    val areMiddleControlsAway = hidesControls && lyrics.isOpenInPlayer
     val middleControlsFade =
         Modifier.graphicsLayer { alpha = if (hidesControls) 1f - lyrics.phase(0f, 0.3f) else 1f }
 
@@ -620,7 +629,7 @@ private fun CinematicTransportControls(
 }
 
 /**
- * A transport corner that is a player toggle - shuffle, repeat - and, while the [lyrics] are open, one of
+ * A transport corner that is a player toggle - shuffle, repeat - and, while the [lyrics] are open in the player, one of
  * theirs in its place: the toggle's glyph shrinks away as the lyrics' grows in. [isLyricsAccent] lights it
  * for the way out of the lyrics, which turns into place as it comes.
  */
@@ -639,7 +648,7 @@ private fun LyricsCornerButton(
     onPlayerClick: () -> Unit,
     onLyricsClick: () -> Unit,
 ) {
-    val isLyricsOpen = lyrics.isOpen
+    val isLyricsOpen = lyrics.isOpenInPlayer
     Surface(
         onClick = if (isLyricsOpen) onLyricsClick else onPlayerClick,
         shape = roundedShape(radius),

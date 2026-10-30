@@ -1,6 +1,10 @@
 package com.lhacenmed.sona.feature.player
 
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.lyrics.LyricsEntry
 import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.findCurrentLineIndex
 import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.insertInstrumentalBreaks
@@ -8,6 +12,7 @@ import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.isLineSyncedLrc
 import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.isTtml
 import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.parseLyrics
 import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.parseTtml
+import com.lhacenmed.sona.core.model.Track
 
 /** Lead time offset for LRC-style line-synced lyrics (ms). */
 private const val LRC_LEAD_MS = 300L
@@ -22,7 +27,7 @@ internal val HEAD_LYRICS_ENTRY = LyricsEntry(time = 0L, text = "")
 
 /**
  * A track's lyrics read once for everything the player shows of them - the line in the lyrics pill and the
- * full lyrics it opens into - so both agree on which line is playing.
+ * full lyrics it opens into, or the lyrics sheet - so all agree on which line is playing.
  *
  * Synced lyrics start with [HEAD_LYRICS_ENTRY]; plain ones are their lines, untimed.
  */
@@ -59,4 +64,18 @@ internal class LyricsTimeline(
             return LyricsTimeline(entries, isSynced, isWordSynced)
         }
     }
+}
+
+/**
+ * [track]'s lyrics as a timeline: null while its file is being read. Keyed by the whole track, so it is read again
+ * as the library reads it anew.
+ */
+@Composable
+internal fun rememberLyricsTimeline(
+    track: Track,
+    durationMs: Long,
+    lyricsViewModel: LyricsViewModel,
+): LyricsTimeline? {
+    val lyrics by remember(track) { lyricsViewModel.lyrics(track) }.collectAsStateWithLifecycle(initialValue = null)
+    return remember(lyrics, durationMs) { lyrics?.let { LyricsTimeline.parse(it, durationMs) } }
 }

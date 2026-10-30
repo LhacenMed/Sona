@@ -83,7 +83,8 @@
     <string name="custom_font_invalid">Pick a .ttf font file</string>
     <string name="appearance_player_section">Player</string>
     <string name="player_style_title">Player style</string>
-    <string name="player_style_cinematic">Cinematic</string>
+    <string name="player_style_default">Default</string>
+    <string name="player_style_immersive">Immersive</string>
     <string name="player_slider_style_title">Seek bar style</string>
     <string name="player_slider_style_standard">Standard</string>
     <string name="player_slider_style_circular">Circular</string>

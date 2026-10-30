@@ -74,24 +74,44 @@ import kotlin.math.roundToInt
 private const val LyricsOpenDurationMs = 520
 private const val LyricsCloseDurationMs = 430
 
+/** Where a player style's lyrics open - looked up for each style in `style/PlayerStyles.kt`. */
+internal enum class LyricsPresentation {
+    /** Grown in place from a pill above the seek bar: [PlayerLyrics]. */
+    IN_PLAYER,
+
+    /** In a sheet of their own over the player, opened from its queue bar: [LyricsSheetTransition]. */
+    SHEET,
+}
+
 /**
- * The player's lyrics: one line of them in a pill above the seek bar, which grows into the full lyrics over the
- * player and shrinks back into the line - the same surface throughout, never a sheet of its own.
+ * The player's lyrics, open or closed, and their menu - wherever the player style opens them: [opensInPlayer].
  *
- * A player style places the pill - [LyricsPillSlot] - marks where the open lyrics go - [lyricsPane] - and moves its
- * own elements out of their way along [progress], each over its own part of it - [phase]. [PlayerLyrics] draws the
- * pill and what it grows into above the style.
+ * In the player, one line of them is in a pill above the seek bar, which grows into the full lyrics over the
+ * player and shrinks back into the line - the same surface throughout. A player style places the pill -
+ * [LyricsPillSlot] - marks where the open lyrics go - [lyricsPane] - and moves its own elements out of their way
+ * along [progress], each over its own part of it - [phase]. [PlayerLyrics] draws the pill and what it grows into
+ * above the style.
+ *
+ * Otherwise they open from the queue bar into a sheet of their own over the player - [LyricsSheetTransition] - and
+ * the style stays as it is: [progress] stays at 0.
  */
 @Stable
 internal class PlayerLyricsState(
     isOpen: Boolean,
     showsPlayerControlsSetting: State<Boolean>,
+    presentation: State<LyricsPresentation>,
 ) {
     var isOpen by mutableStateOf(isOpen)
         private set
 
+    /** Whether the lyrics open in the player, from its pill, or in a sheet of their own. */
+    val opensInPlayer by derivedStateOf { presentation.value == LyricsPresentation.IN_PLAYER }
+
+    /** Whether the lyrics are open in the player - what its elements make way for. */
+    val isOpenInPlayer get() = isOpen && opensInPlayer
+
     /** 0 in the player, 1 in its lyrics - at an even pace, each element easing its own part of it. */
-    val progress = Animatable(if (isOpen) 1f else 0f)
+    val progress = Animatable(if (isOpenInPlayer) 1f else 0f)
 
     /** Whether the seek bar and transport stay beneath the open lyrics, or give them their room. */
     val showsPlayerControls by showsPlayerControlsSetting
@@ -138,15 +158,23 @@ internal class PlayerLyricsState(
 
 /** Open or closed as the player was left, across recreation; at rest, never mid-way. */
 @Composable
-internal fun rememberPlayerLyricsState(lyricsViewModel: LyricsViewModel): PlayerLyricsState {
+internal fun rememberPlayerLyricsState(
+    lyricsViewModel: LyricsViewModel,
+    presentation: LyricsPresentation,
+): PlayerLyricsState {
     val showsPlayerControls = lyricsViewModel.showLyricsPlayerControls.collectAsStateWithLifecycle()
+    val latestPresentation = rememberUpdatedState(presentation)
     val state =
         rememberSaveable(
-            saver = Saver(save = { it.isOpen }, restore = { PlayerLyricsState(it, showsPlayerControls) }),
-        ) { PlayerLyricsState(false, showsPlayerControls) }
-    LaunchedEffect(state, state.isOpen) {
-        val target = if (state.isOpen) 1f else 0f
-        val fullDurationMs = if (state.isOpen) LyricsOpenDurationMs else LyricsCloseDurationMs
+            saver =
+                Saver(
+                    save = { it.isOpen },
+                    restore = { PlayerLyricsState(it, showsPlayerControls, latestPresentation) },
+                ),
+        ) { PlayerLyricsState(false, showsPlayerControls, latestPresentation) }
+    LaunchedEffect(state, state.isOpenInPlayer) {
+        val target = if (state.isOpenInPlayer) 1f else 0f
+        val fullDurationMs = if (state.isOpenInPlayer) LyricsOpenDurationMs else LyricsCloseDurationMs
         // Turned back part-way, it takes only as long as the way it has come.
         val durationMs = (abs(target - state.progress.value) * fullDurationMs).roundToInt()
         state.progress.animateTo(target, tween(durationMs, easing = LinearEasing))
@@ -175,10 +203,7 @@ internal fun Modifier.lyricsPane(state: PlayerLyricsState): Modifier =
 /**
  * The pill and the lyrics it grows into, laid over the player style that placed them, so the line in the pill
  * and the lines it opens onto are one surface. The open lyrics are laid out once, where they end up, and
- * revealed as the pill grows over them, so nothing is measured again while it moves.
- *
- * Back closes them; their menu offers, beside what is about the lyrics, what the player puts away while they
- * are open - [onToggleFavorite], [onOpenQueue] and [onSleepTimerClick].
+ * revealed as the pill grows over them, so nothing is measured again while it moves. Back closes them.
  */
 @Composable
 internal fun PlayerLyrics(
@@ -192,20 +217,12 @@ internal fun PlayerLyrics(
     /** Where the seek bar shows playback - the pill's line follows it, changing only as the line does. */
     seekBarPositionMs: () -> Long,
     lyricsSyncOffset: Int,
-    onLyricsSyncOffsetChange: (Int) -> Unit,
     onSeek: (Long) -> Unit,
-    isFavorite: Boolean,
-    onToggleFavorite: (() -> Unit)?,
-    onOpenQueue: () -> Unit,
-    onSleepTimerClick: () -> Unit,
-    onEditLyrics: ((trackId: Long) -> Unit)?,
     lyricsViewModel: LyricsViewModel,
     modifier: Modifier = Modifier,
 ) {
-    // Null while the file is being read. Keyed by the whole track, so it is read again as the library reads it anew.
-    val lyrics by remember(track) { lyricsViewModel.lyrics(track) }.collectAsStateWithLifecycle(initialValue = null)
+    val timeline = rememberLyricsTimeline(track, durationMs, lyricsViewModel)
     val isFindingLyrics by remember(track) { lyricsViewModel.isFindingLyrics(track) }.collectAsStateWithLifecycle(initialValue = false)
-    val timeline = remember(lyrics, durationMs) { lyrics?.let { LyricsTimeline.parse(it, durationMs) } }
 
     BackHandler(enabled = state.isOpen, onBack = state::close)
 
@@ -296,22 +313,6 @@ internal fun PlayerLyrics(
             }
         }
     }
-
-    if (state.isMenuShown) {
-        LyricsMenuSheet(
-            track = track,
-            isFavorite = isFavorite,
-            onToggleFavorite = onToggleFavorite,
-            onOpenQueue = onOpenQueue,
-            onSleepTimerClick = onSleepTimerClick,
-            lyricsSyncOffset = lyricsSyncOffset,
-            onLyricsSyncOffsetChange = onLyricsSyncOffsetChange,
-            showPlayerControls = state.showsPlayerControls,
-            onShowPlayerControlsChange = lyricsViewModel::setShowLyricsPlayerControls,
-            onEditLyrics = onEditLyrics?.let { editLyrics -> { editLyrics(track.id) } },
-            onDismissRequest = state::hideMenu,
-        )
-    }
 }
 
 /** A line for the pill; [isUpcoming] while nothing is sung, showing the line to come. */
@@ -384,8 +385,8 @@ private fun LyricsTimeline.pillText(seekBarPositionMs: Long, syncOffsetMs: Int):
     return LyricsPillText(entries[next].text, isUpcoming = true)
 }
 
-/** Keeps touches from falling through the open lyrics to the player beneath them. */
-private fun Modifier.consumeUnhandledPointerInput(): Modifier =
+/** Keeps touches from falling through the open lyrics - in the player or in their sheet - to the player beneath. */
+internal fun Modifier.consumeUnhandledPointerInput(): Modifier =
     pointerInput(Unit) {
         awaitPointerEventScope {
             while (true) {

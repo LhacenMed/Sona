@@ -3,8 +3,10 @@ package com.lhacenmed.sona.feature.player.style
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -29,7 +31,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.theme.pillShape
 import com.lhacenmed.sona.core.designsystem.theme.roundedShape
 import com.lhacenmed.sona.feature.player.PlayerPillCornerRadius
 import com.lhacenmed.sona.feature.player.PlayerPillHeight
@@ -38,16 +43,20 @@ import com.lhacenmed.sona.feature.player.R
 import com.lhacenmed.sona.feature.player.makeTimeString
 
 /**
- * The Cinematic player's queue bar: the queue and the sleep timer, side by side in the player's pills - the
- * timer's showing the time it has left while it runs. Ported from ArchiveTune's `QueueCollapsedContentV4`.
+ * The default player's queue bar. Ported from ArchiveTune's `QueueCollapsedContentV4`.
+ *
+ * With [onShowLyrics], for lyrics that open in their own sheet, the queue and lyrics pills sit either side of a
+ * round sleep timer. Without it - lyrics in the player have their own pill - the queue and the sleep timer are
+ * side by side in the player's pills, the timer's showing the time it has left while it runs.
  */
 @Composable
-internal fun CinematicQueueBar(
+internal fun DefaultQueueBar(
     contentColor: Color,
     sleepTimerEnabled: Boolean,
     sleepTimerTimeLeft: Long,
     onExpandQueue: () -> Unit,
     onSleepTimerClick: () -> Unit,
+    onShowLyrics: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -73,20 +82,84 @@ internal fun CinematicQueueBar(
 
             Spacer(modifier = Modifier.width(10.dp))
 
-            AnimatedContent(
-                label = "sleepTimer",
-                targetState = sleepTimerEnabled,
-                modifier = Modifier.weight(1f),
-            ) { enabled ->
-                Row {
-                    QueueBarPill(
-                        iconRes = R.drawable.bedtime,
-                        label = if (enabled) makeTimeString(sleepTimerTimeLeft) else stringResource(R.string.player_sleep_timer),
-                        contentColor = contentColor,
-                        isActive = enabled,
-                        onClick = onSleepTimerClick,
-                    )
+            if (onShowLyrics == null) {
+                AnimatedContent(
+                    label = "sleepTimer",
+                    targetState = sleepTimerEnabled,
+                    modifier = Modifier.weight(1f),
+                ) { enabled ->
+                    Row {
+                        QueueBarPill(
+                            iconRes = R.drawable.bedtime,
+                            label = if (enabled) makeTimeString(sleepTimerTimeLeft) else stringResource(R.string.player_sleep_timer),
+                            contentColor = contentColor,
+                            isActive = enabled,
+                            onClick = onSleepTimerClick,
+                        )
+                    }
                 }
+            } else {
+                QueueBarSleepTimerButton(
+                    contentColor = contentColor,
+                    sleepTimerEnabled = sleepTimerEnabled,
+                    sleepTimerTimeLeft = sleepTimerTimeLeft,
+                    onClick = onSleepTimerClick,
+                )
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                QueueBarPill(
+                    iconRes = R.drawable.lyrics,
+                    label = stringResource(R.string.player_lyrics),
+                    contentColor = contentColor,
+                    onClick = onShowLyrics,
+                )
+            }
+        }
+    }
+}
+
+/** The sleep timer as a round button between two pills: its icon, or the time it has left while it runs. */
+@Composable
+private fun QueueBarSleepTimerButton(
+    contentColor: Color,
+    sleepTimerEnabled: Boolean,
+    sleepTimerTimeLeft: Long,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier =
+            Modifier
+                .size(PlayerPillHeight)
+                .clip(pillShape)
+                .background(contentColor.copy(alpha = if (sleepTimerEnabled) PlayerPillTintAlpha * 2 else PlayerPillTintAlpha))
+                .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        AnimatedContent(
+            label = "sleepTimer",
+            targetState = sleepTimerEnabled,
+        ) { enabled ->
+            if (enabled) {
+                Text(
+                    text = makeTimeString(sleepTimerTimeLeft),
+                    color = contentColor,
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .basicMarquee(),
+                )
+            } else {
+                Icon(
+                    painter = painterResource(id = R.drawable.bedtime),
+                    contentDescription = null,
+                    modifier = Modifier.size(22.dp),
+                    tint = contentColor,
+                )
             }
         }
     }
