@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.6.11] - 2026-10-30
+
+### Fixed
+
+- Pick any Google account for Drive, and show the one connected.
+
 ## [1.6.10] - 2026-10-30
 
 ### Added

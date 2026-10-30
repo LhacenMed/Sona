@@ -1,6 +1,6 @@
 {
-  "versionCode": 106109000,
-  "versionName": "1.6.10",
-  "apkUrl": "https://github.com/LhacenMed/Sona/releases/download/v1.6.10/sona-1.6.10-release-universal.apk",
-  "notes": "### Added\n\n- Look online for missing lyrics only once turned on.\n- Back up to Google Drive, with the music and videos of the folders you choose."
+  "versionCode": 106119000,
+  "versionName": "1.6.11",
+  "apkUrl": "https://github.com/LhacenMed/Sona/releases/download/v1.6.11/sona-1.6.11-release-universal.apk",
+  "notes": "### Fixed\n\n- Pick any Google account for Drive, and show the one connected."
 }
