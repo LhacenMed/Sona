@@ -1,6 +1,6 @@
 {
-  "versionCode": 106139000,
-  "versionName": "1.6.13",
-  "apkUrl": "https://github.com/LhacenMed/Sona/releases/download/v1.6.13/sona-1.6.13-release-universal.apk",
-  "notes": "### Fixed\n\n- Upload a whole library to Google Drive, never the same file twice."
+  "versionCode": 106149000,
+  "versionName": "1.6.14",
+  "apkUrl": "https://github.com/LhacenMed/Sona/releases/download/v1.6.14/sona-1.6.14-release-universal.apk",
+  "notes": "### Fixed\n\n- Find Drive's folders again once deleted there, or for another account."
 }

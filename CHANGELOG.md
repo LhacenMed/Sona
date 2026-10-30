@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.6.14] - 2026-10-30
+
+### Fixed
+
+- Find Drive's folders again once deleted there, or for another account.
+
 ## [1.6.13] - 2026-10-30
 
 ### Fixed
