@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.6.13] - 2026-10-30
+
+### Fixed
+
+- Upload a whole library to Google Drive, never the same file twice.
+
 ## [1.6.12] - 2026-10-30
 
 ### Fixed

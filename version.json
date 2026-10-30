@@ -1,6 +1,6 @@
 {
-  "versionCode": 106129000,
-  "versionName": "1.6.12",
-  "apkUrl": "https://github.com/LhacenMed/Sona/releases/download/v1.6.12/sona-1.6.12-release-universal.apk",
-  "notes": "### Fixed\n\n- Back up to Google Drive again, and keep it connected while offline."
+  "versionCode": 106139000,
+  "versionName": "1.6.13",
+  "apkUrl": "https://github.com/LhacenMed/Sona/releases/download/v1.6.13/sona-1.6.13-release-universal.apk",
+  "notes": "### Fixed\n\n- Upload a whole library to Google Drive, never the same file twice."
 }
