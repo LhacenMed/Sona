@@ -85,7 +85,7 @@ class BackupSettings @Inject constructor(
     /** Whether backups go to the user's Google Drive too - see [com.lhacenmed.sona.feature.backup.drive.DriveAccess]. */
     val isDriveConnected: StateFlow<Boolean> = dataStore.data.map { it[DRIVE_CONNECTED] == true }.stateIn(scope, SharingStarted.Eagerly, false)
 
-    /** The email address of the Google account Drive is connected to, while it is - where Google gave it. */
+    /** The email address of the Google account Drive is connected to, while it is. */
     val driveAccount: StateFlow<String?> = dataStore.data.map { it[DRIVE_ACCOUNT] }.stateIn(scope, SharingStarted.Eagerly, null)
 
     suspend fun setSchedule(schedule: BackupSchedule) {
@@ -115,10 +115,13 @@ class BackupSettings @Inject constructor(
         dataStore.edit { it[FOLDERS_LEFT_OUT] = it[FOLDERS_LEFT_OUT].orEmpty().let { entries -> if (isLeftOut) entries + entry else entries - entry } }
     }
 
-    internal suspend fun setDriveConnected(account: String?) {
+    /** [driveAccount], read from disk - see [isDriveConnectedNow]. */
+    internal suspend fun driveAccountNow(): String? = dataStore.data.first()[DRIVE_ACCOUNT]
+
+    internal suspend fun setDriveConnected(account: String) {
         dataStore.edit {
             it[DRIVE_CONNECTED] = true
-            if (account == null) it.remove(DRIVE_ACCOUNT) else it[DRIVE_ACCOUNT] = account
+            it[DRIVE_ACCOUNT] = account
         }
     }
 

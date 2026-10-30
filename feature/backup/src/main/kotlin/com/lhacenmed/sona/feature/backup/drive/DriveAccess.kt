@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.feature.backup.drive
 
+import android.accounts.Account
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -7,10 +8,12 @@ import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.AuthorizationResult
 import com.google.android.gms.auth.api.identity.ClearTokenRequest
 import com.google.android.gms.auth.api.identity.Identity
+import com.google.android.gms.auth.api.identity.RevokeAccessRequest
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
 import com.google.android.gms.tasks.Task
 import com.lhacenmed.sona.feature.backup.BackupSettings
+import dagger.Lazy
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.IOException
 import javax.inject.Inject
@@ -23,8 +26,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 /** Only the files Sona creates in the user's Drive - nothing else there. */
 private val DRIVE_FILE_SCOPE = Scope("https://www.googleapis.com/auth/drive.file")
 
-/** The account's email address alone - to show which account is connected - never its name or profile. */
-private val EMAIL_SCOPE = Scope("email")
+private const val GOOGLE_ACCOUNT_TYPE = "com.google"
 
 /** Access to Drive was taken back - from the user's Google Account - since it was given. */
 class DriveAccessLostException : IOException()
@@ -39,58 +41,86 @@ sealed interface DriveConnection {
 
 /**
  * Sona's access to the user's Google Drive: given once, from the Backup screen, then used by every backup and
- * restore. Google keeps the grant and its tokens; Sona keeps only that it was given - and to which account, by its
- * email address, which stays on the device - and asks Google for a token each time it needs one.
+ * restore. Google keeps the grant and its tokens; Sona keeps only that it was given, and to which account - by the
+ * email address Drive gives for it, which stays on the device - and asks Google for that account's token each
+ * time it needs one.
  */
 @Singleton
-class DriveAccess @Inject constructor(
+class DriveAccess @Inject internal constructor(
     @ApplicationContext context: Context,
     private val backupSettings: BackupSettings,
+    // Lazily: the API asks this for its tokens, so neither can be made first.
+    private val api: Lazy<DriveApi>,
 ) {
     private val client = Identity.getAuthorizationClient(context)
-    private val request = AuthorizationRequest.builder().setRequestedScopes(listOf(DRIVE_FILE_SCOPE, EMAIL_SCOPE)).build()
 
     val isConnected: StateFlow<Boolean> = backupSettings.isDriveConnected
 
     /** The connected account's email address, or null while none is connected. */
     val account: StateFlow<String?> = backupSettings.driveAccount
 
-    /** Connects - at once where access was given before, else once the user agrees in [DriveConnection.NeedsConsent]. */
+    /**
+     * Connects - always through Google's account picker, so another account than the last can be chosen - once
+     * the user picks one and agrees in [DriveConnection.NeedsConsent], or at once where Google needs nothing more.
+     */
     suspend fun connect(): DriveConnection {
+        val request = AuthorizationRequest.builder()
+            .setRequestedScopes(listOf(DRIVE_FILE_SCOPE))
+            .setPrompt(AuthorizationRequest.Prompt.SELECT_ACCOUNT)
+            .build()
         val result = client.authorize(request).await()
         val consent = result.pendingIntent
         if (result.hasResolution() && consent != null) return DriveConnection.NeedsConsent(consent)
-        backupSettings.setDriveConnected(account = result.toGoogleSignInAccount()?.email)
+        connected(checkNotNull(result.accessToken))
         return DriveConnection.Connected
     }
 
     /** Finishes connecting with what the consent screen returned. Whether access was given. */
     suspend fun finishConnecting(data: Intent?): Boolean {
-        val result = try {
-            client.getAuthorizationResultFromIntent(data)
+        val token = try {
+            client.getAuthorizationResultFromIntent(data).accessToken
         } catch (_: ApiException) {
             null
-        }
-        if (result?.accessToken == null) return false
-        backupSettings.setDriveConnected(account = result.toGoogleSignInAccount()?.email)
+        } ?: return false
+        connected(token)
         return true
     }
 
-    /** Stops backing up to Drive. What is there stays; the grant itself is the user's to remove from their account. */
-    suspend fun disconnect() = backupSettings.setDriveDisconnected()
+    /** Stops backing up to Drive, and takes back the access it was given. What is there stays. */
+    suspend fun disconnect() {
+        backupSettings.driveAccount.value?.let { email ->
+            val request = RevokeAccessRequest.builder().setAccount(Account(email, GOOGLE_ACCOUNT_TYPE)).setScopes(listOf(DRIVE_FILE_SCOPE)).build()
+            // Offline, the access is let go of here all the same; the user can still remove it from their account.
+            runCatching { client.revokeAccess(request).await() }
+        }
+        backupSettings.setDriveDisconnected()
+    }
 
-    /** A current token, without asking the user anything - Google renews it as needed. */
+    /** A current token for the connected account, without asking the user anything - Google renews it as needed. */
     internal suspend fun token(): String {
+        val account = backupSettings.driveAccountNow()
+        val request = AuthorizationRequest.builder()
+            .setRequestedScopes(listOf(DRIVE_FILE_SCOPE))
+            .apply { account?.let { setAccount(Account(it, GOOGLE_ACCOUNT_TYPE)) } }
+            .build()
         val result: AuthorizationResult = client.authorize(request).await()
-        return result.accessToken.takeUnless { result.hasResolution() } ?: run {
+        val token = result.accessToken.takeUnless { result.hasResolution() } ?: run {
             backupSettings.setDriveDisconnected()
             throw DriveAccessLostException()
         }
+        // Connected before the account was kept: kept now, so the next token is that account's for certain.
+        if (account == null) connected(token)
+        return token
     }
 
     /** Lets go of [token], which Drive refused, so the next [token] is a fresh one. */
     internal suspend fun forget(token: String) {
         client.clearToken(ClearTokenRequest.builder().setToken(token).build()).await()
+    }
+
+    /** Keeps the account [token] was given for - by the email address Drive knows it by - as the one connected. */
+    private suspend fun connected(token: String) {
+        backupSettings.setDriveConnected(account = api.get().accountEmail(token))
     }
 }
 

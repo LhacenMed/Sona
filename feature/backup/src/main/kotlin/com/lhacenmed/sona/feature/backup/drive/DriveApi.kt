@@ -173,6 +173,15 @@ internal class DriveApi @Inject constructor(
         call(Request.Builder().url("$FILES_URL/$id").delete()).close()
     }
 
+    /** The email address of the account [token] was given for - asked of Drive with that token, before it is kept. */
+    suspend fun accountEmail(token: String): String = withContext(ioDispatcher) {
+        val request = Request.Builder().url("$ABOUT_URL?fields=user(emailAddress)").header("Authorization", "Bearer $token").build()
+        http.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw DriveHttpException(response.code, "Drive answered ${response.code}")
+            JSONObject(response.body!!.string()).getJSONObject("user").getString("emailAddress")
+        }
+    }
+
     /** How much more the user's Drive holds, or null where it has no limit. */
     suspend fun freeBytes(): Long? {
         val quota = json(Request.Builder().url("$ABOUT_URL?fields=storageQuota")).getJSONObject("storageQuota")
