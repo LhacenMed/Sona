@@ -1,9 +1,7 @@
 package com.lhacenmed.sona.feature.settings.backup
 
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Checkbox
@@ -23,11 +21,13 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.core.designsystem.component.toast
+import com.lhacenmed.sona.feature.backup.BackupFolder
 import com.lhacenmed.sona.feature.backup.RestorePreview
 import com.lhacenmed.sona.feature.settings.R
 
@@ -56,6 +56,87 @@ internal fun NewPassphraseDialog(onConfirm: (String) -> Unit, onDismiss: () -> U
             label = stringResource(R.string.backup_passphrase_repeat_hint),
             error = stringResource(R.string.backup_passphrase_mismatch).takeIf { isMismatched },
         )
+    }
+}
+
+/**
+ * What "Back up now" is about to do, at a glance: where the backup is saved, whose music and videos go to Google
+ * Drive with it, and over which connection.
+ */
+@Composable
+internal fun BackupNowDialog(
+    isDriveConnected: Boolean,
+    folders: List<BackupFolder>?,
+    usesMobileData: Boolean,
+    onBackUp: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val cancelLabel = stringResource(R.string.dialog_cancel)
+    val backUpLabel = stringResource(R.string.backup_now_action)
+
+    SonaDialog(
+        onDismissRequest = onDismiss,
+        title = stringResource(R.string.backup_now_title),
+        buttons = {
+            actionButton(label = cancelLabel, onClick = onDismiss)
+            actionButton(label = backUpLabel, onClick = onBackUp)
+        },
+    ) {
+        Fact(
+            label = stringResource(R.string.backup_now_saved_to),
+            value = stringResource(if (isDriveConnected) R.string.backup_now_device_and_drive else R.string.backup_now_device),
+        )
+        if (isDriveConnected) {
+            Fact(stringResource(R.string.backup_now_media), foldersSummary(folders).orEmpty())
+            Fact(
+                label = stringResource(R.string.backup_now_upload_over),
+                value = stringResource(if (usesMobileData) R.string.backup_now_any_network else R.string.backup_now_wifi),
+            )
+        }
+    }
+}
+
+/** Asks before stopping a backup under way. */
+@Composable
+internal fun StopBackupDialog(onStop: () -> Unit, onDismiss: () -> Unit) {
+    val keepGoingLabel = stringResource(R.string.backup_stop_keep_going)
+    val stopLabel = stringResource(R.string.backup_stop_action)
+
+    SonaDialog(
+        onDismissRequest = onDismiss,
+        title = stringResource(R.string.backup_stop_title),
+        buttons = {
+            actionButton(label = keepGoingLabel, onClick = onDismiss)
+            actionButton(label = stopLabel, onClick = onStop)
+        },
+    ) {
+        Text(stringResource(R.string.backup_stop_message))
+    }
+}
+
+/** Asks where to delete [backup] from - each place it is kept, all chosen to begin with. */
+@Composable
+internal fun DeleteBackupDialog(
+    backup: RestorableBackup,
+    onDelete: (fromDevice: Boolean, fromDrive: Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var fromDevice by remember { mutableStateOf(backup.onDevice != null) }
+    var fromDrive by remember { mutableStateOf(backup.inDrive != null) }
+    val cancelLabel = stringResource(R.string.dialog_cancel)
+    val deleteLabel = stringResource(R.string.backup_delete_action)
+
+    SonaDialog(
+        onDismissRequest = onDismiss,
+        title = stringResource(R.string.backup_delete_title),
+        buttons = {
+            actionButton(label = cancelLabel, onClick = onDismiss)
+            actionButton(label = deleteLabel, onClick = { onDelete(fromDevice, fromDrive) }, enabled = fromDevice || fromDrive)
+        },
+    ) {
+        Text(formatDate(LocalContext.current, backup.createdAt))
+        if (backup.onDevice != null) CheckRow(stringResource(R.string.backup_delete_from_device), fromDevice) { fromDevice = it }
+        if (backup.inDrive != null) CheckRow(stringResource(R.string.backup_delete_from_drive), fromDrive) { fromDrive = it }
     }
 }
 
@@ -147,34 +228,21 @@ private fun RestorePreviewDialog(
             )
         },
     ) {
-        Text(stringResource(R.string.restore_made_on, formatDate(context, preview.createdAt)), style = MaterialTheme.typography.titleSmall)
-        Spacer(Modifier.height(8.dp))
-        Text(pluralStringResource(R.plurals.restore_playlists, preview.playlistCount, preview.playlistCount))
-        Text(pluralStringResource(R.plurals.restore_played_tracks, preview.playedTrackCount, preview.playedTrackCount))
-        Text(stringResource(R.string.restore_settings))
-        Text(pluralStringResource(R.plurals.restore_files_present, media.present.size, media.present.size))
-        if (media.unavailable.isNotEmpty()) {
-            Text(pluralStringResource(R.plurals.restore_files_unavailable, media.unavailable.size, media.unavailable.size))
-        }
+        Fact(stringResource(R.string.restore_made), formatDate(context, preview.createdAt))
+        Fact(stringResource(R.string.restore_playlists), preview.playlistCount.toString())
+        Fact(stringResource(R.string.restore_played_tracks), preview.playedTrackCount.toString())
+        Fact(stringResource(R.string.restore_files_here), media.present.size.toString())
+        if (media.unavailable.isNotEmpty()) Fact(stringResource(R.string.restore_files_lost), media.unavailable.size.toString())
         if (media.missing.isNotEmpty()) {
             Text(
-                text = stringResource(R.string.restore_files_to_restore),
+                text = stringResource(R.string.restore_files_from_drive),
                 style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier.padding(top = 16.dp),
             )
             media.missing.forEach { missing ->
                 val fingerprint = missing.media.fingerprint
-                val isChosen = fingerprint in filesToRestore
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .toggleable(isChosen, role = Role.Checkbox) { chosen ->
-                            filesToRestore = if (chosen) filesToRestore + fingerprint else filesToRestore - fingerprint
-                        },
-                ) {
-                    Checkbox(checked = isChosen, onCheckedChange = null)
-                    Text(missing.media.path.substringAfterLast('/'), modifier = Modifier.padding(start = 8.dp))
+                CheckRow(missing.media.path.substringAfterLast('/'), fingerprint in filesToRestore) { chosen ->
+                    filesToRestore = if (chosen) filesToRestore + fingerprint else filesToRestore - fingerprint
                 }
             }
         }
@@ -183,6 +251,42 @@ private fun RestorePreviewDialog(
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(top = 16.dp),
         )
+    }
+}
+
+/**
+ * What [folders] back up to Drive, in a word or two: all of them, none, or how many - each folder counted once, its
+ * music and its videos alike, however many of them are chosen. Null while they are read.
+ */
+@Composable
+internal fun foldersSummary(folders: List<BackupFolder>?): String? {
+    val all = folders ?: return null
+    val backedUpPaths = all.filter { it.isBackedUp }.mapTo(HashSet()) { it.path }
+    return when {
+        backedUpPaths.isEmpty() -> stringResource(R.string.backup_folders_none)
+        all.all { it.isBackedUp } -> stringResource(R.string.backup_folders_all)
+        else -> pluralStringResource(R.plurals.backup_folders_count, backedUpPaths.size, backedUpPaths.size)
+    }
+}
+
+/** One thing a dialog says, as a label and its value on one line. */
+@Composable
+private fun Fact(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+        Text(value, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
+    }
+}
+
+/** A choice in a dialog, checked or not, the whole row its target. */
+@Composable
+private fun CheckRow(label: String, isChecked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().toggleable(isChecked, role = Role.Checkbox, onValueChange = onCheckedChange),
+    ) {
+        Checkbox(checked = isChecked, onCheckedChange = null)
+        Text(label, modifier = Modifier.padding(start = 8.dp))
     }
 }
 

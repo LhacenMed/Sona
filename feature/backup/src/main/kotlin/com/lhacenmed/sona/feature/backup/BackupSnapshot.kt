@@ -78,7 +78,11 @@ data class BackedUpResumePosition(
     val positionMs: Long,
 )
 
-/** A library file as it was backed up: what its bytes were - [fingerprint] - and where it lay. */
+/**
+ * A library file as it was backed up: what its bytes were - [fingerprint] - and where it lay. Every library file is
+ * listed, so a restore finds each one a playlist or the history names; [isKeptInDrive] says whether its folder was
+ * one the user backs up to Drive, which only those are.
+ */
 @Serializable
 data class BackedUpMedia(
     val fingerprint: String,
@@ -86,6 +90,7 @@ data class BackedUpMedia(
     val sizeBytes: Long,
     val modifiedAt: Long,
     val isVideo: Boolean,
+    val isKeptInDrive: Boolean = true,
 )
 
 /** One stored setting's value, of each kind a settings file holds. */

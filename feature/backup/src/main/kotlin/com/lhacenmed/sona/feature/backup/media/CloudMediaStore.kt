@@ -8,8 +8,8 @@ import java.io.File
  */
 interface CloudMediaStore {
 
-    /** The fingerprint of every file kept. */
-    suspend fun fingerprints(): Set<String>
+    /** Which of [fingerprints] are kept. */
+    suspend fun keeps(fingerprints: Collection<String>): Set<String>
 
     /** Downloads the file with [fingerprint] into [file], replacing whatever was there. */
     suspend fun download(fingerprint: String, file: File)

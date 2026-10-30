@@ -86,6 +86,25 @@ class BackupArchiveTest {
     }
 
     @Test
+    fun `only the files of folders backed up count as kept in Drive`() {
+        val leftOut = BackedUpMedia("bbbb", "/m/left-out/b.mp3", 4L, 5L, isVideo = false, isKeptInDrive = false)
+        val output = ByteArrayOutputStream()
+        BackupArchive.write(output, manifest, library.copy(media = library.media + leftOut), settings, files)
+
+        assertEquals(setOf("aaaa"), BackupArchive.driveFingerprints(output.toByteArray().inputStream()))
+    }
+
+    @Test
+    fun `a sealed file's name is the same under its key, and says nothing without it`() {
+        val key = BackupCipher.keyFor("one".toCharArray(), ByteArray(16))
+        val otherKey = BackupCipher.keyFor("two".toCharArray(), ByteArray(16))
+
+        assertEquals(BackupCipher.blobName(key, "aaaa"), BackupCipher.blobName(key, "aaaa"))
+        assertNotEquals(BackupCipher.blobName(key, "aaaa"), BackupCipher.blobName(otherKey, "aaaa"))
+        assertNotEquals("aaaa", BackupCipher.blobName(key, "aaaa"))
+    }
+
+    @Test
     fun `the content fingerprint changes with the content, and only with it`() {
         val same = BackupArchive.contentFingerprint(library, settings, files)
 

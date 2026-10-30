@@ -33,6 +33,7 @@ work = "2.12.0"
 aboutLibraries = "15.0.3"
 kotlinxSerialization = "1.9.0"
 tink = "1.18.0"
+playServicesAuth = "21.5.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -82,6 +83,7 @@ reorderable = { group = "sh.calvin.reorderable", name = "reorderable", version.r
 kuromoji-ipadic = { group = "com.atilika.kuromoji", name = "kuromoji-ipadic", version.ref = "kuromojiIpadic" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 tink-android = { group = "com.google.crypto.tink", name = "tink-android", version.ref = "tink" }
+play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "playServicesAuth" }
 
 junit = { group = "junit", name = "junit", version = "4.13.2" }
 

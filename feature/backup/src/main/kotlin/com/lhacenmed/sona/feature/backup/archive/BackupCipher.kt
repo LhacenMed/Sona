@@ -10,8 +10,10 @@ import java.io.BufferedInputStream
 import java.io.InputStream
 import java.io.OutputStream
 import java.security.SecureRandom
+import javax.crypto.Mac
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
+import javax.crypto.spec.SecretKeySpec
 
 private val MAGIC = "SONAENC1".toByteArray()
 private const val SALT_LENGTH_BYTES = 16
@@ -58,6 +60,15 @@ object BackupCipher {
             return null
         }
         return input.readNBytesCompat(SALT_LENGTH_BYTES)
+    }
+
+    /**
+     * The name a file whose fingerprint is [fingerprint] is kept under in the cloud while sealed with [key]: keyed,
+     * so to anyone without the key it says nothing of which file it is.
+     */
+    fun blobName(key: BackupKey, fingerprint: String): String {
+        val mac = Mac.getInstance("HmacSHA256").apply { init(SecretKeySpec(key.bytes, "HmacSHA256")) }
+        return mac.doFinal(fingerprint.toByteArray()).joinToString("") { "%02x".format(it) }
     }
 
     /** [input], past its header, opened with [key]. A wrong key fails as the first bytes are read. */

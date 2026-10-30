@@ -4,9 +4,11 @@ import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.feature.backup.archive.BackupKey
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -31,6 +33,14 @@ private val KEY_SALT = stringPreferencesKey("key_salt")
 private val SEALED_KEY = stringPreferencesKey("sealed_key")
 private val LAST_BACKUP_AT = longPreferencesKey("last_backup_at")
 private val LAST_BACKUP_CONTENT = stringPreferencesKey("last_backup_content")
+private val DRIVE_CONNECTED = booleanPreferencesKey("drive_connected")
+private val DRIVE_ACCOUNT = stringPreferencesKey("drive_account")
+
+private val USES_MOBILE_DATA = booleanPreferencesKey("uses_mobile_data")
+
+// The folders left out rather than those backed up, so a folder the library gains later is backed up too - each by
+// its kind and path, see BackupFolders.
+private val FOLDERS_LEFT_OUT = stringSetPreferencesKey("left_out_folders")
 
 private const val KEYSTORE = "AndroidKeyStore"
 private const val DEVICE_KEY_ALIAS = "sona_backup_key"
@@ -72,8 +82,51 @@ class BackupSettings @Inject constructor(
     /** When the last backup was made, or null before the first. */
     val lastBackupAt: StateFlow<Long?> = dataStore.data.map { it[LAST_BACKUP_AT] }.stateIn(scope, SharingStarted.Eagerly, null)
 
+    /** Whether backups go to the user's Google Drive too - see [com.lhacenmed.sona.feature.backup.drive.DriveAccess]. */
+    val isDriveConnected: StateFlow<Boolean> = dataStore.data.map { it[DRIVE_CONNECTED] == true }.stateIn(scope, SharingStarted.Eagerly, false)
+
+    /** The email address of the Google account Drive is connected to, while it is - where Google gave it. */
+    val driveAccount: StateFlow<String?> = dataStore.data.map { it[DRIVE_ACCOUNT] }.stateIn(scope, SharingStarted.Eagerly, null)
+
     suspend fun setSchedule(schedule: BackupSchedule) {
         dataStore.edit { it[SCHEDULE] = schedule.name }
+    }
+
+    /** The library folders whose files are not backed up to Drive - see [BackupFolders]. */
+    val foldersLeftOut: StateFlow<Set<String>> = dataStore.data.map { it[FOLDERS_LEFT_OUT].orEmpty() }.stateIn(scope, SharingStarted.Eagerly, emptySet())
+
+    /** Whether music and videos go to Drive on mobile data too, rather than waiting for Wi-Fi. */
+    val usesMobileData: StateFlow<Boolean> = dataStore.data.map { it[USES_MOBILE_DATA] == true }.stateIn(scope, SharingStarted.Eagerly, false)
+
+    suspend fun setUsesMobileData(uses: Boolean) {
+        dataStore.edit { it[USES_MOBILE_DATA] = uses }
+    }
+
+    /** [usesMobileData], read from disk - see [isDriveConnectedNow]. */
+    internal suspend fun usesMobileDataNow(): Boolean = dataStore.data.first()[USES_MOBILE_DATA] == true
+
+    /** Whether Drive is connected, read from disk - for a backup or restore, which may run before anything has read it. */
+    internal suspend fun isDriveConnectedNow(): Boolean = dataStore.data.first()[DRIVE_CONNECTED] == true
+
+    /** [foldersLeftOut], read from disk - see [isDriveConnectedNow]. */
+    internal suspend fun foldersLeftOutNow(): Set<String> = dataStore.data.first()[FOLDERS_LEFT_OUT].orEmpty()
+
+    internal suspend fun setFolderLeftOut(entry: String, isLeftOut: Boolean) {
+        dataStore.edit { it[FOLDERS_LEFT_OUT] = it[FOLDERS_LEFT_OUT].orEmpty().let { entries -> if (isLeftOut) entries + entry else entries - entry } }
+    }
+
+    internal suspend fun setDriveConnected(account: String?) {
+        dataStore.edit {
+            it[DRIVE_CONNECTED] = true
+            if (account == null) it.remove(DRIVE_ACCOUNT) else it[DRIVE_ACCOUNT] = account
+        }
+    }
+
+    internal suspend fun setDriveDisconnected() {
+        dataStore.edit {
+            it[DRIVE_CONNECTED] = false
+            it.remove(DRIVE_ACCOUNT)
+        }
     }
 
     /** The key backups are sealed with, or null while they are not encrypted. */

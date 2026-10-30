@@ -19,7 +19,7 @@ class MediaRestorerTest {
     private class Cloud(private val files: Map<String, ByteArray>) : CloudMediaStore {
         var downloads = 0
 
-        override suspend fun fingerprints() = files.keys
+        override suspend fun keeps(fingerprints: Collection<String>) = fingerprints.filterTo(mutableSetOf()) { it in files }
 
         override suspend fun download(fingerprint: String, file: File) {
             downloads++

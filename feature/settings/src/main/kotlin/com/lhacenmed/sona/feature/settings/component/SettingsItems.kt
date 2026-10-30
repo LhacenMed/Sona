@@ -116,12 +116,13 @@ fun SettingsActionItem(
 /**
  * A row that does something when pressed - or, while not [enabled], stands faded and inert in its place.
  * While [isBusy] - what it started still under way - it shows so at its end and cannot be pressed again,
- * without fading.
+ * without fading. A [summary] is for what the title cannot say on its own - a state, a value - and a row
+ * whose title says it all has none.
  */
 @Composable
 fun SettingsActionItem(
     title: String,
-    summary: String,
+    summary: String? = null,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
@@ -129,7 +130,7 @@ fun SettingsActionItem(
 ) {
     ListItem(
         headlineContent = { Text(title) },
-        supportingContent = { Text(summary) },
+        supportingContent = summary?.let { { Text(it) } },
         trailingContent = if (isBusy) {
             { LoadingIndicator(modifier = Modifier.size(BusyIndicatorSize)) }
         } else {
@@ -221,11 +222,14 @@ fun SettingsSwitchItem(
     )
 }
 
-/** A row that turns a stored setting on or off - or, while not [enabled], still shows which it is, faded and inert. */
+/**
+ * A row that turns a stored setting on or off - or, while not [enabled], still shows which it is, faded and inert.
+ * As with [SettingsActionItem], a [summary] only where the title cannot say it on its own.
+ */
 @Composable
 fun SettingsSwitchItem(
     title: String,
-    summary: String,
+    summary: String? = null,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
@@ -233,7 +237,7 @@ fun SettingsSwitchItem(
 ) {
     ListItem(
         headlineContent = { Text(title) },
-        supportingContent = { Text(summary) },
+        supportingContent = summary?.let { { Text(it) } },
         trailingContent = { Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled) },
         colors = settingsRowColors(enabled),
         // The whole row, not just the switch: a settings row is one target, and hitting the text

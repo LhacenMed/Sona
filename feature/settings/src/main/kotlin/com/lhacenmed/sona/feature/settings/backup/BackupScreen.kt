@@ -4,8 +4,18 @@ import android.content.Context
 import android.text.format.DateUtils
 import android.text.format.Formatter
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Smartphone
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -13,20 +23,25 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDialog
 import com.lhacenmed.sona.core.designsystem.component.toast
+import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.backup.BackupSchedule
+import com.lhacenmed.sona.feature.backup.work.BackupFailure
 import com.lhacenmed.sona.feature.backup.work.BackupRun
 import com.lhacenmed.sona.feature.backup.work.backupProgressText
 import com.lhacenmed.sona.feature.settings.R
 import com.lhacenmed.sona.feature.settings.component.SettingsActionItem
 import com.lhacenmed.sona.feature.settings.component.SettingsChoiceItem
-import com.lhacenmed.sona.feature.settings.component.SettingsInfoItem
 import com.lhacenmed.sona.feature.settings.component.SettingsList
+import com.lhacenmed.sona.feature.settings.component.SettingsLoad
 import com.lhacenmed.sona.feature.settings.component.SettingsNote
 import com.lhacenmed.sona.feature.settings.component.SettingsSection
 import com.lhacenmed.sona.feature.settings.component.SettingsSectionDivider
@@ -34,7 +49,8 @@ import com.lhacenmed.sona.feature.settings.component.SettingsSwitchItem
 
 /**
  * Backing the library up, and restoring it: a backup now or on a schedule, optionally encrypted, kept in Sona's
- * folder; and a restore from any of those, or from a backup file anywhere on the device.
+ * folder and - once connected - in Google Drive with the library's files; and a restore from any of those, or from
+ * a backup file anywhere on the device.
  */
 data object BackupScreen : Screen {
     override val titleRes: Int get() = R.string.backup_title
@@ -42,23 +58,39 @@ data object BackupScreen : Screen {
     @Composable
     override fun Content() {
         val context = LocalContext.current
+        val navigator = LocalNavigator.current
         val viewModel: BackupViewModel = hiltViewModel()
         val schedule by viewModel.schedule.collectAsStateWithLifecycle()
         val isEncrypted by viewModel.isEncrypted.collectAsStateWithLifecycle()
         val lastBackupAt by viewModel.lastBackupAt.collectAsStateWithLifecycle()
         val backupRun by viewModel.backupRun.collectAsStateWithLifecycle()
         val restoreRun by viewModel.restoreRun.collectAsStateWithLifecycle()
-        val backups by viewModel.backups.collectAsStateWithLifecycle()
+        val backups by viewModel.restorableBackups.collectAsStateWithLifecycle()
         val restoreStep by viewModel.restoreStep.collectAsStateWithLifecycle()
+        val isDriveConnected by viewModel.isDriveConnected.collectAsStateWithLifecycle()
+        val driveAccount by viewModel.driveAccount.collectAsStateWithLifecycle()
+        val driveBackups by viewModel.driveBackupList.collectAsStateWithLifecycle()
+        val folders by viewModel.folders.collectAsStateWithLifecycle()
+        val usesMobileData by viewModel.usesMobileData.collectAsStateWithLifecycle()
         var isSettingPassphrase by rememberSaveable { mutableStateOf(false) }
+        var isConfirmingBackup by rememberSaveable { mutableStateOf(false) }
+        var isStoppingBackup by rememberSaveable { mutableStateOf(false) }
+        var backupToDelete by remember { mutableStateOf<RestorableBackup?>(null) }
+        var isDisconnectingDrive by rememberSaveable { mutableStateOf(false) }
         val pickBackup = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             uri?.let(viewModel::open)
+        }
+        val onDriveConnectFailed = { context.toast(R.string.backup_drive_connect_failed) }
+        val consentToDrive = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+            viewModel.finishConnectingDrive(result.data, onDriveConnectFailed)
         }
         val isBackingUp = backupRun is BackupRun.Running
         val isRestoring = restoreRun is BackupRun.Running
 
-        RunOutcomeToast(backupRun, successRes = R.string.backup_done, failureRes = R.string.backup_failed)
-        RunOutcomeToast(restoreRun, successRes = R.string.restore_done, failureRes = R.string.restore_failed)
+        RunOutcomeToast(backupRun, successRes = R.string.backup_done, failureRes = R.string.backup_failed, filesWaitingRes = R.string.backup_done_files_waiting)
+        RunOutcomeToast(restoreRun, successRes = R.string.restore_done, failureRes = R.string.restore_failed, filesWaitingRes = R.string.restore_done)
+        // Over - with this screen open or not - so nothing is left asking about it.
+        if (!isBackingUp) isStoppingBackup = false
 
         SettingsList {
             SettingsSection(stringResource(R.string.backup_section)) {
@@ -69,8 +101,7 @@ data object BackupScreen : Screen {
                     } else {
                         lastBackupAt?.let { stringResource(R.string.backup_last, formatDate(context, it)) } ?: stringResource(R.string.backup_none)
                     },
-                    onClick = viewModel::backUpNow,
-                    enabled = !isBackingUp,
+                    onClick = { if (isBackingUp) isStoppingBackup = true else isConfirmingBackup = true },
                     isBusy = isBackingUp,
                 )
                 SettingsChoiceItem(
@@ -81,7 +112,6 @@ data object BackupScreen : Screen {
                 )
                 SettingsSwitchItem(
                     title = stringResource(R.string.backup_encrypt_title),
-                    summary = stringResource(R.string.backup_encrypt_summary),
                     checked = isEncrypted,
                     onCheckedChange = { encrypt ->
                         if (encrypt) {
@@ -93,9 +123,32 @@ data object BackupScreen : Screen {
                         }
                     },
                 )
-                SettingsInfoItem(
-                    title = stringResource(R.string.backup_location_title),
-                    value = viewModel.location,
+                SettingsSwitchItem(
+                    title = stringResource(R.string.backup_drive_title),
+                    summary = driveAccount,
+                    checked = isDriveConnected,
+                    onCheckedChange = { connect ->
+                        if (!connect) {
+                            isDisconnectingDrive = true
+                        } else {
+                            viewModel.connectDrive(
+                                onConsent = { consentToDrive.launch(IntentSenderRequest.Builder(it).build()) },
+                                onFailed = onDriveConnectFailed,
+                            )
+                        }
+                    },
+                )
+                SettingsActionItem(
+                    title = stringResource(R.string.backup_folders_title),
+                    summary = foldersSummary(folders),
+                    onClick = { navigator.go(BackupFoldersScreen) },
+                    enabled = isDriveConnected,
+                )
+                SettingsSwitchItem(
+                    title = stringResource(R.string.backup_mobile_data_title),
+                    checked = usesMobileData,
+                    onCheckedChange = viewModel::setUsesMobileData,
+                    enabled = isDriveConnected,
                 )
             }
 
@@ -104,21 +157,76 @@ data object BackupScreen : Screen {
             SettingsSection(stringResource(R.string.restore_section)) {
                 SettingsActionItem(
                     title = stringResource(R.string.restore_from_file_title),
-                    summary = if (isRestoring) runText(context, restoreRun, isRestore = true) else stringResource(R.string.restore_from_file_summary),
+                    summary = if (isRestoring) runText(context, restoreRun, isRestore = true) else null,
                     onClick = { pickBackup.launch(arrayOf("*/*")) },
                     enabled = !isRestoring,
                     isBusy = isRestoring,
                 )
                 backups.forEach { backup ->
-                    SettingsActionItem(
-                        title = formatDate(context, backup.createdAt),
-                        summary = Formatter.formatShortFileSize(context, backup.sizeBytes),
+                    RestorableBackupItem(
+                        backup = backup,
                         onClick = { viewModel.open(backup) },
+                        onLongClick = { backupToDelete = backup },
                         enabled = !isRestoring,
+                    )
+                }
+                if (driveBackups == SettingsLoad.Failed) {
+                    SettingsActionItem(
+                        title = stringResource(R.string.restore_drive_failed),
+                        summary = stringResource(R.string.restore_drive_failed_summary),
+                        onClick = viewModel::retryDriveBackups,
                     )
                 }
                 SettingsNote(stringResource(R.string.backup_note))
             }
+        }
+
+        if (isConfirmingBackup) {
+            BackupNowDialog(
+                isDriveConnected = isDriveConnected,
+                folders = folders,
+                usesMobileData = usesMobileData,
+                onBackUp = {
+                    isConfirmingBackup = false
+                    viewModel.backUpNow()
+                },
+                onDismiss = { isConfirmingBackup = false },
+            )
+        }
+
+        backupToDelete?.let { backup ->
+            DeleteBackupDialog(
+                backup = backup,
+                onDelete = { fromDevice, fromDrive ->
+                    backupToDelete = null
+                    viewModel.delete(backup, fromDevice, fromDrive) { succeeded ->
+                        context.toast(if (succeeded) R.string.backup_deleted else R.string.backup_delete_failed)
+                    }
+                },
+                onDismiss = { backupToDelete = null },
+            )
+        }
+
+        if (isStoppingBackup) {
+            StopBackupDialog(
+                onStop = {
+                    isStoppingBackup = false
+                    viewModel.stopBackup()
+                },
+                onDismiss = { isStoppingBackup = false },
+            )
+        }
+
+        if (isDisconnectingDrive) {
+            SonaConfirmationDialog(
+                title = stringResource(R.string.backup_drive_disconnect_title),
+                message = stringResource(R.string.backup_drive_disconnect_message),
+                confirmLabel = stringResource(R.string.backup_drive_disconnect_action),
+                successMessage = stringResource(R.string.backup_drive_disconnected),
+                failureMessage = stringResource(R.string.backup_drive_disconnect_failed),
+                onDismiss = { isDisconnectingDrive = false },
+                operation = viewModel::disconnectDrive,
+            )
         }
 
         if (isSettingPassphrase) {
@@ -144,6 +252,26 @@ data object BackupScreen : Screen {
     }
 }
 
+/**
+ * A backup in the restore list, with where it is kept - this device, Google Drive, or both - shown at its end. A
+ * press restores it; a long press offers to delete it.
+ */
+@Composable
+private fun RestorableBackupItem(backup: RestorableBackup, onClick: () -> Unit, onLongClick: () -> Unit, enabled: Boolean) {
+    val context = LocalContext.current
+    ListItem(
+        headlineContent = { Text(formatDate(context, backup.createdAt)) },
+        supportingContent = { Text(Formatter.formatShortFileSize(context, backup.sizeBytes)) },
+        trailingContent = {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (backup.onDevice != null) Icon(Icons.Filled.Smartphone, contentDescription = stringResource(R.string.restore_on_device))
+                if (backup.inDrive != null) Icon(Icons.Filled.Cloud, contentDescription = stringResource(R.string.restore_in_drive))
+            }
+        },
+        modifier = Modifier.combinedClickable(enabled = enabled, onLongClick = onLongClick, onClick = onClick),
+    )
+}
+
 private val BackupSchedule.labelRes: Int
     @StringRes get() = when (this) {
         BackupSchedule.OFF -> R.string.backup_schedule_off
@@ -151,16 +279,26 @@ private val BackupSchedule.labelRes: Int
         BackupSchedule.WEEKLY -> R.string.backup_schedule_weekly
     }
 
-/** Tells how a run the screen saw going ended - only one it saw going, not one that ended before it opened. */
+/**
+ * Tells how a run the screen saw going ended - only one it saw going, not one that ended before it opened - and,
+ * for a failure the user can do something about, what.
+ */
 @Composable
-private fun RunOutcomeToast(run: BackupRun?, @StringRes successRes: Int, @StringRes failureRes: Int) {
+private fun RunOutcomeToast(run: BackupRun?, @StringRes successRes: Int, @StringRes failureRes: Int, @StringRes filesWaitingRes: Int) {
     val context = LocalContext.current
     var wasRunning by remember { mutableStateOf(false) }
     LaunchedEffect(run) {
         if (wasRunning) {
             when (run) {
-                BackupRun.Succeeded -> context.toast(successRes)
-                BackupRun.Failed -> context.toast(failureRes)
+                is BackupRun.Succeeded -> context.toast(if (run.areFilesWaiting) filesWaitingRes else successRes)
+                BackupRun.Stopped -> context.toast(R.string.backup_stopped)
+                is BackupRun.Failed -> context.toast(
+                    when (run.reason) {
+                        BackupFailure.DRIVE_FULL -> R.string.backup_failed_drive_full
+                        BackupFailure.DRIVE_ACCESS_LOST -> R.string.backup_failed_drive_access
+                        null -> failureRes
+                    },
+                )
                 else -> Unit
             }
         }

@@ -16,6 +16,7 @@ import com.lhacenmed.sona.core.database.entity.ResumePositionEntity
 data class TrackFile(
     val id: Long,
     val path: String,
+    val folderPath: String,
     val isVideo: Boolean,
 )
 
@@ -28,7 +29,7 @@ data class TrackFile(
 @Dao
 interface BackupDao {
 
-    @Query("SELECT id, path, isVideo FROM tracks")
+    @Query("SELECT id, path, folderPath, isVideo FROM tracks")
     suspend fun trackFiles(): List<TrackFile>
 
     @Query("SELECT * FROM playlists")

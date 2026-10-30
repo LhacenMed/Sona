@@ -106,6 +106,14 @@ object BackupArchive {
         return read(directory)
     }
 
+    /** The fingerprints of the files the backup read from [input] keeps in Drive - its library alone read, nothing unpacked. */
+    fun driveFingerprints(input: InputStream): Set<String> = ZipInputStream(input).use { zip ->
+        generateSequence { zip.nextEntry }.first { it.name == LIBRARY }
+        json.decodeFromString<BackupLibrary>(zip.readBytes().decodeToString()).media
+            .filter { it.isKeptInDrive }
+            .mapTo(HashSet()) { it.fingerprint }
+    }
+
     /** The backup [extract] unpacked into [directory]. */
     fun read(directory: File): BackupContents {
         val manifest = json.decodeFromString<BackupManifest>(File(directory, MANIFEST).readText())
