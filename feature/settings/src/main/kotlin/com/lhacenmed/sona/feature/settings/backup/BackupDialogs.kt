@@ -98,8 +98,9 @@ internal fun BackupNowDialog(
 
 /** Asks before stopping a backup under way. */
 @Composable
-internal fun StopBackupDialog(onStop: () -> Unit, onDismiss: () -> Unit) {
+internal fun StopBackupDialog(onPause: () -> Unit, onStop: () -> Unit, onDismiss: () -> Unit) {
     val keepGoingLabel = stringResource(R.string.backup_stop_keep_going)
+    val pauseLabel = stringResource(R.string.backup_stop_pause)
     val stopLabel = stringResource(R.string.backup_stop_action)
 
     SonaDialog(
@@ -107,6 +108,7 @@ internal fun StopBackupDialog(onStop: () -> Unit, onDismiss: () -> Unit) {
         title = stringResource(R.string.backup_stop_title),
         buttons = {
             actionButton(label = keepGoingLabel, onClick = onDismiss)
+            actionButton(label = pauseLabel, onClick = onPause)
             actionButton(label = stopLabel, onClick = onStop)
         },
     ) {

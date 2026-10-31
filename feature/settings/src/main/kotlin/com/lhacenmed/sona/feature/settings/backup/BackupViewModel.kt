@@ -12,6 +12,7 @@ import com.lhacenmed.sona.feature.backup.BackupRepository
 import com.lhacenmed.sona.feature.backup.BackupSchedule
 import com.lhacenmed.sona.feature.backup.BackupSettings
 import com.lhacenmed.sona.feature.backup.BackupFolder
+import com.lhacenmed.sona.feature.backup.BackupFilePicks
 import com.lhacenmed.sona.feature.backup.BackupFolders
 import com.lhacenmed.sona.feature.backup.LocalBackups
 import com.lhacenmed.sona.feature.backup.OpenedBackup
@@ -80,7 +81,7 @@ class BackupViewModel @Inject constructor(
     private val localBackups: LocalBackups,
     private val driveAccess: DriveAccess,
     private val driveBackups: DriveBackups,
-    backupFolders: BackupFolders,
+    private val backupFolders: BackupFolders,
 ) : ViewModel() {
 
     val schedule: StateFlow<BackupSchedule> = backupSettings.schedule
@@ -143,7 +144,26 @@ class BackupViewModel @Inject constructor(
 
     fun backUpNow() = BackupWork.backUp(context)
 
-    fun stopBackup() = BackupWork.stopBackup(context)
+    /** The library's files as the folder picker offers them, with those backed up - null while they are read. */
+    val filePicks: StateFlow<BackupFilePicks?> = backupFolders.filePicks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Backs up the folders and files [picked], and leaves the others out. */
+    fun backUpFolders(picked: Set<String>) {
+        val files = filePicks.value ?: return
+        viewModelScope.launch { backupFolders.backUpOnly(picked, files) }
+    }
+
+    fun pauseBackup() {
+        viewModelScope.launch { BackupWork.pauseBackup(context) }
+    }
+
+    fun resumeBackup() {
+        viewModelScope.launch { BackupWork.resumeBackup(context) }
+    }
+
+    fun stopBackup() {
+        viewModelScope.launch { BackupWork.stopBackup(context) }
+    }
 
     fun setUsesMobileData(uses: Boolean) {
         viewModelScope.launch { backupSettings.setUsesMobileData(uses) }

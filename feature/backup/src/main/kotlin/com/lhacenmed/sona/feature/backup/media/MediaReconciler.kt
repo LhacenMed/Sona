@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.feature.backup.media
 
+import com.lhacenmed.sona.core.data.fingerprint.fingerprintOf
 import com.lhacenmed.sona.feature.backup.BackedUpMedia
 
 /**

@@ -34,6 +34,7 @@ import com.lhacenmed.sona.feature.library.options.OptionsAction.SHUFFLE
 import com.lhacenmed.sona.feature.library.options.OptionsAction.SONG_PROPERTIES
 import com.lhacenmed.sona.feature.library.options.OptionsAction.STOP_COUNTING_PLAYS
 import com.lhacenmed.sona.feature.library.options.OptionsAction.VIEW_DETAILS
+import com.lhacenmed.sona.feature.library.options.OptionsAction.BROWSE_FOLDER
 import com.lhacenmed.sona.feature.library.pluralCount
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.trackCountLabel
@@ -114,7 +115,7 @@ private val GenreActions = listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_
 private val PlaylistActions =
     listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, ADD_TRACKS, ADD_COLLECTIONS, EDIT, IMPORT, EXPORT, DELETE)
 private val FolderActions =
-    listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, AUTO_TAG, EXPORT, EXCLUDE, DELETE_FROM_DEVICE)
+    listOf(PLAY, SHUFFLE, VIEW_DETAILS, BROWSE_FOLDER, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, AUTO_TAG, EXPORT, EXCLUDE, DELETE_FROM_DEVICE)
 
 /** What [this] plays as - null for a selection, which Auxio plays from no collection at all. */
 internal val OptionsTarget.playbackParent: PlaybackParent?

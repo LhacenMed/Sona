@@ -55,8 +55,9 @@ private val ContentPadding = SonaComponentStyle.ContentHorizontalPadding
 
 /** The run's tracks, as many as its folders hold - pressed, which folders those are. */
 @Composable
-internal fun TracksRow(trackCount: Int, folders: List<Pair<Folder, Int>>, leftOutFolders: Set<String>, onClick: () -> Unit) {
-    val kept = folders.count { (folder, _) -> folder.path !in leftOutFolders }
+internal fun TracksRow(trackCount: Int, folders: List<Pair<Folder, Int>>, leftOut: Set<String>, onClick: () -> Unit) {
+    // A folder some of whose files are left out is still in the run.
+    val kept = folders.count { (folder, _) -> folder.path !in leftOut }
     SonaListRow(
         title = tracksLabel(trackCount),
         subtitle = if (kept == folders.size) "All ${foldersLabel(folders.size)}" else "$kept of ${foldersLabel(folders.size)}",

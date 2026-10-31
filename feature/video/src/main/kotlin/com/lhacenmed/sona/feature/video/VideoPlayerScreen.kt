@@ -105,11 +105,13 @@ private class DragProgress {
  * and the controls over those, which a tap shows and hides.
  *
  * Laid out in three layers that never change places: the picture, the gesture feedback and loader, then the
- * controls. Locking the controls swaps the controls for the lock alone, in the place it always has.
+ * controls. Locking the controls swaps the controls for the lock alone, in the place it always has. [isFloating],
+ * in its floating window, it is the picture alone - the window has controls of its own. [onFloat], where the
+ * device has floating windows, puts it in one.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun VideoPlayerScreen(viewModel: VideoPlayerViewModel, onClose: () -> Unit) {
+internal fun VideoPlayerScreen(viewModel: VideoPlayerViewModel, onClose: () -> Unit, isFloating: Boolean, onFloat: (() -> Unit)?) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val session by viewModel.session.collectAsStateWithLifecycle()
     val gestureSettings by viewModel.gestureSettings.collectAsStateWithLifecycle()
@@ -167,6 +169,8 @@ internal fun VideoPlayerScreen(viewModel: VideoPlayerViewModel, onClose: () -> U
     )
     // Locked, back does nothing but show the lock, so the player is not left by accident either.
     BackHandler(enabled = session.isLocked) { controls.show() }
+    // A sheet has no room in the floating window: it is closed as the player floats.
+    LaunchedEffect(isFloating) { if (isFloating) sheet = null }
 
     val position by rememberVideoPosition(viewModel::currentPositionMs, isFollowing = controls.isVisible || isAudioOnly)
     val isLoaderShown by produceState(false, playback.isBuffering) {
@@ -204,7 +208,7 @@ internal fun VideoPlayerScreen(viewModel: VideoPlayerViewModel, onClose: () -> U
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .videoGestures(gestureActions),
+            .then(if (isFloating) Modifier else Modifier.videoGestures(gestureActions)),
     ) {
         // The surface stays while the player is on screen - covered, not dropped, while the video plays as audio -
         // so the picture is still decoding when it comes back, and comes back at once.
@@ -242,6 +246,9 @@ internal fun VideoPlayerScreen(viewModel: VideoPlayerViewModel, onClose: () -> U
         } else if (!isPictureShown) {
             Box(Modifier.fillMaxSize().background(Color.Black))
         }
+
+        // Floating, the picture is all there is.
+        if (isFloating) return@Box
 
         // Dragging through the video, its frames are the feedback; a loader would only cover them.
         if (isLoaderShown && !isScrubbing && !isAudioOnly) {
@@ -297,6 +304,7 @@ internal fun VideoPlayerScreen(viewModel: VideoPlayerViewModel, onClose: () -> U
                         viewModel.onCycleAspect()
                         feedback.flash(GestureFeedback.Aspect(session.aspect.next()))
                     },
+                    onFloat = onFloat,
                     onOpenSheet = { sheet = it },
                 )
             }
@@ -339,6 +347,7 @@ private fun PlayerControls(
     onScreenshot: () -> Unit,
     onCycleOrientation: () -> Unit,
     onCycleAspect: () -> Unit,
+    onFloat: (() -> Unit)?,
     onOpenSheet: (VideoSheet) -> Unit,
 ) {
     val accent = MaterialTheme.colorScheme.primary
@@ -396,8 +405,7 @@ private fun PlayerControls(
                 } else {
                     listOf(
                         VideoAction(Icons.Rounded.AspectRatio, stringResource(R.string.video_aspect), onCycleAspect),
-                        // The floating window is still to come.
-                        VideoAction(Icons.Rounded.PictureInPictureAlt, stringResource(R.string.video_floating_window), onClick = null),
+                        VideoAction(Icons.Rounded.PictureInPictureAlt, stringResource(R.string.video_floating_window), onClick = onFloat),
                     )
                 },
             )

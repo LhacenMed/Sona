@@ -22,14 +22,17 @@ import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.PlaylistDao
 import com.lhacenmed.sona.core.database.dao.ResumePositionDao
 import com.lhacenmed.sona.core.database.entity.FavoriteCollectionEntity
+import com.lhacenmed.sona.core.database.entity.FolderRow
 import com.lhacenmed.sona.core.database.entity.PlaylistEntity
 import com.lhacenmed.sona.core.database.entity.PlaylistTrackEntity
+import com.lhacenmed.sona.core.database.entity.TrackEntity
 import com.lhacenmed.sona.core.database.dao.TrackDao
 import com.lhacenmed.sona.core.database.entity.toDomain
 import com.lhacenmed.sona.core.datastore.LibrarySettings
 import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Folder
+import com.lhacenmed.sona.core.model.FolderView
 import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
@@ -37,6 +40,7 @@ import com.lhacenmed.sona.core.model.PlaylistCover
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.playbackParentOf
 import com.lhacenmed.sona.core.model.toStorageKey
+import com.lhacenmed.sona.core.model.topMostFoldersOf
 import com.lhacenmed.sona.core.model.sort.SortOrder
 import com.lhacenmed.sona.core.model.sort.SortTarget
 import com.lhacenmed.sona.core.model.sort.SortableList
@@ -109,6 +113,11 @@ class LibraryRepository @Inject constructor(
         .distinctUntilChanged()
         .stateIn(scope, SharingStarted.Eagerly, librarySettings.intelligentSortingEnabled.value)
 
+    /** How folders inside one another are listed - see [FolderView]. */
+    private val folderView: StateFlow<FolderView> = librarySettings.folderView.flow
+        .distinctUntilChanged()
+        .stateIn(scope, SharingStarted.Eagerly, librarySettings.folderView.value)
+
     /** The music - every track but the videos, which are the Videos tab's alone. */
     val tracks: StateFlow<LibraryContent<Track>> = trackDao.observeAll(isVideo = false)
         .sortedFor(LibrarySortSpecs.tracks) { rows -> rows.map { it.toDomain() } }
@@ -136,10 +145,17 @@ class LibraryRepository @Inject constructor(
         .sortedFor(LibrarySortSpecs.genres) { rows -> rows.map { it.toDomain() } }
         .shareContent()
 
-    val folders: StateFlow<LibraryContent<Folder>> = foldersOf(isVideo = false)
+    /** The folders holding music, as the Folders tab lists them - see [FolderView]. */
+    val folders: StateFlow<LibraryContent<Folder>> = foldersOf(isVideo = false, folderView)
 
-    /** Every folder holding a video, counting its videos alone - sorted as [folders] are. */
-    val videoFolders: StateFlow<LibraryContent<Folder>> = foldersOf(isVideo = true)
+    /** Every folder holding a video, counting its videos alone - listed as [folders] are. */
+    val videoFolders: StateFlow<LibraryContent<Folder>> = foldersOf(isVideo = true, folderView)
+
+    /** Each folder holding music, alone - one inside another included - for what is chosen folder by folder. */
+    val mediaFolders: StateFlow<LibraryContent<Folder>> = foldersOf(isVideo = false, flowOf(FolderView.SEPARATE))
+
+    /** [mediaFolders], for videos. */
+    val mediaVideoFolders: StateFlow<LibraryContent<Folder>> = foldersOf(isVideo = true, flowOf(FolderView.SEPARATE))
 
     /**
      * [tracksById], or null until the tracks and the videos have both been read - for what must tell a track not in
@@ -213,11 +229,32 @@ class LibraryRepository @Inject constructor(
             .arrangedFor(LibrarySortSpecs.genreTracks, genreId.toString()) { ListEntry(it.toDomain()) }
             .asTrackContent()
 
-    /** The music in [folderPath] - or, where [isVideo], its videos. */
+    /**
+     * The folders [folderPaths] stand for as listed: each one - and, while folders are [FolderView.GROUPED], every
+     * folder holding files inside it, which it is listed with.
+     */
+    fun foldersListedAs(folderPaths: Collection<String>): Set<String> {
+        if (folderView.value != FolderView.GROUPED) return folderPaths.toSet()
+        val everyFolder = (mediaFolders.value.itemsOrEmpty + mediaVideoFolders.value.itemsOrEmpty).map { it.path }
+        return folderPaths.flatMapTo(mutableSetOf()) { listed -> everyFolder.filter { it.startsWith("$listed/") } + listed }
+    }
+
+    /**
+     * The music in [folderPath] - or, where [isVideo], its videos - with, while folders are [FolderView.GROUPED],
+     * those of every folder inside it.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
     fun folderTracks(folderPath: String, isVideo: Boolean): Flow<LibraryContent<Track>> =
-        trackDao.observeByFolder(folderPath, isVideo)
-            .arrangedFor(LibrarySortSpecs.folderTracks, folderPath) { ListEntry(it.toDomain()) }
-            .asTrackContent()
+        folderView.flatMapLatest { view ->
+            if (view == FolderView.GROUPED) folderTracksOf(trackDao.observeInFolderTree(folderPath, isVideo), folderPath) else folderOwnTracks(folderPath, isVideo)
+        }
+
+    /** The music in [folderPath] alone - or, where [isVideo], its videos - none of a folder inside it, in the folder's order. */
+    fun folderOwnTracks(folderPath: String, isVideo: Boolean): Flow<LibraryContent<Track>> =
+        folderTracksOf(trackDao.observeByFolder(folderPath, isVideo), folderPath)
+
+    private fun folderTracksOf(rows: Flow<List<TrackEntity>>, folderPath: String): Flow<LibraryContent<Track>> =
+        rows.arrangedFor(LibrarySortSpecs.folderTracks, folderPath) { ListEntry(it.toDomain()) }.asTrackContent()
 
     /** Resolves persisted queue ids to tracks, in the order given. */
     suspend fun tracksByIds(ids: List<Long>): List<Track> {
@@ -545,22 +582,24 @@ class LibraryRepository @Inject constructor(
     }
 
     /**
-     * The folders holding music - or, where [isVideo], videos - with the count and cover each row shows.
-     * Aggregated by SQLite (`GROUP BY folderPath`), not by grouping the track list in memory.
+     * The folders holding music - or, where [isVideo], videos - with the count and cover each row shows, as [view]
+     * lists them: grouped, a folder counts the files and covers of every folder listed under it too. Aggregated by
+     * SQLite (`GROUP BY folderPath`), not by grouping the track list in memory.
      */
-    private fun foldersOf(isVideo: Boolean): StateFlow<LibraryContent<Folder>> =
-        trackDao.observeFolders(isVideo)
-            .combine(trackDao.observeFolderCoverArt(isVideo)) { rows, coverRows ->
-                val coversByPath = coverRows.groupBy { it.path }
-                rows.map { row ->
-                    row.toDomain(
-                        coverArtUris = rankedCoverArtUris(
-                            coversByPath[row.path].orEmpty().associate { it.coverArtUri to it.trackCount },
-                        ),
-                        isVideo = isVideo,
-                    )
-                }
+    private fun foldersOf(isVideo: Boolean, view: Flow<FolderView>): StateFlow<LibraryContent<Folder>> =
+        combine(trackDao.observeFolders(isVideo), trackDao.observeFolderCoverArt(isVideo), view) { rows, coverRows, folderView ->
+            val listedUnder = if (folderView == FolderView.GROUPED) topMostFoldersOf(rows.map { it.path }) else emptyMap()
+            fun listedPathOf(path: String) = listedUnder[path] ?: path
+            val coversByPath = coverRows.groupBy { listedPathOf(it.path) }
+            rows.groupBy { listedPathOf(it.path) }.map { (path, group) ->
+                FolderRow(path, group.sumOf { it.trackCount }).toDomain(
+                    coverArtUris = rankedCoverArtUris(
+                        coversByPath[path].orEmpty().groupingBy { it.coverArtUri }.fold(0) { count, row -> count + row.trackCount },
+                    ),
+                    isVideo = isVideo,
+                )
             }
+        }
             .sortedFor(LibrarySortSpecs.folders) { rows -> rows }
             .shareContent()
 

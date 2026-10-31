@@ -4,6 +4,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- A backup's progress as a live update, on Android 16 and later. -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
 
     <application>
         <!-- A backup or a restore the user started - WorkManager's own service, run as a data sync. -->
@@ -11,6 +13,11 @@
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync"
             tools:node="merge" />
+
+        <!-- Pause, Resume and Stop, from a backup's notification. -->
+        <receiver
+            android:name=".work.BackupActionReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

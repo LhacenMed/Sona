@@ -52,8 +52,9 @@ data class LibraryPlayback(
     fun marks(playlist: Playlist): Boolean =
         parent == PlaybackParent.Playlist(playlist.id) && currentTrack != null
 
+    // A folder listed with those inside it plays theirs too - see [com.lhacenmed.sona.core.model.FolderView.GROUPED].
     fun marks(folder: Folder): Boolean =
-        parent == folder.playbackParent && currentTrack?.folderPath == folder.path
+        parent == folder.playbackParent && currentTrack?.folderPath?.let { it == folder.path || it.startsWith(folder.path + "/") } == true
 
     /** A collection with no library row of its own - Recent and Most played - as its own row. */
     fun marks(collection: PlaybackParent): Boolean = parent == collection && currentTrack != null

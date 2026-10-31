@@ -10,6 +10,7 @@ import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.model.Folder
+import com.lhacenmed.sona.core.model.FolderPicks
 import com.lhacenmed.sona.core.model.Track
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -42,32 +43,36 @@ class AutoTagViewModel @AssistedInject constructor(
     var choices by mutableStateOf(AutoTagChoices())
 
     /** The folders left out of the run, by path - none to begin with, so a folder that appears meanwhile is in it. */
-    var leftOutFolders by mutableStateOf(emptySet<String>())
+    /** What is left out of the run - folders and files, by path, see [FolderPicks]. */
+    var leftOut by mutableStateOf(emptySet<String>())
         private set
 
     // Each starts from what the library already holds, so the screen is whole from its first frame.
 
     /** Every track the run could cover - videos, played for their sound and seldom songs, never among them. */
-    private val coverableTracks: StateFlow<List<Track>> =
+    val coverableTracks: StateFlow<List<Track>> =
         combine(libraryRepository.tracks, libraryRepository.tracksById, ::coverableTracksOf)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), coverableTracksOf(libraryRepository.tracks.value, libraryRepository.tracksById.value))
 
     /** The folders [coverableTracks] are in, each with how many of them it holds. */
     val folders: StateFlow<List<Pair<Folder, Int>>> =
-        combine(libraryRepository.folders, coverableTracks, ::foldersOf)
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), foldersOf(libraryRepository.folders.value, coverableTracks.value))
+        combine(libraryRepository.mediaFolders, coverableTracks, ::foldersOf)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), foldersOf(libraryRepository.mediaFolders.value, coverableTracks.value))
 
     /** The tracks the run would look up as things stand. */
     val tracks: StateFlow<List<Track>> =
-        combine(coverableTracks, snapshotFlow { leftOutFolders }, ::tracksIn)
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), tracksIn(coverableTracks.value, leftOutFolders))
+        combine(coverableTracks, snapshotFlow { leftOut }, ::tracksIn)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), tracksIn(coverableTracks.value, leftOut))
 
     private fun coverableTracksOf(library: LibraryContent<Track>, byId: Map<Long, Track>): List<Track> =
         if (trackIds == null) library.itemsOrEmpty else trackIds.mapNotNull(byId::get).filterNot { it.isVideo }
 
-    /** Keeps the folders [paths] in the run, and every other one out of it. */
-    fun keepFolders(paths: Set<String>) {
-        leftOutFolders = folders.value.map { it.first.path }.filterNot { it in paths }.toSet()
+    /** What is picked for the run, as the folder picker keys it - see [FolderPicks]. */
+    val picked: Set<String> get() = FolderPicks(coverableTracks.value).allBut(leftOut)
+
+    /** Keeps the folders and files [picked] in the run, and every other one out of it. */
+    fun keep(picked: Set<String>) {
+        leftOut = FolderPicks(coverableTracks.value).allBut(picked)
     }
 
     fun start() {
@@ -89,5 +94,5 @@ private fun foldersOf(folders: LibraryContent<Folder>, tracks: List<Track>): Lis
     return folders.itemsOrEmpty.mapNotNull { folder -> counts[folder.path]?.let { folder to it } }
 }
 
-private fun tracksIn(tracks: List<Track>, leftOutFolders: Set<String>): List<Track> =
-    tracks.filterNot { it.folderPath in leftOutFolders }
+private fun tracksIn(tracks: List<Track>, leftOut: Set<String>): List<Track> =
+    tracks.filterNot { it.folderPath in leftOut || it.path in leftOut }

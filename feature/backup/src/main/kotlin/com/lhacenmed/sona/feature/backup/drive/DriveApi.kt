@@ -21,7 +21,6 @@ import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
-import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okio.BufferedSink
@@ -120,11 +119,17 @@ internal class DriveApi @Inject constructor(
     /**
      * Uploads [file] as [name] into [parentId]: a small one in a single request, a large one in chunks - each sent
      * again where the connection dropped, and carried on from where an earlier run left it, so it is never started
-     * over.
+     * over. [onProgress] hears how far it has gone, byte by byte: first where it starts, then as it is sent.
      */
-    suspend fun upload(file: File, name: String, parentId: String, properties: Map<String, String>): DriveFile {
+    suspend fun upload(
+        file: File,
+        name: String,
+        parentId: String,
+        properties: Map<String, String>,
+        onProgress: (position: Long) -> Unit = {},
+    ): DriveFile {
         val size = file.length()
-        if (size <= ONE_REQUEST_MAX_BYTES) return uploadAtOnce(file, name, parentId, properties)
+        if (size <= ONE_REQUEST_MAX_BYTES) return uploadAtOnce(file, name, parentId, properties, onProgress)
         val key = "$name:$size:${file.lastModified()}:${access.account.value}"
         var session = uploads.getString(key, null)
         var isResuming = session != null
@@ -153,9 +158,12 @@ internal class DriveApi @Inject constructor(
                     offset = uploaded
                     isResuming = false
                 }
-                val length = minOf(CHUNK_BYTES, size - offset)
-                val range = if (size == 0L) "bytes */0" else "bytes $offset-${offset + length - 1}/$size"
-                call(Request.Builder().url(session).header("Content-Range", range).put(FileSlice(file, offset, length))).use {
+                val start = offset
+                val length = minOf(CHUNK_BYTES, size - start)
+                val range = if (size == 0L) "bytes */0" else "bytes $start-${start + length - 1}/$size"
+                onProgress(start)
+                val chunk = FileSlice(file, start, length) { written -> onProgress(start + written) }
+                call(Request.Builder().url(session).header("Content-Range", range).put(chunk)).use {
                     if (it.code != HTTP_RESUME_INCOMPLETE) return finished(key) { JSONObject(it.body!!.string()).toDriveFile() }
                     offset = it.rangeEnd()
                 }
@@ -171,11 +179,18 @@ internal class DriveApi @Inject constructor(
     }
 
     /** [file] uploaded as [name] in one request, its details and its bytes together. */
-    private suspend fun uploadAtOnce(file: File, name: String, parentId: String, properties: Map<String, String>): DriveFile {
+    private suspend fun uploadAtOnce(
+        file: File,
+        name: String,
+        parentId: String,
+        properties: Map<String, String>,
+        onProgress: (position: Long) -> Unit,
+    ): DriveFile {
+        onProgress(0L)
         val body = MultipartBody.Builder()
             .setType("multipart/related".toMediaType())
             .addPart(metadata(name, properties, parentId).toString().toRequestBody(JSON))
-            .addPart(file.asRequestBody(BINARY))
+            .addPart(FileSlice(file, 0L, file.length(), onProgress))
             .build()
         return json(Request.Builder().url("$UPLOAD_URL?uploadType=multipart&fields=$FILE_FIELDS").post(body)).toDriveFile()
     }
@@ -191,6 +206,10 @@ internal class DriveApi @Inject constructor(
     /** The file [uploaded] reads back, the upload under [key] being over. */
     private inline fun finished(key: String, uploaded: () -> DriveFile): DriveFile =
         uploaded().also { uploads.edit().remove(key).apply() }
+
+    /** The SHA-256 Drive has of the bytes of the file [id], or null where it has none to give. */
+    suspend fun checksumOf(id: String): String? =
+        json(Request.Builder().url("$FILES_URL/$id?fields=sha256Checksum")).optString("sha256Checksum").takeIf { it.isNotEmpty() }
 
     suspend fun download(id: String, file: File) {
         open(id).use { input -> file.outputStream().use { input.copyTo(it) } }
@@ -304,8 +323,13 @@ private fun JSONObject.toDriveFile(): DriveFile {
     )
 }
 
-/** [length] bytes of [file] from [offset], read only as they are sent. */
-private class FileSlice(private val file: File, private val offset: Long, private val length: Long) : RequestBody() {
+/** [length] bytes of [file] from [offset], read only as they are sent - [onWritten] hearing how many have been. */
+private class FileSlice(
+    private val file: File,
+    private val offset: Long,
+    private val length: Long,
+    private val onWritten: (Long) -> Unit,
+) : RequestBody() {
     override fun contentType() = BINARY
 
     override fun contentLength() = length
@@ -320,6 +344,7 @@ private class FileSlice(private val file: File, private val offset: Long, privat
                 if (read < 0) throw IOException("${file.name} ended early")
                 sink.write(buffer, 0, read)
                 remaining -= read
+                onWritten(length - remaining)
             }
         }
     }

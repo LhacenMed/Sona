@@ -83,6 +83,23 @@ fun SonaBottomSheet(
 }
 
 /**
+ * The same sheet, laid out beneath its title by [content] itself - for one filled with lists and bars of its own,
+ * weighted as it likes: a folder picker's tabs, folders and buttons.
+ */
+@Composable
+fun SonaColumnBottomSheet(
+    title: String,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.(SonaBottomSheetScope) -> Unit,
+) {
+    SheetFrame(onDismissRequest, modifier) { sheetScope ->
+        SheetTitle(title)
+        content(sheetScope)
+    }
+}
+
+/**
  * The same sheet for a list that can run long - a queue, say: the rows are a lazy list, so only those in view
  * are drawn, however many there are. [listState] places it - opened at the row that matters.
  */

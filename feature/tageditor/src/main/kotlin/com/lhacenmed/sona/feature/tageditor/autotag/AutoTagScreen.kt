@@ -36,13 +36,12 @@ import com.lhacenmed.sona.core.designsystem.component.screen.screenList
 import com.lhacenmed.sona.core.designsystem.component.section.ColumnSection
 import com.lhacenmed.sona.core.designsystem.component.section.rememberSectionListState
 import com.lhacenmed.sona.core.designsystem.component.section.section
-import com.lhacenmed.sona.core.designsystem.component.sheet.FolderChoice
-import com.lhacenmed.sona.core.designsystem.component.sheet.FolderPickerTab
-import com.lhacenmed.sona.core.designsystem.component.sheet.SonaFolderPickerSheet
 import com.lhacenmed.sona.core.designsystem.component.selectAllAction
 import com.lhacenmed.sona.core.designsystem.component.topBarBackground
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.navigation.LocalNavigator
+import com.lhacenmed.sona.feature.explorer.FolderPickerSheet
+import com.lhacenmed.sona.feature.explorer.FolderPickerTab
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.tageditor.TagEditorScreen
 import com.lhacenmed.sona.feature.tageditor.rememberFileChangeRequest
@@ -106,7 +105,7 @@ private fun AutoTagSetup(viewModel: AutoTagViewModel) {
                 TracksRow(
                     trackCount = tracks.size,
                     folders = folders,
-                    leftOutFolders = viewModel.leftOutFolders,
+                    leftOut = viewModel.leftOut,
                     onClick = { isChoosingFolders = true },
                 )
             }
@@ -125,12 +124,12 @@ private fun AutoTagSetup(viewModel: AutoTagViewModel) {
     }
 
     if (isChoosingFolders) {
-        SonaFolderPickerSheet(
-            title = "Folders to tag",
-            tabs = listOf(FolderPickerTab("Folders", folders.map { (folder, count) -> FolderChoice(folder, tracksLabel(count)) })),
-            initiallySelected = folders.map { it.first.path }.filterNot { it in viewModel.leftOutFolders }.toSet(),
-            confirmLabel = { count -> if (count == 1) "Tag 1 folder" else "Tag $count folders" },
-            onConfirm = viewModel::keepFolders,
+        FolderPickerSheet(
+            title = "Tracks to tag",
+            tabs = listOf(FolderPickerTab("Tracks", viewModel.coverableTracks.value)),
+            initiallyPicked = viewModel.picked,
+            confirmLabel = { count -> "Tag ${tracksLabel(count)}" },
+            onConfirm = viewModel::keep,
             onDismissRequest = { isChoosingFolders = false },
         )
     }

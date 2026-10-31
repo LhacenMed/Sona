@@ -25,7 +25,7 @@ import com.lhacenmed.sona.feature.backup.archive.UnsupportedBackupException
 import com.lhacenmed.sona.feature.backup.drive.DriveBackups
 import com.lhacenmed.sona.feature.backup.library.LocalLibrary
 import com.lhacenmed.sona.feature.backup.library.planLibraryMerge
-import com.lhacenmed.sona.feature.backup.media.MediaFingerprints
+import com.lhacenmed.sona.core.data.fingerprint.MediaFingerprints
 import com.lhacenmed.sona.feature.backup.media.MediaPlan
 import com.lhacenmed.sona.feature.backup.media.MediaRestorer
 import com.lhacenmed.sona.feature.backup.media.reconcileMedia
@@ -52,22 +52,6 @@ private const val RESTORE_DIRECTORY_NAME = "restore"
 private const val INCOMING_DIRECTORY_NAME = ".incoming"
 private const val FILES_TO_RESTORE_NAME = "files-to-restore"
 private const val RESTORE_KEY_NAME = "key"
-private const val KEPT_BACKUPS = 5
-
-/** Where a backup or a restore is, for its notification and its screen. */
-sealed interface BackupProgress {
-    /** Reading the library's files for their fingerprints - [done] of [total]. */
-    data class Fingerprinting(val done: Int, val total: Int) : BackupProgress
-
-    /** Writing the backup, or putting the library and settings back. */
-    data object Working : BackupProgress
-
-    /** Uploading the library's files to Google Drive - [done] of [total]. */
-    data class UploadingFiles(val done: Int, val total: Int) : BackupProgress
-
-    /** Bringing missing files back from the cloud - [done] of [total]. */
-    data class RestoringFiles(val done: Int, val total: Int) : BackupProgress
-}
 
 /** How a backup ended. */
 enum class BackupOutcome {
@@ -115,9 +99,9 @@ sealed interface OpenedBackup {
  *
  * A backup holds what the user made - playlists, favorites, hand-made orders, play history, resume positions -
  * every setting, and the user's own covers, background and font. It is kept on this device, and in Google Drive
- * once that is connected - the last [KEPT_BACKUPS] at each. The library's music and videos are listed by
- * fingerprint, not carried: Drive keeps one copy of each file, and a restore compares the list with this device
- * and brings back, from Drive, only what it lacks.
+ * once that is connected - one at each, the latest, in place of the one before. The library's music and videos
+ * are listed by fingerprint, not carried: Drive keeps one copy of each file, and a restore compares the list with
+ * this device and brings back, from Drive, only what it lacks.
  *
  * A restore merges rather than replaces, and every step of it keeps what is already there, so it can run again
  * from the start - after being cut short, or once restored files are in - and arrive at the same library.
@@ -156,21 +140,24 @@ class BackupRepository @Inject constructor(
 
     /**
      * Makes a backup, and keeps it on this device - and in Drive, with the library's files Drive does not have yet,
-     * uploaded over Wi-Fi, or on mobile data too where the user allows it. [skipIfUnchanged] - for an automatic one -
-     * writes nothing when the last backup already holds the same and is everywhere it should be.
+     * uploaded over Wi-Fi, or on mobile data too where the user allows it. Nothing is written when the last backup
+     * already holds the same and is kept whole everywhere it should be - see [isCurrent].
+     *
+     * It goes in [BackupStep] order, each step said to [onProgress]: the library read, the files uploaded, then the
+     * backup saved - on this device, then in Drive - last, so the backup Drive keeps never lists a file it lacks.
      */
-    suspend fun backUp(skipIfUnchanged: Boolean, onProgress: (BackupProgress) -> Unit): BackupOutcome = runs.withLock { withContext(ioDispatcher) {
+    suspend fun backUp(onProgress: (BackupProgress) -> Unit): BackupOutcome = runs.withLock { withContext(ioDispatcher) {
         val isDriveConnected = backupSettings.isDriveConnectedNow()
         val foldersLeftOut = backupSettings.foldersLeftOutNow()
         val trackFiles = backupDao.trackFiles()
         val pathOf = trackFiles.associate { it.id to it.path }
         val media = trackFiles.mapIndexedNotNull { index, track ->
-            onProgress(BackupProgress.Fingerprinting(index, trackFiles.size))
+            onProgress(BackupProgress(BackupStep.CHECKING_FILES, index, trackFiles.size))
             val fingerprint = fingerprints.of(track.path) ?: return@mapIndexedNotNull null
             val file = File(track.path)
-            BackedUpMedia(fingerprint, track.path, file.length(), file.lastModified(), track.isVideo, backupFolders.isBackedUp(track.folderPath, track.isVideo, foldersLeftOut))
+            BackedUpMedia(fingerprint, track.path, file.length(), file.lastModified(), track.isVideo, backupFolders.isBackedUp(track.folderPath, track.path, track.isVideo, foldersLeftOut))
         }
-        onProgress(BackupProgress.Working)
+        onProgress(BackupProgress(BackupStep.READING_LIBRARY))
 
         val playlists = backupDao.playlists()
         val coverFiles = playlists.mapNotNull { playlist ->
@@ -218,40 +205,73 @@ class BackupRepository @Inject constructor(
             }
         }
 
-        val content = BackupArchive.contentFingerprint(library, settings, files)
-        if (skipIfUnchanged && content == backupSettings.lastBackupContent()) return@withContext BackupOutcome.UNCHANGED
         val key = backupSettings.key()
+        // Sealed with another key, or none, the same library is another backup.
+        val content = BackupArchive.contentFingerprint(library, settings, files) + key?.salt?.toBase64().orEmpty()
+        onProgress(BackupProgress(BackupStep.CHECKING_LAST_BACKUP))
+        if (isCurrent(content, key, media, isDriveConnected)) return@withContext BackupOutcome.UNCHANGED
         val createdAt = System.currentTimeMillis()
         val manifest = BackupManifest(BACKUP_FORMAT_VERSION, createdAt, appVersionCode())
         val name = backupFileName(createdAt)
         val write: (OutputStream) -> Unit = { output ->
             BackupArchive.write(key?.let { BackupCipher.encrypting(output, it) } ?: output, manifest, library, settings, files)
         }
-        keep(localBackups, name, write)
-        var outcome = BackupOutcome.SAVED
-        if (isDriveConnected) {
-            // The files go first, so the backup Drive keeps never lists one it does not have yet.
-            outcome = if (backupSettings.usesMobileDataNow() || isOnWifi()) {
-                val upload = driveBackups.media(key).upload(media.filter { it.isKeptInDrive }) { done, total ->
-                    onProgress(BackupProgress.UploadingFiles(done, total))
-                }
+        // The backup on this device waits on nothing of Drive's: one Drive fails is still saved here, then reported.
+        var driveFailure: IOException? = null
+        val outcome = when {
+            !isDriveConnected -> BackupOutcome.SAVED
+            !backupSettings.usesMobileDataNow() && !isOnWifi() -> BackupOutcome.SAVED_FILES_WAITING
+            else -> try {
+                val upload = driveBackups.media(key).upload(media.filter { it.isKeptInDrive }, onProgress)
                 when {
                     upload.leftForSpace > 0 -> BackupOutcome.SAVED_DRIVE_FULL
                     upload.failed > 0 -> BackupOutcome.SAVED_FILES_LEFT
                     else -> BackupOutcome.SAVED
                 }
-            } else {
-                BackupOutcome.SAVED_FILES_WAITING
+            } catch (e: IOException) {
+                driveFailure = e
+                BackupOutcome.SAVED
             }
-            onProgress(BackupProgress.Working)
-            keep(driveBackups, name, write)
+        }
+        onProgress(BackupProgress(BackupStep.SAVING_ON_DEVICE))
+        val localChecksum = keep(localBackups, name, write)
+        driveFailure?.let { throw it }
+        var driveChecksum: String? = null
+        if (isDriveConnected) {
+            onProgress(BackupProgress(BackupStep.SAVING_TO_DRIVE))
+            driveChecksum = keep(driveBackups, name, write)
+            onProgress(BackupProgress(BackupStep.CLEANING_DRIVE))
             collectDriveMedia(key)
         }
         // A backup whose files did not all go is not the last word: the next automatic one is made all the same.
         if (outcome != BackupOutcome.SAVED) return@withContext outcome
-        backupSettings.recordBackup(createdAt, content)
+        backupSettings.recordBackup(createdAt, LastBackup(content, name, localChecksum, driveChecksum))
         BackupOutcome.SAVED
     } }
+
+    /**
+     * Whether the last backup already holds [content], and is kept whole everywhere backups go: on this device and,
+     * while connected, in Drive - with every file it keeps there - each byte for byte as written. One that is not
+     * is replaced by the backup made instead, so a damaged one is never kept.
+     */
+    private suspend fun isCurrent(content: String, key: BackupKey?, media: List<BackedUpMedia>, isDriveConnected: Boolean): Boolean {
+        val last = backupSettings.lastBackup()?.takeIf { it.content == content } ?: return false
+        if (!isKeptWhole(localBackups, last.name, last.localChecksum)) return false
+        if (!isDriveConnected) return true
+        return try {
+            val driveFiles = media.filter { it.isKeptInDrive }.map { it.fingerprint }.toSet()
+            isKeptWhole(driveBackups, last.name, last.driveChecksum ?: return false) &&
+                driveBackups.media(key).keeps(driveFiles).size == driveFiles.size
+        } catch (_: IOException) {
+            false // Drive out of reach: the backup is made, and says so where Drive is needed.
+        }
+    }
+
+    /** Whether the backup [destination] keeps is the one named [name], byte for byte as written - its [checksum]. */
+    private suspend fun isKeptWhole(destination: BackupDestination, name: String, checksum: String): Boolean {
+        val kept = destination.list().firstOrNull()?.takeIf { it.name == name } ?: return false
+        return destination.checksumOf(kept) == checksum
+    }
 
     /**
      * Deletes a backup from this device, as [onDevice], and from Drive, as [inDrive] - each where given - and then from
@@ -264,10 +284,14 @@ class BackupRepository @Inject constructor(
         collectDriveMedia(backupSettings.key())
     }
 
-    /** Adds the backup [write] writes to [destination], as [name], and lets go of the oldest beyond [KEPT_BACKUPS]. */
-    private suspend fun keep(destination: BackupDestination, name: String, write: (OutputStream) -> Unit) {
-        destination.add(name, write)
-        destination.list().drop(KEPT_BACKUPS).forEach { destination.delete(it) }
+    /**
+     * Adds the backup [write] writes to [destination], as [name], in place of every one kept there before - only once
+     * it is kept whole, so there is never none. The checksum of what it kept.
+     */
+    private suspend fun keep(destination: BackupDestination, name: String, write: (OutputStream) -> Unit): String {
+        val checksum = destination.add(name, write)
+        destination.list().filter { it.name != name }.forEach { destination.delete(it) }
+        return checksum
     }
 
     /**
@@ -354,15 +378,17 @@ class BackupRepository @Inject constructor(
      * library merged again once they are in.
      */
     suspend fun restore(onProgress: (BackupProgress) -> Unit) = withContext(ioDispatcher) {
-        onProgress(BackupProgress.Working)
+        onProgress(BackupProgress(BackupStep.READING_BACKUP))
         val contents = BackupArchive.read(restoreDirectory)
         val filesToRestore = File(restoreDirectory, FILES_TO_RESTORE_NAME).takeIf { it.isFile }?.readLines()?.toSet().orEmpty()
         val key = File(restoreDirectory, RESTORE_KEY_NAME).takeIf { it.isFile }?.readLines()?.let { (salt, bytes) ->
             BackupKey(salt.fromBase64(), bytes.fromBase64())
         }
         // A fresh install has not read its library yet; every track the backup names is looked for in it.
+        onProgress(BackupProgress(BackupStep.FINDING_FILES))
         mediaScanner.rescan()
         val plan = mediaPlanOf(contents, key)
+        onProgress(BackupProgress(BackupStep.RESTORING_LIBRARY))
         val playlistIds = mergeLibrary(contents, plan.present)
         restoreSettingsAndFiles(contents, playlistIds)
 
@@ -374,10 +400,10 @@ class BackupRepository @Inject constructor(
                 primaryStorage = Environment.getExternalStorageDirectory(),
             )
             val restored = missing.mapIndexed { index, item ->
-                onProgress(BackupProgress.RestoringFiles(index, missing.size))
+                onProgress(BackupProgress(BackupStep.DOWNLOADING_FILES, index, missing.size))
                 restorer.restore(item.media).also { fingerprints.remember(it, item.media.fingerprint) }
             }
-            onProgress(BackupProgress.Working)
+            onProgress(BackupProgress(BackupStep.ADDING_FILES))
             scanIntoMediaStore(restored)
             mediaScanner.rescan()
             mergeLibrary(contents, mediaPlanOf(contents, key).present)

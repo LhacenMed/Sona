@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="explorer_all_folders">All folders</string>
+    <string name="explorer_internal_storage">Internal storage</string>
+    <string name="explorer_section_folders">Folders</string>
+    <string name="explorer_section_music">Music</string>
+    <string name="explorer_section_videos">Videos</string>
+    <string name="explorer_pick">Pick</string>
+    <string name="explorer_unpick">Unpick</string>
+    <string name="explorer_select_all">Select all</string>
+    <string name="explorer_deselect_all">Deselect all</string>
+    <string name="explorer_empty_title">Nothing here</string>
+    <string name="explorer_empty_message">This folder has no music or videos.</string>
+    <plurals name="explorer_files">
+        <item quantity="one">%d file</item>
+        <item quantity="other">%d files</item>
+    </plurals>
+</resources>

@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LibraryAdd
 import androidx.compose.material.icons.filled.RemoveCircleOutline
@@ -43,6 +44,7 @@ enum class OptionsAction(val icon: ImageVector, val label: String) {
     STOP_COUNTING_PLAYS(Icons.AutoMirrored.Filled.TrendingFlat, "Don't count in Most played"),
     COUNT_PLAYS(Icons.AutoMirrored.Filled.TrendingUp, "Count in Most played"),
     VIEW_DETAILS(SonaIcons.Details, "View"),
+    BROWSE_FOLDER(Icons.Filled.FolderOpen, "Browse folder"),
     ADD_TRACKS(Icons.AutoMirrored.Filled.PlaylistAdd, "Add tracks"),
     ADD_COLLECTIONS(Icons.Filled.LibraryAdd, "Add from collections"),
     EDIT(SonaIcons.Edit, "Edit"),

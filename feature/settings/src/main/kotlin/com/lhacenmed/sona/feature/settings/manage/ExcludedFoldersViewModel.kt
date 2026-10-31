@@ -6,13 +6,12 @@ import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.datastore.LibrarySettings
-import com.lhacenmed.sona.core.model.Folder
+import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.scanner.MediaScanner
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -29,12 +28,11 @@ class ExcludedFoldersViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), librarySettings.excludedFolders.value.sorted())
 
     /**
-     * What can be excluded: every folder the library found music in, and every one it found videos in - a folder of
-     * both among each - not excluded already, so the choice is among the folders that matter, never the whole of the
-     * device's storage.
+     * What can be excluded: the library's music, and its videos - whatever is excluded already is out of it - so the
+     * choice is among the folders and files that matter, never the whole of the device's storage.
      */
-    val excludableMusicFolders: StateFlow<List<Folder>> = excludable(repository.folders)
-    val excludableVideoFolders: StateFlow<List<Folder>> = excludable(repository.videoFolders)
+    val music: StateFlow<List<Track>> = repository.tracks.itemsOf()
+    val videos: StateFlow<List<Track>> = repository.videos.itemsOf()
 
     fun exclude(paths: Set<String>) {
         viewModelScope.launch {
@@ -50,9 +48,8 @@ class ExcludedFoldersViewModel @Inject constructor(
         }
     }
 
-    private fun excludable(folders: StateFlow<LibraryContent<Folder>>): StateFlow<List<Folder>> =
-        combine(folders, librarySettings.excludedFolders.flow, ::excludableFoldersOf)
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), excludableFoldersOf(folders.value, librarySettings.excludedFolders.value))
+    private fun StateFlow<LibraryContent<Track>>.itemsOf(): StateFlow<List<Track>> =
+        map { it.itemsOrEmpty }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), value.itemsOrEmpty)
 
     /**
      * Runs on the scanner's own application scope rather than this ViewModel's, so navigating away
@@ -63,7 +60,3 @@ class ExcludedFoldersViewModel @Inject constructor(
         mediaScanner.requestScan()
     }
 }
-
-/** [folders], less those [excluded] - by name. */
-private fun excludableFoldersOf(folders: LibraryContent<Folder>, excluded: Set<String>): List<Folder> =
-    folders.itemsOrEmpty.filterNot { it.path in excluded }.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })

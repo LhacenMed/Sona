@@ -182,7 +182,7 @@ class OptionsActionsViewModel @Inject constructor(
      */
     fun excludeFolders(folderPaths: List<String>, onFinished: (succeeded: Boolean) -> Unit) {
         viewModelScope.launchOperation(onFinished) {
-            librarySettings.addExcludedFolders(folderPaths)
+            librarySettings.addExcludedFolders(repository.foldersListedAs(folderPaths))
             mediaScanner.rescan()
         }
     }

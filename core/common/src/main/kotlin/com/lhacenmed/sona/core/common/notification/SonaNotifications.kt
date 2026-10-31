@@ -2,10 +2,12 @@ package com.lhacenmed.sona.core.common.notification
 
 import android.annotation.SuppressLint
 import android.app.Notification
+import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.pm.ServiceInfo
 import android.os.Build
+import androidx.annotation.DrawableRes
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -34,10 +36,27 @@ object SonaNotifications {
         NotificationManagerCompat.from(context).createNotificationChannelsCompat(channels)
     }
 
+    /** Sona's icon, every notification's in the status bar. */
+    @DrawableRes
+    val icon: Int = R.drawable.ic_stat_sona
+
     /** A notification on [channel], with Sona's icon - where every notification the app posts starts. */
     fun builder(context: Context, channel: SonaNotificationChannel): NotificationCompat.Builder =
         NotificationCompat.Builder(context, channel.id)
-            .setSmallIcon(R.drawable.ic_stat_sona)
+            .setSmallIcon(icon)
+
+    /**
+     * [builder], as the platform's own - for what only it has: progress promoted to a live update, on Android 16
+     * and later, where [canPostPromoted].
+     */
+    fun platformBuilder(context: Context, channel: SonaNotificationChannel): Notification.Builder =
+        Notification.Builder(context, channel.id)
+            .setSmallIcon(icon)
+
+    /** Whether Android shows Sona's progress as live updates - on Android 16 and later, while the user allows it. */
+    fun canPostPromoted(context: Context): Boolean =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA &&
+            context.getSystemService(NotificationManager::class.java).canPostPromotedNotifications()
 
     /**
      * Posts [notification] as [id], replacing whatever that id showed - unless notifications are turned

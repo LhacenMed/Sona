@@ -85,11 +85,13 @@ class VideoPlayerViewModel @Inject constructor(
 
     private val libraryTracksById = repository.tracksById
 
-    // The tracks of the space playing now - the Private Folder's never looked up among the library's.
+    // The tracks of the space playing now - the Private Folder's never looked up among the library's - with, for
+    // the library, those its queue was started with that it does not hold.
     private val tracksById = combine(
         playbackWithoutPosition.map { it.space }.distinctUntilChanged(),
         libraryTracksById,
         privateTracksById,
+        playbackController.startedTracksById,
         ::tracksOf,
     )
 
@@ -107,7 +109,7 @@ class VideoPlayerViewModel @Inject constructor(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
         playbackController.playbackState.value.copy(positionMs = 0L).let { playback ->
-            val tracksById = tracksOf(playback.space, libraryTracksById.value, privateTracksById.value)
+            val tracksById = tracksOf(playback.space, libraryTracksById.value, privateTracksById.value, playbackController.startedTracksById.value)
             VideoPlayerUiState(playback, playback.currentTrackId?.let(tracksById::get), resolveQueue(playback.queue, tracksById))
         },
     )
@@ -255,8 +257,12 @@ class VideoPlayerViewModel @Inject constructor(
         )
     }
 
-    private fun tracksOf(space: PlaybackSpace, libraryTracks: Map<Long, Track>, privateTracks: Map<Long, Track>): Map<Long, Track> =
-        if (space == PlaybackSpace.Private) privateTracks else libraryTracks
+    private fun tracksOf(
+        space: PlaybackSpace,
+        libraryTracks: Map<Long, Track>,
+        privateTracks: Map<Long, Track>,
+        startedTracks: Map<Long, Track>,
+    ): Map<Long, Track> = if (space == PlaybackSpace.Private) privateTracks else startedTracks + libraryTracks
 
     private fun resolveQueue(entries: List<QueueEntry>, tracksById: Map<Long, Track>): List<QueueVideo> =
         entries.mapNotNull { entry -> tracksById[entry.trackId]?.let { QueueVideo(entry, it) } }

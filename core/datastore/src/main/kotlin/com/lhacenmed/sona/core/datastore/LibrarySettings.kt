@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.model.FastScrollTouchArea
+import com.lhacenmed.sona.core.model.FolderView
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -28,6 +29,10 @@ private val FAST_SCROLL_TOUCH_AREA = stringPreferencesKey("fast_scroll_touch_are
 private val PULL_TO_REFRESH_ENABLED = booleanPreferencesKey("pull_to_refresh_enabled")
 
 private val SEPARATE_ARTISTS = booleanPreferencesKey("separate_artists")
+
+private val FOLDER_VIEW = stringPreferencesKey("folder_view")
+
+private val KEEPS_MOVED_FILES = booleanPreferencesKey("keeps_moved_files")
 
 @Singleton
 class LibrarySettings @Inject constructor(
@@ -99,5 +104,24 @@ class LibrarySettings @Inject constructor(
 
     suspend fun setSeparateArtists(enabled: Boolean) {
         dataStore.edit { it[SEPARATE_ARTISTS] = enabled }
+    }
+
+    /** How the Folders tab lists folders that lie inside one another. */
+    val folderView: Setting<FolderView> = cache.setting { preferences ->
+        preferences[FOLDER_VIEW]?.let { name -> runCatching { FolderView.valueOf(name) }.getOrNull() } ?: FolderView.SEPARATE
+    }
+
+    suspend fun setFolderView(view: FolderView) {
+        dataStore.edit { it[FOLDER_VIEW] = view.name }
+    }
+
+    /**
+     * Whether a track whose file moved or was renamed is known by its content - its playlists, plays and place in
+     * every list kept - rather than taken out of the library with its old path and found anew at the new one.
+     */
+    val keepsMovedFiles: Setting<Boolean> = cache.setting { it[KEEPS_MOVED_FILES] ?: false }
+
+    suspend fun setKeepsMovedFiles(enabled: Boolean) {
+        dataStore.edit { it[KEEPS_MOVED_FILES] = enabled }
     }
 }

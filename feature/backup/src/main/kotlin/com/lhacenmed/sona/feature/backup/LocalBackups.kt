@@ -2,6 +2,7 @@ package com.lhacenmed.sona.feature.backup
 
 import android.content.Context
 import com.lhacenmed.sona.core.common.di.IoDispatcher
+import com.lhacenmed.sona.core.data.fingerprint.fingerprintOf
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.io.InputStream
@@ -48,11 +49,16 @@ class LocalBackups @Inject constructor(
         val partial = File(directory, ".$name.part")
         try {
             partial.outputStream().buffered().use(write)
-            check(partial.renameTo(File(directory, name))) { "Could not keep $name" }
+            val backup = File(directory, name)
+            check(partial.renameTo(backup)) { "Could not keep $name" }
+            fingerprintOf(backup)
         } finally {
             partial.delete()
         }
     }
+
+    override suspend fun checksumOf(backup: StoredBackup): String =
+        withContext(ioDispatcher) { fingerprintOf(File(backup.id)) }
 
     override suspend fun open(backup: StoredBackup): InputStream = withContext(ioDispatcher) { File(backup.id).inputStream() }
 

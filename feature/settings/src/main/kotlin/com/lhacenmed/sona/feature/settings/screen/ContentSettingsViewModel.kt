@@ -8,6 +8,7 @@ import com.lhacenmed.sona.core.datastore.CoverMode
 import com.lhacenmed.sona.core.datastore.ImageSettings
 import com.lhacenmed.sona.core.datastore.LibrarySettings
 import com.lhacenmed.sona.core.datastore.SortSettings
+import com.lhacenmed.sona.core.model.FolderView
 import com.lhacenmed.sona.core.model.sort.SortDirection
 import com.lhacenmed.sona.core.model.sort.SortScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -57,6 +58,22 @@ class ContentSettingsViewModel @Inject constructor(
 
     fun setSeparateArtists(enabled: Boolean) {
         viewModelScope.launch { librarySettings.setSeparateArtists(enabled) }
+    }
+
+    /** How the Folders tab lists folders inside one another - every list follows it at once, with no rescan. */
+    val folderView: StateFlow<FolderView> = librarySettings.folderView.flow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), librarySettings.folderView.value)
+
+    fun setFolderView(view: FolderView) {
+        viewModelScope.launch { librarySettings.setFolderView(view) }
+    }
+
+    /** Whether a moved file keeps its track - see `LibraryWriter`, which follows it on the next scan. */
+    val keepsMovedFiles: StateFlow<Boolean> = librarySettings.keepsMovedFiles.flow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), librarySettings.keepsMovedFiles.value)
+
+    fun setKeepsMovedFiles(enabled: Boolean) {
+        viewModelScope.launch { librarySettings.setKeepsMovedFiles(enabled) }
     }
 
     val newTracksDirection: StateFlow<SortDirection> = sortSettings.newTracksDirection.flow

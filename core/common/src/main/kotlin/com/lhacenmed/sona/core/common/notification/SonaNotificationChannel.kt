@@ -75,5 +75,7 @@ object SonaNotificationId {
     const val LIBRARY_SCAN = 4300
     const val AUTO_TAG = 4400
     const val BACKUP = 4500
+    const val BACKUP_PAUSED = 4501
+    const val BACKUP_FAILED = 4502
     const val UPDATE_AVAILABLE = 9999
 }

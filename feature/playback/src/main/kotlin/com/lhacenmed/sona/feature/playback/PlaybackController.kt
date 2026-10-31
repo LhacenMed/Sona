@@ -103,13 +103,21 @@ class PlaybackController @Inject constructor(
     /** What a watched queue plays from - shown while it plays, and written down only once it is listened to. */
     private var watchedParent: PlaybackParent? = null
 
-    private val videoPlayerRequests = Channel<Unit>(Channel.CONFLATED)
+    private val videoPlayerRequests = Channel<VideoPlayerOpening>(Channel.CONFLATED)
 
     /**
-     * Each time a video starts being watched - whoever started it - the video player is to open. Taken by one
-     * screen, the one in front, so it opens once; held until a screen is there to take it.
+     * Each time a video starts being watched - whoever started it - the video player is to open, as it asks to.
+     * Taken by one screen, the one in front, so it opens once; held until a screen is there to take it.
      */
-    val videoPlayerOpenings: Flow<Unit> = videoPlayerRequests.receiveAsFlow()
+    val videoPlayerOpenings: Flow<VideoPlayerOpening> = videoPlayerRequests.receiveAsFlow()
+
+    private val _startedTracksById = MutableStateFlow<Map<Long, Track>>(emptyMap())
+
+    /**
+     * The tracks the queue was last started with, by id - for what plays one the library does not hold, such as a
+     * file of an excluded folder, to be shown all the same.
+     */
+    val startedTracksById: StateFlow<Map<Long, Track>> = _startedTracksById.asStateFlow()
 
     /** Whether the queue is known - see [PlaybackUiState.isReady]. */
     private var isQueueSettled = false
@@ -243,12 +251,15 @@ class PlaybackController @Inject constructor(
         parent: PlaybackParent? = null,
         shuffled: Boolean? = null,
         startPositionMs: Long = 0L,
+        opensFloating: Boolean = false,
     ) {
         val mediaController = controller ?: return
         val watches = tracks.getOrNull(startIndex)?.isVideo == true
         beginQueue(mediaController, if (watches) VideoWatch.OverQueue else VideoWatch.None)
         if (watches) watchedParent = parent else scope.launch { playbackSettings.setPlaybackParent(parent) }
-        startQueue(mediaController, tracks.map { it.toMediaItem(parent) }, startIndex, startPositionMs, shuffled, watches)
+        _startedTracksById.value = tracks.associateBy { it.id }
+        val opening = if (opensFloating) VideoPlayerOpening.FLOATING else VideoPlayerOpening.FULL_SCREEN
+        startQueue(mediaController, tracks.map { it.toMediaItem(parent) }, startIndex, startPositionMs, shuffled, watches, opening)
     }
 
     /**
@@ -260,7 +271,7 @@ class PlaybackController @Inject constructor(
         val mediaController = controller ?: return
         val watches = tracks.getOrNull(startIndex)?.isVideo == true
         beginQueue(mediaController, if (watches) VideoWatch.OverQueue else VideoWatch.None)
-        startQueue(mediaController, tracks.map(::vaultMediaItem), startIndex, startPositionMs = 0L, shuffled = null, watches = watches)
+        startQueue(mediaController, tracks.map(::vaultMediaItem), startIndex, startPositionMs = 0L, shuffled = null, watches = watches, VideoPlayerOpening.FULL_SCREEN)
     }
 
     /** Has the video playing as audio watched again, from where it is - in the video player. */
@@ -274,7 +285,7 @@ class PlaybackController @Inject constructor(
         showPicture(mediaController)
         mediaController.play()
         updateUiState(mediaController)
-        videoPlayerRequests.trySend(Unit)
+        videoPlayerRequests.trySend(VideoPlayerOpening.FULL_SCREEN)
     }
 
     /**
@@ -332,6 +343,7 @@ class PlaybackController @Inject constructor(
         startPositionMs: Long,
         shuffled: Boolean?,
         watches: Boolean,
+        opening: VideoPlayerOpening,
     ) {
         val shuffle = shuffled ?: (shuffleSettings.keepShuffle.value && mediaController.shuffleModeEnabled)
         // Before the items, so the player builds the new shuffle order around startIndex.
@@ -340,7 +352,7 @@ class PlaybackController @Inject constructor(
         mediaController.setMediaItems(mediaItems, startIndex, startPositionMs)
         mediaController.prepare()
         mediaController.play()
-        if (watches) videoPlayerRequests.trySend(Unit)
+        if (watches) videoPlayerRequests.trySend(opening)
     }
 
     /**
@@ -776,4 +788,12 @@ private enum class VideoWatch {
 
     /** The queue playing went on to be watched, and pauses where it is once the video player closes. */
     InPlace,
+}
+
+/** How the video player opens on a video started - over everything, or floating over the app as it goes on. */
+enum class VideoPlayerOpening {
+    FULL_SCREEN,
+
+    /** In its floating window, so what was on screen goes on under it - a video looked at while picking files. */
+    FLOATING,
 }

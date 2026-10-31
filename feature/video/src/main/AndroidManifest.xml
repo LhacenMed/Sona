@@ -2,15 +2,21 @@
 
     <application>
         <!--
-            Turning the device, folding it or resizing its window never recreates the player: it lays itself
-            out again in place, so the picture carries on without a pause or a blank frame.
+            Turning the device, folding it, resizing its window or floating it never recreates the player: it
+            lays itself out again in place, so the picture carries on without a pause or a blank frame.
         -->
         <activity
             android:name=".VideoPlayerActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode|density"
             android:exported="false"
             android:launchMode="singleTop"
+            android:supportsPictureInPicture="true"
             android:theme="@style/Theme.Sona.Video" />
+
+        <!-- Play and pause, from the player's floating window. -->
+        <receiver
+            android:name=".VideoFloatingWindowReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

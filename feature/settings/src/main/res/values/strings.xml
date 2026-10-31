@@ -276,6 +276,11 @@
     <string name="filename_as_title_title">Show filename as track title</string>
     <string name="filename_as_title_summary">If title is not available</string>
     <string name="content_tags_section">Tags</string>
+    <string name="folder_view_title">Folder view</string>
+    <string name="folder_view_separate">Separate</string>
+    <string name="folder_view_grouped">Grouped</string>
+    <string name="keep_moved_files_title">Keep tracks when files move</string>
+    <string name="keep_moved_files_summary">A moved or renamed file keeps its playlists and plays</string>
     <string name="separate_artists_title">Separate artists</string>
     <string name="separate_artists_summary">Read a track credited to several artists, like \"A, B &amp; C\" or \"A × B\", as each of them</string>
     <string name="intelligent_sorting_title">Intelligent sorting</string>
@@ -398,12 +403,15 @@
     <string name="backup_last">Last backup: %1$s</string>
     <string name="backup_none">No backup yet</string>
     <string name="backup_done">Backup saved</string>
+    <string name="backup_done_unchanged">Already backed up: nothing changed since the last backup</string>
     <string name="backup_done_files_waiting">Backup saved. Music and videos will upload on Wi-Fi</string>
     <string name="backup_done_files_left">Backup saved. Some music and videos didn\'t upload, and will with the next backup</string>
     <string name="backup_done_drive_full">Backup saved, but Google Drive is full: some music and videos didn\'t upload</string>
     <string name="backup_failed">Could not back up</string>
     <string name="backup_failed_drive_access">Google Drive is disconnected. Connect it again</string>
     <string name="backup_stopped">Backup stopped</string>
+    <string name="backup_paused">Paused. Tap to resume</string>
+    <string name="backup_paused_toast">Backup paused</string>
     <string name="backup_schedule_title">Automatic backups</string>
     <string name="backup_schedule_off">Off</string>
     <string name="backup_schedule_daily">Daily</string>
@@ -427,6 +435,7 @@
     <string name="backup_folders_title">Folders to back up</string>
     <string name="backup_folders_all">All folders</string>
     <string name="backup_folders_none">None</string>
+    <string name="backup_folders_save">Save</string>
     <plurals name="backup_folders_count">
         <item quantity="one">%d folder</item>
         <item quantity="other">%d folders</item>
@@ -450,8 +459,9 @@
     <string name="backup_now_wifi">Wi-Fi</string>
     <string name="backup_now_any_network">Wi-Fi or mobile data</string>
     <string name="backup_stop_title">Stop backup?</string>
-    <string name="backup_stop_message">Files already uploaded stay in Google Drive.</string>
+    <string name="backup_stop_message">Pause to carry on later where it stopped. Files already uploaded stay in Google Drive.</string>
     <string name="backup_stop_keep_going">Keep going</string>
+    <string name="backup_stop_pause">Pause</string>
     <string name="backup_stop_action">Stop</string>
     <string name="backup_delete_title">Delete backup?</string>
     <string name="backup_delete_action">Delete</string>
@@ -551,25 +561,14 @@
     <string name="excluded_folders_empty_title">No excluded folders</string>
     <string name="excluded_folders_empty_body">Folders you exclude are skipped when your library is scanned - their music and videos alike.</string>
     <string name="excluded_folders_add">Exclude folders</string>
-    <string name="excluded_folders_none_left">No other folder holds music or videos.</string>
+    <string name="excluded_folders_none_left">No other music or videos to exclude.</string>
     <string name="excluded_folders_confirm">Exclude</string>
+    <string name="excluded_folders_include">Include again</string>
     <string name="excluded_folders_music">Music</string>
     <string name="excluded_folders_videos_tab">Videos</string>
     <plurals name="excluded_folders_confirm_count">
-        <item quantity="one">Exclude %d folder</item>
-        <item quantity="other">Exclude %d folders</item>
-    </plurals>
-    <plurals name="excluded_folders_include_count">
-        <item quantity="one">Include %d folder</item>
-        <item quantity="other">Include %d folders</item>
-    </plurals>
-    <plurals name="excluded_folders_tracks">
-        <item quantity="one">%d track</item>
-        <item quantity="other">%d tracks</item>
-    </plurals>
-    <plurals name="excluded_folders_videos">
-        <item quantity="one">%d video</item>
-        <item quantity="other">%d videos</item>
+        <item quantity="one">Exclude %d file</item>
+        <item quantity="other">Exclude %d files</item>
     </plurals>
     <string name="manage_tabs_title">Manage Tabs</string>
 

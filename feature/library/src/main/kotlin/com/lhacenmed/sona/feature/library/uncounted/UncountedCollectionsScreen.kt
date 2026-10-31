@@ -1,6 +1,5 @@
 package com.lhacenmed.sona.feature.library.uncounted
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,10 +16,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.SonaEmptyState
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
-import com.lhacenmed.sona.core.designsystem.component.fab.ExtendedFloatingActionButtonContent
-import com.lhacenmed.sona.core.designsystem.component.fab.SonaExtendedFloatingActionButtons
+import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.component.screen.screenList
+import com.lhacenmed.sona.core.designsystem.component.selectAllAction
+import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
 import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Folder
@@ -34,13 +34,12 @@ import com.lhacenmed.sona.feature.library.ArtistRow
 import com.lhacenmed.sona.feature.library.FolderRow
 import com.lhacenmed.sona.feature.library.GenreRow
 import com.lhacenmed.sona.feature.library.PlaylistRow
-import com.lhacenmed.sona.feature.library.pluralCount
 import com.lhacenmed.sona.feature.library.selection.selectionKeyOf
 
 /**
  * The collections whose plays are kept out of Most played - chosen from each one's options - listed as the library
- * lists them, and let back in many at a time: pressing them picks them, as a list's rows are selected, and the
- * screen's button then has their plays count again.
+ * lists them, and let back in many at a time: they are selected as any list's rows are - a long press, then presses -
+ * and the selection bar has their plays count again.
  */
 data object UncountedCollectionsScreen : Screen {
 
@@ -53,25 +52,21 @@ data object UncountedCollectionsScreen : Screen {
         // The rows select by the library's own keys; each stands for the collection it plays as.
         val pickedParents = collections.filter { selectionKeyOf(it.item)?.let(picks::isSelected) == true }.map { it.parent }
 
-        BackHandler(enabled = picks.isActive) { picks.clear() }
-
-        SonaExtendedFloatingActionButtons(
-            listOf(
-                ExtendedFloatingActionButtonContent(
-                    label = "Count ${pluralCount(pickedParents.size, "collection")} again",
-                    icon = Icons.AutoMirrored.Filled.TrendingUp,
-                    onClick = {
-                        viewModel.countAgain(pickedParents)
-                        picks.clear()
-                    },
-                    isPrimary = true,
-                    isVisible = pickedParents.isNotEmpty(),
-                ),
-            ),
-        )
-
         Column(modifier = Modifier.fillMaxSize()) {
-            SonaTopAppBar(title = "Not counted in Most played", onNavigateBack = navigator::back)
+            SonaTopAppBar(
+                title = "Not counted in Most played",
+                onNavigateBack = navigator::back,
+                selection = picks.toTopBarSelection(
+                    actions = listOf(
+                        picks.selectAllAction(collections.mapNotNull { selectionKeyOf(it.item) }),
+                        TopBarAction(label = "Count again", icon = Icons.AutoMirrored.Filled.TrendingUp) {
+                            viewModel.countAgain(pickedParents)
+                            picks.clear()
+                        },
+                    ),
+                    onMoreOptions = null,
+                ),
+            )
             if (collections.isEmpty()) {
                 SonaEmptyState(
                     title = "Every collection counts",
@@ -87,14 +82,15 @@ data object UncountedCollectionsScreen : Screen {
                 contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
             ) {
                 items(collections, key = { it.parent.toStorageKey() }) { collection ->
-                    val toggle = { selectionKeyOf(collection.item)?.let(picks::toggle) ?: Unit }
+                    // Nothing to open from here: a press only joins a selection already running.
+                    val open = {}
                     when (val item = collection.item) {
-                        is Album -> AlbumRow(item, picks, isCurrent = { false }, isPlaying = { false }, onClick = toggle, onOpenOptions = null)
-                        is Artist -> ArtistRow(item, picks, isCurrent = { false }, isPlaying = { false }, onClick = toggle, onOpenOptions = null)
-                        is Genre -> GenreRow(item, picks, isCurrent = { false }, isPlaying = { false }, onClick = toggle, onOpenOptions = null)
+                        is Album -> AlbumRow(item, picks, isCurrent = { false }, isPlaying = { false }, onClick = open, onOpenOptions = null)
+                        is Artist -> ArtistRow(item, picks, isCurrent = { false }, isPlaying = { false }, onClick = open, onOpenOptions = null)
+                        is Genre -> GenreRow(item, picks, isCurrent = { false }, isPlaying = { false }, onClick = open, onOpenOptions = null)
                         is Playlist ->
-                            PlaylistRow(item, picks, isCurrent = { false }, isPlaying = { false }, onClick = toggle, onOpenOptions = null)
-                        is Folder -> FolderRow(item, picks, isCurrent = { false }, isPlaying = { false }, onClick = toggle, onOpenOptions = null)
+                            PlaylistRow(item, picks, isCurrent = { false }, isPlaying = { false }, onClick = open, onOpenOptions = null)
+                        is Folder -> FolderRow(item, picks, isCurrent = { false }, isPlaying = { false }, onClick = open, onOpenOptions = null)
                     }
                 }
             }

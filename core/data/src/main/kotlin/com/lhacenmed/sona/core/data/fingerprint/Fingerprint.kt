@@ -1,4 +1,4 @@
-package com.lhacenmed.sona.feature.backup.media
+package com.lhacenmed.sona.core.data.fingerprint
 
 import java.io.File
 import java.io.InputStream

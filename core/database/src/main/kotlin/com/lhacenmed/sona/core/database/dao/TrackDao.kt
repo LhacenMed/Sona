@@ -56,6 +56,15 @@ interface TrackDao {
     @Query("SELECT * FROM tracks WHERE folderPath = :folderPath AND isVideo = :isVideo")
     fun observeByFolder(folderPath: String, isVideo: Boolean): Flow<List<TrackEntity>>
 
+    /** [observeByFolder], with the tracks of every folder inside [folderPath] too, at any depth. */
+    @Query(
+        """
+        SELECT * FROM tracks WHERE isVideo = :isVideo
+        AND (folderPath = :folderPath OR substr(folderPath, 1, length(:folderPath) + 1) = :folderPath || '/')
+        """,
+    )
+    fun observeInFolderTree(folderPath: String, isVideo: Boolean): Flow<List<TrackEntity>>
+
     /**
      * Whether the library has ever been populated. Used to decide if a scan may be skipped, and
      * read as a scalar so it never loads a single row.

@@ -7,6 +7,7 @@ import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.common.di.IoDispatcher
 import com.lhacenmed.sona.core.common.lifecycle.isAppInForeground
 import com.lhacenmed.sona.core.data.LibraryWriter
+import com.lhacenmed.sona.core.data.fingerprint.MediaFingerprints
 import com.lhacenmed.sona.core.data.SyncStats
 import com.lhacenmed.sona.core.database.dao.TrackDao
 import com.lhacenmed.sona.core.database.entity.toDomain
@@ -31,6 +32,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.consumeEach
@@ -108,6 +110,7 @@ class MediaScanner @Inject constructor(
     private val mediaStoreQuerier: MediaStoreQuerier,
     private val manualFileWalker: ManualFileWalker,
     private val libraryWriter: LibraryWriter,
+    private val mediaFingerprints: MediaFingerprints,
     private val trackDao: TrackDao,
     private val librarySettings: LibrarySettings,
     private val scanSettings: ScanSettings,
@@ -151,9 +154,16 @@ class MediaScanner @Inject constructor(
         ).collect { enqueue(ScanKind.REFRESH) }
     }
 
+    /** The run reading the library's fingerprints - see [fingerprintLibrary] - while one is under way. */
+    @Volatile
+    private var fingerprinting: Job? = null
+
     init {
         appScope.launch {
             scanWakeups.consumeEach { pendingScan.getAndSet(null)?.let { scan(it) } }
+        }
+        appScope.launch {
+            librarySettings.keepsMovedFiles.flow.drop(1).filter { it }.collect { fingerprintLibrary() }
         }
     }
 
@@ -228,12 +238,25 @@ class MediaScanner @Inject constructor(
                 try {
                     val stats = runScan(excludedFolders, walksStorage = kind != ScanKind.REFRESH)
                     scanSettings.setLastScanSignature(signature)
+                    if (librarySettings.keepsMovedFiles.value) fingerprintLibrary()
                     stats
                 } finally {
                     _progress.value = null
                 }
             }
         }
+
+    /**
+     * Reads the fingerprint of every library file not read since it last changed - the whole library once, then
+     * only what is new - in the background, after the scan: what a file had once it is gone is what tells it,
+     * moved, from a new one - see [LibraryWriter]. A run under way gives way to one with the library as it is now.
+     */
+    private fun fingerprintLibrary() {
+        fingerprinting?.cancel()
+        fingerprinting = appScope.launch(ioDispatcher) {
+            trackDao.getAll().forEach { mediaFingerprints.of(it.path) }
+        }
+    }
 
     /**
      * The library is considered current when the device reports the same media state as the last
@@ -256,7 +279,7 @@ class MediaScanner @Inject constructor(
         // through MediaStore's own query (Audio.Albums/Audio.Artists only return rows with at least
         // one track/album, so a track referencing a since-emptied album/artist is orphaned).
         var tracks = mediaStoreResult.tracks.filterNot { track ->
-            track.folderPath in excludedFolders ||
+            track.folderPath in excludedFolders || track.path in excludedFolders ||
                 track.albumId !in albumIds ||
                 track.artistId !in artistIds
         }
@@ -281,7 +304,7 @@ class MediaScanner @Inject constructor(
 
         // Videos are rows of their own: no album, artist or genre is made of them, so they skip every
         // pass above and are stored alongside the music.
-        val videos = mediaStoreResult.videos.filterNot { it.folderPath in excludedFolders }
+        val videos = mediaStoreResult.videos.filterNot { it.folderPath in excludedFolders || it.path in excludedFolders }
 
         var stats = SyncStats()
         val (manualVideos, manualTracks) = if (walksStorage) {

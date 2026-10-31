@@ -245,6 +245,8 @@ fun SonaTrackRow(
     onLongClick: (() -> Unit)? = null,
     containerColor: Color = MaterialTheme.colorScheme.surface,
     contentColor: Color = LocalContentColor.current,
+    optionsIcon: ImageVector = Icons.Filled.MoreHoriz,
+    optionsLabel: String = "More options",
 ) {
     val current = isCurrent()
     SonaListRow(
@@ -259,6 +261,8 @@ fun SonaTrackRow(
         onLongClick = onLongClick,
         containerColor = containerColor,
         contentColor = contentColor,
+        optionsIcon = optionsIcon,
+        optionsLabel = optionsLabel,
     ) { isSelected ->
         SonaCoverArt(
             coverArtUri = track.coverArtUri,
@@ -289,6 +293,9 @@ fun SonaVideoRow(
     onClick: () -> Unit,
     onOpenOptions: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    containerColor: Color = MaterialTheme.colorScheme.surface,
+    optionsIcon: ImageVector = Icons.Filled.MoreHoriz,
+    optionsLabel: String = "More options",
 ) {
     val current = isCurrent()
     SonaListRow(
@@ -300,6 +307,9 @@ fun SonaVideoRow(
         onOpenOptions = onOpenOptions,
         modifier = modifier,
         isCurrent = current,
+        containerColor = containerColor,
+        optionsIcon = optionsIcon,
+        optionsLabel = optionsLabel,
     ) { isSelected ->
         SonaVideoCover(
             coverArtUri = video.coverArtUri,

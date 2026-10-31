@@ -230,6 +230,7 @@ dependencies {
     implementation(project(":feature:video"))
     implementation(project(":feature:vault"))
     implementation(project(":feature:backup"))
+    implementation(project(":feature:explorer"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

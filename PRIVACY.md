@@ -16,6 +16,7 @@ Sona keeps the following **only on your device**, in its private app storage:
 | Playback state: the queue, current track and position | Resume where you left off |
 | Settings | Your preferences |
 | Lyrics cache | Avoid re-reading lyrics from files |
+| A fingerprint of each music and video file's contents (SHA-256), while backups or **Keep tracks when files move** need it | Tell a moved file from a new one, and which files a backup already holds |
 | The Japanese romanization dictionary, once you download it | Show Japanese lyrics in Latin script |
 | A downloaded update APK, while an update is pending | Install the update; deleted once installed |
 
@@ -31,7 +32,7 @@ Backups are made only when you ask for one, or on the schedule you turn on in Se
 
 | Where | What is kept |
 | --- | --- |
-| On your device, in `Android/media/com.lhacenmed.sona/Backup` | Your last five backups. Android deletes this folder when Sona is uninstalled. |
+| On your device, in `Android/media/com.lhacenmed.sona/Backup` | Your latest backup. Android deletes this folder when Sona is uninstalled. |
 | In your Google Drive, only if you connect it | Your backups, and one copy of each music and video file from the folders you choose, in a folder Sona creates |
 
 You can encrypt backups with a passphrase (off by default). Encrypted backups are sealed with AES-256-GCM using a key made from your passphrase; your passphrase is never stored or sent anywhere, and without it an encrypted backup cannot be opened, by Sona or by anyone else.

@@ -14,6 +14,7 @@ import com.lhacenmed.sona.feature.library.ArtistDetailScreen
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
 import com.lhacenmed.sona.feature.playback.PlaybackController
+import com.lhacenmed.sona.feature.playback.VideoPlayerOpening
 import com.lhacenmed.sona.feature.playback.PlaybackSpace
 import com.lhacenmed.sona.feature.player.BottomSheetPlayerHost
 import com.lhacenmed.sona.feature.tageditor.lyricseditor.LyricsEditorScreen
@@ -44,7 +45,9 @@ class SonaPlayerOverlay @Inject constructor(
         val lifecycleOwner = LocalLifecycleOwner.current
         LaunchedEffect(lifecycleOwner) {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                playbackController.videoPlayerOpenings.collect { context.openVideoPlayer() }
+                playbackController.videoPlayerOpenings.collect { opening ->
+                    context.openVideoPlayer(floating = opening == VideoPlayerOpening.FLOATING)
+                }
             }
         }
 

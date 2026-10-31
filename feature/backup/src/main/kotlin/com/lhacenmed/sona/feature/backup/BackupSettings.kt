@@ -33,10 +33,14 @@ private val KEY_SALT = stringPreferencesKey("key_salt")
 private val SEALED_KEY = stringPreferencesKey("sealed_key")
 private val LAST_BACKUP_AT = longPreferencesKey("last_backup_at")
 private val LAST_BACKUP_CONTENT = stringPreferencesKey("last_backup_content")
+private val LAST_BACKUP_NAME = stringPreferencesKey("last_backup_name")
+private val LAST_BACKUP_LOCAL_CHECKSUM = stringPreferencesKey("last_backup_local_checksum")
+private val LAST_BACKUP_DRIVE_CHECKSUM = stringPreferencesKey("last_backup_drive_checksum")
 private val DRIVE_CONNECTED = booleanPreferencesKey("drive_connected")
 private val DRIVE_ACCOUNT = stringPreferencesKey("drive_account")
 
 private val USES_MOBILE_DATA = booleanPreferencesKey("uses_mobile_data")
+private val BACKUP_PAUSED = booleanPreferencesKey("backup_paused")
 
 // The folders left out rather than those backed up, so a folder the library gains later is backed up too - each by
 // its kind and path, see BackupFolders.
@@ -88,6 +92,13 @@ class BackupSettings @Inject constructor(
     /** The email address of the Google account Drive is connected to, while it is. */
     val driveAccount: StateFlow<String?> = dataStore.data.map { it[DRIVE_ACCOUNT] }.stateIn(scope, SharingStarted.Eagerly, null)
 
+    /** Whether the backup the user started is paused, to be resumed - see [com.lhacenmed.sona.feature.backup.work.BackupWork.pauseBackup]. */
+    val isBackupPaused: StateFlow<Boolean> = dataStore.data.map { it[BACKUP_PAUSED] == true }.stateIn(scope, SharingStarted.Eagerly, false)
+
+    internal suspend fun setBackupPaused(isPaused: Boolean) {
+        dataStore.edit { it[BACKUP_PAUSED] = isPaused }
+    }
+
     suspend fun setSchedule(schedule: BackupSchedule) {
         dataStore.edit { it[SCHEDULE] = schedule.name }
     }
@@ -111,8 +122,8 @@ class BackupSettings @Inject constructor(
     /** [foldersLeftOut], read from disk - see [isDriveConnectedNow]. */
     internal suspend fun foldersLeftOutNow(): Set<String> = dataStore.data.first()[FOLDERS_LEFT_OUT].orEmpty()
 
-    internal suspend fun setFolderLeftOut(entry: String, isLeftOut: Boolean) {
-        dataStore.edit { it[FOLDERS_LEFT_OUT] = it[FOLDERS_LEFT_OUT].orEmpty().let { entries -> if (isLeftOut) entries + entry else entries - entry } }
+    internal suspend fun setFoldersLeftOut(entries: Set<String>) {
+        dataStore.edit { it[FOLDERS_LEFT_OUT] = entries }
     }
 
     /** [driveAccount], read from disk - see [isDriveConnectedNow]. */
@@ -153,16 +164,33 @@ class BackupSettings @Inject constructor(
         }
     }
 
-    /** What the last backup held, as one fingerprint - for an automatic backup to skip one that would hold the same. */
-    internal suspend fun lastBackupContent(): String? = dataStore.data.first()[LAST_BACKUP_CONTENT]
+    /** The last backup kept whole everywhere it went, or null before the first. */
+    internal suspend fun lastBackup(): LastBackup? {
+        val preferences = dataStore.data.first()
+        return LastBackup(
+            content = preferences[LAST_BACKUP_CONTENT] ?: return null,
+            name = preferences[LAST_BACKUP_NAME] ?: return null,
+            localChecksum = preferences[LAST_BACKUP_LOCAL_CHECKSUM] ?: return null,
+            driveChecksum = preferences[LAST_BACKUP_DRIVE_CHECKSUM],
+        )
+    }
 
-    internal suspend fun recordBackup(at: Long, content: String) {
+    internal suspend fun recordBackup(at: Long, backup: LastBackup) {
         dataStore.edit {
             it[LAST_BACKUP_AT] = at
-            it[LAST_BACKUP_CONTENT] = content
+            it[LAST_BACKUP_CONTENT] = backup.content
+            it[LAST_BACKUP_NAME] = backup.name
+            it[LAST_BACKUP_LOCAL_CHECKSUM] = backup.localChecksum
+            if (backup.driveChecksum == null) it.remove(LAST_BACKUP_DRIVE_CHECKSUM) else it[LAST_BACKUP_DRIVE_CHECKSUM] = backup.driveChecksum
         }
     }
 }
+
+/**
+ * The last backup kept whole: what it held - see [com.lhacenmed.sona.feature.backup.BackupRepository.backUp] - its
+ * name, and the checksum of each copy as written, on this device and, where it went there, in Drive.
+ */
+internal data class LastBackup(val content: String, val name: String, val localChecksum: String, val driveChecksum: String?)
 
 private fun seal(bytes: ByteArray): ByteArray {
     val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.ENCRYPT_MODE, deviceKey()) }

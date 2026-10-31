@@ -4,10 +4,12 @@ import android.content.Context
 import com.lhacenmed.sona.core.common.di.IoDispatcher
 import com.lhacenmed.sona.feature.backup.BackedUpMedia
 import com.lhacenmed.sona.feature.backup.BackupDestination
+import com.lhacenmed.sona.feature.backup.BackupProgress
 import com.lhacenmed.sona.feature.backup.StoredBackup
 import com.lhacenmed.sona.feature.backup.archive.BackupCipher
 import com.lhacenmed.sona.feature.backup.archive.BackupKey
 import com.lhacenmed.sona.feature.backup.media.CloudMediaStore
+import com.lhacenmed.sona.core.data.fingerprint.fingerprintOf
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.io.IOException
@@ -15,7 +17,6 @@ import java.io.InputStream
 import java.io.OutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
-import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.coroutineScope
@@ -84,15 +85,27 @@ class DriveBackups @Inject internal constructor(
             .map { StoredBackup(it.id, it.name, it.createdAt, it.sizeBytes) }
             .sortedByDescending { it.createdAt }
 
-    override suspend fun add(name: String, write: (OutputStream) -> Unit) {
+    /** Keeps the backup only once Drive holds the very bytes written - one that arrived otherwise is deleted. */
+    override suspend fun add(name: String, write: (OutputStream) -> Unit): String {
         val file = File(context.cacheDir, name)
         try {
-            withContext(ioDispatcher) { file.outputStream().buffered().use(write) }
-            inFolder(::rootFolder) { folderId -> api.upload(file, name, folderId, mapOf(KIND to BACKUP)) }
+            val written = withContext(ioDispatcher) {
+                file.outputStream().buffered().use(write)
+                fingerprintOf(file)
+            }
+            val uploaded = inFolder(::rootFolder) { folderId -> api.upload(file, name, folderId, mapOf(KIND to BACKUP)) }
+            val kept = api.checksumOf(uploaded.id)
+            if (kept != null && kept != written) {
+                api.delete(uploaded.id)
+                throw IOException("Drive kept $name damaged")
+            }
+            return written
         } finally {
             file.delete()
         }
     }
+
+    override suspend fun checksumOf(backup: StoredBackup): String? = api.checksumOf(backup.id)
 
     override suspend fun open(backup: StoredBackup): InputStream = api.open(backup.id)
 
@@ -194,38 +207,47 @@ internal class DriveMedia(
 
     /**
      * Uploads each of [media] not kept yet - into the music or the videos folder - [PARALLEL_UPLOADS] at a time,
-     * [onProgress] hearing how many of how many are done. As many go as Drive has room for, not none when not all
-     * fit; one that fails is left for the next backup, and the rest go on.
+     * [onProgress] hearing, byte by byte, how far they are - counted with those Drive already has. As many go as
+     * Drive has room for, not none when not all fit; one that fails is left for the next backup, and the rest go on.
      */
-    suspend fun upload(media: List<BackedUpMedia>, onProgress: (done: Int, total: Int) -> Unit): MediaUpload = coroutineScope {
+    suspend fun upload(media: List<BackedUpMedia>, onProgress: (BackupProgress) -> Unit): MediaUpload = coroutineScope {
         val stored = stored()
-        val missing = media.distinctBy { it.fingerprint }.filter { nameOf(it.fingerprint) !in stored }
+        val (kept, missing) = media.distinctBy { it.fingerprint }.partition { nameOf(it.fingerprint) in stored }
         if (missing.isEmpty()) return@coroutineScope MediaUpload(leftForSpace = 0, failed = 0)
         var room = api.freeBytes() ?: Long.MAX_VALUE
         val fitting = missing.filter { item -> (item.sizeBytes <= room).also { fits -> if (fits) room -= item.sizeBytes } }
-        val done = AtomicInteger()
-        val failed = AtomicInteger()
+        val meter = UploadMeter(
+            filesDone = kept.size,
+            filesTotal = kept.size + fitting.size,
+            bytesDone = kept.sumOf { it.sizeBytes },
+            bytesTotal = (kept + fitting).sumOf { it.sizeBytes },
+            onChange = onProgress,
+        )
+        var failed = 0
         val slots = Semaphore(PARALLEL_UPLOADS)
-        onProgress(0, fitting.size)
+        meter.report()
         fitting.map { item ->
             launch {
                 slots.withPermit {
                     val name = nameOf(item.fingerprint)
                     try {
-                        val id = inFolder(item.isVideo) { folderId -> upload(File(item.path), name, folderId) }.id
+                        val id = inFolder(item.isVideo) { folderId ->
+                            upload(File(item.path), name, folderId) { position -> meter.moved(name, position) }
+                        }.id
                         storedLock.withLock { stored[name] = id }
+                        meter.finished(name, item.sizeBytes)
                     } catch (e: DriveAccessLostException) {
                         throw e // No file can go on without access: every upload stops.
                     } catch (e: CancellationException) {
                         throw e
                     } catch (_: Exception) {
-                        failed.incrementAndGet()
+                        storedLock.withLock { failed++ }
+                        meter.failed(name)
                     }
                 }
-                onProgress(done.incrementAndGet(), fitting.size)
             }
         }.joinAll()
-        MediaUpload(leftForSpace = missing.size - fitting.size, failed = failed.get())
+        MediaUpload(leftForSpace = missing.size - fitting.size, failed = failed)
     }
 
     /** Deletes every file kept here that is not one of [fingerprints], and every copy of a file beyond its first. */
@@ -241,8 +263,8 @@ internal class DriveMedia(
      * [file] uploaded as [name] - sealed first, where there is a key, into a copy in the cache kept until its upload
      * is done: sealing is never the same twice, so an upload carried on in a later run must send the same copy.
      */
-    private suspend fun upload(file: File, name: String, folder: String): DriveFile {
-        if (key == null) return api.upload(file, name, folder, mapOf(KIND to fileKind))
+    private suspend fun upload(file: File, name: String, folder: String, onProgress: (position: Long) -> Unit): DriveFile {
+        if (key == null) return api.upload(file, name, folder, mapOf(KIND to fileKind), onProgress)
         val sealed = File(cacheDir, "$name.sealed")
         if (!sealed.isFile) {
             val partial = File(cacheDir, "$name.sealed.part")
@@ -253,7 +275,7 @@ internal class DriveMedia(
                 if (!partial.renameTo(sealed)) throw IOException("Could not seal $name")
             }
         }
-        return api.upload(sealed, name, folder, mapOf(KIND to fileKind)).also { sealed.delete() }
+        return api.upload(sealed, name, folder, mapOf(KIND to fileKind), onProgress).also { sealed.delete() }
     }
 
     /** Every file of this kind in Drive, wherever it is - one for each name, the copies beyond it set aside. */

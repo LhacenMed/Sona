@@ -28,6 +28,7 @@ import com.lhacenmed.sona.core.database.dao.FavoriteCollectionDao
 import com.lhacenmed.sona.core.database.dao.GenreDao
 import com.lhacenmed.sona.core.database.dao.LyricsIndexDao
 import com.lhacenmed.sona.core.database.dao.MediaHashDao
+import com.lhacenmed.sona.core.database.dao.TrackMoveDao
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.PlaylistDao
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
@@ -90,6 +91,9 @@ object DatabaseModule {
 
     @Provides
     fun provideMediaHashDao(database: SonaDatabase): MediaHashDao = database.mediaHashDao()
+
+    @Provides
+    fun provideTrackMoveDao(database: SonaDatabase): TrackMoveDao = database.trackMoveDao()
 
     @Provides
     fun provideBackupDao(database: SonaDatabase): BackupDao = database.backupDao()

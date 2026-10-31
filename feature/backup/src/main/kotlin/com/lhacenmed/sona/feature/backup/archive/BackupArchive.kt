@@ -5,7 +5,7 @@ import com.lhacenmed.sona.feature.backup.BackedUpSetting
 import com.lhacenmed.sona.feature.backup.BackupLibrary
 import com.lhacenmed.sona.feature.backup.BackupManifest
 import com.lhacenmed.sona.feature.backup.backedUpSettingOf
-import com.lhacenmed.sona.feature.backup.media.fingerprintOf
+import com.lhacenmed.sona.core.data.fingerprint.fingerprintOf
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream

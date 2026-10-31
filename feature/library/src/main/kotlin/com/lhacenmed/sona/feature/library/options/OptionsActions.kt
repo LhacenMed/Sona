@@ -27,6 +27,7 @@ import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.library.AlbumDetailScreen
 import com.lhacenmed.sona.feature.library.ArtistDetailScreen
 import com.lhacenmed.sona.feature.library.FolderDetailScreen
+import com.lhacenmed.sona.feature.explorer.FolderExplorerScreen
 import com.lhacenmed.sona.feature.library.GenreDetailScreen
 import com.lhacenmed.sona.feature.library.M3U_MIME_TYPE
 import com.lhacenmed.sona.feature.library.M3U_PICKER_MIME_TYPES
@@ -121,6 +122,7 @@ internal class OptionsActions(
                 context.toast("Plays from here count in Most played")
             }
             OptionsAction.VIEW_DETAILS -> navigator.go(detailScreenOf(target))
+            OptionsAction.BROWSE_FOLDER -> navigator.go(FolderExplorerScreen((target as OptionsTarget.ForFolder).folder.path))
             OptionsAction.ADD_TRACKS -> navigator.go(AddTracksScreen(playlistOf(target).playlist.id))
             OptionsAction.ADD_COLLECTIONS -> navigator.go(AddCollectionsScreen(playlistOf(target).playlist.id))
             OptionsAction.EDIT -> navigator.go(EditPlaylistScreen(playlistOf(target).playlist.id))

@@ -76,7 +76,7 @@ Sona plays the music stored on your device. It has no accounts, no streaming, no
 **Backup and restore**
 
 - Back up playlists, favorites, play history, settings, and the covers, background and font you chose - by hand, daily or weekly.
-- Backups are kept in `Android/media/com.lhacenmed.sona/Backup`, the last five, and can be encrypted with a passphrase.
+- Backups are kept in `Android/media/com.lhacenmed.sona/Backup`, the latest one, and can be encrypted with a passphrase.
 - Connect Google Drive to keep backups there too, with one copy of each music and video file from the folders you choose (uploaded over Wi-Fi). A restore brings back only the files a device is missing, compared by their contents, so nothing is duplicated.
 - Restoring adds to what is on the device; nothing there is removed.
 

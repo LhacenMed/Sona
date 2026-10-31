@@ -2,10 +2,29 @@
 <resources>
     <string name="backup_notification_title">Backing up</string>
     <string name="restore_notification_title">Restoring</string>
+    <string name="backup_notification_pause">Pause</string>
+    <string name="backup_notification_resume">Resume</string>
     <string name="backup_notification_stop">Stop</string>
-    <string name="backup_progress_fingerprinting">Reading files: %1$d of %2$d</string>
-    <string name="backup_progress_writing">Writing the backup</string>
-    <string name="restore_progress_library">Restoring your library and settings</string>
-    <string name="restore_progress_files">Restoring files: %1$d of %2$d</string>
-    <string name="backup_progress_uploading">Uploading files to Google Drive: %1$d of %2$d</string>
+    <string name="backup_notification_retry">Try again</string>
+    <string name="backup_failed_title">Backup failed</string>
+    <string name="restore_failed_title">Restore failed</string>
+    <string name="backup_failed_drive_access">Google Drive is disconnected. Connect it again from Backup &amp; restore.</string>
+    <string name="backup_paused_title">Backup paused</string>
+    <string name="backup_paused_text">Resume to carry on where it stopped</string>
+    <string name="backup_step_checking_files">Checking music and videos</string>
+    <string name="backup_step_reading_library">Reading library and settings</string>
+    <string name="backup_step_checking_last_backup">Checking last backup</string>
+    <string name="backup_step_uploading_files">Uploading music and videos</string>
+    <string name="backup_step_saving_on_device">Saving backup on this device</string>
+    <string name="backup_step_saving_to_drive">Saving backup to Google Drive</string>
+    <string name="backup_step_cleaning_drive">Cleaning up Google Drive</string>
+    <string name="restore_step_reading_backup">Reading backup</string>
+    <string name="restore_step_finding_files">Finding music and videos</string>
+    <string name="restore_step_restoring_library">Restoring library and settings</string>
+    <string name="restore_step_downloading_files">Downloading music and videos</string>
+    <string name="restore_step_adding_files">Adding music and videos to library</string>
+    <!-- Text slots only (%s): a number and a size fill one alike, so the text can never fail a backup over a type. -->
+    <string name="backup_progress_count">%1$s · %2$s of %3$s</string>
+    <string name="backup_progress_transfer">%1$s of %2$s · %3$s/s</string>
+    <string name="backup_progress_percent">%1$s%%</string>
 </resources>

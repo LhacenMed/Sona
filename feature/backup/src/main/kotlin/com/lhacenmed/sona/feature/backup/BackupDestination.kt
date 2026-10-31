@@ -32,8 +32,14 @@ interface BackupDestination {
     /** Every backup kept here, the latest first. */
     suspend fun list(): List<StoredBackup>
 
-    /** Keeps the backup [write] writes, as [name] - whole, or not at all. */
-    suspend fun add(name: String, write: (OutputStream) -> Unit)
+    /** Keeps the backup [write] writes, as [name] - whole, or not at all - and returns its [checksumOf]. */
+    suspend fun add(name: String, write: (OutputStream) -> Unit): String
+
+    /**
+     * The SHA-256 of [backup]'s bytes as kept here now - for telling it is still what was written - or null where
+     * this cannot tell.
+     */
+    suspend fun checksumOf(backup: StoredBackup): String?
 
     suspend fun open(backup: StoredBackup): InputStream
 

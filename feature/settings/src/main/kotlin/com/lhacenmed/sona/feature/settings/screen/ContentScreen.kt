@@ -10,6 +10,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.datastore.CoverMode
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDialog
+import com.lhacenmed.sona.core.model.FolderView
 import com.lhacenmed.sona.core.model.sort.SortDirection
 import com.lhacenmed.sona.core.model.sort.SortScope
 import com.lhacenmed.sona.core.navigation.LocalNavigator
@@ -35,6 +36,8 @@ data object ContentScreen : Screen {
         val viewModel: ContentSettingsViewModel = hiltViewModel()
         val intelligentSortingEnabled by viewModel.intelligentSortingEnabled.collectAsStateWithLifecycle()
         val separateArtists by viewModel.separateArtists.collectAsStateWithLifecycle()
+        val folderView by viewModel.folderView.collectAsStateWithLifecycle()
+        val keepsMovedFiles by viewModel.keepsMovedFiles.collectAsStateWithLifecycle()
         val coverMode by viewModel.coverMode.collectAsStateWithLifecycle()
         val forceSquareCovers by viewModel.forceSquareCovers.collectAsStateWithLifecycle()
         val newTracksDirection by viewModel.newTracksDirection.collectAsStateWithLifecycle()
@@ -60,6 +63,22 @@ data object ContentScreen : Screen {
                 SettingsSwitchItem(
                     title = stringResource(R.string.filename_as_title_title),
                     summary = stringResource(R.string.filename_as_title_summary),
+                )
+                SettingsChoiceItem(
+                    title = stringResource(R.string.folder_view_title),
+                    // In FolderView's order, so an option's index is its view.
+                    options = listOf(
+                        stringResource(R.string.folder_view_separate),
+                        stringResource(R.string.folder_view_grouped),
+                    ),
+                    selectedIndex = folderView.ordinal,
+                    onSelect = { viewModel.setFolderView(FolderView.entries[it]) },
+                )
+                SettingsSwitchItem(
+                    title = stringResource(R.string.keep_moved_files_title),
+                    summary = stringResource(R.string.keep_moved_files_summary),
+                    checked = keepsMovedFiles,
+                    onCheckedChange = viewModel::setKeepsMovedFiles,
                 )
             }
 
