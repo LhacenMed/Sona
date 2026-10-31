@@ -6,6 +6,29 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.6.15] - 2026-10-31
+
+### Added
+
+- A folder explorer: folders open in place, music and videos play as a preview without touching your queue, and Back goes to the folder before.
+- Pick single files, not only folders, to exclude, auto-tag or back up.
+- Open an excluded folder to see and play what it holds.
+- The video player's floating window, entered from its button or by leaving a playing video.
+- Folder view setting: list nested folders separately, or grouped under the top-most one.
+- Keep tracks when files move: a moved or renamed file keeps its playlists and plays (off by default).
+- Pause and resume a backup from its notification, carrying on from the exact byte uploaded.
+- The backup notification shows its progress byte by byte, with the upload speed, as a live update on Android 16.
+- A notification when a backup or restore fails, with Try again.
+
+### Changed
+
+- Each place keeps one backup, the latest, and a backup with nothing new is not written again.
+- A backup goes step by step, each step named, and is saved last.
+
+### Fixed
+
+- Backing up again after stopping one no longer fails.
+
 ## [1.6.14] - 2026-10-30
 
 ### Fixed

@@ -1,6 +1,6 @@
 {
-  "versionCode": 106149000,
-  "versionName": "1.6.14",
-  "apkUrl": "https://github.com/LhacenMed/Sona/releases/download/v1.6.14/sona-1.6.14-release-universal.apk",
-  "notes": "### Fixed\n\n- Find Drive's folders again once deleted there, or for another account."
+  "versionCode": 106159000,
+  "versionName": "1.6.15",
+  "apkUrl": "https://github.com/LhacenMed/Sona/releases/download/v1.6.15/sona-1.6.15-release-universal.apk",
+  "notes": "### Added\n\n- A folder explorer: folders open in place, music and videos play as a preview without touching your queue, and Back goes to the folder before.\n- Pick single files, not only folders, to exclude, auto-tag or back up.\n- Open an excluded folder to see and play what it holds.\n- The video player's floating window, entered from its button or by leaving a playing video.\n- Folder view setting: list nested folders separately, or grouped under the top-most one.\n- Keep tracks when files move: a moved or renamed file keeps its playlists and plays (off by default).\n- Pause and resume a backup from its notification, carrying on from the exact byte uploaded.\n- The backup notification shows its progress byte by byte, with the upload speed, as a live update on Android 16.\n- A notification when a backup or restore fails, with Try again.\n\n### Changed\n\n- Each place keeps one backup, the latest, and a backup with nothing new is not written again.\n- A backup goes step by step, each step named, and is saved last.\n\n### Fixed\n\n- Backing up again after stopping one no longer fails."
 }
