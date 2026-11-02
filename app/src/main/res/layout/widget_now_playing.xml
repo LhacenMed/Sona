@@ -8,6 +8,9 @@
     Everything lines up on the content's edges - see widget_padding: the cover, the text, the timeline, and the
     outer controls' glyphs, whose buttons reach past the edge by widget_button_overhang. The controls are spread
     with equal room between them, the play button at the middle.
+
+    Each glyph is fitted to the room its button's inset leaves, never drawn at the drawable's own size: that size has
+    been seen to come out larger than the layout around it, growing a glyph past its button's clip and cutting it.
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@android:id/background"
@@ -89,7 +92,8 @@
                     android:layout_marginTop="@dimen/widget_button_overhang"
                     android:layout_marginEnd="@dimen/widget_button_overhang"
                     android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:scaleType="center"
+                    android:padding="@dimen/widget_button_glyph_inset"
+                    android:scaleType="fitCenter"
                     android:src="@drawable/favorite_border"
                     android:tint="@color/widget_preview_content" />
             </LinearLayout>
@@ -170,7 +174,8 @@
                     android:layout_width="@dimen/widget_button_size"
                     android:layout_height="@dimen/widget_button_size"
                     android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:scaleType="center"
+                    android:padding="@dimen/widget_button_glyph_inset"
+                    android:scaleType="fitCenter"
                     android:src="@drawable/shuffle"
                     android:tint="@color/widget_preview_content" />
 
@@ -185,7 +190,8 @@
                     android:layout_height="@dimen/widget_button_size"
                     android:background="?android:attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/player_previous"
-                    android:scaleType="center"
+                    android:padding="@dimen/widget_button_glyph_inset"
+                    android:scaleType="fitCenter"
                     android:src="@drawable/skip_previous"
                     android:tint="@color/widget_preview_content" />
 
@@ -210,10 +216,11 @@
                     <ImageView
                         android:id="@+id/widget_play_pause_icon"
                         android:tint="@color/brand_gradient_end"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="center"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
                         android:importantForAccessibility="no"
+                        android:padding="@dimen/widget_play_button_glyph_inset"
+                        android:scaleType="fitCenter"
                         android:src="@drawable/play" />
                 </FrameLayout>
 
@@ -228,7 +235,8 @@
                     android:layout_height="@dimen/widget_button_size"
                     android:background="?android:attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/player_next"
-                    android:scaleType="center"
+                    android:padding="@dimen/widget_button_glyph_inset"
+                    android:scaleType="fitCenter"
                     android:src="@drawable/skip_next"
                     android:tint="@color/widget_preview_content" />
 
@@ -242,7 +250,8 @@
                     android:layout_width="@dimen/widget_button_size"
                     android:layout_height="@dimen/widget_button_size"
                     android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:scaleType="center"
+                    android:padding="@dimen/widget_button_glyph_inset"
+                    android:scaleType="fitCenter"
                     android:src="@drawable/repeat"
                     android:tint="@color/widget_preview_content" />
             </LinearLayout>

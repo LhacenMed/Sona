@@ -16,6 +16,9 @@
     <dimen name="widget_button_size">36dp</dimen>
     <dimen name="widget_button_overhang">-6dp</dimen>
     <dimen name="widget_play_button_size">44dp</dimen>
+    <!-- What holds each 24dp glyph at that size inside its button: (36 - 24) / 2 and (44 - 24) / 2. -->
+    <dimen name="widget_button_glyph_inset">6dp</dimen>
+    <dimen name="widget_play_button_glyph_inset">10dp</dimen>
 
     <!-- The timeline: its dot's size, and how far the dot and the played line reach past the scaled line's end. -->
     <dimen name="widget_timeline_height">12dp</dimen>
