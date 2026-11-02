@@ -1,11 +1,9 @@
 package com.lhacenmed.sona.widget
 
-import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.content.ComponentCallbacks
 import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapShader
@@ -23,8 +21,7 @@ import coil3.request.SuccessResult
 import coil3.request.allowHardware
 import coil3.size.Scale
 import coil3.toBitmap
-import com.lhacenmed.sona.BuildConfig
-import com.lhacenmed.sona.MainActivity
+import com.lhacenmed.sona.core.common.entry.AppEntry
 import com.lhacenmed.sona.R
 import com.lhacenmed.sona.core.common.cover.drawDefaultCover
 import com.lhacenmed.sona.core.common.di.ApplicationScope
@@ -72,8 +69,6 @@ private const val CoverSizePx = 512
 /** The timeline's level once played to its end - see `widget_progress`. */
 private const val MaxTimelineLevel = 10_000
 
-/** The action the widget opens the app with - see [PlaybackWidgets.isOpenedFromWidget]. */
-private const val ACTION_ARRIVE = "${BuildConfig.APPLICATION_ID}.widget.action.ARRIVE"
 
 /**
  * The home screen's widgets, kept in step with playback - Auxio's `WidgetComponent` with its `WidgetProvider`'s
@@ -89,8 +84,7 @@ private const val ACTION_ARRIVE = "${BuildConfig.APPLICATION_ID}.widget.action.A
  * cover included, whenever anything on it but the timeline changes; and the timeline alone each second it
  * moves by, while the screen is on - a few numbers rather than a cover each time.
  *
- * Tapping it opens the app on the list the queue plays from, its playing row brought into view and the full
- * player over it - see [isOpenedFromWidget].
+ * Tapping it opens the app as the media notification does - see [PlaybackUiState.opensNowPlaying].
  */
 @Singleton
 class PlaybackWidgets @Inject constructor(
@@ -172,6 +166,7 @@ class PlaybackWidgets @Inject constructor(
         WidgetContent(
             track = trackId?.let(tracksById::get),
             isPrivate = playback.space == PlaybackSpace.Private,
+            opensNowPlaying = playback.opensNowPlaying,
             isPlaying = playback.isPlaying,
             isShuffled = playback.shuffleEnabled,
             repeatMode = playback.repeatMode,
@@ -312,7 +307,8 @@ class PlaybackWidgets @Inject constructor(
         setInt(R.id.widget_progress, "setColorFilter", colors.timeline)
         setInt(R.id.widget_progress_track, "setColorFilter", colors.timelineTrack)
 
-        setOnClickPendingIntent(android.R.id.background, openApp(content.isPrivate))
+        val entry = if (content.opensNowPlaying) AppEntry.NOW_PLAYING else AppEntry.AS_LEFT
+        setOnClickPendingIntent(android.R.id.background, entry.pendingIntent(context))
         for (action in WidgetAction.entries) setOnClickPendingIntent(action.viewId, action.pendingIntent(context))
     }
 
@@ -323,36 +319,6 @@ class PlaybackWidgets @Inject constructor(
         // Never 0: a scaled drawable at level 0 is not drawn at all, and the dot would vanish at the start.
         setInt(R.id.widget_progress, "setImageLevel", (played.coerceIn(0f, 1f) * MaxTimelineLevel).toInt().coerceAtLeast(1))
     }
-
-    /**
-     * The app opened from the widget, on the list the queue plays from - in a task of its own,
-     * as the launcher's quick play shortcut opens it, so it opens on that list whatever screen it was left on.
-     * While the Private Folder plays, the app is only brought back as it was left: nothing of the folder is
-     * named outside it, and its screens stay open.
-     */
-    private fun openApp(isPrivate: Boolean): PendingIntent {
-        val intent = Intent(context, MainActivity::class.java)
-        if (isPrivate) {
-            intent.setAction(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        } else {
-            intent.setAction(ACTION_ARRIVE)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-        }
-        return PendingIntent.getActivity(
-            context,
-            0,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-    }
-
-    companion object {
-        /**
-         * Whether [intent] is the widget's, opening the app on the list the queue plays from: at its playing row,
-         * the full player over it.
-         */
-        fun isOpenedFromWidget(intent: Intent): Boolean = intent.action == ACTION_ARRIVE
-    }
 }
 
 /** Everything the widget shows but its timeline - see [PlaybackWidgets]. */
@@ -360,6 +326,7 @@ private data class WidgetContent(
     /** The library's track playing - null while the Private Folder plays, or nothing does. */
     val track: Track?,
     val isPrivate: Boolean,
+    val opensNowPlaying: Boolean,
     val isPlaying: Boolean,
     val isShuffled: Boolean,
     val repeatMode: RepeatMode,

@@ -40,8 +40,9 @@ import com.lhacenmed.sona.feature.playback.PlaybackSpace
  * It plays [space]'s tracks alone - see [PlayerViewModel]. What only the library's tracks have - an album
  * and an artist to go to, lyrics to edit - is offered where given.
  *
- * [expandsOnOpen] rises into the full player, rather than the mini player, once there is a track to show -
- * once only, so a screen recreated after it rose is left as the user then left the player.
+ * [expandsOnOpen] opens on the full player, rather than the mini player, from the first frame where the track is
+ * known by then, or rising into it once there is one - once only, so a screen recreated after it opened is left as
+ * the user then left the player.
  */
 @Composable
 fun BottomSheetPlayerHost(
@@ -72,11 +73,15 @@ fun BottomSheetPlayerHost(
                 dismissedBound = 0.dp,
                 collapsedBound = miniPlayerClearance,
                 expandedBound = maxHeight,
-                initialAnchor = if (hasTrack == true) COLLAPSED_ANCHOR else DISMISSED_ANCHOR,
+                initialAnchor = when {
+                    hasTrack != true -> DISMISSED_ANCHOR
+                    expandsOnOpen -> EXPANDED_ANCHOR
+                    else -> COLLAPSED_ANCHOR
+                },
             )
 
         // Keyed on what it is asked, so an ask arriving after the sheet is composed is carried out too.
-        var isExpandPending by rememberSaveable(expandsOnOpen) { mutableStateOf(expandsOnOpen) }
+        var isExpandPending by rememberSaveable(expandsOnOpen) { mutableStateOf(expandsOnOpen && !state.isExpandedOrExpanding) }
 
         // Read from where the sheet is going rather than where it is, so a track arriving while the sheet
         // is still sliding away brings it back instead of being missed.

@@ -69,25 +69,27 @@ class IntentNavigator(
     }
 
     override fun go(screen: Screen) {
-        open(screen, arrivesAtPlaying = false)
+        open(screen, isArrival = false, arrivesAtPlaying = false)
     }
 
     /**
-     * Opens [screen] at its playing row, the full player over it - the list the queue plays from, as the home
-     * screen widget opens it. Once only: a screen recreated after it arrived stays as it is.
+     * Opens [screen] as the app arriving on it from a tap outside it: already there, nothing sliding in. With
+     * [atPlaying] - the list the queue plays from - at its playing row, the full player over it. Once only: a screen
+     * recreated after it arrived stays as it is.
      */
-    fun goToPlaying(screen: Screen) {
-        open(screen, arrivesAtPlaying = true)
+    fun arriveAt(screen: Screen, atPlaying: Boolean = false) {
+        open(screen, isArrival = true, arrivesAtPlaying = atPlaying)
     }
 
-    private fun open(screen: Screen, arrivesAtPlaying: Boolean) {
+    private fun open(screen: Screen, isArrival: Boolean, arrivesAtPlaying: Boolean) {
         if (screen == currentScreen || isOpeningScreen) return
         isOpeningScreen = true
         onNavigateListeners.toList().forEach { it() }
         activity.startActivity(
             Intent(activity, HostActivity::class.java)
                 .putExtra(HostActivity.EXTRA_SCREEN, screen)
-                .putExtra(HostActivity.EXTRA_ARRIVES_AT_PLAYING, arrivesAtPlaying),
+                .putExtra(HostActivity.EXTRA_ARRIVES_AT_PLAYING, arrivesAtPlaying)
+                .addFlags(if (isArrival) Intent.FLAG_ACTIVITY_NO_ANIMATION else 0),
         )
     }
 

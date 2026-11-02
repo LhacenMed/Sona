@@ -29,6 +29,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import com.lhacenmed.sona.core.common.R as CommonR
 import com.lhacenmed.sona.core.common.di.ApplicationScope
+import com.lhacenmed.sona.core.common.entry.AppEntry
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
@@ -47,6 +48,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /**
@@ -98,6 +101,9 @@ class PlaybackService : MediaSessionService() {
 
     @Inject
     lateinit var vaultRepository: VaultRepository
+
+    @Inject
+    lateinit var playbackController: PlaybackController
 
     @Inject
     @ApplicationScope
@@ -370,7 +376,7 @@ class PlaybackService : MediaSessionService() {
 
         mediaSession = MediaSession.Builder(this, forwardingPlayer)
             .setCallback(sessionCallback)
-            .setSessionActivity(buildSessionActivityPendingIntent())
+            .setSessionActivity(AppEntry.AS_LEFT.pendingIntent(this))
             // Artwork falls back to the default cover exactly where the app's own covers do.
             .setBitmapLoader(DefaultCoverBitmapLoader(this, imageSettings))
             .build()
@@ -615,6 +621,14 @@ class PlaybackService : MediaSessionService() {
         serviceScope.launch {
             playbackSettings.headsetAutoplay.flow.collect { headsetAutoplayEnabled = it }
         }
+        serviceScope.launch {
+            playbackController.playbackState.map { it.opensNowPlaying }.distinctUntilChanged().collect { opensNowPlaying ->
+                val entry = if (opensNowPlaying) AppEntry.NOW_PLAYING else AppEntry.AS_LEFT
+                mediaSession.setSessionActivity(entry.pendingIntent(this@PlaybackService))
+                // The notification takes its tap from the session as it is rebuilt.
+                updateMediaButtons()
+            }
+        }
         serviceScope.launch { videoSettings.continuousPlay.flow.collect { applyRepeatMode(repeatMode) } }
         serviceScope.launch { libraryRepository.tracksById.collect(::refreshQueueMetadata) }
         serviceScope.launch {
@@ -726,26 +740,10 @@ class PlaybackService : MediaSessionService() {
             .build()
     }
 
-    // feature:playback has no dependency on :app (that dependency runs the other way), so the
-    // notification's tap target is resolved generically via the launcher intent for our own
-    // package rather than referencing MainActivity directly - the one deliberate deviation from
-    // Fossify's PlayerInit.getSessionActivityIntent(), which can reference its app's MainActivity
-    // directly since notification wiring and the activity live in the same module there.
     companion object {
         const val ACTION_MEDIA_NOTIFICATION_DISMISSED =
             "com.lhacenmed.sona.playback.action.MEDIA_NOTIFICATION_DISMISSED"
         const val EXTRA_MEDIA_NOTIFICATION_DELETE_INTENT =
             "com.lhacenmed.sona.playback.extra.MEDIA_NOTIFICATION_DELETE_INTENT"
-    }
-
-    private fun buildSessionActivityPendingIntent(): PendingIntent {
-        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
-            ?: Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setPackage(packageName)
-        return PendingIntent.getActivity(
-            this,
-            0,
-            launchIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
     }
 }

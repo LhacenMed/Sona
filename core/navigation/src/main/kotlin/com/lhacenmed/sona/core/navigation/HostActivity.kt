@@ -46,7 +46,7 @@ class HostActivity : SonaActivity() {
     companion object {
         const val EXTRA_SCREEN = "extra_screen"
 
-        /** Whether the screen opens at its playing row, the full player over it - see [IntentNavigator.goToPlaying]. */
+        /** Whether the screen opens at its playing row, the full player over it - see [IntentNavigator.arriveAt]. */
         const val EXTRA_ARRIVES_AT_PLAYING = "extra_arrives_at_playing"
     }
 
@@ -121,7 +121,7 @@ class HostActivity : SonaActivity() {
                             ) {
                                 // Inside the player, so the screen's FABs stand clear of it.
                                 FloatingActionButtonStack {
-                                    if (arrivesAtPlaying) PlayingRowReveal(hasEntered = { hasEntered.value })
+                                    if (arrivesAtPlaying) PlayingRowReveal()
                                     Scaffold(
                                         topBar = {
                                             if (hostedTitle != null) {

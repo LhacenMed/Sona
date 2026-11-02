@@ -65,4 +65,10 @@ data class PlaybackUiState(
 ) {
     /** [currentTrackId] where it is the library's - null while the Private Folder plays. */
     val libraryTrackId: Long? get() = currentTrackId.takeIf { space == PlaybackSpace.Library }
+
+    /**
+     * Whether a tap on the notification or the widget opens the full player - a library track listened to. A video
+     * watched has no such player, and nothing of the Private Folder is named outside it: both are brought back as left.
+     */
+    val opensNowPlaying: Boolean get() = libraryTrackId != null && !isWatching
 }

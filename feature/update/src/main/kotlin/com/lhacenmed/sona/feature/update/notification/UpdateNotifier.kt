@@ -2,7 +2,6 @@ package com.lhacenmed.sona.feature.update.notification
 
 import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.edit
@@ -32,12 +31,6 @@ object UpdateNotifier {
 
     private const val PREFS = "update_notifier"
     private const val KEY_LAST_NOTIFIED_VERSION = "last_notified_version"
-
-    /**
-     * The extra the notification opens the app with, asking for the Updates screen. The app, which knows
-     * the screen, reads it.
-     */
-    const val EXTRA_OPEN_UPDATES = "com.lhacenmed.sona.extra.OPEN_UPDATES"
 
     /** Keeps the background check scheduled while [enabled], and gone - its notification too - while not. */
     fun follow(context: Context, enabled: Boolean) {
@@ -69,18 +62,12 @@ object UpdateNotifier {
     }
 
     private fun show(context: Context, release: Release) {
-        val openUpdates = context.packageManager.getLaunchIntentForPackage(context.packageName)
-            ?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            ?.putExtra(EXTRA_OPEN_UPDATES, true)
         val notification = SonaNotifications.builder(context, SonaNotificationChannel.UPDATE_ALERTS)
             .setContentTitle(context.getString(R.string.update_notification_title))
             .setContentText(context.getString(R.string.update_notification_text, release.versionName))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
             .apply {
-                openUpdates?.let {
-                    setContentIntent(PendingIntent.getActivity(context, 0, it, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
-                }
                 if (release.apkFor(context.installedBuild()) != null) {
                     addAction(
                         R.drawable.ic_update,

@@ -115,18 +115,15 @@ internal fun postPausedNotification(context: Context) {
 internal fun cancelPausedNotification(context: Context) = SonaNotifications.cancel(context, SonaNotificationId.BACKUP_PAUSED)
 
 /**
- * Says a backup or a restore the user started failed - titled by [titleRes], with [reason] in full - opening the app
- * with a press, and, for a backup, with Try again. Left until pressed away, or the next run starts.
+ * Says a backup or a restore the user started failed - titled by [titleRes], with [reason] in full - with, for a
+ * backup, Try again. Left until pressed away, or the next run starts.
  */
 internal fun postFailedNotification(context: Context, @StringRes titleRes: Int, reason: String, canRetry: Boolean) {
-    val openApp = context.packageManager.getLaunchIntentForPackage(context.packageName)
-        ?.let { PendingIntent.getActivity(context, 0, it, PendingIntent.FLAG_IMMUTABLE) }
     val notification = SonaNotifications.builder(context, SonaNotificationChannel.BACKUP)
         .setContentTitle(context.getString(titleRes))
         .setContentText(reason)
         .setStyle(NotificationCompat.BigTextStyle().bigText(reason))
         .setCategory(NotificationCompat.CATEGORY_ERROR)
-        .setContentIntent(openApp)
         .setAutoCancel(true)
         .apply { if (canRetry) BackupAction.RETRY.let { addAction(it.iconRes, context.getString(it.labelRes), it.intent(context)) } }
         .build()

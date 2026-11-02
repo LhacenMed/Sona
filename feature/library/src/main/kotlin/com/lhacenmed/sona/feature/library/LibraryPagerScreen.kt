@@ -82,7 +82,7 @@ import kotlinx.coroutines.launch
  * [onChooseQuickPlaySource] opens where the quick play button's source is chosen, which the shell knows.
  *
  * [playingTab] opens the library on that tab - while it is shown - at its playing row once the tab is in, the full
- * player over it - see [IntentNavigator.goToPlaying][com.lhacenmed.sona.core.navigation.IntentNavigator.goToPlaying].
+ * player over it - see [IntentNavigator.arriveAt][com.lhacenmed.sona.core.navigation.IntentNavigator.arriveAt].
  */
 @Composable
 fun LibraryPagerScreen(
@@ -187,12 +187,12 @@ fun LibraryPagerScreen(
                 }
         }
 
-        // Slid to as a tap on it would be, and revealed in only once the pager has come to rest there.
+        // Already there under the full player rather than slid to, and revealed in once the pager is at rest there.
         var isRevealDue by rememberSaveable { mutableStateOf(false) }
         LaunchedEffect(playingTab) {
             val page = playingTab?.let(visibleTabs::indexOf)?.takeIf { it >= 0 } ?: return@LaunchedEffect
-            requestedPage = page
-            snapshotFlow { requestedPage == null && pagerState.settledPage == page }.first { it }
+            pagerState.scrollToPage(page)
+            snapshotFlow { pagerState.settledPage == page }.first { it }
             isRevealDue = true
         }
         if (isRevealDue) PlayingRowReveal()

@@ -1,7 +1,6 @@
 package com.lhacenmed.sona.feature.tageditor.autotag
 
 import android.app.Notification
-import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -76,19 +75,12 @@ class AutoTagService : Service() {
         return SonaNotifications.builder(this, SonaNotificationChannel.AUTO_TAG)
             .setContentTitle("Auto-tagging")
             .setContentText(text)
-            .setContentIntent(openAppIntent())
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setSilent(true)
             .setProgress(progress?.total ?: 0, progress?.done ?: 0, progress == null)
             .build()
     }
-
-    /** Opens the app where the user left it. */
-    private fun openAppIntent(): PendingIntent? =
-        packageManager.getLaunchIntentForPackage(packageName)?.let {
-            PendingIntent.getActivity(this, 0, it, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        }
 
     companion object {
         /** Keeps the app alive for as long as the run works - no-op while it already is. */

@@ -14,8 +14,8 @@ import androidx.compose.runtime.Composable
  * Over a [Screen.isPrivate] screen - [isPrivate] - it is the Private Folder's player, showing nothing of the
  * library's playback; over any other, the library's, showing nothing of the folder's.
  *
- * [expandsPlayer] opens the full player over [content] as soon as there is a track to show - see
- * [IntentNavigator.goToPlaying].
+ * [expandsPlayer] opens the full player over [content] - on its first frame where there is a track to show by
+ * then - see [IntentNavigator.arriveAt].
  */
 interface PlayerOverlay {
     @Composable

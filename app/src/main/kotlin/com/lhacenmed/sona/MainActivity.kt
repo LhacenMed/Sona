@@ -10,10 +10,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.lhacenmed.sona.core.common.entry.AppEntry
 import com.lhacenmed.sona.core.common.network.NetworkMonitor
 import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.datastore.LibraryTab
+import com.lhacenmed.sona.core.designsystem.MaxFirstFrameHoldMillis
 import com.lhacenmed.sona.core.designsystem.SonaActivity
 import com.lhacenmed.sona.core.designsystem.component.NetworkStatusHost
 import com.lhacenmed.sona.core.designsystem.theme.AppCoverStyle
@@ -28,13 +30,15 @@ import com.lhacenmed.sona.feature.library.PlayingList
 import com.lhacenmed.sona.feature.library.playingListOf
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.scanner.MediaScanner
+import com.lhacenmed.sona.feature.settings.backup.BackupScreen
+import com.lhacenmed.sona.feature.settings.screen.StorageScreen
 import com.lhacenmed.sona.feature.settings.updates.UpdatesScreen
-import com.lhacenmed.sona.feature.update.notification.UpdateNotifier
-import com.lhacenmed.sona.widget.PlaybackWidgets
+import com.lhacenmed.sona.feature.tageditor.autotag.AutoTagScreen
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 @AndroidEntryPoint
 class MainActivity : SonaActivity() {
@@ -66,7 +70,7 @@ class MainActivity : SonaActivity() {
     @Inject
     lateinit var playbackController: PlaybackController
 
-    /** The library's tab the widget opened the app on - see [arriveFromWidget]. */
+    /** The library's tab a tap on the player from outside the app opened it on - see [arriveAtPlaying]. */
     private var playingTab by mutableStateOf<LibraryTab?>(null)
 
     private val launchPermissionsLauncher =
@@ -77,12 +81,27 @@ class MainActivity : SonaActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Only as the activity is first created: one recreated after a rotation or a process death
+        // still carries the intent it was opened with, and must not go there a second time.
+        val entry = if (savedInstanceState == null) AppEntry.of(intent) else null
+        // Before the first composition, so the player is drawn open from the first frame there is. A queue
+        // not known in time is arrived at all the same when it is, over the library by then on screen.
+        val opening = lifecycleScope.launch {
+            if (entry == AppEntry.NOW_PLAYING) {
+                withTimeoutOrNull(MaxFirstFrameHoldMillis) { arriveAtPlaying().join() }
+            } else {
+                arriveAtScreenOf(entry)
+            }
+            showContent()
+        }
+
         // The first frame is held until the library is in memory and the theme is worked out, so the
         // first thing the user sees is a populated list in their own font and colours, rather than an
         // empty one in the defaults that fills in and restyles itself a moment later.
         holdFirstFrameUntil {
             libraryRepository.isReady.first { it }
             appTheme.awaitReady()
+            opening.join()
         }
 
         if (AppPermission.AUDIO_LIBRARY.isGranted(this)) {
@@ -109,9 +128,9 @@ class MainActivity : SonaActivity() {
         if (savedInstanceState == null && intent.action == QuickPlayShortcut.ACTION) {
             playbackController.quickPlay()
         }
-        if (savedInstanceState == null) openUpdatesIfAsked(intent)
-        if (savedInstanceState == null) arriveFromWidget(intent)
+    }
 
+    private fun showContent() {
         setSonaContent {
             val themeConfig by appTheme.config.collectAsStateWithLifecycle()
             val coverStyle by appCoverStyle.style.collectAsStateWithLifecycle()
@@ -135,33 +154,36 @@ class MainActivity : SonaActivity() {
         }
     }
 
-    /** The update notification, tapped while the app is already open. */
+    /** A notification, tapped while the app is already open. */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        openUpdatesIfAsked(intent)
+        arriveAtScreenOf(AppEntry.of(intent))
     }
 
     /**
-     * Opens the list the queue plays from when [intent] is the widget's - its own screen, or the library's tab -
-     * at its playing row, the full player over it: see [PlaybackWidgets.isOpenedFromWidget]. Read once the queue
-     * is known, so a process the tap started opens the list the restored queue plays from.
+     * Opens the list the queue plays from - its own screen, or the library's tab - at its playing row, the full
+     * player over it. Read once the queue and the tracks are known, so a process the tap started opens the list the
+     * restored queue plays from, and the player can draw its track at once.
      */
-    private fun arriveFromWidget(intent: Intent) {
-        if (!PlaybackWidgets.isOpenedFromWidget(intent)) return
-        lifecycleScope.launch {
-            val playback = playbackController.playbackState.first { it.isReady }
-            if (playback.libraryTrackId == null) return@launch
-            when (val list = playingListOf(playback.parent)) {
-                is PlayingList.OnScreen -> IntentNavigator(this@MainActivity, currentScreen = null).goToPlaying(list.screen)
-                is PlayingList.OnTab -> playingTab = list.tab
-            }
+    private fun arriveAtPlaying() = lifecycleScope.launch {
+        libraryRepository.loadedTracksById.first { it != null }
+        val playback = playbackController.playbackState.first { it.isReady }
+        if (!playback.opensNowPlaying) return@launch
+        when (val list = playingListOf(playback.parent)) {
+            is PlayingList.OnScreen -> IntentNavigator(this@MainActivity, currentScreen = null).arriveAt(list.screen, atPlaying = true)
+            is PlayingList.OnTab -> playingTab = list.tab
         }
     }
 
-    /** Opens the Updates screen when [intent] is the update notification's. */
-    private fun openUpdatesIfAsked(intent: Intent) {
-        if (intent.getBooleanExtra(UpdateNotifier.EXTRA_OPEN_UPDATES, false)) {
-            IntentNavigator(this, currentScreen = null).go(UpdatesScreen)
+    /** Opens the screen [entry] names, where it names one. */
+    private fun arriveAtScreenOf(entry: AppEntry?) {
+        val screen = when (entry) {
+            AppEntry.UPDATES -> UpdatesScreen
+            AppEntry.BACKUP -> BackupScreen
+            AppEntry.STORAGE -> StorageScreen
+            AppEntry.AUTO_TAG -> AutoTagScreen()
+            AppEntry.NOW_PLAYING, AppEntry.AS_LEFT, null -> return
         }
+        IntentNavigator(this, currentScreen = null).arriveAt(screen)
     }
 }

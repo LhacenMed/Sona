@@ -15,8 +15,8 @@ import com.lhacenmed.sona.core.common.R
 
 /**
  * The one way the app posts a notification: every channel made up front, every notification started
- * from the same builder - so each carries Sona's own icon in the status bar - and posted only where
- * Android would show it.
+ * from the same builder - so each carries Sona's own icon in the status bar, and opens the app where its
+ * channel says - and posted only where Android would show it.
  */
 object SonaNotifications {
 
@@ -40,10 +40,11 @@ object SonaNotifications {
     @DrawableRes
     val icon: Int = R.drawable.ic_stat_sona
 
-    /** A notification on [channel], with Sona's icon - where every notification the app posts starts. */
+    /** A notification on [channel], with Sona's icon, opening the app at the channel's entry - where every notification the app posts starts. */
     fun builder(context: Context, channel: SonaNotificationChannel): NotificationCompat.Builder =
         NotificationCompat.Builder(context, channel.id)
             .setSmallIcon(icon)
+            .setContentIntent(channel.entry.pendingIntent(context))
 
     /**
      * [builder], as the platform's own - for what only it has: progress promoted to a live update, on Android 16
@@ -52,6 +53,7 @@ object SonaNotifications {
     fun platformBuilder(context: Context, channel: SonaNotificationChannel): Notification.Builder =
         Notification.Builder(context, channel.id)
             .setSmallIcon(icon)
+            .setContentIntent(channel.entry.pendingIntent(context))
 
     /** Whether Android shows Sona's progress as live updates - on Android 16 and later, while the user allows it. */
     fun canPostPromoted(context: Context): Boolean =

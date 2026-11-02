@@ -31,7 +31,7 @@ import kotlinx.coroutines.withTimeoutOrNull
  * something is genuinely slow (a first run with no cache, a device under memory pressure), showing the
  * app with its loading placeholders beats holding a frozen launch screen indefinitely.
  */
-private const val MaxFirstFrameHoldMillis = 1_200L
+const val MaxFirstFrameHoldMillis = 1_200L
 
 /**
  * The activity every Sona screen is hosted in.

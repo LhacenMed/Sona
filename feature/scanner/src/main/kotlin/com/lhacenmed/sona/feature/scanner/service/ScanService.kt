@@ -1,7 +1,6 @@
 package com.lhacenmed.sona.feature.scanner.service
 
 import android.app.Notification
-import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -108,7 +107,6 @@ class ScanService : Service() {
         return SonaNotifications.builder(this, SonaNotificationChannel.LIBRARY_SCAN)
             .setContentTitle(getString(R.string.scan_notification_title))
             .setContentText(progress.text())
-            .setContentIntent(openAppIntent())
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setSilent(true)
@@ -122,12 +120,6 @@ class ScanService : Service() {
         ScanStep.READING_TAGS -> getString(R.string.scan_step_reading_tags, done, total)
         ScanStep.SAVING -> getString(R.string.scan_step_saving)
     }
-
-    /** Opens the app where the user left it. */
-    private fun openAppIntent(): PendingIntent? =
-        packageManager.getLaunchIntentForPackage(packageName)?.let {
-            PendingIntent.getActivity(this, 0, it, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        }
 
     companion object {
         /** Rescans every file on the device, in the background (no-op if a rescan is already running). */
