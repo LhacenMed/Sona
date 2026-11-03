@@ -13,6 +13,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import kotlin.math.abs
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
@@ -52,12 +53,15 @@ private enum class DragMode { NONE, SEEK, LEVEL, TRANSFORM, IGNORED }
  * see [TapSequence] for how a double tap is told apart from it, and in which third of the screen.
  *
  * [actions] is read as each gesture arrives, so the screen hands over new ones without restarting anything.
+ *
+ * Compose starts this as the first touch arrives, and hands that touch out as soon as this first waits - so each
+ * detector starts at once, already waiting: one dispatched to start a moment later would miss that first touch.
  */
 internal fun Modifier.videoGestures(actions: State<VideoGestureActions>): Modifier =
     pointerInput(Unit) {
         var isHolding = false
         coroutineScope {
-            launch {
+            launch(start = CoroutineStart.UNDISPATCHED) {
                 // Seen before anything takes it, so every touch and movement - on a control too - keeps the controls up.
                 awaitPointerEventScope {
                     while (true) {
@@ -66,7 +70,7 @@ internal fun Modifier.videoGestures(actions: State<VideoGestureActions>): Modifi
                     }
                 }
             }
-            launch {
+            launch(start = CoroutineStart.UNDISPATCHED) {
                 val taps = TapSequence(viewConfiguration.doubleTapTimeoutMillis)
                 awaitEachGesture {
                     // A control under the finger takes its own touch, and it never reaches the video.
@@ -104,7 +108,7 @@ internal fun Modifier.videoGestures(actions: State<VideoGestureActions>): Modifi
                     }
                 }
             }
-            launch {
+            launch(start = CoroutineStart.UNDISPATCHED) {
                 awaitEachGesture {
                     // The tap detector beside this one takes the down, so it is not asked to be untaken.
                     val down = awaitFirstDown(requireUnconsumed = false)
