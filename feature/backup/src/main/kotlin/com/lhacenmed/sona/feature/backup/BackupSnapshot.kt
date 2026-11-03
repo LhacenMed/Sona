@@ -91,6 +91,7 @@ data class BackedUpMedia(
     val modifiedAt: Long,
     val isVideo: Boolean,
     val isKeptInDrive: Boolean = true,
+    val durationMs: Long = 0L,
 )
 
 /** One stored setting's value, of each kind a settings file holds. */

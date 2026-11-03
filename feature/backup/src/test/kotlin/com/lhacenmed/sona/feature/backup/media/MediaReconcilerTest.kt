@@ -7,22 +7,23 @@ import org.junit.Test
 
 class MediaReconcilerTest {
 
-    /** The device's files, by path: each one's size and fingerprint. */
+    /** The device's files, by path: each one's size and fingerprint - and all the same length. */
     private class Device(vararg files: Pair<String, String>) {
         val fingerprints = files.toMap()
         val reads = mutableListOf<String>()
 
-        suspend fun reconcile(media: List<BackedUpMedia>, cloud: Set<String> = emptySet()) = reconcileMedia(
+        suspend fun reconcile(media: List<BackedUpMedia>, cloud: Set<String> = emptySet(), placeOf: (String) -> String = { it }) = reconcileMedia(
             media = media,
-            libraryPaths = fingerprints.keys.toList(),
+            libraryFiles = fingerprints.keys.map { LibraryFile(it, durationMs = 60_000) },
+            placeOf = placeOf,
             sizeOf = { path -> fingerprints[path]?.length?.toLong() },
             fingerprintOf = { path -> reads += path; fingerprints[path] },
             cloudFingerprints = cloud,
         )
     }
 
-    private fun media(path: String, fingerprint: String) =
-        BackedUpMedia(fingerprint, path, fingerprint.length.toLong(), modifiedAt = 0L, isVideo = false)
+    private fun media(path: String, fingerprint: String, durationMs: Long = 0L) =
+        BackedUpMedia(fingerprint, path, fingerprint.length.toLong(), modifiedAt = 0L, isVideo = false, durationMs = durationMs)
 
     @Test
     fun `a file at its own path with its bytes is present there`() = runBlocking {
@@ -38,10 +39,41 @@ class MediaReconcilerTest {
     }
 
     @Test
-    fun `a different file at the path is not taken for it`() = runBlocking {
-        val plan = Device("/m/a.mp3" to "bbbb").reconcile(listOf(media("/m/a.mp3", "aaaa")), cloud = setOf("aaaa"))
+    fun `a file changed at its place is that file, and no older copy is restored beside it`() = runBlocking {
+        val plan = Device("/m/a.mp3" to "bbbbbb").reconcile(listOf(media("/m/a.mp3", "aaaa")), cloud = setOf("aaaa"))
+        assertEquals(mapOf("/m/a.mp3" to "/m/a.mp3"), plan.present)
+        assertEquals(emptyList<MissingMedia>(), plan.missing)
+    }
+
+    @Test
+    fun `a file at the place its missing volume maps to is that file`() = runBlocking {
+        val plan = Device("/storage/emulated/0/a.mp3" to "bbbbbb").reconcile(
+            listOf(media("/storage/SD/a.mp3", "aaaa")),
+            cloud = setOf("aaaa"),
+            placeOf = { it.replace("/storage/SD", "/storage/emulated/0") },
+        )
+        assertEquals(mapOf("/storage/SD/a.mp3" to "/storage/emulated/0/a.mp3"), plan.present)
+    }
+
+    @Test
+    fun `a file moved and changed is found by its name and length`() = runBlocking {
+        val plan = Device("/m/new/a.mp3" to "bbbbbb").reconcile(listOf(media("/m/a.mp3", "aaaa", durationMs = 60_500)), cloud = setOf("aaaa"))
+        assertEquals(mapOf("/m/a.mp3" to "/m/new/a.mp3"), plan.present)
+    }
+
+    @Test
+    fun `a file another backed-up file has for its place is not taken for a moved one`() = runBlocking {
+        val plan = Device("/m/x/a.mp3" to "bbbbbb").reconcile(
+            listOf(media("/m/a.mp3", "aaaa", durationMs = 60_000), media("/m/x/a.mp3", "bbbbbb", durationMs = 60_000)),
+            cloud = setOf("aaaa"),
+        )
+        assertEquals(listOf(MissingMedia(media("/m/a.mp3", "aaaa", durationMs = 60_000), emptyList())), plan.missing)
+    }
+
+    @Test
+    fun `a backup that kept no lengths never takes a name alone for a file`() = runBlocking {
+        val plan = Device("/m/new/a.mp3" to "bbbbbb").reconcile(listOf(media("/m/a.mp3", "aaaa")), cloud = setOf("aaaa"))
         assertEquals(emptyMap<String, String>(), plan.present)
-        assertEquals(listOf(MissingMedia(media("/m/a.mp3", "aaaa"), emptyList())), plan.missing)
     }
 
     @Test

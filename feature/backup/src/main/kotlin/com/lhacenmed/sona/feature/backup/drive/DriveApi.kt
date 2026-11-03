@@ -1,6 +1,7 @@
 package com.lhacenmed.sona.feature.backup.drive
 
 import android.content.Context
+import android.webkit.MimeTypeMap
 import com.lhacenmed.sona.core.common.di.IoDispatcher
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
@@ -30,7 +31,7 @@ import org.json.JSONObject
 private const val FILES_URL = "https://www.googleapis.com/drive/v3/files"
 private const val UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files"
 private const val ABOUT_URL = "https://www.googleapis.com/drive/v3/about"
-private const val FILE_FIELDS = "id,name,size,createdTime,appProperties"
+private const val FILE_FIELDS = "id,name,size,createdTime,appProperties,sha256Checksum"
 private const val FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 
 /** What an upload sends at a time - a multiple of 256 KiB, as resumable uploads require. */
@@ -60,13 +61,17 @@ private const val HTTP_RESUME_INCOMPLETE = 308
 private val JSON = "application/json; charset=utf-8".toMediaType()
 private val BINARY = "application/octet-stream".toMediaType()
 
-/** A file in the user's Drive, as Sona sees it: one it made, with the [properties] it gave it. */
+/**
+ * A file in the user's Drive, as Sona sees it: one it made, with the [properties] it gave it - and the [checksum]
+ * Drive has of the bytes it holds, where it has one to give.
+ */
 internal data class DriveFile(
     val id: String,
     val name: String,
     val sizeBytes: Long,
     val createdAt: Long,
     val properties: Map<String, String>,
+    val checksum: String?,
 )
 
 /** Drive answered [code] - an error. */
@@ -82,7 +87,7 @@ internal class DriveApi @Inject constructor(
     private val http = OkHttpClient.Builder().readTimeout(60, TimeUnit.SECONDS).writeTimeout(60, TimeUnit.SECONDS).build()
 
     /**
-     * Where each upload under way can carry on - by the file's name, size and last change, so a file that changed
+     * Where each upload under way can carry on - by what the file is, its size and last change, so a file that changed
      * since is never sent on the end of what its old bytes began, and by account, so it never ends in another's Drive. Kept on disk, so an upload a run did not finish -
      * stopped, cut off, or the app closed - carries on where Drive stopped, in whichever run comes next.
      */
@@ -117,9 +122,12 @@ internal class DriveApi @Inject constructor(
     }
 
     /**
-     * Uploads [file] as [name] into [parentId]: a small one in a single request, a large one in chunks - each sent
-     * again where the connection dropped, and carried on from where an earlier run left it, so it is never started
+     * Uploads [file] as [name] into [parentId] - or, with [replacing], as the new content of that file, which Drive
+     * changes only once all of it has arrived: a small one in a single request, a large one in chunks - carried on from
+     * where Drive says it got to whenever one failed, and from where an earlier run left it, so it is never started
      * over. [onProgress] hears how far it has gone, byte by byte: first where it starts, then as it is sent.
+     *
+     * [identity] tells this file's upload from every other's: a name need not be one file's alone.
      */
     suspend fun upload(
         file: File,
@@ -127,10 +135,12 @@ internal class DriveApi @Inject constructor(
         parentId: String,
         properties: Map<String, String>,
         onProgress: (position: Long) -> Unit = {},
+        replacing: String? = null,
+        identity: String = name,
     ): DriveFile {
         val size = file.length()
-        if (size <= ONE_REQUEST_MAX_BYTES) return uploadAtOnce(file, name, parentId, properties, onProgress)
-        val key = "$name:$size:${file.lastModified()}:${access.account.value}"
+        if (size <= ONE_REQUEST_MAX_BYTES) return uploadAtOnce(file, name, parentId, properties, replacing, onProgress)
+        val key = "$identity:$size:${file.lastModified()}:${access.account.value}"
         var session = uploads.getString(key, null)
         var isResuming = session != null
         var offset = 0L
@@ -138,9 +148,9 @@ internal class DriveApi @Inject constructor(
         while (true) {
             try {
                 if (session == null) {
-                    session = startUpload(name, parentId, properties, size)
-                    // Only one way on for a name: one begun for bytes it no longer has could only send them wrong.
-                    uploads.edit().apply { uploads.all.keys.filter { it.startsWith("$name:") }.forEach { remove(it) } }.putString(key, session).apply()
+                    session = startUpload(name, parentId, properties, replacing, size)
+                    // Only one way on for a file: one begun for bytes it no longer has could only send them wrong.
+                    uploads.edit().apply { uploads.all.keys.filter { it.startsWith("$identity:") }.forEach { remove(it) } }.putString(key, session).apply()
                     offset = 0L
                 }
                 if (isResuming) {
@@ -154,7 +164,7 @@ internal class DriveApi @Inject constructor(
                         isResuming = false
                         continue
                     }
-                    if (uploaded == null) return finished(key) { find(emptyMap(), parentId).first { it.name == name } }
+                    if (uploaded == null) return finished(key) { find(properties).first { it.name == name } }
                     offset = uploaded
                     isResuming = false
                 }
@@ -163,7 +173,8 @@ internal class DriveApi @Inject constructor(
                 val range = if (size == 0L) "bytes */0" else "bytes $start-${start + length - 1}/$size"
                 onProgress(start)
                 val chunk = FileSlice(file, start, length) { written -> onProgress(start + written) }
-                call(Request.Builder().url(session).header("Content-Range", range).put(chunk)).use {
+                // Never sent again blind, as other requests are: part of it may have arrived, so Drive is asked first.
+                checked(send(Request.Builder().url(session).header("Content-Range", range).put(chunk))).use {
                     if (it.code != HTTP_RESUME_INCOMPLETE) return finished(key) { JSONObject(it.body!!.string()).toDriveFile() }
                     offset = it.rangeEnd()
                 }
@@ -184,24 +195,36 @@ internal class DriveApi @Inject constructor(
         name: String,
         parentId: String,
         properties: Map<String, String>,
+        replacing: String?,
         onProgress: (position: Long) -> Unit,
     ): DriveFile {
         onProgress(0L)
         val body = MultipartBody.Builder()
             .setType("multipart/related".toMediaType())
-            .addPart(metadata(name, properties, parentId).toString().toRequestBody(JSON))
+            .addPart(metadata(name, properties, parentId.takeIf { replacing == null }).toString().toRequestBody(JSON))
             .addPart(FileSlice(file, 0L, file.length(), onProgress))
             .build()
-        return json(Request.Builder().url("$UPLOAD_URL?uploadType=multipart&fields=$FILE_FIELDS").post(body)).toDriveFile()
+        return json(uploadRequest("multipart", replacing, body)).toDriveFile()
     }
 
     /** Begins an upload of [size] bytes as [name], and returns where its bytes go. */
-    private suspend fun startUpload(name: String, parentId: String, properties: Map<String, String>, size: Long): String = call(
-        Request.Builder()
-            .url("$UPLOAD_URL?uploadType=resumable&fields=$FILE_FIELDS")
-            .header("X-Upload-Content-Length", size.toString())
-            .post(metadata(name, properties, parentId).toString().toRequestBody(JSON)),
+    private suspend fun startUpload(name: String, parentId: String, properties: Map<String, String>, replacing: String?, size: Long): String = call(
+        uploadRequest("resumable", replacing, metadata(name, properties, parentId.takeIf { replacing == null }).toString().toRequestBody(JSON))
+            .header("X-Upload-Content-Length", size.toString()),
     ).use { response -> response.header("Location") ?: throw IOException("Drive started no upload for $name") }
+
+    /** An upload of [body], as a new file - or as the new content of the file [replacing]. */
+    private fun uploadRequest(type: String, replacing: String?, body: RequestBody): Request.Builder =
+        if (replacing == null) {
+            Request.Builder().url("$UPLOAD_URL?uploadType=$type&fields=$FILE_FIELDS").post(body)
+        } else {
+            Request.Builder().url("$UPLOAD_URL/$replacing?uploadType=$type&fields=$FILE_FIELDS").patch(body)
+        }
+
+    /** Gives the file [id] the [name] and [properties] it now has, its bytes as they are. */
+    suspend fun updateDetails(id: String, name: String, properties: Map<String, String>) {
+        call(Request.Builder().url("$FILES_URL/$id?fields=id").patch(metadata(name, properties, parentId = null).toString().toRequestBody(JSON))).close()
+    }
 
     /** The file [uploaded] reads back, the upload under [key] being over. */
     private inline fun finished(key: String, uploaded: () -> DriveFile): DriveFile =
@@ -267,13 +290,18 @@ internal class DriveApi @Inject constructor(
                 delay(backoff(attempt))
                 continue
             }
-            if (!response.isSuccessful && response.code != HTTP_RESUME_INCOMPLETE) {
-                val message = response.body?.string()
-                response.close()
-                throw DriveHttpException(response.code, "Drive answered ${response.code}: $message")
-            }
-            return response
+            return checked(response)
         }
+    }
+
+    /** [response], unless it is anything other than success or "resume incomplete". */
+    private fun checked(response: Response): Response {
+        if (!response.isSuccessful && response.code != HTTP_RESUME_INCOMPLETE) {
+            val message = response.body?.string()
+            response.close()
+            throw DriveHttpException(response.code, "Drive answered ${response.code}: $message")
+        }
+        return response
     }
 
     /** Sends [request] with a current token - once more with a fresh one if Drive refused it. */
@@ -305,7 +333,11 @@ private fun backoff(attempt: Int): Long = (FIRST_BACKOFF_MS shl (attempt - 1)) +
 private fun metadata(name: String, properties: Map<String, String>, parentId: String?) = JSONObject()
     .put("name", name)
     .put("appProperties", JSONObject(properties))
-    .apply { parentId?.let { put("parents", JSONArray().put(it)) } }
+    .apply {
+        parentId?.let { put("parents", JSONArray().put(it)) }
+        // So Drive knows a song for one, and can play it, rather than taking every file for unknown bytes.
+        MimeTypeMap.getSingleton().getMimeTypeFromExtension(name.substringAfterLast('.', "").lowercase())?.let { put("mimeType", it) }
+    }
 
 /** Where the next chunk starts, from the `Range: bytes=0-N` a "resume incomplete" answer carries - none yet if absent. */
 private fun Response.rangeEnd(): Long = header("Range")?.substringAfterLast('-')?.toLong()?.plus(1) ?: 0L
@@ -320,6 +352,7 @@ private fun JSONObject.toDriveFile(): DriveFile {
         sizeBytes = optString("size").toLongOrNull() ?: 0L,
         createdAt = optString("createdTime").takeIf { it.isNotEmpty() }?.let { Instant.parse(it).toEpochMilli() } ?: 0L,
         properties = properties?.keys()?.asSequence()?.associateWith { properties.getString(it) }.orEmpty(),
+        checksum = optString("sha256Checksum").takeIf { it.isNotEmpty() },
     )
 }
 

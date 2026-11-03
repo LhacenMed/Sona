@@ -46,14 +46,15 @@ class MediaRestorer(
         return placement
     }
 
+    /** Where the file backed up at [path] belongs on this device: there, or on [primaryStorage] where its volume is not here. */
+    fun placeOf(path: String): String {
+        val volumePath = VOLUME_PATH.matchEntire(path)?.destructured ?: return path
+        return if (File(volumePath.component1()).isDirectory) path else File(primaryStorage, volumePath.component2()).path
+    }
+
     /** Where [media] goes: its place, or the file already holding its bytes there or under a numbered name. */
     internal fun placementOf(media: BackedUpMedia): File {
-        val volumePath = VOLUME_PATH.matchEntire(media.path)?.destructured
-        val original = when {
-            volumePath == null -> File(media.path)
-            File(volumePath.component1()).isDirectory -> File(media.path)
-            else -> File(primaryStorage, volumePath.component2())
-        }
+        val original = File(placeOf(media.path))
         val name = original.nameWithoutExtension
         val extension = original.extension.takeIf { it.isNotEmpty() }?.let { ".$it" }.orEmpty()
         return generateSequence(0) { it + 1 }

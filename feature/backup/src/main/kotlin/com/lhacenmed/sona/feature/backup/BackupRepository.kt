@@ -26,6 +26,8 @@ import com.lhacenmed.sona.feature.backup.drive.DriveBackups
 import com.lhacenmed.sona.feature.backup.library.LocalLibrary
 import com.lhacenmed.sona.feature.backup.library.planLibraryMerge
 import com.lhacenmed.sona.core.data.fingerprint.MediaFingerprints
+import com.lhacenmed.sona.feature.backup.media.CloudMediaStore
+import com.lhacenmed.sona.feature.backup.media.LibraryFile
 import com.lhacenmed.sona.feature.backup.media.MediaPlan
 import com.lhacenmed.sona.feature.backup.media.MediaRestorer
 import com.lhacenmed.sona.feature.backup.media.reconcileMedia
@@ -155,7 +157,7 @@ class BackupRepository @Inject constructor(
             onProgress(BackupProgress(BackupStep.CHECKING_FILES, index, trackFiles.size))
             val fingerprint = fingerprints.of(track.path) ?: return@mapIndexedNotNull null
             val file = File(track.path)
-            BackedUpMedia(fingerprint, track.path, file.length(), file.lastModified(), track.isVideo, backupFolders.isBackedUp(track.folderPath, track.path, track.isVideo, foldersLeftOut))
+            BackedUpMedia(fingerprint, track.path, file.length(), file.lastModified(), track.isVideo, backupFolders.isBackedUp(track.folderPath, track.path, track.isVideo, foldersLeftOut), track.durationMs)
         }
         onProgress(BackupProgress(BackupStep.READING_LIBRARY))
 
@@ -240,8 +242,11 @@ class BackupRepository @Inject constructor(
         if (isDriveConnected) {
             onProgress(BackupProgress(BackupStep.SAVING_TO_DRIVE))
             driveChecksum = keep(driveBackups, name, write)
-            onProgress(BackupProgress(BackupStep.CLEANING_DRIVE))
-            collectDriveMedia(key)
+            // Only once every file is there: what a file still on its way replaces is all Drive has of it until then.
+            if (outcome == BackupOutcome.SAVED) {
+                onProgress(BackupProgress(BackupStep.CLEANING_DRIVE))
+                collectDriveMedia(key)
+            }
         }
         // A backup whose files did not all go is not the last word: the next automatic one is made all the same.
         if (outcome != BackupOutcome.SAVED) return@withContext outcome
@@ -251,7 +256,7 @@ class BackupRepository @Inject constructor(
 
     /**
      * Whether the last backup already holds [content], and is kept whole everywhere backups go: on this device and,
-     * while connected, in Drive - with every file it keeps there - each byte for byte as written. One that is not
+     * while connected, in Drive - with every file it keeps there whole - each byte for byte as written. One that is not
      * is replaced by the backup made instead, so a damaged one is never kept.
      */
     private suspend fun isCurrent(content: String, key: BackupKey?, media: List<BackedUpMedia>, isDriveConnected: Boolean): Boolean {
@@ -259,9 +264,8 @@ class BackupRepository @Inject constructor(
         if (!isKeptWhole(localBackups, last.name, last.localChecksum)) return false
         if (!isDriveConnected) return true
         return try {
-            val driveFiles = media.filter { it.isKeptInDrive }.map { it.fingerprint }.toSet()
             isKeptWhole(driveBackups, last.name, last.driveChecksum ?: return false) &&
-                driveBackups.media(key).keeps(driveFiles).size == driveFiles.size
+                driveBackups.media(key).isSettled(media.filter { it.isKeptInDrive })
         } catch (_: IOException) {
             false // Drive out of reach: the backup is made, and says so where Drive is needed.
         }
@@ -394,11 +398,7 @@ class BackupRepository @Inject constructor(
 
         val missing = plan.missing.filter { it.media.fingerprint in filesToRestore }
         if (missing.isNotEmpty()) {
-            val restorer = MediaRestorer(
-                cloud = driveBackups.media(key),
-                incoming = File(localBackups.directory, INCOMING_DIRECTORY_NAME),
-                primaryStorage = Environment.getExternalStorageDirectory(),
-            )
+            val restorer = restorerOf(driveBackups.media(key))
             val restored = missing.mapIndexed { index, item ->
                 onProgress(BackupProgress(BackupStep.DOWNLOADING_FILES, index, missing.size))
                 restorer.restore(item.media).also { fingerprints.remember(it, item.media.fingerprint) }
@@ -432,12 +432,19 @@ class BackupRepository @Inject constructor(
         }
         return reconcileMedia(
             media = media,
-            libraryPaths = backupDao.trackFiles().map { it.path },
+            libraryFiles = backupDao.trackFiles().map { LibraryFile(it.path, it.durationMs) },
+            placeOf = restorerOf(driveBackups.media(key))::placeOf,
             sizeOf = { path -> File(path).takeIf { it.isFile }?.length() },
             fingerprintOf = fingerprints::of,
             cloudFingerprints = inDrive,
         )
     }
+
+    private fun restorerOf(cloud: CloudMediaStore) = MediaRestorer(
+        cloud = cloud,
+        incoming = File(localBackups.directory, INCOMING_DIRECTORY_NAME),
+        primaryStorage = Environment.getExternalStorageDirectory(),
+    )
 
     /** Merges the backup's library into this device's, its tracks found through [present]. Its playlists' ids here. */
     private suspend fun mergeLibrary(contents: BackupContents, present: Map<String, String>): Map<Long, Long> {
