@@ -9,6 +9,7 @@ import android.os.storage.StorageManager
 import com.lhacenmed.sona.core.common.cover.withCoverVersion
 import com.lhacenmed.sona.core.common.format.repairedTagText
 import com.lhacenmed.sona.core.database.stableIdOf
+import com.lhacenmed.sona.feature.scanner.trackTitleOf
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.UnknownNames
 import com.lhacenmed.sona.feature.scanner.ScanProgress
@@ -98,11 +99,7 @@ class ManualFileWalker @Inject constructor(
 
             // What a video is told by - its extension alone cannot, an .mp4 or a .webm being either.
             val isVideo = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_HAS_VIDEO) == "yes"
-            val title = retriever.tagText(MediaMetadataRetriever.METADATA_KEY_TITLE)
-                ?: path.substringAfterLast('/')
-            if (title.isEmpty()) {
-                return null
-            }
+            val title = trackTitleOf(retriever.tagText(MediaMetadataRetriever.METADATA_KEY_TITLE), path)
 
             val artist = retriever.tagText(MediaMetadataRetriever.METADATA_KEY_ARTIST)
                 ?: retriever.tagText(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)

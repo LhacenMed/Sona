@@ -14,6 +14,7 @@ import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.database.stableIdOf
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.UnknownNames
+import com.lhacenmed.sona.feature.scanner.trackTitleOf
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
@@ -109,11 +110,10 @@ class MediaStoreQuerier @Inject constructor(
 
         context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
             while (cursor.moveToNext()) {
-                val title = cursor.tagTextOrNull(MediaStore.Audio.Media.TITLE)
-                if (title.isNullOrEmpty()) continue
-
                 val path = cursor.stringOrNull(MediaStore.Audio.Media.DATA)
                 if (path.isNullOrEmpty()) continue
+
+                val title = trackTitleOf(cursor.tagTextOrNull(MediaStore.Audio.Media.TITLE), path)
 
                 val mediaStoreId = cursor.long(MediaStore.Audio.Media._ID)
                 val durationMs = cursor.long(MediaStore.Audio.Media.DURATION)
@@ -220,8 +220,7 @@ class MediaStoreQuerier @Inject constructor(
                 videos += Track(
                     id = stableIdOf(path),
                     mediaStoreId = mediaStoreId,
-                    title = cursor.tagTextOrNull(MediaStore.Video.Media.TITLE)?.takeIf { it.isNotBlank() }
-                        ?: File(path).nameWithoutExtension,
+                    title = trackTitleOf(cursor.tagTextOrNull(MediaStore.Video.Media.TITLE), path),
                     artist = cursor.tagTextOrNull(MediaStore.Video.Media.ARTIST).orUnknown(UnknownNames.ARTIST),
                     artistId = 0L,
                     album = folderPath.substringAfterLast('/').ifEmpty { UnknownNames.ALBUM },
