@@ -6,6 +6,45 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.6.16] - 2026-11-03
+
+### Added
+
+- Open the app where each notification belongs.
+- Block screenshots, keeping every window out of screenshots and the recent apps' previews.
+- Pause and clear listening history.
+- Hide collaborators, leaving artists with no album of their own out of the artist lists. They can still be opened.
+- Automatic reloading can be turned off, leaving the library to change only when asked.
+
+### Changed
+
+- Files in Google Drive go under their own names, and Drive knows what kind of file each is.
+- A moved or renamed file is not uploaded again, and one whose tags changed updates its copy in Drive rather than adding another.
+- A restore leaves a file that changed since the backup as it is, rather than adding an older copy beside it.
+- Separate artists parts a credit at every separator, whatever else the library holds, keeping names like "Tyler, The Creator" and "Earth, Wind & Fire" whole.
+- A moved or renamed file always keeps its playlists, plays and place in every list, including one moved by copying it and deleting the original.
+- The queue follows the library: a file that moved goes on playing from where it was at its new place, and a track no longer in the library leaves the queue.
+- These settings now work: Remember pause, Always exit on close, and Headset autoplay.
+
+### Fixed
+
+- Keep button glyphs from being cut by their buttons.
+- The first touch on a video is no longer missed.
+- The app's colours stay as they were while a video plays, rather than changing with it.
+- Credited artists' names in the player read as the rest of the line does, and can still be tapped.
+- Dragging rows to select or reorder scrolls the list at the screen's bottom under an open header.
+- A header left open over a list scrolled by a drag collapses once the finger lifts.
+- A swipe on a detail screen's header flies on as one on its list does.
+- A file Drive holds damaged is found by its checksum and sent again.
+- Old copies in Drive are let go of only once every file of a backup has arrived.
+- Names differing only in invisible marks, spacing or how their letters are encoded are one artist, album or genre.
+- Music files with no title tag are no longer left out of the library: they go by their file name.
+
+### Removed
+
+- The Keep tracks when files move setting, as this is now how the library works.
+- The settings that were never built: Show filename as track title, pausing and clearing search history, and the Behavior screen's copy of Always exit on close.
+
 ## [1.6.15] - 2026-10-31
 
 ### Added
