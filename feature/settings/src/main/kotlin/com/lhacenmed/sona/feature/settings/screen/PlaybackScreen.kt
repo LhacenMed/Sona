@@ -46,6 +46,9 @@ data class PlaybackScreen(val scrollTo: PlaybackSetting? = null) : Screen {
         val decibelsFormat = stringResource(R.string.decibels_format)
         val viewModel: PlaybackSettingsViewModel = hiltViewModel()
         val rewindBeforeSkipBack by viewModel.rewindBeforeSkipBack.collectAsStateWithLifecycle()
+        val exitsOnClose by viewModel.exitsOnClose.collectAsStateWithLifecycle()
+        val rememberPause by viewModel.rememberPause.collectAsStateWithLifecycle()
+        val headsetAutoplay by viewModel.headsetAutoplay.collectAsStateWithLifecycle()
         val stopAfterCurrentEnabled by viewModel.stopAfterCurrentEnabled.collectAsStateWithLifecycle()
         val persistedPlaybackNotification by viewModel.persistedPlaybackNotification.collectAsStateWithLifecycle()
         val keepShuffle by viewModel.keepShuffle.collectAsStateWithLifecycle()
@@ -80,6 +83,8 @@ data class PlaybackScreen(val scrollTo: PlaybackSetting? = null) : Screen {
                 SettingsSwitchItem(
                     title = stringResource(R.string.remember_pause_title),
                     summary = stringResource(R.string.remember_pause_summary),
+                    checked = rememberPause,
+                    onCheckedChange = viewModel::setRememberPause,
                 )
             }
 
@@ -105,6 +110,8 @@ data class PlaybackScreen(val scrollTo: PlaybackSetting? = null) : Screen {
                 SettingsSwitchItem(
                     title = stringResource(R.string.stop_on_task_clear_title),
                     summary = stringResource(R.string.stop_on_task_clear_summary),
+                    checked = exitsOnClose,
+                    onCheckedChange = viewModel::setExitsOnClose,
                 )
             }
 
@@ -221,6 +228,8 @@ data class PlaybackScreen(val scrollTo: PlaybackSetting? = null) : Screen {
                 SettingsSwitchItem(
                     title = stringResource(R.string.headset_autoplay_title),
                     summary = stringResource(R.string.headset_autoplay_summary),
+                    checked = headsetAutoplay,
+                    onCheckedChange = viewModel::setHeadsetAutoplay,
                 )
                 SettingsSwitchItem(
                     title = stringResource(R.string.bluetooth_autoplay_title),

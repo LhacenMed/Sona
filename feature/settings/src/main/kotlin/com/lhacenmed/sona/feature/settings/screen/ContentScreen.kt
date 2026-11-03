@@ -41,6 +41,8 @@ data object ContentScreen : Screen {
         val forceSquareCovers by viewModel.forceSquareCovers.collectAsStateWithLifecycle()
         val newTracksDirection by viewModel.newTracksDirection.collectAsStateWithLifecycle()
         val defaultSortScope by viewModel.defaultSortScope.collectAsStateWithLifecycle()
+        val hidesCollaborators by viewModel.hidesCollaborators.collectAsStateWithLifecycle()
+        val automaticReloading by viewModel.automaticReloading.collectAsStateWithLifecycle()
         var showResetSortingDialog by rememberSaveable { mutableStateOf(false) }
 
         SettingsList {
@@ -48,6 +50,8 @@ data object ContentScreen : Screen {
                 SettingsSwitchItem(
                     title = stringResource(R.string.automatic_reloading_title),
                     summary = stringResource(R.string.automatic_reloading_summary),
+                    checked = automaticReloading,
+                    onCheckedChange = viewModel::setAutomaticReloading,
                 )
                 SettingsNavigationItem(
                     title = stringResource(R.string.excluded_folders_title),
@@ -58,10 +62,6 @@ data object ContentScreen : Screen {
                     title = stringResource(R.string.auto_tag_title),
                     summary = stringResource(R.string.auto_tag_summary),
                     onClick = { navigator.go(AutoTagScreen()) },
-                )
-                SettingsSwitchItem(
-                    title = stringResource(R.string.filename_as_title_title),
-                    summary = stringResource(R.string.filename_as_title_summary),
                 )
                 SettingsChoiceItem(
                     title = stringResource(R.string.folder_view_title),
@@ -93,6 +93,8 @@ data object ContentScreen : Screen {
                 SettingsSwitchItem(
                     title = stringResource(R.string.hide_collaborators_title),
                     summary = stringResource(R.string.hide_collaborators_summary),
+                    checked = hidesCollaborators,
+                    onCheckedChange = viewModel::setHidesCollaborators,
                 )
             }
 

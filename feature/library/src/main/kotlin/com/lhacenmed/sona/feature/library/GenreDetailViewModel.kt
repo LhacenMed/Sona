@@ -45,7 +45,7 @@ class GenreDetailViewModel @AssistedInject constructor(
     override val sort: SortControl = sortOrders.control(SortableList.GENRE_TRACKS, genreId.toString())
 
     /** The artists with tracks in the genre, by name - Auxio's `GENRE_ARTIST_SORT`. */
-    override val sections: StateFlow<List<DetailSection>> = combine(repository.artists, tracks) { artists, tracks ->
+    override val sections: StateFlow<List<DetailSection>> = combine(repository.listedArtists, tracks) { artists, tracks ->
         val artistIds = tracks.itemsOrEmpty.flatMapTo(HashSet()) { it.artistIds }
         val genreArtists = artists.itemsOrEmpty
             .filter { it.id in artistIds }

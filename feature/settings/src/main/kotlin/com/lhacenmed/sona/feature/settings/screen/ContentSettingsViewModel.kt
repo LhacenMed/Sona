@@ -60,6 +60,20 @@ class ContentSettingsViewModel @Inject constructor(
         viewModelScope.launch { librarySettings.setSeparateArtists(enabled) }
     }
 
+    val hidesCollaborators: StateFlow<Boolean> = librarySettings.hidesCollaborators.flow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), librarySettings.hidesCollaborators.value)
+
+    fun setHidesCollaborators(enabled: Boolean) {
+        viewModelScope.launch { librarySettings.setHidesCollaborators(enabled) }
+    }
+
+    val automaticReloading: StateFlow<Boolean> = librarySettings.automaticReloading.flow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), librarySettings.automaticReloading.value)
+
+    fun setAutomaticReloading(enabled: Boolean) {
+        viewModelScope.launch { librarySettings.setAutomaticReloading(enabled) }
+    }
+
     /** How the Folders tab lists folders inside one another - every list follows it at once, with no rescan. */
     val folderView: StateFlow<FolderView> = librarySettings.folderView.flow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), librarySettings.folderView.value)

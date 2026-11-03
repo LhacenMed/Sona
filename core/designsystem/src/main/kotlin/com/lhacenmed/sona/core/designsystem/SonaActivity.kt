@@ -10,6 +10,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.compositionContext
 import androidx.compose.ui.platform.createLifecycleAwareWindowRecomposer
@@ -57,6 +61,9 @@ abstract class SonaActivity : ComponentActivity() {
 
     private var hasStartedActivity = false
 
+    /** Whether this window shows the Private Folder, and is kept out of screenshots and previews whatever the user set. */
+    protected var showsPrivateContent by mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         // The keyboard is one more inset, never a reason to slide the window: left to pan, Android would push
@@ -74,6 +81,10 @@ abstract class SonaActivity : ComponentActivity() {
     protected fun setSonaContent(content: @Composable () -> Unit) {
         setContent {
             WindowRefreshRate()
+            val isSecure = SonaEffects.areScreenshotsBlocked || showsPrivateContent
+            SideEffect {
+                if (isSecure) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE) else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+            }
             ProvideSonaHaptics {
                 ProvideRubberBandOverscroll {
                     // Passing the window's constraints on as they are, so the content is laid out as if

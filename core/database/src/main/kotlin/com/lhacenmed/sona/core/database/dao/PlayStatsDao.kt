@@ -54,6 +54,9 @@ interface PlayStatsDao {
     fun observeMostPlayed(): Flow<List<TrackEntity>>
 
     /** Takes [trackIds] out of "Recent", their play counts kept - the next time one starts playing puts it back. */
+    @Query("DELETE FROM play_stats")
+    suspend fun clear()
+
     @Query("UPDATE play_stats SET lastPlayedAt = 0 WHERE trackId IN (:trackIds)")
     suspend fun forgetLastPlayed(trackIds: List<Long>)
 

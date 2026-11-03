@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 private val DISABLE_ANIMATIONS = booleanPreferencesKey("disable_animations")
 private val FORCE_HIGH_REFRESH_RATE = booleanPreferencesKey("force_high_refresh_rate")
 private val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
+private val BLOCK_SCREENSHOTS = booleanPreferencesKey("block_screenshots")
 
 /**
  * How the app moves and feels across every screen - its animations, the display's refresh rate and
@@ -49,5 +50,12 @@ class EffectSettings @Inject constructor(
 
     suspend fun setHapticsEnabled(enabled: Boolean) {
         dataStore.edit { it[HAPTICS_ENABLED] = enabled }
+    }
+
+    /** Whether every window is kept out of screenshots and the recent apps' previews. */
+    val blockScreenshots: Setting<Boolean> = cache.setting { it[BLOCK_SCREENSHOTS] ?: false }
+
+    suspend fun setBlockScreenshots(enabled: Boolean) {
+        dataStore.edit { it[BLOCK_SCREENSHOTS] = enabled }
     }
 }

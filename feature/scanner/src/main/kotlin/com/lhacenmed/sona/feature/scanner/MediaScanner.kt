@@ -147,8 +147,9 @@ class MediaScanner @Inject constructor(
      */
     private val changeWatch = appScope.launch(start = CoroutineStart.LAZY) {
         merge(
-            mediaStoreChangeObserver.changes.debounce(CHANGE_SETTLE_MS),
-            returnsToForeground(),
+            // What the device did is followed only while the user lets it; turning that back on catches up at once.
+            merge(mediaStoreChangeObserver.changes.debounce(CHANGE_SETTLE_MS), returnsToForeground()).filter { librarySettings.automaticReloading.value },
+            librarySettings.automaticReloading.flow.drop(1).filter { it }.map { },
             // Separating artists or not changes what every artist is, though no file changed.
             librarySettings.separateArtists.flow.drop(1).map { },
         ).collect { enqueue(ScanKind.REFRESH) }

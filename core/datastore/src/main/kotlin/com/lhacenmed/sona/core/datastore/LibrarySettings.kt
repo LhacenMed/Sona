@@ -29,6 +29,8 @@ private val FAST_SCROLL_TOUCH_AREA = stringPreferencesKey("fast_scroll_touch_are
 private val PULL_TO_REFRESH_ENABLED = booleanPreferencesKey("pull_to_refresh_enabled")
 
 private val SEPARATE_ARTISTS = booleanPreferencesKey("separate_artists")
+private val HIDES_COLLABORATORS = booleanPreferencesKey("hides_collaborators")
+private val AUTOMATIC_RELOADING = booleanPreferencesKey("automatic_reloading")
 
 private val FOLDER_VIEW = stringPreferencesKey("folder_view")
 
@@ -103,6 +105,20 @@ class LibrarySettings @Inject constructor(
 
     suspend fun setSeparateArtists(enabled: Boolean) {
         dataStore.edit { it[SEPARATE_ARTISTS] = enabled }
+    }
+
+    /** Whether the lists of artists leave out those only credited on tracks - no album of their own to their name. */
+    val hidesCollaborators: Setting<Boolean> = cache.setting { it[HIDES_COLLABORATORS] ?: false }
+
+    suspend fun setHidesCollaborators(enabled: Boolean) {
+        dataStore.edit { it[HIDES_COLLABORATORS] = enabled }
+    }
+
+    /** Whether the library follows the device on its own, rather than only as the app opens or is asked to. */
+    val automaticReloading: Setting<Boolean> = cache.setting { it[AUTOMATIC_RELOADING] ?: true }
+
+    suspend fun setAutomaticReloading(enabled: Boolean) {
+        dataStore.edit { it[AUTOMATIC_RELOADING] = enabled }
     }
 
     /** How the Folders tab lists folders that lie inside one another. */

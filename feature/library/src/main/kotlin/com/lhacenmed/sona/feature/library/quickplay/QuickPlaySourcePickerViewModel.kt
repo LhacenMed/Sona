@@ -23,7 +23,7 @@ class QuickPlaySourcePickerViewModel @Inject constructor(
 ) : ViewModel() {
 
     val playlists: StateFlow<LibraryContent<Playlist>> = repository.playlists
-    val artists: StateFlow<LibraryContent<Artist>> = repository.artists
+    val artists: StateFlow<LibraryContent<Artist>> = repository.listedArtists
     val albums: StateFlow<LibraryContent<Album>> = repository.albums
     val genres: StateFlow<LibraryContent<Genre>> = repository.genres
     val folders: StateFlow<LibraryContent<Folder>> = repository.folders

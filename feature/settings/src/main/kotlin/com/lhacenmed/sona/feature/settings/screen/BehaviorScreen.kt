@@ -1,5 +1,9 @@
 package com.lhacenmed.sona.feature.settings.screen
 
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
@@ -29,6 +33,9 @@ data object BehaviorScreen : Screen {
         val fastScrollTouchArea by viewModel.fastScrollTouchArea.collectAsStateWithLifecycle()
         val hapticsEnabled by viewModel.hapticsEnabled.collectAsStateWithLifecycle()
         val pullToRefreshEnabled by viewModel.pullToRefreshEnabled.collectAsStateWithLifecycle()
+        val pausesListenHistory by viewModel.pausesListenHistory.collectAsStateWithLifecycle()
+        val blockScreenshots by viewModel.blockScreenshots.collectAsStateWithLifecycle()
+        var isClearingListenHistory by rememberSaveable { mutableStateOf(false) }
 
         SettingsList {
             SettingsSection(stringResource(R.string.behavior_display_section)) {
@@ -86,10 +93,6 @@ data object BehaviorScreen : Screen {
                         stringResource(R.string.play_from_all_tracks),
                     ),
                 )
-                SettingsSwitchItem(
-                    title = stringResource(R.string.exit_on_close_title),
-                    summary = stringResource(R.string.exit_on_close_summary),
-                )
             }
 
             SettingsSectionDivider()
@@ -98,18 +101,13 @@ data object BehaviorScreen : Screen {
                 SettingsSwitchItem(
                     title = stringResource(R.string.pause_listen_history_title),
                     summary = stringResource(R.string.pause_listen_history_summary),
+                    checked = pausesListenHistory,
+                    onCheckedChange = viewModel::setPausesListenHistory,
                 )
                 SettingsActionItem(
                     title = stringResource(R.string.clear_listen_history_title),
                     summary = stringResource(R.string.clear_listen_history_summary),
-                )
-                SettingsSwitchItem(
-                    title = stringResource(R.string.pause_search_history_title),
-                    summary = stringResource(R.string.pause_search_history_summary),
-                )
-                SettingsActionItem(
-                    title = stringResource(R.string.clear_search_history_title),
-                    summary = stringResource(R.string.clear_search_history_summary),
+                    onClick = { isClearingListenHistory = true },
                 )
             }
 
@@ -125,8 +123,22 @@ data object BehaviorScreen : Screen {
                 SettingsSwitchItem(
                     title = stringResource(R.string.block_screenshots_title),
                     summary = stringResource(R.string.block_screenshots_summary),
+                    checked = blockScreenshots,
+                    onCheckedChange = viewModel::setBlockScreenshots,
                 )
             }
+        }
+
+        if (isClearingListenHistory) {
+            SonaConfirmationDialog(
+                title = stringResource(R.string.clear_listen_history_title),
+                message = stringResource(R.string.clear_listen_history_confirm),
+                confirmLabel = stringResource(R.string.clear_listen_history_action),
+                successMessage = stringResource(R.string.clear_listen_history_done),
+                failureMessage = stringResource(R.string.clear_listen_history_failed),
+                onDismiss = { isClearingListenHistory = false },
+                operation = viewModel::clearListenHistory,
+            )
         }
     }
 }

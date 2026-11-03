@@ -113,6 +113,7 @@ internal class PlayHistoryRecorder(
         segmentStartMs = player.currentPosition
         if (!isRecent) {
             isRecent = true
+            if (playbackSettings.pausesListenHistory.value) return
             val playedAt = System.currentTimeMillis()
             scope.launch(Dispatchers.IO) { playStatsDao.recordPlayStarted(id, playedAt) }
         }
@@ -154,7 +155,7 @@ internal class PlayHistoryRecorder(
     private fun count(id: Long) {
         isCounted = true
         // Looked at as the mark is reached, so a collection kept out of Most played mid-listen is followed at once.
-        if (player.currentMediaItem?.playbackParent in playbackSettings.uncountedParents.value) return
+        if (playbackSettings.pausesListenHistory.value || player.currentMediaItem?.playbackParent in playbackSettings.uncountedParents.value) return
         val playedAt = System.currentTimeMillis()
         scope.launch(Dispatchers.IO) { playStatsDao.recordPlayCounted(id, playedAt) }
     }

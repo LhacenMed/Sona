@@ -626,6 +626,11 @@ class PlaybackService : MediaSessionService() {
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession = mediaSession
 
+    /** Left to Android's way - on while playing, gone once not - unless the user asked for it to stop with the app. */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        if (playbackSettings.exitsOnClose.value) pauseAllPlayersAndStopSelf() else super.onTaskRemoved(rootIntent)
+    }
+
     override fun onDestroy() {
         unregisterReceiver(headsetReceiver)
         playHistoryRecorder.detach()

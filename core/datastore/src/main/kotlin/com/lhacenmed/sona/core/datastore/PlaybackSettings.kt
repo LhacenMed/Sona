@@ -19,6 +19,8 @@ import kotlinx.coroutines.CoroutineScope
 private val REMEMBER_PAUSE = booleanPreferencesKey("remember_pause")
 private val REWIND_BEFORE_SKIP_BACK = booleanPreferencesKey("rewind_before_skip_back")
 private val HEADSET_AUTOPLAY = booleanPreferencesKey("headset_autoplay")
+private val EXITS_ON_CLOSE = booleanPreferencesKey("exits_on_close")
+private val PAUSES_LISTEN_HISTORY = booleanPreferencesKey("pauses_listen_history")
 private val PERSISTED_PLAYBACK_NOTIFICATION = booleanPreferencesKey("persisted_playback_notification")
 private val REPEAT_MODE = stringPreferencesKey("repeat_mode")
 private val STOP_AFTER_CURRENT_ENABLED = booleanPreferencesKey("stop_after_current_enabled")
@@ -62,6 +64,19 @@ class PlaybackSettings @Inject constructor(
     }
 
     /** Resume playback when a wired headset is plugged in. */
+    val exitsOnClose: Setting<Boolean> = cache.setting { it[EXITS_ON_CLOSE] ?: false }
+
+    suspend fun setExitsOnClose(enabled: Boolean) {
+        dataStore.edit { it[EXITS_ON_CLOSE] = enabled }
+    }
+
+    /** Whether what plays goes unrecorded: neither "Recent" nor play counts hear of it. */
+    val pausesListenHistory: Setting<Boolean> = cache.setting { it[PAUSES_LISTEN_HISTORY] ?: false }
+
+    suspend fun setPausesListenHistory(enabled: Boolean) {
+        dataStore.edit { it[PAUSES_LISTEN_HISTORY] = enabled }
+    }
+
     val headsetAutoplay: Setting<Boolean> = cache.setting { it[HEADSET_AUTOPLAY] ?: false }
 
     suspend fun setHeadsetAutoplay(enabled: Boolean) {

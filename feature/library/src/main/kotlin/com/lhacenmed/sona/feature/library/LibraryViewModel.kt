@@ -146,7 +146,7 @@ class LibraryViewModel @Inject constructor(
     val albums: StateFlow<LibraryContent<Album>> =
         repository.albums.narrowedBySearch { listOf(it.title, it.artistName) }
     val artists: StateFlow<LibraryContent<Artist>> =
-        repository.artists.narrowedBySearch { listOf(it.name) }
+        repository.listedArtists.narrowedBySearch { listOf(it.name) }
     val genres: StateFlow<LibraryContent<Genre>> =
         repository.genres.narrowedBySearch { listOf(it.name) }
     /** The Folders tab: the folders of music, then those of videos, each kind a section of its own. */

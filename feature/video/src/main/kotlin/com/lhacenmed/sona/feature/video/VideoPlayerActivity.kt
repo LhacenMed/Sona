@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
-import android.view.WindowManager
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -88,9 +87,7 @@ class VideoPlayerActivity : SonaActivity() {
         floatsOnResume = savedInstanceState == null && intent.getBooleanExtra(EXTRA_FLOATING, false) && !isFloating
         // A Private Folder video is kept out of screenshots and the recent apps' preview.
         lifecycleScope.launch {
-            viewModel.isPrivate.collect { isPrivate ->
-                if (isPrivate) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE) else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
-            }
+            viewModel.isPrivate.collect { showsPrivateContent = it }
         }
         if (hasFloatingWindows()) {
             lifecycleScope.launch {

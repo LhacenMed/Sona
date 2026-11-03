@@ -35,7 +35,7 @@ class PlaylistPickerViewModel @Inject constructor(
 
     val tracks: StateFlow<LibraryContent<Track>> = repository.tracks
     val albums: StateFlow<LibraryContent<Album>> = repository.albums
-    val artists: StateFlow<LibraryContent<Artist>> = repository.artists
+    val artists: StateFlow<LibraryContent<Artist>> = repository.listedArtists
     val genres: StateFlow<LibraryContent<Genre>> = repository.genres
     val folders: StateFlow<LibraryContent<Folder>> = repository.folders
     val playlists: StateFlow<LibraryContent<Playlist>> = repository.playlists

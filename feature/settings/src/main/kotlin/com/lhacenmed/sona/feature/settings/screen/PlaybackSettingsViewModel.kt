@@ -25,6 +25,27 @@ class PlaybackSettingsViewModel @Inject constructor(
     private val quickPlaySources: QuickPlaySourceRepository,
 ) : ViewModel() {
 
+    val rememberPause: StateFlow<Boolean> = playbackSettings.rememberPause.flow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), playbackSettings.rememberPause.value)
+
+    fun setRememberPause(enabled: Boolean) {
+        viewModelScope.launch { playbackSettings.setRememberPause(enabled) }
+    }
+
+    val headsetAutoplay: StateFlow<Boolean> = playbackSettings.headsetAutoplay.flow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), playbackSettings.headsetAutoplay.value)
+
+    fun setHeadsetAutoplay(enabled: Boolean) {
+        viewModelScope.launch { playbackSettings.setHeadsetAutoplay(enabled) }
+    }
+
+    val exitsOnClose: StateFlow<Boolean> = playbackSettings.exitsOnClose.flow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), playbackSettings.exitsOnClose.value)
+
+    fun setExitsOnClose(enabled: Boolean) {
+        viewModelScope.launch { playbackSettings.setExitsOnClose(enabled) }
+    }
+
     val rewindBeforeSkipBack: StateFlow<Boolean> = playbackSettings.rewindBeforeSkipBack.flow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), playbackSettings.rewindBeforeSkipBack.value)
 

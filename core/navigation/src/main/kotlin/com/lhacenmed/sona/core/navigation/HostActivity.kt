@@ -1,7 +1,6 @@
 package com.lhacenmed.sona.core.navigation
 
 import android.os.Bundle
-import android.view.WindowManager
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -90,7 +89,7 @@ class HostActivity : SonaActivity() {
             finish()
             return
         }
-        if (screen.isPrivate) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        showsPrivateContent = screen.isPrivate
         val arrivesAtPlaying = intent.getBooleanExtra(EXTRA_ARRIVES_AT_PLAYING, false)
         // Normally already worked out by the activity below; only a process restored straight onto this
         // screen has it to wait for.

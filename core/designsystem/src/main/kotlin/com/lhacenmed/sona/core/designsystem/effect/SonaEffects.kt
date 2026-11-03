@@ -18,6 +18,7 @@ object SonaEffects {
     var areAnimationsDisabled by mutableStateOf(false)
     var isHighRefreshRateForced by mutableStateOf(false)
     var areHapticsEnabled by mutableStateOf(true)
+    var areScreenshotsBlocked by mutableStateOf(false)
 
     /**
      * Whether anything should move on its own - not while the user has disabled animations here, nor

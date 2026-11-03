@@ -107,8 +107,10 @@ class SonaApplication : Application(), SingletonImageLoader.Factory {
         SonaEffects.areAnimationsDisabled = effectSettings.disableAnimations.value
         SonaEffects.isHighRefreshRateForced = effectSettings.forceHighRefreshRate.value
         SonaEffects.areHapticsEnabled = effectSettings.hapticsEnabled.value
+        SonaEffects.areScreenshotsBlocked = effectSettings.blockScreenshots.value
         applicationScope.launch { effectSettings.disableAnimations.flow.collect { SonaEffects.areAnimationsDisabled = it } }
         applicationScope.launch { effectSettings.forceHighRefreshRate.flow.collect { SonaEffects.isHighRefreshRateForced = it } }
         applicationScope.launch { effectSettings.hapticsEnabled.flow.collect { SonaEffects.areHapticsEnabled = it } }
+        applicationScope.launch { effectSettings.blockScreenshots.flow.collect { SonaEffects.areScreenshotsBlocked = it } }
     }
 }

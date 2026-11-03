@@ -141,6 +141,14 @@ class LibraryRepository @Inject constructor(
         .sortedFor(LibrarySortSpecs.artists) { rows -> rows.map { it.toDomain() } }
         .shareContent()
 
+    /** [artists] as they are listed for choosing among - see [LibrarySettings.hidesCollaborators]. Every artist can still be opened. */
+    val listedArtists: StateFlow<LibraryContent<Artist>> = combine(artists, librarySettings.hidesCollaborators.flow) { artists, hidesCollaborators ->
+        when {
+            hidesCollaborators && artists is LibraryContent.Ready -> LibraryContent.Ready(artists.items.filter { it.albumCount > 0 })
+            else -> artists
+        }
+    }.stateIn(scope, SharingStarted.Eagerly, LibraryContent.Loading)
+
     val genres: StateFlow<LibraryContent<Genre>> = genreDao.observeAll()
         .sortedFor(LibrarySortSpecs.genres) { rows -> rows.map { it.toDomain() } }
         .shareContent()
@@ -425,6 +433,9 @@ class LibraryRepository @Inject constructor(
         val addedAt = System.currentTimeMillis()
         playlistDao.addTracks(playlistId, membershipsOf(playlistId, trackIds, addedAt), addedAt)
     }
+
+    /** Forgets everything played so far: "Recent", play counts and all. */
+    suspend fun clearListenHistory() = playStatsDao.clear()
 
     /** Takes [trackIds] out of "Recent", leaving how often they were played - see [PlayStatsDao.forgetLastPlayed]. */
     suspend fun removeFromRecentlyPlayed(trackIds: List<Long>) {
