@@ -1,5 +1,8 @@
 package com.lhacenmed.sona.core.database
 
+import java.text.Normalizer
+import java.util.Locale
+
 /**
  * A deterministic 64-bit id derived from the parts that identify an entity.
  *
@@ -28,3 +31,29 @@ fun stableIdOf(vararg parts: String): Long {
     }
     return hash or Long.MIN_VALUE
 }
+
+/** The marks a name can carry that nothing shows: right-to-left and joining marks, a byte order mark, zero-width spaces. */
+private val InvisibleMarks = Regex("""\p{Cf}""")
+
+private val Spacing = Regex("""\s+""")
+
+/**
+ * What tells one name from another, the one place it is decided: what the name reads as - whatever its case, Auxio's
+ * `rawName.lowercase()`, however its letters are encoded, and whatever marks or extra spaces nothing shows. Two
+ * spellings with the same key are one artist, album or genre, since each takes its id from this.
+ */
+fun nameKey(name: String): String =
+    Normalizer.normalize(name, Normalizer.Form.NFKC)
+        .replace(InvisibleMarks, "")
+        .replace(Spacing, " ")
+        .trim()
+        .lowercase(Locale.ROOT)
+
+/** An artist's id, derived from its name. */
+fun artistIdOf(name: String): Long = stableIdOf("artist", nameKey(name))
+
+/** An album's id, derived from the artist and title that tell it apart from every other album. */
+fun albumIdOf(artistName: String, title: String): Long = stableIdOf("album", nameKey(artistName), nameKey(title))
+
+/** A genre's id, derived from its name. */
+fun genreIdOf(name: String): Long = stableIdOf("genre", nameKey(name))

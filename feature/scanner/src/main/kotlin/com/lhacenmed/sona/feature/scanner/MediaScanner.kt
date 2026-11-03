@@ -2,21 +2,21 @@ package com.lhacenmed.sona.feature.scanner
 
 import android.content.Context
 import android.os.Build
-import com.lhacenmed.sona.core.common.cover.rankedCoverArtUris
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.common.di.IoDispatcher
 import com.lhacenmed.sona.core.common.lifecycle.isAppInForeground
 import com.lhacenmed.sona.core.data.GONE_FILE_SETTLE_MS
 import com.lhacenmed.sona.core.data.LibraryWriter
 import com.lhacenmed.sona.core.data.SyncStats
+import com.lhacenmed.sona.core.data.commonestSpelling
 import com.lhacenmed.sona.core.database.dao.TrackDao
 import com.lhacenmed.sona.core.database.entity.toDomain
-import com.lhacenmed.sona.core.database.stableIdOf
+import com.lhacenmed.sona.core.database.albumIdOf
+import com.lhacenmed.sona.core.database.artistIdOf
+import com.lhacenmed.sona.core.database.genreIdOf
+import com.lhacenmed.sona.core.database.nameKey
 import com.lhacenmed.sona.core.datastore.LibrarySettings
 import com.lhacenmed.sona.core.datastore.ScanSettings
-import com.lhacenmed.sona.core.model.Album
-import com.lhacenmed.sona.core.model.Artist
-import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.UnknownNames
 import com.lhacenmed.sona.feature.scanner.filesystem.ManualFileWalker
@@ -24,8 +24,6 @@ import com.lhacenmed.sona.feature.scanner.mediastore.MediaStoreChangeObserver
 import com.lhacenmed.sona.feature.scanner.mediastore.MediaStoreQuerier
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
-import java.text.Normalizer
-import java.util.Locale
 import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -259,40 +257,11 @@ class MediaScanner @Inject constructor(
     }
 
     private suspend fun runScan(excludedFolders: Set<String>, walksStorage: Boolean): SyncStats {
-        val mediaStoreResult = mediaStoreQuerier.query()
-
-        val albumIds = mediaStoreResult.albums.mapTo(HashSet()) { it.id }
-        val artistIds = mediaStoreResult.artists.mapTo(HashSet()) { it.id }
-
-        // Drop tracks in an excluded folder, and tracks whose album/artist row didn't make it
-        // through MediaStore's own query (Audio.Albums/Audio.Artists only return rows with at least
-        // one track/album, so a track referencing a since-emptied album/artist is orphaned).
-        var tracks = mediaStoreResult.tracks.filterNot { track ->
-            track.folderPath in excludedFolders || track.path in excludedFolders ||
-                track.albumId !in albumIds ||
-                track.artistId !in artistIds
-        }
-
-        // From here on every track names exactly one genre, and every genre is one row per name.
-        tracks = canonicalGenreTracks(tracks, mediaStoreResult.genres)
-
-        // And exactly one album, and the artists its credit names, each of them a row per name rather
-        // than per MediaStore id - see canonicalArtistTracks. A credit is spelled one way on its tracks
-        // and on the albums credited to it, so both are counted towards how it is spelled.
-        val creditNames = tracks.map { it.artist.orUnknownName(UnknownNames.ARTIST) } +
-            mediaStoreResult.albums.map { it.artistName.orUnknownName(UnknownNames.ARTIST) }
-        val artistSpellings = commonestSpellings(creditNames)
+        val scanned = mediaStoreQuerier.query()
+        fun List<Track>.included() = filterNot { it.folderPath in excludedFolders || it.path in excludedFolders }
+        val music = scanned.tracks.included()
+        val videos = scanned.videos.included()
         val credits = ArtistCredits(separatesArtists = librarySettings.separateArtists.value)
-        val canonicalAlbums = canonicalAlbumsByMediaStoreId(mediaStoreResult.albums, tracks, artistSpellings, credits)
-        tracks = canonicalAlbumTracks(canonicalArtistTracks(tracks, artistSpellings, credits), canonicalAlbums)
-
-        var albums = recomputeAlbums(canonicalAlbums.values.distinctBy { it.id }, tracks)
-        var artists = recomputeArtists(artistsOf(tracks, albums, credits), albums, tracks)
-        var genres = recomputeGenres(genresOf(tracks), albums, tracks)
-
-        // Videos are rows of their own: no album, artist or genre is made of them, so they skip every
-        // pass above and are stored alongside the music.
-        val videos = mediaStoreResult.videos.filterNot { it.folderPath in excludedFolders || it.path in excludedFolders }
 
         var stats = SyncStats()
         val (manualVideos, manualTracks) = if (walksStorage) {
@@ -300,33 +269,18 @@ class MediaScanner @Inject constructor(
             // deletions - on a first run this is what paints the library, and the slow filesystem
             // walk below never gets to delay it. Because it is a diff, on any later scan it writes
             // nothing.
-            stats = libraryWriter.sync(tracks + videos, albums, artists, genres, deleteMissing = false)
+            stats = libraryWriter.sync(libraryTracksOf(music, credits) + videos, deleteMissing = false)
             // Stage 2: pick up files MediaStore hasn't indexed yet.
-            findUnindexedTracks(tracks + videos, excludedFolders)
+            findUnindexedTracks(music + videos, excludedFolders)
         } else {
             // A refresh: MediaStore is all that changed, so what the last walk found is kept as is.
-            storedUnindexedTracks(tracks + videos)
+            storedUnindexedTracks(music + videos)
         }.partition { it.isVideo }
-
-        if (manualTracks.isNotEmpty()) {
-            val merged = mergeManualTracks(
-                manualTracks = manualTracks,
-                existingTracks = tracks,
-                existingAlbums = albums,
-                existingArtists = artists,
-                existingGenres = genres,
-                credits = credits,
-            )
-            tracks = merged.tracks
-            albums = merged.albums
-            artists = merged.artists
-            genres = merged.genres
-        }
 
         // Final pass: the authoritative one, and the only one allowed to delete. When stage 1
         // already stored exactly this, it opens no transaction at all.
         _progress.value = ScanProgress(ScanStep.SAVING)
-        stats += libraryWriter.sync(tracks + videos + manualVideos, albums, artists, genres)
+        stats += libraryWriter.sync(libraryTracksOf(music + manualTracks, credits) + videos + manualVideos)
         return stats
     }
 
@@ -348,316 +302,52 @@ class MediaScanner @Inject constructor(
             .filter { it.path !in indexedPaths && File(it.path).exists() }
             .map { it.toDomain() }
     }
-
-    // Grouping once up front turns what used to be an O(entities * tracks) scan (each album/
-    // artist/genre re-filtering the *entire* track list) into a single O(tracks) pass - the
-    // dominant cost of every scan on any library past a few hundred tracks.
-
-    /**
-     * Every track pointed at the one genre for its name, and named after it.
-     *
-     * MediaStore hands out a genre row per tag occurrence rather than per genre, so the same name
-     * arrives several times under different ids - which is what listed "Urbano latino" twice. Auxio
-     * groups genres by name, whatever its case, so a genre's id is derived from its [nameKey] here,
-     * every track is repointed at it and named the way most of them spell it. A track naming no
-     * genre joins [UnknownNames.GENRE], as Auxio gathers those.
-     */
-    private fun canonicalGenreTracks(tracks: List<Track>, genres: List<Genre>): List<Track> {
-        val nameByMediaStoreId = genres.associate { it.id to it.name.trim() }
-        val names = tracks.map { track ->
-            track.genreId?.let { nameByMediaStoreId[it] }?.takeIf { it.isNotEmpty() }
-                ?: track.genre?.trim()?.takeIf { it.isNotEmpty() }
-                ?: UnknownNames.GENRE
-        }
-        val spellings = commonestSpellings(names)
-        return tracks.mapIndexed { index, track ->
-            val name = spellings.getValue(nameKey(names[index]))
-            track.copy(genre = name, genreId = genreIdOf(name))
-        }
-    }
-
-    /**
-     * Every track pointed at the one artist for its name, and named after it.
-     *
-     * MediaStore keys artists by an id of its own, and a file it has not indexed yet has no such id -
-     * so [mergeManualTracks] derives one from the name instead. A newly downloaded track therefore
-     * arrives under two different artist rows: the walk's, and then MediaStore's once it has indexed
-     * the file. Until the scan's final pass sweeps the first one away, both are listed, which is what
-     * showed an artist twice. Deriving the id from the name, the way a genre's already is, makes the
-     * two arrivals the same row and leaves nothing to sweep.
-     *
-     * The name is taken whatever its case, as Auxio clusters artists: "5 Seconds of Summer" and "5
-     * Seconds Of Summer" are one artist, spelled on every track as [spellings] says most spell it. A credit
-     * naming several artists points the track at each of them, as [credits] reads it.
-     */
-    private fun canonicalArtistTracks(tracks: List<Track>, spellings: Map<String, String>, credits: ArtistCredits): List<Track> =
-        tracks.map { track ->
-            val name = spellings.getValue(nameKey(track.artist.orUnknownName(UnknownNames.ARTIST)))
-            val artistIds = credits.artistIdsOf(name)
-            track.copy(artist = name, artistId = artistIds.first(), artistIds = artistIds)
-        }
-
-    /**
-     * Each of [albums] under the id derived from its artist and title rather than MediaStore's own,
-     * for the same reason as [canonicalArtistTracks], kept under the MediaStore id it arrived with so
-     * a track can be repointed from one to the other.
-     *
-     * The cover MediaStore found for the album rides along: it is a URI the row already holds, not
-     * something read back from the id.
-     *
-     * Like an artist, an album is its artist and title whatever their case, so MediaStore rows that
-     * differ only in that are one album - titled the way most of its [tracks] have it, and credited to
-     * its artist as [artistSpellings] spells them.
-     */
-    private fun canonicalAlbumsByMediaStoreId(
-        albums: List<Album>,
-        tracks: List<Track>,
-        artistSpellings: Map<String, String>,
-        credits: ArtistCredits,
-    ): Map<Long, Album> {
-        fun artistNameOf(album: Album) =
-            artistSpellings.getValue(nameKey(album.artistName.orUnknownName(UnknownNames.ARTIST)))
-        fun keyOf(album: Album) = nameKey(artistNameOf(album)) to nameKey(album.title.orUnknownName(UnknownNames.ALBUM))
-
-        val albumsByMediaStoreId = albums.associateBy { it.id }
-        // Each track votes for the title its own MediaStore row gave the album.
-        val titleSpellings = tracks
-            .mapNotNull { track -> albumsByMediaStoreId[track.albumId] }
-            .groupBy(::keyOf) { it.title.orUnknownName(UnknownNames.ALBUM) }
-            .mapValues { (_, titles) -> commonest(titles) }
-
-        return albums.associate { album ->
-            val artistName = artistNameOf(album)
-            val title = titleSpellings[keyOf(album)] ?: album.title.orUnknownName(UnknownNames.ALBUM)
-            val artistIds = credits.artistIdsOf(artistName)
-            album.id to album.copy(
-                id = albumIdOf(artistName, title),
-                title = title,
-                artistName = artistName,
-                artistId = artistIds.first(),
-                artistIds = artistIds,
-            )
-        }
-    }
-
-    /** Every track pointed at the one album for its artist and title, and named after it. */
-    private fun canonicalAlbumTracks(tracks: List<Track>, albums: Map<Long, Album>): List<Track> =
-        tracks.map { track ->
-            // Orphaned tracks are already filtered out, so every track's album is one of these.
-            val album = albums.getValue(track.albumId)
-            track.copy(album = album.title, albumId = album.id)
-        }
-
-    /**
-     * The artists [tracks] and [albums] are credited to, one row per name - as [genresOf] is for genres - each
-     * artist a credit names, as [credits] reads it, a row of its own - spelled as most credits naming it do.
-     */
-    private fun artistsOf(tracks: List<Track>, albums: List<Album>, credits: ArtistCredits): List<Artist> =
-        commonestSpellings((tracks.map { it.artist } + albums.map { it.artistName }).flatMap(credits::artistsOf)).values.map { name ->
-            Artist(
-                id = artistIdOf(name),
-                name = name,
-                trackCount = 0,
-                albumCount = 0,
-                coverArtUris = emptyList(),
-            )
-        }
-
-    /** The genres [tracks] name, one row per name - the only genres that can exist after the pass above. */
-    private fun genresOf(tracks: List<Track>): List<Genre> =
-        tracks.mapNotNull { it.genre }.distinct().map { name ->
-            Genre(
-                id = genreIdOf(name),
-                name = name,
-                trackCount = 0,
-                artistCount = 0,
-                coverArtUris = emptyList(),
-            )
-        }
-
-    /**
-     * Every album that still has tracks, with what it is made of worked out from them: how many, when the
-     * first was added, and the year - the one most of them give, the earliest of a tie - so an album follows
-     * every change to its tracks, one retagged included. Its cover is MediaStore's for it - drawn from
-     * whichever of its files has a picture - or, for an album MediaStore does not know, its first track's own.
-     */
-    private fun recomputeAlbums(albums: List<Album>, tracks: List<Track>): List<Album> {
-        val tracksByAlbumId = tracks.groupBy { it.albumId }
-        return albums.mapNotNull { album ->
-            val albumTracks = tracksByAlbumId[album.id]
-            if (albumTracks.isNullOrEmpty()) {
-                null
-            } else {
-                album.copy(
-                    trackCount = albumTracks.size,
-                    dateAddedSeconds = albumTracks.minOf { it.dateAddedSeconds },
-                    year = commonestYear(albumTracks),
-                    coverArtUri = album.coverArtUri ?: albumTracks.sortedWith(AlbumOrder).firstNotNullOfOrNull { it.coverArtUri },
-                )
-            }
-        }
-    }
-
-    /**
-     * Every artist with a track or an album of its own - Auxio's artists, who are those credited on songs as
-     * much as on albums. An artist whose tracks all sit on albums credited to another - a compilation, or an
-     * untagged folder's album - is still one, so it can be found; it simply has no albums of its own to list.
-     */
-    private fun recomputeArtists(
-        artists: List<Artist>,
-        albums: List<Album>,
-        tracks: List<Track>,
-    ): List<Artist> {
-        val albumsByArtistId = albums.groupByEach { it.artistIds }
-        val tracksByArtistId = tracks.groupByEach { it.artistIds }
-        val collageCoverOf = collageCovers(albums)
-        return artists.mapNotNull { artist ->
-            val artistAlbums = albumsByArtistId[artist.id].orEmpty()
-            val artistTracks = tracksByArtistId[artist.id].orEmpty()
-            if (artistAlbums.isEmpty() && artistTracks.isEmpty()) {
-                null
-            } else {
-                artist.copy(
-                    trackCount = artistTracks.size,
-                    albumCount = artistAlbums.size,
-                    // Auxio falls back to the artist's albums only when none of its tracks has a cover.
-                    coverArtUris = rankedCoverArtUris(artistTracks.map(collageCoverOf))
-                        .ifEmpty { rankedCoverArtUris(artistAlbums.map { it.coverArtUri }) },
-                )
-            }
-        }
-    }
-
-    private fun recomputeGenres(genres: List<Genre>, albums: List<Album>, tracks: List<Track>): List<Genre> {
-        val tracksByGenreId = tracks.groupBy { it.genreId }
-        val collageCoverOf = collageCovers(albums)
-        return genres.mapNotNull { genre ->
-            val genreTracks = tracksByGenreId[genre.id]
-            if (genreTracks.isNullOrEmpty()) {
-                null
-            } else {
-                genre.copy(
-                    trackCount = genreTracks.size,
-                    artistCount = genreTracks.flatMapTo(HashSet()) { it.artistIds }.size,
-                    coverArtUris = rankedCoverArtUris(genreTracks.map(collageCoverOf)),
-                )
-            }
-        }
-    }
-
-    /**
-     * The cover a track stands for in a collection's collage: its album's. Every track has its own cover, so
-     * ten tracks of one album would otherwise fill the collage with the one picture ten times; its album's
-     * counts it once. A track on no album the scan knows stands for its own.
-     */
-    private fun collageCovers(albums: List<Album>): (Track) -> String? {
-        val albumCovers = albums.associate { it.id to it.coverArtUri }
-        return { track -> albumCovers[track.albumId] ?: track.coverArtUri }
-    }
-
-
-    private class MergedResult(
-        val tracks: List<Track>,
-        val albums: List<Album>,
-        val artists: List<Artist>,
-        val genres: List<Genre>,
-    )
-
-    /**
-     * Groups the manually-discovered [manualTracks] into artists/albums/genres, matching by name
-     * against what MediaStore already produced. A manual track whose artist/album/genre name already
-     * exists is attached to that existing row; only genuinely new names get a fresh id, derived with
-     * [stableIdOf] so it is identical on every future scan and cannot collide with a MediaStore id.
-     */
-    private fun mergeManualTracks(
-        manualTracks: List<Track>,
-        existingTracks: List<Track>,
-        existingAlbums: List<Album>,
-        existingArtists: List<Artist>,
-        existingGenres: List<Genre>,
-        credits: ArtistCredits,
-    ): MergedResult {
-        // Keyed by name whatever its case, so a file MediaStore missed joins the row its name already
-        // has, and takes that row's spelling rather than adding another - its credit's, too.
-        val artistByName = existingArtists.associateBy { nameKey(it.name) }.toMutableMap()
-        val creditSpellings = (existingTracks.map { it.artist } + existingAlbums.map { it.artistName }).associateBy(::nameKey)
-        val albumByKey = existingAlbums.associateBy { nameKey(it.artistName) to nameKey(it.title) }.toMutableMap()
-        val genreByName = existingGenres.associateBy { nameKey(it.name) }.toMutableMap()
-
-        val newArtists = mutableListOf<Artist>()
-        val newAlbums = mutableListOf<Album>()
-        val newGenres = mutableListOf<Genre>()
-
-        val resolvedTracks = manualTracks.map { track ->
-            // Named the way a MediaStore track is, so the row this joins is the one that already
-            // holds it - a tag's stray whitespace is not a second artist.
-            val taggedCredit = track.artist.orUnknownName(UnknownNames.ARTIST)
-            val credit = creditSpellings.getOrElse(nameKey(taggedCredit)) { taggedCredit }
-            val taggedAlbum = track.album.orUnknownName(UnknownNames.ALBUM)
-
-            val artistIds = credits.artistsOf(credit).map { name ->
-                artistByName.getOrPut(nameKey(name)) {
-                    Artist(
-                        id = artistIdOf(name),
-                        name = name,
-                        trackCount = 0,
-                        albumCount = 0,
-                        coverArtUris = emptyList(),
-                    ).also { newArtists += it }
-                }.id
-            }
-
-            val album = albumByKey.getOrPut(nameKey(credit) to nameKey(taggedAlbum)) {
-                Album(
-                    id = albumIdOf(credit, taggedAlbum),
-                    title = taggedAlbum,
-                    artistId = artistIds.first(),
-                    artistName = credit,
-                    coverArtUri = null,
-                    year = null,
-                    trackCount = 0,
-                    dateAddedSeconds = track.dateAddedSeconds,
-                    artistIds = artistIds,
-                ).also { newAlbums += it }
-            }
-
-            // A manual file names its genre or joins the unknown one, the rule every track follows.
-            val taggedGenre = track.genre?.trim()?.takeIf { it.isNotEmpty() } ?: UnknownNames.GENRE
-            val genre = genreByName.getOrPut(nameKey(taggedGenre)) {
-                Genre(
-                    id = genreIdOf(taggedGenre),
-                    name = taggedGenre,
-                    trackCount = 0,
-                    artistCount = 0,
-                    coverArtUris = emptyList(),
-                ).also { newGenres += it }
-            }
-
-            track.copy(
-                artist = credit,
-                artistId = artistIds.first(),
-                artistIds = artistIds,
-                album = album.title,
-                albumId = album.id,
-                genre = genre.name,
-                genreId = genre.id,
-            )
-        }
-
-        val allTracks = existingTracks + resolvedTracks
-        val allAlbums = recomputeAlbums(existingAlbums + newAlbums, allTracks)
-        val allArtists = recomputeArtists(existingArtists + newArtists, allAlbums, allTracks)
-        val allGenres = recomputeGenres(existingGenres + newGenres, allAlbums, allTracks)
-
-        return MergedResult(allTracks, allAlbums, allArtists, allGenres)
-    }
 }
 
-/** The year most of [tracks] give, the earliest of a tie, or null where none gives one. */
-private fun commonestYear(tracks: List<Track>): Int? =
-    tracks.mapNotNull { it.year }.groupingBy { it }.eachCount().entries
-        .minWithOrNull(compareByDescending<Map.Entry<Int, Int>> { it.value }.thenBy { it.key })
-        ?.key
+/**
+ * [tracks] as the library lists them - however each was found, MediaStore or the walk - each named and identified the one
+ * way: its credit, album and genre spelled as most spell them, whatever their case, its artists as [credits] reads them,
+ * and on the one album its album artist and title make - its album artist tag, or else its own credit, which is what keeps
+ * two singles of one name apart and one album's tracks together. Albums, artists and genres follow from these alone.
+ */
+internal fun libraryTracksOf(tracks: List<Track>, credits: ArtistCredits): List<Track> {
+    fun Track.credit() = artist.orUnknownName(UnknownNames.ARTIST)
+    fun Track.albumCredit() = albumArtist.orUnknownName(artist.orUnknownName(UnknownNames.ARTIST))
+    fun Track.title() = album.orUnknownName(UnknownNames.ALBUM)
+    fun Track.genreName() = genre?.trim()?.takeIf { it.isNotEmpty() } ?: UnknownNames.GENRE
+
+    val creditSpellings = commonestSpellings(tracks.flatMap { listOf(it.credit(), it.albumCredit()) })
+    val genreSpellings = commonestSpellings(tracks.map { it.genreName() })
+    val artistSpellings = artistSpellingsOf(creditSpellings.values.flatMap(credits::artistsOf))
+    fun Track.albumKey() = nameKey(albumCredit()) to nameKey(title())
+    val albumTitles = tracks.groupBy({ it.albumKey() }, { it.title() }).mapValues { (_, titles) -> commonestSpelling(titles) }
+    val albumCovers = tracks.groupBy { it.albumKey() }.mapValues { (_, albumTracks) ->
+        albumTracks.sortedWith(AlbumOrder).firstNotNullOfOrNull { it.albumCoverArtUri ?: it.coverArtUri }
+    }
+    fun artistsNamedBy(credit: String) = credits.artistsOf(credit).map { artistSpellings.getValue(nameKey(it)) }.distinctBy(::nameKey)
+
+    return tracks.map { track ->
+        val credit = creditSpellings.getValue(nameKey(track.credit()))
+        val albumCredit = creditSpellings.getValue(nameKey(track.albumCredit()))
+        val genre = genreSpellings.getValue(nameKey(track.genreName()))
+        val artistNames = artistsNamedBy(credit)
+        val artistIds = artistNames.map(::artistIdOf)
+        val title = albumTitles.getValue(track.albumKey())
+        track.copy(
+            artist = credit,
+            artistId = artistIds.first(),
+            artistIds = artistIds,
+            artistNames = artistNames,
+            album = title,
+            albumId = albumIdOf(albumCredit, title),
+            albumArtist = albumCredit,
+            albumArtistNames = artistsNamedBy(albumCredit),
+            albumCoverArtUri = albumCovers.getValue(track.albumKey()),
+            genre = genre,
+            genreId = genreIdOf(genre),
+        )
+    }
+}
 
 /** An album's tracks in the order it plays: by disc, then by number, the unnumbered last. */
 private val AlbumOrder: Comparator<Track> =
@@ -673,51 +363,17 @@ private val AlbumOrder: Comparator<Track> =
 private fun String?.orUnknownName(unknown: String): String =
     this?.trim()?.takeIf { nameKey(it).isNotEmpty() } ?: unknown
 
-/** The marks a name can carry that nothing shows: right-to-left and joining marks, a byte order mark, zero-width spaces. */
-private val InvisibleMarks = Regex("""\p{Cf}""")
-
-private val Spacing = Regex("""\s+""")
-
-/**
- * What tells one name from another, the one place it is decided: what the name reads as - whatever its case, Auxio's
- * `rawName.lowercase()`, however its letters are encoded, and whatever marks or extra spaces nothing shows. Two
- * spellings with the same key are one artist, album or genre, since every row of each takes its id from this.
- */
-internal fun nameKey(name: String): String =
-    Normalizer.normalize(name, Normalizer.Form.NFKC)
-        .replace(InvisibleMarks, "")
-        .replace(Spacing, " ")
-        .trim()
-        .lowercase(Locale.ROOT)
-
-/**
- * The spelling most of [spellings] use - Auxio melds a cluster into its most popular variant. A tie
- * goes to the first in order, so every scan settles on the same one.
- */
-private fun commonest(spellings: List<String>): String =
-    spellings.groupingBy { it }.eachCount().entries
-        .minWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
-        .key
-
-/** The [commonest] spelling of every [nameKey] among [names]. */
+/** The [commonestSpelling] of every [nameKey] among [names]. */
 private fun commonestSpellings(names: List<String>): Map<String, String> =
-    names.groupBy(::nameKey).mapValues { (_, spellings) -> commonest(spellings) }
+    names.groupBy(::nameKey).mapValues { (_, spellings) -> commonestSpelling(spellings) }
 
-/** An artist's id, derived from its name - the one place it is worked out. */
-private fun artistIdOf(name: String): Long = stableIdOf("artist", nameKey(name))
-
-/** The ids of the artists [credit] names, its first artist's leading. */
-private fun ArtistCredits.artistIdsOf(credit: String): List<Long> = artistsOf(credit).map(::artistIdOf)
-
-/** [this] grouped under every key [keys] gives an item - so an item is in each of its groups. */
-private inline fun <T> List<T>.groupByEach(keys: (T) -> List<Long>): Map<Long, List<T>> {
-    val groups = HashMap<Long, MutableList<T>>()
-    for (item in this) keys(item).forEach { key -> groups.getOrPut(key) { mutableListOf() } += item }
-    return groups
-}
-
-/** An album's id, derived from the artist and title that tell it apart from every other album. */
-private fun albumIdOf(artistName: String, title: String): Long = stableIdOf("album", nameKey(artistName), nameKey(title))
-
-/** A genre's id, derived from its name. */
-private fun genreIdOf(name: String): Long = stableIdOf("genre", nameKey(name))
+/**
+ * How each artist's name among [names] is spelled, by its [nameKey]: as most spell it - and names differing only in their
+ * spaces are one artist, `ImagineDragons` and `Imagine Dragons`, under the one with the most spaces, as a person writes it.
+ */
+private fun artistSpellingsOf(names: List<String>): Map<String, String> =
+    names.groupBy { nameKey(it).replace(" ", "") }.values.flatMap { sameLetters ->
+        val mostSpaces = sameLetters.maxOf { name -> name.count(Char::isWhitespace) }
+        val spelling = commonestSpelling(sameLetters.filter { name -> name.count(Char::isWhitespace) == mostSpaces })
+        sameLetters.map { nameKey(it) to spelling }
+    }.toMap()

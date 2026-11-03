@@ -104,6 +104,7 @@ class ManualFileWalker @Inject constructor(
             val artist = retriever.tagText(MediaMetadataRetriever.METADATA_KEY_ARTIST)
                 ?: retriever.tagText(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
                 ?: UnknownNames.ARTIST
+            val albumArtist = retriever.tagText(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST).orEmpty()
             val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
             val folderPath = File(path).parent.orEmpty()
             val folderName = folderPath.substringAfterLast('/').ifEmpty { UnknownNames.ALBUM }
@@ -144,6 +145,7 @@ class ManualFileWalker @Inject constructor(
                 width = if (isVideo) retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0 else 0,
                 height = if (isVideo) retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0 else 0,
                 sizeBytes = File(path).length(),
+                albumArtist = albumArtist,
             )
         } catch (_: Exception) {
             return null

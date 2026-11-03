@@ -376,6 +376,46 @@ val MIGRATION_19_20 = object : Migration(19, 20) {
 }
 
 /**
+ * The library's albums, artists and genres are worked out from its tracks from now on, rather than kept in tables that
+ * could fall out of step with them - see `libraryCollectionsOf`. What only those tables held moves onto the tracks first,
+ * so the very first frame after this shows them all; the tables held nothing the scanner cannot work out again.
+ */
+val MIGRATION_20_21 = object : Migration(20, 21) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `tracks` ADD COLUMN `artistNames` TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE `tracks` ADD COLUMN `albumArtist` TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE `tracks` ADD COLUMN `albumArtistNames` TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE `tracks` ADD COLUMN `albumCoverArtUri` TEXT")
+
+        val artistNames = HashMap<String, String>()
+        db.query("SELECT id, name FROM artists").use { rows ->
+            while (rows.moveToNext()) artistNames[rows.getLong(0).toString()] = rows.getString(1)
+        }
+        // In the columns' own form: ids between commas, names a line each.
+        fun namesOf(artistIds: String) = artistIds.split(",").filter(String::isNotEmpty).mapNotNull(artistNames::get).joinToString("\n")
+
+        db.query("SELECT id, artistName, artistIds, coverArtUri FROM albums").use { rows ->
+            while (rows.moveToNext()) {
+                db.execSQL(
+                    "UPDATE tracks SET albumArtist = ?, albumArtistNames = ?, albumCoverArtUri = ? WHERE albumId = ?",
+                    arrayOf(rows.getString(1), namesOf(rows.getString(2)), if (rows.isNull(3)) null else rows.getString(3), rows.getLong(0)),
+                )
+            }
+        }
+        val trackCredits = db.query("SELECT DISTINCT artistIds FROM tracks WHERE isVideo = 0").use { rows ->
+            buildList { while (rows.moveToNext()) add(rows.getString(0)) }
+        }
+        trackCredits.forEach { artistIds ->
+            db.execSQL("UPDATE tracks SET artistNames = ? WHERE artistIds = ? AND isVideo = 0", arrayOf(namesOf(artistIds), artistIds))
+        }
+
+        db.execSQL("DROP TABLE `albums`")
+        db.execSQL("DROP TABLE `artists`")
+        db.execSQL("DROP TABLE `genres`")
+    }
+}
+
+/**
  * Makes sure Favorites exists, every time the database is opened.
  *
  * On open rather than on create, because creation is only one of the ways this database comes to

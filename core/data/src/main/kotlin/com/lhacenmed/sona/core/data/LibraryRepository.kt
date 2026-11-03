@@ -12,12 +12,9 @@ import com.lhacenmed.sona.core.data.sort.LibrarySortOrders
 import com.lhacenmed.sona.core.data.sort.LibrarySortSpecs
 import com.lhacenmed.sona.core.data.sort.ListEntry
 import com.lhacenmed.sona.core.data.sort.SortSpec
-import com.lhacenmed.sona.core.database.dao.AlbumDao
 import com.lhacenmed.sona.core.database.dao.ArrangementDao
-import com.lhacenmed.sona.core.database.dao.ArtistDao
 import com.lhacenmed.sona.core.database.dao.FavoriteCollectionDao
 import com.lhacenmed.sona.core.database.FAVORITES_PLAYLIST_ID
-import com.lhacenmed.sona.core.database.dao.GenreDao
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.PlaylistDao
 import com.lhacenmed.sona.core.database.dao.ResumePositionDao
@@ -50,6 +47,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -61,6 +59,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 
 /**
@@ -90,9 +89,6 @@ import kotlinx.coroutines.flow.stateIn
 @Singleton
 class LibraryRepository @Inject constructor(
     private val trackDao: TrackDao,
-    private val albumDao: AlbumDao,
-    private val artistDao: ArtistDao,
-    private val genreDao: GenreDao,
     private val playlistDao: PlaylistDao,
     private val arrangementDao: ArrangementDao,
     private val favoriteCollectionDao: FavoriteCollectionDao,
@@ -118,9 +114,21 @@ class LibraryRepository @Inject constructor(
         .distinctUntilChanged()
         .stateIn(scope, SharingStarted.Eagerly, librarySettings.folderView.value)
 
+    /** Every track as stored, read once for all that follows from them. */
+    private val storedTracks: SharedFlow<List<Track>> = trackDao.observeAll(isVideo = false)
+        .map { rows -> rows.map { it.toDomain() } }
+        .flowOn(defaultDispatcher)
+        .shareIn(scope, SharingStarted.Eagerly, replay = 1)
+
+    /** The albums, artists and genres the tracks make up - see [libraryCollectionsOf]. */
+    private val collections: SharedFlow<LibraryCollections> = storedTracks
+        .map(::libraryCollectionsOf)
+        .flowOn(defaultDispatcher)
+        .shareIn(scope, SharingStarted.Eagerly, replay = 1)
+
     /** The music - every track but the videos, which are the Videos tab's alone. */
-    val tracks: StateFlow<LibraryContent<Track>> = trackDao.observeAll(isVideo = false)
-        .sortedFor(LibrarySortSpecs.tracks) { rows -> rows.map { it.toDomain() } }
+    val tracks: StateFlow<LibraryContent<Track>> = storedTracks
+        .sortedFor(LibrarySortSpecs.tracks) { it }
         .shareContent()
 
     /** Every video - the Videos tab. */
@@ -133,12 +141,12 @@ class LibraryRepository @Inject constructor(
         .map { rows -> rows.associate { it.trackId to it.positionMs } }
         .stateIn(scope, SharingStarted.Eagerly, emptyMap())
 
-    val albums: StateFlow<LibraryContent<Album>> = albumDao.observeAll()
-        .sortedFor(LibrarySortSpecs.albums) { rows -> rows.map { it.toDomain() } }
+    val albums: StateFlow<LibraryContent<Album>> = collections
+        .sortedFor(LibrarySortSpecs.albums) { it.albums }
         .shareContent()
 
-    val artists: StateFlow<LibraryContent<Artist>> = artistDao.observeAll()
-        .sortedFor(LibrarySortSpecs.artists) { rows -> rows.map { it.toDomain() } }
+    val artists: StateFlow<LibraryContent<Artist>> = collections
+        .sortedFor(LibrarySortSpecs.artists) { it.artists }
         .shareContent()
 
     /** [artists] as they are listed for choosing among - see [LibrarySettings.hidesCollaborators]. Every artist can still be opened. */
@@ -149,8 +157,8 @@ class LibraryRepository @Inject constructor(
         }
     }.stateIn(scope, SharingStarted.Eagerly, LibraryContent.Loading)
 
-    val genres: StateFlow<LibraryContent<Genre>> = genreDao.observeAll()
-        .sortedFor(LibrarySortSpecs.genres) { rows -> rows.map { it.toDomain() } }
+    val genres: StateFlow<LibraryContent<Genre>> = collections
+        .sortedFor(LibrarySortSpecs.genres) { it.genres }
         .shareContent()
 
     /** The folders holding music, as the Folders tab lists them - see [FolderView]. */
@@ -213,13 +221,13 @@ class LibraryRepository @Inject constructor(
     // rows, straight off the indices added for them.
 
     fun album(albumId: Long): Flow<Album?> =
-        albumDao.observeById(albumId).map { it?.toDomain() }.distinctUntilChanged()
+        collections.map { all -> all.albums.firstOrNull { it.id == albumId } }.distinctUntilChanged()
 
     fun artist(artistId: Long): Flow<Artist?> =
-        artistDao.observeById(artistId).map { it?.toDomain() }.distinctUntilChanged()
+        collections.map { all -> all.artists.firstOrNull { it.id == artistId } }.distinctUntilChanged()
 
     fun genre(genreId: Long): Flow<Genre?> =
-        genreDao.observeById(genreId).map { it?.toDomain() }.distinctUntilChanged()
+        collections.map { all -> all.genres.firstOrNull { it.id == genreId } }.distinctUntilChanged()
 
     /** Album tracks, in playback order - disc, then track number - unless sorted otherwise. */
     fun albumTracks(albumId: Long): Flow<LibraryContent<Track>> =

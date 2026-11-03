@@ -5,20 +5,11 @@ import androidx.room.withTransaction
 import com.lhacenmed.sona.core.common.di.IoDispatcher
 import com.lhacenmed.sona.core.data.fingerprint.MediaFingerprints
 import com.lhacenmed.sona.core.database.SonaDatabase
-import com.lhacenmed.sona.core.database.dao.AlbumDao
-import com.lhacenmed.sona.core.database.dao.ArtistDao
-import com.lhacenmed.sona.core.database.dao.GenreDao
 import com.lhacenmed.sona.core.database.dao.TrackDao
 import com.lhacenmed.sona.core.database.dao.TrackMoveDao
-import com.lhacenmed.sona.core.database.entity.AlbumEntity
-import com.lhacenmed.sona.core.database.entity.ArtistEntity
-import com.lhacenmed.sona.core.database.entity.GenreEntity
 import com.lhacenmed.sona.core.database.entity.TrackEntity
 import com.lhacenmed.sona.core.database.entity.toEntity
 import com.lhacenmed.sona.core.database.stableIdOf
-import com.lhacenmed.sona.core.model.Album
-import com.lhacenmed.sona.core.model.Artist
-import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.Track
 import java.io.File
 import javax.inject.Inject
@@ -88,9 +79,6 @@ class LibraryWriter @Inject constructor(
     private val database: SonaDatabase,
     private val trackDao: TrackDao,
     private val trackMoveDao: TrackMoveDao,
-    private val albumDao: AlbumDao,
-    private val artistDao: ArtistDao,
-    private val genreDao: GenreDao,
     private val mediaFingerprints: MediaFingerprints,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
@@ -107,15 +95,9 @@ class LibraryWriter @Inject constructor(
      */
     suspend fun sync(
         tracks: List<Track>,
-        albums: List<Album>,
-        artists: List<Artist>,
-        genres: List<Genre>,
         deleteMissing: Boolean = true,
     ): SyncStats = withContext(ioDispatcher) {
         val storedTracks = trackDao.getAll().associateBy { it.id }
-        val storedAlbums = albumDao.getAll().associateBy { it.id }
-        val storedArtists = artistDao.getAll().associateBy { it.id }
-        val storedGenres = genreDao.getAll().associateBy { it.id }
 
         val scannedTracks = tracks.map { it.toEntity() }
         val moves = movesIn(scannedTracks, storedTracks)
@@ -129,20 +111,14 @@ class LibraryWriter @Inject constructor(
             deleteMissing = deleteMissing,
             heldIds = heldTrackIds,
         )
-        val albumDiff = diff(albums.map { it.toEntity() }, storedAlbums, AlbumEntity::id, deleteMissing)
-        val artistDiff = diff(artists.map { it.toEntity() }, storedArtists, ArtistEntity::id, deleteMissing)
-        val genreDiff = diff(genres.map { it.toEntity() }, storedGenres, GenreEntity::id, deleteMissing)
+        val albumMoves = albumMovesIn(desiredTracks, storedTracks)
 
-        val stats = trackDiff.stats() + albumDiff.stats() + artistDiff.stats() + genreDiff.stats() + SyncStats(heldTracks = heldTrackIds.size)
+        val stats = trackDiff.stats() + SyncStats(heldTracks = heldTrackIds.size)
         if (stats.isNoOp) return@withContext stats
 
         database.withTransaction {
-            // Parents in first, so a track never points at an album row that isn't there; then the
-            // tracks; and the old rows out last. Room delivers invalidations after the transaction
-            // commits, so no observer ever sees the steps between.
-            if (artistDiff.upserts.isNotEmpty()) artistDao.upsertAll(artistDiff.upserts)
-            if (albumDiff.upserts.isNotEmpty()) albumDao.upsertAll(albumDiff.upserts)
-            if (genreDiff.upserts.isNotEmpty()) genreDao.upsertAll(genreDiff.upserts)
+            // Room delivers invalidations after the transaction commits, so no observer ever sees the
+            // steps between.
             // Out of the way before the tracks go in: each copy's path is about to be its gone track's.
             copies.forEach { (path, gone) ->
                 val copyId = storedTracks.values.first { it.path == path }.id
@@ -153,10 +129,7 @@ class LibraryWriter @Inject constructor(
 
             moves.forEach { (path, moved) -> mediaFingerprints.moved(moved.path, path) }
             trackDiff.deleted.chunked(MAX_BIND_ARGS).forEach { trackDao.deleteByIds(it) }
-
-            albumDiff.deleted.chunked(MAX_BIND_ARGS).forEach { albumDao.deleteByIds(it) }
-            artistDiff.deleted.chunked(MAX_BIND_ARGS).forEach { artistDao.deleteByIds(it) }
-            genreDiff.deleted.chunked(MAX_BIND_ARGS).forEach { genreDao.deleteByIds(it) }
+            albumMoves.forEach { (fromAlbumId, toAlbumId) -> trackMoveDao.moveAlbum(fromAlbumId, toAlbumId) }
         }
 
         stats
@@ -170,6 +143,20 @@ class LibraryWriter @Inject constructor(
      */
     suspend fun deleteTracks(trackIds: Collection<Long>) = withContext(ioDispatcher) {
         database.withTransaction { trackIds.chunked(MAX_BIND_ARGS).forEach { trackDao.deleteByIds(it) } }
+    }
+
+    /**
+     * The albums of [stored] no track of [desired] is on any more, whose tracks have all gone to one other - an album
+     * retagged, its name or artist corrected - to that one: it is the same album, under the id those now derive.
+     */
+    private fun albumMovesIn(desired: List<TrackEntity>, stored: Map<Long, TrackEntity>): Map<Long, Long> {
+        val desiredAlbumIds = desired.mapTo(HashSet()) { it.albumId }
+        return desired
+            .mapNotNull { track -> stored[track.id]?.takeIf { !track.isVideo && it.albumId != track.albumId }?.let { it.albumId to track.albumId } }
+            .groupBy({ it.first }, { it.second })
+            .filterKeys { it !in desiredAlbumIds }
+            .mapNotNull { (from, to) -> to.distinct().singleOrNull()?.let { from to it } }
+            .toMap()
     }
 
     /** Which of the files of [scanned] new to the library are tracks of [stored] whose files are gone - see [movedTracks]. */

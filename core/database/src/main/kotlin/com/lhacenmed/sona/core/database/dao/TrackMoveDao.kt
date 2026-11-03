@@ -22,6 +22,19 @@ interface TrackMoveDao {
         movePlaylistCovers(fromTrackId, toTrackId)
     }
 
+    /** What the user made of an album - its favorite, its hand-made order - following it to the id it has now. */
+    @Transaction
+    suspend fun moveAlbum(fromAlbumId: Long, toAlbumId: Long) {
+        moveFavoriteCollection("album:$fromAlbumId", "album:$toAlbumId")
+        moveAlbumArrangement(fromAlbumId.toString(), toAlbumId.toString())
+    }
+
+    @Query("UPDATE OR IGNORE favorite_collections SET collection = :to WHERE collection = :from")
+    suspend fun moveFavoriteCollection(from: String, to: String)
+
+    @Query("UPDATE OR IGNORE arrangements SET instanceId = :to WHERE list = 'ALBUM_TRACKS' AND instanceId = :from")
+    suspend fun moveAlbumArrangement(from: String, to: String)
+
     @Query("UPDATE OR IGNORE playlist_tracks SET trackId = :toTrackId WHERE trackId = :fromTrackId")
     suspend fun movePlaylistEntries(fromTrackId: Long, toTrackId: Long)
 

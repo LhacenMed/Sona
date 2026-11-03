@@ -77,12 +77,11 @@ interface PlaylistDao {
      */
     @Query(
         """
-        SELECT pt.playlistId AS playlistId, COALESCE(a.coverArtUri, t.coverArtUri) AS coverArtUri, COUNT(*) AS trackCount
+        SELECT pt.playlistId AS playlistId, COALESCE(t.albumCoverArtUri, t.coverArtUri) AS coverArtUri, COUNT(*) AS trackCount
         FROM playlist_tracks pt
         INNER JOIN tracks t ON t.id = pt.trackId
-        LEFT JOIN albums a ON a.id = t.albumId
-        WHERE COALESCE(a.coverArtUri, t.coverArtUri) IS NOT NULL AND COALESCE(a.coverArtUri, t.coverArtUri) != ''
-        GROUP BY pt.playlistId, COALESCE(a.coverArtUri, t.coverArtUri)
+        WHERE COALESCE(t.albumCoverArtUri, t.coverArtUri) IS NOT NULL AND COALESCE(t.albumCoverArtUri, t.coverArtUri) != ''
+        GROUP BY pt.playlistId, COALESCE(t.albumCoverArtUri, t.coverArtUri)
         """,
     )
     fun observeCoverArt(): Flow<List<PlaylistCoverRow>>

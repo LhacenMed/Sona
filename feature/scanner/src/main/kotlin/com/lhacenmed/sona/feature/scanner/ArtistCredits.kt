@@ -1,5 +1,7 @@
 package com.lhacenmed.sona.feature.scanner
 
+import com.lhacenmed.sona.core.database.nameKey
+
 /**
  * The artists a credit names - see `LibrarySettings.separateArtists`: a credit is parted at every separator it has,
  * "×", "x", "feat.", "ft.", "featuring", "vs.", ";", a comma, "&", "+" and "/", so "Sidi, Loubabe & Ediye" is three

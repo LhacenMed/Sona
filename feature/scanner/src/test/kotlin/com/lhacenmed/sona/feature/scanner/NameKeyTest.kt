@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.feature.scanner
 
+import com.lhacenmed.sona.core.database.nameKey
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Test

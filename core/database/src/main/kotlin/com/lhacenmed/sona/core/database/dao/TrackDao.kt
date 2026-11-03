@@ -31,11 +31,11 @@ interface TrackDao {
      */
     @Query(
         """
-        SELECT t.folderPath AS path, COALESCE(a.coverArtUri, t.coverArtUri) AS coverArtUri, COUNT(*) AS trackCount
-        FROM tracks t LEFT JOIN albums a ON a.id = t.albumId
-        WHERE t.isVideo = :isVideo AND COALESCE(a.coverArtUri, t.coverArtUri) IS NOT NULL
-            AND COALESCE(a.coverArtUri, t.coverArtUri) != ''
-        GROUP BY t.folderPath, COALESCE(a.coverArtUri, t.coverArtUri)
+        SELECT t.folderPath AS path, COALESCE(t.albumCoverArtUri, t.coverArtUri) AS coverArtUri, COUNT(*) AS trackCount
+        FROM tracks t
+        WHERE t.isVideo = :isVideo AND COALESCE(t.albumCoverArtUri, t.coverArtUri) IS NOT NULL
+            AND COALESCE(t.albumCoverArtUri, t.coverArtUri) != ''
+        GROUP BY t.folderPath, COALESCE(t.albumCoverArtUri, t.coverArtUri)
         """,
     )
     fun observeFolderCoverArt(isVideo: Boolean): Flow<List<FolderCoverRow>>

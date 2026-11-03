@@ -31,4 +31,12 @@ data class Track(
     val height: Int = 0,
     /** The file's size - 0 where it is not known. */
     val sizeBytes: Long = 0L,
+    /** The artists [artistIds] are the ids of, in the same order. */
+    val artistNames: List<String> = emptyList(),
+    /** Who the track's album is credited to: its album artist tag, or else the track's own credit. */
+    val albumArtist: String = "",
+    /** The artists [albumArtist] names. */
+    val albumArtistNames: List<String> = emptyList(),
+    /** The cover the track's album shows - every track of it has the same one. */
+    val albumCoverArtUri: String? = null,
 )

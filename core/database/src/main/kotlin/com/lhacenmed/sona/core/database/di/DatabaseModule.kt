@@ -18,14 +18,12 @@ import com.lhacenmed.sona.core.database.MIGRATION_16_17
 import com.lhacenmed.sona.core.database.MIGRATION_17_18
 import com.lhacenmed.sona.core.database.MIGRATION_18_19
 import com.lhacenmed.sona.core.database.MIGRATION_19_20
+import com.lhacenmed.sona.core.database.MIGRATION_20_21
 import com.lhacenmed.sona.core.database.SeedBuiltInPlaylists
 import com.lhacenmed.sona.core.database.SonaDatabase
-import com.lhacenmed.sona.core.database.dao.AlbumDao
 import com.lhacenmed.sona.core.database.dao.ArrangementDao
-import com.lhacenmed.sona.core.database.dao.ArtistDao
 import com.lhacenmed.sona.core.database.dao.BackupDao
 import com.lhacenmed.sona.core.database.dao.FavoriteCollectionDao
-import com.lhacenmed.sona.core.database.dao.GenreDao
 import com.lhacenmed.sona.core.database.dao.LyricsIndexDao
 import com.lhacenmed.sona.core.database.dao.MediaHashDao
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
@@ -48,7 +46,7 @@ object DatabaseModule {
     @Singleton
     fun provideSonaDatabase(@ApplicationContext context: Context): SonaDatabase =
         Room.databaseBuilder(context, SonaDatabase::class.java, SonaDatabase.FILE_NAME)
-            .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20)
+            .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21)
             // Seeds Favorites on a fresh install; MIGRATION_4_5 does the same for an existing one.
             .addCallback(SeedBuiltInPlaylists)
             // Still a net for a version pair no migration covers. Real migrations take precedence
@@ -64,15 +62,6 @@ object DatabaseModule {
 
     @Provides
     fun providePlayStatsDao(database: SonaDatabase): PlayStatsDao = database.playStatsDao()
-
-    @Provides
-    fun provideAlbumDao(database: SonaDatabase): AlbumDao = database.albumDao()
-
-    @Provides
-    fun provideArtistDao(database: SonaDatabase): ArtistDao = database.artistDao()
-
-    @Provides
-    fun provideGenreDao(database: SonaDatabase): GenreDao = database.genreDao()
 
     @Provides
     fun provideQueueItemDao(database: SonaDatabase): QueueItemDao = database.queueItemDao()

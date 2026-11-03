@@ -57,6 +57,10 @@ data class TrackEntity(
     @ColumnInfo(defaultValue = "0") val width: Int,
     @ColumnInfo(defaultValue = "0") val height: Int,
     @ColumnInfo(defaultValue = "0") val sizeBytes: Long,
+    @ColumnInfo(defaultValue = "") val artistNames: List<String>,
+    @ColumnInfo(defaultValue = "") val albumArtist: String,
+    @ColumnInfo(defaultValue = "") val albumArtistNames: List<String>,
+    val albumCoverArtUri: String?,
 )
 
 fun TrackEntity.toDomain() = Track(
@@ -83,6 +87,10 @@ fun TrackEntity.toDomain() = Track(
     width = width,
     height = height,
     sizeBytes = sizeBytes,
+    artistNames = artistNames,
+    albumArtist = albumArtist,
+    albumArtistNames = albumArtistNames,
+    albumCoverArtUri = albumCoverArtUri,
 )
 
 fun Track.toEntity() = TrackEntity(
@@ -109,4 +117,8 @@ fun Track.toEntity() = TrackEntity(
     width = width,
     height = height,
     sizeBytes = sizeBytes,
+    artistNames = artistNames,
+    albumArtist = albumArtist,
+    albumArtistNames = albumArtistNames,
+    albumCoverArtUri = albumCoverArtUri,
 )
