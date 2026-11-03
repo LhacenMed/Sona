@@ -8,14 +8,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.node.LayoutAwareModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.platform.LocalDensity
@@ -77,7 +82,7 @@ class DragSelection internal constructor(
     /** Whether a finger is on the list - a long press made without one, from an accessibility service, has no drag to start. */
     internal var isPointerDown = false
 
-    internal var isDragging = false
+    internal var isDragging by mutableStateOf(false)
         private set
     private var initialIndex = -1
     private var lastDraggedIndex = -1
@@ -217,10 +222,14 @@ class DragSelection internal constructor(
      * into a hotspot it is, as Fossify's is, up to full speed at the hotspot's far edge - and held at full
      * speed past it, over the player or above the list, as `ItemTouchHelper` caps its drag scroll. A
      * finger held anywhere beyond the rows keeps the list moving rather than stopping it.
+     *
+     * The bottom hotspot is measured from where the list ends on screen, not where it is laid out to end: under
+     * an open header a list reaches past the screen's bottom, where no finger could get to it.
      */
     private fun autoScrollSpeedAt(y: Float): Float {
-        val listHeight = list?.size?.height?.toFloat() ?: return 0f
-        val bottomHotspotTop = listHeight - bottomInsetPx - hotspotHeightPx
+        val list = list?.takeIf { it.isAttached } ?: return 0f
+        val visibleHeight = list.boundsInWindow().bottom - list.positionInWindow().y
+        val bottomHotspotTop = visibleHeight - bottomInsetPx - hotspotHeightPx
         val depth = when {
             y > bottomHotspotTop -> y - bottomHotspotTop
             y < hotspotHeightPx -> y - hotspotHeightPx

@@ -1,10 +1,13 @@
 package com.lhacenmed.sona.core.designsystem.component.header
 
 import androidx.compose.animation.core.animate
+import androidx.compose.foundation.gestures.FlingBehavior
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.ScrollScope
+import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.gestures.ScrollableState
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.rememberScrollableState
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -91,6 +94,12 @@ class CollapsingHeaderState internal constructor(private val scope: CoroutineSco
         settleJob = scope.launch { animate(from, target) { value, _ -> collapsedPx = value } }
     }
 
+    /** Glides it collapsed, in a job of its own as [settle] is, which the next touch cancels. */
+    internal fun settleCollapsed() {
+        settleJob?.cancel()
+        settleJob = scope.launch { animate(offsetPx, rangePx) { value, _ -> collapsedPx = value } }
+    }
+
     /** Glides it open - or, [collapsed], collapsed - as a list scrolled for the user takes it along. */
     suspend fun animateTo(collapsed: Boolean) {
         settleJob?.cancel()
@@ -128,7 +137,8 @@ fun rememberCollapsingHeaderState(): CollapsingHeaderState {
 /**
  * A drag on the header [state] collapses, carried on into the [list] it stands over: up, it collapses the
  * header and then scrolls the list; down, it scrolls the list back to its top and then opens the header -
- * Auxio's `ContinuousAppBarLayoutBehavior`. Let go part-way, the header settles as a scroll leaves it.
+ * Auxio's `ContinuousAppBarLayoutBehavior`. A swipe flies on as one on the list does, so a flick collapses the
+ * header from either; where it comes to rest part-way, the header settles as a scroll leaves it.
  */
 @Composable
 fun Modifier.collapsingHeaderDrag(
@@ -136,11 +146,25 @@ fun Modifier.collapsingHeaderDrag(
     list: () -> ScrollableState?,
     enabled: Boolean = true,
 ): Modifier {
-    val drag = rememberDraggableState { delta ->
-        val remaining = delta - state.collapseBy(delta)
-        if (remaining != 0f) list()?.dispatchRawDelta(-remaining)
+    val scroll = rememberScrollableState { delta ->
+        // The list's scrolls run the other way from the finger's.
+        fun scrollList(amount: Float) = if (amount == 0f) 0f else -(list()?.dispatchRawDelta(-amount) ?: 0f)
+        if (delta < 0f) {
+            val collapsed = state.collapseBy(delta)
+            collapsed + scrollList(delta - collapsed)
+        } else {
+            val scrolled = scrollList(delta)
+            scrolled + state.collapseBy(delta - scrolled)
+        }
     }
-    return draggable(state = drag, orientation = Orientation.Vertical, enabled = enabled, onDragStopped = { state.settle() })
+    val fling = ScrollableDefaults.flingBehavior()
+    val flingThenSettle = remember(fling, state) {
+        object : FlingBehavior {
+            override suspend fun ScrollScope.performFling(initialVelocity: Float): Float =
+                with(fling) { performFling(initialVelocity) }.also { state.settle() }
+        }
+    }
+    return scrollable(state = scroll, orientation = Orientation.Vertical, enabled = enabled, flingBehavior = flingThenSettle)
 }
 
 /**

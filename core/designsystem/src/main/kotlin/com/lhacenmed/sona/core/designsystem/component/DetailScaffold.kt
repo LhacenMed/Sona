@@ -32,13 +32,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -109,6 +112,13 @@ class DetailHeaderState internal constructor(
     val collapse: Float
         get() = header.fraction
 
+    /**
+     * How much of the list lies past the screen's bottom with the header at rest: the list is as tall as the room
+     * below the collapsed bar, so it reaches as far past the bottom as the header stands open. Changes only as the
+     * header passes half-way, so whatever is built from it is not built again on every frame of a collapse.
+     */
+    val listOverhangPx: Float by derivedStateOf { if (shownCollapse < 0.5f) collapseRangePx else 0f }
+
     /** Whether the header is held collapsed out of the way - see [DetailScaffold]'s `isHeaderAside`. */
     internal var isHeaderAside = false
         private set
@@ -133,6 +143,15 @@ class DetailHeaderState internal constructor(
     }
 
     internal val nestedScrollConnection = header.nestedScrollConnection(isEnabled = { !isHeaderAside })
+
+    /**
+     * Collapses a header left standing open over a list that has scrolled away from its top. A row's drag scrolls the
+     * list alone, as the header moving would move the row out from under the finger, so this waits for the finger to lift.
+     */
+    internal fun catchUpWithList() {
+        val isListScrolled = listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
+        if (isListScrolled && !isHeaderAside) header.settleCollapsed()
+    }
 
     /** Where the list stood when the header was set aside, to be put back after. */
     private var listPositionBeforeAside: Pair<Int, Int>? = null
@@ -193,7 +212,9 @@ private const val HeaderShrink = 0.12f
  * [contentKey] is what the list shows. A screen opens at its top, and a list at its top stays there as
  * its rows arrive or change - see the note in the body.
  *
- * [dragSelection], where the list's rows can be selected, lets a long press drag across them.
+ * [dragSelection], where the list's rows can be selected, lets a long press drag across them. [isReordering] says
+ * whether a row is being dragged to a new place. Either way the header holds still until the finger lifts - see
+ * [DetailHeaderState.catchUpWithList].
  *
  * [playingKey] is the key of the row the list marks as playing, if any - which the screen's scroll button
  * offers a way to while it is off screen, showing the playing bars while [isPlaying]: see
@@ -208,6 +229,7 @@ fun DetailScaffold(
     contentKey: Any?,
     modifier: Modifier = Modifier,
     dragSelection: DragSelection? = null,
+    isReordering: () -> Boolean = { false },
     playingKey: () -> Any? = { null },
     isPlaying: () -> Boolean = { false },
     content: LazyListScope.() -> Unit,
@@ -238,6 +260,13 @@ fun DetailScaffold(
     DisposableEffect(state, isHeaderAside) {
         state.updateHeaderAside(isHeaderAside)
         onDispose {}
+    }
+
+    val latestDragSelection by rememberUpdatedState(dragSelection)
+    val latestIsReordering by rememberUpdatedState(isReordering)
+    LaunchedEffect(state) {
+        snapshotFlow { latestDragSelection?.isDragging == true || latestIsReordering() }
+            .collect { isRowDragged -> if (!isRowDragged) state.catchUpWithList() }
     }
 
     Box(modifier = modifier.fillMaxSize()) {

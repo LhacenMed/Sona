@@ -37,6 +37,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.common.format.formatDuration
@@ -374,7 +376,7 @@ private fun <T> ReorderableColumn(
     row: @Composable (T) -> Unit,
 ) {
     KeepAtTopWhenRowsChange(listState = listState, rows = items)
-    val reorderableRows = rememberReorderableRows(items, key, listState, onReorder)
+    val reorderableRows = rememberReorderableRows(items, key, listState, onReorder = onReorder)
 
     LazyColumn(
         state = listState,
@@ -402,12 +404,15 @@ internal class ReorderableRows<T>(
  *
  * Rows are told apart by [key] rather than by where they sit in the list, so a list that has other
  * sections above these rows moves the right ones.
+ *
+ * [listOverhang] is how much of the list lies past the screen's bottom, which the edge a drag scrolls from stands clear of.
  */
 @Composable
 internal fun <T> rememberReorderableRows(
     items: List<T>,
     key: (T) -> Any,
     listState: LazyListState,
+    listOverhang: Dp = 0.dp,
     onReorder: (List<T>) -> Unit,
 ): ReorderableRows<T> {
     val orderedRows = remember { mutableStateListOf<T>().apply { addAll(items) } }
@@ -420,7 +425,7 @@ internal fun <T> rememberReorderableRows(
         // The list's bottom lies under the mini player, so the edge a drag scrolls from is its top.
         scrollThresholdPadding = PaddingValues(
             top = ReorderAutoScrollThreshold,
-            bottom = ReorderAutoScrollThreshold + bottomContentPadding,
+            bottom = ReorderAutoScrollThreshold + bottomContentPadding + listOverhang,
         ),
     ) { from, to ->
         val fromIndex = orderedRows.indexOfFirst { key(it) == from.key }
@@ -617,7 +622,8 @@ internal fun TrackListDetail(
     // by: the drop keeps the order it ended on and puts the list in it, so what was dragged is what stays.
     val canReorder = sort?.canArrange == true && searchQuery.isNullOrBlank() && selection.isActive
     val reorderableRows = if (canReorder) {
-        rememberReorderableRows(visibleTracks.itemsOrEmpty, { track -> track.id }, headerState.listState) { reordered ->
+        val listOverhang = with(LocalDensity.current) { headerState.listOverhangPx.toDp() }
+        rememberReorderableRows(visibleTracks.itemsOrEmpty, { track -> track.id }, headerState.listState, listOverhang) { reordered ->
             viewModel.arrange(reordered.map { it.id })
         }
     } else {
@@ -751,6 +757,7 @@ internal fun TrackListDetail(
                 )
             },
             isHeaderAside = searchQuery != null,
+            isReordering = { reorderableRows?.state?.isAnyItemDragging == true },
             contentKey = sections to visibleTracks,
             playingKey = { playback.currentTrack?.id },
             isPlaying = { playback.isPlaying },
