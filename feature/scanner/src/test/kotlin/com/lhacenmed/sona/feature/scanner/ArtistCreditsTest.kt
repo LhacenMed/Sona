@@ -5,23 +5,20 @@ import org.junit.Test
 
 class ArtistCreditsTest {
 
-    private val credits = listOf(
-        "Justin Bieber, Benny Blanco & Billie Eilish",
-        "Billie Eilish",
-        "Conor Maynard × The Vamps",
-        "Earth, Wind & Fire",
-        "Simon & Garfunkel",
-        "AC/DC",
-        "Tyler, The Creator",
-        "Drake feat. Rihanna",
-        "Lil Nas X",
-    )
-
-    private val separated = ArtistCredits(credits, separatesArtists = true)
+    private val separated = ArtistCredits(separatesArtists = true)
 
     @Test
-    fun partsACreditAtACommaOrAmpersandWhereOneOfItsArtistsIsCreditedAlone() {
+    fun partsAListOfArtists_whateverElseTheLibraryHolds() {
+        assertEquals(listOf("Sidi", "Loubabe", "Ediye"), separated.artistsOf("Sidi, Loubabe & Ediye"))
         assertEquals(listOf("Justin Bieber", "Benny Blanco", "Billie Eilish"), separated.artistsOf("Justin Bieber, Benny Blanco & Billie Eilish"))
+        assertEquals(listOf("A", "B"), separated.artistsOf("A & B"))
+        assertEquals(listOf("A", "B"), separated.artistsOf("A + B"))
+        assertEquals(listOf("A", "B"), separated.artistsOf("A/B"))
+    }
+
+    @Test
+    fun partsAtAnArabicComma() {
+        assertEquals(listOf("سيدي", "لبابة"), separated.artistsOf("سيدي، لبابة"))
     }
 
     @Test
@@ -34,14 +31,25 @@ class ArtistCreditsTest {
 
     @Test
     fun keepsANameThatOnlyLooksLikeSeveral() {
-        listOf("Earth, Wind & Fire", "Simon & Garfunkel", "AC/DC", "Tyler, The Creator", "Lil Nas X").forEach { name ->
-            assertEquals(listOf(name), separated.artistsOf(name))
-        }
+        listOf(
+            "Earth, Wind & Fire",
+            "Simon & Garfunkel",
+            "AC/DC",
+            "Tyler, The Creator",
+            "Florence + The Machine",
+            "Kool & The Gang",
+            "Lil Nas X",
+        ).forEach { name -> assertEquals(listOf(name), separated.artistsOf(name)) }
+    }
+
+    @Test
+    fun keepsANameWholeAmongJoinedArtists() {
+        assertEquals(listOf("Drake", "Earth, Wind & Fire"), separated.artistsOf("Drake feat. Earth, Wind & Fire"))
     }
 
     @Test
     fun keepsEveryCreditWholeWhileArtistsAreNotSeparated() {
         val credit = "Justin Bieber, Benny Blanco & Billie Eilish"
-        assertEquals(listOf(credit), ArtistCredits(credits, separatesArtists = false).artistsOf(credit))
+        assertEquals(listOf(credit), ArtistCredits(separatesArtists = false).artistsOf(credit))
     }
 }

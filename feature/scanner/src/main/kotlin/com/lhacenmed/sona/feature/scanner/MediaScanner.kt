@@ -24,6 +24,7 @@ import com.lhacenmed.sona.feature.scanner.mediastore.MediaStoreChangeObserver
 import com.lhacenmed.sona.feature.scanner.mediastore.MediaStoreQuerier
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
+import java.text.Normalizer
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
@@ -289,12 +290,11 @@ class MediaScanner @Inject constructor(
 
         // And exactly one album, and the artists its credit names, each of them a row per name rather
         // than per MediaStore id - see canonicalArtistTracks. A credit is spelled one way on its tracks
-        // and on the albums credited to it, so both are counted towards how it is spelled - and both
-        // tell which of its artists are credited alone, see ArtistCredits.
+        // and on the albums credited to it, so both are counted towards how it is spelled.
         val creditNames = tracks.map { it.artist.orUnknownName(UnknownNames.ARTIST) } +
             mediaStoreResult.albums.map { it.artistName.orUnknownName(UnknownNames.ARTIST) }
         val artistSpellings = commonestSpellings(creditNames)
-        val credits = ArtistCredits(creditNames, separatesArtists = librarySettings.separateArtists.value)
+        val credits = ArtistCredits(separatesArtists = librarySettings.separateArtists.value)
         val canonicalAlbums = canonicalAlbumsByMediaStoreId(mediaStoreResult.albums, tracks, artistSpellings, credits)
         tracks = canonicalAlbumTracks(canonicalArtistTracks(tracks, artistSpellings, credits), canonicalAlbums)
 
@@ -683,13 +683,24 @@ private val AlbumOrder: Comparator<Track> =
  * cannot name the same artist or album differently and end up as two rows.
  */
 private fun String?.orUnknownName(unknown: String): String =
-    this?.trim()?.takeIf { it.isNotEmpty() } ?: unknown
+    this?.trim()?.takeIf { nameKey(it).isNotEmpty() } ?: unknown
+
+/** The marks a name can carry that nothing shows: right-to-left and joining marks, a byte order mark, zero-width spaces. */
+private val InvisibleMarks = Regex("""\p{Cf}""")
+
+private val Spacing = Regex("""\s+""")
 
 /**
- * What tells one name from another: the name, whatever its case - Auxio's `rawName.lowercase()`. Two
- * spellings with the same key are one artist, album or genre.
+ * What tells one name from another, the one place it is decided: what the name reads as - whatever its case, Auxio's
+ * `rawName.lowercase()`, however its letters are encoded, and whatever marks or extra spaces nothing shows. Two
+ * spellings with the same key are one artist, album or genre, since every row of each takes its id from this.
  */
-internal fun nameKey(name: String): String = name.lowercase(Locale.ROOT)
+internal fun nameKey(name: String): String =
+    Normalizer.normalize(name, Normalizer.Form.NFKC)
+        .replace(InvisibleMarks, "")
+        .replace(Spacing, " ")
+        .trim()
+        .lowercase(Locale.ROOT)
 
 /**
  * The spelling most of [spellings] use - Auxio melds a cluster into its most popular variant. A tie
