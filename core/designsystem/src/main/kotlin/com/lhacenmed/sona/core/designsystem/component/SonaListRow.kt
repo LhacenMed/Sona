@@ -41,7 +41,7 @@ import com.lhacenmed.sona.core.model.Track
 const val InfoSeparator = " • "
 
 /** How much of the selection colour washes over a selected row. */
-private const val SELECTED_ROW_TINT_ALPHA = 0.12f
+const val SELECTED_ROW_TINT_ALPHA = 0.12f
 
 /** A row takes the selection colour faster than it lets it go, so selecting reads as the deliberate act. */
 private const val SELECTED_ROW_FADE_IN_MILLIS = 200

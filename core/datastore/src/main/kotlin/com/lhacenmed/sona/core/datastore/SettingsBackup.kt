@@ -67,7 +67,7 @@ private fun Any.withRenamedPlaylists(playlistIds: Map<Long, Long>): Any = when (
 }
 
 @Suppress("UNCHECKED_CAST")
-private fun MutablePreferences.put(name: String, value: Any) {
+internal fun MutablePreferences.put(name: String, value: Any) {
     when (value) {
         is Boolean -> set(booleanPreferencesKey(name), value)
         is Int -> set(intPreferencesKey(name), value)

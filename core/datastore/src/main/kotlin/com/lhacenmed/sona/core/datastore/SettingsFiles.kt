@@ -23,6 +23,9 @@ internal val Context.videoDataStore by preferencesDataStore(name = "video_settin
 /** The scanner's bookkeeping rather than anything the user chose, so the one file a backup leaves out. */
 internal val Context.scanDataStore by preferencesDataStore(name = "scan_state")
 
+/** Every settings file there is, by the name it is stored under - what a backup carries, and the one it leaves out. */
+internal fun Context.allSettingsFiles(): Map<String, DataStore<Preferences>> = backedUpSettingsFiles() + ("scan_state" to scanDataStore)
+
 /** Every settings file a backup carries, by the name it is stored under. */
 internal fun Context.backedUpSettingsFiles(): Map<String, DataStore<Preferences>> = mapOf(
     "library_settings" to libraryDataStore,

@@ -231,6 +231,8 @@ dependencies {
     implementation(project(":feature:vault"))
     implementation(project(":feature:backup"))
     implementation(project(":feature:explorer"))
+    // Only in a debug build: none of it, nor anything it can reach, is in what users install.
+    debugImplementation(project(":feature:debug"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

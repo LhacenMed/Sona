@@ -1,7 +1,11 @@
 package com.lhacenmed.sona.feature.settings
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.component.SettingsList
@@ -24,6 +28,7 @@ data object SettingsScreen : Screen {
     override fun Content() {
         val navigator = LocalNavigator.current
         val openPrivateFolder = rememberPrivateFolderOpener()
+        val debugTools = hiltViewModel<SettingsHomeViewModel>().debugTools
 
         SettingsList(onPrivateFolderRevealed = openPrivateFolder) {
             SettingsGroup.entries.forEachIndexed { index, group ->
@@ -40,6 +45,15 @@ data object SettingsScreen : Screen {
                             )
                         }
                 }
+            }
+            if (debugTools != null) {
+                SettingsSectionDivider()
+                SettingsNavigationItem(
+                    title = debugTools.screen.title(LocalContext.current).orEmpty(),
+                    summary = debugTools.summary,
+                    icon = Icons.Filled.BugReport,
+                    onClick = { navigator.go(debugTools.screen) },
+                )
             }
         }
     }
