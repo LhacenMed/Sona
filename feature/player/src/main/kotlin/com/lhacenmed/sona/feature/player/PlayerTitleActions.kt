@@ -12,9 +12,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import com.lhacenmed.sona.core.designsystem.component.copyToClipboard
 import com.lhacenmed.sona.core.model.Artist
@@ -70,13 +73,16 @@ internal fun rememberPlayerTitleActions(
     }
 }
 
+/** A credited artist's name, tappable but not styled as a link. */
+private val PlainArtistLink = TextLinkStyles(style = SpanStyle(textDecoration = TextDecoration.None))
+
 /**
  * The artist line under a player's title, tapped to open the artist - ArchiveTune's `ClickableArtists`.
  *
  * A credit naming several [creditedArtists] opens whichever of them is tapped; anywhere else on the line, and
  * on a credit naming one, [onClick] opens the artist it names first.
  *
- * Clicked as the title is, so a long press answers with the same haptic.
+ * Clicked as the title is, so a long press answers with the same haptic. Each name reads as the rest of the line does.
  */
 @Composable
 internal fun ClickableArtist(
@@ -101,7 +107,7 @@ internal fun ClickableArtist(
                 val start = artist.indexOf(credited.name, searchFrom, ignoreCase = true)
                 if (start < 0) return@forEach
                 val end = start + credited.name.length
-                addLink(LinkAnnotation.Clickable(tag = credited.id.toString()) { latestOnCreditedArtistClick(credited.id) }, start, end)
+                addLink(LinkAnnotation.Clickable(tag = credited.id.toString(), styles = PlainArtistLink) { latestOnCreditedArtistClick(credited.id) }, start, end)
                 searchFrom = end
             }
         }
