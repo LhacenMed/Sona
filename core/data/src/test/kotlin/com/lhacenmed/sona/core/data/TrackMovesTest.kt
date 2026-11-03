@@ -1,64 +1,111 @@
 package com.lhacenmed.sona.core.data
 
-import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class TrackMovesTest {
 
-    /** Every file's bytes, as a fingerprint, by path - what was read of a gone one, or is read of a found one. */
-    private val fingerprints = mutableMapOf<String, String>()
-    private val reads = mutableListOf<String>()
+    private fun file(
+        id: Long,
+        path: String,
+        size: Long = 100,
+        durationMs: Long = 60_000,
+        isVideo: Boolean = false,
+        title: String = "Title $id",
+        artist: String = "Artist $id",
+    ) = TrackFile(id, path, size, durationMs, isVideo, title, artist)
 
-    private fun file(id: Long, path: String, fingerprint: String, size: Long = 100, isVideo: Boolean = false) =
-        TrackFile(id, path, size, isVideo).also { fingerprints[path] = fingerprint }
-
-    private fun moves(gone: List<TrackFile>, found: List<TrackFile>) = runBlocking {
-        movedTracks(gone, found, lastFingerprintOf = { fingerprints[it.path] }, fingerprintOf = { reads += it.path; fingerprints[it.path] })
-    }
+    private val none = emptyMap<String, TrackFile>()
 
     @Test
     fun aMovedFile_keepsItsTrack() {
-        val moved = moves(gone = listOf(file(1, "/a/song.mp3", "x")), found = listOf(file(2, "/b/song.mp3", "x")))
-        assertEquals(mapOf(1L to 2L), moved)
+        val gone = file(1, "/a/song.mp3")
+        assertEquals(mapOf("/b/song.mp3" to gone), movedTracks(listOf(gone), listOf(file(2, "/b/song.mp3"))))
     }
 
     @Test
     fun aRenamedFile_keepsItsTrack() {
-        val moved = moves(gone = listOf(file(1, "/a/song.mp3", "x")), found = listOf(file(2, "/a/Song (live).mp3", "x")))
-        assertEquals(mapOf(1L to 2L), moved)
+        val gone = file(1, "/a/song.mp3")
+        assertEquals(mapOf("/a/Song (live).mp3" to gone), movedTracks(listOf(gone), listOf(file(2, "/a/Song (live).mp3"))))
     }
 
     @Test
-    fun otherBytes_areANewTrack() {
-        val moved = moves(gone = listOf(file(1, "/a/song.mp3", "x")), found = listOf(file(2, "/b/song.mp3", "y")))
-        assertEquals(emptyMap<Long, Long>(), moved)
+    fun aMovedVideo_keepsItsTrack() {
+        val gone = file(1, "/a/film.mp4", isVideo = true)
+        assertEquals(mapOf("/b/film.mp4" to gone), movedTracks(listOf(gone), listOf(file(2, "/b/film.mp4", isVideo = true))))
     }
 
     @Test
-    fun aFileOfAnotherSize_isNeverRead() {
-        moves(gone = listOf(file(1, "/a/song.mp3", "x", size = 100)), found = listOf(file(2, "/b/other.mp3", "x", size = 200)))
-        assertEquals(emptyList<String>(), reads)
+    fun aFileMovedAndRetagged_keepsItsTrack_byItsNameAndLength() {
+        val gone = file(1, "/a/song.mp3")
+        assertEquals(mapOf("/b/song.mp3" to gone), movedTracks(listOf(gone), listOf(file(2, "/b/song.mp3", size = 150))))
+    }
+
+    @Test
+    fun aFileRenamedWithANewCover_keepsItsTrack_byItsTagsAndLength() {
+        val gone = file(1, "/a/song.mp3", title = "Song", artist = "Sidi")
+        val other = file(3, "/b/other.mp3", size = 300, title = "Other", artist = "Ediye")
+        val moved = movedTracks(listOf(gone), listOf(other, file(2, "/b/renamed.mp3", size = 150, title = "Song", artist = "Sidi")))
+        assertEquals(mapOf("/b/renamed.mp3" to gone), moved)
+    }
+
+    @Test
+    fun aFileRenamedAndRetagged_keepsItsTrack_byALengthOnlyTheyShare() {
+        val gone = file(1, "/a/song.mp3")
+        assertEquals(mapOf("/b/renamed.mp3" to gone), movedTracks(listOf(gone), listOf(file(2, "/b/renamed.mp3", size = 150))))
+    }
+
+    @Test
+    fun aLengthSharedWithAnotherFile_tellsNothing() {
+        val found = listOf(file(2, "/b/one.mp3", size = 150), file(3, "/b/two.mp3", size = 160))
+        assertEquals(none, movedTracks(listOf(file(1, "/a/song.mp3")), found))
+    }
+
+    @Test
+    fun aFileOfAnotherLength_isANewTrack() {
+        assertEquals(none, movedTracks(listOf(file(1, "/a/song.mp3")), listOf(file(2, "/b/song.mp3", durationMs = 90_000))))
     }
 
     @Test
     fun aVideo_isNeverASong() {
-        val moved = moves(gone = listOf(file(1, "/a/clip", "x")), found = listOf(file(2, "/b/clip", "x", isVideo = true)))
-        assertEquals(emptyMap<Long, Long>(), moved)
+        assertEquals(none, movedTracks(listOf(file(1, "/a/song.mp4")), listOf(file(2, "/b/song.mp4", isVideo = true))))
+    }
+
+    @Test
+    fun filesOfUnknownLength_areNeverPaired() {
+        assertEquals(none, movedTracks(listOf(file(1, "/a/song.mp3", durationMs = 0)), listOf(file(2, "/b/song.mp3", durationMs = 0))))
     }
 
     @Test
     fun twoCopies_stayTwoTracks_eachWithItsOwnName() {
-        val moved = moves(
-            gone = listOf(file(1, "/a/one.mp3", "x"), file(2, "/a/two.mp3", "x")),
-            found = listOf(file(3, "/b/two.mp3", "x"), file(4, "/b/one.mp3", "x")),
-        )
-        assertEquals(mapOf(1L to 4L, 2L to 3L), moved)
+        val first = file(1, "/a/first.mp3")
+        val second = file(2, "/a/second.mp3")
+        val moved = movedTracks(listOf(first, second), listOf(file(3, "/b/second.mp3"), file(4, "/b/first.mp3")))
+        assertEquals(mapOf("/b/first.mp3" to first, "/b/second.mp3" to second), moved)
     }
 
     @Test
     fun oneGoneFile_foundTwice_isPairedOnce() {
-        val moved = moves(gone = listOf(file(1, "/a/song.mp3", "x")), found = listOf(file(2, "/b/copy.mp3", "x"), file(3, "/c/song.mp3", "x")))
-        assertEquals(mapOf(1L to 3L), moved)
+        val gone = file(1, "/a/song.mp3")
+        val moved = movedTracks(listOf(gone), listOf(file(2, "/b/copy.mp3"), file(3, "/b/song.mp3")))
+        assertEquals(mapOf("/b/song.mp3" to gone), moved)
+    }
+
+    @Test
+    fun aCopyLeftBehind_isTheGoneTrack() {
+        val gone = file(1, "/sd/song.mp3")
+        assertEquals(mapOf("/internal/song.mp3" to gone), copiesOfGoneTracks(listOf(gone), listOf(file(2, "/internal/song.mp3"))))
+    }
+
+    @Test
+    fun aRetaggedFile_isNeverTakenForACopy() {
+        assertEquals(none, copiesOfGoneTracks(listOf(file(1, "/sd/song.mp3")), listOf(file(2, "/internal/song.mp3", size = 150))))
+    }
+
+    @Test
+    fun oneCopy_standsForOneGoneTrack() {
+        val first = file(1, "/sd/a.mp3")
+        val second = file(2, "/sd/b.mp3")
+        assertEquals(mapOf("/internal/a.mp3" to first), copiesOfGoneTracks(listOf(first, second), listOf(file(3, "/internal/a.mp3"))))
     }
 }

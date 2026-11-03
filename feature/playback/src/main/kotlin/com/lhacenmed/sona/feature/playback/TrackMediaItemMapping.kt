@@ -53,6 +53,9 @@ internal val MediaItem.playbackParent: PlaybackParent?
 /** Whether this item is a video's - see [toMediaItem]. */
 internal val MediaItem.isVideo: Boolean get() = mediaMetadata.mediaType == MediaMetadata.MEDIA_TYPE_VIDEO
 
+/** Whether this opens the same file at the same address as [other]. */
+internal fun MediaItem.hasAddressOf(other: MediaItem): Boolean = localConfiguration?.uri == other.localConfiguration?.uri
+
 /** Whether this shows exactly what [other] does, in every field [toMediaItem] sets. */
 internal fun MediaMetadata.isShownAs(other: MediaMetadata): Boolean =
     title?.toString() == other.title?.toString() &&

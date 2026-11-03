@@ -5,8 +5,8 @@ import androidx.room.Query
 import androidx.room.Transaction
 
 /**
- * Hands everything the user made of one track to another - the same file, moved or renamed, under its new path's
- * id: its playlist entries, its plays, where it was left, its place in every hand-made order, its queue entries,
+ * Hands everything the user made of one track to another - a copy of the same file, gone in with the track it is:
+ * its playlist entries, its plays, where it was left, its place in every hand-made order, its queue entries,
  * and the playlist covers it is. A row the new track already has is kept, and the old one goes with its track.
  */
 @Dao

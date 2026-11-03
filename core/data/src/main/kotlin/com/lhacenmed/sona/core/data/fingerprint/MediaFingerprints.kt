@@ -37,8 +37,8 @@ class MediaFingerprints @Inject constructor(
         fingerprint
     }
 
-    /** The fingerprint the file at [path] had when it was last read - there or not now - or null where it never was. */
-    suspend fun lastKnown(path: String): String? = mediaHashDao.get(path)?.fingerprint
+    /** Keeps what was read of the file at [fromPath] for [toPath], where it moved: its bytes need not be read again. */
+    suspend fun moved(fromPath: String, toPath: String) = mediaHashDao.move(fromPath, toPath)
 
     /** Records [file] as having [fingerprint] - already known, for a file just written and checked. */
     suspend fun remember(file: File, fingerprint: String) = withContext(ioDispatcher) {

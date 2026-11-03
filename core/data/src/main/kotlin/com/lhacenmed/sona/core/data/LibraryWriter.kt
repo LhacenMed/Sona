@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.core.data
 
+import android.os.SystemClock
 import androidx.room.withTransaction
 import com.lhacenmed.sona.core.common.di.IoDispatcher
 import com.lhacenmed.sona.core.data.fingerprint.MediaFingerprints
@@ -14,7 +15,7 @@ import com.lhacenmed.sona.core.database.entity.ArtistEntity
 import com.lhacenmed.sona.core.database.entity.GenreEntity
 import com.lhacenmed.sona.core.database.entity.TrackEntity
 import com.lhacenmed.sona.core.database.entity.toEntity
-import com.lhacenmed.sona.core.datastore.LibrarySettings
+import com.lhacenmed.sona.core.database.stableIdOf
 import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Genre
@@ -31,11 +32,21 @@ import kotlinx.coroutines.withContext
  */
 private const val MAX_BIND_ARGS = 900
 
-/** What a [LibraryWriter.sync] actually changed. [isNoOp] is the interesting case. */
+/**
+ * How long a track whose file is gone waits to be taken out of the library: a file being moved or renamed is reported
+ * as two changes, its old path gone and then its new one found, and those can reach two scans.
+ */
+const val GONE_FILE_SETTLE_MS = 10_000L
+
+/**
+ * What a [LibraryWriter.sync] actually changed. [isNoOp] is the interesting case. [heldTracks] counts the tracks left
+ * in place for [GONE_FILE_SETTLE_MS] - for a later scan to find moved, or take out.
+ */
 data class SyncStats(
     val inserted: Int = 0,
     val updated: Int = 0,
     val deleted: Int = 0,
+    val heldTracks: Int = 0,
 ) {
     val isNoOp: Boolean get() = inserted == 0 && updated == 0 && deleted == 0
 
@@ -43,6 +54,7 @@ data class SyncStats(
         inserted = inserted + other.inserted,
         updated = updated + other.updated,
         deleted = deleted + other.deleted,
+        heldTracks = heldTracks + other.heldTracks,
     )
 }
 
@@ -59,27 +71,32 @@ data class SyncStats(
  * nothing is invalidated and nothing repaints. That is the single biggest reason relaunch is fast:
  * the fastest write is the one that is never issued.
  *
- * Rows are compared by value (`data class` equality), which is exact now that ids are derived from
- * stable identity rather than auto-generated. Nothing user-owned lives on a track row any more -
- * favorites are playlist membership, keyed on the same stable id - so a scan has nothing to carry
- * forward and the row it writes is simply what it found.
+ * Rows are compared by value (`data class` equality), which is exact now that ids are stable rather
+ * than auto-generated. Nothing user-owned lives on a track row any more - favorites are playlist
+ * membership, keyed on the same stable id - so a scan has nothing to carry forward and the row it
+ * writes is simply what it found.
  *
- * Except where a file moved, while [LibrarySettings.keepsMovedFiles]: a track whose file is gone, and a
- * new one of the very same bytes - see [movedTracks] - are one track, so what the user made of the old
- * one is handed to the new before the old goes - see [TrackMoveDao].
+ * Under the id the track already has, which is what a track is: a file keeps its id for as long as it is
+ * in the library, wherever it goes - see [movedTracks] - so a moved or renamed one is the same track to
+ * everything that holds its id, the player, its queue, its playlists and plays alike, with nothing to
+ * hand over. A new file takes the id its path derives. A move done as a copy and a delete is seen as a new
+ * track and then the old one leaving: the two are one track from then on, under the old id, and what was
+ * made of the copy meanwhile is handed to it - see [TrackMoveDao].
  */
 @Singleton
 class LibraryWriter @Inject constructor(
     private val database: SonaDatabase,
     private val trackDao: TrackDao,
+    private val trackMoveDao: TrackMoveDao,
     private val albumDao: AlbumDao,
     private val artistDao: ArtistDao,
     private val genreDao: GenreDao,
-    private val trackMoveDao: TrackMoveDao,
     private val mediaFingerprints: MediaFingerprints,
-    private val librarySettings: LibrarySettings,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
+
+    /** Since when each track held for [GONE_FILE_SETTLE_MS] has been gone. Scans run one at a time. */
+    private val goneSince = HashMap<Long, Long>()
 
     /**
      * @param deleteMissing whether stored rows absent from this result should be removed. The
@@ -100,35 +117,42 @@ class LibraryWriter @Inject constructor(
         val storedArtists = artistDao.getAll().associateBy { it.id }
         val storedGenres = genreDao.getAll().associateBy { it.id }
 
-        val desiredTracks = tracks.map { it.toEntity() }
+        val scannedTracks = tracks.map { it.toEntity() }
+        val moves = movesIn(scannedTracks, storedTracks)
+        val copies = copiesOfGoneIn(scannedTracks, storedTracks, moves)
+        val desiredTracks = withStableIds(scannedTracks, storedTracks, moves + copies)
+        val heldTrackIds = if (deleteMissing) heldGoneTracks(desiredTracks, storedTracks) else emptySet()
         val trackDiff = diff(
             desired = desiredTracks,
             stored = storedTracks,
             idOf = TrackEntity::id,
             deleteMissing = deleteMissing,
+            heldIds = heldTrackIds,
         )
-        val moves = if (librarySettings.keepsMovedFiles.value) movesIn(desiredTracks, storedTracks) else emptyMap()
-        // A moved track's old row goes even on a pass that deletes nothing else: its file is gone, and it lives on.
-        val deletedTrackIds = (trackDiff.deleted + moves.keys).distinct()
         val albumDiff = diff(albums.map { it.toEntity() }, storedAlbums, AlbumEntity::id, deleteMissing)
         val artistDiff = diff(artists.map { it.toEntity() }, storedArtists, ArtistEntity::id, deleteMissing)
         val genreDiff = diff(genres.map { it.toEntity() }, storedGenres, GenreEntity::id, deleteMissing)
 
-        val stats = trackDiff.stats() + albumDiff.stats() + artistDiff.stats() + genreDiff.stats()
+        val stats = trackDiff.stats() + albumDiff.stats() + artistDiff.stats() + genreDiff.stats() + SyncStats(heldTracks = heldTrackIds.size)
         if (stats.isNoOp) return@withContext stats
 
         database.withTransaction {
             // Parents in first, so a track never points at an album row that isn't there; then the
-            // tracks, so a moved one's new row is there to be handed the old one's; and the old rows
-            // out last. Room delivers invalidations after the transaction commits, so no observer
-            // ever sees the steps between.
+            // tracks; and the old rows out last. Room delivers invalidations after the transaction
+            // commits, so no observer ever sees the steps between.
             if (artistDiff.upserts.isNotEmpty()) artistDao.upsertAll(artistDiff.upserts)
             if (albumDiff.upserts.isNotEmpty()) albumDao.upsertAll(albumDiff.upserts)
             if (genreDiff.upserts.isNotEmpty()) genreDao.upsertAll(genreDiff.upserts)
+            // Out of the way before the tracks go in: each copy's path is about to be its gone track's.
+            copies.forEach { (path, gone) ->
+                val copyId = storedTracks.values.first { it.path == path }.id
+                trackMoveDao.move(copyId, gone.id)
+                trackDao.deleteByIds(listOf(copyId))
+            }
             if (trackDiff.upserts.isNotEmpty()) trackDao.upsertAll(trackDiff.upserts)
 
-            moves.forEach { (fromTrackId, toTrackId) -> trackMoveDao.move(fromTrackId, toTrackId) }
-            deletedTrackIds.chunked(MAX_BIND_ARGS).forEach { trackDao.deleteByIds(it) }
+            moves.forEach { (path, moved) -> mediaFingerprints.moved(moved.path, path) }
+            trackDiff.deleted.chunked(MAX_BIND_ARGS).forEach { trackDao.deleteByIds(it) }
 
             albumDiff.deleted.chunked(MAX_BIND_ARGS).forEach { albumDao.deleteByIds(it) }
             artistDiff.deleted.chunked(MAX_BIND_ARGS).forEach { artistDao.deleteByIds(it) }
@@ -148,21 +172,52 @@ class LibraryWriter @Inject constructor(
         database.withTransaction { trackIds.chunked(MAX_BIND_ARGS).forEach { trackDao.deleteByIds(it) } }
     }
 
-    /**
-     * The tracks of [stored] whose files are gone and are now tracks of [desired] new to the library: their ids to
-     * the new ones'. Only files of a gone one's size are read for it - see [movedTracks].
-     */
-    private suspend fun movesIn(desired: List<TrackEntity>, stored: Map<Long, TrackEntity>): Map<Long, Long> {
-        val desiredIds = desired.mapTo(HashSet()) { it.id }
-        val gone = stored.values.filter { it.id !in desiredIds && !File(it.path).exists() }
+    /** Which of the files of [scanned] new to the library are tracks of [stored] whose files are gone - see [movedTracks]. */
+    private fun movesIn(scanned: List<TrackEntity>, stored: Map<Long, TrackEntity>): Map<String, TrackFile> {
+        val scannedPaths = scanned.mapTo(HashSet()) { it.path }
+        val gone = stored.values.filter { it.path !in scannedPaths && !File(it.path).exists() }
         if (gone.isEmpty()) return emptyMap()
-        val found = desired.filter { it.id !in stored }
-        return movedTracks(
-            gone = gone.map(TrackEntity::toTrackFile),
-            found = found.map(TrackEntity::toTrackFile),
-            lastFingerprintOf = { mediaFingerprints.lastKnown(it.path) },
-            fingerprintOf = { mediaFingerprints.of(it.path) },
-        )
+        val storedPaths = stored.values.mapTo(HashSet()) { it.path }
+        return movedTracks(gone.map(TrackEntity::toTrackFile), scanned.filter { it.path !in storedPaths }.map(TrackEntity::toTrackFile))
+    }
+
+    /**
+     * Which of the files of [scanned] already in the library are copies of tracks of [stored] whose files are gone and
+     * did not move - see [copiesOfGoneTracks].
+     */
+    private fun copiesOfGoneIn(scanned: List<TrackEntity>, stored: Map<Long, TrackEntity>, moves: Map<String, TrackFile>): Map<String, TrackFile> {
+        val scannedPaths = scanned.mapTo(HashSet()) { it.path }
+        val movedIds = moves.values.mapTo(HashSet()) { it.id }
+        val (present, missing) = stored.values.partition { it.path in scannedPaths }
+        val gone = missing.filter { it.id !in movedIds && !File(it.path).exists() }
+        if (gone.isEmpty()) return emptyMap()
+        return copiesOfGoneTracks(gone.map(TrackEntity::toTrackFile), present.map(TrackEntity::toTrackFile))
+    }
+
+    /**
+     * [scanned], each under the id its file already has: the one stored for the path it moved from, or for its path.
+     * A new file takes the id its path derives - or, where a file that moved away from that very path still holds
+     * that one, the next free one.
+     */
+    private fun withStableIds(scanned: List<TrackEntity>, stored: Map<Long, TrackEntity>, moves: Map<String, TrackFile>): List<TrackEntity> {
+        val idByPath = stored.values.associate { it.path to it.id }
+        val taken = HashSet(stored.keys)
+        return scanned.map { track ->
+            val id = moves[track.path]?.id ?: idByPath[track.path]
+                ?: generateSequence(0) { it + 1 }
+                    .map { attempt -> if (attempt == 0) track.id else stableIdOf(track.path, attempt.toString()) }
+                    .first(taken::add)
+            track.copy(id = id)
+        }
+    }
+
+    /** The tracks of [stored] whose files are gone, not in [desired], and gone for less than [GONE_FILE_SETTLE_MS]. */
+    private fun heldGoneTracks(desired: List<TrackEntity>, stored: Map<Long, TrackEntity>): Set<Long> {
+        val desiredIds = desired.mapTo(HashSet()) { it.id }
+        val gone = stored.values.filter { it.id !in desiredIds && !File(it.path).exists() }.map { it.id }
+        goneSince.keys.retainAll(gone.toSet())
+        val now = SystemClock.elapsedRealtime()
+        return gone.filterTo(HashSet()) { now - goneSince.getOrPut(it) { now } < GONE_FILE_SETTLE_MS }
     }
 
     private class Diff<E>(
@@ -182,6 +237,7 @@ class LibraryWriter @Inject constructor(
         stored: Map<Long, E>,
         idOf: (E) -> Long,
         deleteMissing: Boolean,
+        heldIds: Set<Long> = emptySet(),
     ): Diff<E> {
         val upserts = ArrayList<E>()
         var insertedCount = 0
@@ -200,9 +256,9 @@ class LibraryWriter @Inject constructor(
             }
         }
         val deleted =
-            if (deleteMissing) stored.keys.filterNot { it in desiredIds } else emptyList()
+            if (deleteMissing) stored.keys.filterNot { it in desiredIds || it in heldIds } else emptyList()
         return Diff(upserts, deleted, insertedCount)
     }
 }
 
-private fun TrackEntity.toTrackFile() = TrackFile(id, path, sizeBytes, isVideo)
+private fun TrackEntity.toTrackFile() = TrackFile(id, path, sizeBytes, durationMs, isVideo, title, artist)

@@ -28,12 +28,12 @@ import com.lhacenmed.sona.core.database.dao.FavoriteCollectionDao
 import com.lhacenmed.sona.core.database.dao.GenreDao
 import com.lhacenmed.sona.core.database.dao.LyricsIndexDao
 import com.lhacenmed.sona.core.database.dao.MediaHashDao
-import com.lhacenmed.sona.core.database.dao.TrackMoveDao
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.PlaylistDao
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
 import com.lhacenmed.sona.core.database.dao.ResumePositionDao
 import com.lhacenmed.sona.core.database.dao.TrackDao
+import com.lhacenmed.sona.core.database.dao.TrackMoveDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -90,10 +90,10 @@ object DatabaseModule {
     fun provideLyricsIndexDao(database: SonaDatabase): LyricsIndexDao = database.lyricsIndexDao()
 
     @Provides
-    fun provideMediaHashDao(database: SonaDatabase): MediaHashDao = database.mediaHashDao()
+    fun provideTrackMoveDao(database: SonaDatabase): TrackMoveDao = database.trackMoveDao()
 
     @Provides
-    fun provideTrackMoveDao(database: SonaDatabase): TrackMoveDao = database.trackMoveDao()
+    fun provideMediaHashDao(database: SonaDatabase): MediaHashDao = database.mediaHashDao()
 
     @Provides
     fun provideBackupDao(database: SonaDatabase): BackupDao = database.backupDao()

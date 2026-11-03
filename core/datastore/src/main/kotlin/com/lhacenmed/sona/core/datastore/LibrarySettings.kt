@@ -32,7 +32,6 @@ private val SEPARATE_ARTISTS = booleanPreferencesKey("separate_artists")
 
 private val FOLDER_VIEW = stringPreferencesKey("folder_view")
 
-private val KEEPS_MOVED_FILES = booleanPreferencesKey("keeps_moved_files")
 
 @Singleton
 class LibrarySettings @Inject constructor(
@@ -113,15 +112,5 @@ class LibrarySettings @Inject constructor(
 
     suspend fun setFolderView(view: FolderView) {
         dataStore.edit { it[FOLDER_VIEW] = view.name }
-    }
-
-    /**
-     * Whether a track whose file moved or was renamed is known by its content - its playlists, plays and place in
-     * every list kept - rather than taken out of the library with its old path and found anew at the new one.
-     */
-    val keepsMovedFiles: Setting<Boolean> = cache.setting { it[KEEPS_MOVED_FILES] ?: false }
-
-    suspend fun setKeepsMovedFiles(enabled: Boolean) {
-        dataStore.edit { it[KEEPS_MOVED_FILES] = enabled }
     }
 }

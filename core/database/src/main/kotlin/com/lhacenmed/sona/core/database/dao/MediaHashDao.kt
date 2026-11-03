@@ -13,4 +13,7 @@ interface MediaHashDao {
 
     @Upsert
     suspend fun upsert(hash: MediaHashEntity)
+
+    @Query("UPDATE OR REPLACE media_hashes SET path = :toPath WHERE path = :fromPath")
+    suspend fun move(fromPath: String, toPath: String)
 }

@@ -68,14 +68,6 @@ class ContentSettingsViewModel @Inject constructor(
         viewModelScope.launch { librarySettings.setFolderView(view) }
     }
 
-    /** Whether a moved file keeps its track - see `LibraryWriter`, which follows it on the next scan. */
-    val keepsMovedFiles: StateFlow<Boolean> = librarySettings.keepsMovedFiles.flow
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), librarySettings.keepsMovedFiles.value)
-
-    fun setKeepsMovedFiles(enabled: Boolean) {
-        viewModelScope.launch { librarySettings.setKeepsMovedFiles(enabled) }
-    }
-
     val newTracksDirection: StateFlow<SortDirection> = sortSettings.newTracksDirection.flow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), sortSettings.newTracksDirection.value)
 

@@ -11,12 +11,12 @@ import com.lhacenmed.sona.core.database.dao.FavoriteCollectionDao
 import com.lhacenmed.sona.core.database.dao.GenreDao
 import com.lhacenmed.sona.core.database.dao.LyricsIndexDao
 import com.lhacenmed.sona.core.database.dao.MediaHashDao
-import com.lhacenmed.sona.core.database.dao.TrackMoveDao
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.PlaylistDao
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
 import com.lhacenmed.sona.core.database.dao.ResumePositionDao
 import com.lhacenmed.sona.core.database.dao.TrackDao
+import com.lhacenmed.sona.core.database.dao.TrackMoveDao
 import com.lhacenmed.sona.core.database.entity.AlbumEntity
 import com.lhacenmed.sona.core.database.entity.ArrangementEntity
 import com.lhacenmed.sona.core.database.entity.ArtistEntity
@@ -63,8 +63,9 @@ abstract class SonaDatabase : RoomDatabase() {
     abstract fun arrangementDao(): ArrangementDao
     abstract fun favoriteCollectionDao(): FavoriteCollectionDao
     abstract fun lyricsIndexDao(): LyricsIndexDao
-    abstract fun mediaHashDao(): MediaHashDao
     abstract fun trackMoveDao(): TrackMoveDao
+
+    abstract fun mediaHashDao(): MediaHashDao
     abstract fun backupDao(): BackupDao
 
     companion object {

@@ -143,7 +143,7 @@ class ManualFileWalker @Inject constructor(
                 isVideo = isVideo,
                 width = if (isVideo) retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0 else 0,
                 height = if (isVideo) retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0 else 0,
-                sizeBytes = if (isVideo) File(path).length() else 0L,
+                sizeBytes = File(path).length(),
             )
         } catch (_: Exception) {
             return null

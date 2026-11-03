@@ -30,6 +30,7 @@ import com.google.common.util.concurrent.SettableFuture
 import com.lhacenmed.sona.core.common.R as CommonR
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.common.entry.AppEntry
+import com.lhacenmed.sona.core.data.contentUri
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
@@ -513,18 +514,53 @@ class PlaybackService : MediaSessionService() {
     }
 
     /**
-     * Keeps every queued track's title, artist, album and cover as the library now has them - what the
-     * notification, the lock screen and every other controller show - when a track's tags change under it.
-     * In place, and all at once: the files are the same, so nothing that plays is interrupted, and the queue
-     * changes once however many of its tracks did.
+     * Keeps the queue what the library says it is, whatever changed under it: a track no longer in the library leaves
+     * the queue, the next playing in its place, and every other shows its title, artist, album and cover as the library
+     * now has them - what the notification, the lock screen and every other controller show.
+     *
+     * A file with a new address - moved or renamed - is opened there, the one playing going on from where it was.
+     * Every other change is made in place, and all at once: the files are the same, so nothing that plays is
+     * interrupted, and the queue changes once however many of its tracks did. A Private Folder item is no track of
+     * the library's, and is left alone.
+     *
+     * An item is its track by id, or else by its file: one whose id went, with another's track now at that very
+     * address, plays on as that track.
      */
-    private fun refreshQueueMetadata(tracksById: Map<Long, Track>) {
+    private fun followLibrary(tracksById: Map<Long, Track>) {
+        val tracksByAddress by lazy { tracksById.values.associateBy { it.contentUri } }
+        fun trackOf(queued: MediaItem): Track? {
+            val trackId = queued.mediaId.toLongOrNull() ?: return null
+            return tracksById[trackId] ?: tracksByAddress[queued.localConfiguration?.uri]
+        }
+        for (index in exoPlayer.mediaItemCount - 1 downTo 0) {
+            val queued = exoPlayer.getMediaItemAt(index)
+            if (queued.mediaId.toLongOrNull() != null && trackOf(queued) == null) exoPlayer.removeMediaItem(index)
+        }
         val queue = List(exoPlayer.mediaItemCount, exoPlayer::getMediaItemAt)
         val refreshed = queue.map { queued ->
-            val current = queued.mediaId.toLongOrNull()?.let(tracksById::get)?.toMediaItem(queued.playbackParent)
-            if (current == null || current.mediaMetadata.isShownAs(queued.mediaMetadata)) queued else current
+            val current = trackOf(queued)?.toMediaItem(queued.playbackParent)
+            val isUnchanged = current == null ||
+                (current.mediaId == queued.mediaId && current.hasAddressOf(queued) && current.mediaMetadata.isShownAs(queued.mediaMetadata))
+            if (isUnchanged) queued else current
         }
+        reopenMovedItems(queue, refreshed)
         if (refreshed.indices.any { refreshed[it] !== queue[it] }) exoPlayer.replaceMediaItems(0, queue.size, refreshed)
+    }
+
+    /**
+     * Opens each item of [refreshed] whose address is no longer the one in [queue] at its new one, one by one - the
+     * player can change only those without touching the rest - keeping the order the queue plays in and, for the one
+     * playing, where it was.
+     */
+    private fun reopenMovedItems(queue: List<MediaItem>, refreshed: List<MediaItem>) {
+        val moved = refreshed.indices.filterNot { refreshed[it].hasAddressOf(queue[it]) }
+        if (moved.isEmpty()) return
+        val currentIndex = exoPlayer.currentMediaItemIndex
+        val currentPosition = exoPlayer.currentPosition
+        val shuffleOrder = if (exoPlayer.shuffleModeEnabled) playOrder() else null
+        moved.forEach { exoPlayer.replaceMediaItem(it, refreshed[it]) }
+        shuffleOrder?.let { exoPlayer.setShuffleOrder(QueueShuffleOrder.of(it.toIntArray())) }
+        if (currentIndex in moved) exoPlayer.seekTo(currentIndex, currentPosition)
     }
 
     /** The queue's indices in the order it plays - the shuffle order while shuffling. */
@@ -630,7 +666,8 @@ class PlaybackService : MediaSessionService() {
             }
         }
         serviceScope.launch { videoSettings.continuousPlay.flow.collect { applyRepeatMode(repeatMode) } }
-        serviceScope.launch { libraryRepository.tracksById.collect(::refreshQueueMetadata) }
+        // Only once it is read: a library not known yet says nothing of what the queue holds.
+        serviceScope.launch { libraryRepository.loadedTracksById.collect { tracksById -> tracksById?.let(::followLibrary) } }
         serviceScope.launch {
             libraryRepository.favoriteTrackIds.collect {
                 favoriteTrackIds = it

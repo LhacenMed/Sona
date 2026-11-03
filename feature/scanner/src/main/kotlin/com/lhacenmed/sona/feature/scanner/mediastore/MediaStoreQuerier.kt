@@ -93,6 +93,7 @@ class MediaStoreQuerier @Inject constructor(
             add(MediaStore.Audio.Media.DURATION)
             add(MediaStore.Audio.Media.DATA)
             add(MediaStore.Audio.Media.TITLE)
+            add(MediaStore.Audio.Media.SIZE)
             add(MediaStore.Audio.Media.ARTIST)
             add(MediaStore.Audio.Media.ALBUM)
             add(MediaStore.Audio.Media.ALBUM_ID)
@@ -177,6 +178,7 @@ class MediaStoreQuerier @Inject constructor(
                     // MediaStore knows nothing about this; LibraryWriter carries the stored value
                     // forward on every sync, so a rescan never clears favorites.
                     isVideo = false,
+                    sizeBytes = cursor.long(MediaStore.Audio.Media.SIZE),
                 )
             }
         }

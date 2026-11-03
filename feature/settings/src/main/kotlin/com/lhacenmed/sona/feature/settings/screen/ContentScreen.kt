@@ -37,7 +37,6 @@ data object ContentScreen : Screen {
         val intelligentSortingEnabled by viewModel.intelligentSortingEnabled.collectAsStateWithLifecycle()
         val separateArtists by viewModel.separateArtists.collectAsStateWithLifecycle()
         val folderView by viewModel.folderView.collectAsStateWithLifecycle()
-        val keepsMovedFiles by viewModel.keepsMovedFiles.collectAsStateWithLifecycle()
         val coverMode by viewModel.coverMode.collectAsStateWithLifecycle()
         val forceSquareCovers by viewModel.forceSquareCovers.collectAsStateWithLifecycle()
         val newTracksDirection by viewModel.newTracksDirection.collectAsStateWithLifecycle()
@@ -73,12 +72,6 @@ data object ContentScreen : Screen {
                     ),
                     selectedIndex = folderView.ordinal,
                     onSelect = { viewModel.setFolderView(FolderView.entries[it]) },
-                )
-                SettingsSwitchItem(
-                    title = stringResource(R.string.keep_moved_files_title),
-                    summary = stringResource(R.string.keep_moved_files_summary),
-                    checked = keepsMovedFiles,
-                    onCheckedChange = viewModel::setKeepsMovedFiles,
                 )
             }
 
