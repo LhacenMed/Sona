@@ -63,6 +63,7 @@ import com.lhacenmed.sona.core.designsystem.component.shape
 import com.lhacenmed.sona.core.designsystem.theme.LocalCoverStyle
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
+import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 import com.lhacenmed.sona.feature.tageditor.lookup.CatalogueMatch
 import com.lhacenmed.sona.feature.tageditor.lyrics.FoundLyrics
 import com.lhacenmed.sona.feature.tageditor.lyrics.LyricsTiming
@@ -208,7 +209,7 @@ internal fun BestMatchCard(
                             color = MaterialTheme.colorScheme.primary,
                         )
                     }
-                    IconButton(onClick = { isExpanded = !isExpanded }) {
+                    IconButton(shapes = iconButtonPressShapes(), onClick = { isExpanded = !isExpanded }) {
                         Icon(
                             imageVector = if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
                             contentDescription = if (isExpanded) "Hide its tags" else "Show its tags",
@@ -222,7 +223,7 @@ internal fun BestMatchCard(
             }
             lookup == MatchLookup.Unreachable -> CardMessage(
                 text = "The catalogues could not be reached.",
-                action = { TextButton(onClick = onRetry) { Text("Retry") } },
+                action = { TextButton(shapes = buttonPressShapes(), onClick = onRetry) { Text("Retry") } },
             ) {
                 Icon(Icons.Filled.CloudOff, contentDescription = null)
             }

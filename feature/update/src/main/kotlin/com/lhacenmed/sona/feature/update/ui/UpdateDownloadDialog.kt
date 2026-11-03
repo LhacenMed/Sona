@@ -12,13 +12,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Error
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.WavyProgressIndicatorDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,11 +29,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.common.network.isNetworkOnline
-import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
+import com.lhacenmed.sona.core.designsystem.component.actionButton
+import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.feature.update.R
 import com.lhacenmed.sona.feature.update.UpdateInstaller
 import com.lhacenmed.sona.feature.update.UpdateRegistry
@@ -112,6 +110,7 @@ fun UpdateDownloadDialog(release: Release, onClose: () -> Unit) {
         }
     }
 
+    val cancelLabel = stringResource(android.R.string.cancel)
     val title = stringResource(
         if (release.isPreRelease) R.string.update_download_title_artifact else R.string.update_download_title,
         release.versionName,
@@ -126,94 +125,75 @@ fun UpdateDownloadDialog(release: Release, onClose: () -> Unit) {
                 animationSpec = WavyProgressIndicatorDefaults.ProgressAnimationSpec,
                 label = "update-download-progress",
             )
-            AlertDialog(
+            SonaDialog(
                 onDismissRequest = {},
-                title = { CenteredTitle(title) },
-                text = {
-                    // The same shape from connecting to done, so nothing moves as the numbers arrive.
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Box(modifier = Modifier.size(96.dp), contentAlignment = Alignment.Center) {
-                            if (progress != null) {
-                                CircularWavyProgressIndicator(progress = { animatedProgress }, modifier = Modifier.fillMaxSize())
-                                Text(
-                                    text = stringResource(
-                                        R.string.update_download_progress,
-                                        (animatedProgress * 100f).roundToInt().coerceIn(0, 100),
-                                    ),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                            } else {
-                                CircularWavyProgressIndicator(modifier = Modifier.size(72.dp))
-                            }
-                        }
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                title = title,
+                buttons = { actionButton(label = cancelLabel, onClick = { UpdateService.cancel(context) }) },
+            ) {
+                // The same shape from connecting to done, so nothing moves as the numbers arrive.
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Box(modifier = Modifier.size(96.dp), contentAlignment = Alignment.Center) {
+                        if (progress != null) {
+                            CircularWavyProgressIndicator(progress = { animatedProgress }, modifier = Modifier.fillMaxSize())
                             Text(
-                                text = downloading?.sizeText(context) ?: stringResource(R.string.update_connecting),
-                                style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
+                                text = stringResource(
+                                    R.string.update_download_progress,
+                                    (animatedProgress * 100f).roundToInt().coerceIn(0, 100),
+                                ),
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
-                            Text(
-                                text = downloading?.speedText(context).orEmpty(),
-                                style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                        } else {
+                            CircularWavyProgressIndicator(modifier = Modifier.size(72.dp))
                         }
                     }
-                },
-                confirmButton = {
-                    TextButton(onClick = { UpdateService.cancel(context) }, shapes = buttonPressShapes()) {
-                        Text(stringResource(android.R.string.cancel))
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = downloading?.sizeText(context) ?: stringResource(R.string.update_connecting),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = downloading?.speedText(context).orEmpty(),
+                            style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
-                },
-            )
+                }
+            }
         }
 
-        is UpdateState.Downloaded ->
-            AlertDialog(
+        is UpdateState.Downloaded -> {
+            val installLabel = stringResource(R.string.update_install)
+            SonaDialog(
                 onDismissRequest = onClose,
-                title = { CenteredTitle(title) },
-                text = { Text(stringResource(R.string.update_downloaded)) },
-                confirmButton = {
-                    TextButton(onClick = { install(context, current) }, shapes = buttonPressShapes()) {
-                        Text(stringResource(R.string.update_install))
-                    }
+                title = title,
+                buttons = {
+                    actionButton(label = cancelLabel, onClick = onClose)
+                    actionButton(label = installLabel, onClick = { install(context, current) })
                 },
-                dismissButton = {
-                    TextButton(onClick = onClose, shapes = buttonPressShapes()) {
-                        Text(stringResource(android.R.string.cancel))
-                    }
-                },
-            )
+            ) {
+                Text(stringResource(R.string.update_downloaded))
+            }
+        }
 
-        is UpdateState.Error ->
-            AlertDialog(
+        is UpdateState.Error -> {
+            val okLabel = stringResource(android.R.string.ok)
+            SonaDialog(
                 onDismissRequest = onClose,
                 icon = { Icon(Icons.Filled.Error, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
-                title = { Text(stringResource(R.string.update_failed_title)) },
-                text = { Text(current.message, color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                confirmButton = {
-                    TextButton(onClick = onClose, shapes = buttonPressShapes()) {
-                        Text(stringResource(android.R.string.ok))
-                    }
-                },
-            )
+                title = stringResource(R.string.update_failed_title),
+                buttons = { actionButton(label = okLabel, onClick = onClose) },
+            ) {
+                Text(current.message, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
 
         UpdateState.Idle -> Unit
     }
-}
-
-@Composable
-private fun CenteredTitle(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.headlineSmall,
-        textAlign = TextAlign.Center,
-        modifier = Modifier.fillMaxWidth(),
-    )
 }

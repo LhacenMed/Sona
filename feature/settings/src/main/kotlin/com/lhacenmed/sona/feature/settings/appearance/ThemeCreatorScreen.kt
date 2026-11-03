@@ -26,7 +26,6 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -62,6 +61,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.designsystem.component.actionButton
+import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
@@ -171,21 +172,17 @@ data object ThemeCreatorScreen : Screen {
         }
 
         importErrorText?.let { errorText ->
-            AlertDialog(
+            val okLabel = stringResource(android.R.string.ok)
+            SonaDialog(
                 onDismissRequest = { importErrorText = null },
-                confirmButton = {
-                    TextButton(onClick = { importErrorText = null }, shapes = buttonPressShapes()) {
-                        Text(stringResource(android.R.string.ok))
-                    }
-                },
-                title = { Text(stringResource(R.string.theme_import_failed_title)) },
-                text = {
-                    Text(
-                        text = errorText.ifBlank { stringResource(R.string.theme_import_failed) },
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                },
-            )
+                title = stringResource(R.string.theme_import_failed_title),
+                buttons = { actionButton(label = okLabel, onClick = { importErrorText = null }) },
+            ) {
+                Text(
+                    text = errorText.ifBlank { stringResource(R.string.theme_import_failed) },
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
         }
 
         Column(modifier = Modifier.fillMaxSize()) {

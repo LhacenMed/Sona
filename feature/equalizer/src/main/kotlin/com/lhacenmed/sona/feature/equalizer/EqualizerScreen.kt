@@ -91,6 +91,7 @@ import com.lhacenmed.sona.core.designsystem.component.screen.screenList
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
+import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 import com.lhacenmed.sona.core.navigation.Screen
 import kotlin.math.roundToInt
 
@@ -687,10 +688,10 @@ private fun ProfileRow(
         },
         trailingContent = {
             Row {
-                IconButton(onClick = { onExport(profile) }) {
+                IconButton(shapes = iconButtonPressShapes(), onClick = { onExport(profile) }) {
                     Icon(imageVector = SonaIcons.Share, contentDescription = stringResource(R.string.eq_export))
                 }
-                IconButton(onClick = { onDelete(profile) }) {
+                IconButton(shapes = iconButtonPressShapes(), onClick = { onDelete(profile) }) {
                     Icon(imageVector = SonaIcons.Delete, contentDescription = stringResource(R.string.eq_delete))
                 }
             }

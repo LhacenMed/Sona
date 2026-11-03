@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+
 package com.lhacenmed.sona.feature.tageditor.lyricseditor
 
 import android.os.SystemClock
@@ -25,6 +27,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -69,6 +72,8 @@ import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.core.designsystem.component.selectableRow
 import com.lhacenmed.sona.core.designsystem.component.sheet.SonaBottomSheet
 import com.lhacenmed.sona.core.designsystem.component.sheet.SonaOptionRow
+import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
+import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 import com.lhacenmed.sona.feature.tageditor.LyricsResultCard
 import com.lhacenmed.sona.feature.tageditor.LyricsSearchStatus
 import com.lhacenmed.sona.feature.tageditor.lyrics.FoundLyrics
@@ -143,6 +148,7 @@ internal fun LyricsLineRow(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 LineActionsMenu(actions)
                 IconButton(
+                    shapes = iconButtonPressShapes(),
                     onClick = {
                         onStamp(stampPressedAtUptimeMs ?: SystemClock.uptimeMillis())
                         stampPressedAtUptimeMs = null
@@ -166,7 +172,7 @@ internal fun LyricsLineRow(
 private fun LineActionsMenu(actions: List<TopBarAction>) {
     var isExpanded by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { isExpanded = true }) {
+        IconButton(shapes = iconButtonPressShapes(), onClick = { isExpanded = true }) {
             Icon(Icons.Filled.Add, contentDescription = "Line actions")
         }
         DropdownMenu(expanded = isExpanded, onDismissRequest = { isExpanded = false }) {
@@ -200,7 +206,7 @@ private fun TimeControls(timeMs: Long, onSetTime: (Long) -> Unit) {
 @Composable
 private fun TimePartControl(part: LyricsTimePart, timeMs: Long, onSetTime: (Long) -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        IconButton(onClick = { onSetTime(timeMs + part.stepMs) }) {
+        IconButton(shapes = iconButtonPressShapes(), onClick = { onSetTime(timeMs + part.stepMs) }) {
             Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "Later", tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         TimePartField(
@@ -208,7 +214,7 @@ private fun TimePartControl(part: LyricsTimePart, timeMs: Long, onSetTime: (Long
             digits = part.digits,
             onDone = { value -> onSetTime(part.withValue(timeMs, value)) },
         )
-        IconButton(onClick = { onSetTime(timeMs - part.stepMs) }) {
+        IconButton(shapes = iconButtonPressShapes(), onClick = { onSetTime(timeMs - part.stepMs) }) {
             Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Earlier", tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
@@ -388,7 +394,7 @@ internal fun BatchEditDialog(onDismiss: () -> Unit, onAdjust: (deltaMs: Long) ->
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            OutlinedButton(onClick = { isEarlier = !isEarlier }) {
+            OutlinedButton(shapes = buttonPressShapes(), onClick = { isEarlier = !isEarlier }) {
                 Text(if (isEarlier) "\u2212" else "+", style = MaterialTheme.typography.titleMedium)
             }
             TimeControls(timeMs = offsetMs, onSetTime = { offsetMs = it.coerceAtLeast(0L) })

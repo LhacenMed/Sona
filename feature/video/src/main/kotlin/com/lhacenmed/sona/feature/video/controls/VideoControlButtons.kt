@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+
 package com.lhacenmed.sona.feature.video.controls
 
 import androidx.compose.foundation.background
@@ -8,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -21,6 +24,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 import com.lhacenmed.sona.feature.video.VideoPlayerTokens
 
 /**
@@ -66,6 +70,7 @@ internal fun VideoRailButton(action: VideoAction, modifier: Modifier = Modifier)
 @Composable
 internal fun VideoBarButton(action: VideoAction, modifier: Modifier = Modifier) {
     IconButton(
+        shapes = iconButtonPressShapes(),
         onClick = { action.onClick?.invoke() },
         enabled = action.onClick != null,
         // A control with nothing to do yet looks as it will, rather than greyed out as if it could not be used.

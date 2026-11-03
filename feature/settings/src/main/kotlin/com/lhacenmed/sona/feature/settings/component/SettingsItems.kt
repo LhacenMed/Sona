@@ -46,6 +46,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 
 /*
  * A row that only means something while another setting is set some way - black surfaces while the theme
@@ -285,19 +286,19 @@ fun SettingsDownloadItem(
         trailingContent = {
             Box(modifier = Modifier.size(DownloadControlSize), contentAlignment = Alignment.Center) {
                 when (download) {
-                    SettingsDownload.Available -> IconButton(onClick = onDownload) {
+                    SettingsDownload.Available -> IconButton(shapes = iconButtonPressShapes(), onClick = onDownload) {
                         Icon(Icons.Filled.Download, contentDescription = "Download")
                     }
-                    SettingsDownload.Failed -> IconButton(onClick = onDownload) {
+                    SettingsDownload.Failed -> IconButton(shapes = iconButtonPressShapes(), onClick = onDownload) {
                         Icon(Icons.Filled.Refresh, contentDescription = "Try again")
                     }
                     is SettingsDownload.InProgress -> {
                         CircularProgressIndicator(progress = { download.progress }, modifier = Modifier.size(DownloadControlSize))
-                        IconButton(onClick = onCancel) {
+                        IconButton(shapes = iconButtonPressShapes(), onClick = onCancel) {
                             Icon(Icons.Filled.Close, contentDescription = "Stop downloading", modifier = Modifier.size(18.dp))
                         }
                     }
-                    SettingsDownload.Done -> IconButton(onClick = onRemove) {
+                    SettingsDownload.Done -> IconButton(shapes = iconButtonPressShapes(), onClick = onRemove) {
                         Icon(Icons.Filled.DeleteOutline, contentDescription = "Remove")
                     }
                 }
