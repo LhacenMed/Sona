@@ -42,11 +42,13 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transform
@@ -85,12 +87,16 @@ class SonaAppTheme @Inject constructor(
     // Narrowed to the playing track's id before touching the library: the playback state also
     // carries a position that ticks twice a second, and this used to linearly scan the whole track
     // table on every one of those ticks looking for a single row.
+    //
+    // Only a track's cover colours the app: while a video plays, the colours stay as they were.
     private val currentCoverArtUri = combine(
         playbackController.playbackState.map { it.libraryTrackId }.distinctUntilChanged(),
         repository.tracksById,
     ) { trackId, tracksById ->
-        tracksById[trackId]?.coverArtUri
-    }.distinctUntilChanged()
+        tracksById[trackId]
+    }.runningFold(null as String?) { lastCoverArtUri, track ->
+        if (track?.isVideo == true) lastCoverArtUri else track?.coverArtUri
+    }.drop(1).distinctUntilChanged()
 
     /**
      * The playing cover's colour while the theme takes one, and null otherwise - or while nothing with a
