@@ -29,6 +29,7 @@ data class BackupLibrary(
     val playStats: List<BackedUpPlayStats>,
     val resumePositions: List<BackedUpResumePosition>,
     val media: List<BackedUpMedia>,
+    val videoSubtitles: List<BackedUpVideoSubtitle> = emptyList(),
 )
 
 /** A playlist, with [coverImage] the backup's own copy of its cover image, when it has one. */
@@ -76,6 +77,16 @@ data class BackedUpPlayStats(
 data class BackedUpResumePosition(
     val path: String,
     val positionMs: Long,
+)
+
+/** What was settled on for a video's subtitles, with [attachedFile] the backup's own copy of the file attached to it. */
+@Serializable
+data class BackedUpVideoSubtitle(
+    val path: String,
+    val attachedName: String?,
+    val attachedFile: String?,
+    val offsetMs: Long,
+    val choice: String?,
 )
 
 /**

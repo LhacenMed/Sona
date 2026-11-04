@@ -376,6 +376,19 @@ val MIGRATION_19_20 = object : Migration(19, 20) {
 }
 
 /**
+ * What the user settles on for each video's subtitles. A table of its own, starting empty; every row kept so far is
+ * untouched.
+ */
+val MIGRATION_20_21 = object : Migration(20, 21) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `video_subtitles` (`trackId` INTEGER NOT NULL, `attachedName` TEXT, " +
+                "`offsetMs` INTEGER NOT NULL, `choice` TEXT, PRIMARY KEY(`trackId`))",
+        )
+    }
+}
+
+/**
  * Makes sure Favorites exists, every time the database is opened.
  *
  * On open rather than on create, because creation is only one of the ways this database comes to

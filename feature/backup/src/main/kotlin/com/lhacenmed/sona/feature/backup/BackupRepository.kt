@@ -8,6 +8,7 @@ import android.os.Environment
 import androidx.core.content.pm.PackageInfoCompat
 import androidx.room.withTransaction
 import com.lhacenmed.sona.core.common.di.IoDispatcher
+import com.lhacenmed.sona.core.data.LibrarySubtitleStore
 import com.lhacenmed.sona.core.data.background.CustomBackgroundImages
 import com.lhacenmed.sona.core.data.playlist.PlaylistCoverImages
 import com.lhacenmed.sona.core.database.SonaDatabase
@@ -123,6 +124,7 @@ class BackupRepository @Inject constructor(
     private val mediaScanner: MediaScanner,
     private val driveBackups: DriveBackups,
     private val backupFolders: BackupFolders,
+    private val librarySubtitles: LibrarySubtitleStore,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
     /**
@@ -167,6 +169,11 @@ class BackupRepository @Inject constructor(
             file?.takeIf { it.isFile }?.let { playlist.id to it }
         }.toMap()
         val playlistTracks = backupDao.playlistTracks().groupBy { it.playlistId }
+        val videoSubtitleRows = backupDao.videoSubtitles()
+        val subtitleFiles = videoSubtitleRows.mapNotNull { row ->
+            val file = row.attachedName?.let { librarySubtitles.attachedFile(row.trackId, it) }
+            file?.takeIf { it.isFile }?.let { row.trackId to it }
+        }.toMap()
         val library = BackupLibrary(
             playlists = playlists.map { playlist ->
                 BackedUpPlaylist(
@@ -194,10 +201,22 @@ class BackupRepository @Inject constructor(
                 pathOf[row.trackId]?.let { BackedUpResumePosition(it, row.positionMs) }
             },
             media = media,
+            videoSubtitles = videoSubtitleRows.mapNotNull { row ->
+                pathOf[row.trackId]?.let { path ->
+                    BackedUpVideoSubtitle(
+                        path = path,
+                        attachedName = row.attachedName,
+                        attachedFile = row.trackId.toString().takeIf { row.trackId in subtitleFiles },
+                        offsetMs = row.offsetMs,
+                        choice = row.choice,
+                    )
+                }
+            },
         )
         val settings = settingsBackup.read()
         val files = buildMap<String, () -> InputStream?> {
             coverFiles.forEach { (playlistId, file) -> put(BackupEntries.cover(playlistId.toString())) { file.inputStream() } }
+            subtitleFiles.forEach { (trackId, file) -> put(BackupEntries.subtitle(trackId.toString())) { file.inputStream() } }
             playerStyleSettings.appearance.value.customBackground.imageUri?.let { uri ->
                 // An image picked before copies were kept is read through its grant, as long as that still holds.
                 put(BackupEntries.BACKGROUND) { runCatching { context.contentResolver.openInputStream(Uri.parse(uri)) }.getOrNull() }
@@ -454,6 +473,7 @@ class BackupRepository @Inject constructor(
             arrangedLists = backupDao.arrangements().mapTo(HashSet()) { it.list to it.instanceId },
             playStats = backupDao.playStats().associateBy { it.trackId },
             resumePositionTrackIds = backupDao.resumePositions().mapTo(HashSet()) { it.trackId },
+            videoSubtitleTrackIds = backupDao.videoSubtitles().mapTo(HashSet()) { it.trackId },
         )
         val plan = planLibraryMerge(contents.library, local) { path -> present[path]?.let(idByPath::get) }
         // Copied in before the playlists are written, so none is ever written pointing at a cover not yet there.
@@ -465,6 +485,17 @@ class BackupRepository @Inject constructor(
                 else -> new.playlist
             }
         }
+        // As with the covers: copied in first, and a subtitle whose file the backup does not hold is written without one.
+        val videoSubtitles = plan.videoSubtitles.map { new ->
+            val copy = new.attachedFile?.let { contents.file(BackupEntries.subtitle(it)) }
+            val name = new.subtitle.attachedName
+            if (copy != null && name != null) {
+                copy.copyTo(librarySubtitles.attachedFile(new.subtitle.trackId, name), overwrite = true)
+                new.subtitle
+            } else {
+                new.subtitle.copy(attachedName = null)
+            }
+        }
         database.withTransaction {
             backupDao.insertPlaylists(newPlaylists)
             backupDao.insertPlaylistTracks(plan.playlistTracks)
@@ -473,6 +504,7 @@ class BackupRepository @Inject constructor(
             backupDao.insertArrangements(plan.arrangements)
             backupDao.upsertPlayStats(plan.playStats)
             backupDao.insertResumePositions(plan.resumePositions)
+            backupDao.insertVideoSubtitles(videoSubtitles)
         }
         return plan.playlistIds
     }

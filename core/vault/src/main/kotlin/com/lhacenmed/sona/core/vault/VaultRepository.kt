@@ -4,10 +4,14 @@ import android.net.Uri
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.common.lifecycle.isAppInForeground
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.model.VideoSubtitle
+import com.lhacenmed.sona.core.model.VideoSubtitleStore
 import com.lhacenmed.sona.core.vault.data.VaultItem
 import com.lhacenmed.sona.core.vault.data.VaultItemDao
 import com.lhacenmed.sona.core.vault.data.VaultResumePosition
 import com.lhacenmed.sona.core.vault.data.VaultResumePositionDao
+import com.lhacenmed.sona.core.vault.data.VaultVideoSubtitle
+import com.lhacenmed.sona.core.vault.data.VaultVideoSubtitleDao
 import java.io.File
 import java.io.InputStream
 import javax.inject.Inject
@@ -70,6 +74,7 @@ class VaultRepository @Inject internal constructor(
     private val files: VaultFiles,
     private val itemDao: VaultItemDao,
     private val resumePositionDao: VaultResumePositionDao,
+    private val videoSubtitleDao: VaultVideoSubtitleDao,
     @ApplicationScope scope: CoroutineScope,
 ) {
     private val isUnlocked = MutableStateFlow(false)
@@ -208,6 +213,17 @@ class VaultRepository @Inject internal constructor(
         resumePositionDao.delete(itemId)
     }
 
+    /** Its videos' subtitles, kept in the vault with the rest of it. */
+    val videoSubtitles: VideoSubtitleStore = object : VideoSubtitleStore {
+        override val directory: File get() = files.subtitleDirectory
+
+        override suspend fun read(videoId: Long): VideoSubtitle =
+            videoSubtitleDao.get(videoId)?.let { VideoSubtitle(it.attachedName, it.offsetMs, it.choice) } ?: VideoSubtitle()
+
+        override suspend fun write(videoId: Long, subtitle: VideoSubtitle) =
+            videoSubtitleDao.upsert(VaultVideoSubtitle(videoId, subtitle.attachedName, subtitle.offsetMs, subtitle.choice))
+    }
+
     /** Copies [track]'s file in from [source]. The library's copy is the caller's to delete once this returns. */
     suspend fun add(track: Track, source: InputStream): VaultItem = withContext(Dispatchers.IO) {
         val original = File(track.path)
@@ -236,6 +252,7 @@ class VaultRepository @Inject internal constructor(
     suspend fun delete(item: VaultItem) = withContext(Dispatchers.IO) {
         itemDao.delete(item)
         files.delete(item)
+        videoSubtitles.deleteAttachedFile(item.id)
     }
 
     /** So an answer is told apart by its words alone, not by case or stray spaces. */

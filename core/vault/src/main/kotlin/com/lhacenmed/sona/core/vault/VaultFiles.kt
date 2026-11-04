@@ -24,6 +24,9 @@ internal class VaultFiles @Inject constructor(@ApplicationContext private val co
 
     private val mediaDirectory: File get() = File(context.vaultDirectory, "media").apply { mkdirs() }
 
+    /** Where copies of the subtitle files attached to its videos lie. */
+    val subtitleDirectory: File get() = File(context.vaultDirectory, "subtitles").apply { mkdirs() }
+
     fun fileOf(item: VaultItem): File = File(mediaDirectory, item.fileName)
 
     /** Copies [source] in under a new name keeping [extension], and returns that name. Nothing is left of a copy that fails. */

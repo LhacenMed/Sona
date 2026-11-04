@@ -11,6 +11,7 @@ import com.lhacenmed.sona.core.database.entity.PlayStatsEntity
 import com.lhacenmed.sona.core.database.entity.PlaylistEntity
 import com.lhacenmed.sona.core.database.entity.PlaylistTrackEntity
 import com.lhacenmed.sona.core.database.entity.ResumePositionEntity
+import com.lhacenmed.sona.core.database.entity.VideoSubtitleEntity
 
 /** A library track's file. */
 data class TrackFile(
@@ -51,6 +52,9 @@ interface BackupDao {
     @Query("SELECT * FROM resume_positions")
     suspend fun resumePositions(): List<ResumePositionEntity>
 
+    @Query("SELECT * FROM video_subtitles")
+    suspend fun videoSubtitles(): List<VideoSubtitleEntity>
+
     @Insert
     suspend fun insertPlaylists(playlists: List<PlaylistEntity>)
 
@@ -75,4 +79,7 @@ interface BackupDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertResumePositions(rows: List<ResumePositionEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertVideoSubtitles(rows: List<VideoSubtitleEntity>)
 }

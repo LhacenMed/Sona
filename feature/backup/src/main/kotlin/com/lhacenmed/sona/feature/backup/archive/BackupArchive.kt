@@ -26,6 +26,7 @@ object BackupEntries {
     const val BACKGROUND = "files/background"
     fun cover(name: String) = "files/covers/$name"
     fun font(name: String) = "$FONTS/$name"
+    fun subtitle(name: String) = "files/subtitles/$name"
 }
 
 /** A backup made in a later format than this version reads. */

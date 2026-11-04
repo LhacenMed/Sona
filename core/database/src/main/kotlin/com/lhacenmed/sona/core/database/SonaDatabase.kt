@@ -17,6 +17,7 @@ import com.lhacenmed.sona.core.database.dao.QueueItemDao
 import com.lhacenmed.sona.core.database.dao.ResumePositionDao
 import com.lhacenmed.sona.core.database.dao.TrackDao
 import com.lhacenmed.sona.core.database.dao.TrackMoveDao
+import com.lhacenmed.sona.core.database.dao.VideoSubtitleDao
 import com.lhacenmed.sona.core.database.entity.AlbumEntity
 import com.lhacenmed.sona.core.database.entity.ArrangementEntity
 import com.lhacenmed.sona.core.database.entity.ArtistEntity
@@ -30,6 +31,7 @@ import com.lhacenmed.sona.core.database.entity.PlaylistTrackEntity
 import com.lhacenmed.sona.core.database.entity.QueueItemEntity
 import com.lhacenmed.sona.core.database.entity.ResumePositionEntity
 import com.lhacenmed.sona.core.database.entity.TrackEntity
+import com.lhacenmed.sona.core.database.entity.VideoSubtitleEntity
 
 @Database(
     entities = [
@@ -46,8 +48,9 @@ import com.lhacenmed.sona.core.database.entity.TrackEntity
         FavoriteCollectionEntity::class,
         LyricsIndexEntity::class,
         MediaHashEntity::class,
+        VideoSubtitleEntity::class,
     ],
-    version = 20,
+    version = 21,
     exportSchema = true,
 )
 @TypeConverters(CoverArtUrisConverter::class, ArtistIdsConverter::class)
@@ -67,6 +70,7 @@ abstract class SonaDatabase : RoomDatabase() {
 
     abstract fun mediaHashDao(): MediaHashDao
     abstract fun backupDao(): BackupDao
+    abstract fun videoSubtitleDao(): VideoSubtitleDao
 
     companion object {
         const val FILE_NAME = "sona.db"

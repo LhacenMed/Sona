@@ -7,6 +7,7 @@ import com.lhacenmed.sona.core.database.entity.PlaylistCoverSource
 import com.lhacenmed.sona.core.database.entity.PlaylistEntity
 import com.lhacenmed.sona.core.database.entity.PlaylistTrackEntity
 import com.lhacenmed.sona.core.database.entity.ResumePositionEntity
+import com.lhacenmed.sona.core.database.entity.VideoSubtitleEntity
 import com.lhacenmed.sona.core.model.sort.SortableList
 import com.lhacenmed.sona.core.model.withRenamedPlaylist
 import com.lhacenmed.sona.feature.backup.BackupLibrary
@@ -17,6 +18,13 @@ data class LocalLibrary(
     val arrangedLists: Set<Pair<SortableList, String>>,
     val playStats: Map<Long, PlayStatsEntity>,
     val resumePositionTrackIds: Set<Long>,
+    val videoSubtitleTrackIds: Set<Long> = emptySet(),
+)
+
+/** What a video has no subtitle settled on yet takes from a backup, with the backup's copy of its attached file, if any. */
+data class NewVideoSubtitle(
+    val subtitle: VideoSubtitleEntity,
+    val attachedFile: String?,
 )
 
 /** A playlist the device does not have, with the backup's copy of its cover image to give it, if any. */
@@ -41,6 +49,7 @@ data class LibraryMergePlan(
     val playStats: List<PlayStatsEntity>,
     val resumePositions: List<ResumePositionEntity>,
     val playlistIds: Map<Long, Long>,
+    val videoSubtitles: List<NewVideoSubtitle> = emptyList(),
 )
 
 /**
@@ -52,7 +61,7 @@ data class LibraryMergePlan(
  * - a list's hand-made order is the device's where it has one, else the backup's;
  * - a play count is the higher of the two, and a last play the later - adding counts up would count the same
  *   listens twice when a backup comes back to the device it was made on;
- * - a resume position is the device's where it has one, else the backup's.
+ * - a resume position, or what was settled on for a video's subtitles, is the device's where it has one, else the backup's.
  *
  * Tracks are named in a backup by path; [trackIdOf] gives the id of the library track each now is, or null for
  * one this device does not have, which is left out.
@@ -129,6 +138,14 @@ fun planLibraryMerge(backup: BackupLibrary, local: LocalLibrary, trackIdOf: (Str
         playStats = playStats,
         resumePositions = resumePositions,
         playlistIds = playlistIds,
+        videoSubtitles = backup.videoSubtitles.mapNotNull { subtitle ->
+            trackIdOf(subtitle.path)?.takeIf { it !in local.videoSubtitleTrackIds }?.let { trackId ->
+                NewVideoSubtitle(
+                    subtitle = VideoSubtitleEntity(trackId, subtitle.attachedName, subtitle.offsetMs, subtitle.choice),
+                    attachedFile = subtitle.attachedFile,
+                )
+            }
+        }.distinctBy { it.subtitle.trackId },
     )
 }
 

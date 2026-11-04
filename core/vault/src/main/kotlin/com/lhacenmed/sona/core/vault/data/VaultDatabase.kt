@@ -9,10 +9,22 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * The Private Folder's own list, apart from the library's database: that one is backed up, and the vault
  * is not - see `vaultDirectory`.
  */
-@Database(entities = [VaultItem::class, VaultResumePosition::class], version = 2, exportSchema = true)
+@Database(entities = [VaultItem::class, VaultResumePosition::class, VaultVideoSubtitle::class], version = 3, exportSchema = true)
 abstract class VaultDatabase : RoomDatabase() {
     abstract fun itemDao(): VaultItemDao
     abstract fun resumePositionDao(): VaultResumePositionDao
+    abstract fun videoSubtitleDao(): VaultVideoSubtitleDao
+}
+
+/** What the user settles on for each video's subtitles. A table of its own, starting empty. */
+internal val VAULT_MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `vault_video_subtitles` (`itemId` INTEGER NOT NULL, `attachedName` TEXT, " +
+                "`offsetMs` INTEGER NOT NULL, `choice` TEXT, PRIMARY KEY(`itemId`), " +
+                "FOREIGN KEY(`itemId`) REFERENCES `vault_items`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        )
+    }
 }
 
 /**

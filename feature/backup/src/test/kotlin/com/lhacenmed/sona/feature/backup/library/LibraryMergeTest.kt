@@ -10,6 +10,7 @@ import com.lhacenmed.sona.feature.backup.BackedUpFavoriteCollection
 import com.lhacenmed.sona.feature.backup.BackedUpPlayStats
 import com.lhacenmed.sona.feature.backup.BackedUpPlaylist
 import com.lhacenmed.sona.feature.backup.BackedUpPlaylistTrack
+import com.lhacenmed.sona.feature.backup.BackedUpVideoSubtitle
 import com.lhacenmed.sona.feature.backup.BackupLibrary
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -102,6 +103,21 @@ class LibraryMergeTest {
 
         assertEquals(listOf("playlist:3", "album:42"), plan.favoriteCollections.map { it.collection })
         assertEquals(listOf(ArrangementEntity(SortableList.PLAYLIST_TRACKS, "3", 2L, 0)), plan.arrangements)
+    }
+
+    @Test
+    fun `a video's subtitle comes from the backup only where the device has none, and only for a video it has`() {
+        val here = BackedUpVideoSubtitle("/m/a.mp3", attachedName = "a.srt", attachedFile = "1", offsetMs = 500L, choice = "attached")
+        val fresh = BackedUpVideoSubtitle("/m/b.mp3", attachedName = "b.srt", attachedFile = "2", offsetMs = -100L, choice = "attached")
+        val absent = BackedUpVideoSubtitle("/m/gone.mp3", attachedName = "c.srt", attachedFile = "3", offsetMs = 0L, choice = null)
+        val library = BackupLibrary(emptyList(), emptyList(), emptyList(), emptyList(), resumePositions = emptyList(), media = emptyList(), videoSubtitles = listOf(here, fresh, absent))
+        val device = LocalLibrary(emptyList(), arrangedLists = emptySet(), playStats = emptyMap(), resumePositionTrackIds = emptySet(), videoSubtitleTrackIds = setOf(1L))
+
+        val merged = planLibraryMerge(library, device, trackIds::get).videoSubtitles.single()
+
+        assertEquals(2L, merged.subtitle.trackId)
+        assertEquals(-100L, merged.subtitle.offsetMs)
+        assertEquals("2", merged.attachedFile)
     }
 
     @Test

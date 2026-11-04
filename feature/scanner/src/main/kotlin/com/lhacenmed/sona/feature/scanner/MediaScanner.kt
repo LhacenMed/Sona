@@ -7,6 +7,7 @@ import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.common.di.IoDispatcher
 import com.lhacenmed.sona.core.common.lifecycle.isAppInForeground
 import com.lhacenmed.sona.core.data.GONE_FILE_SETTLE_MS
+import com.lhacenmed.sona.core.data.LibrarySubtitleStore
 import com.lhacenmed.sona.core.data.LibraryWriter
 import com.lhacenmed.sona.core.data.SyncStats
 import com.lhacenmed.sona.core.database.dao.TrackDao
@@ -111,6 +112,7 @@ class MediaScanner @Inject constructor(
     private val mediaStoreQuerier: MediaStoreQuerier,
     private val manualFileWalker: ManualFileWalker,
     private val libraryWriter: LibraryWriter,
+    private val librarySubtitles: LibrarySubtitleStore,
     private val trackDao: TrackDao,
     private val librarySettings: LibrarySettings,
     private val scanSettings: ScanSettings,
@@ -201,6 +203,7 @@ class MediaScanner @Inject constructor(
      */
     suspend fun forgetTracks(trackIds: Collection<Long>) {
         libraryWriter.deleteTracks(trackIds)
+        withContext(ioDispatcher) { librarySubtitles.forget(trackIds) }
         enqueue(ScanKind.REFRESH)
     }
 
