@@ -8,7 +8,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.datastore.SubtitleBackdrop
 import com.lhacenmed.sona.core.datastore.SubtitlePosition
 import com.lhacenmed.sona.core.datastore.SubtitleTextSize
-import com.lhacenmed.sona.core.datastore.VideoOrientation
 import com.lhacenmed.sona.core.datastore.VideoSettings
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
@@ -29,8 +28,6 @@ data object VideoScreen : Screen {
     override fun Content() {
         val navigator = LocalNavigator.current
         val viewModel: VideoSettingsViewModel = hiltViewModel()
-        val orientation by viewModel.orientation.collectAsStateWithLifecycle()
-        val keepOrientation by viewModel.keepOrientation.collectAsStateWithLifecycle()
         val keepAspect by viewModel.keepAspect.collectAsStateWithLifecycle()
         val showClock by viewModel.showClock.collectAsStateWithLifecycle()
         val resume by viewModel.resume.collectAsStateWithLifecycle()
@@ -51,18 +48,6 @@ data object VideoScreen : Screen {
 
         SettingsList {
             SettingsSection(stringResource(R.string.video_display_section)) {
-                SettingsChoiceItem(
-                    title = stringResource(R.string.video_orientation_title),
-                    options = VideoOrientation.entries.map { it.label() },
-                    selectedIndex = orientation.ordinal,
-                    onSelect = { viewModel.setOrientation(VideoOrientation.entries[it]) },
-                )
-                SettingsSwitchItem(
-                    title = stringResource(R.string.video_keep_orientation_title),
-                    summary = stringResource(R.string.video_keep_orientation_summary),
-                    checked = keepOrientation,
-                    onCheckedChange = viewModel::setKeepOrientation,
-                )
                 SettingsNavigationItem(
                     title = stringResource(R.string.video_scan_list_title),
                     summary = stringResource(R.string.video_scan_list_summary),
@@ -206,15 +191,5 @@ private fun SubtitlePosition.label(): String =
             SubtitlePosition.LOW -> R.string.video_subtitle_position_low
             SubtitlePosition.MIDDLE -> R.string.video_subtitle_position_middle
             SubtitlePosition.HIGH -> R.string.video_subtitle_position_high
-        },
-    )
-
-@Composable
-private fun VideoOrientation.label(): String =
-    stringResource(
-        when (this) {
-            VideoOrientation.AUTO -> R.string.video_orientation_auto
-            VideoOrientation.PORTRAIT -> R.string.video_orientation_portrait
-            VideoOrientation.LANDSCAPE -> R.string.video_orientation_landscape
         },
     )

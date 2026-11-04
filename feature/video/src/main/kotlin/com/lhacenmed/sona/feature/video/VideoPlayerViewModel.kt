@@ -133,7 +133,8 @@ class VideoPlayerViewModel @Inject constructor(
 
     private val _session = MutableStateFlow(
         VideoSession(
-            orientation = videoSettings.orientation.value,
+            // Every video opens turning with the device; the rotation button holds only while this player is open.
+            orientation = VideoOrientation.Default,
             // A ratio chosen once applies to every video only while the user keeps it; otherwise each one opens fitted.
             aspect = if (videoSettings.keepAspect.value) videoSettings.aspect.value else VideoAspect.Default,
         ),
@@ -262,12 +263,8 @@ class VideoPlayerViewModel @Inject constructor(
         if (videoSettings.keepAspect.value) viewModelScope.launch { videoSettings.setAspect(aspect) }
     }
 
-    /** Moves on to the next way of standing - kept for every video while the user keeps it. */
-    fun onCycleOrientation() {
-        val orientation = _session.value.orientation.next()
-        _session.update { it.copy(orientation = orientation) }
-        if (videoSettings.keepOrientation.value) viewModelScope.launch { videoSettings.setOrientation(orientation) }
-    }
+    /** Moves on to the next way of standing, for as long as this player is open. */
+    fun onCycleOrientation() = _session.update { it.copy(orientation = it.orientation.next()) }
 
     fun onAudioOnlyChange(isAudioOnly: Boolean) = _session.update { it.copy(isAudioOnly = isAudioOnly) }
 

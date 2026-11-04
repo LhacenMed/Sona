@@ -569,12 +569,6 @@
     <!-- Video -->
     <string name="video_display_section">Display</string>
     <string name="video_playback_section">Playback</string>
-    <string name="video_orientation_title">Video screen orientation</string>
-    <string name="video_orientation_auto">Auto-rotate</string>
-    <string name="video_orientation_portrait">Portrait</string>
-    <string name="video_orientation_landscape">Landscape</string>
-    <string name="video_keep_orientation_title">Keep screen orientation locked</string>
-    <string name="video_keep_orientation_summary">Apply the orientation chosen in the player to every video</string>
     <string name="video_scan_list_title">Manage your scan list</string>
     <string name="video_scan_list_summary">Hide or show the folders Sona finds videos in</string>
     <string name="video_keep_aspect_title">Fixed screen ratio</string>

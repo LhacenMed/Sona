@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.datastore.SubtitleBackdrop
 import com.lhacenmed.sona.core.datastore.SubtitlePosition
 import com.lhacenmed.sona.core.datastore.SubtitleTextSize
-import com.lhacenmed.sona.core.datastore.VideoOrientation
 import com.lhacenmed.sona.core.datastore.VideoSettings
 import com.lhacenmed.sona.core.datastore.stateIn
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,8 +18,6 @@ class VideoSettingsViewModel @Inject constructor(
     private val videoSettings: VideoSettings,
 ) : ViewModel() {
 
-    val orientation: StateFlow<VideoOrientation> = videoSettings.orientation.stateIn(viewModelScope)
-    val keepOrientation: StateFlow<Boolean> = videoSettings.keepOrientation.stateIn(viewModelScope)
     val keepAspect: StateFlow<Boolean> = videoSettings.keepAspect.stateIn(viewModelScope)
     val showClock: StateFlow<Boolean> = videoSettings.showClock.stateIn(viewModelScope)
     val resume: StateFlow<Boolean> = videoSettings.resume.stateIn(viewModelScope)
@@ -36,10 +33,6 @@ class VideoSettingsViewModel @Inject constructor(
     val subtitleTextSize: StateFlow<SubtitleTextSize> = videoSettings.subtitleTextSize.stateIn(viewModelScope)
     val subtitleBackdrop: StateFlow<SubtitleBackdrop> = videoSettings.subtitleBackdrop.stateIn(viewModelScope)
     val subtitlePosition: StateFlow<SubtitlePosition> = videoSettings.subtitlePosition.stateIn(viewModelScope)
-
-    fun setOrientation(orientation: VideoOrientation) = update { setOrientation(orientation) }
-
-    fun setKeepOrientation(enabled: Boolean) = update { setKeepOrientation(enabled) }
 
     fun setKeepAspect(enabled: Boolean) = update { setKeepAspect(enabled) }
 

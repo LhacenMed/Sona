@@ -16,7 +16,7 @@ enum class VideoOrientation {
     fun next(): VideoOrientation = entries[(ordinal + 1) % entries.size]
 
     companion object {
-        /** What it is until the user chooses otherwise. */
+        /** What every video opens at. */
         val Default = AUTO
     }
 }

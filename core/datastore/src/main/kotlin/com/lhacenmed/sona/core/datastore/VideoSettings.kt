@@ -12,8 +12,6 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 
-private val ORIENTATION = stringPreferencesKey("orientation")
-private val KEEP_ORIENTATION = booleanPreferencesKey("keep_orientation")
 private val ASPECT = stringPreferencesKey("aspect")
 private val KEEP_ASPECT = booleanPreferencesKey("keep_aspect")
 private val MUTED = booleanPreferencesKey("muted")
@@ -46,23 +44,6 @@ class VideoSettings @Inject constructor(
     private val cache = PreferencesCache(dataStore, scope)
 
     internal suspend fun awaitLoaded() = cache.awaitLoaded()
-
-    /** The way the screen stands as a video opens. */
-    val orientation: Setting<VideoOrientation> = cache.setting { it.enum(ORIENTATION, VideoOrientation.Default) }
-
-    suspend fun setOrientation(orientation: VideoOrientation) {
-        dataStore.edit { it[ORIENTATION] = orientation.name }
-    }
-
-    /**
-     * Whether the rotation button's choice becomes [orientation], so every video opens standing as the last was left -
-     * on until the user would rather each open as Settings says.
-     */
-    val keepOrientation: Setting<Boolean> = cache.setting { it[KEEP_ORIENTATION] ?: true }
-
-    suspend fun setKeepOrientation(enabled: Boolean) {
-        dataStore.edit { it[KEEP_ORIENTATION] = enabled }
-    }
 
     /** How a video is fitted to the screen as it opens. */
     val aspect: Setting<VideoAspect> = cache.setting { it.enum(ASPECT, VideoAspect.Default) }
