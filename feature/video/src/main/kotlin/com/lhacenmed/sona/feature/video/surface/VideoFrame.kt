@@ -12,6 +12,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import com.lhacenmed.sona.core.datastore.VideoAspect
 import kotlin.math.roundToInt
 
@@ -32,6 +33,10 @@ internal class VideoZoomState {
 
     /** Where the picture ends on the screen, as far as a letterbox goes: subtitles stand beneath it in portrait. */
     var frameBottomPx by mutableFloatStateOf(0f)
+        private set
+
+    /** How far from the middle of the screen the picture stands - see [VideoFrame]. */
+    var frameShiftPx by mutableFloatStateOf(0f)
         private set
 
     // The frame and the screen as last laid out - plain fields, so learning them never lays the frame out again.
@@ -60,16 +65,18 @@ internal class VideoZoomState {
         offset = Offset.Zero
     }
 
-    fun onLaidOut(frame: Size, screen: Size) {
+    fun onLaidOut(frame: Size, screen: Size, shift: Float) {
         this.frame = frame
         this.screen = screen
-        frameBottomPx = (screen.height + frame.height) / 2f
+        frameShiftPx = shift
+        frameBottomPx = (screen.height + frame.height) / 2f + shift
     }
 }
 
 /**
  * Lays [content] - the video's surface - out at the size [aspect] fits it to, for a picture [videoWidth] by
- * [videoHeight], then [zoom]ed and centred on the screen with the overflow cut off.
+ * [videoHeight], then [zoom]ed and centred with the overflow cut off: between [reservedTop] and [reservedBottom] of the
+ * screen as far as it can be, so a picture that fits stands clear of the controls, and one that fills the screen fills it.
  *
  * Before the picture's size is known it fills the screen, so the surface is there for the first frame.
  */
@@ -79,20 +86,24 @@ internal fun VideoFrame(
     videoWidth: Int,
     videoHeight: Int,
     zoom: VideoZoomState,
+    reservedTop: Dp,
+    reservedBottom: Dp,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
     Layout(content = content, modifier = modifier.clipToBounds()) { measurables, constraints ->
         val screen = Size(constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat())
         val frame = frameSize(aspect, screen, videoWidth, videoHeight) * zoom.scale
-        zoom.onLaidOut(frame, screen)
+        val room = ((screen.height - frame.height) / 2f).coerceAtLeast(0f)
+        val shift = ((reservedTop - reservedBottom).toPx() / 2f).coerceIn(-room, room)
+        zoom.onLaidOut(frame, screen, shift)
         val width = frame.width.roundToInt()
         val height = frame.height.roundToInt()
         val placeable = measurables.single().measure(Constraints.fixed(width, height))
         layout(constraints.maxWidth, constraints.maxHeight) {
             placeable.place(
                 x = ((constraints.maxWidth - width) / 2f + zoom.offset.x).roundToInt(),
-                y = ((constraints.maxHeight - height) / 2f + zoom.offset.y).roundToInt(),
+                y = ((constraints.maxHeight - height) / 2f + shift + zoom.offset.y).roundToInt(),
             )
         }
     }

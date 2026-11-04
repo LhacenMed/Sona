@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.systemBarsIgnoringVisibility
 import androidx.compose.foundation.layout.union
@@ -18,8 +19,10 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
 
 /**
@@ -38,53 +41,67 @@ internal object VideoPlayerTokens {
     val DimmedContent = Color.White.copy(alpha = 0.5f)
 
     val TrackColor = Color.White.copy(alpha = 0.24f)
-    val BufferedColor = Color.White.copy(alpha = 0.38f)
-    val OriginTickColor = Color.White.copy(alpha = 0.75f)
-    val RestingThumbHalo = Color.Black.copy(alpha = 0.18f)
-    val ScrubbingThumbHalo = Accent.copy(alpha = 0.22f)
     val AmbientTrackColor = Color.White.copy(alpha = 0.14f)
     val AmbientFillColor = Accent.copy(alpha = 0.85f)
     val RippleColor = Color.White.copy(alpha = 0.09f)
 
     val TopScrim = Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.62f), Color.Transparent))
     val BottomScrim = Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)))
-    val ScrubBottomScrim = Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.72f)))
-    val ScrubDim = Color.Black.copy(alpha = 0.38f)
     val PanelDim = Color.Black.copy(alpha = 0.45f)
 
     val PanelColor = Color(0xF018181B)
     val PillColor = Color(0xD118181B)
+    val ResumePromptColor = Color(0xEB242428)
+    val ResumePromptDivider = Color.White.copy(alpha = 0.18f)
     val PanelDivider = Color.White.copy(alpha = 0.08f)
     val SegmentGround = Color.White.copy(alpha = 0.07f)
     val SegmentChosen = Color.White.copy(alpha = 0.16f)
 
     val TopScrimHeight = 112.dp
-    val BottomScrimHeight = 124.dp
-    val ScrubScrimHeight = 160.dp
+    val BottomScrimHeight = 140.dp
 
     val BarButtonSize = 44.dp
     val BarIconSize = 22.dp
     val SkipButtonSize = 56.dp
-    val SkipIconSize = 30.dp
-    val PlayButtonSize = 72.dp
-    val PlayIconSize = 40.dp
-    val SpeedButtonWidth = 52.dp
+    val SkipIconSize = 28.dp
+    val PlayButtonSize = 64.dp
+    val PlayIconSize = 38.dp
+    val TransportGap = 28.dp
+
+    /** How far the controls keep from the edge, and how far text keeps to stand in line with the icons of those buttons. */
+    val ControlsMargin = 8.dp
+    val ControlsTextMargin = ControlsMargin + (BarButtonSize - BarIconSize) / 2
+
+    val SeekTimeGap = 12.dp
+    val ElapsedTimeWidth = 40.dp
+    val RemainingTimeWidth = 56.dp
 
     /** How far beneath the safe area's top a pill of feedback stands, clear of the top bar. */
     val PillTopMargin = 68.dp
 
-    /** How tall the portrait layout's controls stand from the bottom of the screen. */
-    val PortraitControlsHeight = 222.dp
+    /** The rows of the portrait layout's foot, and how far they stand from the bottom of the screen at the least. */
+    val PortraitSeekRowHeight = 32.dp
+    val PortraitControlsHeight = PortraitSeekRowHeight + BarButtonSize
+    val PortraitFootMargin = 12.dp
 
-    /** Where subtitles stand above the bottom of the screen while the landscape controls are up. */
+    /** Where subtitles stand above the bottom of the screen while the landscape controls are up, and while the resume prompt is. */
     val SubtitlesAboveControls = 72.dp
+    val SubtitlesAboveResumePrompt = 112.dp
+
+    val ResumePromptHeight = 36.dp
+    val ResumePromptGap = 8.dp
+
+    /** How near where a scrub began the thumb has to come to snap back there, and how far it is pulled to come away again. */
+    val ScrubSnapRadius = 12.dp
+    val ScrubSnapReleaseRadius = 20.dp
+
+    val ScrubPillWidth = 248.dp
+    val ScrubPillCornerRadius = 16.dp
 
     val SeekTrackHeight = 4.dp
     val ScrubTrackHeight = 6.dp
     val ThumbRadius = 7.dp
     val ScrubThumbRadius = 10.dp
-    val ThumbHalo = 4.dp
-    val ScrubThumbHalo = 6.dp
 
     /** The most of the screen's width and height a scrubbing preview takes, the picture's own shape within it. */
     val PreviewWidth = 176.dp
@@ -111,13 +128,15 @@ internal object VideoPlayerTokens {
     const val RippleHeightRatio = 1.436f
     const val RippleCentreOutsideRatio = 0.051f
 
-    const val ScrubChromeAlpha = 0.35f
-
     /** How long the controls stay up untouched while the video plays. */
     const val ControlsTimeoutMs = 4_000L
 
     /** How long the unlock button stays up after a tap on the locked screen. */
     const val LockedHintTimeoutMs = 2_500L
+
+    /** How long the resume prompt stays up once the video plays. */
+    const val ResumePromptTimeoutMs = 6_000L
+    const val ResumePromptFadeMs = 240
 
     /** How long a gesture's feedback stays up after the finger lifts. */
     const val FeedbackTimeoutMs = 600L
@@ -127,9 +146,6 @@ internal object VideoPlayerTokens {
 
     /** How often a subtitle file's lines are matched to the player's position - closer than the eye can tell. */
     const val SubtitleTickMs = 50L
-
-    /** How often the scrubbing preview takes the frame on screen: as often as a film has frames to give. */
-    const val PreviewFrameMs = 33L
 
     /** How much of a video one drag across the whole screen seeks through - all of a shorter one. */
     const val SeekDragSweepMs = 120_000L
@@ -156,7 +172,6 @@ internal object VideoPlayerType {
     private val Tabular = "tnum"
 
     val Title = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold, lineHeight = 20.sp, letterSpacing = (-0.01).em)
-    val TitleDetail = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium, lineHeight = 16.sp)
     val Time = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium, fontFeatureSettings = Tabular)
     val Speed = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, fontFeatureSettings = Tabular)
     val PreviewTime = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold, fontFeatureSettings = Tabular)
@@ -167,6 +182,8 @@ internal object VideoPlayerType {
     val PanelLabel = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium)
     val PanelSegment = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, fontFeatureSettings = Tabular)
     val Pill = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+    val PromptLabel = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium, lineHeight = 18.sp)
+    val PromptTime = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, lineHeight = 18.sp, fontFeatureSettings = Tabular)
 }
 
 /**
@@ -176,6 +193,10 @@ internal object VideoPlayerType {
 @OptIn(ExperimentalLayoutApi::class)
 internal val videoSafeArea: WindowInsets
     @Composable get() = WindowInsets.systemBarsIgnoringVisibility.union(WindowInsets.displayCutout)
+
+/** How far the portrait layout's controls stand from the bottom of the screen - clear of the navigation bar, however tall. */
+internal val portraitFootMargin: Dp
+    @Composable get() = max(VideoPlayerTokens.PortraitFootMargin, videoSafeArea.asPaddingValues().calculateBottomPadding())
 
 /** Text in one of [VideoPlayerType]'s sizes and the font the user chose for the app. */
 @Composable

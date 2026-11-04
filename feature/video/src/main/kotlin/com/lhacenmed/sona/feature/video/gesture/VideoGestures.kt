@@ -121,8 +121,8 @@ internal fun Modifier.videoGestures(actions: State<VideoGestureActions>): Modifi
             }
             launch(start = CoroutineStart.UNDISPATCHED) {
                 awaitEachGesture {
-                    // The tap detector beside this one takes the down, so it is not asked to be untaken.
-                    val down = awaitFirstDown(requireUnconsumed = false)
+                    // A control under the finger takes its own touch, and what follows it is no drag of the video's.
+                    val down = awaitFirstDown()
                     var mode = DragMode.NONE
                     var half = ScreenHalf.START
                     var travelled = Offset.Zero

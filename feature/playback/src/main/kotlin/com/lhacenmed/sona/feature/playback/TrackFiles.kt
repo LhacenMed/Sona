@@ -40,7 +40,9 @@ class TrackFiles @Inject constructor(@ApplicationContext private val context: Co
 
     private val copiesDir = File(context.cacheDir, "playing-track-copies").apply { deleteRecursively() }
 
-    /** The files, by uri, the player holds a track of - see [hold]. */
+    /** The files, by uri, each player holds a track of - see [hold]. */
+    private val heldByPlayer = ConcurrentHashMap<String, Set<String>>()
+
     @Volatile private var heldUris: Set<String> = emptySet()
 
     /** The copy the player reads instead of each file changed while it held a track of it, by the file's uri. */
@@ -57,12 +59,14 @@ class TrackFiles @Inject constructor(@ApplicationContext private val context: Co
     }
 
     /**
-     * Tells which files, by uri, the player now holds a track of - every copy of a file no longer among them
+     * Tells which files, by uri, the [player] named now holds a track of - every copy of a file no player holds any more
      * is let go. A copy still being read is only unlinked: what reads it keeps it until it closes it.
      */
-    internal fun hold(uris: Set<String>) {
-        heldUris = uris
-        (copies.keys - uris).forEach { key -> copies.remove(key)?.delete() }
+    internal fun hold(player: String, uris: Set<String>) {
+        heldByPlayer[player] = uris
+        val held = heldByPlayer.values.flatMapTo(HashSet()) { it }
+        heldUris = held
+        (copies.keys - held).forEach { key -> copies.remove(key)?.delete() }
     }
 
     /** [upstream], reading each file through its copy wherever [write] made one. */

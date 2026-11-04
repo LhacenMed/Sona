@@ -3,22 +3,22 @@ package com.lhacenmed.sona.feature.video
 import android.content.Context
 import android.net.Uri
 import android.view.SurfaceView
+import android.view.TextureView
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.lhacenmed.sona.core.data.LibraryRepository
+import androidx.lifecycle.SavedStateHandle
 import com.lhacenmed.sona.core.data.LibrarySubtitleStore
 import com.lhacenmed.sona.core.datastore.SubtitleTextSize
 import com.lhacenmed.sona.core.datastore.VideoAspect
 import com.lhacenmed.sona.core.datastore.VideoOrientation
 import com.lhacenmed.sona.core.datastore.VideoSettings
 import com.lhacenmed.sona.core.datastore.stateIn
-import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.vault.VaultRepository
 import com.lhacenmed.sona.feature.playback.MediaTrack
 import com.lhacenmed.sona.feature.playback.PlaybackController
-import com.lhacenmed.sona.feature.playback.PlaybackSpace
-import com.lhacenmed.sona.feature.playback.PlaybackUiState
-import com.lhacenmed.sona.feature.playback.QueueEntry
+import com.lhacenmed.sona.feature.playback.QueueVideo
+import com.lhacenmed.sona.feature.playback.VideoPlayback
+import com.lhacenmed.sona.feature.playback.VideoPlaybackState
 import com.lhacenmed.sona.feature.video.subtitle.SubtitleSession
 import com.lhacenmed.sona.feature.video.subtitle.SubtitleStyle
 import com.lhacenmed.sona.feature.video.subtitle.WatchedVideo
@@ -29,37 +29,18 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** A slot of the queue with the video it holds. */
-data class QueueVideo(
-    val entry: QueueEntry,
-    val video: Track,
-)
-
-/**
- * Playback resolved against the library. [playback] carries no position - it moves on its own, and is read
- * through [VideoPlayerViewModel.currentPositionMs] only while something shows it.
- */
-data class VideoPlayerUiState(
-    val playback: PlaybackUiState = PlaybackUiState(),
-    /** What plays now - a video, or music queued after one. */
-    val current: Track? = null,
-    val queue: List<QueueVideo> = emptyList(),
-)
-
 /** What the user chose in this player, as long as it is open - stored too where a setting says to keep it. */
 data class VideoSession(
     val orientation: VideoOrientation,
     val aspect: VideoAspect,
-    /** Played for its sound alone, the picture let go. */
-    val isAudioOnly: Boolean = false,
     /** The controls locked away, so nothing on the screen is pressed by accident. */
     val isLocked: Boolean = false,
 )
@@ -75,61 +56,39 @@ data class VideoGestureSettings(
 )
 
 /**
- * The video player, for whichever space is watching - the library's or the Private Folder's - resolved against
- * that space's own tracks.
+ * One player screen, on the one opening of a video it was started for - see [VideoPlaybackState.opening]. Everything it does
+ * goes through [video], which holds nothing once that opening is over, so a screen still on its way out touches nothing that
+ * came after; and what it shows stays as it last was, so it leaves with nothing seen being reset.
  */
 @HiltViewModel
 class VideoPlayerViewModel @Inject constructor(
+    private val videoPlayback: VideoPlayback,
+    savedStateHandle: SavedStateHandle,
     private val playbackController: PlaybackController,
-    repository: LibraryRepository,
     vault: VaultRepository,
     private val videoSettings: VideoSettings,
     librarySubtitles: LibrarySubtitleStore,
     @ApplicationContext context: Context,
 ) : ViewModel() {
 
-    private val playbackWithoutPosition = playbackController.playbackState
-        .map { it.copy(positionMs = 0L) }
+    private val opening: Long = savedStateHandle[EXTRA_OPENING] ?: 0L
+
+    /** The player, for as long as this screen's opening is what it plays. */
+    private val video: VideoPlayback? get() = videoPlayback.takeIf { it.state.value.opening == opening }
+
+    /** This screen's opening as it stands, or as it last stood once over. */
+    val playback: StateFlow<VideoPlaybackState> = videoPlayback.state
+        .filter { it.opening == opening }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, videoPlayback.state.value)
+
+    /** Whether this screen's opening is still what plays. */
+    val isShowing: StateFlow<Boolean> = videoPlayback.state
+        .map { it.opening == opening && it.current != null }
         .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, videoPlayback.state.value.let { it.opening == opening && it.current != null })
 
-    private val privateTracksById = vault.tracksById.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
-
-    private val libraryTracksById = repository.tracksById
-
-    // The tracks of the space playing now - the Private Folder's never looked up among the library's - with, for
-    // the library, those its queue was started with that it does not hold.
-    private val tracksById = combine(
-        playbackWithoutPosition.map { it.space }.distinctUntilChanged(),
-        libraryTracksById,
-        privateTracksById,
-        playbackController.startedTracksById,
-        ::tracksOf,
-    )
-
-    // Narrowed to the queue itself, so it is not resolved again for every other change of playback.
-    private val queue = combine(
-        playbackWithoutPosition.map { it.queue }.distinctUntilChanged(),
-        tracksById,
-        ::resolveQueue,
-    )
-
-    // Started from what is already in memory, so the player draws the video on its first frame.
-    val uiState: StateFlow<VideoPlayerUiState> = combine(playbackWithoutPosition, queue, tracksById) { playback, queue, tracksById ->
-        VideoPlayerUiState(playback, playback.currentTrackId?.let(tracksById::get), queue)
-    }.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5_000),
-        playbackController.playbackState.value.copy(positionMs = 0L).let { playback ->
-            val tracksById = tracksOf(playback.space, libraryTracksById.value, privateTracksById.value, playbackController.startedTracksById.value)
-            VideoPlayerUiState(playback, playback.currentTrackId?.let(tracksById::get), resolveQueue(playback.queue, tracksById))
-        },
-    )
-
-    /** Whether a Private Folder video shows - kept out of screenshots and the recent apps' preview. */
-    val isPrivate: StateFlow<Boolean> = playbackController.playbackState
-        .map { it.space == PlaybackSpace.Private }
-        .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.Eagerly, playbackController.playbackState.value.space == PlaybackSpace.Private)
+    /** Where it last was, read on as this screen leaves. */
+    private var lastPositionMs = 0L
 
     private val _session = MutableStateFlow(
         VideoSession(
@@ -160,18 +119,18 @@ class VideoPlayerViewModel @Inject constructor(
     internal val subtitles = SubtitleSession(
         context = context,
         scope = viewModelScope,
-        playbackController = playbackController,
+        video = videoPlayback,
+        playback = playback,
         settings = videoSettings,
-        video = uiState.map { state ->
-            val isPrivate = state.playback.space == PlaybackSpace.Private
-            state.current?.takeIf { it.isVideo }?.let { track ->
-                WatchedVideo(track, if (isPrivate) vault.videoSubtitles else librarySubtitles, looksBesideIt = !isPrivate)
+        watched = playback.map { state ->
+            state.current?.let { track ->
+                WatchedVideo(track, if (state.isPrivate) vault.videoSubtitles else librarySubtitles, looksBesideIt = !state.isPrivate)
             }
         },
     )
 
-    /** The lines of the file's own subtitle track - see [PlaybackController.subtitleCues]. */
-    val subtitleCues = playbackController.subtitleCues
+    /** The lines of the file's own subtitle track - see [VideoPlayback.subtitleCues]. */
+    val subtitleCues = videoPlayback.subtitleCues
 
     internal val subtitleStyle: StateFlow<SubtitleStyle> = with(videoSettings) {
         merge(subtitleCustomization.flow, subtitleTextSize.flow, subtitleBackdrop.flow, subtitlePosition.flow)
@@ -179,65 +138,84 @@ class VideoPlayerViewModel @Inject constructor(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), readSubtitleStyle())
     }
 
-    init {
-        // The silence chosen last time comes back with the player; it is the player's alone, never the music's.
-        playbackController.setMuted(videoSettings.muted.value)
-        videoSettings.audioLanguage.value?.let(playbackController::setPreferredAudioLanguage)
-    }
-
     /** The speed to go back to once a long press lets go, while one holds the video sped up. */
     private var speedBeforeHold: Float? = null
 
-    /** The player's position at this moment, for whatever follows it closer than [uiState] could. */
-    fun currentPositionMs(): Long = playbackController.currentPositionMs()
+    /** The player's position at this moment, for whatever follows it closer than [playback] could. */
+    fun currentPositionMs(): Long {
+        video?.let { lastPositionMs = it.currentPositionMs() }
+        return lastPositionMs
+    }
 
-    /** How far on from the start the player has read the video ahead. */
-    fun bufferedPositionMs(): Long = playbackController.bufferedPositionMs()
+    fun onTogglePlayPause() {
+        video?.togglePlayPause()
+    }
 
-    fun onTogglePlayPause() = playbackController.togglePlayPause()
+    fun onSkipNext() {
+        video?.skipToNext()
+    }
 
-    fun onSkipNext() = playbackController.skipToNext()
+    fun onSkipPrevious() {
+        video?.skipToPrevious()
+    }
 
-    fun onSkipPrevious() = playbackController.skipToPrevious()
-
-    fun onSeek(positionMs: Long) = playbackController.seekTo(positionMs)
+    fun onSeek(positionMs: Long) {
+        video?.seekTo(positionMs)
+    }
 
     /** Seeks [deltaMs] on from where the video is now - back for a negative one - within the video. */
     fun onSeekBy(deltaMs: Long) {
-        val durationMs = playbackController.playbackState.value.durationMs
-        val targetMs = playbackController.currentPositionMs() + deltaMs
-        playbackController.seekTo(if (durationMs > 0L) targetMs.coerceIn(0L, durationMs) else targetMs.coerceAtLeast(0L))
+        val video = video ?: return
+        val durationMs = video.state.value.durationMs
+        val targetMs = video.currentPositionMs() + deltaMs
+        video.seekTo(if (durationMs > 0L) targetMs.coerceIn(0L, durationMs) else targetMs.coerceAtLeast(0L))
     }
 
-    fun onScrubbingChange(isScrubbing: Boolean) = playbackController.setScrubbing(isScrubbing)
+    fun onStartOver() {
+        video?.startOver()
+    }
 
-    fun onSpeedChange(speed: Float) = playbackController.setPlaybackSpeed(speed)
+    fun onScrubPreviewStart(view: TextureView, positionMs: Long) {
+        video?.startScrubPreview(view, positionMs)
+    }
+
+    fun onScrubPreviewMove(positionMs: Long) = videoPlayback.moveScrubPreview(positionMs)
+
+    /** Asked of the player whichever opening is playing: it lets go of this view alone, if it still shows on it. */
+    fun onScrubPreviewEnd(view: TextureView) = videoPlayback.stopScrubPreview(view)
+
+    fun onSpeedChange(speed: Float) {
+        video?.setPlaybackSpeed(speed)
+    }
 
     /** Plays at [speed] until [onSpeedHoldEnd] - a long press on the video. */
     fun onSpeedHoldStart(speed: Float) {
-        if (speedBeforeHold == null) speedBeforeHold = playbackController.playbackState.value.playbackSpeed
-        playbackController.setPlaybackSpeed(speed)
+        val video = video ?: return
+        if (speedBeforeHold == null) speedBeforeHold = video.state.value.playbackSpeed
+        video.setPlaybackSpeed(speed)
     }
 
     fun onSpeedHoldEnd() {
-        speedBeforeHold?.let(playbackController::setPlaybackSpeed)
+        speedBeforeHold?.let { video?.setPlaybackSpeed(it) }
         speedBeforeHold = null
     }
 
     /** Silences the video, or lets it be heard - and keeps that for the next one. */
     fun onToggleMute() {
-        val muted = !playbackController.playbackState.value.isMuted
-        playbackController.setMuted(muted)
+        val video = video ?: return
+        val muted = !video.state.value.isMuted
+        video.setMuted(muted)
         viewModelScope.launch { videoSettings.setMuted(muted) }
     }
 
     /** Plays [track] of this video - and the next video in its language, where it has one. */
     fun onSelectAudioTrack(track: MediaTrack) {
+        val video = video ?: return
         track.language?.let { language ->
-            playbackController.setPreferredAudioLanguage(language)
+            video.setPreferredAudioLanguage(language)
             viewModelScope.launch { videoSettings.setAudioLanguage(language) }
         }
-        playbackController.selectAudioTrack(track)
+        video.selectAudioTrack(track)
     }
 
     fun onAttachSubtitle(uri: Uri) = subtitles.attach(uri)
@@ -250,11 +228,16 @@ class VideoPlayerViewModel @Inject constructor(
         }
     }
 
-    fun onPlayQueueItem(item: QueueVideo) = playbackController.playQueueItem(item.entry.mediaItemIndex)
+    fun onPlayQueueItem(item: QueueVideo) {
+        video?.playQueueItem(item.entry.mediaItemIndex)
+    }
 
-    fun onSurfaceAvailable(view: SurfaceView) = playbackController.setVideoSurface(view)
+    fun onSurfaceAvailable(view: SurfaceView) {
+        video?.attachSurface(view)
+    }
 
-    fun onSurfaceGone(view: SurfaceView) = playbackController.clearVideoSurface(view)
+    /** Asked of the player whichever opening is playing: it lets go of this surface alone, if it still holds it. */
+    fun onSurfaceGone(view: SurfaceView) = videoPlayback.detachSurface(view)
 
     /** Moves on to the next fitting - kept for every video while the user keeps it. */
     fun onCycleAspect() {
@@ -266,31 +249,21 @@ class VideoPlayerViewModel @Inject constructor(
     /** Moves on to the next way of standing, for as long as this player is open. */
     fun onCycleOrientation() = _session.update { it.copy(orientation = it.orientation.next()) }
 
-    fun onAudioOnlyChange(isAudioOnly: Boolean) = _session.update { it.copy(isAudioOnly = isAudioOnly) }
+    /** Has the video listened to from here on, in the music player - which closes this one. */
+    fun onPlayAsAudio() {
+        if (video != null) playbackController.listenToWatchedVideo()
+    }
 
     fun onLockedChange(isLocked: Boolean) = _session.update { it.copy(isLocked = isLocked) }
 
-    /**
-     * The screen has gone from view: a picture nobody is watching pauses, while sound alone - a video played as
-     * audio, or music queued after the videos - plays on.
-     */
+    /** The screen has gone from view: a picture nobody is watching pauses. */
     fun onScreenLeft() {
-        val isPictureShown = !_session.value.isAudioOnly && uiState.value.current?.isVideo != false
-        if (isPictureShown) playbackController.pause()
+        video?.pause()
     }
 
-    /**
-     * The player is closing: its speed and silence were for watching here, so whatever plays next - this video's
-     * sound in the mini player, or the queue it gave way to - plays as recorded and heard. The silence is kept
-     * for the next video. Played as audio, it plays on in the mini player; watched, it ends - see
-     * [PlaybackController.leaveVideoPlayer].
-     */
+    /** The user is closing the screen, and what it shows with it - there and then, for the next video to find nothing in its way. */
     fun onPlayerClosed() {
-        speedBeforeHold = null
-        playbackController.setPlaybackSpeed(1f)
-        playbackController.setMuted(false)
-        val isHeardOnly = _session.value.isAudioOnly || uiState.value.current?.isVideo == false
-        playbackController.leaveVideoPlayer(keepsPlaying = isHeardOnly)
+        video?.close()
     }
 
     private fun readSubtitleStyle() = with(videoSettings) {
@@ -306,14 +279,4 @@ class VideoPlayerViewModel @Inject constructor(
             zoomEnabled = zoomPan.value,
         )
     }
-
-    private fun tracksOf(
-        space: PlaybackSpace,
-        libraryTracks: Map<Long, Track>,
-        privateTracks: Map<Long, Track>,
-        startedTracks: Map<Long, Track>,
-    ): Map<Long, Track> = if (space == PlaybackSpace.Private) privateTracks else startedTracks + libraryTracks
-
-    private fun resolveQueue(entries: List<QueueEntry>, tracksById: Map<Long, Track>): List<QueueVideo> =
-        entries.mapNotNull { entry -> tracksById[entry.trackId]?.let { QueueVideo(entry, it) } }
 }

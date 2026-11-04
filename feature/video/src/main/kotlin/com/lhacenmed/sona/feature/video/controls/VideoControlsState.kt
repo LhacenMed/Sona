@@ -23,7 +23,7 @@ import kotlinx.coroutines.isActive
  */
 @Stable
 internal class VideoControlsState {
-    var isVisible by mutableStateOf(true)
+    var isVisible by mutableStateOf(false)
         private set
 
     /**
@@ -68,28 +68,25 @@ internal class VideoControlsState {
 }
 
 /**
- * How far the video is and how far it is buffered, followed from the player. State read only by what shows them - the
- * seek bar and its times, the ambient line - so each tick redraws those and composes nothing around them.
+ * How far the video is, followed from the player. State read only by what shows it - the seek bar and its times, the
+ * ambient line - so each tick redraws those and composes nothing around them.
  */
 @Stable
 internal class VideoPosition(positionMs: Long) {
     var positionMs by mutableLongStateOf(positionMs)
-    var bufferedMs by mutableLongStateOf(0L)
 }
 
 /** The player's [VideoPosition], read for as long as [isFollowing] and the screen is started - not while nothing shows it. */
 @Composable
-internal fun rememberVideoPosition(currentPositionMs: () -> Long, bufferedPositionMs: () -> Long, isFollowing: Boolean): VideoPosition {
+internal fun rememberVideoPosition(currentPositionMs: () -> Long, isFollowing: Boolean): VideoPosition {
     val position = remember { VideoPosition(currentPositionMs()) }
     val latestCurrentPositionMs by rememberUpdatedState(currentPositionMs)
-    val latestBufferedPositionMs by rememberUpdatedState(bufferedPositionMs)
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(isFollowing, lifecycleOwner) {
         if (!isFollowing) return@LaunchedEffect
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (isActive) {
                 position.positionMs = latestCurrentPositionMs()
-                position.bufferedMs = latestBufferedPositionMs()
                 delay(VideoPlayerTokens.PositionTickMs)
             }
         }

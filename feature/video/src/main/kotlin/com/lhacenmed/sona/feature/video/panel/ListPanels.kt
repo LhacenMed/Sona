@@ -12,7 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import com.lhacenmed.sona.core.designsystem.component.SonaTrackRow
-import com.lhacenmed.sona.feature.video.QueueVideo
+import com.lhacenmed.sona.feature.playback.QueueVideo
 import com.lhacenmed.sona.feature.video.R
 import com.lhacenmed.sona.feature.video.controls.VideoAction
 import com.lhacenmed.sona.feature.video.formatVideoTime
@@ -84,8 +84,9 @@ internal fun ColumnScope.MorePanel(actions: List<VideoAction>, onClose: () -> Un
                 label = action.label,
                 onClick = action.onClick?.let { act ->
                     {
-                        act()
+                        // Closed first, as what it does may be to open another panel.
                         onClose()
+                        act()
                     }
                 },
                 color = action.tint,

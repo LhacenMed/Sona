@@ -9,7 +9,6 @@
             android:name=".VideoPlayerActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode|density"
             android:exported="false"
-            android:launchMode="singleTop"
             android:supportsPictureInPicture="true"
             android:theme="@style/Theme.Sona.Video" />
 

@@ -10,7 +10,7 @@ import android.content.pm.PackageManager
 import android.graphics.drawable.Icon
 import android.os.Build
 import android.util.Rational
-import com.lhacenmed.sona.feature.playback.PlaybackController
+import com.lhacenmed.sona.feature.playback.VideoPlayback
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -68,12 +68,12 @@ private fun Context.playPauseAction(isPlaying: Boolean): RemoteAction {
 /** Play and pause, pressed on the floating window. */
 class VideoFloatingWindowReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        EntryPointAccessors.fromApplication(context, VideoFloatingWindowEntryPoint::class.java).playbackController().togglePlayPause()
+        EntryPointAccessors.fromApplication(context, VideoFloatingWindowEntryPoint::class.java).videoPlayback().togglePlayPause()
     }
 }
 
 @EntryPoint
 @InstallIn(SingletonComponent::class)
 internal interface VideoFloatingWindowEntryPoint {
-    fun playbackController(): PlaybackController
+    fun videoPlayback(): VideoPlayback
 }

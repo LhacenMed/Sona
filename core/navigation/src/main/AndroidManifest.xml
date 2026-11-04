@@ -3,6 +3,7 @@
     <application>
         <activity
             android:name=".HostActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode|density"
             android:exported="false" />
     </application>
 

@@ -35,19 +35,15 @@ internal object VideoIcons {
             "M12 3.9a1.6 1.6 0 1 1 0 3.2a1.6 1.6 0 1 1 0-3.2zM12 10.4a1.6 1.6 0 1 1 0 3.2a1.6 1.6 0 1 1 0-3.2zM12 16.9a1.6 1.6 0 1 1 0 3.2a1.6 1.6 0 1 1 0-3.2z",
         )
     }
-    val SkipPrevious by lazy {
-        filledIcon("SkipPrevious", "M18 6.4v11.2l-9.2-5.6zM7 5.5a1 1 0 0 1 1 1v11a1 1 0 0 1-2 0v-11a1 1 0 0 1 1-1z", strokeWidth = 1.5f)
-    }
-    val SkipNext by lazy {
-        filledIcon("SkipNext", "M6 6.4v11.2l9.2-5.6zM17 5.5a1 1 0 0 1 1 1v11a1 1 0 0 1-2 0v-11a1 1 0 0 1 1-1z", strokeWidth = 1.5f)
-    }
+    val SkipPrevious by lazy { skipIcon("SkipPrevious", "M6.5 5.5v13", "M18.5 6.3v11.4L9.6 12z") }
+    val SkipNext by lazy { skipIcon("SkipNext", "M17.5 5.5v13", "M5.5 6.3v11.4l8.9-5.7z") }
     val Pause by lazy {
         filledIcon(
             "Pause",
             "M7.7 5h1.2a1.2 1.2 0 0 1 1.2 1.2v11.6a1.2 1.2 0 0 1-1.2 1.2H7.7a1.2 1.2 0 0 1-1.2-1.2V6.2A1.2 1.2 0 0 1 7.7 5zM15.1 5h1.2a1.2 1.2 0 0 1 1.2 1.2v11.6a1.2 1.2 0 0 1-1.2 1.2h-1.2a1.2 1.2 0 0 1-1.2-1.2V6.2A1.2 1.2 0 0 1 15.1 5z",
         )
     }
-    val Play by lazy { filledIcon("Play", "M8 5.6v12.8l10.4-6.4z", strokeWidth = 1.5f) }
+    val Play by lazy { filledIcon("Play", "M7.7 5.6v12.8l10.4-6.4z", strokeWidth = 1.5f) }
     val LockOpen by lazy {
         strokeIcon(
             "LockOpen",
@@ -92,6 +88,9 @@ internal object VideoIcons {
     /** Points back; drawn mirrored for the way forward. */
     val SeekChevron by lazy { filledIcon("SeekChevron", "M17 6v12L8 12z") }
 }
+
+private fun skipIcon(name: String, bar: String, triangle: String): ImageVector =
+    ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f).strokePath(bar, 2f).fillPath(triangle, 1.5f).build()
 
 private fun strokeIcon(name: String, vararg paths: String, strokeWidth: Float = 1.75f): ImageVector =
     ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f)

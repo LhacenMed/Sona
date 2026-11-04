@@ -13,9 +13,8 @@ import com.lhacenmed.sona.feature.library.AlbumDetailScreen
 import com.lhacenmed.sona.feature.library.ArtistDetailScreen
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
-import com.lhacenmed.sona.feature.playback.PlaybackController
-import com.lhacenmed.sona.feature.playback.VideoPlayerOpening
 import com.lhacenmed.sona.feature.playback.PlaybackSpace
+import com.lhacenmed.sona.feature.playback.VideoPlayback
 import com.lhacenmed.sona.feature.player.BottomSheetPlayerHost
 import com.lhacenmed.sona.feature.tageditor.lyricseditor.LyricsEditorScreen
 import com.lhacenmed.sona.feature.vault.VaultTrackOptionsSheet
@@ -32,10 +31,10 @@ import javax.inject.Inject
  * the folder's own options.
  *
  * Whichever activity is in front opens the video player as a video starts being watched - see
- * [PlaybackController.videoPlayerOpenings] - so it opens wherever a video was started from, and only once.
+ * [VideoPlayback.openings] - so it opens wherever a video was started from, and only once.
  */
 class SonaPlayerOverlay @Inject constructor(
-    private val playbackController: PlaybackController,
+    private val videoPlayback: VideoPlayback,
 ) : PlayerOverlay {
 
     @Composable
@@ -45,9 +44,7 @@ class SonaPlayerOverlay @Inject constructor(
         val lifecycleOwner = LocalLifecycleOwner.current
         LaunchedEffect(lifecycleOwner) {
             lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                playbackController.videoPlayerOpenings.collect { opening ->
-                    context.openVideoPlayer(floating = opening == VideoPlayerOpening.FLOATING)
-                }
+                videoPlayback.openings.collect(context::openVideoPlayer)
             }
         }
 

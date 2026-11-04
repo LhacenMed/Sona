@@ -21,21 +21,26 @@ import com.lhacenmed.sona.core.designsystem.theme.AppFastScrollTouchArea
 import com.lhacenmed.sona.core.designsystem.theme.AppTheme
 import com.lhacenmed.sona.core.designsystem.theme.SonaTheme
 import com.lhacenmed.sona.core.model.ThemeMode
+import com.lhacenmed.sona.feature.playback.VideoScreenRequest
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 private const val EXTRA_FLOATING = "floating"
 
+/** Which opening of a video a screen is for - see [com.lhacenmed.sona.feature.playback.VideoPlaybackState.opening]. */
+internal const val EXTRA_OPENING = "opening"
+
 /**
- * Opens the video player on whatever plays now - started just before, by the caller - full screen, or [floating]:
- * in its floating window, over the app, which goes on under it.
+ * Opens the video player as [request] says - full screen, or in its floating window, over the app, which goes on under it.
  */
-fun Context.openVideoPlayer(floating: Boolean = false) {
-    val intent = Intent(this, VideoPlayerActivity::class.java).putExtra(EXTRA_FLOATING, floating)
-    if (floating && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && hasFloatingWindows()) {
+fun Context.openVideoPlayer(request: VideoScreenRequest) {
+    val intent = Intent(this, VideoPlayerActivity::class.java)
+        .putExtra(EXTRA_FLOATING, request.isFloating)
+        .putExtra(EXTRA_OPENING, request.opening)
+    if (request.isFloating && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && hasFloatingWindows()) {
         // Straight into the window, never a moment full screen first.
         startActivity(intent, ActivityOptions.makeLaunchIntoPip(floatingWindowParams(null)).toBundle())
     } else {
@@ -50,12 +55,11 @@ fun Context.openVideoPlayer(floating: Boolean = false) {
  * straight away for a video looked at without leaving what is on screen.
  *
  * Its own activity rather than one of the app's pushed screens, which carry the music player over them: here the
- * picture is all there is. It plays nothing itself - the one player the music plays on shows its picture here,
- * so the queue, the notification and the sound go on exactly as they do for music.
+ * picture is all there is. Left for another app, it pauses - nobody is watching the picture - unless it floats.
  *
- * Left for another app, it pauses - nobody is watching the picture - unless it plays for its sound alone, which
- * is what that is for, or floats. Closed - its floating window too - it leaves what plays at its own speed and
- * volume: a video played as audio plays on in the mini player, and one watched gives way to the queue it replaced.
+ * Closing it closes the video there and then, in [finish], for the next one to start at once, while this one goes on showing
+ * what it last showed on its way out. Whatever else ends the video - the Private Folder locked, music started, another video
+ * started - closes this too.
  */
 @AndroidEntryPoint
 class VideoPlayerActivity : SonaActivity() {
@@ -81,6 +85,11 @@ class VideoPlayerActivity : SonaActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Its video over by now - another tapped since, or the process gone and this brought back - there is nothing to show.
+        if (!viewModel.isShowing.value) {
+            finish()
+            return
+        }
         // Standing as it should from the first frame, rather than turning once the screen is composed.
         requestedOrientation = viewModel.session.value.orientation.activityOrientation
         // Opened from another app, the process may only just have started: the theme is worked out first.
@@ -89,18 +98,17 @@ class VideoPlayerActivity : SonaActivity() {
         floatsOnResume = savedInstanceState == null && intent.getBooleanExtra(EXTRA_FLOATING, false) && !isFloating
         // A Private Folder video is kept out of screenshots and the recent apps' preview.
         lifecycleScope.launch {
-            viewModel.isPrivate.collect { showsPrivateContent = it }
+            viewModel.playback.map { it.isPrivate }.distinctUntilChanged().collect { showsPrivateContent = it }
         }
         if (hasFloatingWindows()) {
             lifecycleScope.launch {
-                combine(viewModel.uiState, viewModel.session, viewModel.isPrivate) { uiState, session, isPrivate ->
-                    val playback = uiState.playback
+                viewModel.playback.map { playback ->
                     FloatingWindow(
                         videoWidth = playback.videoWidth,
                         videoHeight = playback.videoHeight,
                         isPlaying = playback.isPlaying,
-                        // A video watched, never one heard alone - and never the Private Folder's, out over the app.
-                        canFloat = playback.isWatching && uiState.current?.isVideo == true && !session.isAudioOnly && !isPrivate,
+                        // Never the Private Folder's, out over the app.
+                        canFloat = playback.current != null && !playback.isPrivate,
                     )
                 }.distinctUntilChanged().collect { window ->
                     floatingWindow = window
@@ -139,12 +147,6 @@ class VideoPlayerActivity : SonaActivity() {
         }
     }
 
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        // Already open, it is asked to float for the next video looked at: it goes on floating, or starts to.
-        if (intent.getBooleanExtra(EXTRA_FLOATING, false) && !isInPictureInPictureMode) float()
-    }
-
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
         // From Android 12, the window goes by itself - see FloatingWindow.canFloat.
@@ -160,9 +162,15 @@ class VideoPlayerActivity : SonaActivity() {
 
     override fun onStop() {
         super.onStop()
-        if (!isChangingConfigurations) viewModel.onScreenLeft()
+        if (!isFinishing && !isChangingConfigurations) viewModel.onScreenLeft()
     }
 
+    override fun finish() {
+        viewModel.onPlayerClosed()
+        super.finish()
+    }
+
+    /** Whichever way it was closed - taken away with its task, it never passes through [finish]. */
     override fun onDestroy() {
         if (isFinishing) viewModel.onPlayerClosed()
         super.onDestroy()

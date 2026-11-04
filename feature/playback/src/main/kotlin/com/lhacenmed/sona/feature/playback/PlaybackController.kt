@@ -3,15 +3,11 @@ package com.lhacenmed.sona.feature.playback
 import android.content.ComponentName
 import android.content.Context
 import android.os.Bundle
-import android.view.SurfaceView
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
-import androidx.media3.common.TrackSelectionOverride
-import androidx.media3.common.text.Cue
-import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.util.Util
 import androidx.media3.session.MediaController
@@ -38,18 +34,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 /**
  * UI-facing façade over the [PlaybackService]'s media session.
@@ -68,6 +60,7 @@ class PlaybackController @Inject constructor(
     private val shuffleSettings: ShuffleSettings,
     private val quickPlaySettings: QuickPlaySettings,
     private val quickPlaySources: QuickPlaySourceRepository,
+    private val videoPlayback: VideoPlayback,
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -97,30 +90,8 @@ class PlaybackController @Inject constructor(
      */
     private var isAppInFront = false
 
-    /** See [PlaybackUiState.pictureTrackId]. */
-    private var pictureTrackId: Long? = null
-
-    /** Whether the video player owns the queue - see [PlaybackUiState.isWatching] - and what its closing does. */
-    private var watch = VideoWatch.None
-
-    /** What a watched queue plays from - shown while it plays, and written down only once it is listened to. */
-    private var watchedParent: PlaybackParent? = null
-
-    private val videoPlayerRequests = Channel<VideoPlayerOpening>(Channel.CONFLATED)
-
-    /**
-     * Each time a video starts being watched - whoever started it - the video player is to open, as it asks to.
-     * Taken by one screen, the one in front, so it opens once; held until a screen is there to take it.
-     */
-    val videoPlayerOpenings: Flow<VideoPlayerOpening> = videoPlayerRequests.receiveAsFlow()
-
-    private val _startedTracksById = MutableStateFlow<Map<Long, Track>>(emptyMap())
-
-    /**
-     * The tracks the queue was last started with, by id - for what plays one the library does not hold, such as a
-     * file of an excluded folder, to be shown all the same.
-     */
-    val startedTracksById: StateFlow<Map<Long, Track>> = _startedTracksById.asStateFlow()
+    /** The videos handed over to be listened to, by media id - for one the library does not hold to be watched again. */
+    private var handedOverVideos: Map<String, Track> = emptyMap()
 
     /** Whether the queue is known - see [PlaybackUiState.isReady]. */
     private var isQueueSettled = false
@@ -128,13 +99,11 @@ class PlaybackController @Inject constructor(
     private val _playbackState = MutableStateFlow(PlaybackUiState())
     val playbackState: StateFlow<PlaybackUiState> = _playbackState.asStateFlow()
 
-    private val _subtitleCues = MutableStateFlow<List<Cue>>(emptyList())
-
-    /** The lines of the subtitle track playing, as they show - apart from [playbackState], as they change so often. */
-    val subtitleCues: StateFlow<List<Cue>> = _subtitleCues.asStateFlow()
-
     // Owned here, process-wide, so a timer set from one screen keeps running whichever screen is open.
-    private val sleepTimerHolder = SleepTimer(scope) { controller?.pause() }
+    private val sleepTimerHolder = SleepTimer(scope) {
+        controller?.pause()
+        videoPlayback.pause()
+    }
     val sleepTimer: StateFlow<SleepTimerState> = sleepTimerHolder.state
 
     private val playerListener = object : Player.Listener {
@@ -144,18 +113,6 @@ class PlaybackController @Inject constructor(
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             sleepTimerHolder.onTrackEnd()
-            // The same video come round again keeps its picture; another has none until its first frame.
-            if (mediaItem?.idInSpace != pictureTrackId) pictureTrackId = null
-        }
-
-        override fun onCues(cueGroup: CueGroup) {
-            _subtitleCues.value = cueGroup.cues
-        }
-
-        override fun onRenderedFirstFrame() {
-            val mediaController = controller ?: return
-            pictureTrackId = mediaController.currentMediaItem?.idInSpace
-            updateUiState(mediaController)
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -178,8 +135,6 @@ class PlaybackController @Inject constructor(
                     Player.EVENT_REPEAT_MODE_CHANGED,
                     Player.EVENT_AVAILABLE_COMMANDS_CHANGED,
                     Player.EVENT_PLAYBACK_PARAMETERS_CHANGED,
-                    Player.EVENT_VOLUME_CHANGED,
-                    Player.EVENT_VIDEO_SIZE_CHANGED,
                 )
             ) {
                 updateUiState(mediaController)
@@ -253,9 +208,8 @@ class PlaybackController @Inject constructor(
      * the rest follow in random order; the queue itself keeps the order it was given. It plays from
      * [startPositionMs] into the track at [startIndex].
      *
-     * Started at a video, the queue is watched: the video player opens on it - see [videoPlayerOpenings] -
-     * and no mini player shows it. The queue it replaces is saved where it was, and comes back once the video
-     * player closes, unless the video is played on as audio - see [leaveVideoPlayer].
+     * Started at a video, it is watched instead, on a player of its own - see [VideoPlayback] - this queue simply pausing
+     * where it is. [opensFloating] has the video player open in its floating window.
      */
     fun playTracks(
         tracks: List<Track>,
@@ -265,67 +219,84 @@ class PlaybackController @Inject constructor(
         startPositionMs: Long = 0L,
         opensFloating: Boolean = false,
     ) {
+        if (tracks.getOrNull(startIndex)?.isVideo == true) {
+            val opening = if (opensFloating) VideoPlayerOpening.FLOATING else VideoPlayerOpening.FULL_SCREEN
+            watch(tracks, startIndex, shuffled == true, startPositionMs, opening) { it.toMediaItem(parent) }
+            return
+        }
         val mediaController = controller ?: return
-        val watches = tracks.getOrNull(startIndex)?.isVideo == true
-        beginQueue(mediaController, if (watches) VideoWatch.OverQueue else VideoWatch.None)
-        if (watches) watchedParent = parent else scope.launch { playbackSettings.setPlaybackParent(parent) }
-        _startedTracksById.value = tracks.associateBy { it.id }
-        val opening = if (opensFloating) VideoPlayerOpening.FLOATING else VideoPlayerOpening.FULL_SCREEN
-        startQueue(mediaController, tracks.map { it.toMediaItem(parent) }, startIndex, startPositionMs, shuffled, watches, opening)
+        videoPlayback.close()
+        persistQueueState(mediaController)
+        scope.launch { playbackSettings.setPlaybackParent(parent) }
+        startQueue(mediaController, tracks.map { it.toMediaItem(parent) }, startIndex, startPositionMs, shuffled)
     }
 
     /**
-     * Plays the Private Folder's [tracks] - its items, as Tracks of its own - from [startIndex], in place of the
-     * queue, as [playTracks] plays the library's: watched from a video. The library's queue is saved where it
-     * was, never written over, and comes back as the Private Folder's playback ends - see [endPrivatePlayback].
+     * Plays the Private Folder's [tracks] - its items, as Tracks of its own - from [startIndex], as [playTracks] plays the
+     * library's. Listened to, the library's queue is saved where it was, never written over, and comes back as the Private
+     * Folder's playback ends - see [endPrivatePlayback].
      */
     fun playPrivateTracks(tracks: List<Track>, startIndex: Int) {
+        if (tracks.getOrNull(startIndex)?.isVideo == true) {
+            watch(tracks, startIndex, shuffled = false, startPositionMs = 0L, VideoPlayerOpening.FULL_SCREEN, ::vaultMediaItem)
+            return
+        }
         val mediaController = controller ?: return
-        val watches = tracks.getOrNull(startIndex)?.isVideo == true
-        beginQueue(mediaController, if (watches) VideoWatch.OverQueue else VideoWatch.None)
-        startQueue(mediaController, tracks.map(::vaultMediaItem), startIndex, startPositionMs = 0L, shuffled = null, watches = watches, VideoPlayerOpening.FULL_SCREEN)
+        videoPlayback.close()
+        persistQueueState(mediaController)
+        startQueue(mediaController, tracks.map(::vaultMediaItem), startIndex, startPositionMs = 0L, shuffled = null)
     }
 
-    /** Has the video playing as audio watched again, from where it is - in the video player. */
-    fun watchCurrent() {
-        val mediaController = controller ?: return
-        if (watch == VideoWatch.None) {
-            persistQueueState(mediaController)
-            watch = VideoWatch.InPlace
-            watchedParent = storedParent
-        }
-        showPicture(mediaController)
-        mediaController.play()
-        updateUiState(mediaController)
-        videoPlayerRequests.trySend(VideoPlayerOpening.FULL_SCREEN)
+    private fun watch(
+        tracks: List<Track>,
+        startIndex: Int,
+        shuffled: Boolean,
+        startPositionMs: Long,
+        opening: VideoPlayerOpening,
+        toMediaItem: (Track) -> MediaItem,
+    ) {
+        controller?.pause()
+        val (videos, videoIndex) = videosFrom(tracks, startIndex, Track::isVideo)
+        videoPlayback.open(videos.map { VideoQueueItem(it, toMediaItem(it)) }, videoIndex, shuffled, startPositionMs, opening)
     }
 
     /**
-     * The video player closing. [keepsPlaying] - played as audio - the queue is listened to from now on, in the
-     * mini player, and saved as every listened-to queue is. Otherwise watching ends: a queue watched in place
-     * of another gives way to it, paused where it was left, and one that went on to be watched pauses.
+     * Has the video playing as audio watched, from where it is, with the videos of its queue - this queue waiting, paused,
+     * and carrying on from wherever the video is left.
      */
-    fun leaveVideoPlayer(keepsPlaying: Boolean) {
+    fun watchCurrent() {
         val mediaController = controller ?: return
-        val ended = watch
-        if (ended == VideoWatch.None) return
-        watch = VideoWatch.None
-        when {
-            keepsPlaying -> {
-                if (mediaController.currentMediaItem?.isVaultItem != true) {
-                    storedParent = watchedParent
-                    scope.launch { playbackSettings.setPlaybackParent(watchedParent) }
-                }
-                persistQueueState(mediaController)
-            }
-            ended == VideoWatch.OverQueue -> returnToSavedQueue(mediaController)
-            else -> {
-                mediaController.pause()
-                persistQueueState(mediaController)
-            }
+        val current = mediaController.currentMediaItem ?: return
+        val queue = List(mediaController.mediaItemCount, mediaController::getMediaItemAt).mapNotNull { item ->
+            val track = handedOverVideos[item.mediaId] ?: item.idInSpace?.takeUnless { item.isVaultItem }?.let(repository.tracksById.value::get)
+            // Made anew: what comes back through the session need not carry its file's address.
+            track?.takeIf { it.isVideo }?.let { VideoQueueItem(it, if (item.isVaultItem) vaultMediaItem(it) else it.toMediaItem(item.playbackParent)) }
         }
-        watchedParent = null
-        updateUiState(mediaController)
+        val index = queue.indexOfFirst { it.mediaItem.mediaId == current.mediaId }
+        if (index < 0) return
+        val positionMs = mediaController.currentPosition
+        mediaController.pause()
+        videoPlayback.open(queue, index, startPositionMs = positionMs) { closedItem, closedAtMs ->
+            if (mediaController.currentMediaItem?.mediaId == closedItem.mediaId) mediaController.seekTo(closedAtMs)
+        }
+    }
+
+    /**
+     * Has what is being watched listened to from now on, from where it is - in the mini player, with the notification and
+     * in the background, as every queue listened to is - and closes the video player.
+     */
+    fun listenToWatchedVideo() {
+        val mediaController = controller ?: return
+        val handOver = videoPlayback.handOver() ?: return
+        persistQueueState(mediaController)
+        handedOverVideos = handOver.queue.associate { it.mediaItem.mediaId to it.track }
+        val items = handOver.queue.map { it.mediaItem }
+        val current = items[handOver.index]
+        if (!current.isVaultItem) {
+            storedParent = current.playbackParent
+            scope.launch { playbackSettings.setPlaybackParent(current.playbackParent) }
+        }
+        startQueue(mediaController, items, handOver.index, handOver.positionMs, shuffled = null)
     }
 
     /**
@@ -334,18 +305,10 @@ class PlaybackController @Inject constructor(
      * too; the library's own queue playing is left as it is.
      */
     fun endPrivatePlayback() {
+        videoPlayback.closeIfPrivate()
         val mediaController = controller ?: return
         if (mediaController.currentMediaItem?.isVaultItem == false) return
-        watch = VideoWatch.None
-        watchedParent = null
         returnToSavedQueue(mediaController)
-    }
-
-    /** Ready for the queue about to start, as [nextWatch] has it - the listened-to queue's place saved first, as it is left. */
-    private fun beginQueue(mediaController: MediaController, nextWatch: VideoWatch) {
-        if (watch == VideoWatch.None) persistQueueState(mediaController)
-        watch = nextWatch
-        watchedParent = null
     }
 
     private fun startQueue(
@@ -354,28 +317,13 @@ class PlaybackController @Inject constructor(
         startIndex: Int,
         startPositionMs: Long,
         shuffled: Boolean?,
-        watches: Boolean,
-        opening: VideoPlayerOpening,
     ) {
         val shuffle = shuffled ?: (shuffleSettings.keepShuffle.value && mediaController.shuffleModeEnabled)
         // Before the items, so the player builds the new shuffle order around startIndex.
         if (shuffle != mediaController.shuffleModeEnabled) setShuffleEnabled(shuffle)
-        if (watches) showPicture(mediaController)
         mediaController.setMediaItems(mediaItems, startIndex, startPositionMs)
         mediaController.prepare()
         mediaController.play()
-        if (watches) videoPlayerRequests.trySend(opening)
-    }
-
-    /**
-     * Decodes the picture from the video's first frame, so its size is known and its frame ready by the time
-     * the video player's surface arrives - rather than switched on then, which would pause the video while the
-     * player starts decoding it.
-     */
-    private fun showPicture(mediaController: MediaController) {
-        mediaController.trackSelectionParameters = mediaController.trackSelectionParameters.buildUpon()
-            .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, false)
-            .build()
     }
 
     /** Swaps whatever plays for the saved queue - the listened-to one, never written over by what replaced it - paused. */
@@ -434,80 +382,8 @@ class PlaybackController @Inject constructor(
         controller?.seekTo(positionMs)
     }
 
-    /**
-     * Has the player seek as fast as it can, for as long as [enabled] - while a finger drags through a video,
-     * each seek showing its frame without waiting on the one before.
-     */
-    fun setScrubbing(enabled: Boolean) {
-        val args = Bundle().apply { putBoolean(PlaybackSessionCommands.EXTRA_SCRUBBING, enabled) }
-        controller?.sendCustomCommand(PlaybackSessionCommands.setScrubbingCommand, args)
-    }
-
-    fun setPlaybackSpeed(speed: Float) {
-        controller?.setPlaybackSpeed(speed)
-    }
-
-    fun setMuted(muted: Boolean) {
-        controller?.volume = if (muted) 0f else 1f
-    }
-
-    /** Plays [track] of the current file. */
-    fun selectAudioTrack(track: MediaTrack) = selectTrack(C.TRACK_TYPE_AUDIO, track)
-
-    /** The language a file's audio is played in from now on, wherever it has a track in it. */
-    fun setPreferredAudioLanguage(language: String) {
-        val mediaController = controller ?: return
-        mediaController.trackSelectionParameters = mediaController.trackSelectionParameters.buildUpon()
-            .setPreferredAudioLanguage(language)
-            .build()
-    }
-
-    /** Plays the subtitle [track] of the current file - none at all while null. */
-    fun selectSubtitleTrack(track: MediaTrack?) {
-        val mediaController = controller ?: return
-        if (track != null) {
-            selectTrack(C.TRACK_TYPE_TEXT, track)
-        } else {
-            mediaController.trackSelectionParameters = mediaController.trackSelectionParameters.buildUpon()
-                .clearOverridesOfType(C.TRACK_TYPE_TEXT)
-                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
-                .build()
-        }
-    }
-
-    /** Leaves it to the player which subtitle track plays, which is one the file itself marks to be shown, if any. */
-    fun followDefaultSubtitleTrack() {
-        val mediaController = controller ?: return
-        mediaController.trackSelectionParameters = mediaController.trackSelectionParameters.buildUpon()
-            .clearOverridesOfType(C.TRACK_TYPE_TEXT)
-            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
-            .build()
-    }
-
-    private fun selectTrack(type: @C.TrackType Int, track: MediaTrack) {
-        val mediaController = controller ?: return
-        // Read afresh: the queue may have moved on from the file this track was listed for.
-        val group = mediaController.currentTracks.groups.getOrNull(track.groupIndex)?.takeIf { it.type == type && track.trackIndex < it.length } ?: return
-        mediaController.trackSelectionParameters = mediaController.trackSelectionParameters.buildUpon()
-            .setTrackTypeDisabled(type, false)
-            .setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, track.trackIndex))
-            .build()
-    }
-
-    /** Shows the current video's picture on [view] - which decodes it, until [clearVideoSurface] lets it go. */
-    fun setVideoSurface(view: SurfaceView) {
-        controller?.setVideoSurfaceView(view)
-    }
-
-    fun clearVideoSurface(view: SurfaceView) {
-        controller?.clearVideoSurfaceView(view)
-    }
-
     /** The player's position at this moment, for a screen that follows it closer than [playbackState] ticks. */
     fun currentPositionMs(): Long = controller?.currentPosition ?: _playbackState.value.positionMs
-
-    /** How far on from the start the player has read the current track ahead. */
-    fun bufferedPositionMs(): Long = controller?.bufferedPosition ?: 0L
 
     fun skipToNext() {
         controller?.seekToNext()
@@ -556,6 +432,7 @@ class PlaybackController @Inject constructor(
      * so the player never reaches a file that is gone. On the player itself, as [removeQueueItem] is.
      */
     fun removeFromQueue(trackIds: Set<Long>) {
+        videoPlayback.remove(trackIds, PlaybackSpace.Library)
         val args = Bundle().apply { putLongArray(PlaybackSessionCommands.EXTRA_TRACK_IDS, trackIds.toLongArray()) }
         controller?.sendCustomCommand(PlaybackSessionCommands.removeTracksCommand, args)
     }
@@ -566,6 +443,7 @@ class PlaybackController @Inject constructor(
      * library's queue playing is left alone. Emptied, the queue gives way to the library's.
      */
     fun removePrivateFromQueue(itemIds: Set<Long>) {
+        videoPlayback.remove(itemIds, PlaybackSpace.Private)
         val mediaController = controller ?: return
         if (mediaController.currentMediaItem?.isVaultItem != true) return
         for (index in mediaController.mediaItemCount - 1 downTo 0) {
@@ -624,8 +502,6 @@ class PlaybackController @Inject constructor(
     /** Stops playback and drops the queue, the saved copy included, so nothing comes back on the next launch. */
     fun stopAndClearQueue() {
         val mediaController = controller ?: return
-        watch = VideoWatch.None
-        watchedParent = null
         mediaController.stop()
         mediaController.clearMediaItems()
         scope.launch { playbackSettings.setPlaybackParent(null) }
@@ -679,9 +555,8 @@ class PlaybackController @Inject constructor(
 
     @OptIn(UnstableApi::class)
     private fun updateUiState(mediaController: MediaController) {
-        val queue = currentQueue(mediaController)
+        val queue = mediaController.queueEntries()
         val currentMediaItemIndex = mediaController.currentMediaItemIndex
-        val videoSize = mediaController.videoSize
         val currentItem = mediaController.currentMediaItem
         val isPrivate = currentItem?.isVaultItem == true
         _playbackState.update {
@@ -694,11 +569,7 @@ class PlaybackController @Inject constructor(
                 hasEnded = mediaController.playbackState == Player.STATE_ENDED,
                 currentTrackId = currentItem?.idInSpace,
                 // The Private Folder plays from no collection of the library's.
-                parent = when {
-                    isPrivate -> null
-                    watch != VideoWatch.None -> watchedParent
-                    else -> storedParent
-                },
+                parent = if (isPrivate) null else storedParent,
                 positionMs = mediaController.currentPosition,
                 durationMs = currentDurationMsOrElse(it.durationMs),
                 shuffleEnabled = mediaController.shuffleModeEnabled,
@@ -710,42 +581,14 @@ class PlaybackController @Inject constructor(
                 queue = queue,
                 currentQueueIndex = queue.indexOfFirst { entry -> entry.mediaItemIndex == currentMediaItemIndex },
                 playbackSpeed = mediaController.playbackParameters.speed,
-                isMuted = mediaController.volume == 0f,
-                videoWidth = (videoSize.width * videoSize.pixelWidthHeightRatio).roundToInt(),
-                videoHeight = videoSize.height,
-                pictureTrackId = pictureTrackId,
                 space = if (isPrivate) PlaybackSpace.Private else PlaybackSpace.Library,
-                isWatching = watch != VideoWatch.None,
-                audioTracks = mediaController.currentTracks.mediaTracksOf(C.TRACK_TYPE_AUDIO),
-                subtitleTracks = mediaController.currentTracks.mediaTracksOf(C.TRACK_TYPE_TEXT),
             )
         }
     }
 
-    /** The queue in the order it plays - shuffle order while shuffling - the way ArchiveTune's `getQueueWindows` walks it. */
-    private fun currentQueue(mediaController: MediaController): List<QueueEntry> {
-        val timeline = mediaController.currentTimeline
-        if (timeline.isEmpty) return emptyList()
-        val shuffleEnabled = mediaController.shuffleModeEnabled
-        val window = Timeline.Window()
-        val occurrences = HashMap<Long, Int>()
-        val queue = ArrayList<QueueEntry>(timeline.windowCount)
-        var mediaItemIndex = timeline.getFirstWindowIndex(shuffleEnabled)
-        while (mediaItemIndex != C.INDEX_UNSET) {
-            timeline.getWindow(mediaItemIndex, window).mediaItem.idInSpace?.let { trackId ->
-                val occurrence = occurrences.merge(trackId, 1, Int::plus)
-                queue += QueueEntry(key = "$trackId:$occurrence", mediaItemIndex = mediaItemIndex, trackId = trackId)
-            }
-            mediaItemIndex = timeline.getNextWindowIndex(mediaItemIndex, Player.REPEAT_MODE_OFF, shuffleEnabled)
-        }
-        return queue
-    }
-
     // Ported from Fossify's AudioHelper.resetQueue: a full delete-and-reinsert of the queue table
     // on every save, keeping it trivially consistent with the player's current timeline.
-    // A watched queue is the video player's, and is never written over the listened-to one it will give way to.
     private fun persistQueueState(mediaController: MediaController) {
-        if (watch != VideoWatch.None) return
         val currentItem = mediaController.currentMediaItem ?: return
         val currentId = currentItem.mediaId.toLongOrNull() ?: return
         val timeline = mediaController.currentTimeline
@@ -789,6 +632,8 @@ class PlaybackController @Inject constructor(
 
     private suspend fun restoreSavedQueue(mediaController: MediaController) {
         val savedQueue = loadSavedQueue(queueItemDao, repository, storedParent) ?: return
+        // Something started while it was being read is what the user asked for since.
+        if (mediaController.mediaItemCount > 0) return
         // Ahead of the items, so the order is waiting on the player when they arrive.
         savedQueue.shuffleOrder?.let { order ->
             val args = Bundle().apply { putIntArray(PlaybackSessionCommands.EXTRA_SHUFFLE_ORDER, order) }
@@ -837,23 +682,4 @@ class PlaybackController @Inject constructor(
         positionPollJob = null
     }
 
-}
-
-/** Whether a video is being watched - see [PlaybackUiState.isWatching] - and what the video player's closing ends it with. */
-private enum class VideoWatch {
-    None,
-
-    /** Started in place of the queue that was playing, which comes back once the video player closes. */
-    OverQueue,
-
-    /** The queue playing went on to be watched, and pauses where it is once the video player closes. */
-    InPlace,
-}
-
-/** How the video player opens on a video started - over everything, or floating over the app as it goes on. */
-enum class VideoPlayerOpening {
-    FULL_SCREEN,
-
-    /** In its floating window, so what was on screen goes on under it - a video looked at while picking files. */
-    FLOATING,
 }

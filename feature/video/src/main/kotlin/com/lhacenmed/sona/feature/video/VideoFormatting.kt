@@ -36,10 +36,6 @@ internal fun formatSubtitleOffset(offsetMs: Long): String {
     return sign + String.format(Locale.US, "%.1f s", kotlin.math.abs(offsetMs) / 1_000.0)
 }
 
-/** What a video's title has beneath it: its year and how sharp its picture is, as far as those are known. */
-internal fun videoDetails(year: Int?, pictureHeight: Int): String =
-    listOfNotNull(year?.toString(), pictureHeight.takeIf { it > 0 }?.let { "${it}p" }).joinToString(" \u00B7 ")
-
 private const val Minus = "\u2212"
 
 /** "1.5x" - a speed with no trailing zeros. */

@@ -34,14 +34,6 @@ class VideoFormattingTest {
     }
 
     @Test
-    fun `a video's details say what is known of it`() {
-        assertEquals("2018 · 720p", videoDetails(2018, 720))
-        assertEquals("720p", videoDetails(null, 720))
-        assertEquals("2018", videoDetails(2018, 0))
-        assertEquals("", videoDetails(null, 0))
-    }
-
-    @Test
     fun `double taps the same way add up, and one the other way starts over`() {
         val showing = GestureFeedback.DoubleTapSeek(-10_000L)
 

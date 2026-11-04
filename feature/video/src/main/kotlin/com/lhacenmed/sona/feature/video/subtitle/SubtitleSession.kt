@@ -9,7 +9,8 @@ import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.VideoSubtitle
 import com.lhacenmed.sona.core.model.VideoSubtitleStore
 import com.lhacenmed.sona.feature.playback.MediaTrack
-import com.lhacenmed.sona.feature.playback.PlaybackController
+import com.lhacenmed.sona.feature.playback.VideoPlayback
+import com.lhacenmed.sona.feature.playback.VideoPlaybackState
 import java.io.File
 import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
@@ -70,9 +71,10 @@ private class ReadSubtitle(val subtitle: SubtitleFile, val timeline: SubtitleTim
 internal class SubtitleSession(
     private val context: Context,
     private val scope: CoroutineScope,
-    private val playbackController: PlaybackController,
+    private val video: VideoPlayback,
+    playback: Flow<VideoPlaybackState>,
     private val settings: VideoSettings,
-    private val video: Flow<WatchedVideo?>,
+    private val watched: Flow<WatchedVideo?>,
 ) {
     private val loaded = MutableStateFlow<LoadedVideo?>(null)
 
@@ -82,8 +84,8 @@ internal class SubtitleSession(
     val readFailures: Flow<Unit> = failures.receiveAsFlow()
 
     /** What the player has for the video [loaded] holds - nothing yet while it is still on the one before. */
-    private val tracks = combine(loaded, playbackController.playbackState) { loaded, playback ->
-        playback.subtitleTracks.takeIf { loaded != null && playback.currentTrackId == loaded.video.track.id }
+    private val tracks = combine(loaded, playback) { loaded, playback ->
+        playback.subtitleTracks.takeIf { loaded != null && playback.current?.id == loaded.video.track.id }
     }.distinctUntilChanged()
 
     private val choices: StateFlow<SubtitleUiState?> = combine(
@@ -115,7 +117,7 @@ internal class SubtitleSession(
 
     init {
         scope.launch {
-            video.distinctUntilChanged().collectLatest { watched ->
+            watched.distinctUntilChanged().collectLatest { watched ->
                 loaded.value = null
                 if (watched != null) loaded.value = withContext(Dispatchers.IO) { load(watched) }
             }
@@ -180,9 +182,9 @@ internal class SubtitleSession(
 
     private fun applyToPlayer(source: SubtitleSource) {
         when (source) {
-            SubtitleSource.PlayerDefault -> playbackController.followDefaultSubtitleTrack()
-            is SubtitleSource.Embedded -> playbackController.selectSubtitleTrack(source.track)
-            SubtitleSource.Off, is SubtitleSource.FromFile -> playbackController.selectSubtitleTrack(null)
+            SubtitleSource.PlayerDefault -> video.followDefaultSubtitleTrack()
+            is SubtitleSource.Embedded -> video.selectSubtitleTrack(source.track)
+            SubtitleSource.Off, is SubtitleSource.FromFile -> video.selectSubtitleTrack(null)
         }
     }
 

@@ -79,10 +79,10 @@ private fun ColumnScope.AppSection() {
 private fun ColumnScope.PlaybackSection(viewModel: DebugViewModel) {
     val playback by viewModel.playback.playbackState.collectAsStateWithLifecycle()
     SettingsSection("Playback") {
-        SettingsInfoItem("State", "ready: ${playback.isReady}, playing: ${playback.isPlaying}, buffering: ${playback.isBuffering}, ended: ${playback.hasEnded}, watching: ${playback.isWatching}")
+        SettingsInfoItem("State", "ready: ${playback.isReady}, playing: ${playback.isPlaying}, buffering: ${playback.isBuffering}, ended: ${playback.hasEnded}")
         SettingsInfoItem("Track", "${playback.currentTrackId} in ${playback.space}, from ${playback.parent}")
         SettingsInfoItem("Position", "${playback.positionMs} of ${playback.durationMs} ms, speed ${playback.playbackSpeed}")
-        SettingsInfoItem("Modes", "shuffle: ${playback.shuffleEnabled}, repeat: ${playback.repeatMode}, muted: ${playback.isMuted}")
+        SettingsInfoItem("Modes", "shuffle: ${playback.shuffleEnabled}, repeat: ${playback.repeatMode}")
         SettingsInfoItem("Queue", "${playback.queue.size} entries, at ${playback.currentQueueIndex}")
     }
 }

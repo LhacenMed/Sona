@@ -12,7 +12,7 @@ enum class PlaybackSpace { Library, Private }
 /**
  * Snapshot of playback state exposed to the UI layer.
  *
- * Every track id here - [currentTrackId], [queue]'s, [pictureTrackId] - is an id in [space]: a library
+ * Every track id here - [currentTrackId], [queue]'s - is an id in [space]: a library
  * track's, or a Private Folder item's. What only knows the library reads [libraryTrackId].
  */
 data class PlaybackUiState(
@@ -46,32 +46,14 @@ data class PlaybackUiState(
     val currentQueueIndex: Int = -1,
     /** How fast it plays, 1 being as recorded. */
     val playbackSpeed: Float = 1f,
-    /** Whether the player itself is silenced - the device's volume left as it is. */
-    val isMuted: Boolean = false,
-    /** The current video's picture as it is shown, its pixels' own shape applied - 0 by 0 for music, or before it is known. */
-    val videoWidth: Int = 0,
-    val videoHeight: Int = 0,
-    /**
-     * The track whose picture is on the surface - set once its first frame is drawn, and cleared as the next track
-     * starts - so a screen shows a picture only once it is there, at its own size.
-     */
-    val pictureTrackId: Long? = null,
     val space: PlaybackSpace = PlaybackSpace.Library,
-    /**
-     * Whether the queue is a video being watched - the video player's, shown by no mini player - rather than
-     * listened to. A video played as audio, from the video player's own choice, is listened to.
-     */
-    val isWatching: Boolean = false,
-    /** The current file's own audio and subtitle tracks the device can play. */
-    val audioTracks: List<MediaTrack> = emptyList(),
-    val subtitleTracks: List<MediaTrack> = emptyList(),
 ) {
     /** [currentTrackId] where it is the library's - null while the Private Folder plays. */
     val libraryTrackId: Long? get() = currentTrackId.takeIf { space == PlaybackSpace.Library }
 
     /**
-     * Whether a tap on the notification or the widget opens the full player - a library track listened to. A video
-     * watched has no such player, and nothing of the Private Folder is named outside it: both are brought back as left.
+     * Whether a tap on the notification or the widget opens the full player - a library track. Nothing of the Private
+     * Folder is named outside it: it is brought back as left.
      */
-    val opensNowPlaying: Boolean get() = libraryTrackId != null && !isWatching
+    val opensNowPlaying: Boolean get() = libraryTrackId != null
 }

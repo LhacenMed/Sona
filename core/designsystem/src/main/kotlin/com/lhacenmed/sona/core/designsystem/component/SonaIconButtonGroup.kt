@@ -51,6 +51,7 @@ import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 @Composable
 fun SonaIconButtonGroup(
     modifier: Modifier = Modifier,
+    spacing: Dp = SonaComponentStyle.ItemSpacing,
     content: ButtonGroupScope.() -> Unit,
 ) {
     CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
@@ -70,7 +71,7 @@ fun SonaIconButtonGroup(
             // An ungrouped icon button separates itself from its neighbour with the padding left over
             // between its 40dp container and the edge of its 48dp touch target. A grouped one has no
             // such margin to give, so the row spaces the buttons itself.
-            horizontalArrangement = Arrangement.spacedBy(SonaComponentStyle.ItemSpacing),
+            horizontalArrangement = Arrangement.spacedBy(spacing),
             content = content,
         )
     }

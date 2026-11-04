@@ -17,20 +17,20 @@ private const val SettleTimeoutMs = 1_500L
 
 /**
  * A scrub through the video - by the seek bar's thumb or by a swipe across the picture, one and the same to everything
- * that shows it: the bar, its times, the preview above it and the dimming around it.
+ * that shows it. The video plays on meanwhile: only letting go moves it, and letting go where the scrub began leaves it be.
  *
  * Each read of [targetMs] where it is drawn or laid out follows the finger without composing anything for it.
  */
 @Stable
 internal class VideoScrubState(
     private val onSeek: (Long) -> Unit,
-    private val onScrubbingChange: (Boolean) -> Unit,
+    private val onSnappedToOrigin: () -> Unit,
     private val now: () -> Long = SystemClock::uptimeMillis,
 ) {
     var isActive by mutableStateOf(false)
         private set
 
-    /** Where the scrub began, which the bar marks. */
+    /** Where the scrub began. */
     var originMs by mutableLongStateOf(0L)
         private set
 
@@ -45,28 +45,49 @@ internal class VideoScrubState(
     private var settlingMs: Long? = null
     private var settlingUntilMs = 0L
 
+    /** Whether the thumb has gone far enough from where it began to snap back to it, and whether it stands snapped there now. */
+    private var hasLeftOrigin = false
+    private var isSnapped = false
+
     fun begin(fromMs: Long) {
         if (isActive) return
         originMs = fromMs
         targetMs = fromMs
         settlingMs = null
+        hasLeftOrigin = false
+        isSnapped = false
         isActive = true
-        onScrubbingChange(true)
     }
 
-    /** Takes the video to [positionMs], the player scrubbing meanwhile so each frame shows at once. */
+    /** Takes the scrub to [positionMs]. */
     fun moveTo(positionMs: Long) {
         targetMs = positionMs
-        onSeek(positionMs)
     }
 
-    /** Lets go. Nothing more is sought: the last move was already to where it let go. */
+    /**
+     * Takes the scrub to [positionMs] under the thumb, which, once it has gone further than [releaseRadiusMs] from where it
+     * began, snaps back there on coming within [snapRadiusMs], and stays until pulled out past [releaseRadiusMs] again.
+     */
+    fun dragTo(positionMs: Long, snapRadiusMs: Long, releaseRadiusMs: Long) {
+        val distanceMs = abs(positionMs - originMs)
+        if (isSnapped) {
+            if (distanceMs > releaseRadiusMs) isSnapped = false
+        } else if (hasLeftOrigin && distanceMs <= snapRadiusMs) {
+            isSnapped = true
+            onSnappedToOrigin()
+        }
+        if (distanceMs > releaseRadiusMs) hasLeftOrigin = true
+        targetMs = if (isSnapped) originMs else positionMs
+    }
+
+    /** Lets go, the video going where the scrub reached - or left playing on, back where it began. */
     fun end() {
         if (!isActive) return
+        isActive = false
+        if (targetMs == originMs) return
         settlingMs = targetMs
         settlingUntilMs = now() + SettleTimeoutMs
-        isActive = false
-        onScrubbingChange(false)
+        onSeek(targetMs)
     }
 
     /** Where the bar stands, the player being at [playerMs]: never jumping back for a moment after letting go. */

@@ -33,8 +33,9 @@
     <string name="video_floating_window">Floating window</string>
 
     <string name="video_play_as_audio">Play as audio</string>
-    <string name="video_back_to_video">Back to video</string>
-    <string name="video_audio_message">The sound keeps playing while you use other apps or lock the screen</string>
+    <string name="video_resumed_from">Resumed from</string>
+    <string name="video_start_over">Start over</string>
+    <string name="video_cannot_play">This video can\'t be played</string>
 
     <string name="video_tracks">Audio &amp; subtitles</string>
     <string name="video_tracks_audio">Audio</string>

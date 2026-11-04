@@ -328,8 +328,8 @@ class PlayerViewModel @AssistedInject constructor(
         )
     }
 
-    /** [this], where it is this player's to show: its own space's, and listened to rather than watched. */
-    private fun PlaybackUiState.takeIfShown(): PlaybackUiState? = takeIf { it.space == space && !it.isWatching }
+    /** [this], where it is this player's to show: its own space's. */
+    private fun PlaybackUiState.takeIfShown(): PlaybackUiState? = takeIf { it.space == space }
 }
 
 /** This playback state with its ticking position dropped - see [PlayerViewModel.steadyPlaybackState]. */

@@ -42,6 +42,7 @@ import com.lhacenmed.sona.core.datastore.SubtitleBackdrop
 import com.lhacenmed.sona.core.datastore.SubtitlePosition
 import com.lhacenmed.sona.core.datastore.SubtitleTextSize
 import com.lhacenmed.sona.feature.video.VideoPlayerTokens
+import com.lhacenmed.sona.feature.video.portraitFootMargin
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
@@ -61,7 +62,7 @@ private const val SubtitleFontWeight = 600
 
 /** How tall the place for subtitles beneath a letterboxed picture is: two lines, as most are. */
 private val BelowPictureHeight = 72.dp
-private val BelowPictureGap = 16.dp
+private val BelowPictureGap = 20.dp
 
 /** How subtitles are drawn: as the device's caption settings say, or - while [isCustomized] - as the app's do. */
 internal data class SubtitleStyle(
@@ -74,8 +75,8 @@ internal data class SubtitleStyle(
 /**
  * Where subtitles stand, the same over any picture, anchored to the screen rather than the frame so a zoomed or cropped
  * picture never takes the lines with it:
- * - in landscape, near the bottom, lifted clear of the controls while they are up, and to one side while [openPanelWidth]
- *   takes the other, so the effect of a panel's choices can be seen beside it;
+ * - in landscape, near the bottom, lifted clear of the controls while they are up and of the resume prompt, and to one side
+ *   while [openPanelWidth] takes the other, so the effect of a panel's choices can be seen beside it;
  * - in portrait, beneath a letterboxed picture on the black, as long as there is room above the controls; otherwise as
  *   in landscape;
  * - floating, in the corner of the picture they have, scaled down with it.
@@ -92,6 +93,7 @@ internal fun SubtitleLayer(
     style: SubtitleStyle,
     isFloating: Boolean,
     areControlsUp: Boolean,
+    isResumePromptUp: Boolean,
     openPanelWidth: Dp?,
     pictureBottomPx: () -> Float,
     modifier: Modifier = Modifier,
@@ -101,11 +103,11 @@ internal fun SubtitleLayer(
         val density = LocalDensity.current
         val textScale = (min(maxWidth, maxHeight) / ReferenceScreenSide).coerceAtMost(MaxTextScale) * if (isPortrait) PortraitTextScale else 1f
         val belowPictureTop = with(density) { pictureBottomPx().toDp() } + BelowPictureGap
-        val fitsBelowPicture = isPortrait && !isFloating &&
-            belowPictureTop + BelowPictureHeight <= maxHeight - VideoPlayerTokens.PortraitControlsHeight
+        val controlsHeight = portraitFootMargin + VideoPlayerTokens.PortraitControlsHeight
+        val fitsBelowPicture = isPortrait && !isFloating && belowPictureTop + BelowPictureHeight <= maxHeight - controlsHeight
 
         val overlay: @Composable (Modifier) -> Unit = { placement ->
-            SubtitleOverlay(source, timeline, offsetMs, playerCues, currentPositionMs, style, textScale, placement)
+            SubtitleOverlay(source, timeline, offsetMs, playerCues, currentPositionMs, style, textScale, startsAtTop = fitsBelowPicture, placement)
         }
         if (fitsBelowPicture) {
             val topPx = with(density) { belowPictureTop.roundToPx() }
@@ -113,15 +115,18 @@ internal fun SubtitleLayer(
                 Modifier
                     .offset { IntOffset(0, topPx) }
                     .fillMaxWidth()
-                    .height(BelowPictureHeight)
+                    .height(maxHeight - controlsHeight - belowPictureTop)
                     .padding(horizontal = 24.dp),
             )
         } else {
             val restingBottom = if (isFloating) 4.dp else style.position.bottomDp.dp
             val bottom by animateDpAsState(
                 targetValue = when {
-                    !areControlsUp || isFloating -> restingBottom
-                    isPortrait -> VideoPlayerTokens.PortraitControlsHeight
+                    isFloating -> restingBottom
+                    isResumePromptUp && isPortrait -> controlsHeight + VideoPlayerTokens.ResumePromptHeight + VideoPlayerTokens.ResumePromptGap * 2
+                    isResumePromptUp -> VideoPlayerTokens.SubtitlesAboveResumePrompt
+                    !areControlsUp -> restingBottom
+                    isPortrait -> controlsHeight
                     else -> VideoPlayerTokens.SubtitlesAboveControls
                 },
                 animationSpec = tween(VideoPlayerTokens.SubtitleLiftMs),
@@ -159,7 +164,8 @@ internal fun SubtitleLayer(
  * images a Blu-ray's subtitles are.
  *
  * A file's lines are followed from the player's position here, [offsetMs] after where the file says they are; the
- * player's own, from [playerCues]. The view is set only as the lines change, so nothing is composed for them.
+ * player's own, from [playerCues]. The view is set only as the lines change, so nothing is composed for them. Lines
+ * with no place of their own stand at the foot of the view, or - while [startsAtTop] - at its head.
  */
 @OptIn(UnstableApi::class)
 @Composable
@@ -171,6 +177,7 @@ private fun SubtitleOverlay(
     currentPositionMs: () -> Long,
     style: SubtitleStyle,
     textScale: Float,
+    startsAtTop: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -179,7 +186,8 @@ private fun SubtitleOverlay(
     val latestPositionMs by rememberUpdatedState(currentPositionMs)
     val latestOffsetMs by rememberUpdatedState(offsetMs)
     val lifecycleOwner = LocalLifecycleOwner.current
-    LaunchedEffect(view, source, timeline, playerCues, lifecycleOwner) {
+    val show: (List<Cue>) -> Unit = { cues -> view.setCues(if (startsAtTop) cues.map(Cue::standingAtTop) else cues) }
+    LaunchedEffect(view, source, timeline, playerCues, lifecycleOwner, startsAtTop) {
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
             when {
                 source is SubtitleSource.FromFile -> {
@@ -187,19 +195,27 @@ private fun SubtitleOverlay(
                     while (isActive) {
                         val cues = timeline?.cuesAt((latestPositionMs() - latestOffsetMs) * 1_000L).orEmpty()
                         if (cues != shown) {
-                            view.setCues(cues)
+                            show(cues)
                             shown = cues
                         }
                         delay(VideoPlayerTokens.SubtitleTickMs)
                     }
                 }
                 source == SubtitleSource.Off -> view.setCues(emptyList())
-                else -> playerCues.collect(view::setCues)
+                else -> playerCues.collect(show)
             }
         }
     }
     AndroidView(factory = { view }, modifier = modifier, update = { it.applyStyle(style, textScale, captionScale) })
 }
+
+@OptIn(UnstableApi::class)
+private fun Cue.standingAtTop(): Cue =
+    if (bitmap == null && line == Cue.DIMEN_UNSET) {
+        buildUpon().setLine(0f, Cue.LINE_TYPE_FRACTION).setLineAnchor(Cue.ANCHOR_TYPE_START).build()
+    } else {
+        this
+    }
 
 @OptIn(UnstableApi::class)
 private fun SubtitleView.applyStyle(style: SubtitleStyle, textScale: Float, captionScale: Float) {
