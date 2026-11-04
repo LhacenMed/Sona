@@ -32,6 +32,10 @@ dependencies {
     implementation(project(":core:vault"))
     implementation(project(":feature:playback"))
 
+    implementation(libs.androidx.media3.common)
+    implementation(libs.androidx.media3.extractor)
+    implementation(libs.androidx.media3.ui)
+
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)

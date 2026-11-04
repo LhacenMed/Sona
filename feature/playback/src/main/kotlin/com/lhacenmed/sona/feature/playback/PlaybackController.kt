@@ -9,6 +9,9 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
+import androidx.media3.common.TrackSelectionOverride
+import androidx.media3.common.text.Cue
+import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.util.Util
 import androidx.media3.session.MediaController
@@ -125,6 +128,11 @@ class PlaybackController @Inject constructor(
     private val _playbackState = MutableStateFlow(PlaybackUiState())
     val playbackState: StateFlow<PlaybackUiState> = _playbackState.asStateFlow()
 
+    private val _subtitleCues = MutableStateFlow<List<Cue>>(emptyList())
+
+    /** The lines of the subtitle track playing, as they show - apart from [playbackState], as they change so often. */
+    val subtitleCues: StateFlow<List<Cue>> = _subtitleCues.asStateFlow()
+
     // Owned here, process-wide, so a timer set from one screen keeps running whichever screen is open.
     private val sleepTimerHolder = SleepTimer(scope) { controller?.pause() }
     val sleepTimer: StateFlow<SleepTimerState> = sleepTimerHolder.state
@@ -138,6 +146,10 @@ class PlaybackController @Inject constructor(
             sleepTimerHolder.onTrackEnd()
             // The same video come round again keeps its picture; another has none until its first frame.
             if (mediaItem?.idInSpace != pictureTrackId) pictureTrackId = null
+        }
+
+        override fun onCues(cueGroup: CueGroup) {
+            _subtitleCues.value = cueGroup.cues
         }
 
         override fun onRenderedFirstFrame() {
@@ -439,6 +451,49 @@ class PlaybackController @Inject constructor(
         controller?.volume = if (muted) 0f else 1f
     }
 
+    /** Plays [track] of the current file. */
+    fun selectAudioTrack(track: MediaTrack) = selectTrack(C.TRACK_TYPE_AUDIO, track)
+
+    /** The language a file's audio is played in from now on, wherever it has a track in it. */
+    fun setPreferredAudioLanguage(language: String) {
+        val mediaController = controller ?: return
+        mediaController.trackSelectionParameters = mediaController.trackSelectionParameters.buildUpon()
+            .setPreferredAudioLanguage(language)
+            .build()
+    }
+
+    /** Plays the subtitle [track] of the current file - none at all while null. */
+    fun selectSubtitleTrack(track: MediaTrack?) {
+        val mediaController = controller ?: return
+        if (track != null) {
+            selectTrack(C.TRACK_TYPE_TEXT, track)
+        } else {
+            mediaController.trackSelectionParameters = mediaController.trackSelectionParameters.buildUpon()
+                .clearOverridesOfType(C.TRACK_TYPE_TEXT)
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                .build()
+        }
+    }
+
+    /** Leaves it to the player which subtitle track plays, which is one the file itself marks to be shown, if any. */
+    fun followDefaultSubtitleTrack() {
+        val mediaController = controller ?: return
+        mediaController.trackSelectionParameters = mediaController.trackSelectionParameters.buildUpon()
+            .clearOverridesOfType(C.TRACK_TYPE_TEXT)
+            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+            .build()
+    }
+
+    private fun selectTrack(type: @C.TrackType Int, track: MediaTrack) {
+        val mediaController = controller ?: return
+        // Read afresh: the queue may have moved on from the file this track was listed for.
+        val group = mediaController.currentTracks.groups.getOrNull(track.groupIndex)?.takeIf { it.type == type && track.trackIndex < it.length } ?: return
+        mediaController.trackSelectionParameters = mediaController.trackSelectionParameters.buildUpon()
+            .setTrackTypeDisabled(type, false)
+            .setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, track.trackIndex))
+            .build()
+    }
+
     /** Shows the current video's picture on [view] - which decodes it, until [clearVideoSurface] lets it go. */
     fun setVideoSurface(view: SurfaceView) {
         controller?.setVideoSurfaceView(view)
@@ -450,6 +505,9 @@ class PlaybackController @Inject constructor(
 
     /** The player's position at this moment, for a screen that follows it closer than [playbackState] ticks. */
     fun currentPositionMs(): Long = controller?.currentPosition ?: _playbackState.value.positionMs
+
+    /** How far on from the start the player has read the current track ahead. */
+    fun bufferedPositionMs(): Long = controller?.bufferedPosition ?: 0L
 
     fun skipToNext() {
         controller?.seekToNext()
@@ -658,6 +716,8 @@ class PlaybackController @Inject constructor(
                 pictureTrackId = pictureTrackId,
                 space = if (isPrivate) PlaybackSpace.Private else PlaybackSpace.Library,
                 isWatching = watch != VideoWatch.None,
+                audioTracks = mediaController.currentTracks.mediaTracksOf(C.TRACK_TYPE_AUDIO),
+                subtitleTracks = mediaController.currentTracks.mediaTracksOf(C.TRACK_TYPE_TEXT),
             )
         }
     }

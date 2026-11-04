@@ -3,6 +3,7 @@ package com.lhacenmed.sona.feature.video
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.lhacenmed.sona.core.datastore.VideoAspect
+import com.lhacenmed.sona.feature.playback.MediaTrack
 import java.util.Locale
 
 /** "mm:ss", or "h:mm:ss" from the hour on - the way a video player reads out a position. */
@@ -18,10 +19,51 @@ internal fun formatVideoTime(timeMs: Long): String {
     }
 }
 
+/** What is left of a video: "\u22121:45:41". */
+internal fun formatRemainingTime(timeMs: Long): String = "$Minus${formatVideoTime(timeMs)}"
+
+/** How far a scrub has gone, always with its sign: "+16:28". */
+internal fun formatSeekDelta(deltaMs: Long): String =
+    (if (deltaMs < 0L) Minus else "+") + formatVideoTime(kotlin.math.abs(deltaMs))
+
+/** How far double taps have sought: "\u221210 s". */
+internal fun formatSeekSeconds(deltaMs: Long): String =
+    "${if (deltaMs < 0L) Minus else "+"}${kotlin.math.abs(deltaMs) / 1_000L} s"
+
+/** How far subtitles are moved: "0.0 s", or with its sign, "+0.5 s". */
+internal fun formatSubtitleOffset(offsetMs: Long): String {
+    val sign = if (offsetMs == 0L) "" else if (offsetMs < 0L) Minus else "+"
+    return sign + String.format(Locale.US, "%.1f s", kotlin.math.abs(offsetMs) / 1_000.0)
+}
+
+/** What a video's title has beneath it: its year and how sharp its picture is, as far as those are known. */
+internal fun videoDetails(year: Int?, pictureHeight: Int): String =
+    listOfNotNull(year?.toString(), pictureHeight.takeIf { it > 0 }?.let { "${it}p" }).joinToString(" \u00B7 ")
+
+private const val Minus = "\u2212"
+
 /** "1.5x" - a speed with no trailing zeros. */
 @Composable
 internal fun speedLabel(speed: Float): String =
     stringResource(R.string.video_speed_value, speed.toBigDecimal().stripTrailingZeros().toPlainString())
+
+/**
+ * What a track of a file is called: the name the file gives it or its language, how many channels it has where that
+ * tells two apart, and whether it is forced. The [index]th of its kind, where the file says nothing of it.
+ */
+@Composable
+internal fun MediaTrack.displayName(index: Int): String {
+    val name = label ?: language?.let { Locale.forLanguageTag(it).displayLanguage.ifEmpty { it } } ?: stringResource(R.string.video_track_number, index + 1)
+    val channels = when (channelCount) {
+        1 -> stringResource(R.string.video_track_mono)
+        2 -> stringResource(R.string.video_track_stereo)
+        6 -> "5.1"
+        8 -> "7.1"
+        else -> null
+    }
+    val forced = if (isForced) stringResource(R.string.video_track_forced) else null
+    return listOfNotNull(name, channels, forced).joinToString(" \u00B7 ")
+}
 
 @Composable
 internal fun VideoAspect.label(): String =

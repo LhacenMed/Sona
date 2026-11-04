@@ -5,6 +5,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.datastore.SubtitleBackdrop
+import com.lhacenmed.sona.core.datastore.SubtitlePosition
+import com.lhacenmed.sona.core.datastore.SubtitleTextSize
 import com.lhacenmed.sona.core.datastore.VideoOrientation
 import com.lhacenmed.sona.core.datastore.VideoSettings
 import com.lhacenmed.sona.core.navigation.LocalNavigator
@@ -39,6 +42,10 @@ data object VideoScreen : Screen {
         val longPressSpeed by viewModel.longPressSpeed.collectAsStateWithLifecycle()
         val longPressVibration by viewModel.longPressVibration.collectAsStateWithLifecycle()
         val zoomPan by viewModel.zoomPan.collectAsStateWithLifecycle()
+        val subtitleCustomization by viewModel.subtitleCustomization.collectAsStateWithLifecycle()
+        val subtitleTextSize by viewModel.subtitleTextSize.collectAsStateWithLifecycle()
+        val subtitleBackdrop by viewModel.subtitleBackdrop.collectAsStateWithLifecycle()
+        val subtitlePosition by viewModel.subtitlePosition.collectAsStateWithLifecycle()
         val secondsFormat = stringResource(R.string.seconds_format)
         val speedFormat = stringResource(R.string.video_speed_format)
 
@@ -78,11 +85,32 @@ data object VideoScreen : Screen {
             SettingsSectionDivider()
 
             SettingsSection(stringResource(R.string.video_playback_section)) {
-                // Not stored yet: subtitles are still to come.
                 SettingsSwitchItem(
                     title = stringResource(R.string.video_subtitle_customization_title),
                     summary = stringResource(R.string.video_subtitle_customization_summary),
-                    initialValue = true,
+                    checked = subtitleCustomization,
+                    onCheckedChange = viewModel::setSubtitleCustomization,
+                )
+                SettingsChoiceItem(
+                    title = stringResource(R.string.video_subtitle_text_size_title),
+                    options = SubtitleTextSize.entries.map { it.label() },
+                    selectedIndex = subtitleTextSize.ordinal,
+                    onSelect = { viewModel.setSubtitleTextSize(SubtitleTextSize.entries[it]) },
+                    enabled = subtitleCustomization,
+                )
+                SettingsChoiceItem(
+                    title = stringResource(R.string.video_subtitle_backdrop_title),
+                    options = SubtitleBackdrop.entries.map { it.label() },
+                    selectedIndex = subtitleBackdrop.ordinal,
+                    onSelect = { viewModel.setSubtitleBackdrop(SubtitleBackdrop.entries[it]) },
+                    enabled = subtitleCustomization,
+                )
+                SettingsChoiceItem(
+                    title = stringResource(R.string.video_subtitle_position_title),
+                    options = SubtitlePosition.entries.map { it.label() },
+                    selectedIndex = subtitlePosition.ordinal,
+                    onSelect = { viewModel.setSubtitlePosition(SubtitlePosition.entries[it]) },
+                    enabled = subtitleCustomization,
                 )
                 SettingsSwitchItem(
                     title = stringResource(R.string.video_resume_title),
@@ -150,6 +178,36 @@ data object VideoScreen : Screen {
         }
     }
 }
+
+@Composable
+private fun SubtitleTextSize.label(): String =
+    stringResource(
+        when (this) {
+            SubtitleTextSize.SMALL -> R.string.video_subtitle_text_size_small
+            SubtitleTextSize.MEDIUM -> R.string.video_subtitle_text_size_medium
+            SubtitleTextSize.LARGE -> R.string.video_subtitle_text_size_large
+        },
+    )
+
+@Composable
+private fun SubtitleBackdrop.label(): String =
+    stringResource(
+        when (this) {
+            SubtitleBackdrop.OUTLINE -> R.string.video_subtitle_backdrop_outline
+            SubtitleBackdrop.SHADOW -> R.string.video_subtitle_backdrop_shadow
+            SubtitleBackdrop.BOX -> R.string.video_subtitle_backdrop_box
+        },
+    )
+
+@Composable
+private fun SubtitlePosition.label(): String =
+    stringResource(
+        when (this) {
+            SubtitlePosition.LOW -> R.string.video_subtitle_position_low
+            SubtitlePosition.MIDDLE -> R.string.video_subtitle_position_middle
+            SubtitlePosition.HIGH -> R.string.video_subtitle_position_high
+        },
+    )
 
 @Composable
 private fun VideoOrientation.label(): String =

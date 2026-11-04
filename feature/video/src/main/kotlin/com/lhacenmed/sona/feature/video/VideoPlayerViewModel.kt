@@ -1,20 +1,29 @@
 package com.lhacenmed.sona.feature.video
 
+import android.content.Context
+import android.net.Uri
 import android.view.SurfaceView
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.LibraryRepository
+import com.lhacenmed.sona.core.data.LibrarySubtitleStore
+import com.lhacenmed.sona.core.datastore.SubtitleTextSize
 import com.lhacenmed.sona.core.datastore.VideoAspect
 import com.lhacenmed.sona.core.datastore.VideoOrientation
 import com.lhacenmed.sona.core.datastore.VideoSettings
 import com.lhacenmed.sona.core.datastore.stateIn
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.vault.VaultRepository
+import com.lhacenmed.sona.feature.playback.MediaTrack
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.playback.PlaybackSpace
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
 import com.lhacenmed.sona.feature.playback.QueueEntry
+import com.lhacenmed.sona.feature.video.subtitle.SubtitleSession
+import com.lhacenmed.sona.feature.video.subtitle.SubtitleStyle
+import com.lhacenmed.sona.feature.video.subtitle.WatchedVideo
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -75,6 +84,8 @@ class VideoPlayerViewModel @Inject constructor(
     repository: LibraryRepository,
     vault: VaultRepository,
     private val videoSettings: VideoSettings,
+    librarySubtitles: LibrarySubtitleStore,
+    @ApplicationContext context: Context,
 ) : ViewModel() {
 
     private val playbackWithoutPosition = playbackController.playbackState
@@ -144,14 +155,33 @@ class VideoPlayerViewModel @Inject constructor(
 
     val showClock: StateFlow<Boolean> = videoSettings.showClock.stateIn(viewModelScope)
 
-    private val _isScrubbing = MutableStateFlow(false)
+    /** The subtitles of the video watched - each space's kept in its own store, and only the library's found beside it. */
+    internal val subtitles = SubtitleSession(
+        context = context,
+        scope = viewModelScope,
+        playbackController = playbackController,
+        settings = videoSettings,
+        video = uiState.map { state ->
+            val isPrivate = state.playback.space == PlaybackSpace.Private
+            state.current?.takeIf { it.isVideo }?.let { track ->
+                WatchedVideo(track, if (isPrivate) vault.videoSubtitles else librarySubtitles, looksBesideIt = !isPrivate)
+            }
+        },
+    )
 
-    /** Whether a finger is dragging through the video - its frames are the feedback then, not a loader. */
-    val isScrubbing: StateFlow<Boolean> = _isScrubbing.asStateFlow()
+    /** The lines of the file's own subtitle track - see [PlaybackController.subtitleCues]. */
+    val subtitleCues = playbackController.subtitleCues
+
+    internal val subtitleStyle: StateFlow<SubtitleStyle> = with(videoSettings) {
+        merge(subtitleCustomization.flow, subtitleTextSize.flow, subtitleBackdrop.flow, subtitlePosition.flow)
+            .map { readSubtitleStyle() }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), readSubtitleStyle())
+    }
 
     init {
         // The silence chosen last time comes back with the player; it is the player's alone, never the music's.
         playbackController.setMuted(videoSettings.muted.value)
+        videoSettings.audioLanguage.value?.let(playbackController::setPreferredAudioLanguage)
     }
 
     /** The speed to go back to once a long press lets go, while one holds the video sped up. */
@@ -159,6 +189,9 @@ class VideoPlayerViewModel @Inject constructor(
 
     /** The player's position at this moment, for whatever follows it closer than [uiState] could. */
     fun currentPositionMs(): Long = playbackController.currentPositionMs()
+
+    /** How far on from the start the player has read the video ahead. */
+    fun bufferedPositionMs(): Long = playbackController.bufferedPositionMs()
 
     fun onTogglePlayPause() = playbackController.togglePlayPause()
 
@@ -175,10 +208,7 @@ class VideoPlayerViewModel @Inject constructor(
         playbackController.seekTo(if (durationMs > 0L) targetMs.coerceIn(0L, durationMs) else targetMs.coerceAtLeast(0L))
     }
 
-    fun onScrubbingChange(isScrubbing: Boolean) {
-        _isScrubbing.value = isScrubbing
-        playbackController.setScrubbing(isScrubbing)
-    }
+    fun onScrubbingChange(isScrubbing: Boolean) = playbackController.setScrubbing(isScrubbing)
 
     fun onSpeedChange(speed: Float) = playbackController.setPlaybackSpeed(speed)
 
@@ -198,6 +228,25 @@ class VideoPlayerViewModel @Inject constructor(
         val muted = !playbackController.playbackState.value.isMuted
         playbackController.setMuted(muted)
         viewModelScope.launch { videoSettings.setMuted(muted) }
+    }
+
+    /** Plays [track] of this video - and the next video in its language, where it has one. */
+    fun onSelectAudioTrack(track: MediaTrack) {
+        track.language?.let { language ->
+            playbackController.setPreferredAudioLanguage(language)
+            viewModelScope.launch { videoSettings.setAudioLanguage(language) }
+        }
+        playbackController.selectAudioTrack(track)
+    }
+
+    fun onAttachSubtitle(uri: Uri) = subtitles.attach(uri)
+
+    /** Sets how large subtitles are - which only means anything as the app's own look, so that is what they then take. */
+    fun onSubtitleTextSizeChange(size: SubtitleTextSize) {
+        viewModelScope.launch {
+            videoSettings.setSubtitleTextSize(size)
+            videoSettings.setSubtitleCustomization(true)
+        }
     }
 
     fun onPlayQueueItem(item: QueueVideo) = playbackController.playQueueItem(item.entry.mediaItemIndex)
@@ -245,6 +294,10 @@ class VideoPlayerViewModel @Inject constructor(
         playbackController.setMuted(false)
         val isHeardOnly = _session.value.isAudioOnly || uiState.value.current?.isVideo == false
         playbackController.leaveVideoPlayer(keepsPlaying = isHeardOnly)
+    }
+
+    private fun readSubtitleStyle() = with(videoSettings) {
+        SubtitleStyle(subtitleCustomization.value, subtitleTextSize.value, subtitleBackdrop.value, subtitlePosition.value)
     }
 
     private fun readGestureSettings() = with(videoSettings) {

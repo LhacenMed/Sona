@@ -27,6 +27,13 @@ private val LONG_PRESS_SPEED_UP = booleanPreferencesKey("long_press_speed_up")
 private val LONG_PRESS_SPEED = floatPreferencesKey("long_press_speed")
 private val LONG_PRESS_VIBRATION = booleanPreferencesKey("long_press_vibration")
 private val ZOOM_PAN = booleanPreferencesKey("zoom_pan")
+private val SUBTITLES_ON = booleanPreferencesKey("subtitles_on")
+private val SUBTITLE_LANGUAGE = stringPreferencesKey("subtitle_language")
+private val AUDIO_LANGUAGE = stringPreferencesKey("audio_language")
+private val SUBTITLE_CUSTOMIZATION = booleanPreferencesKey("subtitle_customization")
+private val SUBTITLE_TEXT_SIZE = stringPreferencesKey("subtitle_text_size")
+private val SUBTITLE_BACKDROP = stringPreferencesKey("subtitle_backdrop")
+private val SUBTITLE_POSITION = stringPreferencesKey("subtitle_position")
 
 /** How the video player behaves - PLAYit's Video settings. */
 @Singleton
@@ -150,6 +157,52 @@ class VideoSettings @Inject constructor(
 
     suspend fun setZoomPan(enabled: Boolean) {
         dataStore.edit { it[ZOOM_PAN] = enabled }
+    }
+
+    /** Whether a video shows subtitles unasked - the last choice made in the player, so a series carries on as it was. */
+    val subtitlesOn: Setting<Boolean> = cache.setting { it[SUBTITLES_ON] ?: true }
+
+    suspend fun setSubtitlesOn(enabled: Boolean) {
+        dataStore.edit { it[SUBTITLES_ON] = enabled }
+    }
+
+    /** The language of the subtitles last chosen, which the next video's are looked for in. */
+    val subtitleLanguage: Setting<String?> = cache.setting { it[SUBTITLE_LANGUAGE] }
+
+    suspend fun setSubtitleLanguage(language: String) {
+        dataStore.edit { it[SUBTITLE_LANGUAGE] = language }
+    }
+
+    /** The language of the audio track last chosen, which the next video plays in where it can. */
+    val audioLanguage: Setting<String?> = cache.setting { it[AUDIO_LANGUAGE] }
+
+    suspend fun setAudioLanguage(language: String) {
+        dataStore.edit { it[AUDIO_LANGUAGE] = language }
+    }
+
+    /** Whether subtitles are drawn as the settings below say, rather than as the device's caption settings do. */
+    val subtitleCustomization: Setting<Boolean> = cache.setting { it[SUBTITLE_CUSTOMIZATION] ?: true }
+
+    suspend fun setSubtitleCustomization(enabled: Boolean) {
+        dataStore.edit { it[SUBTITLE_CUSTOMIZATION] = enabled }
+    }
+
+    val subtitleTextSize: Setting<SubtitleTextSize> = cache.setting { it.enum(SUBTITLE_TEXT_SIZE, SubtitleTextSize.Default) }
+
+    suspend fun setSubtitleTextSize(size: SubtitleTextSize) {
+        dataStore.edit { it[SUBTITLE_TEXT_SIZE] = size.name }
+    }
+
+    val subtitleBackdrop: Setting<SubtitleBackdrop> = cache.setting { it.enum(SUBTITLE_BACKDROP, SubtitleBackdrop.Default) }
+
+    suspend fun setSubtitleBackdrop(backdrop: SubtitleBackdrop) {
+        dataStore.edit { it[SUBTITLE_BACKDROP] = backdrop.name }
+    }
+
+    val subtitlePosition: Setting<SubtitlePosition> = cache.setting { it.enum(SUBTITLE_POSITION, SubtitlePosition.Default) }
+
+    suspend fun setSubtitlePosition(position: SubtitlePosition) {
+        dataStore.edit { it[SUBTITLE_POSITION] = position.name }
     }
 
     companion object {

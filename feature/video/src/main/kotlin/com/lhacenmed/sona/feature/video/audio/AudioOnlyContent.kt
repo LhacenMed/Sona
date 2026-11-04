@@ -56,6 +56,7 @@ private val DiscSize = 240.dp
 internal fun AudioOnlyContent(
     coverArtUri: String?,
     isPlaying: Boolean,
+    showsDetails: Boolean,
     onBackToVideo: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -65,6 +66,8 @@ internal fun AudioOnlyContent(
         modifier = modifier.fillMaxSize().padding(horizontal = 72.dp),
     ) {
         Disc(coverArtUri, isPlaying)
+        // The way back is on the top bar as well; a screen on its side has no room for more than the disc.
+        if (!showsDetails) return@Column
         Text(
             text = stringResource(R.string.video_audio_message),
             style = MaterialTheme.typography.bodyLarge,

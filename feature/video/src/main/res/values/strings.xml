@@ -8,8 +8,8 @@
     <string name="video_more">More</string>
 
     <string name="video_speed">Speed</string>
-    <!-- A playback speed, as in "1.5x". -->
-    <string name="video_speed_value">%1$sx</string>
+    <!-- A playback speed, as in "1.5\u00D7". -->
+    <string name="video_speed_value">%1$s\u00D7</string>
 
     <string name="video_aspect">Aspect ratio</string>
     <string name="video_aspect_crop">Crop</string>
@@ -25,7 +25,6 @@
     <string name="video_rotation_landscape">Locked to landscape</string>
 
     <string name="video_lock">Lock controls</string>
-    <string name="video_unlock">Unlock controls</string>
     <string name="video_mute">Mute</string>
     <string name="video_unmute">Unmute</string>
     <string name="video_screenshot">Screenshot</string>
@@ -37,8 +36,30 @@
     <string name="video_back_to_video">Back to video</string>
     <string name="video_audio_message">The sound keeps playing while you use other apps or lock the screen</string>
 
+    <string name="video_tracks">Audio &amp; subtitles</string>
+    <string name="video_tracks_audio">Audio</string>
+    <string name="video_tracks_subtitles">Subtitles</string>
+    <string name="video_tracks_off">Off</string>
+    <string name="video_tracks_add_file">Load from file</string>
+    <string name="video_tracks_sync">Sync</string>
+    <!-- A track a file says nothing about, as in "Track 2". -->
+    <string name="video_track_number">Track %1$d</string>
+    <string name="video_track_mono">Mono</string>
+    <string name="video_track_stereo">Stereo</string>
+    <string name="video_track_forced">Forced</string>
+    <string name="video_subtitle_failed">Couldn\'t read this subtitle file</string>
+    <string name="video_subtitle_size">Size</string>
+    <string name="video_subtitle_size_small">S</string>
+    <string name="video_subtitle_size_medium">M</string>
+    <string name="video_subtitle_size_large">L</string>
+    <string name="video_subtitle_sync_earlier_symbol">\u2212</string>
+    <string name="video_subtitle_sync_later_symbol">+</string>
+    <string name="video_panel_close">Close</string>
+    <string name="video_hold_to_unlock">Hold to unlock</string>
+    <!-- What a skip button does, as in "Back 10 seconds". -->
+    <string name="video_skip_back">Back %1$d seconds</string>
+    <string name="video_skip_forward">Forward %1$d seconds</string>
+
     <string name="video_brightness">Brightness</string>
     <string name="video_volume">Volume</string>
-    <!-- A level, as in "60%". -->
-    <string name="video_percent">%1$d%%</string>
 </resources>

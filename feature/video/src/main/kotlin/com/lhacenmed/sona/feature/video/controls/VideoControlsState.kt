@@ -4,7 +4,6 @@ import android.os.SystemClock
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -51,7 +50,7 @@ internal class VideoControlsState {
 
     /**
      * Hides the controls once they have been left alone for [timeoutMs] - never while it is null. The time is
-     * counted afresh whenever it starts over - the video paused and played again, a sheet closed.
+     * counted afresh whenever it starts over - the video paused and played again, a panel closed.
      */
     @Composable
     fun HideAfterTimeout(timeoutMs: Long?) {
@@ -69,19 +68,28 @@ internal class VideoControlsState {
 }
 
 /**
- * The player's position, read from [currentPositionMs] for as long as [isFollowing] and the screen is started -
- * nothing is read while nothing shows it.
+ * How far the video is and how far it is buffered, followed from the player. State read only by what shows them - the
+ * seek bar and its times, the ambient line - so each tick redraws those and composes nothing around them.
  */
+@Stable
+internal class VideoPosition(positionMs: Long) {
+    var positionMs by mutableLongStateOf(positionMs)
+    var bufferedMs by mutableLongStateOf(0L)
+}
+
+/** The player's [VideoPosition], read for as long as [isFollowing] and the screen is started - not while nothing shows it. */
 @Composable
-internal fun rememberVideoPosition(currentPositionMs: () -> Long, isFollowing: Boolean): State<Long> {
-    val position = remember { mutableLongStateOf(currentPositionMs()) }
+internal fun rememberVideoPosition(currentPositionMs: () -> Long, bufferedPositionMs: () -> Long, isFollowing: Boolean): VideoPosition {
+    val position = remember { VideoPosition(currentPositionMs()) }
     val latestCurrentPositionMs by rememberUpdatedState(currentPositionMs)
+    val latestBufferedPositionMs by rememberUpdatedState(bufferedPositionMs)
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(isFollowing, lifecycleOwner) {
         if (!isFollowing) return@LaunchedEffect
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (isActive) {
-                position.longValue = latestCurrentPositionMs()
+                position.positionMs = latestCurrentPositionMs()
+                position.bufferedMs = latestBufferedPositionMs()
                 delay(VideoPlayerTokens.PositionTickMs)
             }
         }

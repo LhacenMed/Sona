@@ -8,10 +8,15 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.displayCutout
@@ -19,24 +24,22 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsIgnoringVisibility
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
-import androidx.compose.material.icons.rounded.AspectRatio
-import androidx.compose.material.icons.rounded.Headphones
-import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.rounded.LockOpen
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.PictureInPictureAlt
 import androidx.compose.material.icons.rounded.Screenshot
+import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -46,11 +49,17 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.data.contentUri
@@ -62,17 +71,25 @@ import com.lhacenmed.sona.feature.playback.PlaybackUiState
 import com.lhacenmed.sona.feature.video.audio.AudioOnlyContent
 import com.lhacenmed.sona.feature.video.capture.captureVideoFrame
 import com.lhacenmed.sona.feature.video.capture.saveScreenshot
+import com.lhacenmed.sona.feature.video.controls.AmbientProgress
 import com.lhacenmed.sona.feature.video.controls.BatteryClock
 import com.lhacenmed.sona.feature.video.controls.VideoAction
-import com.lhacenmed.sona.feature.video.controls.VideoControlRail
+import com.lhacenmed.sona.feature.video.controls.VideoActionRow
+import com.lhacenmed.sona.feature.video.controls.VideoBarButton
+import com.lhacenmed.sona.feature.video.controls.VideoControlSlots
 import com.lhacenmed.sona.feature.video.controls.VideoControlsLayout
 import com.lhacenmed.sona.feature.video.controls.VideoControlsState
+import com.lhacenmed.sona.feature.video.controls.VideoElapsedTime
+import com.lhacenmed.sona.feature.video.controls.VideoIcons
+import com.lhacenmed.sona.feature.video.controls.VideoPosition
+import com.lhacenmed.sona.feature.video.controls.VideoRemainingTime
 import com.lhacenmed.sona.feature.video.controls.VideoSeekBar
+import com.lhacenmed.sona.feature.video.controls.VideoSpeedButton
 import com.lhacenmed.sona.feature.video.controls.VideoTopBar
-import com.lhacenmed.sona.feature.video.controls.VideoTransportBar
+import com.lhacenmed.sona.feature.video.controls.VideoTransport
 import com.lhacenmed.sona.feature.video.controls.rememberVideoPosition
 import com.lhacenmed.sona.feature.video.gesture.GestureFeedback
-import com.lhacenmed.sona.feature.video.gesture.GestureFeedbackBadge
+import com.lhacenmed.sona.feature.video.gesture.GestureFeedbackLayer
 import com.lhacenmed.sona.feature.video.gesture.GestureFeedbackState
 import com.lhacenmed.sona.feature.video.gesture.ScreenHalf
 import com.lhacenmed.sona.feature.video.gesture.TapZone
@@ -80,34 +97,41 @@ import com.lhacenmed.sona.feature.video.gesture.VideoGestureActions
 import com.lhacenmed.sona.feature.video.gesture.icon
 import com.lhacenmed.sona.feature.video.gesture.label
 import com.lhacenmed.sona.feature.video.gesture.videoGestures
-import com.lhacenmed.sona.feature.video.sheet.VideoChoiceSheet
-import com.lhacenmed.sona.feature.video.sheet.VideoQueueSheet
+import com.lhacenmed.sona.feature.video.panel.MorePanel
+import com.lhacenmed.sona.feature.video.panel.PlayerPanelHost
+import com.lhacenmed.sona.feature.video.panel.QueuePanel
+import com.lhacenmed.sona.feature.video.panel.SpeedPanel
+import com.lhacenmed.sona.feature.video.panel.TracksPanel
+import com.lhacenmed.sona.feature.video.panel.VideoPanel
+import com.lhacenmed.sona.feature.video.scrub.ScrubPreview
+import com.lhacenmed.sona.feature.video.scrub.VideoScrubState
+import com.lhacenmed.sona.feature.video.subtitle.SubtitleLayer
+import com.lhacenmed.sona.feature.video.subtitle.SubtitleSource
 import com.lhacenmed.sona.feature.video.surface.VideoFrame
 import com.lhacenmed.sona.feature.video.surface.VideoSurface
 import com.lhacenmed.sona.feature.video.surface.VideoZoomState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** The speeds the speed button offers. */
-private val PlaybackSpeeds = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f, 2.5f, 3f)
+/** What the skip buttons skip while double taps do not seek, and so have no length set. */
+private const val DefaultSkipSeconds = 10
 
-/** The sheets the player opens over itself. */
-private enum class VideoSheet { QUEUE, SPEED }
-
-/** Where the drag under way started, and the level it has reached - kept across its reports and recompositions. */
+/** The level the drag under way has reached - kept across its reports and recompositions. */
 private class DragProgress {
-    var seekStartMs: Long? = null
     var volumeTarget: Float? = null
 }
 
 /**
- * The video player: the picture - or, played for its sound alone, a disc in its place - the gestures over it,
- * and the controls over those, which a tap shows and hides.
+ * The video player: the picture - or, played for its sound alone, a disc in its place - the subtitles over it, the
+ * gestures' feedback over those, then the controls, which a tap shows and hides, and any panel over all of it.
  *
- * Laid out in three layers that never change places: the picture, the gesture feedback and loader, then the
- * controls. Locking the controls swaps the controls for the lock alone, in the place it always has. [isFloating],
- * in its floating window, it is the picture alone - the window has controls of its own. [onFloat], where the
- * device has floating windows, puts it in one.
+ * Built so nothing that moves composes this screen: a finger's scrub, a level's drag, the position's tick and the
+ * subtitles are each followed by state read only where they are drawn or laid out. This composes again only as
+ * playback itself changes - a new video, play or pause - or a control comes or goes.
+ *
+ * Locking the controls swaps them for the way to unlock alone. [isFloating], in its floating window, it is the picture
+ * and its subtitles alone - the window has controls of its own. [onFloat], where the device has floating windows, puts
+ * it in one.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -116,23 +140,35 @@ internal fun VideoPlayerScreen(viewModel: VideoPlayerViewModel, onClose: () -> U
     val session by viewModel.session.collectAsStateWithLifecycle()
     val gestureSettings by viewModel.gestureSettings.collectAsStateWithLifecycle()
     val showClock by viewModel.showClock.collectAsStateWithLifecycle()
-    val isScrubbing by viewModel.isScrubbing.collectAsStateWithLifecycle()
+    val subtitles by viewModel.subtitles.state.collectAsStateWithLifecycle()
+    val subtitleStyle by viewModel.subtitleStyle.collectAsStateWithLifecycle()
     val playback = uiState.playback
     val current = uiState.current
     // Music queued after the videos has no picture to show.
     val isAudioOnly = session.isAudioOnly || current?.isVideo == false
+    val windowSize = LocalWindowInfo.current.containerSize
+    val isLandscape = windowSize.width > windowSize.height
 
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
+    val context = LocalContext.current
     val controls = remember { VideoControlsState() }
     val zoom = remember { VideoZoomState() }
     val feedback = remember(scope) { GestureFeedbackState(scope) }
+    val scrub = remember(viewModel) { VideoScrubState(viewModel::onSeek, viewModel::onScrubbingChange) }
     val brightness = rememberWindowBrightness()
     val volume = rememberDeviceMusicVolumeController()
-    var sheet by remember { mutableStateOf<VideoSheet?>(null) }
+    var panel by remember { mutableStateOf<VideoPanel?>(null) }
     val drag = remember { DragProgress() }
-    // Held for the screenshot button, which reads the frame straight off it.
+    // Held for the screenshot button and the scrubbing preview, which read the frame straight off it.
     val surface = remember { arrayOfNulls<SurfaceView>(1) }
+    // Any file: a subtitle's type is rarely one the system knows, so it is told by its extension once picked.
+    val subtitleFilePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let(viewModel::onAttachSubtitle)
+    }
+    LaunchedEffect(viewModel) {
+        viewModel.subtitles.readFailures.collect { context.toast(R.string.video_subtitle_failed) }
+    }
 
     // Nothing left to watch - the queue cleared from the notification, or the Private Folder locked - leaves
     // nothing to show. Only once something was shown: the player can open a moment before the queue it was
@@ -155,6 +191,8 @@ internal fun VideoPlayerScreen(viewModel: VideoPlayerViewModel, onClose: () -> U
     // Shown only once this video's first frame is drawn at its own size - never a frame of another shape first.
     val isPictureShown = current != null && playback.pictureTrackId == current.id && pictureSize[0] > 0
 
+    val areControlsUp = (controls.isVisible || isAudioOnly) && panel == null
+
     VideoWindowEffects(
         orientation = session.orientation,
         keepScreenOn = playback.isPlaying && !isAudioOnly,
@@ -163,16 +201,22 @@ internal fun VideoPlayerScreen(viewModel: VideoPlayerViewModel, onClose: () -> U
     controls.HideAfterTimeout(
         when {
             session.isLocked -> VideoPlayerTokens.LockedHintTimeoutMs
-            isAudioOnly || sheet != null || !playback.isPlaying -> null
+            isAudioOnly || panel != null || !playback.isPlaying -> null
             else -> VideoPlayerTokens.ControlsTimeoutMs
         },
     )
-    // Locked, back does nothing but show the lock, so the player is not left by accident either.
+    // Locked, back does nothing but show the way to unlock, so the player is not left by accident either.
     BackHandler(enabled = session.isLocked) { controls.show() }
-    // A sheet has no room in the floating window: it is closed as the player floats.
-    LaunchedEffect(isFloating) { if (isFloating) sheet = null }
+    BackHandler(enabled = panel != null) { panel = null }
+    // A panel has no room in the floating window: it is closed as the player floats.
+    LaunchedEffect(isFloating) { if (isFloating) panel = null }
 
-    val position by rememberVideoPosition(viewModel::currentPositionMs, isFollowing = controls.isVisible || isAudioOnly)
+    val position = rememberVideoPosition(viewModel::currentPositionMs, viewModel::bufferedPositionMs, isFollowing = !session.isLocked && !isFloating)
+    val scrubProgress = animateFloatAsState(
+        targetValue = if (scrub.isActive) 1f else 0f,
+        animationSpec = tween(VideoPlayerTokens.ScrubFadeMs),
+        label = "scrubProgress",
+    )
     val isLoaderShown by produceState(false, playback.isBuffering) {
         if (playback.isBuffering) delay(VideoPlayerTokens.LoaderDelayMs)
         value = playback.isBuffering
@@ -185,14 +229,24 @@ internal fun VideoPlayerScreen(viewModel: VideoPlayerViewModel, onClose: () -> U
         videoHeight = pictureSize[1],
         positionMs = viewModel::currentPositionMs,
     )
+    val cycleOrientation = {
+        viewModel.onCycleOrientation()
+        feedback.flash(GestureFeedback.Orientation(session.orientation.next()))
+    }
+    val cycleAspect = {
+        viewModel.onCycleAspect()
+        feedback.flash(GestureFeedback.Aspect(session.aspect.next()))
+    }
 
     val gestureActions = rememberUpdatedState(
         videoGestureActions(
             playback = playback,
             settings = gestureSettings,
-            isAnswering = !session.isLocked && !isAudioOnly,
+            isAnswering = !session.isLocked && !isAudioOnly && panel == null,
+            onTap = { if (panel != null) panel = null else controls.toggle() },
             controls = controls,
             feedback = feedback,
+            scrub = scrub,
             drag = drag,
             viewModel = viewModel,
             onHoldStarted = { if (gestureSettings.longPressVibration) haptics.performHapticFeedback(HapticFeedbackType.LongPress) },
@@ -230,31 +284,51 @@ internal fun VideoPlayerScreen(viewModel: VideoPlayerViewModel, onClose: () -> U
                 },
             )
         }
+        if (panel != null && !isAudioOnly) Box(Modifier.fillMaxSize().background(VideoPlayerTokens.PanelDim))
         if (isAudioOnly) {
             AudioOnlyContent(
                 coverArtUri = current?.coverArtUri,
                 isPlaying = playback.isPlaying,
+                showsDetails = !isLandscape,
                 onBackToVideo = {
                     viewModel.onAudioOnlyChange(false)
                     controls.show()
                 },
-                // Clear of the bars, which never hide while it shows.
+                // Clear of the controls, which never hide while it shows; in landscape, the transport stands over it.
                 modifier = Modifier
                     .background(Color.Black)
-                    .padding(vertical = VideoPlayerTokens.BarHeight * 2),
+                    .padding(
+                        top = if (isLandscape) 0.dp else VideoPlayerTokens.BarButtonSize,
+                        bottom = if (isLandscape) 0.dp else VideoPlayerTokens.PortraitControlsHeight,
+                    ),
             )
         } else if (!isPictureShown) {
             Box(Modifier.fillMaxSize().background(Color.Black))
+        } else {
+            SubtitleLayer(
+                source = subtitles.source,
+                timeline = subtitles.timeline,
+                offsetMs = subtitles.offsetMs,
+                playerCues = viewModel.subtitleCues,
+                currentPositionMs = viewModel::currentPositionMs,
+                style = subtitleStyle,
+                isFloating = isFloating,
+                areControlsUp = areControlsUp,
+                openPanelWidth = panel?.width?.takeIf { isLandscape },
+                pictureBottomPx = { zoom.frameBottomPx },
+            )
         }
 
         // Floating, the picture is all there is.
         if (isFloating) return@Box
 
-        // Dragging through the video, its frames are the feedback; a loader would only cover them.
-        if (isLoaderShown && !isScrubbing && !isAudioOnly) {
-            CircularProgressIndicator(color = VideoPlayerTokens.ContentColor, modifier = Modifier.align(Alignment.Center))
+        if (isLoaderShown && !scrub.isActive && !isAudioOnly) {
+            // Ringing the play button in the middle of the landscape screen, rather than covering it.
+            CircularProgressIndicator(
+                color = VideoPlayerTokens.ContentColor,
+                modifier = Modifier.align(Alignment.Center).size(VideoPlayerTokens.PlayButtonSize),
+            )
         }
-        GestureFeedbackBadge(feedback.current, modifier = Modifier.align(Alignment.Center))
 
         if (showClock && !controls.isVisible) {
             BatteryClock(
@@ -264,195 +338,255 @@ internal fun VideoPlayerScreen(viewModel: VideoPlayerViewModel, onClose: () -> U
                         WindowInsets.systemBarsIgnoringVisibility.union(WindowInsets.displayCutout)
                             .only(WindowInsetsSides.Top + WindowInsetsSides.End),
                     )
-                    .padding(VideoPlayerTokens.EdgePadding),
+                    .padding(12.dp),
             )
         }
+        if (!areControlsUp && !scrub.isActive && !session.isLocked && !isAudioOnly && panel == null) {
+            AmbientProgress(position, playback.durationMs, Modifier.align(Alignment.BottomCenter))
+        }
+
+        GestureFeedbackLayer(feedback)
 
         AnimatedVisibility(
-            visible = controls.isVisible || isAudioOnly,
+            visible = if (session.isLocked) controls.isVisible else areControlsUp || scrub.isActive,
             enter = VideoPlayerTokens.ControlsEnter,
             exit = VideoPlayerTokens.ControlsExit,
         ) {
-            when {
-                session.isLocked -> LockedControls(
-                    positionMs = position,
-                    durationMs = playback.durationMs,
+            if (session.isLocked) {
+                LockedControls(
                     onUnlock = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         viewModel.onLockedChange(false)
                         controls.show()
                     },
+                    onHint = controls::show,
                 )
-
-                else -> PlayerControls(
+            } else {
+                PlayerControls(
                     title = current?.title.orEmpty(),
+                    details = videoDetails(current?.year, pictureSize[1]),
                     playback = playback,
-                    positionMs = position,
+                    position = position,
+                    isLandscape = isLandscape,
                     isAudioOnly = isAudioOnly,
+                    isShowingSubtitles = subtitles.source is SubtitleSource.FromFile || subtitles.source is SubtitleSource.Embedded,
+                    skipSeconds = gestureSettings.doubleTapSeekSeconds ?: DefaultSkipSeconds,
                     session = session,
+                    scrub = scrub,
+                    scrubProgress = scrubProgress,
                     viewModel = viewModel,
                     onClose = onClose,
                     onLock = {
                         viewModel.onLockedChange(true)
                         controls.show()
                     },
-                    onScreenshot = screenshot,
-                    onCycleOrientation = {
-                        viewModel.onCycleOrientation()
-                        feedback.flash(GestureFeedback.Orientation(session.orientation.next()))
-                    },
-                    onCycleAspect = {
-                        viewModel.onCycleAspect()
-                        feedback.flash(GestureFeedback.Aspect(session.aspect.next()))
-                    },
+                    onCycleOrientation = cycleOrientation,
+                    onCycleAspect = cycleAspect,
                     onFloat = onFloat,
-                    onOpenSheet = { sheet = it },
+                    onOpenPanel = { panel = it },
+                )
+            }
+        }
+
+        ScrubPreview(
+            scrub = scrub,
+            surface = { surface[0] },
+            showsPicture = !isAudioOnly,
+            videoWidth = pictureSize[0],
+            videoHeight = pictureSize[1],
+            durationMs = playback.durationMs,
+        )
+
+        PlayerPanelHost(panel, isLandscape) { shown ->
+            val close = { panel = null }
+            when (shown) {
+                VideoPanel.TRACKS -> TracksPanel(
+                    audioTracks = playback.audioTracks,
+                    subtitles = subtitles,
+                    textSize = subtitleStyle.textSize,
+                    onSelectAudio = viewModel::onSelectAudioTrack,
+                    onSelectSubtitle = viewModel.subtitles::choose,
+                    onAddFile = { subtitleFilePicker.launch(arrayOf("*/*")) },
+                    onTextSizeChange = viewModel::onSubtitleTextSizeChange,
+                    onOffsetChange = viewModel.subtitles::setOffset,
+                    onClose = close,
+                )
+
+                VideoPanel.QUEUE -> QueuePanel(
+                    queue = uiState.queue,
+                    currentIndex = playback.currentQueueIndex,
+                    isPlaying = playback.isPlaying,
+                    onPlay = viewModel::onPlayQueueItem,
+                    onClose = close,
+                )
+
+                VideoPanel.SPEED -> SpeedPanel(playback.playbackSpeed, viewModel::onSpeedChange, close)
+
+                VideoPanel.MORE -> MorePanel(
+                    actions = moreActions(
+                        playback = playback,
+                        isLandscape = isLandscape,
+                        isAudioOnly = isAudioOnly,
+                        orientationIcon = session.orientation.icon,
+                        orientationLabel = session.orientation.label(),
+                        viewModel = viewModel,
+                        onScreenshot = screenshot,
+                        onCycleOrientation = cycleOrientation,
+                        onCycleAspect = cycleAspect,
+                    ),
+                    onClose = close,
                 )
             }
         }
     }
-
-    when (sheet) {
-        VideoSheet.QUEUE -> VideoQueueSheet(
-            queue = uiState.queue,
-            currentIndex = playback.currentQueueIndex,
-            isPlaying = playback.isPlaying,
-            onPlay = viewModel::onPlayQueueItem,
-            onDismissRequest = { sheet = null },
-        )
-
-        VideoSheet.SPEED -> VideoChoiceSheet(
-            title = stringResource(R.string.video_speed),
-            options = PlaybackSpeeds,
-            selected = playback.playbackSpeed,
-            label = { speedLabel(it) },
-            onSelect = viewModel::onSpeedChange,
-            onDismissRequest = { sheet = null },
-        )
-
-        null -> Unit
-    }
 }
 
-/** Every control, unlocked: the top bar, the rails down either side, and the seek and transport bars. */
+/** Every control, unlocked: the same controls however the screen stands - see [VideoControlsLayout]. */
 @Composable
 private fun PlayerControls(
     title: String,
+    details: String,
     playback: PlaybackUiState,
-    positionMs: Long,
+    position: VideoPosition,
+    isLandscape: Boolean,
     isAudioOnly: Boolean,
+    isShowingSubtitles: Boolean,
+    skipSeconds: Int,
     session: VideoSession,
+    scrub: VideoScrubState,
+    scrubProgress: State<Float>,
     viewModel: VideoPlayerViewModel,
     onClose: () -> Unit,
     onLock: () -> Unit,
-    onScreenshot: () -> Unit,
     onCycleOrientation: () -> Unit,
     onCycleAspect: () -> Unit,
     onFloat: (() -> Unit)?,
-    onOpenSheet: (VideoSheet) -> Unit,
+    onOpenPanel: (VideoPanel) -> Unit,
 ) {
-    val accent = MaterialTheme.colorScheme.primary
+    val durationMs = playback.durationMs
+    val topActions = listOf(
+        VideoAction(
+            icon = VideoIcons.Headphones,
+            label = stringResource(if (isAudioOnly) R.string.video_back_to_video else R.string.video_play_as_audio),
+            onClick = { viewModel.onAudioOnlyChange(!session.isAudioOnly) },
+            tint = if (isAudioOnly) VideoPlayerTokens.Accent else VideoPlayerTokens.ContentColor,
+        ),
+        VideoAction(VideoIcons.Queue, stringResource(R.string.video_queue), { onOpenPanel(VideoPanel.QUEUE) }),
+        VideoAction(
+            icon = VideoIcons.Captions,
+            label = stringResource(R.string.video_tracks),
+            onClick = { onOpenPanel(VideoPanel.TRACKS) }.takeUnless { isAudioOnly },
+            tint = if (isShowingSubtitles && !isAudioOnly) VideoPlayerTokens.Accent else VideoPlayerTokens.ContentColor,
+        ),
+        VideoAction(VideoIcons.More, stringResource(R.string.video_more), { onOpenPanel(VideoPanel.MORE) }),
+    )
+    val floatAction = VideoAction(VideoIcons.PictureInPicture, stringResource(R.string.video_floating_window), onClick = onFloat)
+    val trailingActions = when {
+        isAudioOnly -> emptyList()
+        isLandscape -> listOf(VideoAction(VideoIcons.Fit, stringResource(R.string.video_aspect), onCycleAspect), floatAction)
+        else -> listOf(floatAction, VideoAction(VideoIcons.Rotate, session.orientation.label(), onCycleOrientation))
+    }
     VideoControlsLayout(
-        topBar = {
-            VideoTopBar(
-                title = title,
-                onBack = onClose,
-                actions = listOf(
-                    VideoAction(
-                        icon = Icons.Rounded.Headphones,
-                        label = stringResource(if (isAudioOnly) R.string.video_back_to_video else R.string.video_play_as_audio),
-                        onClick = { viewModel.onAudioOnlyChange(!session.isAudioOnly) },
-                        tint = if (isAudioOnly) accent else VideoPlayerTokens.ContentColor,
-                    ),
-                    VideoAction(Icons.AutoMirrored.Rounded.PlaylistPlay, stringResource(R.string.video_queue), { onOpenSheet(VideoSheet.QUEUE) }),
-                    // The more-actions sheet is still to come.
-                    VideoAction(Icons.Rounded.MoreVert, stringResource(R.string.video_more), onClick = null),
-                ),
-            )
-        },
-        startRail = {
-            VideoControlRail(listOf(muteAction(playback.isMuted, viewModel::onToggleMute), lockAction(isLocked = false, onLock)))
-        },
-        endRail = {
-            if (!isAudioOnly) {
-                VideoControlRail(
-                    listOf(
-                        // A Private Folder video is never saved out to the gallery; its place is kept, empty.
-                        VideoAction(Icons.Rounded.Screenshot, stringResource(R.string.video_screenshot), onScreenshot)
-                            .takeIf { playback.space != PlaybackSpace.Private },
-                        VideoAction(session.orientation.icon, session.orientation.label(), onCycleOrientation),
-                    ),
+        isLandscape = isLandscape,
+        scrubProgress = scrubProgress,
+        slots = VideoControlSlots(
+            topBar = { VideoTopBar(title, details, onClose, topActions, scrubProgress) },
+            transport = { modifier ->
+                VideoTransport(
+                    isPlaying = playback.isPlaying,
+                    seekSeconds = skipSeconds,
+                    onTogglePlayPause = viewModel::onTogglePlayPause,
+                    onSeekBy = { seconds -> viewModel.onSeekBy(seconds * 1_000L) },
+                    isLandscape = isLandscape,
+                    modifier = modifier,
                 )
-            }
-        },
-        bottomBar = {
-            VideoSeekBar(
-                positionMs = positionMs,
-                durationMs = playback.durationMs,
-                onSeek = viewModel::onSeek,
-                onScrubbingChange = viewModel::onScrubbingChange,
-            )
-            VideoTransportBar(
-                isPlaying = playback.isPlaying,
-                canSkipPrevious = playback.canSkipPrevious,
-                canSkipNext = playback.canSkipNext,
-                speedLabel = if (playback.playbackSpeed == 1f) stringResource(R.string.video_speed) else speedLabel(playback.playbackSpeed),
-                onTogglePlayPause = viewModel::onTogglePlayPause,
-                onSkipPrevious = viewModel::onSkipPrevious,
-                onSkipNext = viewModel::onSkipNext,
-                onSpeedClick = { onOpenSheet(VideoSheet.SPEED) },
-                trailing = if (isAudioOnly) {
-                    emptyList()
-                } else {
-                    listOf(
-                        VideoAction(Icons.Rounded.AspectRatio, stringResource(R.string.video_aspect), onCycleAspect),
-                        VideoAction(Icons.Rounded.PictureInPictureAlt, stringResource(R.string.video_floating_window), onClick = onFloat),
-                    )
-                },
-            )
-        },
+            },
+            seekBar = { modifier -> VideoSeekBar(position, durationMs, scrub, scrubProgress, modifier) },
+            elapsedTime = { modifier -> VideoElapsedTime(position, scrub, scrubProgress, modifier) },
+            remainingTime = { modifier -> VideoRemainingTime(position, durationMs, scrub, scrubProgress, modifier) },
+            leadingActions = { VideoBarButton(VideoAction(VideoIcons.LockOpen, stringResource(R.string.video_lock), onLock)) },
+            trailingActions = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    VideoSpeedButton(speedLabel(playback.playbackSpeed), { onOpenPanel(VideoPanel.SPEED) })
+                    VideoActionRow(trailingActions)
+                }
+            },
+        ),
     )
 }
 
 /**
- * The controls locked away: the lock alone, in its own place, and how far the video is - where the seek bar
- * always is, and as still as the rest. The transport bar's place is kept empty, so nothing moves.
+ * The controls locked away: only the way back, held so it is not pressed by accident, and a tap on it saying so by
+ * keeping it up.
+ */
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
+@Composable
+private fun LockedControls(onUnlock: () -> Unit, onHint: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.systemBarsIgnoringVisibility.union(WindowInsets.displayCutout))
+            .padding(start = 24.dp, top = 20.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .height(VideoPlayerTokens.BarButtonSize)
+                .shadow(12.dp, CircleShape)
+                .clip(CircleShape)
+                .background(VideoPlayerTokens.PillColor)
+                .combinedClickable(role = Role.Button, onClick = onHint, onLongClick = onUnlock)
+                .padding(start = 14.dp, end = 18.dp),
+        ) {
+            Icon(VideoIcons.Locked, contentDescription = null, tint = VideoPlayerTokens.ContentColor, modifier = Modifier.size(18.dp))
+            PlayerText(stringResource(R.string.video_hold_to_unlock), VideoPlayerType.Pill)
+        }
+    }
+}
+
+/**
+ * What has no place of its own on the screen: skipping between videos, silencing one, taking a frame - and what the
+ * layout showing leaves out of its bars.
  */
 @Composable
-private fun LockedControls(positionMs: Long, durationMs: Long, onUnlock: () -> Unit) {
-    VideoControlsLayout(
-        startRail = { VideoControlRail(listOf(null, lockAction(isLocked = true, onUnlock))) },
-        bottomBar = {
-            VideoSeekBar(positionMs = positionMs, durationMs = durationMs, onSeek = {}, onScrubbingChange = {}, enabled = false)
-            Spacer(Modifier.height(VideoPlayerTokens.TransportBarHeight))
-        },
-    )
-}
-
-@Composable
-private fun muteAction(isMuted: Boolean, onToggle: () -> Unit) = VideoAction(
-    icon = if (isMuted) Icons.AutoMirrored.Rounded.VolumeOff else Icons.AutoMirrored.Rounded.VolumeUp,
-    label = stringResource(if (isMuted) R.string.video_unmute else R.string.video_mute),
-    onClick = onToggle,
-)
-
-@Composable
-private fun lockAction(isLocked: Boolean, onClick: () -> Unit) = VideoAction(
-    icon = if (isLocked) Icons.Rounded.Lock else Icons.Rounded.LockOpen,
-    label = stringResource(if (isLocked) R.string.video_unlock else R.string.video_lock),
-    onClick = onClick,
-    tint = if (isLocked) MaterialTheme.colorScheme.error else VideoPlayerTokens.ContentColor,
+private fun moreActions(
+    playback: PlaybackUiState,
+    isLandscape: Boolean,
+    isAudioOnly: Boolean,
+    orientationIcon: ImageVector,
+    orientationLabel: String,
+    viewModel: VideoPlayerViewModel,
+    onScreenshot: () -> Unit,
+    onCycleOrientation: () -> Unit,
+    onCycleAspect: () -> Unit,
+): List<VideoAction> = listOfNotNull(
+    VideoAction(Icons.Rounded.SkipPrevious, stringResource(R.string.video_previous), { viewModel.onSkipPrevious() }.takeIf { playback.canSkipPrevious }),
+    VideoAction(Icons.Rounded.SkipNext, stringResource(R.string.video_next), { viewModel.onSkipNext() }.takeIf { playback.canSkipNext }),
+    VideoAction(
+        icon = if (playback.isMuted) Icons.AutoMirrored.Rounded.VolumeOff else Icons.AutoMirrored.Rounded.VolumeUp,
+        label = stringResource(if (playback.isMuted) R.string.video_unmute else R.string.video_mute),
+        onClick = viewModel::onToggleMute,
+    ),
+    // A Private Folder video is never saved out to the gallery.
+    VideoAction(Icons.Rounded.Screenshot, stringResource(R.string.video_screenshot), onScreenshot)
+        .takeIf { !isAudioOnly && playback.space != PlaybackSpace.Private },
+    VideoAction(orientationIcon, orientationLabel, onCycleOrientation).takeIf { !isAudioOnly && isLandscape },
+    VideoAction(VideoIcons.Fit, stringResource(R.string.video_aspect), onCycleAspect).takeIf { !isAudioOnly && !isLandscape },
 )
 
 /**
- * What each gesture does - none of them while not [isAnswering] but the tap, which shows and hides the controls,
- * and the touch, which keeps them up.
+ * What each gesture does - none of them while not [isAnswering] but the tap, and the touch, which keeps the controls up.
+ * A swipe across scrubs exactly as the seek bar's thumb does, through the one [scrub].
  */
 private fun videoGestureActions(
     playback: PlaybackUiState,
     settings: VideoGestureSettings,
     isAnswering: Boolean,
+    onTap: () -> Unit,
     controls: VideoControlsState,
     feedback: GestureFeedbackState,
+    scrub: VideoScrubState,
     drag: DragProgress,
     viewModel: VideoPlayerViewModel,
     onHoldStarted: () -> Unit,
@@ -466,7 +600,7 @@ private fun videoGestureActions(
     val canDrag = isAnswering && settings.dragsEnabled
     return VideoGestureActions(
         onTouch = controls::onTouch,
-        onTap = controls::toggle,
+        onTap = onTap,
         // Either side seeks back or on; the middle pauses or plays.
         onDoubleTap = settings.doubleTapSeekSeconds?.takeIf { isAnswering }?.let { seconds ->
             { zone ->
@@ -475,9 +609,8 @@ private fun videoGestureActions(
                     feedback.flash(GestureFeedback.PlayPause(isPlaying = !playback.isPlaying))
                 } else {
                     val deltaMs = (if (zone == TapZone.END) seconds else -seconds) * 1_000L
-                    val targetMs = (viewModel.currentPositionMs() + deltaMs).coerceIn(0L, durationMs.coerceAtLeast(0L))
-                    viewModel.onSeek(targetMs)
-                    feedback.flash(GestureFeedback.Seek(targetMs, deltaMs, durationMs))
+                    viewModel.onSeekBy(deltaMs)
+                    feedback.flashDoubleTapSeek(deltaMs)
                 }
             }
         },
@@ -494,23 +627,14 @@ private fun videoGestureActions(
         },
         onSeekDrag = if (canDrag && durationMs > 0L) {
             { fraction ->
-                val startMs = drag.seekStartMs ?: viewModel.currentPositionMs().also {
-                    drag.seekStartMs = it
-                    viewModel.onScrubbingChange(true)
-                }
+                scrub.begin(viewModel.currentPositionMs())
                 val sweepMs = minOf(durationMs, VideoPlayerTokens.SeekDragSweepMs)
-                val targetMs = (startMs + (fraction * sweepMs).toLong()).coerceIn(0L, durationMs)
-                viewModel.onSeek(targetMs)
-                feedback.show(GestureFeedback.Seek(targetMs, targetMs - startMs, durationMs))
+                scrub.moveTo((scrub.originMs + (fraction * sweepMs).toLong()).coerceIn(0L, durationMs))
             }
         } else {
             null
         },
-        onSeekDragEnd = {
-            drag.seekStartMs = null
-            viewModel.onScrubbingChange(false)
-            feedback.release()
-        },
+        onSeekDragEnd = scrub::end,
         onLevelDrag = if (canDrag) {
             { half, fraction ->
                 when (half) {

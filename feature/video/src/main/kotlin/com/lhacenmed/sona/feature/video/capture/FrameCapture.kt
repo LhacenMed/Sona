@@ -48,13 +48,18 @@ internal suspend fun Context.captureVideoFrame(
 ): Bitmap? = surface?.copyFrame(width, height) ?: decodeFrame(uri, positionMs)
 
 private suspend fun SurfaceView.copyFrame(width: Int, height: Int): Bitmap? {
-    if (width <= 0 || height <= 0 || !holder.surface.isValid) return null
+    if (width <= 0 || height <= 0) return null
+    return Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).takeIf { copyFrameInto(it) }
+}
+
+/** The frame showing on this surface now, scaled into [bitmap] - and whether it could be taken. */
+internal suspend fun SurfaceView.copyFrameInto(bitmap: Bitmap): Boolean {
+    if (!holder.surface.isValid) return false
     return suspendCancellableCoroutine { continuation ->
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         PixelCopy.request(
             this,
             bitmap,
-            { result -> continuation.resume(bitmap.takeIf { result == PixelCopy.SUCCESS }) },
+            { result -> continuation.resume(result == PixelCopy.SUCCESS) },
             Handler(Looper.getMainLooper()),
         )
     }

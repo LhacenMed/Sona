@@ -62,6 +62,9 @@ data class PlaybackUiState(
      * listened to. A video played as audio, from the video player's own choice, is listened to.
      */
     val isWatching: Boolean = false,
+    /** The current file's own audio and subtitle tracks the device can play. */
+    val audioTracks: List<MediaTrack> = emptyList(),
+    val subtitleTracks: List<MediaTrack> = emptyList(),
 ) {
     /** [currentTrackId] where it is the library's - null while the Private Folder plays. */
     val libraryTrackId: Long? get() = currentTrackId.takeIf { space == PlaybackSpace.Library }

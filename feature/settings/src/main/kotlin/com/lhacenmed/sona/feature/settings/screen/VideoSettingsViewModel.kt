@@ -2,6 +2,9 @@ package com.lhacenmed.sona.feature.settings.screen
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lhacenmed.sona.core.datastore.SubtitleBackdrop
+import com.lhacenmed.sona.core.datastore.SubtitlePosition
+import com.lhacenmed.sona.core.datastore.SubtitleTextSize
 import com.lhacenmed.sona.core.datastore.VideoOrientation
 import com.lhacenmed.sona.core.datastore.VideoSettings
 import com.lhacenmed.sona.core.datastore.stateIn
@@ -29,6 +32,10 @@ class VideoSettingsViewModel @Inject constructor(
     val longPressSpeed: StateFlow<Float> = videoSettings.longPressSpeed.stateIn(viewModelScope)
     val longPressVibration: StateFlow<Boolean> = videoSettings.longPressVibration.stateIn(viewModelScope)
     val zoomPan: StateFlow<Boolean> = videoSettings.zoomPan.stateIn(viewModelScope)
+    val subtitleCustomization: StateFlow<Boolean> = videoSettings.subtitleCustomization.stateIn(viewModelScope)
+    val subtitleTextSize: StateFlow<SubtitleTextSize> = videoSettings.subtitleTextSize.stateIn(viewModelScope)
+    val subtitleBackdrop: StateFlow<SubtitleBackdrop> = videoSettings.subtitleBackdrop.stateIn(viewModelScope)
+    val subtitlePosition: StateFlow<SubtitlePosition> = videoSettings.subtitlePosition.stateIn(viewModelScope)
 
     fun setOrientation(orientation: VideoOrientation) = update { setOrientation(orientation) }
 
@@ -55,6 +62,14 @@ class VideoSettingsViewModel @Inject constructor(
     fun setLongPressVibration(enabled: Boolean) = update { setLongPressVibration(enabled) }
 
     fun setZoomPan(enabled: Boolean) = update { setZoomPan(enabled) }
+
+    fun setSubtitleCustomization(enabled: Boolean) = update { setSubtitleCustomization(enabled) }
+
+    fun setSubtitleTextSize(size: SubtitleTextSize) = update { setSubtitleTextSize(size) }
+
+    fun setSubtitleBackdrop(backdrop: SubtitleBackdrop) = update { setSubtitleBackdrop(backdrop) }
+
+    fun setSubtitlePosition(position: SubtitlePosition) = update { setSubtitlePosition(position) }
 
     private fun update(write: suspend VideoSettings.() -> Unit) {
         viewModelScope.launch { videoSettings.write() }

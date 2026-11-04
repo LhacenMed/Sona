@@ -30,6 +30,10 @@ internal class VideoZoomState {
     var offset by mutableStateOf(Offset.Zero)
         private set
 
+    /** Where the picture ends on the screen, as far as a letterbox goes: subtitles stand beneath it in portrait. */
+    var frameBottomPx by mutableFloatStateOf(0f)
+        private set
+
     // The frame and the screen as last laid out - plain fields, so learning them never lays the frame out again.
     private var frame = Size.Zero
     private var screen = Size.Zero
@@ -59,6 +63,7 @@ internal class VideoZoomState {
     fun onLaidOut(frame: Size, screen: Size) {
         this.frame = frame
         this.screen = screen
+        frameBottomPx = (screen.height + frame.height) / 2f
     }
 }
 
