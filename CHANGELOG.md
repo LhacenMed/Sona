@@ -6,6 +6,48 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.6.17] - 2026-11-04
+
+### Added
+
+- Backups keep each video's subtitle file, its timing and which subtitles were picked.
+- Load a subtitle file (SRT, ASS, VTT or TTML) into a video, and it stays with that video from then on.
+- Subtitle files named after a video and lying beside it are found on their own.
+- Choose a video's audio and subtitle tracks, with the next video carrying on in the same languages.
+- Move a subtitle file's lines earlier or later to match the video, remembered for each video.
+- Settings for subtitle size, background and position.
+- A preview of the frame while scrubbing, and how far the video is buffered on the seek bar.
+- A thin progress line along the foot of the screen while the controls are hidden.
+- A video that picks up where it was left says so, with a button to start over.
+- A message when a video can't be played.
+
+### Changed
+
+- The update and theme import dialogs match the rest of the app's dialogs.
+- The video player has a new look, with its queue, speed, tracks and more options in panels beside the picture.
+- Double tap seeks add up as they come, shown by a ripple from the edge tapped.
+- Previous and next take the place of the 10-second buttons in the video player's controls.
+- The video player's messages for speed, fit and rotation appear beneath the top bar, clear of the controls.
+- Every video opens on auto-rotate, with the rotation button's choice lasting until the player closes.
+- Videos play apart from the music, which pauses and waits with its queue untouched.
+- Playing a video as audio moves it to the mini player and closes the video player.
+- A video keeps playing during a scrub and moves only on letting go, with a frame preview from the point reached.
+- Speed, fit, floating window and rotation are on the video player's controls in both orientations.
+- The video player's controls stay hidden as a video opens.
+
+### Fixed
+
+- Every button now presses the same way, in the equalizer, tag and lyrics editors, video player and settings.
+- Double tapping a video no longer makes the controls flash.
+- The video player's loading indicator lines up with the play button.
+- The video player's buttons ripple in a light colour rather than a dark one.
+- In portrait, a video's picture no longer sits under the player's controls.
+
+### Removed
+
+- The message shown when a double tap pauses or resumes a video.
+- The video orientation settings.
+
 ## [1.6.16] - 2026-11-03
 
 ### Added
