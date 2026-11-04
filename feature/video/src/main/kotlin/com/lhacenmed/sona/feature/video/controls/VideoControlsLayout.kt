@@ -4,17 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBarsIgnoringVisibility
-import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
@@ -26,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.feature.video.VideoPlayerTokens
+import com.lhacenmed.sona.feature.video.videoSafeArea
 
 /** What goes where in [VideoControlsLayout]: the same controls, wherever each way of standing lays them out. */
 internal class VideoControlSlots(
@@ -47,7 +43,6 @@ internal class VideoControlSlots(
  * and come back with the controls. Under a scrub all but the seek bar and its times fade where they stand, so the bar
  * never moves under the finger; [scrubProgress] is read as it draws, composing nothing.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun VideoControlsLayout(
     isLandscape: Boolean,
@@ -55,7 +50,6 @@ internal fun VideoControlsLayout(
     slots: VideoControlSlots,
     modifier: Modifier = Modifier,
 ) {
-    val insets = WindowInsets.systemBarsIgnoringVisibility.union(WindowInsets.displayCutout)
     val fadesAway = Modifier.graphicsLayer { alpha = 1f - scrubProgress.value }
     // The bars' buttons are their own touch targets: Material would otherwise pad each out past its design.
     CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides VideoPlayerTokens.BarButtonSize) {
@@ -65,7 +59,7 @@ internal fun VideoControlsLayout(
             Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(VideoPlayerTokens.BottomScrimHeight).background(VideoPlayerTokens.BottomScrim))
             Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(VideoPlayerTokens.ScrubScrimHeight).graphicsLayer { alpha = scrubProgress.value }.background(VideoPlayerTokens.ScrubBottomScrim))
 
-            Box(modifier = Modifier.fillMaxSize().windowInsetsPadding(insets)) {
+            Box(modifier = Modifier.fillMaxSize().windowInsetsPadding(videoSafeArea)) {
                 if (isLandscape) {
                     Box(Modifier.align(Alignment.TopCenter).padding(start = 20.dp, end = 20.dp, top = 14.dp)) { slots.topBar() }
                     slots.transport(fadesAway.align(Alignment.Center))

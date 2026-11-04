@@ -17,21 +17,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AspectRatio
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.ScreenLockLandscape
 import androidx.compose.material.icons.rounded.ScreenLockPortrait
 import androidx.compose.material.icons.rounded.ScreenRotation
@@ -64,6 +57,7 @@ import com.lhacenmed.sona.feature.video.controls.VideoIcons
 import com.lhacenmed.sona.feature.video.formatSeekSeconds
 import com.lhacenmed.sona.feature.video.label
 import com.lhacenmed.sona.feature.video.speedLabel
+import com.lhacenmed.sona.feature.video.videoSafeArea
 import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -81,15 +75,12 @@ internal sealed interface GestureFeedback {
 
     data class Speed(val speed: Float) : PillFeedback
 
-    /** Playing now, or paused - what a double tap in the middle turned it to. */
-    data class PlayPause(val isPlaying: Boolean) : PillFeedback
-
     data class Aspect(val aspect: VideoAspect) : PillFeedback
 
     data class Orientation(val orientation: VideoOrientation) : PillFeedback
 }
 
-/** Feedback with no place of its own, shown on a pill mid-screen. */
+/** Feedback with no place of its own, shown on a pill beneath the top bar, clear of the transport. */
 internal sealed interface PillFeedback : GestureFeedback
 
 /** The feedback showing now: held while a gesture is under way, and let go a moment after it ends. */
@@ -132,7 +123,7 @@ internal fun accumulatedSeekMs(showing: GestureFeedback?, deltaMs: Long): Long {
 
 /**
  * Every gesture's feedback, each in its own place: a double tap's ripple from the edge it was tapped by, a level's
- * meter on its own side, and whatever else mid-screen. Only this composes for it, however fast a drag reports.
+ * meter on its own side, and whatever else on a pill. Only this composes for it, however fast a drag reports.
  *
  * The last value of each stays drawn as it fades, rather than vanishing with it.
  */
@@ -147,7 +138,7 @@ internal fun GestureFeedbackLayer(state: GestureFeedbackState, modifier: Modifie
         Shown(current as? GestureFeedback.Volume, AbsoluteAlignment.CenterRight, fadeMs = VideoPlayerTokens.MeterFadeMs) { volume ->
             LevelMeter(if (volume.level > 0f) VideoIcons.Volume else VideoIcons.Muted, volume.level)
         }
-        Shown(current as? PillFeedback, Alignment.Center) { FeedbackPill(it) }
+        Shown(current as? PillFeedback, Alignment.TopCenter) { FeedbackPill(it) }
     }
 }
 
@@ -195,6 +186,7 @@ private fun SeekRipple(deltaMs: Long) {
             verticalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier
                 .align(if (isForward) AbsoluteAlignment.CenterRight else AbsoluteAlignment.CenterLeft)
+                .windowInsetsPadding(videoSafeArea)
                 .padding(horizontal = 64.dp),
         ) {
             SeekChevrons(isForward)
@@ -234,14 +226,13 @@ private fun SeekChevrons(isForward: Boolean) {
 /**
  * A level on a slim bar, its figure beneath it: drawn from the drag directly, with no easing to fall behind the finger.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun LevelMeter(icon: ImageVector, level: Float) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier
-            .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
+            .windowInsetsPadding(videoSafeArea)
             .padding(horizontal = VideoPlayerTokens.MeterEdgeMargin),
     ) {
         Canvas(Modifier.size(VideoPlayerTokens.MeterTrackWidth, VideoPlayerTokens.MeterTrackHeight)) {
@@ -266,6 +257,8 @@ private fun FeedbackPill(feedback: PillFeedback) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier
+            .windowInsetsPadding(videoSafeArea)
+            .padding(top = VideoPlayerTokens.PillTopMargin)
             .background(VideoPlayerTokens.PillColor, CircleShape)
             .padding(horizontal = 18.dp, vertical = 12.dp),
     ) {
@@ -275,14 +268,13 @@ private fun FeedbackPill(feedback: PillFeedback) {
             tint = VideoPlayerTokens.ContentColor,
             modifier = Modifier.size(18.dp),
         )
-        feedback.text()?.let { PlayerText(it, VideoPlayerType.Pill) }
+        PlayerText(feedback.text(), VideoPlayerType.Pill)
     }
 }
 
 private val PillFeedback.icon: ImageVector
     get() = when (this) {
         is GestureFeedback.Speed -> Icons.Rounded.Speed
-        is GestureFeedback.PlayPause -> if (isPlaying) Icons.Rounded.PlayArrow else Icons.Rounded.Pause
         is GestureFeedback.Aspect -> Icons.Rounded.AspectRatio
         is GestureFeedback.Orientation -> orientation.icon
     }
@@ -306,10 +298,8 @@ internal fun VideoOrientation.label(): String =
     )
 
 @Composable
-private fun PillFeedback.text(): String? = when (this) {
+private fun PillFeedback.text(): String = when (this) {
     is GestureFeedback.Speed -> speedLabel(speed)
     is GestureFeedback.Aspect -> aspect.label()
     is GestureFeedback.Orientation -> orientation.label()
-    // Its icon says it all.
-    is GestureFeedback.PlayPause -> null
 }

@@ -56,9 +56,6 @@
     <string name="video_subtitle_sync_later_symbol">+</string>
     <string name="video_panel_close">Close</string>
     <string name="video_hold_to_unlock">Hold to unlock</string>
-    <!-- What a skip button does, as in "Back 10 seconds". -->
-    <string name="video_skip_back">Back %1$d seconds</string>
-    <string name="video_skip_forward">Forward %1$d seconds</string>
 
     <string name="video_brightness">Brightness</string>
     <string name="video_volume">Volume</string>

@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -53,13 +54,18 @@ internal fun VideoTopBar(
     }
 }
 
-/** Back by [seekSeconds], play or pause, and on by [seekSeconds]: what a thumb reaches for most. */
+/**
+ * The video before, play or pause, and the video after: what a thumb reaches for most. [onSkipPrevious] or [onSkipNext]
+ * is null where there is no skipping that way. While [isLoading], the loader stands where play and pause's icon does;
+ * the button under it still answers.
+ */
 @Composable
 internal fun VideoTransport(
     isPlaying: Boolean,
-    seekSeconds: Int,
+    isLoading: Boolean,
     onTogglePlayPause: () -> Unit,
-    onSeekBy: (seconds: Int) -> Unit,
+    onSkipPrevious: (() -> Unit)?,
+    onSkipNext: (() -> Unit)?,
     isLandscape: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -68,17 +74,26 @@ internal fun VideoTransport(
         horizontalArrangement = Arrangement.spacedBy(if (isLandscape) 48.dp else 44.dp),
         modifier = modifier,
     ) {
-        VideoSkipButton(VideoIcons.SkipBack, seekSeconds, stringResource(R.string.video_skip_back, seekSeconds), { onSeekBy(-seekSeconds) })
+        VideoBarButton(
+            action = VideoAction(VideoIcons.SkipPrevious, stringResource(R.string.video_previous), onSkipPrevious),
+            size = VideoPlayerTokens.SkipButtonSize,
+            iconSize = VideoPlayerTokens.SkipIconSize,
+        )
         VideoBarButton(
             action = VideoAction(
                 icon = if (isPlaying) VideoIcons.Pause else VideoIcons.Play,
                 label = stringResource(if (isPlaying) R.string.video_pause else R.string.video_play),
                 onClick = onTogglePlayPause,
+                tint = if (isLoading) Color.Transparent else VideoPlayerTokens.ContentColor,
             ),
             size = VideoPlayerTokens.PlayButtonSize,
             iconSize = VideoPlayerTokens.PlayIconSize,
         )
-        VideoSkipButton(VideoIcons.SkipForward, seekSeconds, stringResource(R.string.video_skip_forward, seekSeconds), { onSeekBy(seekSeconds) })
+        VideoBarButton(
+            action = VideoAction(VideoIcons.SkipNext, stringResource(R.string.video_next), onSkipNext),
+            size = VideoPlayerTokens.SkipButtonSize,
+            iconSize = VideoPlayerTokens.SkipIconSize,
+        )
     }
 }
 

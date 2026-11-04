@@ -26,23 +26,23 @@ class TapSequenceTest {
     }
 
     @Test
-    fun `a quick second tap undoes the first and double taps`() {
+    fun `a quick second tap double taps`() {
         tap(1_000, TapZone.END)
-        assertEquals(TapOutcome.Double(TapZone.END, undoesTap = true), tap(1_200, TapZone.END))
+        assertEquals(TapOutcome.Double(TapZone.END), tap(1_200, TapZone.END))
     }
 
     @Test
-    fun `quick taps after a side double tap keep seeking without undoing anything`() {
+    fun `quick taps after a side double tap keep seeking`() {
         tap(1_000, TapZone.START)
         tap(1_200, TapZone.START)
-        assertEquals(TapOutcome.Double(TapZone.START, undoesTap = false), tap(1_400, TapZone.START))
-        assertEquals(TapOutcome.Double(TapZone.END, undoesTap = false), tap(1_600, TapZone.END))
+        assertEquals(TapOutcome.Double(TapZone.START), tap(1_400, TapZone.START))
+        assertEquals(TapOutcome.Double(TapZone.END), tap(1_600, TapZone.END))
     }
 
     @Test
     fun `a middle double tap stands alone`() {
         tap(1_000, TapZone.CENTER)
-        assertEquals(TapOutcome.Double(TapZone.CENTER, undoesTap = true), tap(1_200, TapZone.CENTER))
+        assertEquals(TapOutcome.Double(TapZone.CENTER), tap(1_200, TapZone.CENTER))
         assertEquals(TapOutcome.Single, tap(1_400, TapZone.CENTER))
     }
 

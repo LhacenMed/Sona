@@ -3,6 +3,11 @@ package com.lhacenmed.sona.feature.video
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.systemBarsIgnoringVisibility
+import androidx.compose.foundation.layout.union
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -64,6 +69,9 @@ internal object VideoPlayerTokens {
     val PlayButtonSize = 72.dp
     val PlayIconSize = 40.dp
     val SpeedButtonWidth = 52.dp
+
+    /** How far beneath the safe area's top a pill of feedback stands, clear of the top bar. */
+    val PillTopMargin = 68.dp
 
     /** How tall the portrait layout's controls stand from the bottom of the screen. */
     val PortraitControlsHeight = 222.dp
@@ -154,13 +162,20 @@ internal object VideoPlayerType {
     val PreviewTime = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold, fontFeatureSettings = Tabular)
     val MeterValue = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, fontFeatureSettings = Tabular)
     val SeekAmount = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, fontFeatureSettings = Tabular)
-    val SkipSeconds = TextStyle(fontSize = 9.sp, fontWeight = FontWeight.SemiBold, fontFeatureSettings = Tabular)
     val PanelRow = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium)
     val PanelSection = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.06.em)
     val PanelLabel = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium)
     val PanelSegment = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, fontFeatureSettings = Tabular)
     val Pill = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
 }
+
+/**
+ * What the player's content keeps clear of, as if the system bars were always shown, so nothing moves as they hide and
+ * come back. Whatever lines up with the controls stands within this, rather than in the middle of the whole screen.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+internal val videoSafeArea: WindowInsets
+    @Composable get() = WindowInsets.systemBarsIgnoringVisibility.union(WindowInsets.displayCutout)
 
 /** Text in one of [VideoPlayerType]'s sizes and the font the user chose for the app. */
 @Composable

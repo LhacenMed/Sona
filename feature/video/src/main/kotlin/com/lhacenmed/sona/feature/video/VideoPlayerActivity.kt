@@ -7,6 +7,8 @@ import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.viewModels
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -79,7 +81,7 @@ class VideoPlayerActivity : SonaActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Standing as kept from the first frame, rather than turning once the screen is composed.
+        // Standing as it should from the first frame, rather than turning once the screen is composed.
         requestedOrientation = viewModel.session.value.orientation.activityOrientation
         // Opened from another app, the process may only just have started: the theme is worked out first.
         holdFirstFrameUntil(appTheme::awaitReady)
@@ -116,12 +118,15 @@ class VideoPlayerActivity : SonaActivity() {
                 coverStyle = coverStyle,
                 fastScrollTouchArea = fastScrollTouchArea,
             ) {
-                VideoPlayerScreen(
-                    viewModel = viewModel,
-                    onClose = ::finish,
-                    isFloating = isFloating,
-                    onFloat = if (hasFloatingWindows()) ::float else null,
-                )
+                // No Surface stands behind the player, and a button's ripple takes its colour from here: black otherwise.
+                CompositionLocalProvider(LocalContentColor provides VideoPlayerTokens.ContentColor) {
+                    VideoPlayerScreen(
+                        viewModel = viewModel,
+                        onClose = ::finish,
+                        isFloating = isFloating,
+                        onFloat = if (hasFloatingWindows()) ::float else null,
+                    )
+                }
             }
         }
     }

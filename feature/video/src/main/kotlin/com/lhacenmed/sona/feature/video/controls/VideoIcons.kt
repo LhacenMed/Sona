@@ -35,8 +35,12 @@ internal object VideoIcons {
             "M12 3.9a1.6 1.6 0 1 1 0 3.2a1.6 1.6 0 1 1 0-3.2zM12 10.4a1.6 1.6 0 1 1 0 3.2a1.6 1.6 0 1 1 0-3.2zM12 16.9a1.6 1.6 0 1 1 0 3.2a1.6 1.6 0 1 1 0-3.2z",
         )
     }
-    val SkipBack by lazy { strokeIcon("SkipBack", "M4.5 12a7.5 7.5 0 1 0 2.2-5.3", "M4.5 4.5v3.6h3.6", strokeWidth = 1.6f) }
-    val SkipForward by lazy { strokeIcon("SkipForward", "M19.5 12a7.5 7.5 0 1 1-2.2-5.3", "M19.5 4.5v3.6h-3.6", strokeWidth = 1.6f) }
+    val SkipPrevious by lazy {
+        filledIcon("SkipPrevious", "M18 6.4v11.2l-9.2-5.6zM7 5.5a1 1 0 0 1 1 1v11a1 1 0 0 1-2 0v-11a1 1 0 0 1 1-1z", strokeWidth = 1.5f)
+    }
+    val SkipNext by lazy {
+        filledIcon("SkipNext", "M6 6.4v11.2l9.2-5.6zM17 5.5a1 1 0 0 1 1 1v11a1 1 0 0 1-2 0v-11a1 1 0 0 1 1-1z", strokeWidth = 1.5f)
+    }
     val Pause by lazy {
         filledIcon(
             "Pause",

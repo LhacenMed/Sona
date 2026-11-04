@@ -21,16 +21,13 @@ internal sealed interface TapOutcome {
     /** A tap of its own - shows or hides the controls. */
     data object Single : TapOutcome
 
-    /**
-     * The second of a double tap in [zone] - or, on a side, any quick tap after one, each seeking again. Where
-     * [undoesTap], the tap before it was taken as a tap of its own and acted on at once; its action is undone.
-     */
-    data class Double(val zone: TapZone, val undoesTap: Boolean) : TapOutcome
+    /** The second of a double tap in [zone] - or, on a side, any quick tap after one, each seeking again. */
+    data class Double(val zone: TapZone) : TapOutcome
 }
 
 /**
- * Tells taps apart as they lift, without ever holding one back to see whether another follows: a tap acts the
- * moment it lifts, and one that turns out to be the first of a double tap is undone by the second.
+ * Tells taps apart as they lift. Holding a [TapOutcome.Single] back until no second tap can follow is left to whoever
+ * acts on it - see [videoGestures].
  *
  * A double tap on a side starts a series - every quick tap after it seeks again, as video players do - which a
  * slow tap, a tap in the middle or a long press ends. A double tap in the middle stands alone: a third tap is
@@ -53,8 +50,7 @@ internal class TapSequence(private val doubleTapTimeoutMs: Long) {
         val followsTap = answersDoubleTap && previousUpMs != null && downMs - previousUpMs < doubleTapTimeoutMs
         val outcome = when {
             !followsTap || (isSeeking && zone == TapZone.CENTER) -> TapOutcome.Single
-            isSeeking -> TapOutcome.Double(zone, undoesTap = false)
-            else -> TapOutcome.Double(zone, undoesTap = true)
+            else -> TapOutcome.Double(zone)
         }
         val isSideDoubleTap = outcome is TapOutcome.Double && zone != TapZone.CENTER
         isSeeking = isSideDoubleTap

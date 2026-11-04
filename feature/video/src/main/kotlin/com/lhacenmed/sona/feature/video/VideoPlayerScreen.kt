@@ -33,9 +33,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Screenshot
-import androidx.compose.material.icons.rounded.SkipNext
-import androidx.compose.material.icons.rounded.SkipPrevious
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ContainedLoadingIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -113,9 +112,6 @@ import com.lhacenmed.sona.feature.video.surface.VideoZoomState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** What the skip buttons skip while double taps do not seek, and so have no length set. */
-private const val DefaultSkipSeconds = 10
-
 /** The level the drag under way has reached - kept across its reports and recompositions. */
 private class DragProgress {
     var volumeTarget: Float? = null
@@ -133,7 +129,7 @@ private class DragProgress {
  * and its subtitles alone - the window has controls of its own. [onFloat], where the device has floating windows, puts
  * it in one.
  */
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun VideoPlayerScreen(viewModel: VideoPlayerViewModel, onClose: () -> Unit, isFloating: Boolean, onFloat: (() -> Unit)?) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -322,12 +318,15 @@ internal fun VideoPlayerScreen(viewModel: VideoPlayerViewModel, onClose: () -> U
         // Floating, the picture is all there is.
         if (isFloating) return@Box
 
-        if (isLoaderShown && !scrub.isActive && !isAudioOnly) {
-            // Ringing the play button in the middle of the landscape screen, rather than covering it.
-            CircularProgressIndicator(
-                color = VideoPlayerTokens.ContentColor,
-                modifier = Modifier.align(Alignment.Center).size(VideoPlayerTokens.PlayButtonSize),
-            )
+        val showsLoader = isLoaderShown && !scrub.isActive && !isAudioOnly
+        if (showsLoader) {
+            // In landscape, exactly where the play button stands; in portrait, over the picture, the controls being at the foot.
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.fillMaxSize().then(if (isLandscape) Modifier.windowInsetsPadding(videoSafeArea) else Modifier),
+            ) {
+                ContainedLoadingIndicator(containerColor = VideoPlayerTokens.PillColor, indicatorColor = VideoPlayerTokens.ContentColor)
+            }
         }
 
         if (showClock && !controls.isVisible) {
@@ -370,7 +369,7 @@ internal fun VideoPlayerScreen(viewModel: VideoPlayerViewModel, onClose: () -> U
                     isLandscape = isLandscape,
                     isAudioOnly = isAudioOnly,
                     isShowingSubtitles = subtitles.source is SubtitleSource.FromFile || subtitles.source is SubtitleSource.Embedded,
-                    skipSeconds = gestureSettings.doubleTapSeekSeconds ?: DefaultSkipSeconds,
+                    isLoading = showsLoader && isLandscape,
                     session = session,
                     scrub = scrub,
                     scrubProgress = scrubProgress,
@@ -451,7 +450,7 @@ private fun PlayerControls(
     isLandscape: Boolean,
     isAudioOnly: Boolean,
     isShowingSubtitles: Boolean,
-    skipSeconds: Int,
+    isLoading: Boolean,
     session: VideoSession,
     scrub: VideoScrubState,
     scrubProgress: State<Float>,
@@ -494,9 +493,10 @@ private fun PlayerControls(
             transport = { modifier ->
                 VideoTransport(
                     isPlaying = playback.isPlaying,
-                    seekSeconds = skipSeconds,
+                    isLoading = isLoading,
                     onTogglePlayPause = viewModel::onTogglePlayPause,
-                    onSeekBy = { seconds -> viewModel.onSeekBy(seconds * 1_000L) },
+                    onSkipPrevious = { viewModel.onSkipPrevious() }.takeIf { playback.canSkipPrevious },
+                    onSkipNext = { viewModel.onSkipNext() }.takeIf { playback.canSkipNext },
                     isLandscape = isLandscape,
                     modifier = modifier,
                 )
@@ -546,8 +546,8 @@ private fun LockedControls(onUnlock: () -> Unit, onHint: () -> Unit) {
 }
 
 /**
- * What has no place of its own on the screen: skipping between videos, silencing one, taking a frame - and what the
- * layout showing leaves out of its bars.
+ * What has no place of its own on the screen: silencing a video, taking a frame - and what the layout showing leaves
+ * out of its bars.
  */
 @Composable
 private fun moreActions(
@@ -561,8 +561,6 @@ private fun moreActions(
     onCycleOrientation: () -> Unit,
     onCycleAspect: () -> Unit,
 ): List<VideoAction> = listOfNotNull(
-    VideoAction(Icons.Rounded.SkipPrevious, stringResource(R.string.video_previous), { viewModel.onSkipPrevious() }.takeIf { playback.canSkipPrevious }),
-    VideoAction(Icons.Rounded.SkipNext, stringResource(R.string.video_next), { viewModel.onSkipNext() }.takeIf { playback.canSkipNext }),
     VideoAction(
         icon = if (playback.isMuted) Icons.AutoMirrored.Rounded.VolumeOff else Icons.AutoMirrored.Rounded.VolumeUp,
         label = stringResource(if (playback.isMuted) R.string.video_unmute else R.string.video_mute),
@@ -606,7 +604,6 @@ private fun videoGestureActions(
             { zone ->
                 if (zone == TapZone.CENTER) {
                     viewModel.onTogglePlayPause()
-                    feedback.flash(GestureFeedback.PlayPause(isPlaying = !playback.isPlaying))
                 } else {
                     val deltaMs = (if (zone == TapZone.END) seconds else -seconds) * 1_000L
                     viewModel.onSeekBy(deltaMs)

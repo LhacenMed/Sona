@@ -14,7 +14,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import kotlin.math.abs
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** Which half of the screen a vertical drag runs down - brightness on the left, volume on the right. */
@@ -49,8 +51,9 @@ private enum class DragMode { NONE, SEEK, LEVEL, TRANSFORM, IGNORED }
  * across seeks, up or down changes a level. A second finger turns it into a zoom and pan until every finger
  * lifts. A tap is cancelled by any drag, and a drag is ignored while a hold is speeding the video up.
  *
- * A tap acts the moment it lifts, never held back to see whether a second follows - the controls answer at once;
- * see [TapSequence] for how a double tap is told apart from it, and in which third of the screen.
+ * A tap waits until no second can follow before it acts, so a double tap never brings the controls up on its way
+ * past - unless double taps are not being answered, when it acts as it lifts. See [TapSequence] for how a double tap
+ * is told apart from it, and in which third of the screen.
  *
  * [actions] is read as each gesture arrives, so the screen hands over new ones without restarting anything.
  *
@@ -72,9 +75,13 @@ internal fun Modifier.videoGestures(actions: State<VideoGestureActions>): Modifi
             }
             launch(start = CoroutineStart.UNDISPATCHED) {
                 val taps = TapSequence(viewConfiguration.doubleTapTimeoutMillis)
+                val tapScope = this
+                var waitingTap: Job? = null
                 awaitEachGesture {
                     // A control under the finger takes its own touch, and it never reaches the video.
                     val down = awaitFirstDown()
+                    // Touched again in time: this decides what the tap before it was - and a drag or a hold outranks it.
+                    waitingTap?.cancel()
                     var isCancelled = false
                     val up = if (actions.value.onHoldStart != null) {
                         withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
@@ -100,11 +107,15 @@ internal fun Modifier.videoGestures(actions: State<VideoGestureActions>): Modifi
                     val current = actions.value
                     val zone = TapZone.at(up.position.x, size.width.toFloat())
                     when (val outcome = taps.onTap(down.uptimeMillis, up.uptimeMillis, zone, current.onDoubleTap != null)) {
-                        TapOutcome.Single -> current.onTap()
-                        is TapOutcome.Double -> {
-                            if (outcome.undoesTap) current.onTap()
-                            current.onDoubleTap?.invoke(outcome.zone)
+                        TapOutcome.Single -> if (current.onDoubleTap == null) {
+                            current.onTap()
+                        } else {
+                            waitingTap = tapScope.launch {
+                                delay(viewConfiguration.doubleTapTimeoutMillis)
+                                actions.value.onTap()
+                            }
                         }
+                        is TapOutcome.Double -> current.onDoubleTap?.invoke(outcome.zone)
                     }
                 }
             }

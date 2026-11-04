@@ -2,7 +2,6 @@
 
 package com.lhacenmed.sona.feature.video.controls
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ButtonDefaults
@@ -13,13 +12,10 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 import com.lhacenmed.sona.feature.video.PlayerText
@@ -59,28 +55,13 @@ internal fun VideoBarButton(
     }
 }
 
-/** A control skipping [seconds] on or back, which its face says. */
-@Composable
-internal fun VideoSkipButton(icon: ImageVector, seconds: Int, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    IconButton(
-        shapes = iconButtonPressShapes(),
-        onClick = onClick,
-        colors = IconButtonDefaults.iconButtonColors(contentColor = VideoPlayerTokens.ContentColor),
-        modifier = modifier.size(VideoPlayerTokens.SkipButtonSize),
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(imageVector = icon, contentDescription = label, modifier = Modifier.size(VideoPlayerTokens.SkipIconSize))
-            PlayerText(seconds.toString(), VideoPlayerType.SkipSeconds, modifier = Modifier.graphicsLayer { translationY = 1.dp.toPx() })
-        }
-    }
-}
-
 /** The speed the video plays at, and the way to change it. */
 @Composable
 internal fun VideoSpeedButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     TextButton(
         onClick = onClick,
         shapes = buttonPressShapes(),
+        colors = ButtonDefaults.textButtonColors(contentColor = VideoPlayerTokens.ContentColor),
         contentPadding = ButtonDefaults.TextButtonContentPadding,
         modifier = modifier.width(VideoPlayerTokens.SpeedButtonWidth),
     ) {
