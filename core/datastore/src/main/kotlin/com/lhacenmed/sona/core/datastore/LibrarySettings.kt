@@ -1,6 +1,7 @@
 package com.lhacenmed.sona.core.datastore
 
 import android.content.Context
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -21,6 +22,10 @@ private val HIDDEN_TABS = stringSetPreferencesKey("hidden_tabs")
 
 /** Folders are hidden until asked for: the Videos tab and the music tabs already reach every file. */
 private val DEFAULT_HIDDEN_TABS = setOf(LibraryTab.FOLDERS.name)
+
+// Stored as names, separated, so a tab added later - named nowhere in it - simply joins the end.
+private val TAB_ORDER = stringPreferencesKey("tab_order")
+private const val TAB_ORDER_SEPARATOR = ","
 
 private val INTELLIGENT_SORTING_ENABLED = booleanPreferencesKey("intelligent_sorting_enabled")
 
@@ -58,11 +63,29 @@ class LibrarySettings @Inject constructor(
         dataStore.edit { it[EXCLUDED_FOLDERS] = (it[EXCLUDED_FOLDERS] ?: emptySet()) - paths.toSet() }
     }
 
-    val visibleTabs: Setting<Set<LibraryTab>> = cache.setting { preferences ->
+    /** Every tab, shown or not, in the order the library's strip lists them - its first shown is where the library opens. */
+    val tabOrder: Setting<List<LibraryTab>> = cache.setting(::readTabOrder)
+
+    suspend fun setTabOrder(order: List<LibraryTab>) {
+        dataStore.edit { it[TAB_ORDER] = order.joinToString(TAB_ORDER_SEPARATOR) { tab -> tab.name } }
+    }
+
+    /** Moves [tab] to where [target] is in [tabOrder], the tabs between them stepping aside. */
+    suspend fun moveTab(tab: LibraryTab, target: LibraryTab) {
+        dataStore.edit { preferences ->
+            val order = readTabOrder(preferences).toMutableList()
+            val place = order.indexOf(target)
+            order.add(place, order.removeAt(order.indexOf(tab)))
+            preferences[TAB_ORDER] = order.joinToString(TAB_ORDER_SEPARATOR) { it.name }
+        }
+    }
+
+    /** The tabs shown, in [tabOrder]. */
+    val visibleTabs: Setting<List<LibraryTab>> = cache.setting { preferences ->
         val hidden = (preferences[HIDDEN_TABS] ?: DEFAULT_HIDDEN_TABS).mapNotNullTo(mutableSetOf()) { name ->
             runCatching { LibraryTab.valueOf(name) }.getOrNull()
         }
-        LibraryTab.entries.toSet() - hidden
+        readTabOrder(preferences) - hidden
     }
 
     suspend fun setTabVisible(tab: LibraryTab, visible: Boolean) {
@@ -129,4 +152,12 @@ class LibrarySettings @Inject constructor(
     suspend fun setFolderView(view: FolderView) {
         dataStore.edit { it[FOLDER_VIEW] = view.name }
     }
+}
+
+/** The stored order, any tab it does not name - one added since, or every tab before an order was chosen - after it. */
+private fun readTabOrder(preferences: Preferences): List<LibraryTab> {
+    val stored = preferences[TAB_ORDER]?.split(TAB_ORDER_SEPARATOR).orEmpty()
+        .mapNotNull { name -> runCatching { LibraryTab.valueOf(name) }.getOrNull() }
+        .distinct()
+    return stored + (LibraryTab.entries - stored.toSet())
 }

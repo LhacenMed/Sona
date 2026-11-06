@@ -20,7 +20,7 @@ import com.lhacenmed.sona.feature.settings.component.SettingsNavigationItem
 import com.lhacenmed.sona.feature.settings.component.SettingsSection
 import com.lhacenmed.sona.feature.settings.component.SettingsSectionDivider
 import com.lhacenmed.sona.feature.settings.component.SettingsSwitchItem
-import com.lhacenmed.sona.feature.settings.manage.TabVisibilityScreen
+import com.lhacenmed.sona.feature.library.tabs.LibraryTabsScreen
 
 /** What the app shows, what it remembers, and what it does when the user reaches for it. */
 data object BehaviorScreen : Screen {
@@ -42,17 +42,7 @@ data object BehaviorScreen : Screen {
                 SettingsNavigationItem(
                     title = stringResource(R.string.library_tabs_title),
                     summary = stringResource(R.string.library_tabs_summary),
-                    onClick = { navigator.go(TabVisibilityScreen) },
-                )
-                SettingsChoiceItem(
-                    title = stringResource(R.string.default_tab_title),
-                    options = listOf(
-                        stringResource(R.string.default_tab_tracks),
-                        stringResource(R.string.default_tab_artists),
-                        stringResource(R.string.default_tab_albums),
-                        stringResource(R.string.default_tab_genres),
-                        stringResource(R.string.default_tab_folders),
-                    ),
+                    onClick = { navigator.go(LibraryTabsScreen) },
                 )
                 SettingsChoiceItem(
                     title = stringResource(R.string.playback_bar_action_title),

@@ -20,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -56,6 +57,7 @@ import com.lhacenmed.sona.feature.library.selection.toLibraryTopBarSelection
 import com.lhacenmed.sona.feature.library.quickplay.QuickPlayButton
 import com.lhacenmed.sona.feature.library.sort.SortSheet
 import com.lhacenmed.sona.feature.library.sort.sortAction
+import com.lhacenmed.sona.feature.library.tabs.label
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterIsInstance
@@ -100,19 +102,31 @@ fun LibraryPagerScreen(
     val hasTracks by viewModel.hasTracks.collectAsStateWithLifecycle()
     if (visibleTabs.isEmpty()) return
 
-    // Keying on the tab set (not just its size) fully resets the pager whenever it changes - a
-    // settings change mid-session is rare enough that snapping back to the first tab is the
-    // simplest correct behavior, rather than trying to preserve a page index that may no longer
-    // point at the same tab.
-    key(visibleTabs) {
+    // Keyed on which tabs are shown, not their order: one shown or hidden resets the pager to the first tab - a settings
+    // change rare enough that starting over is the simplest correct behaviour - while a reorder keeps everything as it is.
+    key(visibleTabs.toSet()) {
         val pagerState = rememberPagerState(pageCount = { visibleTabs.size })
-        val tabTitles = remember(visibleTabs) { visibleTabs.map { it.label() } }
+        val tabTitles = remember(visibleTabs) { visibleTabs.map { it.label } }
         val selection = rememberSelectionState()
         val scope = rememberCoroutineScope()
 
+        // A tab dragged along the strip leaves the one on screen on screen, at its new place. Which tab that is was read
+        // as it was let go - its page and the order still agreeing then, as the pager may follow the new order by itself
+        // before this does. Moved to before anything is laid out, so the strip's pill is on it in the very frame the strip
+        // takes the new order.
+        var followedTab by remember { mutableStateOf<FollowedTab?>(null) }
+        SideEffect {
+            val followed = followedTab
+            if (followed != null && followed.order != visibleTabs) {
+                pagerState.requestScrollToPage(visibleTabs.indexOf(followed.tab))
+                followedTab = null
+            }
+        }
+
         // Each tab's list position, held here rather than inside the list so a tap on the tab can
-        // reach it. Saved, so a list keeps its place across a configuration change as before.
-        val listStates = visibleTabs.associateWith { rememberLazyListState() }
+        // reach it. Saved, so a list keeps its place across a configuration change as before - and,
+        // remembered in a fixed order rather than the strip's, across a reorder.
+        val listStates = LibraryTab.entries.associateWith { rememberLazyListState() }
 
         // The shortcuts collapse as a detail screen's header does, over whichever tab is on screen: one
         // collapse for every tab, as Auxio's app bar is one over its pager. Each tab's list drives it - see
@@ -202,7 +216,7 @@ fun LibraryPagerScreen(
         // The tab the strip is on, or already sliding to.
         val destinationPage = requestedPage ?: pagerState.settledPage
 
-        // Back returns to the first tab - Tracks, unless hidden - the way it would to a home screen,
+        // Back returns to the first tab - the one the library opens on - the way it would to a home screen,
         // and only from there leaves the app. Composed before the bar, so a selection or a search,
         // whose back handler the bar composes later, is still what a back press closes first.
         BackHandler(enabled = destinationPage != 0) { requestedPage = 0 }
@@ -298,6 +312,11 @@ fun LibraryPagerScreen(
                                     end = SonaComponentStyle.ContentHorizontalPadding,
                                     bottom = TabRowGap,
                                 ),
+                                // Held and dragged, a tab takes another place - the first being where the library opens.
+                                onMoveTab = { from, to ->
+                                    followedTab = FollowedTab(visibleTabs[pagerState.settledPage], visibleTabs)
+                                    viewModel.moveTab(from, to)
+                                },
                             )
                         }
                     }
@@ -371,6 +390,9 @@ private fun excludeFolderActions(selection: SelectionState, onExclude: (folderPa
 /** The room above and below the tab strip. */
 private val TabRowGap = 8.dp
 
+/** The tab on screen as a tab was moved along the strip, and the order it was moved in - see [LibraryPagerScreen]. */
+private class FollowedTab(val tab: LibraryTab, val order: List<LibraryTab>)
+
 /**
  * The motion a tap gives the pager and the pill. They share one spec because they cover different
  * distances - the pager snaps a page before animating a long move, the pill glides the whole way -
@@ -394,11 +416,3 @@ private suspend fun LazyListState.glideToTop() {
     animateScrollBy(-(firstVisibleItemIndex * rowHeight + firstVisibleItemScrollOffset).toFloat(), TabMotion)
 }
 
-private fun LibraryTab.label(): String = when (this) {
-    LibraryTab.TRACKS -> "Tracks"
-    LibraryTab.ARTISTS -> "Artists"
-    LibraryTab.ALBUMS -> "Albums"
-    LibraryTab.GENRES -> "Genres"
-    LibraryTab.FOLDERS -> "Folders"
-    LibraryTab.VIDEOS -> "Videos"
-}

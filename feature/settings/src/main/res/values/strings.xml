@@ -325,12 +325,6 @@
     <string name="behavior_display_section">Display</string>
     <string name="library_tabs_title">Library tabs</string>
     <string name="library_tabs_summary">Change visibility and order of library tabs</string>
-    <string name="default_tab_title">Tab opened at launch</string>
-    <string name="default_tab_tracks">Tracks</string>
-    <string name="default_tab_artists">Artists</string>
-    <string name="default_tab_albums">Albums</string>
-    <string name="default_tab_genres">Genres</string>
-    <string name="default_tab_folders">Folders</string>
     <string name="playback_bar_action_title">Playback bar button</string>
     <string name="playback_bar_action_skip_next">Skip to next</string>
     <string name="playback_bar_action_favorite">Add to favorites</string>
@@ -572,7 +566,6 @@
         <item quantity="one">Exclude %d file</item>
         <item quantity="other">Exclude %d files</item>
     </plurals>
-    <string name="manage_tabs_title">Manage Tabs</string>
 
     <!-- Video -->
     <string name="video_display_section">Display</string>

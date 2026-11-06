@@ -47,17 +47,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
-
-private val CANONICAL_TAB_ORDER = listOf(
-    LibraryTab.TRACKS,
-    LibraryTab.ARTISTS,
-    LibraryTab.ALBUMS,
-    LibraryTab.GENRES,
-    LibraryTab.FOLDERS,
-    LibraryTab.VIDEOS,
-)
-
-private fun Set<LibraryTab>.inCanonicalOrder(): List<LibraryTab> = CANONICAL_TAB_ORDER.filter { it in this }
+import kotlinx.coroutines.launch
 
 /** How long typing pauses before the search looks in the lyrics - see [LibraryViewModel]'s lyrics matches. */
 private const val LYRICS_SEARCH_DELAY_MS = 150L
@@ -205,9 +195,16 @@ class LibraryViewModel @Inject constructor(
      * showing every tab until the setting arrives and then dropping the hidden ones.
      */
     val visibleTabs: StateFlow<List<LibraryTab>> = librarySettings.visibleTabs.flow
-        .map { it.inCanonicalOrder() }
-        .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.Eagerly, librarySettings.visibleTabs.value.inCanonicalOrder())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, librarySettings.visibleTabs.value)
+
+    /**
+     * Moves the tab shown [from]th to where the [to]th is, as the strip's drag leaves it - among every tab, the hidden ones
+     * keeping their places between the rest.
+     */
+    fun moveTab(from: Int, to: Int) {
+        val shown = visibleTabs.value
+        viewModelScope.launch { librarySettings.moveTab(shown[from], shown[to]) }
+    }
 
     val isScanning: StateFlow<Boolean> = mediaScanner.isScanning
 
