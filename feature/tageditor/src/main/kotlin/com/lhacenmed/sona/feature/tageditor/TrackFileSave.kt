@@ -87,7 +87,7 @@ internal fun rememberTrackFileSave(
  * and a file MediaStore has not indexed, which Android's request cannot name, needs that access outright.
  */
 @Composable
-internal fun rememberFileChangeRequest(onGranted: () -> Unit): (List<Track>) -> Unit {
+fun rememberFileChangeRequest(onGranted: () -> Unit): (List<Track>) -> Unit {
     val context = LocalContext.current
     val latestOnGranted by rememberUpdatedState(onGranted)
     val consentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->

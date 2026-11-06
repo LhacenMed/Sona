@@ -209,7 +209,7 @@ internal fun Modifier.lyricsPane(state: PlayerLyricsState): Modifier =
 internal fun PlayerLyrics(
     state: PlayerLyricsState,
     track: Track,
-    durationMs: Long,
+    lyrics: TrackLyrics,
     contentColor: Color,
     /** Where playback is this moment, followed by the open lyrics as they fill. */
     positionMsProvider: () -> Long,
@@ -221,8 +221,8 @@ internal fun PlayerLyrics(
     lyricsViewModel: LyricsViewModel,
     modifier: Modifier = Modifier,
 ) {
-    val timeline = rememberLyricsTimeline(track, durationMs, lyricsViewModel)
-    val isFindingLyrics by remember(track) { lyricsViewModel.isFindingLyrics(track) }.collectAsStateWithLifecycle(initialValue = false)
+    val timeline = lyrics.timeline
+    val isFindingLyrics = lyrics.isFinding
 
     BackHandler(enabled = state.isOpen, onBack = state::close)
 

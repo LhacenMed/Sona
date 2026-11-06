@@ -66,7 +66,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.lhacenmed.sona.core.designsystem.effect.rememberDeviceMusicVolumeController
 import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
@@ -92,6 +91,7 @@ internal fun LyricsSheetTransition(
     state: PlayerLyricsState,
     backHandlerEnabled: Boolean,
     track: Track,
+    lyrics: TrackLyrics,
     playback: PlaybackUiState,
     durationMs: Long,
     appearance: PlayerAppearance,
@@ -141,6 +141,7 @@ internal fun LyricsSheetTransition(
             ) {
                 LyricsSheet(
                     track = track,
+                    lyrics = lyrics,
                     playback = playback,
                     durationMs = durationMs,
                     appearance = appearance,
@@ -164,6 +165,7 @@ internal fun LyricsSheetTransition(
 @Composable
 private fun LyricsSheet(
     track: Track,
+    lyrics: TrackLyrics,
     playback: PlaybackUiState,
     durationMs: Long,
     appearance: PlayerAppearance,
@@ -184,8 +186,6 @@ private fun LyricsSheet(
                 deviceMusicVolumeController.setVolumeFraction(volume)
             }
         }
-    val timeline = rememberLyricsTimeline(track, durationMs, lyricsViewModel)
-    val isFindingLyrics by remember(track) { lyricsViewModel.isFindingLyrics(track) }.collectAsStateWithLifecycle(initialValue = false)
 
     // Drawn in the player's colours, over the player's own background.
     val foregroundColor = playerColors().content
@@ -245,8 +245,8 @@ private fun LyricsSheet(
     val lyricsPane: @Composable (Modifier) -> Unit = { paneModifier ->
         LyricsV2(
             track = track,
-            timeline = timeline,
-            isFindingLyrics = isFindingLyrics,
+            timeline = lyrics.timeline,
+            isFindingLyrics = lyrics.isFinding,
             positionMsProvider = viewModel::currentPositionMs,
             sliderPositionProvider = { sliderPosition },
             lyricsSyncOffset = lyricsSyncOffset,

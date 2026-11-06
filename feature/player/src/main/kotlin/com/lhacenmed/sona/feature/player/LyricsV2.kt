@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -46,6 +47,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -56,6 +58,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,14 +82,18 @@ import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
@@ -96,7 +103,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.lyrics.LyricsEntry
 import com.lhacenmed.sona.core.data.lyrics.LyricsRomanizationPreferences
 import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.providedRomanizedTextForEntry
-import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.romanizeLyricsLine
 import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.shouldRomanizeLyricsLine
 import com.lhacenmed.sona.core.data.lyrics.WordTimestamp
 import com.lhacenmed.sona.core.designsystem.component.shimmer
@@ -105,9 +111,9 @@ import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.pillShape
 import com.lhacenmed.sona.core.designsystem.theme.roundedShape
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.tageditor.rememberFileChangeRequest
 import java.text.BreakIterator
 import java.util.Locale
-import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.abs
 import kotlin.math.PI
 import kotlin.math.sin
@@ -153,6 +159,638 @@ private fun LyricsEntry.sungText(): String =
     words?.joinToString(separator = "") { it.text }?.takeIf { it.isNotBlank() } ?: text
 
 // ──────────────────────────────────────────────────────────────────────
+// Shared: how lyrics are drawn, where playback is in them, and one line of them
+// ──────────────────────────────────────────────────────────────────────
+
+/** The height of a sung word's row, as a multiple of its text size. */
+internal const val LyricsWordLineHeight = 1.35f
+
+/** How far a line's text is set in from the sides of the lyrics. */
+internal val LyricsLineHorizontalPadding = 12.dp
+
+/** How the lyrics are drawn, as the user has set it - wherever they are drawn. */
+@Immutable
+internal data class LyricsStyle(
+    /** In sp. */
+    val textSize: Float,
+    /** A multiple of [textSize]. */
+    val lineSpacing: Float,
+    val lineBlur: Boolean,
+    val bounceFactor: Float,
+    val glowFactor: Float,
+    val fillTransitionWidth: Float,
+    val lrcBounceEnabled: Boolean,
+    val romanization: LyricsRomanizationPreferences,
+    val showsRomanizationOnly: Boolean,
+)
+
+@Composable
+internal fun rememberLyricsStyle(lyricsViewModel: LyricsViewModel): LyricsStyle {
+    val textSize by lyricsViewModel.lyricsTextSize.collectAsStateWithLifecycle()
+    val lineSpacing by lyricsViewModel.lyricsLineSpacing.collectAsStateWithLifecycle()
+    val lineBlur by lyricsViewModel.lyricsLineBlur.collectAsStateWithLifecycle()
+    val bounceFactor by lyricsViewModel.bounceFactor.collectAsStateWithLifecycle()
+    val glowFactor by lyricsViewModel.glowFactor.collectAsStateWithLifecycle()
+    val fillTransitionWidth by lyricsViewModel.fillTransitionWidth.collectAsStateWithLifecycle()
+    val lrcBounceEnabled by lyricsViewModel.lrcBounceEnabled.collectAsStateWithLifecycle()
+    val romanizeArabic by lyricsViewModel.romanizeArabic.collectAsStateWithLifecycle()
+    val romanizeChinese by lyricsViewModel.romanizeChinese.collectAsStateWithLifecycle()
+    val romanizeHindi by lyricsViewModel.romanizeHindi.collectAsStateWithLifecycle()
+    val romanizeJapanese by lyricsViewModel.romanizeJapanese.collectAsStateWithLifecycle()
+    val romanizeKorean by lyricsViewModel.romanizeKorean.collectAsStateWithLifecycle()
+    val romanizeOtherLanguages by lyricsViewModel.romanizeOtherLanguages.collectAsStateWithLifecycle()
+    val showsRomanizationOnly by lyricsViewModel.showsRomanizationOnly.collectAsStateWithLifecycle()
+    val romanization =
+        remember(
+            romanizeArabic,
+            romanizeJapanese,
+            romanizeKorean,
+            romanizeChinese,
+            romanizeHindi,
+            romanizeOtherLanguages,
+        ) {
+            LyricsRomanizationPreferences(
+                romanizeArabic = romanizeArabic,
+                romanizeJapanese = romanizeJapanese,
+                romanizeKorean = romanizeKorean,
+                romanizeChinese = romanizeChinese,
+                romanizeHindi = romanizeHindi,
+                romanizeOther = romanizeOtherLanguages,
+            )
+        }
+    return LyricsStyle(
+        textSize = textSize,
+        lineSpacing = lineSpacing,
+        lineBlur = lineBlur,
+        bounceFactor = bounceFactor,
+        glowFactor = glowFactor,
+        fillTransitionWidth = fillTransitionWidth,
+        lrcBounceEnabled = lrcBounceEnabled,
+        romanization = romanization,
+        showsRomanizationOnly = showsRomanizationOnly,
+    )
+}
+
+/**
+ * The direction the lyrics read in: the one most of their lines read in as shown - a line shown by its romanization
+ * alone reading as Latin - and the app's where none has one. It places what has no direction of its own: the
+ * instrumental break's note, and a line of numbers or dots.
+ */
+@Composable
+internal fun rememberLyricsDirection(
+    entries: List<LyricsEntry>,
+    style: LyricsStyle,
+): LayoutDirection {
+    val appLayoutDirection = LocalLayoutDirection.current
+    return remember(entries, style.romanization, style.showsRomanizationOnly, appLayoutDirection) {
+        val lineDirections =
+            entries.mapNotNull { entry ->
+                val isShownRomanized =
+                    style.showsRomanizationOnly && style.romanization.isEnabled &&
+                        (
+                            providedRomanizedTextForEntry(entry, style.romanization) != null ||
+                                shouldRomanizeLyricsLine(entry.text, style.romanization)
+                        )
+                if (isShownRomanized) LayoutDirection.Ltr else readingDirectionOf(entry.sungText())
+            }
+        val rtlCount = lineDirections.count { it == LayoutDirection.Rtl }
+        val ltrCount = lineDirections.size - rtlCount
+        when {
+            rtlCount > ltrCount -> LayoutDirection.Rtl
+            ltrCount > rtlCount -> LayoutDirection.Ltr
+            else -> appLayoutDirection
+        }
+    }
+}
+
+/** Where playback is in a track's synced lyrics, followed as it plays. Read where it is drawn. */
+@Stable
+internal class LyricsPlayhead(
+    lyricsPositionMs: Long,
+    highlightPositionMs: Long,
+    lineIndex: Int,
+) {
+    /** Where the lyrics are: see [LyricsTimeline.lyricsPositionMs]. */
+    var lyricsPositionMs by mutableLongStateOf(lyricsPositionMs)
+
+    /** Where their highlight is drawn: see [LyricsTimeline.highlightPositionMs]. */
+    var highlightPositionMs by mutableLongStateOf(highlightPositionMs)
+
+    /** The line playing. */
+    var lineIndex by mutableIntStateOf(lineIndex)
+}
+
+/** Follows playback through [timeline] - read at once, so the lyrics open on the line playing. */
+@Composable
+internal fun rememberLyricsPlayhead(
+    timeline: LyricsTimeline?,
+    positionMsProvider: () -> Long,
+    sliderPositionProvider: () -> Long?,
+    lyricsSyncOffset: Int,
+): LyricsPlayhead {
+    val playhead =
+        remember(timeline) {
+            if (timeline != null && timeline.isSynced && timeline.entries.isNotEmpty()) {
+                val lyricsPositionMs = timeline.lyricsPositionMs(sliderPositionProvider() ?: positionMsProvider(), lyricsSyncOffset)
+                LyricsPlayhead(lyricsPositionMs, timeline.highlightPositionMs(lyricsPositionMs), timeline.lineIndexAt(lyricsPositionMs))
+            } else {
+                LyricsPlayhead(0L, 0L, 0)
+            }
+        }
+    LaunchedEffect(timeline, lyricsSyncOffset) {
+        if (timeline == null || !timeline.isSynced || timeline.entries.isEmpty()) return@LaunchedEffect
+        val pollIntervalMs = if (timeline.isWordSynced) 16L else 50L
+        while (isActive) {
+            val lyricsPositionMs = timeline.lyricsPositionMs(sliderPositionProvider() ?: positionMsProvider(), lyricsSyncOffset)
+            playhead.lyricsPositionMs = lyricsPositionMs
+            playhead.highlightPositionMs = timeline.highlightPositionMs(lyricsPositionMs)
+            playhead.lineIndex = timeline.lineIndexAt(lyricsPositionMs)
+            delay(pollIntervalMs)
+        }
+    }
+    return playhead
+}
+
+/**
+ * Keeps [lineIndex] [anchorOffsetPx] - for the list's height - below the top of [listState]'s list while
+ * [isFollowing]: placed there the first time, which is where the lyrics open, then scrolled to as each line comes -
+ * from far away, snapped close first.
+ */
+@Composable
+internal fun FollowLine(
+    listState: LazyListState,
+    timeline: LyricsTimeline,
+    lineIndex: Int,
+    isFollowing: Boolean,
+    anchorOffsetPx: (viewportHeight: Int) -> Int,
+) {
+    var hasReachedLine by remember(timeline) { mutableStateOf(false) }
+    LaunchedEffect(lineIndex, isFollowing) {
+        if (!isFollowing) return@LaunchedEffect
+
+        // Measured before the first scroll, which is where the lyrics open - placed there, not scrolled to.
+        val viewportHeight = snapshotFlow { listState.layoutInfo.viewportSize.height }.first { it > 0 }
+        val targetOffset = anchorOffsetPx(viewportHeight)
+        if (!hasReachedLine) {
+            listState.scrollToItem(lineIndex, -targetOffset)
+            hasReachedLine = true
+            return@LaunchedEffect
+        }
+
+        val distance = abs(lineIndex - (listState.firstVisibleItemIndex))
+        if (distance > 15) {
+            // Far jump — snap first, then settle
+            listState.scrollToItem(
+                (lineIndex - 2).coerceAtLeast(0),
+                0,
+            )
+        }
+        listState.animateScrollToItem(
+            index = lineIndex,
+            scrollOffset = -targetOffset,
+        )
+    }
+}
+
+/** What the lazy list reuses a line's composition for: lines drawn alike. */
+internal fun LyricsEntry.lyricsContentType(isSynced: Boolean): String =
+    when {
+        this == HEAD_LYRICS_ENTRY -> "head"
+        isInstrumental -> "instrumental"
+        words != null && isSynced -> "wordSynced"
+        else -> "lineSynced"
+    }
+
+/** How the lines around the one playing are shown. */
+internal enum class NeighbourLines {
+    /** Fainter and more blurred the farther they are from it - while the lyrics follow playback. */
+    Receding,
+
+    /** Clearer, and not blurred - while the user scrolls through them. */
+    Browsed,
+
+    /** Not at all: the line playing alone - plain lyrics, their first - the others seen only fading as they pass. */
+    Hidden,
+}
+
+/**
+ * The [index]th line of [timeline] - a sung line, or an instrumental break's note - lit, faded, blurred and scaled
+ * by how far it is from the line playing at [playhead]. [interaction] is what touching it does, over how it looks.
+ *
+ * [isSingleLine] keeps it to one row: what does not fit is cut short with an ellipsis, and what would take a row of
+ * its own - its romanization above it, its background vocals beneath - is left out.
+ */
+@Composable
+internal fun LyricsLine(
+    index: Int,
+    item: LyricsEntry,
+    timeline: LyricsTimeline,
+    playhead: LyricsPlayhead,
+    style: LyricsStyle,
+    lyricsDirection: LayoutDirection,
+    textColor: Color,
+    neighbours: NeighbourLines,
+    isSelected: Boolean,
+    isSingleLine: Boolean,
+    interaction: Modifier = Modifier,
+) {
+    val inactiveAlpha = 0.35f
+    val isSynced = timeline.isSynced
+    val entriesWithWords = timeline.entries
+    val currentLineIndex = playhead.lineIndex
+    val playbackPositionMs = playhead.lyricsPositionMs
+    val isManualScrolling = neighbours == NeighbourLines.Browsed
+    val isShown = neighbours != NeighbourLines.Hidden || index == (if (isSynced) currentLineIndex else 0)
+    val lyricsTextSize = style.textSize
+    val lyricsLineSpacing = style.lineSpacing
+    val lyricsLineBlur = style.lineBlur
+
+    // ── Instrumental break icon ──
+    if (item.isInstrumental && isSynced) {
+        val startTimeMs = item.time
+        val endTimeMs = item.time + item.durationMs
+        val isActive = playbackPositionMs in startTimeMs until endTimeMs
+        val distanceFromActive = abs(index - currentLineIndex)
+        val instrAlpha =
+            when {
+                !isShown -> {
+                    0f
+                }
+
+                isActive -> {
+                    1f
+                }
+
+                isManualScrolling -> {
+                    when (distanceFromActive) {
+                        1 -> 0.72f
+                        2 -> 0.56f
+                        3 -> 0.40f
+                        else -> 0.28f
+                    }
+                }
+
+                distanceFromActive == 1 -> {
+                    0.52f
+                }
+
+                distanceFromActive == 2 -> {
+                    0.30f
+                }
+
+                distanceFromActive == 3 -> {
+                    0.18f
+                }
+
+                else -> {
+                    inactiveAlpha
+                }
+            }
+        val animatedInstrAlpha by animateFloatAsState(
+            targetValue = instrAlpha,
+            animationSpec =
+                tween(
+                    durationMillis = if (isActive) 330 else 500,
+                    easing = FastOutSlowInEasing,
+                ),
+            label = "v2InstrumentalAlpha",
+        )
+        val animatedInstrScale by animateFloatAsState(
+            targetValue = if (isActive) 1f else 0.95f,
+            animationSpec =
+                tween(
+                    durationMillis = 166,
+                    easing = FastOutSlowInEasing,
+                ),
+            label = "v2InstrumentalScale",
+        )
+        val targetInstrBlur =
+            when {
+                isActive || isManualScrolling -> 0f
+                distanceFromActive == 1 -> 2f
+                distanceFromActive == 2 -> 5f
+                else -> 12f
+            }
+        val animatedInstrBlur by animateFloatAsState(
+            targetValue = targetInstrBlur,
+            animationSpec =
+                tween(
+                    durationMillis = 300,
+                    easing = FastOutSlowInEasing,
+                ),
+            label = "v2InstrumentalBlur",
+        )
+        // Laid out in the lyrics' direction, so the note stands where their lines start.
+        CompositionLocalProvider(LocalLayoutDirection provides lyricsDirection) {
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            start = LyricsLineHorizontalPadding,
+                            end = LyricsLineHorizontalPadding,
+                            top =
+                                if (index == 0 || (index == 1 && entriesWithWords[0] == HEAD_LYRICS_ENTRY)) {
+                                    0.dp
+                                } else {
+                                    (lyricsLineSpacing * 8).dp
+                                },
+                            bottom = (lyricsLineSpacing * 8).dp,
+                        ).then(
+                            if (lyricsLineBlur) {
+                                Modifier.blur(
+                                    radiusX = animatedInstrBlur.dp,
+                                    radiusY = animatedInstrBlur.dp,
+                                    edgeTreatment = BlurredEdgeTreatment.Unbounded,
+                                )
+                            } else {
+                                Modifier
+                            },
+                        ).graphicsLayer {
+                            scaleX = animatedInstrScale
+                            scaleY = animatedInstrScale
+                            alpha = animatedInstrAlpha
+                        }.then(interaction),
+            ) {
+                InstrumentalBreakItem(
+                    durationMs = item.durationMs,
+                    currentPositionMs = playbackPositionMs,
+                    startTimeMs = startTimeMs,
+                    textColor = textColor,
+                    inactiveAlpha = inactiveAlpha,
+                    // On one row, the note is as tall as the row.
+                    noteSize =
+                        if (isSingleLine) {
+                            with(LocalDensity.current) { (lyricsTextSize * lyricsLineSpacing).sp.toDp() }
+                        } else {
+                            48.dp
+                        },
+                )
+            }
+        }
+        return
+    }
+
+    // ── Agent-based positioning ──
+    // v1 or null -> Start, v2 -> End, others -> Center
+    val textAlign =
+        when (item.agent?.lowercase()) {
+            "v1", null -> TextAlign.Start
+            "v2" -> TextAlign.End
+            else -> TextAlign.Center
+        }
+    val horizontalAlignment =
+        when (item.agent?.lowercase()) {
+            "v1", null -> Alignment.Start
+            "v2" -> Alignment.End
+            else -> Alignment.CenterHorizontally
+        }
+
+    val isActive = isSynced && index == currentLineIndex
+    val isPast = isSynced && index < currentLineIndex
+
+    // Distance-based alpha for non-active lines
+    val distanceFromActive = if (isSynced) abs(index - currentLineIndex) else 0
+    val lineAlpha =
+        when {
+            !isShown -> {
+                0f
+            }
+
+            !isSynced -> {
+                0.92f
+            }
+
+            isActive -> {
+                1f
+            }
+
+            isManualScrolling -> {
+                when (distanceFromActive) {
+                    1 -> 0.72f
+                    2 -> 0.56f
+                    3 -> 0.40f
+                    else -> 0.28f
+                }
+            }
+
+            distanceFromActive == 1 -> {
+                0.52f
+            }
+
+            distanceFromActive == 2 -> {
+                0.30f
+            }
+
+            distanceFromActive == 3 -> {
+                0.18f
+            }
+
+            else -> {
+                0.10f
+            }
+        }
+    val targetBlur =
+        when {
+            !isSynced || isActive || isSelected || isManualScrolling -> 0f
+            distanceFromActive == 1 -> 2f
+            distanceFromActive == 2 -> 5f
+            else -> 12f
+        }
+    val animatedBlur by animateFloatAsState(
+        targetValue = targetBlur,
+        animationSpec =
+            tween(
+                durationMillis = 300,
+                easing = FastOutSlowInEasing,
+            ),
+        label = "v2LyricBlur",
+    )
+    val animatedLineScale by animateFloatAsState(
+        targetValue = if (isActive) 1f else 0.95f,
+        animationSpec =
+            tween(
+                durationMillis = 166,
+                easing = FastOutSlowInEasing,
+            ),
+        label = "v2LineScale",
+    )
+    val animatedLineAlpha by animateFloatAsState(
+        targetValue = lineAlpha,
+        animationSpec =
+            tween(
+                durationMillis = if (isActive) 330 else 500,
+                easing = FastOutSlowInEasing,
+            ),
+        label = "v2LineAlpha",
+    )
+    // Background vocal detection
+    val isAllBackground = item.words?.all { it.isBackground || it.text.isBlank() } == true
+
+    val romanizedText =
+        if (style.romanization.isEnabled) {
+            val value by item.romanizedTextFlow.collectAsStateWithLifecycle()
+            value
+        } else {
+            null
+        }
+    // Shown by its romanization alone, that is the line - read, laid out and sung as it is.
+    val shownRomanization = romanizedText.takeIf { style.showsRomanizationOnly }
+    val shownText = remember(item, shownRomanization) { shownRomanization ?: item.sungText() }
+    // A line reads in its own direction; one with none, in the lyrics'.
+    val lineLayoutDirection =
+        remember(shownText, lyricsDirection) { readingDirectionOf(shownText) ?: lyricsDirection }
+    val lineIsRtl = lineLayoutDirection == LayoutDirection.Rtl
+    // A line grows from where it is placed - its start, its end, or its centre - whichever side that is.
+    val lineTransformOrigin =
+        remember(item.agent, lineIsRtl) {
+            val startPivot = if (lineIsRtl) 1f else 0f
+            when (item.agent?.lowercase()) {
+                "v2" -> TransformOrigin(1f - startPivot, 0.5f)
+                "v1", null -> TransformOrigin(startPivot, 0.5f)
+                else -> TransformOrigin(0.5f, 0.5f)
+            }
+        }
+
+    CompositionLocalProvider(LocalLayoutDirection provides lineLayoutDirection) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .background(
+                        color =
+                            if (isSelected) {
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                            } else {
+                                Color.Transparent
+                            },
+                        shape = roundedShape(8.dp),
+                    ).padding(
+                        start = if (isAllBackground) LyricsLineHorizontalPadding * 2 else LyricsLineHorizontalPadding,
+                        end = LyricsLineHorizontalPadding,
+                        top =
+                            if (index == 0 ||
+                                (index == 1 && entriesWithWords[0] == HEAD_LYRICS_ENTRY)
+                            ) {
+                                0.dp
+                            } else {
+                                (lyricsLineSpacing * 8).dp
+                            },
+                        bottom = (lyricsLineSpacing * 8).dp,
+                    ).then(
+                        if (lyricsLineBlur) {
+                            Modifier.blur(
+                                radiusX = animatedBlur.dp,
+                                radiusY = animatedBlur.dp,
+                                edgeTreatment = BlurredEdgeTreatment.Unbounded,
+                            )
+                        } else {
+                            Modifier
+                        },
+                    ).graphicsLayer {
+                        scaleX = animatedLineScale
+                        scaleY = animatedLineScale
+                        alpha = animatedLineAlpha
+                        transformOrigin = lineTransformOrigin
+                    }.then(interaction),
+            horizontalAlignment = horizontalAlignment,
+        ) {
+            if (romanizedText != null && shownRomanization == null && !isSingleLine) {
+                val supplementaryBaseTextStyle = MaterialTheme.typography.bodyMedium
+                val supplementaryTextStyle =
+                    remember(supplementaryBaseTextStyle, lyricsTextSize, isAllBackground) {
+                        supplementaryBaseTextStyle.copy(
+                            fontSize = (lyricsTextSize * 0.55f).sp,
+                            lineHeight = (lyricsTextSize * 0.75f).sp,
+                            fontWeight = FontWeight.Normal,
+                            fontStyle = if (isAllBackground) FontStyle.Italic else FontStyle.Normal,
+                        )
+                    }
+                Text(
+                    text = romanizedText,
+                    style = supplementaryTextStyle,
+                    color = textColor.copy(alpha = if (isActive) 0.76f else 0.42f),
+                    textAlign = textAlign,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = (lyricsTextSize * 0.18f).dp),
+                )
+            }
+
+            val words = item.words.takeIf { shownRomanization == null }
+            if (words != null && isSynced) {
+                LyricsLineV2(
+                    words = words,
+                    isActive = isActive,
+                    isPast = isPast,
+                    currentPositionMs = playhead.highlightPositionMs,
+                    textColor = textColor,
+                    inactiveAlpha = inactiveAlpha,
+                    baseFontSize = lyricsTextSize,
+                    isLineAllBackground = isAllBackground,
+                    textAlign = textAlign,
+                    isRtl = lineIsRtl,
+                    bounceFactor = style.bounceFactor,
+                    glowFactor = style.glowFactor,
+                    fillTransitionWidth = style.fillTransitionWidth,
+                    isSingleLine = isSingleLine,
+                )
+            } else if (isSynced) {
+                // Its words' timings are the original's, so a line shown romanized is sung line by line.
+                LyricsLineLrcBounce(
+                    text = shownRomanization ?: item.text,
+                    isActive = isActive,
+                    textColor = textColor.copy(alpha = if (isActive) 1f else 0.52f),
+                    fontSize = lyricsTextSize,
+                    lineSpacing = lyricsLineSpacing,
+                    isAllBackground = isAllBackground,
+                    textAlign = textAlign,
+                    bounceFactor = if (style.lrcBounceEnabled) style.bounceFactor else 0f,
+                    isSingleLine = isSingleLine,
+                )
+            } else {
+                Text(
+                    text = shownRomanization ?: item.text,
+                    style =
+                        MaterialTheme.typography.headlineMedium.copy(
+                            fontSize = if (isAllBackground) (lyricsTextSize * 0.82f).sp else lyricsTextSize.sp,
+                            fontWeight = if (isActive) FontWeight.ExtraBold else FontWeight.SemiBold,
+                            fontStyle = if (isAllBackground) FontStyle.Italic else FontStyle.Normal,
+                            lineHeight = (lyricsTextSize * lyricsLineSpacing).sp,
+                        ),
+                    color = textColor.copy(alpha = if (isActive) 1f else 0.52f),
+                    textAlign = textAlign,
+                    maxLines = if (isSingleLine) 1 else Int.MAX_VALUE,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+}
+
+/** Looks for [track]'s missing lyrics on the web again - once Sona may change its file. */
+@Composable
+internal fun FindLyricsButton(
+    track: Track,
+    lyricsViewModel: LyricsViewModel,
+    modifier: Modifier = Modifier,
+) {
+    val requestFileChange = rememberFileChangeRequest(onGranted = { lyricsViewModel.findLyrics(track) })
+    FilledTonalButton(
+        onClick = { requestFileChange(listOf(track)) },
+        shapes = buttonPressShapes(),
+        modifier = modifier,
+    ) {
+        Text(
+            text = stringResource(R.string.player_lyrics_search),
+            style = MaterialTheme.typography.labelLarge,
+        )
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────
 // Main Composable
 // ──────────────────────────────────────────────────────────────────────
 
@@ -160,9 +798,10 @@ private fun LyricsEntry.sungText(): String =
  * Synced lyrics with a liquid word fill, glow and bounce - ArchiveTune's `LyricsV2`.
  *
  * [timeline] is null while the track's file is being read, and has no lines where it holds none - [isFindingLyrics]
- * while they are being looked for on the web, to show the moment they are written into the file.
+ * while they are being looked for on the web, to show the moment they are written into the file; otherwise offering
+ * to look for them again.
  */
-@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun LyricsV2(
     track: Track,
@@ -182,140 +821,19 @@ internal fun LyricsV2(
     // ── Preferences ──
     val lyricsClick by lyricsViewModel.lyricsClick.collectAsStateWithLifecycle()
     val lyricsScroll by lyricsViewModel.lyricsScroll.collectAsStateWithLifecycle()
-    val lyricsTextSize by lyricsViewModel.lyricsTextSize.collectAsStateWithLifecycle()
-    val lyricsLineSpacing by lyricsViewModel.lyricsLineSpacing.collectAsStateWithLifecycle()
-    val lyricsLineBlur by lyricsViewModel.lyricsLineBlur.collectAsStateWithLifecycle()
-    val bounceFactor by lyricsViewModel.bounceFactor.collectAsStateWithLifecycle()
-    val glowFactor by lyricsViewModel.glowFactor.collectAsStateWithLifecycle()
-    val fillTransitionWidth by lyricsViewModel.fillTransitionWidth.collectAsStateWithLifecycle()
-    val lrcBounceEnabled by lyricsViewModel.lrcBounceEnabled.collectAsStateWithLifecycle()
-    val romanizeArabic by lyricsViewModel.romanizeArabic.collectAsStateWithLifecycle()
-    val romanizeChinese by lyricsViewModel.romanizeChinese.collectAsStateWithLifecycle()
-    val romanizeHindi by lyricsViewModel.romanizeHindi.collectAsStateWithLifecycle()
-    val romanizeJapanese by lyricsViewModel.romanizeJapanese.collectAsStateWithLifecycle()
-    val romanizeKorean by lyricsViewModel.romanizeKorean.collectAsStateWithLifecycle()
-    val romanizeOtherLanguages by lyricsViewModel.romanizeOtherLanguages.collectAsStateWithLifecycle()
-    val showsRomanizationOnly by lyricsViewModel.showsRomanizationOnly.collectAsStateWithLifecycle()
-    val romanizationPreferences =
-        remember(
-            romanizeArabic,
-            romanizeJapanese,
-            romanizeKorean,
-            romanizeChinese,
-            romanizeHindi,
-            romanizeOtherLanguages,
-        ) {
-            LyricsRomanizationPreferences(
-                romanizeArabic = romanizeArabic,
-                romanizeJapanese = romanizeJapanese,
-                romanizeKorean = romanizeKorean,
-                romanizeChinese = romanizeChinese,
-                romanizeHindi = romanizeHindi,
-                romanizeOther = romanizeOtherLanguages,
-            )
-        }
-
-    val inactiveAlpha = 0.35f
+    val style = rememberLyricsStyle(lyricsViewModel)
 
     // ── Selection mode state ──
     var isSelectionModeActive by rememberSaveable { mutableStateOf(false) }
     val selectedIndices = remember { mutableStateListOf<Int>() }
 
     val isSynced = timeline?.isSynced == true
-    val isTtmlFormat = timeline?.isWordSynced == true
     val entriesWithWords = timeline?.entries.orEmpty()
 
-    // ── Reading direction ──
-    // The lyrics' own: the direction most of their lines read in as shown - a line shown by its romanization alone
-    // reading as Latin - and the app's where none has one. It places what has no direction of its own: the
-    // instrumental break's note, and a line of numbers or dots.
-    val appLayoutDirection = LocalLayoutDirection.current
-    val lyricsDirection =
-        remember(entriesWithWords, romanizationPreferences, showsRomanizationOnly, appLayoutDirection) {
-            val lineDirections =
-                entriesWithWords.mapNotNull { entry ->
-                    val isShownRomanized =
-                        showsRomanizationOnly && romanizationPreferences.isEnabled &&
-                            (
-                                providedRomanizedTextForEntry(entry, romanizationPreferences) != null ||
-                                    shouldRomanizeLyricsLine(entry.text, romanizationPreferences)
-                            )
-                    if (isShownRomanized) LayoutDirection.Ltr else readingDirectionOf(entry.sungText())
-                }
-            val rtlCount = lineDirections.count { it == LayoutDirection.Rtl }
-            val ltrCount = lineDirections.size - rtlCount
-            when {
-                rtlCount > ltrCount -> LayoutDirection.Rtl
-                ltrCount > rtlCount -> LayoutDirection.Ltr
-                else -> appLayoutDirection
-            }
-        }
-
-    // ── Romanization ──
-    LaunchedEffect(entriesWithWords, romanizationPreferences) {
-        if (!romanizationPreferences.isEnabled) {
-            entriesWithWords.forEach { entry ->
-                if (entry.romanizedTextFlow.value != null) {
-                    entry.romanizedTextFlow.value = null
-                }
-            }
-            return@LaunchedEffect
-        }
-
-        entriesWithWords.forEach { entry ->
-            val providerRomanized = providedRomanizedTextForEntry(entry, romanizationPreferences)
-            if (providerRomanized != null) {
-                if (entry.romanizedTextFlow.value != providerRomanized) {
-                    entry.romanizedTextFlow.value = providerRomanized
-                }
-                return@forEach
-            }
-
-            if (!shouldRomanizeLyricsLine(entry.text, romanizationPreferences)) {
-                if (entry.romanizedTextFlow.value != null) {
-                    entry.romanizedTextFlow.value = null
-                }
-                return@forEach
-            }
-
-            launch {
-                val romanized =
-                    try {
-                        romanizeLyricsLine(entry.text, romanizationPreferences)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (_: Exception) {
-                        null
-                    }
-                entry.romanizedTextFlow.value = romanized
-            }
-        }
-    }
+    val lyricsDirection = rememberLyricsDirection(entriesWithWords, style)
 
     // ── Playback position tracking ──
-    var currentPositionMs by remember { mutableLongStateOf(0L) }
-    var playbackPositionMs by remember { mutableLongStateOf(0L) }
-    // Read at once, so the lyrics open on the line playing rather than scrolling to it from the top.
-    var currentLineIndex by remember(timeline) {
-        mutableIntStateOf(
-            if (timeline != null && isSynced && entriesWithWords.isNotEmpty()) {
-                timeline.lineIndexAt(timeline.lyricsPositionMs(sliderPositionProvider() ?: positionMsProvider(), lyricsSyncOffset))
-            } else {
-                0
-            },
-        )
-    }
-
-    LaunchedEffect(timeline, lyricsSyncOffset) {
-        if (timeline == null || !isSynced || entriesWithWords.isEmpty()) return@LaunchedEffect
-        val pollIntervalMs = if (isTtmlFormat) 16L else 50L
-        while (isActive) {
-            playbackPositionMs = timeline.lyricsPositionMs(sliderPositionProvider() ?: positionMsProvider(), lyricsSyncOffset)
-            currentPositionMs = timeline.highlightPositionMs(playbackPositionMs)
-            currentLineIndex = timeline.lineIndexAt(playbackPositionMs)
-            delay(pollIntervalMs)
-        }
-    }
+    val playhead = rememberLyricsPlayhead(timeline, positionMsProvider, sliderPositionProvider, lyricsSyncOffset)
 
     // ── Scroll State ──
     val listState = rememberLazyListState()
@@ -347,32 +865,14 @@ internal fun LyricsV2(
         }
     }
 
-    // Auto-scroll to active line
-    var hasReachedActiveLine by remember(timeline) { mutableStateOf(false) }
-    LaunchedEffect(currentLineIndex, isManualScrolling, lyricsScroll) {
-        if (!lyricsScroll || isManualScrolling || !isSynced) return@LaunchedEffect
-        if (currentLineIndex < 0 || currentLineIndex >= entriesWithWords.size) return@LaunchedEffect
-
-        // Measured before the first scroll, which is where the lyrics open - placed there, not scrolled to.
-        val viewportHeight = snapshotFlow { listState.layoutInfo.viewportSize.height }.first { it > 0 }
-        val targetOffset = (viewportHeight * 0.35f).toInt() // Center bias at 35% from top
-        if (!hasReachedActiveLine) {
-            listState.scrollToItem(currentLineIndex, -targetOffset)
-            hasReachedActiveLine = true
-            return@LaunchedEffect
-        }
-
-        val distance = abs(currentLineIndex - (listState.firstVisibleItemIndex))
-        if (distance > 15) {
-            // Far jump — snap first, then settle
-            listState.scrollToItem(
-                (currentLineIndex - 2).coerceAtLeast(0),
-                0,
-            )
-        }
-        listState.animateScrollToItem(
-            index = currentLineIndex,
-            scrollOffset = -targetOffset,
+    // Auto-scroll to active line, centre bias at 35% from the top
+    if (timeline != null) {
+        FollowLine(
+            listState = listState,
+            timeline = timeline,
+            lineIndex = playhead.lineIndex,
+            isFollowing = lyricsScroll && !isManualScrolling && isSynced && playhead.lineIndex in entriesWithWords.indices,
+            anchorOffsetPx = { viewportHeight -> (viewportHeight * 0.35f).toInt() },
         )
     }
 
@@ -443,6 +943,11 @@ internal fun LyricsV2(
                             color = textColor.copy(alpha = 0.6f),
                             textAlign = TextAlign.Center,
                         )
+                        FindLyricsButton(
+                            track = track,
+                            lyricsViewModel = lyricsViewModel,
+                            modifier = Modifier.padding(top = 16.dp),
+                        )
                     }
                 }
             }
@@ -462,400 +967,65 @@ internal fun LyricsV2(
             itemsIndexed(
                 items = entriesWithWords,
                 key = { index, entry -> "${index}_${entry.time}" },
-                contentType = { _, entry ->
-                    when {
-                        entry == HEAD_LYRICS_ENTRY -> "head"
-                        entry.isInstrumental -> "instrumental"
-                        entry.words != null && isSynced -> "wordSynced"
-                        else -> "lineSynced"
-                    }
-                },
+                contentType = { _, entry -> entry.lyricsContentType(isSynced) },
             ) { index, item ->
                 if (item == HEAD_LYRICS_ENTRY) {
                     Spacer(modifier = Modifier.height(120.dp))
                     return@itemsIndexed
                 }
 
-                // ── Instrumental break icon ──
-                if (item.isInstrumental && isSynced) {
-                    val startTimeMs = item.time
-                    val endTimeMs = item.time + item.durationMs
-                    val isActive = playbackPositionMs in startTimeMs until endTimeMs
-                    val distanceFromActive = abs(index - currentLineIndex)
-                    val instrAlpha =
-                        when {
-                            isActive -> {
-                                1f
-                            }
-
-                            isManualScrolling -> {
-                                when (distanceFromActive) {
-                                    1 -> 0.72f
-                                    2 -> 0.56f
-                                    3 -> 0.40f
-                                    else -> 0.28f
-                                }
-                            }
-
-                            distanceFromActive == 1 -> {
-                                0.52f
-                            }
-
-                            distanceFromActive == 2 -> {
-                                0.30f
-                            }
-
-                            distanceFromActive == 3 -> {
-                                0.18f
-                            }
-
-                            else -> {
-                                inactiveAlpha
-                            }
-                        }
-                    val animatedInstrAlpha by animateFloatAsState(
-                        targetValue = instrAlpha,
-                        animationSpec =
-                            tween(
-                                durationMillis = if (isActive) 330 else 500,
-                                easing = FastOutSlowInEasing,
-                            ),
-                        label = "v2InstrumentalAlpha",
-                    )
-                    val animatedInstrScale by animateFloatAsState(
-                        targetValue = if (isActive) 1f else 0.95f,
-                        animationSpec =
-                            tween(
-                                durationMillis = 166,
-                                easing = FastOutSlowInEasing,
-                            ),
-                        label = "v2InstrumentalScale",
-                    )
-                    val targetInstrBlur =
-                        when {
-                            isActive || isManualScrolling -> 0f
-                            distanceFromActive == 1 -> 2f
-                            distanceFromActive == 2 -> 5f
-                            else -> 12f
-                        }
-                    val animatedInstrBlur by animateFloatAsState(
-                        targetValue = targetInstrBlur,
-                        animationSpec =
-                            tween(
-                                durationMillis = 300,
-                                easing = FastOutSlowInEasing,
-                            ),
-                        label = "v2InstrumentalBlur",
-                    )
-                    // Laid out in the lyrics' direction, so the note stands where their lines start.
-                    CompositionLocalProvider(LocalLayoutDirection provides lyricsDirection) {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(
-                                        start = 12.dp,
-                                        end = 12.dp,
-                                        top =
-                                            if (index == 0 || (index == 1 && entriesWithWords[0] == HEAD_LYRICS_ENTRY)) {
-                                                0.dp
-                                            } else {
-                                                (lyricsLineSpacing * 8).dp
-                                            },
-                                        bottom = (lyricsLineSpacing * 8).dp,
-                                    ).then(
-                                        if (lyricsLineBlur) {
-                                            Modifier.blur(
-                                                radiusX = animatedInstrBlur.dp,
-                                                radiusY = animatedInstrBlur.dp,
-                                                edgeTreatment = BlurredEdgeTreatment.Unbounded,
-                                            )
-                                        } else {
-                                            Modifier
-                                        },
-                                    ).graphicsLayer {
-                                        scaleX = animatedInstrScale
-                                        scaleY = animatedInstrScale
-                                        alpha = animatedInstrAlpha
-                                    }.then(
-                                        if (lyricsClick && item.time > 0) {
-                                            Modifier.clickable { onSeek(item.time) }
-                                        } else {
-                                            Modifier
-                                        },
-                                    ),
-                        ) {
-                            InstrumentalBreakItem(
-                                durationMs = item.durationMs,
-                                currentPositionMs = playbackPositionMs,
-                                startTimeMs = startTimeMs,
-                                textColor = textColor,
-                                inactiveAlpha = inactiveAlpha,
-                            )
-                        }
-                    }
-                    return@itemsIndexed
-                }
-
-                // ── Agent-based positioning ──
-                // v1 or null -> Start, v2 -> End, others -> Center
-                val textAlign =
-                    when (item.agent?.lowercase()) {
-                        "v1", null -> TextAlign.Start
-                        "v2" -> TextAlign.End
-                        else -> TextAlign.Center
-                    }
-                val horizontalAlignment =
-                    when (item.agent?.lowercase()) {
-                        "v1", null -> Alignment.Start
-                        "v2" -> Alignment.End
-                        else -> Alignment.CenterHorizontally
-                    }
-
-                val isActive = isSynced && index == currentLineIndex
-                val isPast = isSynced && index < currentLineIndex
                 val isSelected = selectedIndices.contains(index)
-
-                // Distance-based alpha for non-active lines
-                val distanceFromActive = if (isSynced) abs(index - currentLineIndex) else 0
-                val lineAlpha =
-                    when {
-                        !isSynced -> {
-                            0.92f
-                        }
-
-                        isActive -> {
-                            1f
-                        }
-
-                        isManualScrolling -> {
-                            when (distanceFromActive) {
-                                1 -> 0.72f
-                                2 -> 0.56f
-                                3 -> 0.40f
-                                else -> 0.28f
+                LyricsLine(
+                    index = index,
+                    item = item,
+                    timeline = timeline,
+                    playhead = playhead,
+                    style = style,
+                    lyricsDirection = lyricsDirection,
+                    textColor = textColor,
+                    neighbours = if (isManualScrolling) NeighbourLines.Browsed else NeighbourLines.Receding,
+                    isSelected = isSelectionModeActive && isSelected,
+                    isSingleLine = false,
+                    interaction =
+                        if (item.isInstrumental && isSynced) {
+                            if (lyricsClick && item.time > 0) {
+                                Modifier.clickable { onSeek(item.time) }
+                            } else {
+                                Modifier
                             }
-                        }
-
-                        distanceFromActive == 1 -> {
-                            0.52f
-                        }
-
-                        distanceFromActive == 2 -> {
-                            0.30f
-                        }
-
-                        distanceFromActive == 3 -> {
-                            0.18f
-                        }
-
-                        else -> {
-                            0.10f
-                        }
-                    }
-                val targetBlur =
-                    when {
-                        !isSynced || isActive || (isSelectionModeActive && isSelected) || isManualScrolling -> 0f
-                        distanceFromActive == 1 -> 2f
-                        distanceFromActive == 2 -> 5f
-                        else -> 12f
-                    }
-                val animatedBlur by animateFloatAsState(
-                    targetValue = targetBlur,
-                    animationSpec =
-                        tween(
-                            durationMillis = 300,
-                            easing = FastOutSlowInEasing,
-                        ),
-                    label = "v2LyricBlur",
-                )
-                val animatedLineScale by animateFloatAsState(
-                    targetValue = if (isActive) 1f else 0.95f,
-                    animationSpec =
-                        tween(
-                            durationMillis = 166,
-                            easing = FastOutSlowInEasing,
-                        ),
-                    label = "v2LineScale",
-                )
-                val animatedLineAlpha by animateFloatAsState(
-                    targetValue = lineAlpha,
-                    animationSpec =
-                        tween(
-                            durationMillis = if (isActive) 330 else 500,
-                            easing = FastOutSlowInEasing,
-                        ),
-                    label = "v2LineAlpha",
-                )
-                // Background vocal detection
-                val isAllBackground = item.words?.all { it.isBackground || it.text.isBlank() } == true
-
-                val romanizedText =
-                    if (romanizationPreferences.isEnabled) {
-                        val value by item.romanizedTextFlow.collectAsStateWithLifecycle()
-                        value
-                    } else {
-                        null
-                    }
-                // Shown by its romanization alone, that is the line - read, laid out and sung as it is.
-                val shownRomanization = romanizedText.takeIf { showsRomanizationOnly }
-                val shownText = remember(item, shownRomanization) { shownRomanization ?: item.sungText() }
-                // A line reads in its own direction; one with none, in the lyrics'.
-                val lineLayoutDirection =
-                    remember(shownText, lyricsDirection) { readingDirectionOf(shownText) ?: lyricsDirection }
-                val lineIsRtl = lineLayoutDirection == LayoutDirection.Rtl
-                // A line grows from where it is placed - its start, its end, or its centre - whichever side that is.
-                val lineTransformOrigin =
-                    remember(item.agent, lineIsRtl) {
-                        val startPivot = if (lineIsRtl) 1f else 0f
-                        when (item.agent?.lowercase()) {
-                            "v2" -> TransformOrigin(1f - startPivot, 0.5f)
-                            "v1", null -> TransformOrigin(startPivot, 0.5f)
-                            else -> TransformOrigin(0.5f, 0.5f)
-                        }
-                    }
-
-                CompositionLocalProvider(LocalLayoutDirection provides lineLayoutDirection) {
-                    Column(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .background(
-                                    color =
-                                        if (isSelected && isSelectionModeActive) {
-                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                                        } else {
-                                            Color.Transparent
-                                        },
-                                    shape = roundedShape(8.dp),
-                                ).padding(
-                                    start = if (isAllBackground) 24.dp else 12.dp,
-                                    end = 12.dp,
-                                    top =
-                                        if (index == 0 ||
-                                            (index == 1 && entriesWithWords[0] == HEAD_LYRICS_ENTRY)
-                                        ) {
-                                            0.dp
-                                        } else {
-                                            (lyricsLineSpacing * 8).dp
-                                        },
-                                    bottom = (lyricsLineSpacing * 8).dp,
-                                ).then(
-                                    if (lyricsLineBlur) {
-                                        Modifier.blur(
-                                            radiusX = animatedBlur.dp,
-                                            radiusY = animatedBlur.dp,
-                                            edgeTreatment = BlurredEdgeTreatment.Unbounded,
-                                        )
-                                    } else {
-                                        Modifier
-                                    },
-                                ).graphicsLayer {
-                                    scaleX = animatedLineScale
-                                    scaleY = animatedLineScale
-                                    alpha = animatedLineAlpha
-                                    transformOrigin = lineTransformOrigin
-                                }.combinedClickable(
-                                    onClick = {
-                                        if (isSelectionModeActive) {
-                                            if (isSelected) {
-                                                selectedIndices.remove(index)
-                                                if (selectedIndices.isEmpty()) {
-                                                    isSelectionModeActive = false
-                                                }
-                                            } else {
-                                                if (selectedIndices.size < MAX_SELECTION_LIMIT) {
-                                                    selectedIndices.add(index)
-                                                } else {
-                                                    toastMaxSelection()
-                                                }
-                                            }
-                                        } else if (lyricsClick && isSynced && item.time > 0) {
-                                            onSeek(item.time)
-                                        }
-                                    },
-                                    onLongClick = {
-                                        if (!isSelectionModeActive) {
-                                            isSelectionModeActive = true
-                                            selectedIndices.add(index)
-                                        } else if (!isSelected && selectedIndices.size < MAX_SELECTION_LIMIT) {
-                                            selectedIndices.add(index)
-                                        } else if (!isSelected) {
-                                            toastMaxSelection()
-                                        }
-                                    },
-                                ),
-                        horizontalAlignment = horizontalAlignment,
-                    ) {
-                        if (romanizedText != null && shownRomanization == null) {
-                            val supplementaryBaseTextStyle = MaterialTheme.typography.bodyMedium
-                            val supplementaryTextStyle =
-                                remember(supplementaryBaseTextStyle, lyricsTextSize, isAllBackground) {
-                                    supplementaryBaseTextStyle.copy(
-                                        fontSize = (lyricsTextSize * 0.55f).sp,
-                                        lineHeight = (lyricsTextSize * 0.75f).sp,
-                                        fontWeight = FontWeight.Normal,
-                                        fontStyle = if (isAllBackground) FontStyle.Italic else FontStyle.Normal,
-                                    )
-                                }
-                            Text(
-                                text = romanizedText,
-                                style = supplementaryTextStyle,
-                                color = textColor.copy(alpha = if (isActive) 0.76f else 0.42f),
-                                textAlign = textAlign,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(bottom = (lyricsTextSize * 0.18f).dp),
-                            )
-                        }
-
-                        val words = item.words.takeIf { shownRomanization == null }
-                        if (words != null && isSynced) {
-                            LyricsLineV2(
-                                words = words,
-                                isActive = isActive,
-                                isPast = isPast,
-                                currentPositionMs = currentPositionMs,
-                                textColor = textColor,
-                                inactiveAlpha = inactiveAlpha,
-                                baseFontSize = lyricsTextSize,
-                                isLineAllBackground = isAllBackground,
-                                textAlign = textAlign,
-                                isRtl = lineIsRtl,
-                                bounceFactor = bounceFactor,
-                                glowFactor = glowFactor,
-                                fillTransitionWidth = fillTransitionWidth,
-                            )
-                        } else if (isSynced) {
-                            // Its words' timings are the original's, so a line shown romanized is sung line by line.
-                            LyricsLineLrcBounce(
-                                text = shownRomanization ?: item.text,
-                                isActive = isActive,
-                                textColor = textColor.copy(alpha = if (isActive) 1f else 0.52f),
-                                fontSize = lyricsTextSize,
-                                lineSpacing = lyricsLineSpacing,
-                                isAllBackground = isAllBackground,
-                                textAlign = textAlign,
-                                bounceFactor = if (lrcBounceEnabled) bounceFactor else 0f,
-                            )
                         } else {
-                            Text(
-                                text = shownRomanization ?: item.text,
-                                style =
-                                    MaterialTheme.typography.headlineMedium.copy(
-                                        fontSize = if (isAllBackground) (lyricsTextSize * 0.82f).sp else lyricsTextSize.sp,
-                                        fontWeight = if (isActive) FontWeight.ExtraBold else FontWeight.SemiBold,
-                                        fontStyle = if (isAllBackground) FontStyle.Italic else FontStyle.Normal,
-                                        lineHeight = (lyricsTextSize * lyricsLineSpacing).sp,
-                                    ),
-                                color = textColor.copy(alpha = if (isActive) 1f else 0.52f),
-                                textAlign = textAlign,
-                                modifier = Modifier.fillMaxWidth(),
+                            Modifier.combinedClickable(
+                                onClick = {
+                                    if (isSelectionModeActive) {
+                                        if (isSelected) {
+                                            selectedIndices.remove(index)
+                                            if (selectedIndices.isEmpty()) {
+                                                isSelectionModeActive = false
+                                            }
+                                        } else {
+                                            if (selectedIndices.size < MAX_SELECTION_LIMIT) {
+                                                selectedIndices.add(index)
+                                            } else {
+                                                toastMaxSelection()
+                                            }
+                                        }
+                                    } else if (lyricsClick && isSynced && item.time > 0) {
+                                        onSeek(item.time)
+                                    }
+                                },
+                                onLongClick = {
+                                    if (!isSelectionModeActive) {
+                                        isSelectionModeActive = true
+                                        selectedIndices.add(index)
+                                    } else if (!isSelected && selectedIndices.size < MAX_SELECTION_LIMIT) {
+                                        selectedIndices.add(index)
+                                    } else if (!isSelected) {
+                                        toastMaxSelection()
+                                    }
+                                },
                             )
-                        }
-                    }
-                }
+                        },
+                )
             }
 
             // Bottom spacer for overscroll
@@ -872,7 +1042,7 @@ internal fun LyricsV2(
                     scope.launch {
                         val viewportHeight = listState.layoutInfo.viewportSize.height
                         listState.animateScrollToItem(
-                            index = currentLineIndex,
+                            index = playhead.lineIndex,
                             scrollOffset = -(viewportHeight * 0.35f).toInt(),
                         )
                     }
@@ -1014,23 +1184,33 @@ private fun LyricsLineV2(
     bounceFactor: Float,
     glowFactor: Float,
     fillTransitionWidth: Float,
+    isSingleLine: Boolean,
 ) {
-    val arrangement =
-        when (textAlign) {
-            TextAlign.Center -> Arrangement.Center
-            TextAlign.End -> Arrangement.End
-            else -> Arrangement.Start
-        }
-
     // Split words into main and background
     val mainWords = words.filter { !it.isBackground }
     val bgWords = words.filter { it.isBackground }
+    val fontWeight = if (isActive || isPast) FontWeight.ExtraBold else FontWeight.SemiBold
+    // Cut short, a row ends as its words begin: unfilled.
+    val ellipsis: @Composable (fontSize: Float) -> Unit = { fontSize ->
+        Text(
+            text = Ellipsis,
+            style =
+                MaterialTheme.typography.headlineMedium.copy(
+                    fontSize = fontSize.sp,
+                    fontWeight = fontWeight,
+                    lineHeight = (fontSize * LyricsWordLineHeight).sp,
+                ),
+            color = textColor.copy(alpha = inactiveAlpha),
+        )
+    }
 
     // 1. Render main words First (if any)
     if (mainWords.isNotEmpty()) {
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = arrangement,
+        val mainFontSize = if (isLineAllBackground) baseFontSize * 0.82f else baseFontSize
+        LyricsWordRow(
+            isSingleLine = isSingleLine,
+            textAlign = textAlign,
+            ellipsis = { ellipsis(mainFontSize) },
         ) {
             mainWords.forEach { word ->
                 if (word.text == " ") {
@@ -1067,13 +1247,15 @@ private fun LyricsLineV2(
         }
     }
 
-    // 2. Render background words explicitly on a NEW line, noticeably smaller
-    if (bgWords.isNotEmpty()) {
+    // 2. Render background words explicitly on a NEW line, noticeably smaller - on one row, only where they are all
+    if (bgWords.isNotEmpty() && !(isSingleLine && mainWords.isNotEmpty())) {
         if (mainWords.isNotEmpty()) Spacer(modifier = Modifier.height(4.dp))
 
-        FlowRow(
-            modifier = Modifier.fillMaxWidth().alpha(0.85f), // Slightly dimmer overall
-            horizontalArrangement = arrangement,
+        LyricsWordRow(
+            isSingleLine = isSingleLine,
+            textAlign = textAlign,
+            ellipsis = { ellipsis(baseFontSize * 0.65f * 0.85f) },
+            modifier = Modifier.alpha(0.85f), // Slightly dimmer overall
         ) {
             bgWords.forEach { word ->
                 if (word.text == " ") {
@@ -1207,7 +1389,7 @@ private fun AnimatedWordV2(
                     fontSize = actualFontSize.sp,
                     fontWeight = fontWeight,
                     fontStyle = FontStyle.Normal,
-                    lineHeight = (actualFontSize * 1.35f).sp,
+                    lineHeight = (actualFontSize * LyricsWordLineHeight).sp,
                 ),
             color = textColor.copy(alpha = if (isBackground) inactiveAlpha * 0.7f else inactiveAlpha),
             modifier = Modifier.padding(glowPadding),
@@ -1222,7 +1404,7 @@ private fun AnimatedWordV2(
                         fontSize = actualFontSize.sp,
                         fontWeight = fontWeight,
                         fontStyle = FontStyle.Normal,
-                        lineHeight = (actualFontSize * 1.35f).sp,
+                        lineHeight = (actualFontSize * LyricsWordLineHeight).sp,
                         shadow =
                             if (glowAlpha > 0f) {
                                 Shadow(
@@ -1274,6 +1456,80 @@ private fun AnimatedWordV2(
     }
 }
 
+private const val Ellipsis = "\u2026"
+
+/**
+ * A line's words, wrapping onto as many rows as they take - or, [isSingleLine], on one: the words that fit, then
+ * [ellipsis] where any are left, the line cut at a word rather than through one. Placed as [textAlign] says.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun LyricsWordRow(
+    isSingleLine: Boolean,
+    textAlign: TextAlign,
+    ellipsis: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    words: @Composable () -> Unit,
+) {
+    if (!isSingleLine) {
+        FlowRow(
+            modifier = modifier.fillMaxWidth(),
+            horizontalArrangement =
+                when (textAlign) {
+                    TextAlign.Center -> Arrangement.Center
+                    TextAlign.End -> Arrangement.End
+                    else -> Arrangement.Start
+                },
+        ) {
+            words()
+        }
+        return
+    }
+
+    val alignment =
+        when (textAlign) {
+            TextAlign.Center -> Alignment.CenterHorizontally
+            TextAlign.End -> Alignment.End
+            else -> Alignment.Start
+        }
+    Layout(
+        contents = listOf(words, ellipsis),
+        modifier = modifier.fillMaxWidth(),
+    ) { (wordMeasurables, ellipsisMeasurables), constraints ->
+        val width = constraints.maxWidth
+        // Each word at its own width, never wrapped within itself.
+        val wordConstraints = Constraints(maxHeight = constraints.maxHeight)
+        val ellipsisPlaceable = ellipsisMeasurables.single().measure(wordConstraints)
+        val placeables = mutableListOf<Placeable>()
+        var usedWidth = 0
+        var isCut = false
+        for (measurable in wordMeasurables) {
+            val placeable = measurable.measure(wordConstraints)
+            if (usedWidth + placeable.width > width) {
+                isCut = true
+                break
+            }
+            placeables += placeable
+            usedWidth += placeable.width
+        }
+        // Words that leave the ellipsis no room make way for it.
+        while (isCut && placeables.isNotEmpty() && usedWidth + ellipsisPlaceable.width > width) {
+            usedWidth -= placeables.removeAt(placeables.lastIndex).width
+        }
+        val rowWidth = usedWidth + if (isCut) ellipsisPlaceable.width else 0
+        val height = maxOf(placeables.maxOfOrNull { it.height } ?: 0, if (isCut) ellipsisPlaceable.height else 0)
+        layout(width, height) {
+            // Measured from the row's start, and placed from it whichever way the line reads.
+            var x = alignment.align(rowWidth, width, LayoutDirection.Ltr)
+            placeables.forEach { placeable ->
+                placeable.placeRelative(x, 0)
+                x += placeable.width
+            }
+            if (isCut) ellipsisPlaceable.placeRelative(x, 0)
+        }
+    }
+}
+
 // ──────────────────────────────────────────────────────────────────────
 // LRC bounce: word-by-word spring bounce for line-synced lyrics
 // ──────────────────────────────────────────────────────────────────────
@@ -1289,6 +1545,7 @@ private fun LyricsLineLrcBounce(
     isAllBackground: Boolean,
     textAlign: TextAlign,
     bounceFactor: Float,
+    isSingleLine: Boolean,
 ) {
     val words = remember(text) { text.toLyricsWrappingUnits() }
     val effectiveFontSize = if (isAllBackground) fontSize * 0.82f else fontSize
@@ -1349,14 +1606,22 @@ private fun LyricsLineLrcBounce(
         }
     }
 
-    FlowRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement =
-            when (textAlign) {
-                TextAlign.Center -> Arrangement.Center
-                TextAlign.End -> Arrangement.End
-                else -> Arrangement.Start
-            },
+    LyricsWordRow(
+        isSingleLine = isSingleLine,
+        textAlign = textAlign,
+        ellipsis = {
+            Text(
+                text = Ellipsis,
+                style =
+                    MaterialTheme.typography.headlineMedium.copy(
+                        fontSize = effectiveFontSize.sp,
+                        fontWeight = fontWeight,
+                        fontStyle = fontStyle,
+                        lineHeight = (effectiveFontSize * lineSpacing).sp,
+                    ),
+                color = textColor,
+            )
+        },
     ) {
         words.forEachIndexed { i, word ->
             LrcBouncingWord(
@@ -1414,6 +1679,7 @@ private fun InstrumentalBreakItem(
     startTimeMs: Long,
     textColor: Color,
     inactiveAlpha: Float,
+    noteSize: Dp,
 ) {
     val musicNotePath =
         remember {
@@ -1455,7 +1721,7 @@ private fun InstrumentalBreakItem(
         label = "instrumentalFill",
     )
 
-    Canvas(modifier = Modifier.size(48.dp)) {
+    Canvas(modifier = Modifier.size(noteSize)) {
         val scaleX = size.width / 24f
         val scaleY = size.height / 24f
         val pivot = Offset.Zero
@@ -1490,7 +1756,7 @@ private fun InstrumentalBreakItem(
 
 /** Placeholder lines while the lyrics are read - ArchiveTune's `ShimmerHost`, on Sona's shimmer. */
 @Composable
-private fun ShimmerHost(content: @Composable () -> Unit) {
+internal fun ShimmerHost(content: @Composable () -> Unit) {
     Column(
         modifier =
             Modifier
@@ -1509,7 +1775,7 @@ private fun ShimmerHost(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun TextPlaceholder() {
+internal fun TextPlaceholder() {
     Box(
         modifier =
             Modifier
@@ -1522,7 +1788,7 @@ private fun TextPlaceholder() {
 }
 
 /** Fades the first and last [vertical] of the content out - ArchiveTune's `smoothFadingEdge`. */
-private fun Modifier.smoothFadingEdge(vertical: Dp) =
+internal fun Modifier.smoothFadingEdge(vertical: Dp) =
     graphicsLayer(alpha = 0.99f)
         .drawWithContent {
             drawContent()

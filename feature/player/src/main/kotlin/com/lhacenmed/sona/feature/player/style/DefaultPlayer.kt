@@ -89,7 +89,9 @@ internal object DefaultPlayerColors {
  * from ArchiveTune's Cinematic player. Both `PlayerStyle.DEFAULT` and `IMMERSIVE` are drawn with it,
  * told apart by where their [lyrics] open.
  *
- * Lyrics that open in a sheet of their own - the default style's - leave the player as it is under them.
+ * Lyrics that open in a sheet of their own - the default style's - leave the player as it is under them. In
+ * portrait, their line playing is beneath the title - [lyricsPreview] - and opens the sheet; landscape has no room
+ * for it beside the seek bar and transport.
  *
  * Lyrics that open in the player - the immersive style's - show their line in a pill above the seek bar, and
  * grow from it over the artwork, which recedes: in portrait the title goes with it, and the seek bar and
@@ -111,6 +113,7 @@ internal fun DefaultPlayer(
     queueBarHeight: Dp,
     titleActions: PlayerTitleActions,
     lyrics: PlayerLyricsState,
+    lyricsPreview: @Composable (Modifier) -> Unit,
     onMenuClick: () -> Unit,
     onCollapse: () -> Unit,
     onOpenEqualizer: () -> Unit,
@@ -253,7 +256,8 @@ internal fun DefaultPlayer(
                     .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
                     .padding(bottom = queueBarHeight),
         ) {
-            // Everything the open lyrics are drawn over: the artwork and its header, the title and the pill.
+            // Everything the open lyrics are drawn over: the artwork and its header, the title and the pill - or, for
+            // lyrics in a sheet, the line playing, whose faded top and bottom keep it clear of the title and the seek bar.
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier =
@@ -268,8 +272,12 @@ internal fun DefaultPlayer(
                     thumbnail(Modifier)
                 }
                 titleRow(titleRecede)
-                Spacer(Modifier.height(12.dp))
-                lyricsPill()
+                if (lyrics.opensInPlayer) {
+                    Spacer(Modifier.height(12.dp))
+                    lyricsPill()
+                } else {
+                    lyricsPreview(Modifier)
+                }
             }
 
             seekBar()

@@ -1,6 +1,7 @@
 package com.lhacenmed.sona.feature.player.style
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import com.lhacenmed.sona.core.datastore.PlayerAppearance
@@ -17,7 +18,7 @@ import com.lhacenmed.sona.feature.player.background.PlayerColors
 // expanded player, and the queue bar along its bottom - and says where its lyrics open; the rest of the
 // player (mini player, queue, lyrics, gestures, seeking) is shared by every style. Where the lyrics open in
 // the player, a style places their pill and makes way for the lyrics it opens into; where they open in their
-// own sheet, its queue bar offers the way into it. These `when`s are exhaustive, so a new PlayerStyle entry
+// own sheet, it places their line - the preview, which opens them - and its queue bar offers the way in too. These `when`s are exhaustive, so a new PlayerStyle entry
 // does not compile until it has a branch in each.
 
 /** Where the style's lyrics open. */
@@ -37,7 +38,8 @@ internal fun PlayerStyle.sheetColor(): Color =
 
 /**
  * The expanded player above the queue bar, leaving [queueBarHeight] clear at its bottom for it - with the
- * [lyrics] pill in it and room made for the lyrics while they are open, where they open in the player.
+ * [lyrics] pill in it and room made for the lyrics while they are open, where they open in the player; otherwise
+ * with [lyricsPreview], their line playing, which opens their sheet.
  */
 @Composable
 internal fun PlayerStyle.ExpandedPlayer(
@@ -53,6 +55,7 @@ internal fun PlayerStyle.ExpandedPlayer(
     queueBarHeight: Dp,
     titleActions: PlayerTitleActions,
     lyrics: PlayerLyricsState,
+    lyricsPreview: @Composable (Modifier) -> Unit,
     onMenuClick: () -> Unit,
     onCollapse: () -> Unit,
     onOpenEqualizer: () -> Unit,
@@ -75,6 +78,7 @@ internal fun PlayerStyle.ExpandedPlayer(
                 queueBarHeight = queueBarHeight,
                 titleActions = titleActions,
                 lyrics = lyrics,
+                lyricsPreview = lyricsPreview,
                 onMenuClick = onMenuClick,
                 onCollapse = onCollapse,
                 onOpenEqualizer = onOpenEqualizer,

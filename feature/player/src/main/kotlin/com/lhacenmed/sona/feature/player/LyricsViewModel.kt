@@ -57,7 +57,10 @@ class LyricsViewModel @Inject constructor(
     fun lyrics(track: Track): Flow<String> = trackTagsRepository.lyrics(track)
 
     /** Whether [track]'s lyrics are being looked for on the web this moment, to be written into its file once found. */
-    fun isFindingLyrics(track: Track): Flow<Boolean> = missingLyricsFinder.searchingTrackId.map { it == track.id }
+    fun isFindingLyrics(track: Track): Flow<Boolean> = missingLyricsFinder.searchingTrackIds.map { track.id in it }
+
+    /** Looks for [track]'s lyrics on the web again, as the user asks - once Sona may change its file. */
+    fun findLyrics(track: Track) = missingLyricsFinder.findLyricsNow(track)
 
     fun setShowLyricsPlayerControls(enabled: Boolean) {
         viewModelScope.launch { lyricsSettings.setShowLyricsPlayerControls(enabled) }

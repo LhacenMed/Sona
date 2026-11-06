@@ -6,6 +6,7 @@ import com.lhacenmed.sona.core.common.network.NetworkMonitor
 import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.datastore.LyricsSettings
+import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.playback.PlaybackSpace
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
@@ -32,7 +34,7 @@ import kotlinx.coroutines.launch
  * Only while the user lets it, while the device is online, and while Sona may change files without asking:
  * elsewhere Android asks the user before every file, which nothing done unasked may do. Each track is looked for
  * once a run of the app, found or not; one that was skipped on the way - the queue moved on, the connection
- * dropped - is looked for the next time it comes round.
+ * dropped - is looked for the next time it comes round. The user may look for a track's again: [findLyricsNow].
  */
 @Singleton
 class MissingLyricsFinder @Inject constructor(
@@ -48,10 +50,10 @@ class MissingLyricsFinder @Inject constructor(
     /** The tracks looked for this run of the app - those given lyrics, and those for which none were found. */
     private val lookedForTrackIds = mutableSetOf<Long>()
 
-    private val _searchingTrackId = MutableStateFlow<Long?>(null)
+    private val _searchingTrackIds = MutableStateFlow<Set<Long>>(emptySet())
 
-    /** The track whose lyrics are being looked for this moment, or null while none is - what the lyrics sheet shows. */
-    val searchingTrackId: StateFlow<Long?> = _searchingTrackId.asStateFlow()
+    /** The tracks whose lyrics are being looked for this moment - what the lyrics sheet shows. */
+    val searchingTrackIds: StateFlow<Set<Long>> = _searchingTrackIds.asStateFlow()
 
     fun start() {
         scope.launch {
@@ -63,6 +65,23 @@ class MissingLyricsFinder @Inject constructor(
                 .distinctUntilChanged()
                 // Whatever the queue moved on from is let go for what it moved on to.
                 .collectLatest { trackIds -> trackIds.forEach { findLyrics(it) } }
+        }
+    }
+
+    /**
+     * Looks for [track]'s lyrics as the user asks: whether or not they were looked for already this run, and whatever
+     * the setting - Sona being let change its file first, see `rememberFileChangeRequest`.
+     */
+    fun findLyricsNow(track: Track) {
+        if (track.id in _searchingTrackIds.value) return
+        scope.launch {
+            try {
+                lookUp(track)
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                // Nothing written: the lyrics stay missing, and can be looked for again.
+            }
         }
     }
 
@@ -78,21 +97,24 @@ class MissingLyricsFinder @Inject constructor(
         // Videos are played for their sound, and are seldom songs to have lyrics for.
         val track = libraryRepository.tracksById.value[trackId]?.takeUnless { it.isVideo } ?: return
         try {
-            if (trackTagsRepository.readLyrics(track).isBlank()) {
-                _searchingTrackId.value = trackId
-                try {
-                    val found = lyricsQueryOf(track)?.let { OnlineLyrics.best(it, track.durationMs) }
-                    if (found != null) trackTagsRepository.saveLyrics(track, found.lyrics.text)
-                } finally {
-                    _searchingTrackId.value = null
-                }
-            }
+            if (trackTagsRepository.readLyrics(track).isBlank()) lookUp(track)
             lookedForTrackIds += trackId
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (_: Exception) {
             // A file that cannot be written is not tried again this run.
             lookedForTrackIds += trackId
+        }
+    }
+
+    /** Looks [track]'s lyrics up on the web and writes the best that fits into its file, shown as looked for meanwhile. */
+    private suspend fun lookUp(track: Track) {
+        _searchingTrackIds.update { it + track.id }
+        try {
+            val found = lyricsQueryOf(track)?.let { OnlineLyrics.best(it, track.durationMs) }
+            if (found != null) trackTagsRepository.saveLyrics(track, found.lyrics.text)
+        } finally {
+            _searchingTrackIds.update { it - track.id }
         }
     }
 }

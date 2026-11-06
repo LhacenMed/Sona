@@ -272,13 +272,16 @@ internal fun BottomSheetPlayer(
             )
         },
     ) {
+        // Read once for the player's every view of them: its line, and the lyrics it opens.
+        val trackLyrics = track?.let { rememberTrackLyrics(it, duration, lyricsViewModel) }
+
         PlayerBackground(
             style = appearance.background,
             coverArtUri = track?.coverArtUri,
             customBackground = appearance.customBackground,
         )
 
-        if (track != null) {
+        if (track != null && trackLyrics != null) {
             val artistsById by viewModel.artistsById.collectAsState()
             val creditedArtists = remember(track, artistsById) { track.artistIds.mapNotNull(artistsById::get) }
             val titleActions = rememberPlayerTitleActions(track, creditedArtists, state, onGoToAlbum, onGoToArtist)
@@ -297,6 +300,19 @@ internal fun BottomSheetPlayer(
                 queueBarHeight = queueSheetState.collapsedBound,
                 titleActions = titleActions,
                 lyrics = lyrics,
+                lyricsPreview = { previewModifier ->
+                    LyricsPreview(
+                        track = track,
+                        lyrics = trackLyrics,
+                        positionMsProvider = viewModel::currentPositionMs,
+                        sliderPositionProvider = { sliderPosition },
+                        lyricsSyncOffset = lyricsSyncOffset,
+                        textColor = playerColors.content,
+                        onOpen = lyrics::open,
+                        lyricsViewModel = lyricsViewModel,
+                        modifier = previewModifier,
+                    )
+                },
                 onMenuClick = onMenuClick,
                 onCollapse = state::collapseSoft,
                 // Collapsed on the way, as going to the album or the artist is.
@@ -311,11 +327,11 @@ internal fun BottomSheetPlayer(
         }
 
         // Lyrics in the player are drawn under the queue; their sheet covers it, as it does the whole player.
-        if (track != null && lyrics.opensInPlayer) {
+        if (track != null && trackLyrics != null && lyrics.opensInPlayer) {
             PlayerLyrics(
                 state = lyrics,
                 track = track,
-                durationMs = duration,
+                lyrics = trackLyrics,
                 contentColor = playerColors.content,
                 positionMsProvider = viewModel::currentPositionMs,
                 sliderPositionProvider = { sliderPosition },
@@ -342,11 +358,12 @@ internal fun BottomSheetPlayer(
             viewModel = viewModel,
         )
 
-        if (track != null && !lyrics.opensInPlayer) {
+        if (track != null && trackLyrics != null && !lyrics.opensInPlayer) {
             LyricsSheetTransition(
                 state = lyrics,
                 backHandlerEnabled = lyrics.isOpen && state.isExpandedOrExpanding,
                 track = track,
+                lyrics = trackLyrics,
                 playback = playback,
                 durationMs = duration,
                 appearance = appearance,
