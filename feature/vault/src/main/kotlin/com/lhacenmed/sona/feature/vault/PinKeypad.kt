@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.IconButtonDefaults
@@ -37,7 +38,8 @@ private val KeySpacing = 16.dp
 /**
  * Every PIN step's one layout - its [title], the PIN's dots, a line for [message], then the keypad - so the
  * keypad sits in the same place on every step, whatever each says. [onDone], where a step has one, is the
- * keypad's own key, enabled while [isDoneEnabled].
+ * keypad's own key, enabled while [isDoneEnabled]; where it has none, [onBiometrics] may stand in its place - the way to
+ * the device's fingerprint or face instead.
  */
 @Composable
 internal fun PinPad(
@@ -51,6 +53,7 @@ internal fun PinPad(
     enabled: Boolean = true,
     onDone: (() -> Unit)? = null,
     isDoneEnabled: Boolean = true,
+    onBiometrics: (() -> Unit)? = null,
 ) {
     Column(modifier = modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(title, style = MaterialTheme.typography.titleMedium)
@@ -66,6 +69,7 @@ internal fun PinPad(
             enabled = enabled,
             onDone = onDone,
             isDoneEnabled = isDoneEnabled,
+            onBiometrics = onBiometrics,
         )
     }
 }
@@ -98,6 +102,7 @@ private fun NumericKeypad(
     enabled: Boolean,
     onDone: (() -> Unit)?,
     isDoneEnabled: Boolean,
+    onBiometrics: (() -> Unit)?,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(KeySpacing), horizontalAlignment = Alignment.CenterHorizontally) {
         listOf("123", "456", "789").forEach { row ->
@@ -115,7 +120,17 @@ private fun NumericKeypad(
             )
             DigitKey(digit = '0', enabled = enabled, onClick = { onDigit('0') })
             if (onDone == null) {
-                Spacer(Modifier.size(KeySize))
+                if (onBiometrics == null) {
+                    Spacer(Modifier.size(KeySize))
+                } else {
+                    // The system's own check, so it answers whatever the keypad's lockout says.
+                    SonaIconButton(
+                        onClick = onBiometrics,
+                        icon = Icons.Filled.Fingerprint,
+                        contentDescription = "Use fingerprint or face",
+                        modifier = Modifier.size(KeySize),
+                    )
+                }
             } else {
                 SonaIconButton(
                     onClick = onDone,

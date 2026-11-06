@@ -10,7 +10,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-/** Creating the vault, and every way into it - its PIN, its security answer, and a new PIN after either. */
+/** Creating the vault, every way into it - its PIN, its security answer, a new PIN after either, its biometrics - and how it is found. */
 @HiltViewModel
 internal class VaultAccessViewModel @Inject constructor(
     private val vault: VaultRepository,
@@ -45,5 +45,33 @@ internal class VaultAccessViewModel @Inject constructor(
             vault.changePin(newPin)
             onChanged()
         }
+    }
+
+    /** Opens the folder on the fingerprint or face the system has just checked - see [VaultRepository.unlockWithBiometrics]. */
+    fun unlockWithBiometrics(onUnlocked: () -> Unit) {
+        viewModelScope.launch {
+            vault.unlockWithBiometrics()
+            onUnlocked()
+        }
+    }
+
+    /**
+     * Keeps [code] as the secret code - none, while null - hiding the folder too where [hidesFolder] asks it to, and
+     * tells [onSaved] once all of it is kept.
+     */
+    fun setSecretCode(code: String?, hidesFolder: Boolean, onSaved: () -> Unit) {
+        viewModelScope.launch {
+            vault.setSecretCode(code)
+            if (hidesFolder) vault.setHidden(true)
+            onSaved()
+        }
+    }
+
+    fun setHidden(hidden: Boolean) {
+        viewModelScope.launch { vault.setHidden(hidden) }
+    }
+
+    fun setUnlocksWithBiometrics(enabled: Boolean) {
+        viewModelScope.launch { vault.setUnlocksWithBiometrics(enabled) }
     }
 }

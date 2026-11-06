@@ -15,6 +15,8 @@ import com.lhacenmed.sona.core.datastore.LibrarySettings
 import com.lhacenmed.sona.core.datastore.LibraryTab
 import com.lhacenmed.sona.core.datastore.QuickPlayMode
 import com.lhacenmed.sona.core.datastore.QuickPlaySettings
+import com.lhacenmed.sona.core.vault.VaultRepository
+import com.lhacenmed.sona.core.vault.VaultState
 import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Folder
@@ -43,6 +45,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
@@ -85,12 +88,36 @@ class LibraryViewModel @Inject constructor(
     private val playbackController: PlaybackController,
     private val lyricsSearchIndex: LyricsSearchIndex,
     sortOrders: LibrarySortOrders,
+    private val vaultRepository: VaultRepository,
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow<String?>(null)
 
     /** What the bar is being searched for, or null while its search is closed. */
     val searchQuery: StateFlow<String?> = _searchQuery.asStateFlow()
+
+    /**
+     * Whether the search is the Private Folder's secret code - which reveals the way into it, by the sort button: see
+     * [VaultRepository.matchesSecretCode]. Checked as it is typed, the latest letter's check overtaking the last's.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val revealsPrivateFolder: StateFlow<Boolean> = _searchQuery
+        .mapLatest { query -> query != null && vaultRepository.matchesSecretCode(query) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    /**
+     * Opens the Private Folder on the secret code searched for - no PIN asked, the code being its key - and, the code
+     * gone from the search, tells [onOpened] once the folder stands open to be shown.
+     */
+    fun openPrivateFolder(onOpened: () -> Unit) {
+        val query = _searchQuery.value ?: return
+        viewModelScope.launch {
+            if (!vaultRepository.unlockWithSecretCode(query)) return@launch
+            vaultRepository.state.first { (it as? VaultState.Created)?.isUnlocked == true }
+            _searchQuery.value = null
+            onOpened()
+        }
+    }
 
     /**
      * What the lyrics hold of the search - see [LyricsSearchIndex] - asked once typing pauses, so a word

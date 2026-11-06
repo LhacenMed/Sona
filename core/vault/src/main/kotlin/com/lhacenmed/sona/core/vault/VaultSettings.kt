@@ -2,6 +2,7 @@ package com.lhacenmed.sona.core.vault
 
 import android.content.Context
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
@@ -21,8 +22,15 @@ private val ANSWER_SALT = stringPreferencesKey("answer_salt")
 private val ANSWER_HASH = stringPreferencesKey("answer_hash")
 private val FAILED_ATTEMPTS = intPreferencesKey("failed_attempts")
 private val LOCKED_UNTIL = longPreferencesKey("locked_until")
+private val SECRET_CODE_SALT = stringPreferencesKey("secret_code_salt")
+private val SECRET_CODE_HASH = stringPreferencesKey("secret_code_hash")
+private val IS_HIDDEN = booleanPreferencesKey("is_hidden")
+private val UNLOCKS_WITH_BIOMETRICS = booleanPreferencesKey("unlocks_with_biometrics")
 
-/** What the vault was created with, and how its wrong guesses stand. */
+/** A secret code, as kept: salted and hashed, as the PIN is. */
+internal data class VaultSecretCode(val salt: String, val hash: String)
+
+/** What the vault was created with, how its wrong guesses stand, and how it is reached and opened. */
 internal data class VaultCredentials(
     val pinSalt: String,
     val pinHash: String,
@@ -31,6 +39,9 @@ internal data class VaultCredentials(
     val answerSalt: String,
     val answerHash: String,
     val lockedUntilEpochMs: Long,
+    val secretCode: VaultSecretCode?,
+    val isHidden: Boolean,
+    val unlocksWithBiometrics: Boolean,
 )
 
 /** The vault's PIN, security question and lockout - in the vault's own directory, so never in a backup. */
@@ -51,6 +62,9 @@ internal class VaultSettings @Inject constructor(@ApplicationContext context: Co
             answerSalt = prefs[ANSWER_SALT] ?: return@map null,
             answerHash = prefs[ANSWER_HASH] ?: return@map null,
             lockedUntilEpochMs = prefs[LOCKED_UNTIL] ?: 0L,
+            secretCode = prefs[SECRET_CODE_SALT]?.let { salt -> prefs[SECRET_CODE_HASH]?.let { hash -> VaultSecretCode(salt, hash) } },
+            isHidden = prefs[IS_HIDDEN] ?: false,
+            unlocksWithBiometrics = prefs[UNLOCKS_WITH_BIOMETRICS] ?: false,
         )
     }
 
@@ -72,6 +86,28 @@ internal class VaultSettings @Inject constructor(@ApplicationContext context: Co
             prefs[PIN_HASH] = pinHash
             prefs[PIN_LENGTH] = pinLength
         }
+    }
+
+    /** Keeps [code] as the secret code - or, while null, has none, and so stops hiding the vault, which only it reveals. */
+    suspend fun setSecretCode(code: VaultSecretCode?) {
+        dataStore.edit { prefs ->
+            if (code == null) {
+                prefs.remove(SECRET_CODE_SALT)
+                prefs.remove(SECRET_CODE_HASH)
+                prefs.remove(IS_HIDDEN)
+            } else {
+                prefs[SECRET_CODE_SALT] = code.salt
+                prefs[SECRET_CODE_HASH] = code.hash
+            }
+        }
+    }
+
+    suspend fun setHidden(hidden: Boolean) {
+        dataStore.edit { it[IS_HIDDEN] = hidden }
+    }
+
+    suspend fun setUnlocksWithBiometrics(enabled: Boolean) {
+        dataStore.edit { it[UNLOCKS_WITH_BIOMETRICS] = enabled }
     }
 
     /** Counts a wrong PIN or answer, locking guesses out until [lockedUntil] says for the new count. */

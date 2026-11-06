@@ -12,7 +12,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Password
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -88,7 +88,7 @@ data object PrivateFolderScreen : Screen {
                 title = "Private Folder",
                 onNavigateBack = navigator::back,
                 actions = if (isOpen) {
-                    listOf(TopBarAction(label = "Change PIN", icon = Icons.Filled.Password, onClick = { navigator.go(VaultChangePinScreen) }))
+                    listOf(TopBarAction(label = "Settings", icon = Icons.Filled.Settings, onClick = { navigator.go(PrivateFolderSettingsScreen) }))
                 } else {
                     emptyList()
                 },

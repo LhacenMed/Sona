@@ -42,11 +42,23 @@ sealed interface VaultState {
         /** Wrong guesses are refused until then - 0 when they are not. */
         val lockedUntilEpochMs: Long,
         val isUnlocked: Boolean,
+        /** Whether a secret code typed into the library's search reveals the way in - see [VaultRepository.matchesSecretCode]. */
+        val hasSecretCode: Boolean,
+        /** Whether the Settings' way in is gone, the secret code the one way left. */
+        val isHidden: Boolean,
+        /** Whether the device's fingerprint or face opens it, beside its PIN. */
+        val unlocksWithBiometrics: Boolean,
     ) : VaultState
 }
 
 /** What a PIN or a security answer was found to be. */
 enum class VaultAccessResult { Granted, WrongSecret, LockedOut }
+
+/** The fewest characters a secret code holds - and so the fewest a search is compared with it at. */
+const val MIN_SECRET_CODE_LENGTH = 4
+
+/** A secret code as it is compared: its case and the spaces around it do not count. */
+private fun String.normalizedSecretCode(): String = trim().lowercase()
 
 /**
  * Wrong guesses Android's lock screen's way: a few free, then a wait that grows with each one after.
@@ -83,7 +95,15 @@ class VaultRepository @Inject internal constructor(
         if (credentials == null) {
             VaultState.NotCreated
         } else {
-            VaultState.Created(credentials.pinLength, credentials.securityQuestion, credentials.lockedUntilEpochMs, unlocked)
+            VaultState.Created(
+                pinLength = credentials.pinLength,
+                securityQuestion = credentials.securityQuestion,
+                lockedUntilEpochMs = credentials.lockedUntilEpochMs,
+                isUnlocked = unlocked,
+                hasSecretCode = credentials.secretCode != null,
+                isHidden = credentials.isHidden,
+                unlocksWithBiometrics = credentials.unlocksWithBiometrics,
+            )
         }
     }.stateIn(scope, SharingStarted.Eagerly, VaultState.Loading)
 
@@ -133,6 +153,54 @@ class VaultRepository @Inject internal constructor(
     suspend fun changePin(newPin: String) {
         check(isUnlocked.value) { "The PIN is changed from inside the vault only" }
         setPin(newPin)
+    }
+
+    /**
+     * Opens the vault on the device's fingerprint or face - the system's own check, given; only while the user turned
+     * it on, so this is no way in otherwise.
+     */
+    suspend fun unlockWithBiometrics() {
+        if (settings.credentials.first()?.unlocksWithBiometrics == true) isUnlocked.value = true
+    }
+
+    /**
+     * Whether [text] is the secret code - typed into the library's search, it reveals the way in. Compared as it is
+     * kept: without the case or the spaces around it. False while there is none.
+     */
+    suspend fun matchesSecretCode(text: String): Boolean {
+        val code = settings.credentials.first()?.secretCode ?: return false
+        val typed = text.normalizedSecretCode()
+        return typed.length >= MIN_SECRET_CODE_LENGTH && withContext(Dispatchers.Default) { VaultSecrets.matches(typed, code.salt, code.hash) }
+    }
+
+    /**
+     * Opens the vault on its secret code, typed into the library's search - a key as the PIN is, WhatsApp's chat lock's
+     * way: whoever knows the code needs nothing more. Whether it opened.
+     */
+    suspend fun unlockWithSecretCode(text: String): Boolean =
+        matchesSecretCode(text).also { matches -> if (matches) isUnlocked.value = true }
+
+    /** Keeps [code] as the secret code, from inside the open vault - or, while null, has none. */
+    suspend fun setSecretCode(code: String?) {
+        check(isUnlocked.value) { "The secret code is set from inside the vault only" }
+        val kept = code?.let {
+            withContext(Dispatchers.Default) {
+                val salt = VaultSecrets.newSalt()
+                VaultSecretCode(salt, VaultSecrets.hash(it.normalizedSecretCode(), salt))
+            }
+        }
+        settings.setSecretCode(kept)
+    }
+
+    /** Hides the vault, or shows it again - from inside it, and only with a secret code to find it by. */
+    suspend fun setHidden(hidden: Boolean) {
+        check(isUnlocked.value) { "The vault is hidden from inside it only" }
+        if (!hidden || settings.credentials.first()?.secretCode != null) settings.setHidden(hidden)
+    }
+
+    suspend fun setUnlocksWithBiometrics(enabled: Boolean) {
+        check(isUnlocked.value) { "Biometrics are turned on from inside the vault only" }
+        settings.setUnlocksWithBiometrics(enabled)
     }
 
     /** PIN and answer guesses share one lockout, so the answer is no way around the PIN's. */

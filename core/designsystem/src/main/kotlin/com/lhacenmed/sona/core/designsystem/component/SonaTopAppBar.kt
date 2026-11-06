@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -33,15 +35,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.R
@@ -87,6 +91,9 @@ data class TopBarSelection(
  *
  * [actions] are what stays reachable while searching, laid out as the ordinary bar lays out its own -
  * none, for a screen whose search needs nothing beside the field.
+ *
+ * The keyboard's search key puts the keyboard away, as it does in any search, and hands [onSearch] what was typed to
+ * act on - for a screen whose search can be acted on as well as followed.
  */
 @Immutable
 data class TopBarSearch(
@@ -95,6 +102,7 @@ data class TopBarSearch(
     val onClose: () -> Unit,
     val closesWithBack: Boolean = true,
     val actions: List<TopBarAction> = emptyList(),
+    val onSearch: (() -> Unit)? = null,
 )
 
 /**
@@ -364,6 +372,7 @@ private fun SelectionActions(selection: TopBarSelection) {
 @Composable
 private fun SearchField(search: TopBarSearch) {
     val focusRequester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
 
     // Opening the search is the whole point of the tap, so it takes the keyboard with it rather
     // than asking for a second tap to start typing.
@@ -377,6 +386,13 @@ private fun SearchField(search: TopBarSearch) {
             .focusRequester(focusRequester),
         placeholder = { Text(stringResource(R.string.top_bar_search_hint)) },
         singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(
+            onSearch = {
+                keyboard?.hide()
+                search.onSearch?.invoke()
+            },
+        ),
         // Undecorated, so it reads as the bar's title turned editable rather than a field dropped
         // into the bar.
         colors = TextFieldDefaults.colors(

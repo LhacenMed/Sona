@@ -29,6 +29,7 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":core:common"))
     implementation(project(":feature:playback"))
+    implementation(libs.androidx.biometric)
 
     // The storage permission a file moved out needs below Android 10.
     implementation(libs.androidx.activity.compose)

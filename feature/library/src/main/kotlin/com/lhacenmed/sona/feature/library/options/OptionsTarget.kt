@@ -193,7 +193,9 @@ private fun OptionsTarget.collectionActions(hasPrivateFolder: Boolean): List<Opt
         FolderOptionsContext.FROM_DETAIL -> FolderActions - VIEW_DETAILS
     }
 
-    is OptionsTarget.ForSelection -> listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, AUTO_TAG, SHARE, DELETE_FROM_DEVICE)
+    is OptionsTarget.ForSelection ->
+        listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, AUTO_TAG, SHARE) +
+            listOfNotNull(ADD_TO_PRIVATE.takeIf { hasPrivateFolder }, DELETE_FROM_DEVICE)
 }
 
 /**
@@ -218,7 +220,8 @@ fun OptionsTarget.disabledActions(): Set<OptionsAction> = when (this) {
 
     // Videos are played for their sound, and are seldom songs to have tags found for.
     is OptionsTarget.ForFolder -> if (folder.isVideo) setOf(AUTO_TAG) else emptySet()
-    is OptionsTarget.ForSelection -> if (tracks.all { it.isVideo }) setOf(AUTO_TAG) else emptySet()
+    // Tags are found for music alone: a selection holding any video is no selection to tag.
+    is OptionsTarget.ForSelection -> if (tracks.any { it.isVideo }) setOf(AUTO_TAG) else emptySet()
 
     is OptionsTarget.ForTrack,
     is OptionsTarget.ForAlbum,

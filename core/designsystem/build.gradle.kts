@@ -26,6 +26,8 @@ dependencies {
     implementation(project(":core:model"))
 
     implementation(platform(libs.androidx.compose.bom))
+    // SonaActivity is a FragmentActivity, which the system's biometric prompt is shown from.
+    api(libs.androidx.fragment)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.material3)

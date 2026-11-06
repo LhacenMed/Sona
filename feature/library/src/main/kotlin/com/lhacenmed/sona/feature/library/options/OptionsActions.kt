@@ -58,7 +58,7 @@ internal sealed interface FollowUp {
     data class ExcludeFolder(override val target: OptionsTarget.ForFolder) : FollowUp
     data class DeletePlaylist(override val target: OptionsTarget.ForPlaylist) : FollowUp
     data class RemoveFromList(override val target: OptionsTarget.ForTrack, val list: RemovableTrackList) : FollowUp
-    data class AddToPrivate(override val target: OptionsTarget.ForTrack) : FollowUp
+    data class AddToPrivate(override val target: OptionsTarget) : FollowUp
     data class DeleteFromDevice(override val target: OptionsTarget) : FollowUp
     data class ImportFile(override val target: OptionsTarget.ForPlaylist) : FollowUp
     data class ExportFile(override val target: OptionsTarget) : FollowUp
@@ -133,7 +133,7 @@ internal class OptionsActions(
             OptionsAction.REMOVE_FROM_RECENTLY_PLAYED,
             OptionsAction.REMOVE_FROM_MOST_PLAYED,
             -> (target as OptionsTarget.ForTrack).let { followUp = FollowUp.RemoveFromList(it, checkNotNull(it.removableFrom)) }
-            OptionsAction.ADD_TO_PRIVATE -> followUp = FollowUp.AddToPrivate(target as OptionsTarget.ForTrack)
+            OptionsAction.ADD_TO_PRIVATE -> followUp = FollowUp.AddToPrivate(target)
             OptionsAction.DELETE_FROM_DEVICE -> followUp = FollowUp.DeleteFromDevice(target)
             OptionsAction.EXCLUDE -> followUp = FollowUp.ExcludeFolder(target as OptionsTarget.ForFolder)
             OptionsAction.SHARE -> if (target is OptionsTarget.ForTrack) {
@@ -258,7 +258,14 @@ internal fun OptionsFollowUps(
             onDismiss = finish,
         )
 
-        is FollowUp.AddToPrivate -> AddToPrivateDialog(track = followUp.target.track, onDismiss = finish, onMoved = finish)
+        is FollowUp.AddToPrivate -> {
+            // Read as deleting reads them - a track, or a selection's - and the dialog opens on them once they are known.
+            var tracks by remember(followUp) { mutableStateOf<List<Track>?>(null) }
+            LaunchedEffect(followUp) {
+                viewModel.loadTracks(followUp.target) { loaded -> if (loaded.isEmpty()) finish() else tracks = loaded }
+            }
+            tracks?.let { loaded -> AddToPrivateDialog(tracks = loaded, onDismiss = finish, onMoved = finish) }
+        }
 
         is FollowUp.DeleteFromDevice -> {
             // A collection's tracks are read first; the dialog opens on them once they are known.

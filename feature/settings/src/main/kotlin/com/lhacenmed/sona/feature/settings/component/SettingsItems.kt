@@ -3,7 +3,6 @@
 package com.lhacenmed.sona.feature.settings.component
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,9 +23,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemColors
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -47,10 +43,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.lhacenmed.sona.core.designsystem.component.SonaIconButton
+import com.lhacenmed.sona.core.designsystem.component.SonaSettingsRow
 import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 
 /*
@@ -78,12 +74,13 @@ fun SettingsNavigationItem(
     icon: ImageVector? = null,
     enabled: Boolean = true,
 ) {
-    ListItem(
-        headlineContent = { Text(title) },
-        supportingContent = { Text(summary) },
-        leadingContent = icon?.let { { SettingsLeadingIcon(rememberVectorPainter(it)) } },
-        colors = settingsRowColors(enabled),
-        modifier = modifier.settingsScrollTarget(title).clickable(enabled = enabled, onClick = onClick),
+    SonaSettingsRow(
+        title = title,
+        summary = summary,
+        enabled = enabled,
+        onClick = onClick,
+        leading = icon?.let { { SettingsLeadingIcon(rememberVectorPainter(it)) } },
+        modifier = modifier.settingsScrollTarget(title),
     )
 }
 
@@ -136,16 +133,18 @@ fun SettingsActionItem(
     enabled: Boolean = true,
     isBusy: Boolean = false,
 ) {
-    ListItem(
-        headlineContent = { Text(title) },
-        supportingContent = summary?.let { { Text(it) } },
-        trailingContent = if (isBusy) {
+    SonaSettingsRow(
+        title = title,
+        summary = summary,
+        enabled = enabled,
+        // Busy, it cannot be pressed again - without fading, as it is not off.
+        onClick = onClick.takeUnless { isBusy },
+        trailing = if (isBusy) {
             { LoadingIndicator(modifier = Modifier.size(BusyIndicatorSize)) }
         } else {
             null
         },
-        colors = settingsRowColors(enabled),
-        modifier = modifier.settingsScrollTarget(title).clickable(enabled = enabled && !isBusy, onClick = onClick),
+        modifier = modifier.settingsScrollTarget(title),
     )
 }
 
@@ -166,18 +165,21 @@ fun SettingsLinkItem(
     leadingContent: (@Composable () -> Unit)? = null,
 ) {
     val uriHandler = LocalUriHandler.current
-    ListItem(
-        headlineContent = { Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-        supportingContent = { Text(summary, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        leadingContent = leadingContent,
-        trailingContent = {
+    SonaSettingsRow(
+        title = title,
+        summary = summary,
+        titleMaxLines = 2,
+        summaryMaxLines = 1,
+        onClick = { runCatching { uriHandler.openUri(url) } },
+        leading = leadingContent,
+        trailing = {
             Icon(
                 Icons.AutoMirrored.Filled.OpenInNew,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         },
-        modifier = modifier.settingsScrollTarget(title).clickable { runCatching { uriHandler.openUri(url) } },
+        modifier = modifier.settingsScrollTarget(title),
     )
 }
 
@@ -206,11 +208,12 @@ fun SettingsRecentSearchItem(
     onForget: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    ListItem(
-        headlineContent = { Text(query) },
-        leadingContent = { SettingsLeadingIcon(rememberVectorPainter(Icons.Filled.History)) },
-        trailingContent = { SonaIconButton(onClick = onForget, icon = Icons.Filled.Close, contentDescription = "Forget") },
-        modifier = modifier.clickable(onClick = onClick),
+    SonaSettingsRow(
+        title = query,
+        onClick = onClick,
+        leading = { SettingsLeadingIcon(rememberVectorPainter(Icons.Filled.History)) },
+        trailing = { SonaIconButton(onClick = onForget, icon = Icons.Filled.Close, contentDescription = "Forget") },
+        modifier = modifier,
     )
 }
 
@@ -221,11 +224,7 @@ fun SettingsInfoItem(
     value: String,
     modifier: Modifier = Modifier,
 ) {
-    ListItem(
-        headlineContent = { Text(title) },
-        supportingContent = { Text(value) },
-        modifier = modifier.settingsScrollTarget(title),
-    )
+    SonaSettingsRow(title = title, summary = value, modifier = modifier.settingsScrollTarget(title))
 }
 
 /** A row that turns something on or off. */
@@ -259,14 +258,13 @@ fun SettingsSwitchItem(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    ListItem(
-        headlineContent = { Text(title) },
-        supportingContent = summary?.let { { Text(it) } },
-        trailingContent = { Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled) },
-        colors = settingsRowColors(enabled),
-        // The whole row, not just the switch: a settings row is one target, and hitting the text
-        // expecting it to toggle is the commonest way to miss.
-        modifier = modifier.settingsScrollTarget(title).clickable(enabled = enabled) { onCheckedChange(!checked) },
+    SonaSettingsRow(
+        title = title,
+        summary = summary,
+        enabled = enabled,
+        onClick = { onCheckedChange(!checked) },
+        trailing = { Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled) },
+        modifier = modifier.settingsScrollTarget(title),
     )
 }
 
@@ -309,10 +307,11 @@ fun SettingsDownloadItem(
         is SettingsDownload.InProgress -> onCancel
         SettingsDownload.Done -> { { onCheckedChange(!checked) } }
     }
-    ListItem(
-        headlineContent = { Text(title) },
-        supportingContent = { Text(summary) },
-        trailingContent = {
+    SonaSettingsRow(
+        title = title,
+        summary = summary,
+        onClick = action,
+        trailing = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(modifier = Modifier.size(DownloadControlSize), contentAlignment = Alignment.Center) {
                     when (download) {
@@ -337,7 +336,7 @@ fun SettingsDownloadItem(
                 Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = isDownloaded)
             }
         },
-        modifier = modifier.settingsScrollTarget(title).clickable(onClick = action),
+        modifier = modifier.settingsScrollTarget(title),
     )
 }
 
@@ -346,25 +345,6 @@ private val DownloadControlSize = 40.dp
 
 /** The gap between a download row's control and its switch. */
 private val DownloadControlSpacing = 8.dp
-
-/** Material's disabled content: the surface's text at this much of its colour. */
-private const val DISABLED_CONTENT_ALPHA = 0.38f
-
-/**
- * A row's colours: Material's own, or its disabled text colour while the row is not [enabled] - the one
- * disabled look every row shares, its control's own disabled look beside it.
- */
-@Composable
-private fun settingsRowColors(enabled: Boolean): ListItemColors {
-    if (enabled) return ListItemDefaults.colors()
-    val disabledColor = MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_CONTENT_ALPHA)
-    return ListItemDefaults.colors(
-        headlineColor = disabledColor,
-        supportingColor = disabledColor,
-        leadingIconColor = disabledColor,
-        trailingIconColor = disabledColor,
-    )
-}
 
 /**
  * A row whose value is one of a fixed set, shown beneath the title and picked from a dialog.
@@ -385,11 +365,12 @@ fun SettingsChoiceItem(
     var selected by remember { mutableIntStateOf(selectedIndex) }
     var isChoosing by remember { mutableStateOf(false) }
 
-    ListItem(
-        headlineContent = { Text(title) },
-        supportingContent = { Text(if (selected == defaultIndex) settingsDefaultLabel() else options[selected]) },
-        leadingContent = icon?.let { { SettingsLeadingIcon(rememberVectorPainter(it)) } },
-        modifier = modifier.settingsScrollTarget(title).clickable { isChoosing = true },
+    SonaSettingsRow(
+        title = title,
+        summary = if (selected == defaultIndex) settingsDefaultLabel() else options[selected],
+        onClick = { isChoosing = true },
+        leading = icon?.let { { SettingsLeadingIcon(rememberVectorPainter(it)) } },
+        modifier = modifier.settingsScrollTarget(title),
     )
 
     if (isChoosing) {
@@ -427,13 +408,12 @@ fun SettingsChoiceItem(
 ) {
     var isChoosing by remember { mutableStateOf(false) }
 
-    ListItem(
-        headlineContent = { Text(title) },
-        supportingContent = {
-            Text(summary ?: if (selectedIndex == defaultIndex) settingsDefaultLabel() else options[selectedIndex])
-        },
-        colors = settingsRowColors(enabled),
-        modifier = modifier.settingsScrollTarget(title).clickable(enabled = enabled) { isChoosing = true },
+    SonaSettingsRow(
+        title = title,
+        summary = summary ?: if (selectedIndex == defaultIndex) settingsDefaultLabel() else options[selectedIndex],
+        enabled = enabled,
+        onClick = { isChoosing = true },
+        modifier = modifier.settingsScrollTarget(title),
     )
 
     if (isChoosing) {
@@ -500,12 +480,7 @@ fun SettingsSliderItem(
 ) {
     var draggedValue by remember(value) { mutableFloatStateOf(value) }
     Column(modifier = modifier.settingsScrollTarget(title).padding(horizontal = 16.dp, vertical = 8.dp)) {
-        ListItem(
-            headlineContent = { Text(title) },
-            supportingContent = { Text(formatValue(draggedValue)) },
-            colors = settingsRowColors(enabled),
-            modifier = Modifier.padding(horizontal = 0.dp),
-        )
+        SonaSettingsRow(title = title, summary = formatValue(draggedValue), enabled = enabled)
         Slider(
             value = draggedValue,
             onValueChange = { draggedValue = it },
@@ -534,12 +509,13 @@ fun SettingsTextFieldItem(
     var value by remember { mutableStateOf(initialValue) }
     var isEditing by remember { mutableStateOf(false) }
 
-    ListItem(
-        headlineContent = { Text(title) },
+    SonaSettingsRow(
+        title = title,
         // The value when there is one, the explanation when there is not, so the row is never a
         // bare title with an empty line under it.
-        supportingContent = { Text(value.ifEmpty { summary }) },
-        modifier = modifier.settingsScrollTarget(title).clickable { isEditing = true },
+        summary = value.ifEmpty { summary },
+        onClick = { isEditing = true },
+        modifier = modifier.settingsScrollTarget(title),
     )
 
     if (isEditing) {

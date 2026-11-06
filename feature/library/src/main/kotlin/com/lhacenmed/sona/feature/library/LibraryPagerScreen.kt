@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -58,6 +59,7 @@ import com.lhacenmed.sona.feature.library.quickplay.QuickPlayButton
 import com.lhacenmed.sona.feature.library.sort.SortSheet
 import com.lhacenmed.sona.feature.library.sort.sortAction
 import com.lhacenmed.sona.feature.library.tabs.label
+import com.lhacenmed.sona.feature.vault.rememberPrivateFolderOpener
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterIsInstance
@@ -100,6 +102,8 @@ fun LibraryPagerScreen(
     // then already there for the first frame back, rather than arriving just after it.
     val quickPlay by viewModel.quickPlay.collectAsState()
     val hasTracks by viewModel.hasTracks.collectAsStateWithLifecycle()
+    val revealsPrivateFolder by viewModel.revealsPrivateFolder.collectAsStateWithLifecycle()
+    val openPrivateFolder = rememberPrivateFolderOpener()
     if (visibleTabs.isEmpty()) return
 
     // Keyed on which tabs are shown, not their order: one shown or hidden resets the pager to the first tab - a settings
@@ -257,7 +261,17 @@ fun LibraryPagerScreen(
                                     query = query,
                                     onQueryChange = { viewModel.onSearchQueryChange(it) },
                                     onClose = { viewModel.onSearchQueryChange(null) },
-                                    actions = listOf(sortTabAction),
+                                    // The secret code typed, the key to the Private Folder: it opens straight in, the
+                                    // code itself left behind in the field no longer than it takes to go.
+                                    actions = listOfNotNull(
+                                        TopBarAction(label = "Private Folder", icon = Icons.Filled.LockOpen) {
+                                            viewModel.openPrivateFolder(onOpened = openPrivateFolder)
+                                        }.takeIf { revealsPrivateFolder },
+                                        sortTabAction,
+                                    ),
+                                    // The keyboard's search key, as the padlock: the secret code typed opens the folder.
+                                    // Checked afresh, so a code searched for at once opens it before its padlock shows.
+                                    onSearch = { viewModel.openPrivateFolder(onOpened = openPrivateFolder) },
                                 )
                             },
                             selection = selection.toLibraryTopBarSelection(

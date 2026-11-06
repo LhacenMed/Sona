@@ -7,8 +7,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
@@ -62,12 +64,21 @@ internal fun VaultState.entryScreen(): Screen? = when (this) {
     is VaultState.Created -> if (isUnlocked) PrivateFolderScreen else VaultUnlockScreen
 }
 
-/** Opens the Private Folder on the screen it stands at - see [entryScreen]. Settings' way in. */
+/** Opens the Private Folder on the screen it stands at - see [entryScreen]. The library's way in, its secret code typed. */
 @Composable
 fun rememberPrivateFolderOpener(): () -> Unit {
     val navigator = LocalNavigator.current
     val viewModel: VaultAccessViewModel = hiltViewModel()
     return { viewModel.state.value.entryScreen()?.let(navigator::go) }
+}
+
+/** Settings' way into the Private Folder - see [rememberPrivateFolderOpener] - none while it is hidden. */
+@Composable
+fun rememberSettingsPrivateFolderEntry(): (() -> Unit)? {
+    val viewModel: VaultAccessViewModel = hiltViewModel()
+    val vault by viewModel.state.collectAsStateWithLifecycle()
+    val open = rememberPrivateFolderOpener()
+    return open.takeUnless { (vault as? VaultState.Created)?.isHidden == true }
 }
 
 /**

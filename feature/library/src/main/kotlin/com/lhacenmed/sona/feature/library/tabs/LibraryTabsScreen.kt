@@ -8,9 +8,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -18,6 +16,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.LocalDragHandle
+import com.lhacenmed.sona.core.designsystem.component.SonaSettingsRow
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.screen.screenList
 import com.lhacenmed.sona.core.navigation.LocalNavigator
@@ -49,27 +48,24 @@ data object LibraryTabsScreen : Screen {
                 contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
             ) {
                 reorderableRows(rows, key = { it.tab.name }) { (tab, isVisible) ->
-                    ListItem(
-                        headlineContent = { Text(tab.label) },
-                        supportingContent = if (tab == openedAtLaunch) {
-                            { Text("Opened at launch") }
-                        } else {
-                            null
-                        },
-                        leadingContent = {
+                    // Disabled rather than allowed-then-ignored, so the last visible tab's switch visibly can't be turned off.
+                    val canToggle = !(isVisible && visibleCount <= 1)
+                    SonaSettingsRow(
+                        title = tab.label,
+                        summary = "Opened at launch".takeIf { tab == openedAtLaunch },
+                        onClick = { viewModel.setTabVisible(tab, !isVisible) }.takeIf { canToggle },
+                        leading = {
                             Icon(
                                 imageVector = Icons.Filled.DragHandle,
                                 contentDescription = "Reorder",
                                 modifier = LocalDragHandle.current ?: Modifier,
                             )
                         },
-                        trailingContent = {
+                        trailing = {
                             Switch(
                                 checked = isVisible,
                                 onCheckedChange = { checked -> viewModel.setTabVisible(tab, checked) },
-                                // Disabled rather than allowed-then-ignored, so the last visible tab's
-                                // switch visibly can't be turned off.
-                                enabled = !(isVisible && visibleCount <= 1),
+                                enabled = canToggle,
                             )
                         },
                     )

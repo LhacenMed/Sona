@@ -22,6 +22,7 @@ import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.library.options.OptionsActionsViewModel
 import com.lhacenmed.sona.feature.library.options.RemovableTrackList
+import com.lhacenmed.sona.feature.library.mediaCountLabel
 import com.lhacenmed.sona.feature.library.pluralCount
 
 /*
@@ -158,23 +159,25 @@ internal fun DeleteFromDeviceDialog(
 }
 
 /**
- * Moves [track] into the Private Folder - from its options sheet, which offers it only once the folder is
- * set up, so opening it is not needed to put a file in. Copied in first, then deleted from the device
- * exactly as [DeleteFromDeviceDialog] deletes - and the copy taken back out should that deletion not
- * happen, so the file is never left in both places.
+ * Moves [tracks] into the Private Folder - a track or a selection, from its options sheet, which offers it only once the
+ * folder is set up, so opening it is not needed to put a file in. Copied in first, every one, then deleted from the
+ * device exactly as [DeleteFromDeviceDialog] deletes - and the copies taken back out should that deletion not happen,
+ * so no file is ever left in both places.
  */
 @Composable
 internal fun AddToPrivateDialog(
-    track: Track,
+    tracks: List<Track>,
     onDismiss: () -> Unit,
     onMoved: () -> Unit = {},
 ) {
     val actionsViewModel: OptionsActionsViewModel = hiltViewModel()
-    val deleteOriginal = rememberDeviceDeletion(listOf(track), onDeleted = onMoved)
+    val deleteOriginals = rememberDeviceDeletion(tracks, onDeleted = onMoved)
+    val isSingle = tracks.size == 1
     SonaConfirmationDialog(
-        title = "Add to Private Folder",
+        title = if (isSingle) "Add to Private Folder" else "Add ${mediaCountLabel(tracks)} to Private Folder",
         message = buildString {
-            append("It leaves your library for the Private Folder, which only its PIN opens.")
+            append(if (isSingle) "It leaves" else "They leave")
+            append(" your library for the Private Folder, which only you can open.")
             if (needsAllFilesAccess(LocalContext.current)) {
                 append("\n\nNext, allow Sona to manage all files, and it moves without Android asking each time.")
             }
@@ -184,12 +187,12 @@ internal fun AddToPrivateDialog(
         failureMessage = "Could not add to Private Folder",
         onDismiss = onDismiss,
         operation = { onFinished ->
-            actionsViewModel.copyToPrivate(track) { item ->
-                if (item == null) {
+            actionsViewModel.copyToPrivate(tracks) { items ->
+                if (items == null) {
                     onFinished(false)
                 } else {
-                    deleteOriginal { deleted ->
-                        if (!deleted) actionsViewModel.discardPrivateCopy(item)
+                    deleteOriginals { deleted ->
+                        if (!deleted) actionsViewModel.discardPrivateCopies(items)
                         onFinished(deleted)
                     }
                 }

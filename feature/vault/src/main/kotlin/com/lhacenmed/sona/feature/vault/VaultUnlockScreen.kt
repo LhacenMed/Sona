@@ -34,13 +34,20 @@ internal data object VaultUnlockScreen : Screen {
 
         VaultStepScaffold(title = "Private Folder") {
             val current = vault as? VaultState.Created ?: return@VaultStepScaffold
+            val open = {
+                navigator.go(PrivateFolderScreen)
+                viewModel.flow.finish()
+            }
+            val checkBiometrics = rememberBiometricCheck(title = "Unlock Private Folder", cancelLabel = "Use PIN") {
+                viewModel.unlockWithBiometrics(onUnlocked = open)
+            }.takeIf { current.unlocksWithBiometrics }
+            // Asked for as the screen opens, the PIN beneath it for whoever would rather type.
+            LaunchedEffect(Unit) { checkBiometrics?.invoke() }
             PinEntry(
                 title = "Enter your PIN",
                 vault = current,
-                onGranted = {
-                    navigator.go(PrivateFolderScreen)
-                    viewModel.flow.finish()
-                },
+                onGranted = open,
+                onBiometrics = checkBiometrics,
             )
             TextButton(
                 onClick = { navigator.go(VaultRecoveryScreen) },
@@ -56,7 +63,13 @@ internal data object VaultUnlockScreen : Screen {
  * [onGranted] hears it. Wrong guesses past the free few lock the keypad, counting down to the next try.
  */
 @Composable
-internal fun PinEntry(title: String, vault: VaultState.Created, onGranted: () -> Unit, modifier: Modifier = Modifier) {
+internal fun PinEntry(
+    title: String,
+    vault: VaultState.Created,
+    onGranted: () -> Unit,
+    modifier: Modifier = Modifier,
+    onBiometrics: (() -> Unit)? = null,
+) {
     val viewModel: VaultAccessViewModel = hiltViewModel()
     var pin by remember { mutableStateOf("") }
     var isChecking by remember { mutableStateOf(false) }
@@ -87,6 +100,7 @@ internal fun PinEntry(title: String, vault: VaultState.Created, onGranted: () ->
             }
         },
         onBackspace = { if (!isChecking) pin = pin.dropLast(1) },
+        onBiometrics = onBiometrics,
     )
 }
 

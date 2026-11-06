@@ -103,28 +103,38 @@ class OptionsActionsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), vaultRepository.state.value is VaultState.Created)
 
     /**
-     * Copies [track]'s file into the Private Folder, handing [onCopied] what it became there - null when it
-     * could not be read. The library's copy is still there: deleting it is the dialog's to do, and
-     * [discardPrivateCopy] undoes this should that fail, so a move never leaves the file in both places.
+     * Copies [tracks]' files into the Private Folder, handing [onCopied] what they became there - all of them or none:
+     * null when any could not be read, the copies already made taken back out. The library's files are still there:
+     * deleting them is the dialog's to do, and [discardPrivateCopies] undoes this should that fail, so a move never
+     * leaves a file in both places.
      */
-    fun copyToPrivate(track: Track, onCopied: (VaultItem?) -> Unit) {
+    fun copyToPrivate(tracks: List<Track>, onCopied: (List<VaultItem>?) -> Unit) {
         viewModelScope.launch {
-            val item = try {
-                withContext(Dispatchers.IO) {
-                    checkNotNull(context.contentResolver.openInputStream(track.contentUri)) { "Cannot read ${track.path}" }
-                        .use { source -> vaultRepository.add(track, source) }
+            val items = ArrayList<VaultItem>(tracks.size)
+            for (track in tracks) {
+                val item = try {
+                    withContext(Dispatchers.IO) {
+                        checkNotNull(context.contentResolver.openInputStream(track.contentUri)) { "Cannot read ${track.path}" }
+                            .use { source -> vaultRepository.add(track, source) }
+                    }
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (_: Exception) {
+                    null
                 }
-            } catch (cancellation: CancellationException) {
-                throw cancellation
-            } catch (_: Exception) {
-                null
+                if (item == null) {
+                    items.forEach { vaultRepository.delete(it) }
+                    onCopied(null)
+                    return@launch
+                }
+                items += item
             }
-            onCopied(item)
+            onCopied(items)
         }
     }
 
-    fun discardPrivateCopy(item: VaultItem) {
-        viewModelScope.launch { vaultRepository.delete(item) }
+    fun discardPrivateCopies(items: List<VaultItem>) {
+        viewModelScope.launch { items.forEach { vaultRepository.delete(it) } }
     }
 
     /**

@@ -26,7 +26,7 @@ import com.lhacenmed.sona.feature.settings.component.SettingsSection
 import com.lhacenmed.sona.feature.settings.component.SettingsSectionDivider
 import com.lhacenmed.sona.feature.settings.search.SettingsRecentSearches
 import com.lhacenmed.sona.feature.settings.search.SettingsSearchResults
-import com.lhacenmed.sona.feature.vault.rememberPrivateFolderOpener
+import com.lhacenmed.sona.feature.vault.rememberSettingsPrivateFolderEntry
 
 /**
  * Settings home: every category, grouped - and, from its bar, a search of every setting there is.
@@ -43,7 +43,7 @@ data object SettingsScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.current
-        val openPrivateFolder = rememberPrivateFolderOpener()
+        val openPrivateFolder = rememberSettingsPrivateFolderEntry()
         val viewModel = hiltViewModel<SettingsHomeViewModel>()
         val debugTools = viewModel.debugTools
         val recentSearches by viewModel.recentSearches.collectAsStateWithLifecycle()
