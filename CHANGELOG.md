@@ -6,6 +6,42 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.6.18] - 2026-11-06
+
+### Added
+
+- Repeat and shuffle on the video player's queue, kept apart from the music's.
+- The equalizer in the video player's menu and in Playback settings.
+- Arabic lyrics can be romanized.
+- An option to show romanized lyrics without their original script.
+- A switch for Japanese romanization once its dictionary is downloaded.
+- Playlists and Most played show how many of their items are videos.
+- A setting to leave videos out of Most played.
+- Videos can be added to playlists from Add tracks, and are matched when an M3U is imported.
+- The library's tabs can be reordered by dragging them along the tab strip or in Library tabs.
+- Selected tracks in a playlist can be moved together by long pressing one of them and dragging.
+- Search in Settings, with recent searches.
+- One shared settings row, its ends lined up down every list.
+
+### Changed
+
+- The video player's play and skip buttons stand on a dark ground.
+- Missing lyrics are looked for on the web by default.
+- A video's options show only what applies to a video.
+
+### Fixed
+
+- The app no longer crashes when the video player is opened and closed quickly.
+- The top bar's overflow menu uses the app's font.
+- A playback notification swiped away no longer comes back by itself.
+- A video played on to from the one before no longer plays on a black screen.
+- In the player, tapping one of several artists while their names scroll opens the artist tapped.
+
+### Removed
+
+- The Continuous play setting, in favour of the video player's repeat modes.
+- The Tab opened at launch setting - the library opens on its first tab.
+
 ## [1.6.17] - 2026-11-04
 
 ### Added
