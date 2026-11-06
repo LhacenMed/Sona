@@ -135,6 +135,9 @@ class PlaybackService : MediaSessionService() {
     @Volatile private var favoriteTrackIds: Set<Long> = emptySet()
     private var initialHeadsetPlugEventHandled = false
 
+    // Whether the notification was swiped away since playback last started - see onUpdateNotification.
+    private var isNotificationDismissed = false
+
     private val playerListener = object : Player.Listener {
         // Every way of turning shuffle on - the player, the notification, another controller - arrives
         // here. Left alone, the queue plays the order it was dealt when it was set, the same one each
@@ -381,6 +384,7 @@ class PlaybackService : MediaSessionService() {
     }
 
     private fun handleMediaNotificationDismissed(intent: Intent) {
+        isNotificationDismissed = true
         val originalDeleteIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent.getParcelableExtra(EXTRA_MEDIA_NOTIFICATION_DELETE_INTENT, PendingIntent::class.java)
         } else {
@@ -592,6 +596,17 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession = mediaSession
+
+    /**
+     * Every post of the notification passes here. Swiped away while [PlaybackSettings.persistedPlaybackNotification] is
+     * off, it stays away - whatever the player does in the meantime - until playback starts again, or Android requires it
+     * shown, as for a media button's press. Media3 alone posts it again on the player's next change.
+     */
+    override fun onUpdateNotification(session: MediaSession, startInForegroundRequired: Boolean) {
+        if (session.player.playWhenReady || startInForegroundRequired) isNotificationDismissed = false
+        if (isNotificationDismissed && !playbackSettings.persistedPlaybackNotification.value) return
+        super.onUpdateNotification(session, startInForegroundRequired)
+    }
 
     /** Left to Android's way - on while playing, gone once not - unless the user asked for it to stop with the app. */
     override fun onTaskRemoved(rootIntent: Intent?) {
