@@ -11,6 +11,7 @@ import com.lhacenmed.sona.core.datastore.QuickPlayMode
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.equalizer.EqualizerScreen
 import com.lhacenmed.sona.feature.library.quickplay.QuickPlaySourceKind
 import com.lhacenmed.sona.feature.library.quickplay.QuickPlaySourcePickerScreen
 import com.lhacenmed.sona.feature.library.quickplay.quickPlaySourceKind
@@ -197,6 +198,11 @@ data class PlaybackScreen(val scrollTo: PlaybackSetting? = null) : Screen {
             SettingsSectionDivider()
 
             SettingsSection(stringResource(R.string.playback_audio_section)) {
+                SettingsNavigationItem(
+                    title = stringResource(R.string.equalizer_settings_title),
+                    summary = stringResource(R.string.equalizer_settings_summary),
+                    onClick = { navigator.go(EqualizerScreen) },
+                )
                 SettingsSwitchItem(
                     title = stringResource(R.string.audio_offload_title),
                     summary = stringResource(R.string.audio_offload_summary),

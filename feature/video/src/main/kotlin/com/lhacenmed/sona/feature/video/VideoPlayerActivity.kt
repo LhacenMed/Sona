@@ -21,6 +21,8 @@ import com.lhacenmed.sona.core.designsystem.theme.AppFastScrollTouchArea
 import com.lhacenmed.sona.core.designsystem.theme.AppTheme
 import com.lhacenmed.sona.core.designsystem.theme.SonaTheme
 import com.lhacenmed.sona.core.model.ThemeMode
+import com.lhacenmed.sona.core.navigation.IntentNavigator
+import com.lhacenmed.sona.feature.equalizer.EqualizerScreen
 import com.lhacenmed.sona.feature.playback.VideoScreenRequest
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -76,6 +78,11 @@ class VideoPlayerActivity : SonaActivity() {
     private val viewModel: VideoPlayerViewModel by viewModels()
 
     private var isFloating by mutableStateOf(false)
+
+    private val navigator = IntentNavigator(this, currentScreen = null)
+
+    /** Whether the equalizer is open over the player: left for it, the video plays on, for its sound to be heard as it is shaped. */
+    private var isEqualizerOpen = false
 
     /** The floating window as it would be now - see [FloatingWindow]. */
     private var floatingWindow: FloatingWindow? = null
@@ -133,6 +140,7 @@ class VideoPlayerActivity : SonaActivity() {
                         onClose = ::finish,
                         isFloating = isFloating,
                         onFloat = if (hasFloatingWindows()) ::float else null,
+                        onOpenEqualizer = ::openEqualizer,
                     )
                 }
             }
@@ -141,6 +149,7 @@ class VideoPlayerActivity : SonaActivity() {
 
     override fun onResume() {
         super.onResume()
+        isEqualizerOpen = false
         if (floatsOnResume) {
             floatsOnResume = false
             float()
@@ -162,7 +171,7 @@ class VideoPlayerActivity : SonaActivity() {
 
     override fun onStop() {
         super.onStop()
-        if (!isFinishing && !isChangingConfigurations) viewModel.onScreenLeft()
+        if (!isFinishing && !isChangingConfigurations && !isEqualizerOpen) viewModel.onScreenLeft()
     }
 
     override fun finish() {
@@ -174,6 +183,11 @@ class VideoPlayerActivity : SonaActivity() {
     override fun onDestroy() {
         if (isFinishing) viewModel.onPlayerClosed()
         super.onDestroy()
+    }
+
+    private fun openEqualizer() {
+        isEqualizerOpen = true
+        navigator.go(EqualizerScreen)
     }
 
     private fun float() {

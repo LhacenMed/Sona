@@ -31,6 +31,8 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":core:vault"))
     implementation(project(":feature:playback"))
+    implementation(project(":feature:equalizer"))
+    implementation(project(":core:navigation"))
 
     implementation(libs.androidx.media3.common)
     implementation(libs.androidx.media3.extractor)

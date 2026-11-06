@@ -181,6 +181,8 @@
     <string name="remember_pause_title">Remember pause</string>
     <string name="remember_pause_summary">Remain playing or paused when skipping or editing the queue</string>
     <string name="playback_audio_section">Audio</string>
+    <string name="equalizer_settings_title">Equalizer</string>
+    <string name="equalizer_settings_summary">Shape the sound of the music and the videos</string>
     <string name="audio_offload_title">Audio offload</string>
     <string name="audio_offload_summary">Let the device decode audio in hardware to save battery</string>
     <string name="pause_on_mute_title">Pause when muted</string>

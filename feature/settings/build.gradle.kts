@@ -37,6 +37,7 @@ dependencies {
     implementation(project(":feature:tageditor"))
     implementation(project(":feature:backup"))
     implementation(project(":feature:explorer"))
+    implementation(project(":feature:equalizer"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

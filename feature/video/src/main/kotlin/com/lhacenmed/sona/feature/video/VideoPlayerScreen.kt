@@ -32,6 +32,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.Screenshot
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -133,7 +134,13 @@ private class DragProgress {
  */
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-internal fun VideoPlayerScreen(viewModel: VideoPlayerViewModel, onClose: () -> Unit, isFloating: Boolean, onFloat: (() -> Unit)?) {
+internal fun VideoPlayerScreen(
+    viewModel: VideoPlayerViewModel,
+    onClose: () -> Unit,
+    isFloating: Boolean,
+    onFloat: (() -> Unit)?,
+    onOpenEqualizer: () -> Unit,
+) {
     val playback by viewModel.playback.collectAsStateWithLifecycle()
     val session by viewModel.session.collectAsStateWithLifecycle()
     val gestureSettings by viewModel.gestureSettings.collectAsStateWithLifecycle()
@@ -422,7 +429,7 @@ internal fun VideoPlayerScreen(viewModel: VideoPlayerViewModel, onClose: () -> U
                 VideoPanel.SPEED -> SpeedPanel(playback.playbackSpeed, viewModel::onSpeedChange, close)
 
                 VideoPanel.MORE -> MorePanel(
-                    actions = moreActions(playback, viewModel, screenshot),
+                    actions = moreActions(playback, viewModel, screenshot, onOpenEqualizer),
                     onClose = close,
                 )
             }
@@ -528,18 +535,21 @@ private fun LockedControls(onUnlock: () -> Unit, onHint: () -> Unit) {
     }
 }
 
-/** What has no place of its own on the screen: silencing a video, taking a frame. */
+/** What has no place of its own on the screen: silencing a video, shaping its sound, taking a frame. */
 @Composable
 private fun moreActions(
     playback: VideoPlaybackState,
     viewModel: VideoPlayerViewModel,
     onScreenshot: () -> Unit,
+    onOpenEqualizer: () -> Unit,
 ): List<VideoAction> = listOfNotNull(
     VideoAction(
         icon = if (playback.isMuted) Icons.AutoMirrored.Rounded.VolumeOff else Icons.AutoMirrored.Rounded.VolumeUp,
         label = stringResource(if (playback.isMuted) R.string.video_unmute else R.string.video_mute),
         onClick = viewModel::onToggleMute,
     ),
+    // The music's equalizer: a video plays on the same sound, so it is shaped by it just the same.
+    VideoAction(Icons.Rounded.Equalizer, stringResource(R.string.video_equalizer), onOpenEqualizer),
     // A Private Folder video is never saved out to the gallery.
     VideoAction(Icons.Rounded.Screenshot, stringResource(R.string.video_screenshot), onScreenshot)
         .takeUnless { playback.isPrivate },
