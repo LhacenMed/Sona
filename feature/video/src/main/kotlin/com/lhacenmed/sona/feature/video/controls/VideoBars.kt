@@ -62,8 +62,9 @@ internal fun VideoTransport(
     )
     val next = VideoAction(VideoIcons.SkipNext, stringResource(R.string.video_next), onSkipNext)
     VideoButtonGroup(modifier = modifier, spacing = VideoPlayerTokens.TransportGap) {
-        videoButton(previous, VideoPlayerTokens.SkipButtonSize, VideoPlayerTokens.SkipIconSize)
-        videoButton(playPause, VideoPlayerTokens.PlayButtonSize, VideoPlayerTokens.PlayIconSize)
-        videoButton(next, VideoPlayerTokens.SkipButtonSize, VideoPlayerTokens.SkipIconSize)
+        // On a ground of their own: in the middle of the picture, no scrim lies behind them.
+        videoButton(previous, VideoPlayerTokens.SkipButtonSize, VideoPlayerTokens.SkipIconSize, VideoPlayerTokens.TransportGround)
+        videoButton(playPause, VideoPlayerTokens.PlayButtonSize, VideoPlayerTokens.PlayIconSize, VideoPlayerTokens.TransportGround)
+        videoButton(next, VideoPlayerTokens.SkipButtonSize, VideoPlayerTokens.SkipIconSize, VideoPlayerTokens.TransportGround)
     }
 }

@@ -41,8 +41,13 @@ internal data class VideoAction(
 )
 
 @Composable
-private fun videoButtonColors(tint: Color): IconButtonColors =
-    IconButtonDefaults.iconButtonColors(contentColor = tint, disabledContentColor = tint.copy(alpha = 0.38f))
+private fun videoButtonColors(tint: Color, ground: Color = Color.Transparent): IconButtonColors =
+    IconButtonDefaults.iconButtonColors(
+        containerColor = ground,
+        contentColor = tint,
+        disabledContainerColor = ground,
+        disabledContentColor = tint.copy(alpha = 0.38f),
+    )
 
 /** A control standing alone over the picture: Material's icon button, pressing as every press in the app does. */
 @Composable
@@ -69,7 +74,8 @@ internal fun ButtonGroupScope.videoButton(
     action: VideoAction,
     size: Dp = VideoPlayerTokens.BarButtonSize,
     iconSize: Dp = VideoPlayerTokens.BarIconSize,
-) = videoGroupItem(action.label, action.onClick, action.tint, size) {
+    ground: Color = Color.Transparent,
+) = videoGroupItem(action.label, action.onClick, action.tint, size, ground) {
     Icon(imageVector = action.icon, contentDescription = action.label, modifier = Modifier.size(iconSize))
 }
 
@@ -84,6 +90,7 @@ private fun ButtonGroupScope.videoGroupItem(
     onClick: (() -> Unit)?,
     tint: Color,
     size: Dp,
+    ground: Color = Color.Transparent,
     content: @Composable () -> Unit,
 ) = customItem(
     buttonGroupContent = {
@@ -92,7 +99,7 @@ private fun ButtonGroupScope.videoGroupItem(
             shapes = iconButtonPressShapes(),
             onClick = { onClick?.invoke() },
             enabled = onClick != null,
-            colors = videoButtonColors(tint),
+            colors = videoButtonColors(tint, ground),
             interactionSource = interactionSource,
             // The group's width comes first, and this gives way to it: all a press has to grow into.
             modifier = Modifier.animateWidth(interactionSource).size(size),

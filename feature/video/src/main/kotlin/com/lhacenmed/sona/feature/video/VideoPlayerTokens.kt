@@ -50,6 +50,9 @@ internal object VideoPlayerTokens {
     val PanelDim = Color.Black.copy(alpha = 0.45f)
 
     val PanelColor = Color(0xF018181B)
+
+    /** What the transport's buttons stand on over the picture, so they read over any frame. */
+    val TransportGround = Color.Black.copy(alpha = 0.45f)
     val PillColor = Color(0xD118181B)
     val ResumePromptColor = Color(0xEB242428)
     val ResumePromptDivider = Color.White.copy(alpha = 0.18f)
