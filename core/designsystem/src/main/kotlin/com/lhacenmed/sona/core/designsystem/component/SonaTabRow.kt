@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.theme.LocalIsRounded
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
@@ -82,7 +83,7 @@ fun SonaTabRow(
             // whatever the caller aligns it to.
             .padding(vertical = TabRowPadding),
     ) {
-        val restingTabWidth = (maxWidth - SonaComponentStyle.ItemSpacing * (tabCount - 1)) / tabCount
+        val restingTabWidth = ((maxWidth - SonaComponentStyle.ItemSpacing * (tabCount - 1)) / tabCount).coerceAtLeast(0.dp)
 
         Layout(
             modifier = Modifier.fillMaxSize(),
@@ -109,7 +110,9 @@ fun SonaTabRow(
             },
         ) { measurables, constraints ->
             val spacing = SonaComponentStyle.ItemSpacing.toPx()
-            val restingWidth = (constraints.maxWidth - spacing * (tabCount - 1)) / tabCount
+            // Never below nothing: narrower than its gaps - as it can be measured while its window is resized - the
+            // row is no wider than they are, rather than every tab and the pill a negative width.
+            val restingWidth = ((constraints.maxWidth - spacing * (tabCount - 1)) / tabCount).coerceAtLeast(0f)
             val height = constraints.maxHeight
 
             // Every tab starts at its equal share; a held tab then takes its growth from its neighbours.
