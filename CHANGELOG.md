@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.6.19] - 2026-11-06
+
+### Added
+
+- The default player shows the lyrics line playing beneath the title, and opens the lyrics from it.
+- Search for lyrics that were not found, from the lyrics and the player.
+
+### Changed
+
+- Scrubbing a video shows its frames sooner, and a long film's first scrub no longer holds the screen up.
+
 ## [1.6.18] - 2026-11-06
 
 ### Added
