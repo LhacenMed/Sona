@@ -36,7 +36,6 @@ import com.lhacenmed.sona.core.database.dao.QueueItemDao
 import com.lhacenmed.sona.core.datastore.ImageSettings
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.datastore.ShuffleSettings
-import com.lhacenmed.sona.core.datastore.VideoSettings
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
 import dagger.hilt.android.AndroidEntryPoint
@@ -90,9 +89,6 @@ class PlaybackService : MediaSessionService() {
 
     @Inject
     lateinit var trackFiles: TrackFiles
-
-    @Inject
-    lateinit var videoSettings: VideoSettings
 
     @Inject
     lateinit var resumePositions: ResumePositions
@@ -652,7 +648,6 @@ class PlaybackService : MediaSessionService() {
                 updateMediaButtons()
             }
         }
-        serviceScope.launch { videoSettings.continuousPlay.flow.collect { applyRepeatMode(repeatMode) } }
         // Only once it is read: a library not known yet says nothing of what the queue holds.
         serviceScope.launch { libraryRepository.loadedTracksById.collect { tracksById -> tracksById?.let(::followLibrary) } }
         serviceScope.launch {
@@ -669,16 +664,10 @@ class PlaybackService : MediaSessionService() {
      * `pauseAtEndOfMediaItems` is what separates "repeat this track" from "play it once more, then
      * stop" - media3 already knows how to pause at the end of an item, so unlike the reference app
      * this needs no hand-written seek-and-pause when the track comes round. A held track repeats whatever the mode.
-     *
-     * A video not repeating also pauses at its end while the user plays videos one at a time - PLAYit's
-     * Continuous play turned off - so this is put on again as each item starts.
      */
     private fun applyRepeatMode(mode: RepeatMode) {
         exoPlayer.repeatMode = if (isTrackHeld) Player.REPEAT_MODE_ONE else mode.toPlayerRepeatMode()
-        val isVideoPlayedAlone = exoPlayer.currentMediaItem?.isVideo == true &&
-            exoPlayer.repeatMode != Player.REPEAT_MODE_ONE &&
-            !videoSettings.continuousPlay.value
-        exoPlayer.pauseAtEndOfMediaItems = !isTrackHeld && (mode.stopsAfterCurrentTrack() || isVideoPlayedAlone)
+        exoPlayer.pauseAtEndOfMediaItems = !isTrackHeld && mode.stopsAfterCurrentTrack()
     }
 
     private fun registerHeadsetReceiver() {

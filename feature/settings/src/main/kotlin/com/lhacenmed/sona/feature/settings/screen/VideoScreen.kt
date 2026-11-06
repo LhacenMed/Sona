@@ -32,7 +32,6 @@ data object VideoScreen : Screen {
         val showClock by viewModel.showClock.collectAsStateWithLifecycle()
         val resume by viewModel.resume.collectAsStateWithLifecycle()
         val gestures by viewModel.gestures.collectAsStateWithLifecycle()
-        val continuousPlay by viewModel.continuousPlay.collectAsStateWithLifecycle()
         val doubleTapSeek by viewModel.doubleTapSeek.collectAsStateWithLifecycle()
         val doubleTapSeekSeconds by viewModel.doubleTapSeekSeconds.collectAsStateWithLifecycle()
         val longPressSpeedUp by viewModel.longPressSpeedUp.collectAsStateWithLifecycle()
@@ -108,12 +107,6 @@ data object VideoScreen : Screen {
                     summary = stringResource(R.string.video_gestures_summary),
                     checked = gestures,
                     onCheckedChange = viewModel::setGestures,
-                )
-                SettingsSwitchItem(
-                    title = stringResource(R.string.video_continuous_play_title),
-                    summary = stringResource(R.string.video_continuous_play_summary),
-                    checked = continuousPlay,
-                    onCheckedChange = viewModel::setContinuousPlay,
                 )
                 // Not stored yet: the floating window is still to come.
                 SettingsSwitchItem(

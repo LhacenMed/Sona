@@ -2,6 +2,7 @@ package com.lhacenmed.sona.feature.video.panel
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -10,10 +11,18 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.component.SonaPlaybackModeButtons
 import com.lhacenmed.sona.core.designsystem.component.SonaTrackRow
+import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.feature.playback.QueueVideo
+import com.lhacenmed.sona.feature.playback.R as PlaybackR
+import com.lhacenmed.sona.feature.playback.iconRes
+import com.lhacenmed.sona.feature.playback.labelRes
 import com.lhacenmed.sona.feature.video.R
+import com.lhacenmed.sona.feature.video.VideoPlayerTokens
 import com.lhacenmed.sona.feature.video.controls.VideoAction
 import com.lhacenmed.sona.feature.video.formatVideoTime
 import com.lhacenmed.sona.feature.video.speedLabel
@@ -37,17 +46,34 @@ internal fun ColumnScope.SpeedPanel(selected: Float, onSelect: (Float) -> Unit, 
 
 /**
  * The queue, each video playing when tapped - opened at the one playing now, as the library's own rows, on a lazy list
- * as it can run long.
+ * as it can run long - under how it plays: shuffled or not, and how it repeats, the videos' own, as the music's queue
+ * shows the music's.
  */
 @Composable
 internal fun ColumnScope.QueuePanel(
     queue: List<QueueVideo>,
     currentIndex: Int,
     isPlaying: Boolean,
+    isShuffled: Boolean,
+    repeatMode: RepeatMode,
     onPlay: (QueueVideo) -> Unit,
+    onToggleShuffle: () -> Unit,
+    onCycleRepeatMode: () -> Unit,
     onClose: () -> Unit,
 ) {
     PanelHeader(stringResource(R.string.video_queue), onClose)
+    SonaPlaybackModeButtons(
+        isShuffled = isShuffled,
+        isRepeating = repeatMode != RepeatMode.OFF,
+        shuffleIcon = painterResource(PlaybackR.drawable.shuffle),
+        repeatIcon = painterResource(repeatMode.iconRes),
+        shuffleLabel = stringResource(R.string.video_shuffle),
+        repeatLabel = stringResource(repeatMode.labelRes),
+        onShuffleClick = onToggleShuffle,
+        onRepeatClick = onCycleRepeatMode,
+        contentColor = VideoPlayerTokens.ContentColor,
+        modifier = Modifier.padding(end = 6.dp, bottom = 4.dp),
+    )
     LazyColumn(
         // The row before the current one shows above it, so it is plain where in the queue it sits.
         state = rememberLazyListState(initialFirstVisibleItemIndex = (currentIndex - 1).coerceAtLeast(0)),

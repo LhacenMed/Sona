@@ -1,6 +1,5 @@
 package com.lhacenmed.sona.feature.player
 
-import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -18,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,8 +25,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.ToggleButton
-import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -49,28 +45,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverArt
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverImage
+import com.lhacenmed.sona.core.designsystem.component.SonaPlaybackModeButtons
 import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
-import com.lhacenmed.sona.core.designsystem.theme.connectedLeadingButtonPressShapes
-import com.lhacenmed.sona.core.designsystem.theme.connectedTrailingButtonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.roundedShape
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.playback.iconRes
+import com.lhacenmed.sona.feature.playback.labelRes
 import com.lhacenmed.sona.feature.playback.R as PlaybackR
 import kotlin.math.roundToInt
 
 private const val DefaultSleepTimerMinutes = 30f
-
-@DrawableRes
-private fun RepeatMode.queueHeaderIconRes(): Int =
-    when (this) {
-        RepeatMode.OFF -> PlaybackR.drawable.repeat
-        RepeatMode.ALL -> PlaybackR.drawable.repeat_on
-        RepeatMode.ONE -> PlaybackR.drawable.repeat_one_on
-        RepeatMode.STOP_AFTER_CURRENT -> PlaybackR.drawable.repeat_one_stop
-    }
 
 /**
  * Current Song Header shown at the top of the queue
@@ -172,57 +160,23 @@ internal fun CurrentSongHeader(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                val uncheckedColors =
-                    ToggleButtonDefaults.colors(
-                        containerColor = onBackgroundColor.copy(alpha = 0.12f),
-                        contentColor = onBackgroundColor,
-                    )
-                val checkedColors =
-                    ToggleButtonDefaults.colors(
-                        checkedContainerColor = onBackgroundColor.copy(alpha = 0.22f),
-                        checkedContentColor = onBackgroundColor,
-                    )
-                val repeatEnabled = repeatMode != RepeatMode.OFF
-
-                ToggleButton(
-                    checked = shuffleEnabled,
-                    onCheckedChange = {
-                        view.performContextClick()
-                        onShuffleClick()
-                    },
-                    modifier = Modifier.weight(1f).size(48.dp),
-                    shapes = connectedLeadingButtonPressShapes(),
-                    colors = if (shuffleEnabled) checkedColors else uncheckedColors,
-                ) {
-                    Icon(
-                        painter = painterResource(PlaybackR.drawable.shuffle),
-                        contentDescription = stringResource(R.string.player_shuffle_on),
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-
-                ToggleButton(
-                    checked = repeatEnabled,
-                    onCheckedChange = {
-                        view.performContextClick()
-                        onRepeatClick()
-                    },
-                    modifier = Modifier.weight(1f).size(48.dp),
-                    shapes = connectedTrailingButtonPressShapes(),
-                    colors = if (repeatEnabled) checkedColors else uncheckedColors,
-                ) {
-                    Icon(
-                        painter = painterResource(repeatMode.queueHeaderIconRes()),
-                        contentDescription = null,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-            }
+            SonaPlaybackModeButtons(
+                isShuffled = shuffleEnabled,
+                isRepeating = repeatMode != RepeatMode.OFF,
+                shuffleIcon = painterResource(PlaybackR.drawable.shuffle),
+                repeatIcon = painterResource(repeatMode.iconRes),
+                shuffleLabel = stringResource(R.string.player_shuffle_on),
+                repeatLabel = stringResource(repeatMode.labelRes),
+                onShuffleClick = {
+                    view.performContextClick()
+                    onShuffleClick()
+                },
+                onRepeatClick = {
+                    view.performContextClick()
+                    onRepeatClick()
+                },
+                contentColor = onBackgroundColor,
+            )
 
             Spacer(modifier = Modifier.height(14.dp))
         }

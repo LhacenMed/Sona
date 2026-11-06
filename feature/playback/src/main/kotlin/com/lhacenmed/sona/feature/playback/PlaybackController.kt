@@ -221,7 +221,7 @@ class PlaybackController @Inject constructor(
     ) {
         if (tracks.getOrNull(startIndex)?.isVideo == true) {
             val opening = if (opensFloating) VideoPlayerOpening.FLOATING else VideoPlayerOpening.FULL_SCREEN
-            watch(tracks, startIndex, shuffled == true, startPositionMs, opening) { it.toMediaItem(parent) }
+            watch(tracks, startIndex, shuffled, startPositionMs, opening) { it.toMediaItem(parent) }
             return
         }
         val mediaController = controller ?: return
@@ -238,7 +238,7 @@ class PlaybackController @Inject constructor(
      */
     fun playPrivateTracks(tracks: List<Track>, startIndex: Int) {
         if (tracks.getOrNull(startIndex)?.isVideo == true) {
-            watch(tracks, startIndex, shuffled = false, startPositionMs = 0L, VideoPlayerOpening.FULL_SCREEN, ::vaultMediaItem)
+            watch(tracks, startIndex, shuffled = null, startPositionMs = 0L, VideoPlayerOpening.FULL_SCREEN, ::vaultMediaItem)
             return
         }
         val mediaController = controller ?: return
@@ -250,7 +250,7 @@ class PlaybackController @Inject constructor(
     private fun watch(
         tracks: List<Track>,
         startIndex: Int,
-        shuffled: Boolean,
+        shuffled: Boolean?,
         startPositionMs: Long,
         opening: VideoPlayerOpening,
         toMediaItem: (Track) -> MediaItem,

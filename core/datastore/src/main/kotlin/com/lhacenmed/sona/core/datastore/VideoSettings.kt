@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.lhacenmed.sona.core.common.di.ApplicationScope
+import com.lhacenmed.sona.core.model.RepeatMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -18,7 +19,8 @@ private val MUTED = booleanPreferencesKey("muted")
 private val SHOW_CLOCK = booleanPreferencesKey("show_clock")
 private val RESUME = booleanPreferencesKey("resume")
 private val GESTURES = booleanPreferencesKey("gestures")
-private val CONTINUOUS_PLAY = booleanPreferencesKey("continuous_play")
+private val REPEAT_MODE = stringPreferencesKey("repeat_mode")
+private val SHUFFLE_ENABLED = booleanPreferencesKey("shuffle_enabled")
 private val DOUBLE_TAP_SEEK = booleanPreferencesKey("double_tap_seek")
 private val DOUBLE_TAP_SEEK_SECONDS = intPreferencesKey("double_tap_seek_seconds")
 private val LONG_PRESS_SPEED_UP = booleanPreferencesKey("long_press_speed_up")
@@ -90,11 +92,22 @@ class VideoSettings @Inject constructor(
         dataStore.edit { it[GESTURES] = enabled }
     }
 
-    /** Whether the next video plays when one ends, rather than the player pausing at its end. */
-    val continuousPlay: Setting<Boolean> = cache.setting { it[CONTINUOUS_PLAY] ?: true }
+    /** How the videos repeat - the videos' own, apart from the music's, from the same modes. */
+    val repeatMode: Setting<RepeatMode> = cache.setting { it.enum(REPEAT_MODE, RepeatMode.OFF) }
 
-    suspend fun setContinuousPlay(enabled: Boolean) {
-        dataStore.edit { it[CONTINUOUS_PLAY] = enabled }
+    /**
+     * Moves the videos' repeat mode one step along the repeat button's cycle - stopping after the current video one of its
+     * steps where [stopAfterCurrentEnabled], as the music's repeat button has it.
+     */
+    suspend fun cycleRepeatMode(stopAfterCurrentEnabled: Boolean) {
+        dataStore.edit { it[REPEAT_MODE] = it.enum(REPEAT_MODE, RepeatMode.OFF).next(stopAfterCurrentEnabled).name }
+    }
+
+    /** Whether the videos are watched shuffled - the videos' own, apart from the music's. */
+    val shuffleEnabled: Setting<Boolean> = cache.setting { it[SHUFFLE_ENABLED] ?: false }
+
+    suspend fun setShuffleEnabled(enabled: Boolean) {
+        dataStore.edit { it[SHUFFLE_ENABLED] = enabled }
     }
 
     /**

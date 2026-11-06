@@ -593,8 +593,6 @@
     <string name="video_resume_summary">Carry on from where you stopped</string>
     <string name="video_gestures_title">Gesture operation</string>
     <string name="video_gestures_summary">Drag across to seek, and down either side for brightness and volume</string>
-    <string name="video_continuous_play_title">Continuous play</string>
-    <string name="video_continuous_play_summary">Play the next video automatically after one ends</string>
     <string name="video_auto_popup_title">Auto pop-up play</string>
     <string name="video_auto_popup_summary">Keep playing in a floating window when you switch to other apps</string>
     <string name="video_double_tap_seek_title">Double-tap to seek</string>

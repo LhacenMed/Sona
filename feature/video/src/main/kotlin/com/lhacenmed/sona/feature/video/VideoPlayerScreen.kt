@@ -411,7 +411,11 @@ internal fun VideoPlayerScreen(viewModel: VideoPlayerViewModel, onClose: () -> U
                     queue = playback.queue,
                     currentIndex = playback.currentQueueIndex,
                     isPlaying = playback.isPlaying,
+                    isShuffled = playback.isShuffled,
+                    repeatMode = playback.repeatMode,
                     onPlay = viewModel::onPlayQueueItem,
+                    onToggleShuffle = viewModel::onToggleShuffle,
+                    onCycleRepeatMode = viewModel::onCycleRepeatMode,
                     onClose = close,
                 )
 

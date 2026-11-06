@@ -22,7 +22,6 @@ class VideoSettingsViewModel @Inject constructor(
     val showClock: StateFlow<Boolean> = videoSettings.showClock.stateIn(viewModelScope)
     val resume: StateFlow<Boolean> = videoSettings.resume.stateIn(viewModelScope)
     val gestures: StateFlow<Boolean> = videoSettings.gestures.stateIn(viewModelScope)
-    val continuousPlay: StateFlow<Boolean> = videoSettings.continuousPlay.stateIn(viewModelScope)
     val doubleTapSeek: StateFlow<Boolean> = videoSettings.doubleTapSeek.stateIn(viewModelScope)
     val doubleTapSeekSeconds: StateFlow<Int> = videoSettings.doubleTapSeekSeconds.stateIn(viewModelScope)
     val longPressSpeedUp: StateFlow<Boolean> = videoSettings.longPressSpeedUp.stateIn(viewModelScope)
@@ -42,7 +41,6 @@ class VideoSettingsViewModel @Inject constructor(
 
     fun setGestures(enabled: Boolean) = update { setGestures(enabled) }
 
-    fun setContinuousPlay(enabled: Boolean) = update { setContinuousPlay(enabled) }
 
     fun setDoubleTapSeek(enabled: Boolean) = update { setDoubleTapSeek(enabled) }
 

@@ -23,6 +23,7 @@ import androidx.media3.session.MediaSession
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.datastore.VideoSettings
+import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -38,6 +39,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
@@ -105,6 +107,9 @@ data class VideoPlaybackState(
     val canSkipNext: Boolean = false,
     val playbackSpeed: Float = 1f,
     val isMuted: Boolean = false,
+    /** How the videos repeat, and whether they are shuffled - the videos' own, apart from the music's. */
+    val repeatMode: RepeatMode = RepeatMode.OFF,
+    val isShuffled: Boolean = false,
     /** The picture as it is shown, its pixels' own shape applied - 0 by 0 before it is known. */
     val videoWidth: Int = 0,
     val videoHeight: Int = 0,
@@ -241,16 +246,29 @@ class VideoPlayback @Inject constructor(
         }
     }
 
+    init {
+        // Changed while a video plays, from its queue or the settings, each takes hold at once.
+        scope.launch {
+            videoSettings.repeatMode.flow.collect { if (isOpen) applyRepeatMode() }
+        }
+        scope.launch {
+            videoSettings.shuffleEnabled.flow.collect { isShuffled -> if (isOpen) player.shuffleModeEnabled = isShuffled }
+        }
+    }
+
     /**
      * Starts [queue] from [startIndex], in place of anything being watched, at [startPositionMs] - where it was left, while
      * that is 0. [onClosed] is told where the video was left, should it end by being closed rather than replaced.
+     *
+     * [shuffled] is a Play's or a Shuffle's, kept as the videos' shuffle from now on - or, while null, as a row tapped,
+     * the videos' shuffle as it stands.
      *
      * Asked for the very video already playing - its row tapped twice, or tapped under its floating window - it simply goes on.
      */
     internal fun open(
         queue: List<VideoQueueItem>,
         startIndex: Int,
-        shuffled: Boolean = false,
+        shuffled: Boolean? = null,
         startPositionMs: Long = 0L,
         opening: VideoPlayerOpening = VideoPlayerOpening.FULL_SCREEN,
         onClosed: ((MediaItem, Long) -> Unit)? = null,
@@ -277,7 +295,7 @@ class VideoPlayback @Inject constructor(
         player.playWhenReady = false
         player.setPlaybackSpeed(1f)
         player.volume = if (videoSettings.muted.value) 0f else 1f
-        player.pauseAtEndOfMediaItems = !videoSettings.continuousPlay.value
+        applyRepeatMode()
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
             .clearOverrides()
             .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
@@ -286,7 +304,8 @@ class VideoPlayback @Inject constructor(
         // On the music's audio session, so the equalizer shapes its sound just the same.
         equalizer.audioSessionId?.takeIf { it != player.audioSessionId }?.let { player.audioSessionId = it }
         // Before the items, for the shuffle order to be built around the one starting.
-        player.shuffleModeEnabled = shuffled
+        player.shuffleModeEnabled = shuffled ?: videoSettings.shuffleEnabled.value
+        if (shuffled != null) scope.launch { videoSettings.setShuffleEnabled(shuffled) }
         val position = startPositionMs.takeIf { it > 0L } ?: resumePositions.startPositionOf(start.mediaItem)
         // Asked to go on from a place, it has come back from nothing: only where it was left says so.
         resumedFromMs = position.takeIf { startPositionMs <= 0L && it > 0L }
@@ -472,6 +491,13 @@ class VideoPlayback @Inject constructor(
             .build()
     }
 
+    /** Puts the videos' repeat mode on the player - and, stopping after the current video, the pause at its end. */
+    private fun applyRepeatMode() {
+        val repeatMode = videoSettings.repeatMode.value
+        player.repeatMode = repeatMode.toPlayerRepeatMode()
+        player.pauseAtEndOfMediaItems = repeatMode.stopsAfterCurrentTrack()
+    }
+
     private fun shutDown() {
         // Written down now, whatever the player tells of it as it stops: it may have been sought while paused.
         player.currentMediaItem?.let { resumePositions.record(it, player.currentPosition) }
@@ -519,6 +545,8 @@ class VideoPlayback @Inject constructor(
                 canSkipNext = player.hasNextMediaItem(),
                 playbackSpeed = player.playbackParameters.speed,
                 isMuted = player.volume == 0f,
+                repeatMode = videoSettings.repeatMode.value,
+                isShuffled = player.shuffleModeEnabled,
                 videoWidth = (videoSize.width * videoSize.pixelWidthHeightRatio).roundToInt(),
                 videoHeight = videoSize.height,
                 hasPicture = item != null && item.mediaId == pictureMediaId,
@@ -572,6 +600,8 @@ class VideoPlayback @Inject constructor(
             Player.EVENT_POSITION_DISCONTINUITY,
             Player.EVENT_PLAYBACK_PARAMETERS_CHANGED,
             Player.EVENT_VOLUME_CHANGED,
+            Player.EVENT_REPEAT_MODE_CHANGED,
+            Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
             Player.EVENT_VIDEO_SIZE_CHANGED,
             Player.EVENT_AVAILABLE_COMMANDS_CHANGED,
         )

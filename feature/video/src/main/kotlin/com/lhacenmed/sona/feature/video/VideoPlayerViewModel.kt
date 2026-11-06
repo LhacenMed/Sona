@@ -11,6 +11,7 @@ import com.lhacenmed.sona.core.data.LibrarySubtitleStore
 import com.lhacenmed.sona.core.datastore.SubtitleTextSize
 import com.lhacenmed.sona.core.datastore.VideoAspect
 import com.lhacenmed.sona.core.datastore.VideoOrientation
+import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.datastore.VideoSettings
 import com.lhacenmed.sona.core.datastore.stateIn
 import com.lhacenmed.sona.core.vault.VaultRepository
@@ -67,6 +68,7 @@ class VideoPlayerViewModel @Inject constructor(
     private val playbackController: PlaybackController,
     vault: VaultRepository,
     private val videoSettings: VideoSettings,
+    private val playbackSettings: PlaybackSettings,
     librarySubtitles: LibrarySubtitleStore,
     @ApplicationContext context: Context,
 ) : ViewModel() {
@@ -198,6 +200,17 @@ class VideoPlayerViewModel @Inject constructor(
     fun onSpeedHoldEnd() {
         speedBeforeHold?.let { video?.setPlaybackSpeed(it) }
         speedBeforeHold = null
+    }
+
+    /** Shuffles the videos, or stops - the videos' own shuffle, kept for the next ones; the player follows it. */
+    fun onToggleShuffle() {
+        val isShuffled = video?.state?.value?.isShuffled ?: return
+        viewModelScope.launch { videoSettings.setShuffleEnabled(!isShuffled) }
+    }
+
+    /** Moves the videos' repeat mode on - kept for the next ones; the player follows it. */
+    fun onCycleRepeatMode() {
+        viewModelScope.launch { videoSettings.cycleRepeatMode(playbackSettings.stopAfterCurrentEnabled.value) }
     }
 
     /** Silences the video, or lets it be heard - and keeps that for the next one. */
