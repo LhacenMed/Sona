@@ -15,6 +15,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -60,6 +61,10 @@ val LocalDragSelection = compositionLocalOf<DragSelection?> { null }
  * The list tells it its selectable rows in order through [orderedKeys]; its rows tell it where they
  * are laid out, through [LocalDragSelection]. The selection itself stays in [selection], so a drag adds
  * to one gathered anywhere else.
+ *
+ * In a list whose rows can be put in a new order - given [onMoveSelection] - long pressing a row already selected
+ * picks the whole selection up instead: it is [move]d under the finger, which the list follows, and set down where the
+ * finger lifts, in the order it was selected in - see [SelectionMove].
  */
 @Stable
 class DragSelection internal constructor(
@@ -69,6 +74,13 @@ class DragSelection internal constructor(
 ) {
     internal var orderedKeys: List<Any> = emptyList()
     internal var hotspotHeightPx = 0f
+
+    /** Sets the moved selection down before the row of the key given - at the end, while null: see [SelectionMove]. */
+    internal var onMoveSelection: ((keys: List<Any>, landsBefore: Any?) -> Unit)? = null
+
+    /** The selection being moved, while it is - see [SelectionMove]. */
+    var move by mutableStateOf<SelectionMove?>(null)
+        private set
 
     /** How much of the list's bottom lies under the player, where the bottom hotspot stops short. */
     internal var bottomInsetPx = 0f
@@ -82,6 +94,7 @@ class DragSelection internal constructor(
     /** Whether a finger is on the list - a long press made without one, from an accessibility service, has no drag to start. */
     internal var isPointerDown = false
 
+    /** Whether a finger is dragging over the rows, selecting them or moving the selection. */
     internal var isDragging by mutableStateOf(false)
         private set
     private var initialIndex = -1
@@ -89,7 +102,8 @@ class DragSelection internal constructor(
     private var minReached = -1
     private var maxReached = -1
 
-    private var pointerY = 0f
+    /** Where the finger is on the list. */
+    private var pointer = Offset.Zero
     /** How fast the list is scrolling under the finger, in pixels a second - negative towards its top. */
     private var autoScrollSpeed = 0f
     private var autoScrollJob: Job? = null
@@ -106,6 +120,10 @@ class DragSelection internal constructor(
         val keys = orderedKeys
         val index = keys.indexOf(key)
         if (index == -1) return
+        if (onMoveSelection != null && selection.isSelected(key) && isPointerDown) {
+            startMoving(key)
+            return
+        }
         selection.selectAll(listOf(key))
         if (isPointerDown) startDragging(index)
         val lastIndex = lastLongPressedKey?.let(keys::indexOf) ?: -1
@@ -127,17 +145,71 @@ class DragSelection internal constructor(
         if (rows[key] === coordinates) rows.remove(key)
     }
 
-    /** The finger dragging at [y] down the list - Fossify's `ACTION_MOVE` while drag selection is on. */
-    internal fun onDrag(y: Float) {
-        pointerY = y
-        updateAutoScroll(y)
-        selectToRowAt(y)
+    /** The finger at [position] on the list, before any drag of it - where a move picks the selection up from. */
+    internal fun onPointer(position: Offset) {
+        pointer = position
     }
 
+    /** The finger dragging at [position] on the list - Fossify's `ACTION_MOVE` while drag selection is on. */
+    internal fun onDrag(position: Offset) {
+        pointer = position
+        move?.let { it.pointerInWindow = list?.localToWindow(position) ?: return }
+        updateAutoScroll(position.y)
+        followPointer()
+    }
+
+    /** The finger lifted: a selection being moved is set down where it is. */
     internal fun stopDragging() {
         isDragging = false
         autoScrollSpeed = 0f
         autoScrollJob?.cancel()
+        val move = move ?: return
+        this.move = null
+        onMoveSelection?.invoke(move.keys, move.landsBefore)
+    }
+
+    /**
+     * Picks up the selection, the row [key] long pressed among it: every selected row of the list, in the order they were
+     * selected, to land at first where that row was - before the first row after it that is not moving.
+     */
+    private fun startMoving(key: Any) {
+        val list = list?.takeIf { it.isAttached } ?: return
+        val keys = orderedKeys
+        val moving = selection.selectedKeys.filter { it in keys }
+        val movingSet = moving.toSet()
+        val rowHeightPx = rows[key]?.takeIf { it.isAttached }?.size?.height ?: return
+        lastLongPressedKey = null
+        move = SelectionMove(
+            keys = moving,
+            rowHeightPx = rowHeightPx,
+            pointerInWindow = list.localToWindow(pointer),
+            landsBefore = keys.drop(keys.indexOf(key) + 1).firstOrNull { it !in movingSet },
+        )
+        isDragging = true
+    }
+
+    private fun followPointer() {
+        if (move != null) landAt(pointer.y) else selectToRowAt(pointer.y)
+    }
+
+    /**
+     * Lands the moved selection by the finger at [y]: before the first row left in the list whose middle lies below it -
+     * the gap it lands in being as tall as a row, the finger stays in it until it reaches the next row's middle. Below
+     * every row laid out, before the next row out of sight, or at the end.
+     */
+    private fun landAt(y: Float) {
+        val move = move ?: return
+        val list = list?.takeIf { it.isAttached } ?: return
+        val movingSet = move.keys.toSet()
+        val laidOut = rows.entries
+            .filter { (key, row) -> key !in movingSet && row.isAttached }
+            .map { (key, row) -> key to list.localBoundingBoxOf(row, clipBounds = false) }
+            .sortedBy { (_, bounds) -> bounds.top }
+        if (laidOut.isEmpty()) return
+        move.landsBefore = laidOut.firstOrNull { (_, bounds) -> bounds.center.y > y }?.first ?: run {
+            val keys = orderedKeys
+            keys.drop(keys.indexOf(laidOut.last().first) + 1).firstOrNull { it !in movingSet }
+        }
     }
 
     private fun startDragging(index: Int) {
@@ -201,7 +273,8 @@ class DragSelection internal constructor(
     /**
      * Scrolls the list while the finger at [y] is in a hotspot, every frame by how far that frame's time
      * carries it at [autoScrollSpeedAt] - so the list glides at an even pace on any display, instead of
-     * jumping in timed steps. Rows passing under a finger held still join the drag as they arrive.
+     * jumping in timed steps. Rows passing under a finger held still join the drag as they arrive - or, moving the
+ * selection, are passed over by it.
      */
     private fun updateAutoScroll(y: Float) {
         autoScrollSpeed = autoScrollSpeedAt(y)
@@ -212,7 +285,7 @@ class DragSelection internal constructor(
                 val frameNanos = withFrameNanos { it }
                 listState.scrollBy(autoScrollSpeed * (frameNanos - lastFrameNanos) / NANOS_PER_SECOND)
                 lastFrameNanos = frameNanos
-                selectToRowAt(pointerY)
+                followPointer()
             }
         }
     }
@@ -240,14 +313,37 @@ class DragSelection internal constructor(
 }
 
 /**
+ * The selection picked up by a long press on one of its rows, moving under the finger - see [DragSelection].
+ *
+ * [keys] are its rows, in the order they were selected, which is the order they are set down in. While it moves the
+ * list leaves them out, and opens a gap [rowHeightPx] tall - one row's - before the row of [landsBefore], or at its end
+ * while that is null, which is where they land; [pointerInWindow] is where the finger holds them.
+ */
+@Stable
+class SelectionMove internal constructor(
+    val keys: List<Any>,
+    val rowHeightPx: Int,
+    pointerInWindow: Offset,
+    landsBefore: Any?,
+) {
+    var pointerInWindow by mutableStateOf(pointerInWindow)
+        internal set
+
+    var landsBefore by mutableStateOf(landsBefore)
+        internal set
+}
+
+/**
  * A [DragSelection] over [listState]'s rows, whose selectable keys in list order are [orderedKeys] -
- * built once per change of rows, not on every move of a drag.
+ * built once per change of rows, not on every move of a drag. Given [onMoveSelection], a long press on a selected row
+ * moves the whole selection, set down by it before the row of the key it is given, or at the end - see [SelectionMove].
  */
 @Composable
 fun rememberDragSelection(
     selection: SelectionState,
     listState: LazyListState,
     orderedKeys: List<Any>,
+    onMoveSelection: ((keys: List<Any>, landsBefore: Any?) -> Unit)? = null,
 ): DragSelection {
     val scope = rememberCoroutineScope()
     val dragSelection = remember(selection, listState, scope) { DragSelection(selection, listState, scope) }
@@ -255,6 +351,7 @@ fun rememberDragSelection(
     val bottomInsetPx = with(LocalDensity.current) { LocalBottomContentPadding.current.toPx() }
     SideEffect {
         dragSelection.orderedKeys = orderedKeys
+        dragSelection.onMoveSelection = onMoveSelection
         dragSelection.hotspotHeightPx = hotspotHeightPx
         dragSelection.bottomInsetPx = bottomInsetPx
     }
@@ -263,13 +360,15 @@ fun rememberDragSelection(
 
 /**
  * The list [dragSelection] selects over. Once a row's long press starts a drag, the finger's moves are
- * taken before the list sees them, so they select rather than scroll - Fossify's `dispatchTouchEvent`.
+ * taken before the list sees them, so they select - or move the selection - rather than scroll: Fossify's
+ * `dispatchTouchEvent`.
  */
 fun Modifier.dragSelection(dragSelection: DragSelection): Modifier = this
     .onPlaced(dragSelection::onListPlaced)
     .pointerInput(dragSelection) {
         awaitEachGesture {
-            awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+            dragSelection.onPointer(down.position)
             dragSelection.isPointerDown = true
             try {
                 do {
@@ -277,7 +376,9 @@ fun Modifier.dragSelection(dragSelection: DragSelection): Modifier = this
                     val change = event.changes.first()
                     if (dragSelection.isDragging) {
                         event.changes.forEach { it.consume() }
-                        if (change.pressed) dragSelection.onDrag(change.position.y)
+                        if (change.pressed) dragSelection.onDrag(change.position)
+                    } else {
+                        dragSelection.onPointer(change.position)
                     }
                 } while (event.changes.any { it.pressed })
             } finally {

@@ -7,6 +7,8 @@ import androidx.compose.foundation.OverscrollEffect
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
@@ -26,6 +28,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -96,6 +99,7 @@ import com.lhacenmed.sona.feature.library.options.actions
 import com.lhacenmed.sona.feature.library.options.disabledActions
 import com.lhacenmed.sona.feature.library.options.rememberOptionsActions
 import com.lhacenmed.sona.feature.library.options.rememberOptionsSwipeActions
+import com.lhacenmed.sona.feature.library.selection.MovingTracks
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.selection.SelectionOptionsHost
 import com.lhacenmed.sona.feature.library.selection.selectionKeyOf
@@ -384,7 +388,7 @@ private fun <T> ReorderableColumn(
         contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
         overscrollEffect = overscrollEffect,
     ) {
-        reorderableRows(reorderableRows, key, row)
+        reorderableRows(reorderableRows, key, row = row)
     }
 }
 
@@ -392,6 +396,23 @@ private fun <T> ReorderableColumn(
 internal class ReorderableRows<T>(
     val rows: List<T>,
     val state: ReorderableLazyListState,
+    private val onMoveTogether: (movedKeys: List<Any>, landsBefore: Any?) -> Unit,
+) {
+    /**
+     * Sets the rows of [movedKeys] down together, in that order, before the row of [landsBefore] - at the end, while it is
+     * null - wherever each of them was: a selection moved as one. Written as a drop is.
+     */
+    fun moveTogether(movedKeys: List<Any>, landsBefore: Any?) = onMoveTogether(movedKeys, landsBefore)
+}
+
+/**
+ * Rows of a [ReorderableRows] picked up together and moving: left out of the list while they move, a gap [gapHeight]
+ * tall opening before the row of [landsBefore] - or at the end, while it is null - where they would land.
+ */
+internal class MovingRows(
+    val keys: Set<Any>,
+    val landsBefore: Any?,
+    val gapHeight: Dp,
 )
 
 /**
@@ -418,6 +439,8 @@ internal fun <T> rememberReorderableRows(
     val orderedRows = remember { mutableStateListOf<T>().apply { addAll(items) } }
     var hasDropToWrite by remember { mutableStateOf(false) }
     var writtenOrder by remember { mutableStateOf<List<Any>?>(null) }
+    // Rows moved together are dropped with no drag of the library's running, so each such drop is counted to be written.
+    var togetherDrops by remember { mutableIntStateOf(0) }
 
     val bottomContentPadding = LocalBottomContentPadding.current
     val reorderableState = rememberReorderableLazyListState(
@@ -438,7 +461,7 @@ internal fun <T> rememberReorderableRows(
 
     // Written once the finger is off the row, never while it moves. Anything else that changes the
     // list - rows arriving, a re-sort - refills the copy instead.
-    LaunchedEffect(items, reorderableState.isAnyItemDragging) {
+    LaunchedEffect(items, reorderableState.isAnyItemDragging, togetherDrops) {
         if (reorderableState.isAnyItemDragging) return@LaunchedEffect
         val itemKeys = items.map(key)
         if (hasDropToWrite) {
@@ -464,29 +487,65 @@ internal fun <T> rememberReorderableRows(
         }
     }
 
-    return remember(reorderableState) { ReorderableRows(orderedRows, reorderableState) }
-}
-
-/** [reorderableRows]' rows, each draggable by the handle its row draws. */
-internal fun <T> LazyListScope.reorderableRows(
-    reorderableRows: ReorderableRows<T>,
-    key: (T) -> Any,
-    row: @Composable (T) -> Unit,
-) {
-    // Each row animates itself - still while dragged, as the rest of a section moves otherwise.
-    withoutItemAnimation().items(
-        items = reorderableRows.rows,
-        key = key,
-        contentType = { LIST_ROW_CONTENT_TYPE },
-    ) { item ->
-        ReorderableItem(state = reorderableRows.state, key = key(item), animateItemModifier = sectionItemAnimation()) {
-            // The row draws the handle itself, beside its menu button, and gives it this gesture.
-            CompositionLocalProvider(LocalDragHandle provides Modifier.draggableHandle()) {
-                row(item)
+    return remember(reorderableState) {
+        ReorderableRows(orderedRows, reorderableState) { movedKeys, landsBefore ->
+            val movedKeySet = movedKeys.toSet()
+            val rowsByKey = orderedRows.associateBy(key)
+            val moved = movedKeys.mapNotNull(rowsByKey::get)
+            val rest = orderedRows.filterNot { key(it) in movedKeySet }
+            val landing = landsBefore?.let { before -> rest.indexOfFirst { key(it) == before } }?.takeIf { it >= 0 } ?: rest.size
+            Snapshot.withMutableSnapshot {
+                orderedRows.clear()
+                orderedRows.addAll(rest.take(landing) + moved + rest.drop(landing))
             }
+            hasDropToWrite = true
+            togetherDrops++
         }
     }
 }
+
+/**
+ * [reorderableRows]' rows, each draggable by the handle its row draws - but for those [moving], left out while they
+ * move, with the gap they would land in among the rest.
+ */
+internal fun <T> LazyListScope.reorderableRows(
+    reorderableRows: ReorderableRows<T>,
+    key: (T) -> Any,
+    moving: MovingRows? = null,
+    row: @Composable (T) -> Unit,
+) {
+    val rows = moving?.let { reorderableRows.rows.filterNot { item -> key(item) in it.keys } } ?: reorderableRows.rows
+    val landing = moving?.landsBefore?.let { before -> rows.indexOfFirst { key(it) == before } }?.takeIf { it >= 0 } ?: rows.size
+    val rowItems: LazyListScope.(List<T>) -> Unit = { shown ->
+        // Each row animates itself - still while dragged, as the rest of a section moves otherwise.
+        withoutItemAnimation().items(
+            items = shown,
+            key = key,
+            contentType = { LIST_ROW_CONTENT_TYPE },
+        ) { item ->
+            ReorderableItem(state = reorderableRows.state, key = key(item), animateItemModifier = sectionItemAnimation()) {
+                // The row draws the handle itself, beside its menu button, and gives it this gesture.
+                CompositionLocalProvider(LocalDragHandle provides Modifier.draggableHandle()) {
+                    row(item)
+                }
+            }
+        }
+    }
+    if (moving == null) {
+        rowItems(rows)
+        return
+    }
+    // Split around the gap rather than told where it is, so the rows on either side keep their keys and glide around it.
+    rowItems(rows.subList(0, landing))
+    // Animated as the section animates its items, so it opens and closes as the rows glide around it.
+    item(key = MOVING_ROWS_GAP_KEY, contentType = MOVING_ROWS_GAP_KEY) {
+        Spacer(modifier = Modifier.fillMaxWidth().height(moving.gapHeight))
+    }
+    rowItems(rows.subList(landing, rows.size))
+}
+
+/** The key of the gap a moving selection would land in - see [MovingRows]. */
+private const val MOVING_ROWS_GAP_KEY = "moving-rows-gap"
 
 
 /**
@@ -646,6 +705,26 @@ internal fun TrackListDetail(
         }
     }
 
+    // Long pressing a selected track, where they can be put in a new order, picks the whole selection up to move it.
+    val dragSelection = rememberDragSelection(
+        selection = selection,
+        listState = headerState.listState,
+        orderedKeys = remember(draggableTracks) { draggableTracks.map { SelectionKey.Track(it.id) } },
+        onMoveSelection = reorderableRows?.let { rows ->
+            { keys, landsBefore ->
+                rows.moveTogether(keys.filterIsInstance<SelectionKey.Track>().map { it.trackId }, (landsBefore as SelectionKey.Track?)?.trackId)
+            }
+        },
+    )
+    val move = dragSelection.move
+    val movingRows = move?.let {
+        MovingRows(
+            keys = it.keys.filterIsInstance<SelectionKey.Track>().mapTo(HashSet()) { key -> key.trackId },
+            landsBefore = (it.landsBefore as SelectionKey.Track?)?.trackId,
+            gapHeight = with(LocalDensity.current) { it.rowHeightPx.toDp() },
+        )
+    }
+
     val collapse = remember(headerState, hasTracks) {
         TopBarCollapse(
             progress = { headerState.collapse },
@@ -685,206 +764,209 @@ internal fun TrackListDetail(
     }
 
     SelectionOptionsHost(selection) { openSelectionOptions ->
-        DetailScaffold(
-            state = headerState,
-            modifier = modifier,
-            bar = {
-                SonaTopAppBar(
-                    title = title,
-                    onNavigateBack = onBack,
-                    actions = buildList {
-                        if (collection == null) {
-                            add(
-                                TopBarAction(label = "Export", icon = Icons.Filled.FileUpload) {
-                                    exportLauncher.launch("$title.m3u")
-                                },
-                            )
-                        }
-                        collection?.let { target ->
-                            val disabledActions = target.disabledActions()
-                            target.actions(hasPrivateFolder, uncountedParents).forEach { action ->
+        Box(modifier = modifier) {
+            DetailScaffold(
+                state = headerState,
+                bar = {
+                    SonaTopAppBar(
+                        title = title,
+                        onNavigateBack = onBack,
+                        actions = buildList {
+                            if (collection == null) {
                                 add(
-                                    TopBarAction(label = action.label, icon = action.icon, enabled = action !in disabledActions) {
-                                        collectionActions.perform(target, action)
+                                    TopBarAction(label = "Export", icon = Icons.Filled.FileUpload) {
+                                        exportLauncher.launch("$title.m3u")
                                     },
                                 )
                             }
-                        }
-                    },
-                    search = searchQuery?.let { query ->
-                        TopBarSearch(
-                            query = query,
-                            onQueryChange = { searchQuery = it },
-                            onClose = { searchQuery = null },
-                        )
-                    },
-                    selection = selection.toLibraryTopBarSelection(
-                        listKeys = viewModel::selectableKeys,
-                        actions = listOfNotNull(
-                            removableList?.removeAction?.let { action ->
-                                TopBarAction(label = action.label, icon = action.icon) {
-                                    val tracksById = tracks.itemsOrEmpty.associateBy { it.id }
-                                    removingTracks = selection.selectedKeys.filterIsInstance<SelectionKey.Track>()
-                                        .mapNotNull { tracksById[it.trackId] }
+                            collection?.let { target ->
+                                val disabledActions = target.disabledActions()
+                                target.actions(hasPrivateFolder, uncountedParents).forEach { action ->
+                                    add(
+                                        TopBarAction(label = action.label, icon = action.icon, enabled = action !in disabledActions) {
+                                            collectionActions.perform(target, action)
+                                        },
+                                    )
                                 }
-                            },
+                            }
+                        },
+                        search = searchQuery?.let { query ->
+                            TopBarSearch(
+                                query = query,
+                                onQueryChange = { searchQuery = it },
+                                onClose = { searchQuery = null },
+                            )
+                        },
+                        selection = selection.toLibraryTopBarSelection(
+                            listKeys = viewModel::selectableKeys,
+                            actions = listOfNotNull(
+                                removableList?.removeAction?.let { action ->
+                                    TopBarAction(label = action.label, icon = action.icon) {
+                                        val tracksById = tracks.itemsOrEmpty.associateBy { it.id }
+                                        removingTracks = selection.selectedKeys.filterIsInstance<SelectionKey.Track>()
+                                            .mapNotNull { tracksById[it.trackId] }
+                                    }
+                                },
+                            ),
+                            onMoreOptions = openSelectionOptions,
                         ),
-                        onMoreOptions = openSelectionOptions,
-                    ),
-                    collapse = collapse,
-                )
-            },
-            header = {
-                DetailHeader(
-                    cover = header.cover,
-                    type = header.type,
-                    name = title,
-                    subhead = header.subhead,
-                    info = header.info,
-                    onPlay = { viewModel.onPlayAll(shuffled = false) },
-                    onShuffle = { viewModel.onPlayAll(shuffled = true) },
-                    playLabel = "Play",
-                    shuffleLabel = "Shuffle",
-                    isPlayable = hasTracks,
-                    favorite = favoriteItems?.let { items ->
-                        val isFavorite = favorites.containsAll(items)
-                        FavoriteToggle(isFavorite) { collectionActions.viewModel.setFavorite(items, !isFavorite) }
-                    },
-                )
-            },
-            isHeaderAside = searchQuery != null,
-            isReordering = { reorderableRows?.state?.isAnyItemDragging == true },
-            contentKey = sections to visibleTracks,
-            playingKey = { playback.currentTrack?.id },
-            isPlaying = { playback.isPlaying },
-            dragSelection = rememberDragSelection(
-                selection = selection,
-                listState = headerState.listState,
-                orderedKeys = remember(draggableTracks) { draggableTracks.map { SelectionKey.Track(it.id) } },
-            ),
-        ) {
-            if (searchQuery == null) {
-                sections.forEachIndexed { index, section ->
-                    section(
-                        key = "detail-${section.title}",
-                        title = section.title,
-                        state = sectionList,
-                        hasDividerAbove = index > 0,
-                    ) {
-                        when (section) {
-                            is DetailSection.Albums -> items(section.albums, key = { "album-${it.id}" }) { album ->
-                                CompositionLocalProvider(
-                                    LocalSwipeActions provides rememberOptionsSwipeActions(OptionsSwipe.QUEUE, collectionActions, OptionsTarget.ForAlbum(album)),
-                                ) {
-                                    AlbumRow(
-                                        album = album,
-                                        selection = null,
-                                        isCurrent = { playback.marks(album) },
-                                        isPlaying = { playback.isPlaying },
-                                        onClick = { navigator.go(AlbumDetailScreen(album.id)) },
-                                        onOpenOptions = { optionsTarget = OptionsTarget.ForAlbum(album) },
-                                        // Every album here is the artist's, so it is told apart by when it came out.
-                                        subtitle = album.year?.toString() ?: "No date",
-                                    )
-                                }
-                            }
-                            is DetailSection.Artists -> items(section.artists, key = { "artist-${it.id}" }) { artist ->
-                                CompositionLocalProvider(
-                                    LocalSwipeActions provides rememberOptionsSwipeActions(OptionsSwipe.QUEUE, collectionActions, OptionsTarget.ForArtist(artist)),
-                                ) {
-                                    ArtistRow(
-                                        artist = artist,
-                                        selection = null,
-                                        isCurrent = { playback.marks(artist) },
-                                        isPlaying = { playback.isPlaying },
-                                        onClick = { navigator.go(ArtistDetailScreen(artist.id)) },
-                                        onOpenOptions = { optionsTarget = OptionsTarget.ForArtist(artist) },
-                                    )
-                                }
-                            }
-                            is DetailSection.Genres -> items(section.genres, key = { "genre-${it.id}" }) { genre ->
-                                CompositionLocalProvider(
-                                    LocalSwipeActions provides rememberOptionsSwipeActions(OptionsSwipe.QUEUE, collectionActions, OptionsTarget.ForGenre(genre)),
-                                ) {
-                                    GenreRow(
-                                        genre = genre,
-                                        selection = null,
-                                        isCurrent = { playback.marks(genre) },
-                                        isPlaying = { playback.isPlaying },
-                                        onClick = { navigator.go(GenreDetailScreen(genre.id)) },
-                                        onOpenOptions = { optionsTarget = OptionsTarget.ForGenre(genre) },
-                                    )
-                                }
-                            }
-                            is DetailSection.Folders -> items(section.folders, key = { "folder-${it.isVideo}-${it.path}" }) { folder ->
-                                CompositionLocalProvider(
-                                    LocalSwipeActions provides rememberOptionsSwipeActions(OptionsSwipe.QUEUE, collectionActions, OptionsTarget.ForFolder(folder)),
-                                ) {
-                                    FolderRow(
-                                        folder = folder,
-                                        selection = null,
-                                        isCurrent = { playback.marks(folder) },
-                                        isPlaying = { playback.isPlaying },
-                                        onClick = { navigator.go(FolderDetailScreen(folder.path, folder.isVideo)) },
-                                        onOpenOptions = { optionsTarget = OptionsTarget.ForFolder(folder) },
-                                    )
-                                }
-                            }
-                            is DetailSection.Playlists -> items(section.playlists, key = { "playlist-${it.id}" }) { playlist ->
-                                CompositionLocalProvider(
-                                    LocalSwipeActions provides rememberOptionsSwipeActions(OptionsSwipe.QUEUE, collectionActions, OptionsTarget.ForPlaylist(playlist)),
-                                ) {
-                                    PlaylistRow(
-                                        playlist = playlist,
-                                        selection = null,
-                                        isCurrent = { playback.marks(playlist) },
-                                        isPlaying = { playback.isPlaying },
-                                        onClick = { navigator.go(PlaylistDetailScreen(playlist.id)) },
-                                        onOpenOptions = { optionsTarget = OptionsTarget.ForPlaylist(playlist) },
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            // What acts on the tracks sits on their heading: searching them and sorting them, as one group
-            // of buttons like any other. Search is inert while its field is open in the bar, so the row
-            // keeps its shape, and opens the tracks if they were folded away; only a list whose order is its
-            // content has no sort to offer.
-            section(
-                key = TRACKS_SECTION_KEY,
-                title = "Tracks",
-                state = sectionList,
-                actions = listOfNotNull(
-                    TopBarAction(label = "Search", icon = Icons.Filled.Search, enabled = searchQuery == null) {
-                        sectionList.expand(TRACKS_SECTION_KEY)
-                        searchQuery = ""
-                    },
-                    sort?.let { sortAction { isSortSheetOpen = true } },
-                ),
-                hasDividerAbove = searchQuery == null && sections.isNotEmpty(),
+                        collapse = collapse,
+                    )
+                },
+                header = {
+                    DetailHeader(
+                        cover = header.cover,
+                        type = header.type,
+                        name = title,
+                        subhead = header.subhead,
+                        info = header.info,
+                        onPlay = { viewModel.onPlayAll(shuffled = false) },
+                        onShuffle = { viewModel.onPlayAll(shuffled = true) },
+                        playLabel = "Play",
+                        shuffleLabel = "Shuffle",
+                        isPlayable = hasTracks,
+                        favorite = favoriteItems?.let { items ->
+                            val isFavorite = favorites.containsAll(items)
+                            FavoriteToggle(isFavorite) { collectionActions.viewModel.setFavorite(items, !isFavorite) }
+                        },
+                    )
+                },
+                isHeaderAside = searchQuery != null,
+                isReordering = { reorderableRows?.state?.isAnyItemDragging == true },
+                contentKey = sections to visibleTracks,
+                playingKey = { playback.currentTrack?.id },
+                isPlaying = { playback.isPlaying },
+                dragSelection = dragSelection,
             ) {
-                val rows = visibleTracks.itemsOrEmpty
-                when {
-                    visibleTracks is LibraryContent.Loading -> Unit
-                    rows.isEmpty() -> item(key = "empty-tracks") {
-                        SonaEmptyState(title = "No tracks found", message = emptyMessage)
-                    }
-                    reorderableRows != null -> reorderableRows(reorderableRows, { track -> track.id }, trackRow)
-                    // Auxio's discs: the sorted tracks grouped by disc, each disc where its first track fell.
-                    discs != null -> discs.entries.forEachIndexed { index, (disc, discTracks) ->
+                if (searchQuery == null) {
+                    sections.forEachIndexed { index, section ->
                         section(
-                            key = discSectionKey(disc),
-                            title = disc?.let { "Disc $it" } ?: "No disc",
+                            key = "detail-${section.title}",
+                            title = section.title,
                             state = sectionList,
                             hasDividerAbove = index > 0,
                         ) {
-                            items(discTracks, key = { it.id }, contentType = { LIST_ROW_CONTENT_TYPE }) { trackRow(it) }
+                            when (section) {
+                                is DetailSection.Albums -> items(section.albums, key = { "album-${it.id}" }) { album ->
+                                    CompositionLocalProvider(
+                                        LocalSwipeActions provides rememberOptionsSwipeActions(OptionsSwipe.QUEUE, collectionActions, OptionsTarget.ForAlbum(album)),
+                                    ) {
+                                        AlbumRow(
+                                            album = album,
+                                            selection = null,
+                                            isCurrent = { playback.marks(album) },
+                                            isPlaying = { playback.isPlaying },
+                                            onClick = { navigator.go(AlbumDetailScreen(album.id)) },
+                                            onOpenOptions = { optionsTarget = OptionsTarget.ForAlbum(album) },
+                                            // Every album here is the artist's, so it is told apart by when it came out.
+                                            subtitle = album.year?.toString() ?: "No date",
+                                        )
+                                    }
+                                }
+                                is DetailSection.Artists -> items(section.artists, key = { "artist-${it.id}" }) { artist ->
+                                    CompositionLocalProvider(
+                                        LocalSwipeActions provides rememberOptionsSwipeActions(OptionsSwipe.QUEUE, collectionActions, OptionsTarget.ForArtist(artist)),
+                                    ) {
+                                        ArtistRow(
+                                            artist = artist,
+                                            selection = null,
+                                            isCurrent = { playback.marks(artist) },
+                                            isPlaying = { playback.isPlaying },
+                                            onClick = { navigator.go(ArtistDetailScreen(artist.id)) },
+                                            onOpenOptions = { optionsTarget = OptionsTarget.ForArtist(artist) },
+                                        )
+                                    }
+                                }
+                                is DetailSection.Genres -> items(section.genres, key = { "genre-${it.id}" }) { genre ->
+                                    CompositionLocalProvider(
+                                        LocalSwipeActions provides rememberOptionsSwipeActions(OptionsSwipe.QUEUE, collectionActions, OptionsTarget.ForGenre(genre)),
+                                    ) {
+                                        GenreRow(
+                                            genre = genre,
+                                            selection = null,
+                                            isCurrent = { playback.marks(genre) },
+                                            isPlaying = { playback.isPlaying },
+                                            onClick = { navigator.go(GenreDetailScreen(genre.id)) },
+                                            onOpenOptions = { optionsTarget = OptionsTarget.ForGenre(genre) },
+                                        )
+                                    }
+                                }
+                                is DetailSection.Folders -> items(section.folders, key = { "folder-${it.isVideo}-${it.path}" }) { folder ->
+                                    CompositionLocalProvider(
+                                        LocalSwipeActions provides rememberOptionsSwipeActions(OptionsSwipe.QUEUE, collectionActions, OptionsTarget.ForFolder(folder)),
+                                    ) {
+                                        FolderRow(
+                                            folder = folder,
+                                            selection = null,
+                                            isCurrent = { playback.marks(folder) },
+                                            isPlaying = { playback.isPlaying },
+                                            onClick = { navigator.go(FolderDetailScreen(folder.path, folder.isVideo)) },
+                                            onOpenOptions = { optionsTarget = OptionsTarget.ForFolder(folder) },
+                                        )
+                                    }
+                                }
+                                is DetailSection.Playlists -> items(section.playlists, key = { "playlist-${it.id}" }) { playlist ->
+                                    CompositionLocalProvider(
+                                        LocalSwipeActions provides rememberOptionsSwipeActions(OptionsSwipe.QUEUE, collectionActions, OptionsTarget.ForPlaylist(playlist)),
+                                    ) {
+                                        PlaylistRow(
+                                            playlist = playlist,
+                                            selection = null,
+                                            isCurrent = { playback.marks(playlist) },
+                                            isPlaying = { playback.isPlaying },
+                                            onClick = { navigator.go(PlaylistDetailScreen(playlist.id)) },
+                                            onOpenOptions = { optionsTarget = OptionsTarget.ForPlaylist(playlist) },
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
-                    else -> items(rows, key = { it.id }, contentType = { LIST_ROW_CONTENT_TYPE }) { trackRow(it) }
                 }
+                // What acts on the tracks sits on their heading: searching them and sorting them, as one group
+                // of buttons like any other. Search is inert while its field is open in the bar, so the row
+                // keeps its shape, and opens the tracks if they were folded away; only a list whose order is its
+                // content has no sort to offer.
+                section(
+                    key = TRACKS_SECTION_KEY,
+                    title = "Tracks",
+                    state = sectionList,
+                    actions = listOfNotNull(
+                        TopBarAction(label = "Search", icon = Icons.Filled.Search, enabled = searchQuery == null) {
+                            sectionList.expand(TRACKS_SECTION_KEY)
+                            searchQuery = ""
+                        },
+                        sort?.let { sortAction { isSortSheetOpen = true } },
+                    ),
+                    hasDividerAbove = searchQuery == null && sections.isNotEmpty(),
+                ) {
+                    val rows = visibleTracks.itemsOrEmpty
+                    when {
+                        visibleTracks is LibraryContent.Loading -> Unit
+                        rows.isEmpty() -> item(key = "empty-tracks") {
+                            SonaEmptyState(title = "No tracks found", message = emptyMessage)
+                        }
+                        reorderableRows != null -> reorderableRows(reorderableRows, { track -> track.id }, movingRows, trackRow)
+                        // Auxio's discs: the sorted tracks grouped by disc, each disc where its first track fell.
+                        discs != null -> discs.entries.forEachIndexed { index, (disc, discTracks) ->
+                            section(
+                                key = discSectionKey(disc),
+                                title = disc?.let { "Disc $it" } ?: "No disc",
+                                state = sectionList,
+                                hasDividerAbove = index > 0,
+                            ) {
+                                items(discTracks, key = { it.id }, contentType = { LIST_ROW_CONTENT_TYPE }) { trackRow(it) }
+                            }
+                        }
+                        else -> items(rows, key = { it.id }, contentType = { LIST_ROW_CONTENT_TYPE }) { trackRow(it) }
+                    }
+                }
+            }
+            // The selection being moved, under the finger.
+            if (move != null) {
+                val tracksById = visibleTracks.itemsOrEmpty.associateBy { it.id }
+                val movingTracks = move.keys.filterIsInstance<SelectionKey.Track>().mapNotNull { tracksById[it.trackId] }
+                if (movingTracks.isNotEmpty()) MovingTracks(tracks = movingTracks, pointerInWindow = { move.pointerInWindow })
             }
         }
     }
