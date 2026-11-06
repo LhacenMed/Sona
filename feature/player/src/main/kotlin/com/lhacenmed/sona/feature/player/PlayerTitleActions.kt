@@ -2,6 +2,7 @@ package com.lhacenmed.sona.feature.player
 
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -19,6 +20,8 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.component.SonaMarquee
 import com.lhacenmed.sona.core.designsystem.component.copyToClipboard
 import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Track
@@ -76,11 +79,15 @@ internal fun rememberPlayerTitleActions(
 /** A credited artist's name, tappable but not styled as a link. */
 private val PlainArtistLink = TextLinkStyles(style = SpanStyle(textDecoration = TextDecoration.None))
 
+/** Kept after the names within the line: names that would end closer than this to its edge scroll instead. */
+private val ArtistLineEndGap = 12.dp
+
 /**
  * The artist line under a player's title, tapped to open the artist - ArchiveTune's `ClickableArtists`.
  *
  * A credit naming several [creditedArtists] opens whichever of them is tapped; anywhere else on the line, and
- * on a credit naming one, [onClick] opens the artist it names first.
+ * on a credit naming one, [onClick] opens the artist it names first. Too long for the line, it scrolls - each
+ * name tapped where it is as it goes, see [SonaMarquee].
  *
  * Clicked as the title is, so a long press answers with the same haptic. Each name reads as the rest of the line does.
  */
@@ -112,13 +119,7 @@ internal fun ClickableArtist(
             }
         }
     }
-    Text(
-        text = text,
-        style = style,
-        color = color,
-        textAlign = textAlign,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
+    SonaMarquee(
         modifier =
             modifier.combinedClickable(
                 indication = null,
@@ -126,5 +127,15 @@ internal fun ClickableArtist(
                 onClick = onClick,
                 onLongClick = onLongClick,
             ),
-    )
+    ) {
+        Text(
+            text = text,
+            style = style,
+            color = color,
+            textAlign = textAlign,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(end = ArtistLineEndGap),
+        )
+    }
 }

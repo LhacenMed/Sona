@@ -5,7 +5,6 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -28,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lhacenmed.sona.core.datastore.PlayerSliderStyle
+import com.lhacenmed.sona.core.designsystem.component.SonaMarquee
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
@@ -92,22 +92,23 @@ internal fun PlayerTitleSection(
         transitionSpec = { fadeIn() togetherWith fadeOut() },
         label = "",
     ) { title ->
-        PlayerTitleText(
-            title = title,
-            color = textBackgroundColor,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
+        SonaMarquee(
             modifier =
-                Modifier
-                    .basicMarquee()
-                    .combinedClickable(
-                        enabled = true,
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() },
-                        onClick = titleActions.onTitleClick,
-                        onLongClick = titleActions.onCopyTitle,
-                    ),
-        )
+                Modifier.combinedClickable(
+                    enabled = true,
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() },
+                    onClick = titleActions.onTitleClick,
+                    onLongClick = titleActions.onCopyTitle,
+                ),
+        ) {
+            PlayerTitleText(
+                title = title,
+                color = textBackgroundColor,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+            )
+        }
     }
 
     Spacer(Modifier.height(6.dp))
@@ -119,11 +120,7 @@ internal fun PlayerTitleSection(
         onCreditedArtistClick = titleActions.onArtistClick,
         style = MaterialTheme.typography.titleMedium.copy(color = textBackgroundColor, fontSize = 16.sp),
         onLongClick = titleActions.onCopyArtists,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .basicMarquee()
-                .padding(end = 12.dp),
+        modifier = Modifier.fillMaxWidth(),
     )
 }
 
