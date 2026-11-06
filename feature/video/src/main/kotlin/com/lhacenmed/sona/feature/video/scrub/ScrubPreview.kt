@@ -52,11 +52,13 @@ import com.lhacenmed.sona.feature.video.videoSafeArea
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.distinctUntilChanged
 
-/** The frames a scrub reaches, from a player of their own - see `VideoScrubPreviewPlayer`. */
+/**
+ * The frames a scrub reaches, from a player of their own - see `VideoScrubPreviewPlayer`. Started on a view, they show on it
+ * until it leaves the screen.
+ */
 internal class ScrubFrames(
     val onStart: (TextureView, positionMs: Long) -> Unit,
     val onMove: (positionMs: Long) -> Unit,
-    val onEnd: (TextureView) -> Unit,
 )
 
 /**
@@ -119,7 +121,6 @@ private fun PreviewPicture(scrub: VideoScrubState, frames: ScrubFrames, size: Dp
     AndroidView(
         // A texture rather than a surface: this one is clipped to its corners and fades with the preview.
         factory = { context -> TextureView(context).also { latestFrames.onStart(it, scrub.targetMs) } },
-        onRelease = { latestFrames.onEnd(it) },
         modifier = Modifier
             .size(size)
             .shadow(16.dp, shape)

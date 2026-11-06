@@ -183,9 +183,6 @@ class VideoPlayerViewModel @Inject constructor(
 
     fun onScrubPreviewMove(positionMs: Long) = videoPlayback.moveScrubPreview(positionMs)
 
-    /** Asked of the player whichever opening is playing: it lets go of this view alone, if it still shows on it. */
-    fun onScrubPreviewEnd(view: TextureView) = videoPlayback.stopScrubPreview(view)
-
     fun onSpeedChange(speed: Float) {
         video?.setPlaybackSpeed(speed)
     }

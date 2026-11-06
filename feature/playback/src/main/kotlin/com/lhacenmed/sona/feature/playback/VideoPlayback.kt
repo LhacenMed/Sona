@@ -17,7 +17,6 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.util.Util
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.session.MediaSession
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
@@ -44,9 +43,6 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
-/** A seek lands on a keyframe this close to where it was asked for, which shows at once; otherwise, this far short of it. */
-private const val SeekToleranceUs = 2_000_000L
 
 private const val FilesHolder = "video"
 
@@ -411,8 +407,6 @@ class VideoPlayback @Inject constructor(
 
     fun moveScrubPreview(positionMs: Long) = scrubPreview.moveTo(positionMs)
 
-    fun stopScrubPreview(view: TextureView) = scrubPreview.stop(view)
-
     /** Plays the video from its beginning, rather than from where it came back. */
     fun startOver() {
         if (!isOpen) return
@@ -508,6 +502,7 @@ class VideoPlayback @Inject constructor(
         resumedFromMs = null
         player.stop()
         player.clearMediaItems()
+        scrubPreview.clear()
         mediaSession?.release()
         mediaSession = null
         queue = emptyList()
@@ -577,7 +572,6 @@ class VideoPlayback @Inject constructor(
                 /* handleAudioFocus = */ true,
             )
             .setHandleAudioBecomingNoisy(true)
-            .setSeekParameters(SeekParameters(SeekToleranceUs, SeekToleranceUs))
             .build()
             .also { player ->
                 player.addListener(listener)

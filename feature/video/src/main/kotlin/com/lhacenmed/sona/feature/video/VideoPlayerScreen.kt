@@ -392,7 +392,7 @@ internal fun VideoPlayerScreen(
         ScrubPill(scrub, isVisible = scrub.isActive && !areControlsUp, playback.durationMs, Modifier.align(Alignment.TopCenter))
         ScrubPreview(
             scrub = scrub,
-            frames = remember(viewModel) { ScrubFrames(viewModel::onScrubPreviewStart, viewModel::onScrubPreviewMove, viewModel::onScrubPreviewEnd) },
+            frames = remember(viewModel) { ScrubFrames(viewModel::onScrubPreviewStart, viewModel::onScrubPreviewMove) },
             isVisible = scrub.isActive && areControlsUp,
             videoWidth = pictureSize[0],
             videoHeight = pictureSize[1],
