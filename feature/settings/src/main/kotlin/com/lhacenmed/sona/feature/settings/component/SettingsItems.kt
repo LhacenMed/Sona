@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -49,6 +50,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.lhacenmed.sona.core.designsystem.component.SonaIconButton
 import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 
 /*
@@ -57,6 +59,8 @@ import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
  * is, not [enabled], faded and inert, and comes back to life the moment it applies. A screen keeps one shape
  * whatever it is set to, so nothing jumps under the finger, and what a setting would unlock can be seen
  * before it is. Every row that can be pressed takes `enabled`, and every one shows it the same way.
+ *
+ * Every row can be arrived at by its title - a settings search's result opened - see [settingsScrollTarget].
  *
  * Every row below that holds a value holds it only until the screen is closed. The settings tree is
  * being laid out before any of it is connected to storage, and a control that cannot move reads as
@@ -79,7 +83,7 @@ fun SettingsNavigationItem(
         supportingContent = { Text(summary) },
         leadingContent = icon?.let { { SettingsLeadingIcon(rememberVectorPainter(it)) } },
         colors = settingsRowColors(enabled),
-        modifier = modifier.clickable(enabled = enabled, onClick = onClick),
+        modifier = modifier.settingsScrollTarget(title).clickable(enabled = enabled, onClick = onClick),
     )
 }
 
@@ -141,7 +145,7 @@ fun SettingsActionItem(
             null
         },
         colors = settingsRowColors(enabled),
-        modifier = modifier.clickable(enabled = enabled && !isBusy, onClick = onClick),
+        modifier = modifier.settingsScrollTarget(title).clickable(enabled = enabled && !isBusy, onClick = onClick),
     )
 }
 
@@ -173,7 +177,7 @@ fun SettingsLinkItem(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         },
-        modifier = modifier.clickable { runCatching { uriHandler.openUri(url) } },
+        modifier = modifier.settingsScrollTarget(title).clickable { runCatching { uriHandler.openUri(url) } },
     )
 }
 
@@ -194,6 +198,22 @@ fun SettingsAvatar(url: String?) {
     )
 }
 
+/** A past search of the settings: pressed, it is searched again; its button forgets it. */
+@Composable
+fun SettingsRecentSearchItem(
+    query: String,
+    onClick: () -> Unit,
+    onForget: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    ListItem(
+        headlineContent = { Text(query) },
+        leadingContent = { SettingsLeadingIcon(rememberVectorPainter(Icons.Filled.History)) },
+        trailingContent = { SonaIconButton(onClick = onForget, icon = Icons.Filled.Close, contentDescription = "Forget") },
+        modifier = modifier.clickable(onClick = onClick),
+    )
+}
+
 /** A row that only reports something - a version, a size, a total. Not a control, so not clickable. */
 @Composable
 fun SettingsInfoItem(
@@ -204,7 +224,7 @@ fun SettingsInfoItem(
     ListItem(
         headlineContent = { Text(title) },
         supportingContent = { Text(value) },
-        modifier = modifier,
+        modifier = modifier.settingsScrollTarget(title),
     )
 }
 
@@ -246,7 +266,7 @@ fun SettingsSwitchItem(
         colors = settingsRowColors(enabled),
         // The whole row, not just the switch: a settings row is one target, and hitting the text
         // expecting it to toggle is the commonest way to miss.
-        modifier = modifier.clickable(enabled = enabled) { onCheckedChange(!checked) },
+        modifier = modifier.settingsScrollTarget(title).clickable(enabled = enabled) { onCheckedChange(!checked) },
     )
 }
 
@@ -317,7 +337,7 @@ fun SettingsDownloadItem(
                 Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = isDownloaded)
             }
         },
-        modifier = modifier.clickable(onClick = action),
+        modifier = modifier.settingsScrollTarget(title).clickable(onClick = action),
     )
 }
 
@@ -369,7 +389,7 @@ fun SettingsChoiceItem(
         headlineContent = { Text(title) },
         supportingContent = { Text(if (selected == defaultIndex) settingsDefaultLabel() else options[selected]) },
         leadingContent = icon?.let { { SettingsLeadingIcon(rememberVectorPainter(it)) } },
-        modifier = modifier.clickable { isChoosing = true },
+        modifier = modifier.settingsScrollTarget(title).clickable { isChoosing = true },
     )
 
     if (isChoosing) {
@@ -413,7 +433,7 @@ fun SettingsChoiceItem(
             Text(summary ?: if (selectedIndex == defaultIndex) settingsDefaultLabel() else options[selectedIndex])
         },
         colors = settingsRowColors(enabled),
-        modifier = modifier.clickable(enabled = enabled) { isChoosing = true },
+        modifier = modifier.settingsScrollTarget(title).clickable(enabled = enabled) { isChoosing = true },
     )
 
     if (isChoosing) {
@@ -479,7 +499,7 @@ fun SettingsSliderItem(
     enabled: Boolean = true,
 ) {
     var draggedValue by remember(value) { mutableFloatStateOf(value) }
-    Column(modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+    Column(modifier = modifier.settingsScrollTarget(title).padding(horizontal = 16.dp, vertical = 8.dp)) {
         ListItem(
             headlineContent = { Text(title) },
             supportingContent = { Text(formatValue(draggedValue)) },
@@ -519,7 +539,7 @@ fun SettingsTextFieldItem(
         // The value when there is one, the explanation when there is not, so the row is never a
         // bare title with an empty line under it.
         supportingContent = { Text(value.ifEmpty { summary }) },
-        modifier = modifier.clickable { isEditing = true },
+        modifier = modifier.settingsScrollTarget(title).clickable { isEditing = true },
     )
 
     if (isEditing) {

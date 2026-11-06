@@ -20,11 +20,15 @@ internal val Context.lyricsDataStore by preferencesDataStore(name = "lyrics_sett
 internal val Context.updateDataStore by preferencesDataStore(name = "update_settings")
 internal val Context.effectDataStore by preferencesDataStore(name = "effect_settings")
 internal val Context.videoDataStore by preferencesDataStore(name = "video_settings")
-/** The scanner's bookkeeping rather than anything the user chose, so the one file a backup leaves out. */
+/** The scanner's bookkeeping rather than anything the user chose, so a file a backup leaves out. */
 internal val Context.scanDataStore by preferencesDataStore(name = "scan_state")
+/** What the settings were searched for - what the user did rather than chose, so a file a backup leaves out too. */
+internal val Context.settingsSearchHistoryDataStore by preferencesDataStore(name = "settings_search_history")
 
-/** Every settings file there is, by the name it is stored under - what a backup carries, and the one it leaves out. */
-internal fun Context.allSettingsFiles(): Map<String, DataStore<Preferences>> = backedUpSettingsFiles() + ("scan_state" to scanDataStore)
+/** Every settings file there is, by the name it is stored under - what a backup carries, and those it leaves out. */
+internal fun Context.allSettingsFiles(): Map<String, DataStore<Preferences>> = backedUpSettingsFiles() +
+    ("scan_state" to scanDataStore) +
+    ("settings_search_history" to settingsSearchHistoryDataStore)
 
 /** Every settings file a backup carries, by the name it is stored under. */
 internal fun Context.backedUpSettingsFiles(): Map<String, DataStore<Preferences>> = mapOf(

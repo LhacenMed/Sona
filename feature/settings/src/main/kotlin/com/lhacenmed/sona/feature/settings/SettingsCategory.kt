@@ -61,7 +61,7 @@ enum class SettingsCategory(
         titleRes = R.string.playback_title,
         summaryRes = R.string.playback_summary,
         icon = Icons.Filled.MusicNote,
-        screen = PlaybackScreen(),
+        screen = PlaybackScreen,
     ),
     Video(
         group = SettingsGroup.LibraryAndPlayback,

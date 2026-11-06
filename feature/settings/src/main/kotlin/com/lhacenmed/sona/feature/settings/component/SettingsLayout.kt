@@ -60,13 +60,19 @@ private class SettingsScrollTarget(val key: Any) {
 private val LocalSettingsScrollTarget = staticCompositionLocalOf<SettingsScrollTarget?> { null }
 
 /**
+ * The title of the row a settings screen was opened at, from a search - what its [SettingsList] opens scrolled to
+ * where the screen asks for no row of its own. Every row is marked by its title - see [settingsScrollTarget].
+ */
+val LocalSettingsArrival = staticCompositionLocalOf<String?> { null }
+
+/**
  * The body every settings screen has: its rows, in order, scrolling as one.
  *
  * A plain scrolling [Column] rather than a `LazyColumn` - a settings screen's rows are a fixed,
  * short, hand-written list, and a lazy container would allocate scroll state and defer composition
  * for rows that are all going to exist anyway.
  *
- * Given [scrollTo], it opens scrolled to the row marked with that key - see [settingsScrollTarget]: once
+ * Opened at one of its rows - [LocalSettingsArrival] - it opens scrolled to that row - see [settingsScrollTarget]: once
  * the screen has come in, it glides there, bringing the row to the middle, and the row ripples as if
  * pressed so the eye lands on it. Touches are kept from the screen until it arrives, so a stray one
  * cannot stop it short. Once only: a screen recreated after it arrived stays where it is.
@@ -77,13 +83,13 @@ private val LocalSettingsScrollTarget = staticCompositionLocalOf<SettingsScrollT
  */
 @Composable
 fun SettingsList(
-    scrollTo: Any? = null,
     onPrivateFolderRevealed: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scrollState = rememberScrollState()
-    val target = remember(scrollTo) { scrollTo?.let(::SettingsScrollTarget) }
-    var hasArrived by rememberSaveable { mutableStateOf(scrollTo == null) }
+    val arrivesAt = LocalSettingsArrival.current
+    val target = remember(arrivesAt) { arrivesAt?.let(::SettingsScrollTarget) }
+    var hasArrived by rememberSaveable { mutableStateOf(arrivesAt == null) }
     val overscroll = rememberRubberBandOverscroll()
 
     Box(modifier = Modifier.fillMaxSize().clipToBounds()) {

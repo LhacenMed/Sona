@@ -85,7 +85,7 @@ data object PermissionsScreen : Screen {
     }
 }
 
-private val AppPermission.titleRes: Int
+internal val AppPermission.titleRes: Int
     get() = when (this) {
         AppPermission.AUDIO_LIBRARY -> R.string.permission_audio_library_title
         AppPermission.VIDEO_LIBRARY -> R.string.permission_video_library_title
@@ -94,7 +94,7 @@ private val AppPermission.titleRes: Int
         AppPermission.APP_INSTALLS -> R.string.permission_app_installs_title
     }
 
-private val AppPermission.purposeRes: Int
+internal val AppPermission.purposeRes: Int
     get() = when (this) {
         AppPermission.AUDIO_LIBRARY -> R.string.permission_audio_library_purpose
         AppPermission.VIDEO_LIBRARY -> R.string.permission_video_library_purpose

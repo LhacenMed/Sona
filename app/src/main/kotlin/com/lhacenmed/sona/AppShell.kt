@@ -15,9 +15,8 @@ import com.lhacenmed.sona.core.designsystem.component.fab.FloatingActionButtonSt
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.PlayerOverlay
 import com.lhacenmed.sona.feature.library.LibraryPagerScreen
+import com.lhacenmed.sona.feature.settings.QuickPlaySourceSetting
 import com.lhacenmed.sona.feature.settings.SettingsScreen
-import com.lhacenmed.sona.feature.settings.screen.PlaybackScreen
-import com.lhacenmed.sona.feature.settings.screen.PlaybackSetting
 
 /** [playingTab] opens the library on the tab the queue plays from, at its playing row, the full player over it. */
 @Composable
@@ -45,7 +44,7 @@ fun AppShell(playerOverlay: PlayerOverlay, playingTab: LibraryTab?, modifier: Mo
                 // inset, so letting the Scaffold add it too would pad the screen twice.
                 Scaffold(modifier = modifier, contentWindowInsets = WindowInsets(0, 0, 0, 0)) { innerPadding ->
                     LibraryPagerScreen(
-                        onChooseQuickPlaySource = { navigator.go(PlaybackScreen(scrollTo = PlaybackSetting.QUICK_PLAY_SOURCE)) },
+                        onChooseQuickPlaySource = { navigator.go(QuickPlaySourceSetting) },
                         modifier = Modifier.padding(innerPadding),
                         actions = libraryActions,
                         playingTab = playingTab,

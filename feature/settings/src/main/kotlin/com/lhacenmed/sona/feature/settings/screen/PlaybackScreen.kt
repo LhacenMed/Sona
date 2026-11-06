@@ -25,20 +25,12 @@ import com.lhacenmed.sona.feature.settings.component.SettingsSection
 import com.lhacenmed.sona.feature.settings.component.SettingsSectionDivider
 import com.lhacenmed.sona.feature.settings.component.SettingsSliderItem
 import com.lhacenmed.sona.feature.settings.component.SettingsSwitchItem
-import com.lhacenmed.sona.feature.settings.component.settingsScrollTarget
-
-/** A row [PlaybackScreen] can be opened scrolled to. */
-enum class PlaybackSetting {
-    /** What quick play plays - where the library's quick play button sends its Other. */
-    QUICK_PLAY_SOURCE,
-}
 
 /**
  * How playback behaves: its controls, the queue, shuffle and quick play, how tracks join onto each other,
- * how loud they come out, and what headphones do - opened scrolled to [scrollTo], when given, as
- * [SettingsList] does.
+ * how loud they come out, and what headphones do.
  */
-data class PlaybackScreen(val scrollTo: PlaybackSetting? = null) : Screen {
+data object PlaybackScreen : Screen {
     override val titleRes: Int get() = R.string.playback_title
 
     @Composable
@@ -61,7 +53,7 @@ data class PlaybackScreen(val scrollTo: PlaybackSetting? = null) : Screen {
         val quickPlaySource by viewModel.quickPlaySource.collectAsStateWithLifecycle()
         val navigator = LocalNavigator.current
 
-        SettingsList(scrollTo = scrollTo) {
+        SettingsList {
             SettingsSection(stringResource(R.string.playback_controls_section)) {
                 SettingsSwitchItem(
                     title = stringResource(R.string.rewind_before_skip_title),
@@ -173,7 +165,6 @@ data class PlaybackScreen(val scrollTo: PlaybackSetting? = null) : Screen {
                     onSelect = { viewModel.setQuickPlayMode(QuickPlayMode.entries[it]) },
                 )
                 QuickPlaySourceItem(
-                    modifier = Modifier.settingsScrollTarget(PlaybackSetting.QUICK_PLAY_SOURCE),
                     source = quickPlaySource,
                     onChoose = viewModel::chooseQuickPlaySource,
                     onChooseKind = { kind -> navigator.go(QuickPlaySourcePickerScreen(kind)) },
