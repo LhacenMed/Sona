@@ -18,6 +18,7 @@ import com.lhacenmed.sona.core.database.dao.ArtistDao
 import com.lhacenmed.sona.core.database.dao.FavoriteCollectionDao
 import com.lhacenmed.sona.core.database.FAVORITES_PLAYLIST_ID
 import com.lhacenmed.sona.core.database.dao.GenreDao
+import com.lhacenmed.sona.core.database.dao.MostPlayedCount
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.PlaylistDao
 import com.lhacenmed.sona.core.database.dao.ResumePositionDao
@@ -29,6 +30,7 @@ import com.lhacenmed.sona.core.database.entity.TrackEntity
 import com.lhacenmed.sona.core.database.dao.TrackDao
 import com.lhacenmed.sona.core.database.entity.toDomain
 import com.lhacenmed.sona.core.datastore.LibrarySettings
+import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Folder
@@ -101,6 +103,7 @@ class LibraryRepository @Inject constructor(
     private val playlistCoverImages: PlaylistCoverImages,
     private val sortOrders: LibrarySortOrders,
     librarySettings: LibrarySettings,
+    private val playbackSettings: PlaybackSettings,
     @ApplicationScope private val scope: CoroutineScope,
     @DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher,
 ) {
@@ -127,6 +130,12 @@ class LibraryRepository @Inject constructor(
     val videos: StateFlow<LibraryContent<Track>> = trackDao.observeAll(isVideo = true)
         .sortedFor(LibrarySortSpecs.videos) { rows -> rows.map { it.toDomain() } }
         .shareContent()
+
+    /**
+     * The library tab [track] is listed on - the music or the videos - whole, as it is sorted: what it plays among, played
+     * from that tab, wherever on it the user found it - a search's results included, which only point it out.
+     */
+    fun tabTracksOf(track: Track): List<Track> = (if (track.isVideo) videos else tracks).value.itemsOrEmpty
 
     /** Where each video part-way through was left, by its id - what its row's progress line shows. */
     val resumePositionsMs: StateFlow<Map<Long, Long>> = resumePositionDao.observeAll()
@@ -305,6 +314,7 @@ class LibraryRepository @Inject constructor(
                     name = row.name,
                     isBuiltIn = row.isBuiltIn,
                     trackCount = row.trackCount,
+                    videoCount = row.videoCount,
                     cover = cover,
                     coverArtUris = cover.coverArtUris(
                         stackedCoverArtUris = rankedCoverArtUris(
@@ -319,8 +329,18 @@ class LibraryRepository @Inject constructor(
         .shareContent()
 
     /** How many tracks Most played would show - its row's subtitle, and whether it is listed at all. */
-    val mostPlayedCount: StateFlow<Int> = playStatsDao.observeMostPlayedCount()
-        .stateIn(scope, SharingStarted.Eagerly, 0)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val mostPlayedCount: StateFlow<MostPlayedCount> = playbackSettings.countsVideosInMostPlayed.flow
+        .flatMapLatest(playStatsDao::observeMostPlayedCount)
+        .stateIn(scope, SharingStarted.Eagerly, MostPlayedCount(trackCount = 0, videoCount = 0))
+
+    /** The music and the videos - every track, as the playlists that may hold either are matched against. */
+    val allTracks: List<Track>
+        get() = (tracks.value + videos.value).itemsOrEmpty
+
+    /** [folders] then [videoFolders] - as the Folders tab lists them, each kind under its own heading. */
+    val allFolders: StateFlow<LibraryContent<Folder>> = combine(folders, videoFolders, LibraryContent<Folder>::plus)
+        .stateIn(scope, SharingStarted.Eagerly, folders.value + videoFolders.value)
 
     /**
      * A playlist's tracks, in the order they are sorted - the ones added last first, by default.
@@ -453,8 +473,10 @@ class LibraryRepository @Inject constructor(
             LibraryContent.Ready(entities.map { it.toDomain() })
         }
 
+    /** Videos among them as [PlaybackSettings.countsVideosInMostPlayed] has it. */
+    @OptIn(ExperimentalCoroutinesApi::class)
     fun mostPlayedTracks(): Flow<LibraryContent<Track>> =
-        playStatsDao.observeMostPlayed().map { entities ->
+        playbackSettings.countsVideosInMostPlayed.flow.flatMapLatest(playStatsDao::observeMostPlayed).map { entities ->
             LibraryContent.Ready(entities.map { it.toDomain() })
         }
 

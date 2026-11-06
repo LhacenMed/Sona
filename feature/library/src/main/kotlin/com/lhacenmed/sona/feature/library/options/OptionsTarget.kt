@@ -2,6 +2,7 @@ package com.lhacenmed.sona.feature.library.options
 
 import com.lhacenmed.sona.core.common.format.formatDuration
 import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
+import com.lhacenmed.sona.core.designsystem.component.videoFacts
 import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Folder
@@ -11,6 +12,7 @@ import com.lhacenmed.sona.core.model.playbackParent
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.library.itemCountLabel
+import com.lhacenmed.sona.feature.library.mediaCountLabel
 import com.lhacenmed.sona.feature.library.options.OptionsAction.ADD_COLLECTIONS
 import com.lhacenmed.sona.feature.library.options.OptionsAction.ADD_TO_PRIVATE
 import com.lhacenmed.sona.feature.library.options.OptionsAction.ADD_TRACKS
@@ -114,6 +116,11 @@ private val ArtistActions = listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE
 private val GenreActions = listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, AUTO_TAG, EXPORT, DELETE_FROM_DEVICE)
 private val PlaylistActions =
     listOf(PLAY, SHUFFLE, VIEW_DETAILS, PLAY_NEXT, QUEUE_ADD, ADD_TRACKS, ADD_COLLECTIONS, EDIT, IMPORT, EXPORT, DELETE)
+/**
+ * What a video offers, wherever it was opened from: it is on no album and credited to no artist of the library's, and -
+ * played for its sound, seldom a song - has no tags to edit.
+ */
+private val VideoActions = listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, SONG_PROPERTIES, SHARE)
 private val FolderActions =
     listOf(PLAY, SHUFFLE, VIEW_DETAILS, BROWSE_FOLDER, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, AUTO_TAG, EXPORT, EXCLUDE, DELETE_FROM_DEVICE)
 
@@ -147,13 +154,17 @@ fun OptionsTarget.actions(hasPrivateFolder: Boolean, uncountedParents: Set<Playb
     }
 
 private fun OptionsTarget.collectionActions(hasPrivateFolder: Boolean): List<OptionsAction> = when (this) {
-    is OptionsTarget.ForTrack -> when (context) {
-        TrackOptionsContext.LIST ->
-            listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ARTIST_DETAILS, ALBUM_DETAILS, SONG_PROPERTIES, EDIT_TAGS, SHARE)
-        TrackOptionsContext.FROM_ALBUM ->
-            listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ARTIST_DETAILS, SONG_PROPERTIES, EDIT_TAGS, SHARE)
-        TrackOptionsContext.FROM_ARTIST ->
-            listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ALBUM_DETAILS, SONG_PROPERTIES, EDIT_TAGS, SHARE)
+    is OptionsTarget.ForTrack -> if (track.isVideo) {
+        VideoActions
+    } else {
+        when (context) {
+            TrackOptionsContext.LIST ->
+                listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ARTIST_DETAILS, ALBUM_DETAILS, SONG_PROPERTIES, EDIT_TAGS, SHARE)
+            TrackOptionsContext.FROM_ALBUM ->
+                listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ARTIST_DETAILS, SONG_PROPERTIES, EDIT_TAGS, SHARE)
+            TrackOptionsContext.FROM_ARTIST ->
+                listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ALBUM_DETAILS, SONG_PROPERTIES, EDIT_TAGS, SHARE)
+        }
     } + listOfNotNull(removableFrom?.removeAction, ADD_TO_PRIVATE.takeIf { hasPrivateFolder }, DELETE_FROM_DEVICE)
 
     is OptionsTarget.ForAlbum -> when (context) {
@@ -207,17 +218,17 @@ fun OptionsTarget.disabledActions(): Set<OptionsAction> = when (this) {
 
     // Videos are played for their sound, and are seldom songs to have tags found for.
     is OptionsTarget.ForFolder -> if (folder.isVideo) setOf(AUTO_TAG) else emptySet()
+    is OptionsTarget.ForSelection -> if (tracks.all { it.isVideo }) setOf(AUTO_TAG) else emptySet()
 
     is OptionsTarget.ForTrack,
     is OptionsTarget.ForAlbum,
     is OptionsTarget.ForGenre,
-    is OptionsTarget.ForSelection,
     -> emptySet()
 }
 
 /** What kind of thing the sheet is showing options for - Auxio's `lbl_song`/`lbl_album`/etc, over the name. */
 fun OptionsTarget.typeLabel(): String = when (this) {
-    is OptionsTarget.ForTrack -> "Track"
+    is OptionsTarget.ForTrack -> if (track.isVideo) "Video" else "Track"
     is OptionsTarget.ForAlbum -> "Album"
     is OptionsTarget.ForArtist -> "Artist"
     is OptionsTarget.ForGenre -> "Genre"
@@ -234,18 +245,18 @@ fun OptionsTarget.name(): String = when (this) {
     is OptionsTarget.ForGenre -> genre.name
     is OptionsTarget.ForPlaylist -> playlist.name
     is OptionsTarget.ForFolder -> folder.name
-    is OptionsTarget.ForSelection -> pluralCount(tracks.size, "track")
+    is OptionsTarget.ForSelection -> mediaCountLabel(tracks)
 }
 
 /** The line under the name - Auxio's `menuInfo`. */
 fun OptionsTarget.infoLine(): String = when (this) {
-    is OptionsTarget.ForTrack -> track.artist
+    is OptionsTarget.ForTrack -> if (track.isVideo) track.videoFacts() else track.artist
     is OptionsTarget.ForAlbum -> album.artistName
     is OptionsTarget.ForArtist ->
         albumCountLabel(artist.albumCount) + InfoSeparator + trackCountLabel(artist.trackCount)
     is OptionsTarget.ForGenre ->
         artistCountLabel(genre.artistCount) + InfoSeparator + trackCountLabel(genre.trackCount)
-    is OptionsTarget.ForPlaylist -> trackCountLabel(playlist.trackCount)
+    is OptionsTarget.ForPlaylist -> mediaCountLabel(playlist.trackCount, playlist.videoCount)
     is OptionsTarget.ForFolder -> folder.itemCountLabel()
     is OptionsTarget.ForSelection -> formatDuration(tracks.sumOf { it.durationMs })
 }

@@ -261,6 +261,14 @@ class PlaybackController @Inject constructor(
     }
 
     /**
+     * Goes on with [track], chosen again from the list it is already playing from: a video playing as audio is watched
+     * again, in the video player - see [watchCurrent] - and music pauses or resumes.
+     */
+    fun reselect(track: Track) {
+        if (track.isVideo) watchCurrent() else togglePlayPause()
+    }
+
+    /**
      * Has the video playing as audio watched, from where it is, with the videos of its queue - this queue waiting, paused,
      * and carrying on from wherever the video is left.
      */

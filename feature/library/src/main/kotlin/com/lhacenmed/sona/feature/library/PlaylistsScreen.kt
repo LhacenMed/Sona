@@ -111,7 +111,7 @@ data object PlaylistsScreen : Screen {
         // Most played is a row here rather than a playlist, so it is matched on its own title -
         // otherwise typing "most" would hide the very row it names.
         val visiblePlaylists = playlists.filterItems { !it.isBuiltIn }.searchedFor(searchQuery) { listOf(it.name) }
-        val showsMostPlayed = mostPlayedCount > 0 && matchesSearch(searchQuery, MOST_PLAYED_TITLE)
+        val showsMostPlayed = mostPlayedCount.trackCount > 0 && matchesSearch(searchQuery, MOST_PLAYED_TITLE)
         val rows: LibraryContent<PlaylistsRow> = when (visiblePlaylists) {
             is LibraryContent.Loading -> LibraryContent.Loading
             is LibraryContent.Ready -> LibraryContent.Ready(
@@ -234,7 +234,8 @@ data object PlaylistsScreen : Screen {
                                         when (row) {
                                             PlaylistsRow.MostPlayed -> TrackCollectionRow(
                                                 title = MOST_PLAYED_TITLE,
-                                                trackCount = mostPlayedCount,
+                                                trackCount = mostPlayedCount.trackCount,
+                                                videoCount = mostPlayedCount.videoCount,
                                                 coverArtUris = mostPlayedCoverArtUris,
                                                 isCurrent = { playback.marks(row) },
                                                 isPlaying = { playback.isPlaying },

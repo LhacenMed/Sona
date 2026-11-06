@@ -48,6 +48,7 @@ data class PlaybackScreen(val scrollTo: PlaybackSetting? = null) : Screen {
         val viewModel: PlaybackSettingsViewModel = hiltViewModel()
         val rewindBeforeSkipBack by viewModel.rewindBeforeSkipBack.collectAsStateWithLifecycle()
         val exitsOnClose by viewModel.exitsOnClose.collectAsStateWithLifecycle()
+        val countsVideosInMostPlayed by viewModel.countsVideosInMostPlayed.collectAsStateWithLifecycle()
         val rememberPause by viewModel.rememberPause.collectAsStateWithLifecycle()
         val headsetAutoplay by viewModel.headsetAutoplay.collectAsStateWithLifecycle()
         val stopAfterCurrentEnabled by viewModel.stopAfterCurrentEnabled.collectAsStateWithLifecycle()
@@ -123,6 +124,12 @@ data class PlaybackScreen(val scrollTo: PlaybackSetting? = null) : Screen {
                     title = stringResource(R.string.uncounted_collections_title),
                     summary = stringResource(R.string.uncounted_collections_summary),
                     onClick = { navigator.go(UncountedCollectionsScreen) },
+                )
+                SettingsSwitchItem(
+                    title = stringResource(R.string.counts_videos_in_most_played_title),
+                    summary = stringResource(R.string.counts_videos_in_most_played_summary),
+                    checked = countsVideosInMostPlayed,
+                    onCheckedChange = viewModel::setCountsVideosInMostPlayed,
                 )
             }
 

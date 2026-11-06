@@ -543,13 +543,9 @@ internal class DetailHeaderContent(
     val cover: @Composable () -> Unit,
 )
 
-/** "12 tracks • 45:12" - a list's track count and how long it all plays for. */
+/** "12 tracks • 3 videos • 45:12" - a list's count, as [mediaCountLabel] words it, and how long it all plays for. */
 internal fun trackCountAndDuration(tracks: List<Track>): String =
-    listOf(trackCountLabel(tracks.size), formatDuration(tracks.sumOf { it.durationMs })).joinToString(InfoSeparator)
-
-/** [trackCountAndDuration] for a list of videos. */
-internal fun videoCountAndDuration(videos: List<Track>): String =
-    listOf(pluralCount(videos.size, "video"), formatDuration(videos.sumOf { it.durationMs })).joinToString(InfoSeparator)
+    listOf(mediaCountLabel(tracks), formatDuration(tracks.sumOf { it.durationMs })).joinToString(InfoSeparator)
 
 /**
  * The whole body of a detail screen: a header that collapses into the bar, then the collection's

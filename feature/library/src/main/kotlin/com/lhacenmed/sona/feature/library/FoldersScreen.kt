@@ -39,8 +39,7 @@ fun FoldersScreen(
         isScanning = isScanning,
         emptyTitle = "No folders found",
         emptyMessage = searchEmptyMessage(searchQuery),
-        // One path can hold music and videos alike, and is then listed once in each section.
-        key = { folder -> if (folder.isVideo) "video:${folder.path}" else folder.path },
+        key = { it.rowKey },
         loadingIcon = SonaIcons.Folder,
         sectionOf = folderSections,
         isCurrent = { playback.marks(it) },

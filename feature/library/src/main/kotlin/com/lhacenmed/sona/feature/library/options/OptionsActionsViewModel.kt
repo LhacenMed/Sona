@@ -249,7 +249,7 @@ class OptionsActionsViewModel @Inject constructor(
      */
     fun importIntoPlaylist(playlistId: Long, openStream: () -> InputStream?, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
-            val trackIds = readPlaylistFile(openStream, repository.tracks.value.itemsOrEmpty).entries.map { it.track.id }
+            val trackIds = readPlaylistFile(openStream, repository.allTracks).entries.map { it.track.id }
             if (trackIds.isNotEmpty()) repository.addTracksToPlaylist(playlistId, trackIds)
             onResult(trackIds.isNotEmpty())
         }

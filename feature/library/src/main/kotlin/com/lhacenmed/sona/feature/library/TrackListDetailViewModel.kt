@@ -64,7 +64,7 @@ abstract class TrackListDetailViewModel(
      */
     fun onTrackClick(track: Track) {
         if (playback.value.isReselection(track, playbackParent)) {
-            if (track.isVideo) playbackController.watchCurrent() else playbackController.togglePlayPause()
+            playbackController.reselect(track)
             return
         }
         val all = tracks.value.itemsOrEmpty

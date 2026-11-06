@@ -26,6 +26,7 @@ private val REPEAT_MODE = stringPreferencesKey("repeat_mode")
 private val STOP_AFTER_CURRENT_ENABLED = booleanPreferencesKey("stop_after_current_enabled")
 private val PLAYBACK_PARENT = stringPreferencesKey("playback_parent")
 private val UNCOUNTED_PARENTS = stringSetPreferencesKey("uncounted_parents")
+private val COUNTS_VIDEOS_IN_MOST_PLAYED = booleanPreferencesKey("counts_videos_in_most_played")
 
 /**
  * Audio-playback behavior settings (ported from Auxio's `PlaybackSettings`) plus restart-only
@@ -123,6 +124,16 @@ class PlaybackSettings @Inject constructor(
             val stored = it[UNCOUNTED_PARENTS].orEmpty()
             it[UNCOUNTED_PARENTS] = if (counted) stored - keys else stored + keys
         }
+    }
+
+    /**
+     * Whether Most played lists videos beside the music. Off, it leaves them out - their plays still counted, so they
+     * are back where they were once it is on again.
+     */
+    val countsVideosInMostPlayed: Setting<Boolean> = cache.setting { it[COUNTS_VIDEOS_IN_MOST_PLAYED] ?: true }
+
+    suspend fun setCountsVideosInMostPlayed(enabled: Boolean) {
+        dataStore.edit { it[COUNTS_VIDEOS_IN_MOST_PLAYED] = enabled }
     }
 
     val repeatMode: Setting<RepeatMode> = cache.setting { it.readRepeatMode() }

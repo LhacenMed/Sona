@@ -7,7 +7,6 @@ import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.itemsOrEmpty
-import com.lhacenmed.sona.core.data.plus
 import com.lhacenmed.sona.core.data.quickplay.QuickPlay
 import com.lhacenmed.sona.core.data.quickplay.QuickPlaySourceRepository
 import com.lhacenmed.sona.core.data.search.SearchIndex
@@ -150,10 +149,7 @@ class LibraryViewModel @Inject constructor(
     val genres: StateFlow<LibraryContent<Genre>> =
         repository.genres.narrowedBySearch { listOf(it.name) }
     /** The Folders tab: the folders of music, then those of videos, each kind a section of its own. */
-    val folders: StateFlow<LibraryContent<Folder>> =
-        combine(repository.folders, repository.videoFolders, LibraryContent<Folder>::plus)
-            .stateIn(viewModelScope, SharingStarted.Eagerly, repository.folders.value + repository.videoFolders.value)
-            .narrowedBySearch { listOf(it.name) }
+    val folders: StateFlow<LibraryContent<Folder>> = repository.allFolders.narrowedBySearch { listOf(it.name) }
     val videos: StateFlow<LibraryContent<Track>> =
         repository.videos.narrowedBySearch { listOf(it.title, it.artist, it.album) }
 
@@ -285,15 +281,18 @@ class LibraryViewModel @Inject constructor(
         mediaScanner.requestScan()
     }
 
-    /** Starts playback of the whole tracks tab, beginning at [track] - see [play]. */
+    /** Starts playback of the whole tracks tab, beginning at [track] - searched or not: see [tabTracksOf]. */
     fun onTrackClick(track: Track) {
-        play(track, tracks.value.itemsOrEmpty, parent = null)
+        play(track, tabTracksOf(track), parent = null)
     }
 
-    /** Starts playback of the whole Videos tab, beginning at [video] - see [play]. */
+    /** Starts playback of the whole Videos tab, beginning at [video] - searched or not: see [tabTracksOf]. */
     fun onVideoClick(video: Track) {
-        play(video, videos.value.itemsOrEmpty, PlaybackParent.Videos)
+        play(video, tabTracksOf(video), PlaybackParent.Videos)
     }
+
+    /** The whole tab [track] is on, which it plays among - see [LibraryRepository.tabTracksOf]. */
+    fun tabTracksOf(track: Track): List<Track> = repository.tabTracksOf(track)
 
     /**
      * Plays [list] - a tab's rows, as [parent] - beginning at [track]. The index is resolved here rather
@@ -305,7 +304,7 @@ class LibraryViewModel @Inject constructor(
      */
     private fun play(track: Track, list: List<Track>, parent: PlaybackParent?) {
         if (playback.value.isReselection(track, listParent = parent)) {
-            if (track.isVideo) playbackController.watchCurrent() else playbackController.togglePlayPause()
+            playbackController.reselect(track)
             return
         }
         val index = list.indexOfFirst { it.id == track.id }

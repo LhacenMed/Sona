@@ -29,7 +29,7 @@ data class FolderDetailScreen(val folderPath: String, val isVideo: Boolean) : Sc
             header = DetailHeaderContent(
                 type = "Folder",
                 subhead = folderPath,
-                info = if (isVideo) videoCountAndDuration(tracks.itemsOrEmpty) else trackCountAndDuration(tracks.itemsOrEmpty),
+                info = trackCountAndDuration(tracks.itemsOrEmpty),
                 cover = {
                     SonaFolderCover(
                         coverArtUris = folder?.coverArtUris.orEmpty(),

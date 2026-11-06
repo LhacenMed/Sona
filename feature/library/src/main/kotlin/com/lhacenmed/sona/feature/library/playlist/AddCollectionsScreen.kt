@@ -42,6 +42,7 @@ import com.lhacenmed.sona.feature.library.LibraryPlayback
 import com.lhacenmed.sona.feature.library.PlaylistDetailScreen
 import com.lhacenmed.sona.feature.library.PlaylistRow
 import com.lhacenmed.sona.feature.library.filterItems
+import com.lhacenmed.sona.feature.library.rowKey
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
 import com.lhacenmed.sona.feature.library.searchEmptyMessage
@@ -206,7 +207,7 @@ private fun CollectionPage(
             )
         }
 
-        CollectionTab.FOLDERS -> PickerList(visible.folders, selection, "No folders found", emptyMessage, key = { it.path }, visible.folderSections, isCurrent = { playback().marks(it) }, isPlaying = { playback().isPlaying }) { folder ->
+        CollectionTab.FOLDERS -> PickerList(visible.folders, selection, "No folders found", emptyMessage, key = { it.rowKey }, visible.folderSections, isCurrent = { playback().marks(it) }, isPlaying = { playback().isPlaying }) { folder ->
             FolderRow(
                 folder = folder,
                 selection = selection,

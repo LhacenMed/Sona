@@ -39,6 +39,13 @@ class PlaybackSettingsViewModel @Inject constructor(
         viewModelScope.launch { playbackSettings.setHeadsetAutoplay(enabled) }
     }
 
+    val countsVideosInMostPlayed: StateFlow<Boolean> = playbackSettings.countsVideosInMostPlayed.flow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), playbackSettings.countsVideosInMostPlayed.value)
+
+    fun setCountsVideosInMostPlayed(enabled: Boolean) {
+        viewModelScope.launch { playbackSettings.setCountsVideosInMostPlayed(enabled) }
+    }
+
     val exitsOnClose: StateFlow<Boolean> = playbackSettings.exitsOnClose.flow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), playbackSettings.exitsOnClose.value)
 

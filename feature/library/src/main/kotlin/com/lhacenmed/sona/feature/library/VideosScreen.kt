@@ -16,7 +16,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.EmptyStateAction
 import com.lhacenmed.sona.core.designsystem.component.SonaEmptyState
 import com.lhacenmed.sona.core.common.permission.AppPermission
-import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.model.PlaybackParent
@@ -104,7 +103,7 @@ fun VideosScreen(
             onOpenOptions = {
                 optionsTarget = OptionsTarget.ForTrack(
                     video,
-                    queueSource = videos.itemsOrEmpty,
+                    queueSource = viewModel.tabTracksOf(video),
                     queueParent = PlaybackParent.Videos,
                 )
             },

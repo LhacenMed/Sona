@@ -9,6 +9,7 @@ import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Folder
 import com.lhacenmed.sona.core.model.Genre
+import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.library.LibraryPlayback
@@ -34,35 +35,45 @@ class PlaylistPickerViewModel @Inject constructor(
 ) : ViewModel() {
 
     val tracks: StateFlow<LibraryContent<Track>> = repository.tracks
+    val videos: StateFlow<LibraryContent<Track>> = repository.videos
     val albums: StateFlow<LibraryContent<Album>> = repository.albums
     val artists: StateFlow<LibraryContent<Artist>> = repository.listedArtists
     val genres: StateFlow<LibraryContent<Genre>> = repository.genres
-    val folders: StateFlow<LibraryContent<Folder>> = repository.folders
+    val folders: StateFlow<LibraryContent<Folder>> = repository.allFolders
     val playlists: StateFlow<LibraryContent<Playlist>> = repository.playlists
 
     /** The section each list's rows sit in under its library tab's sort - what the fast scroller's popup names. */
     val trackSections: StateFlow<(Track) -> String?> = repository.trackSections
+    val videoSections: StateFlow<(Track) -> String?> = repository.videoSections
     val albumSections: StateFlow<(Album) -> String?> = repository.albumSections
     val artistSections: StateFlow<(Artist) -> String?> = repository.artistSections
     val genreSections: StateFlow<(Genre) -> String?> = repository.genreSections
     val folderSections: StateFlow<(Folder) -> String?> = repository.folderSections
+
+    /** Where each video was left - see [LibraryRepository.resumePositionsMs]. */
+    val resumePositionsMs: StateFlow<Map<Long, Long>> = repository.resumePositionsMs
 
     /** What the rows mark as playing - see [LibraryPlayback]. */
     val playback: StateFlow<LibraryPlayback> = libraryPlayback(playbackController, repository)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryPlayback())
 
     /**
-     * Plays [shownTracks], the tracks on screen, from [track] - as the library's Tracks tab does, pausing
-     * or resuming instead when it is already playing from there. See [LibraryPlayback.isReselection].
+     * Plays [track] among the whole of the library's Tracks or Videos tab, searched or not, as that tab does - going on
+     * with it instead when it is already playing from there. See [LibraryPlayback.isReselection].
      */
-    fun onTrackClick(track: Track, shownTracks: List<Track>) {
-        if (playback.value.isReselection(track, listParent = null)) {
-            playbackController.togglePlayPause()
+    fun onTrackClick(track: Track) {
+        val parent = PlaybackParent.Videos.takeIf { track.isVideo }
+        if (playback.value.isReselection(track, parent)) {
+            playbackController.reselect(track)
             return
         }
-        val index = shownTracks.indexOfFirst { it.id == track.id }
-        if (index >= 0) playbackController.playTracks(shownTracks, index)
+        val tabTracks = tabTracksOf(track)
+        val index = tabTracks.indexOfFirst { it.id == track.id }
+        if (index >= 0) playbackController.playTracks(tabTracks, index, parent)
     }
+
+    /** The whole tab [track] is on, which it plays among - see [LibraryRepository.tabTracksOf]. */
+    fun tabTracksOf(track: Track): List<Track> = repository.tabTracksOf(track)
 
     /**
      * The tracks [keys] would really add to [playlistId]: in the order they were picked, each once, and

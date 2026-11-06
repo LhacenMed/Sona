@@ -322,8 +322,11 @@ fun SonaVideoRow(
     }
 }
 
-/** "1080p • 111.6 MB" - its frame by its shorter side, as a video's quality is named, and its size; what is known of them. */
-private fun Track.videoFacts(): String = listOfNotNull(
+/**
+ * "1080p • 111.6 MB" - its frame by its shorter side, as a video's quality is named, and its size; what is known of them.
+ * A video's line of detail, wherever it is shown.
+ */
+fun Track.videoFacts(): String = listOfNotNull(
     minOf(width, height).takeIf { it > 0 }?.let { "${it}p" },
     sizeBytes.takeIf { it > 0L }?.let(::formatFileSize),
 ).joinToString(InfoSeparator)

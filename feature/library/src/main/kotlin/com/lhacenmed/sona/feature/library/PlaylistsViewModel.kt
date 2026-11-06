@@ -7,6 +7,7 @@ import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.data.sort.LibrarySortOrders
+import com.lhacenmed.sona.core.database.dao.MostPlayedCount
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.PlaylistCover
 import com.lhacenmed.sona.core.model.Track
@@ -45,7 +46,7 @@ class PlaylistsViewModel @Inject constructor(
 
     val sort: SortControl = sortOrders.control(SortableList.PLAYLISTS)
 
-    val mostPlayedCount: StateFlow<Int> = repository.mostPlayedCount
+    val mostPlayedCount: StateFlow<MostPlayedCount> = repository.mostPlayedCount
 
     val favoritesPlaylistId: Long get() = repository.favoritesPlaylistId
 
@@ -102,20 +103,20 @@ class PlaylistsViewModel @Inject constructor(
         onResult: (Boolean) -> Unit,
     ) {
         viewModelScope.launch {
-            val file = readPlaylistFile(openStream, repository.tracks.value.itemsOrEmpty)
+            val file = readPlaylistFile(openStream, repository.allTracks)
             onResult(repository.importPlaylist(name, file))
         }
     }
 
     /**
-     * Tracks the library holds anywhere beneath [folderPath].
+     * Tracks the library holds anywhere beneath [folderPath] - its videos with its music.
      *
      * Filtered from the list already in memory rather than walking the filesystem as the reference
      * app does: everything under that folder was found by the last scan, so the answer is already
      * here and the picker does not have to wait on I/O.
      */
     private fun tracksUnder(folderPath: String): List<Long> =
-        repository.tracks.value.itemsOrEmpty
+        repository.allTracks
             .filter { it.folderPath == folderPath || it.folderPath.startsWith("$folderPath/") }
             .map { it.id }
 

@@ -24,6 +24,8 @@ data class PlaylistWithCount(
     val name: String,
     val isBuiltIn: Boolean,
     val trackCount: Int,
+    /** How many of [trackCount] are videos. */
+    val videoCount: Int,
     val modifiedAt: Long,
     val coverSource: PlaylistCoverSource,
     val coverTrackId: Long?,
@@ -56,9 +58,10 @@ interface PlaylistDao {
         SELECT p.id AS id, p.name AS name, p.isBuiltIn AS isBuiltIn, p.modifiedAt AS modifiedAt,
                p.coverSource AS coverSource, p.coverTrackId AS coverTrackId,
                p.coverImageUri AS coverImageUri, ct.coverArtUri AS coverTrackArtUri,
-               COUNT(pt.trackId) AS trackCount
+               COUNT(pt.trackId) AS trackCount, COALESCE(SUM(t.isVideo), 0) AS videoCount
         FROM playlists p
         LEFT JOIN playlist_tracks pt ON pt.playlistId = p.id
+        LEFT JOIN tracks t ON t.id = pt.trackId
         LEFT JOIN tracks ct ON ct.id = p.coverTrackId
         GROUP BY p.id
         """,

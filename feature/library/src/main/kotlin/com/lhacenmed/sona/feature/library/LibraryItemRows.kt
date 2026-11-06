@@ -211,7 +211,7 @@ internal fun GenreRow(
     }
 }
 
-/** A playlist row: its stacked covers, name over how many tracks it holds. */
+/** A playlist row: its stacked covers, name over how many tracks and videos it holds. */
 @Composable
 internal fun PlaylistRow(
     playlist: Playlist,
@@ -225,7 +225,7 @@ internal fun PlaylistRow(
     val current = isCurrent()
     SonaListRow(
         title = playlist.name,
-        subtitle = trackCountLabel(playlist.trackCount),
+        subtitle = mediaCountLabel(playlist.trackCount, playlist.videoCount),
         selection = selection,
         selectionKey = selectionKeyOf(playlist),
         onClick = onClick,
@@ -286,6 +286,7 @@ internal fun FolderRow(
 internal fun TrackCollectionRow(
     title: String,
     trackCount: Int,
+    videoCount: Int,
     coverArtUris: List<String>,
     isCurrent: () -> Boolean,
     isPlaying: () -> Boolean,
@@ -295,7 +296,7 @@ internal fun TrackCollectionRow(
     val current = isCurrent()
     SonaListRow(
         title = title,
-        subtitle = trackCountLabel(trackCount),
+        subtitle = mediaCountLabel(trackCount, videoCount),
         // Not a playlist, so it can be opened but never gathered into a selection meant for playlists.
         selection = null,
         selectionKey = null,
@@ -333,5 +334,24 @@ internal fun pluralCount(count: Int, noun: String): String = if (count == 1) "$c
 /** A count of tracks, or Auxio's `def_song_count` for a list that holds none yet. */
 internal fun trackCountLabel(count: Int): String = if (count == 0) "No tracks" else pluralCount(count, "track")
 
+/**
+ * How many tracks a list holds, [videoCount] of [trackCount] being videos: "12 tracks", "3 videos" or
+ * "12 tracks • 3 videos" - or [trackCountLabel]'s "No tracks", for one that holds none yet.
+ */
+internal fun mediaCountLabel(trackCount: Int, videoCount: Int): String {
+    val musicCount = trackCount - videoCount
+    return when {
+        videoCount == 0 -> trackCountLabel(trackCount)
+        musicCount == 0 -> pluralCount(videoCount, "video")
+        else -> pluralCount(musicCount, "track") + InfoSeparator + pluralCount(videoCount, "video")
+    }
+}
+
+/** [mediaCountLabel] of [tracks]. */
+internal fun mediaCountLabel(tracks: List<Track>): String = mediaCountLabel(tracks.size, tracks.count { it.isVideo })
+
 /** A folder's count: of its tracks, or - for one of the Videos tab - of its videos. */
-internal fun Folder.itemCountLabel(): String = if (isVideo) pluralCount(trackCount, "video") else trackCountLabel(trackCount)
+internal fun Folder.itemCountLabel(): String = mediaCountLabel(trackCount, videoCount = if (isVideo) trackCount else 0)
+
+/** A folder row's key: one path can hold music and videos alike, and is then listed once for each. */
+internal val Folder.rowKey: String get() = if (isVideo) "video:$path" else path
