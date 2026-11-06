@@ -9,6 +9,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.Timeline
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.text.Cue
 import androidx.media3.common.text.CueGroup
@@ -17,6 +18,7 @@ import androidx.media3.common.util.Util
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.session.MediaSession
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
@@ -201,17 +203,6 @@ class VideoPlayback @Inject constructor(
             }
         }
 
-        override fun onRenderedFirstFrame() {
-            // Reported a moment late, it may be of a video closed since.
-            if (!isOpen) return
-            // A frame on the stand-in the player draws to until the screen's surface arrives, which nobody sees.
-            if (surfaceView?.holder?.surface?.isValid != true) return
-            pictureMediaId = player.currentMediaItem?.mediaId
-            if (isAwaitingPicture) startPlaying()
-            if (mediaSession == null) mediaSession = MediaSession.Builder(context, player).setId("video").build()
-            publish()
-        }
-
         override fun onCues(cueGroup: CueGroup) {
             _subtitleCues.value = cueGroup.cues
         }
@@ -229,6 +220,24 @@ class VideoPlayback @Inject constructor(
             if (events.containsAny(Player.EVENT_TIMELINE_CHANGED, Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED)) readQueue()
             if (events.containsAny(Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION)) trackFiles.hold(FilesHolder, player.heldFileUris())
             if (events.containsAny(*PublishedEvents)) publish()
+        }
+    }
+
+    /**
+     * A first frame drawn, known by the item the renderer drew it for. Not by the item the player says is playing: moving
+     * on to the next by itself, the player can draw that one's first frame a moment before it says it has moved on - read
+     * then, the frame would be taken for the last video's, and this one's picture never shown, its sound playing on black.
+     */
+    private val firstFrameListener = object : AnalyticsListener {
+        override fun onRenderedFirstFrame(eventTime: AnalyticsListener.EventTime, output: Any, renderTimeMs: Long) {
+            // Reported a moment late, it may be of a video closed since.
+            if (!isOpen || eventTime.timeline.isEmpty) return
+            // A frame on the stand-in the player draws to until the screen's surface arrives, which nobody sees.
+            if (surfaceView?.holder?.surface?.isValid != true) return
+            pictureMediaId = eventTime.timeline.getWindow(eventTime.windowIndex, Timeline.Window()).mediaItem.mediaId
+            if (isAwaitingPicture) startPlaying()
+            if (mediaSession == null) mediaSession = MediaSession.Builder(context, player).setId("video").build()
+            publish()
         }
     }
 
@@ -544,6 +553,7 @@ class VideoPlayback @Inject constructor(
             .build()
             .also { player ->
                 player.addListener(listener)
+                player.addAnalyticsListener(firstFrameListener)
                 // On the player itself, so a video counts and is remembered exactly as one heard in the music player does.
                 PlayHistoryRecorder(player, scope, playStatsDao, playbackSettings).attach()
                 ResumePositionRecorder(player, resumePositions).attach()
