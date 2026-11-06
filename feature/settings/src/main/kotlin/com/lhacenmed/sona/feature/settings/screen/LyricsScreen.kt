@@ -36,11 +36,16 @@ data object LyricsScreen : Screen {
         val lyricsTextSize by viewModel.lyricsTextSize.collectAsStateWithLifecycle()
         val lyricsLineSpacing by viewModel.lyricsLineSpacing.collectAsStateWithLifecycle()
         val showLyricsPlayerControls by viewModel.showLyricsPlayerControls.collectAsStateWithLifecycle()
+        val romanizeArabic by viewModel.romanizeArabic.collectAsStateWithLifecycle()
         val japaneseDictionary by viewModel.japaneseDictionaryState.collectAsStateWithLifecycle()
+        val romanizeJapanese by viewModel.romanizeJapanese.collectAsStateWithLifecycle()
         val romanizeKorean by viewModel.romanizeKorean.collectAsStateWithLifecycle()
         val romanizeChinese by viewModel.romanizeChinese.collectAsStateWithLifecycle()
         val romanizeHindi by viewModel.romanizeHindi.collectAsStateWithLifecycle()
         val romanizeOtherLanguages by viewModel.romanizeOtherLanguages.collectAsStateWithLifecycle()
+        val showsRomanizationOnly by viewModel.showsRomanizationOnly.collectAsStateWithLifecycle()
+        val romanizesAnyLanguage = romanizeArabic || (romanizeJapanese && japaneseDictionary == DictionaryState.Installed) ||
+            romanizeKorean || romanizeChinese || romanizeHindi || romanizeOtherLanguages
         val findMissingLyrics by viewModel.findMissingLyrics.collectAsStateWithLifecycle()
 
         val spFormat = stringResource(R.string.sp_format)
@@ -98,12 +103,20 @@ data object LyricsScreen : Screen {
             SettingsSectionDivider()
 
             SettingsSection(stringResource(R.string.lyrics_romanization_section)) {
+                SettingsSwitchItem(
+                    title = stringResource(R.string.romanize_arabic_title),
+                    summary = stringResource(R.string.romanize_arabic_summary),
+                    checked = romanizeArabic,
+                    onCheckedChange = viewModel::setRomanizeArabic,
+                )
                 // Japanese alone needs data of its own - a 13 MB dictionary - so it is downloaded rather than
-                // shipped, and romanizing it is on exactly while it is here.
+                // shipped, and its switch works once it is here.
                 SettingsDownloadItem(
                     title = stringResource(R.string.romanize_japanese_title),
                     summary = japaneseDictionarySummary(japaneseDictionary),
                     download = japaneseDictionary.asSettingsDownload(),
+                    checked = romanizeJapanese,
+                    onCheckedChange = viewModel::setRomanizeJapanese,
                     onDownload = viewModel::downloadJapaneseDictionary,
                     onCancel = viewModel::cancelJapaneseDictionary,
                     onRemove = viewModel::removeJapaneseDictionary,
@@ -131,6 +144,14 @@ data object LyricsScreen : Screen {
                     summary = stringResource(R.string.romanize_other_languages_summary),
                     checked = romanizeOtherLanguages,
                     onCheckedChange = viewModel::setRomanizeOtherLanguages,
+                )
+                SettingsSwitchItem(
+                    title = stringResource(R.string.lyrics_romanization_only_title),
+                    summary = stringResource(R.string.lyrics_romanization_only_summary),
+                    checked = showsRomanizationOnly,
+                    onCheckedChange = viewModel::setShowsRomanizationOnly,
+                    // Nothing is romanized for it to apply to while every language is off.
+                    enabled = romanizesAnyLanguage,
                 )
             }
 

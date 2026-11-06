@@ -245,6 +245,8 @@
     <string name="lyrics_show_player_controls_title">Show player controls</string>
     <string name="lyrics_show_player_controls_summary">Keep playback controls beneath the lyrics</string>
     <string name="lyrics_romanization_section">Romanization</string>
+    <string name="romanize_arabic_title">Romanize Arabic</string>
+    <string name="romanize_arabic_summary">Show Arabic lyrics in Latin script</string>
     <string name="romanize_japanese_title">Romanize Japanese</string>
     <string name="romanize_japanese_summary">Show Japanese lyrics in Latin script</string>
     <string name="romanize_japanese_download_summary">Download its dictionary (13 MB) to show Japanese lyrics in Latin script</string>
@@ -258,6 +260,8 @@
     <string name="romanize_hindi_summary">Show Hindi lyrics in Latin script</string>
     <string name="romanize_other_languages_title">Romanize other languages</string>
     <string name="romanize_other_languages_summary">Show lyrics in any other non-Latin script in Latin script</string>
+    <string name="lyrics_romanization_only_title">Show romanization only</string>
+    <string name="lyrics_romanization_only_summary">Hide the original script of romanized lines, showing the Latin script in its place</string>
     <string name="lyrics_online_section">Online</string>
     <string name="lyrics_find_missing_title">Find missing lyrics</string>
     <string name="lyrics_find_missing_summary">Look online for lyrics the playing, next and previous tracks lack, and write the best into their files. Needs All files access</string>

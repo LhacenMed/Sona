@@ -14,6 +14,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -37,14 +38,20 @@ class LyricsViewModel @Inject constructor(
     val glowFactor: StateFlow<Float> = lyricsSettings.glowFactor.state()
     val fillTransitionWidth: StateFlow<Float> = lyricsSettings.fillTransitionWidth.state()
     val lrcBounceEnabled: StateFlow<Boolean> = lyricsSettings.lrcBounceEnabled.state()
-    /** Japanese is romanized exactly while its dictionary is downloaded. */
-    val romanizeJapanese: StateFlow<Boolean> = japaneseDictionary.state
-        .map { it == DictionaryState.Installed }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), japaneseDictionary.state.value == DictionaryState.Installed)
+    val romanizeArabic: StateFlow<Boolean> = lyricsSettings.romanizeArabic.state()
+    /** Japanese is romanized while it is turned on and its dictionary is downloaded - the dictionary does it. */
+    val romanizeJapanese: StateFlow<Boolean> = combine(lyricsSettings.romanizeJapanese.flow, japaneseDictionary.state) { enabled, dictionary ->
+        enabled && dictionary == DictionaryState.Installed
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        lyricsSettings.romanizeJapanese.value && japaneseDictionary.state.value == DictionaryState.Installed,
+    )
     val romanizeKorean: StateFlow<Boolean> = lyricsSettings.romanizeKorean.state()
     val romanizeChinese: StateFlow<Boolean> = lyricsSettings.romanizeChinese.state()
     val romanizeHindi: StateFlow<Boolean> = lyricsSettings.romanizeHindi.state()
     val romanizeOtherLanguages: StateFlow<Boolean> = lyricsSettings.romanizeOtherLanguages.state()
+    val showsRomanizationOnly: StateFlow<Boolean> = lyricsSettings.showsRomanizationOnly.state()
 
     /** The lyrics [track]'s file holds, read again whenever Sona writes them - blank where it holds none. */
     fun lyrics(track: Track): Flow<String> = trackTagsRepository.lyrics(track)

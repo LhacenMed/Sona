@@ -21,10 +21,13 @@ private val LYRICS_V2_BOUNCE_FACTOR = floatPreferencesKey("lyricsV2BounceFactor"
 private val LYRICS_V2_GLOW_FACTOR = floatPreferencesKey("lyricsV2GlowFactor")
 private val LYRICS_V2_FILL_TRANSITION_WIDTH = floatPreferencesKey("lyricsV2FillTransitionWidth")
 private val LYRICS_V2_LRC_BOUNCE_ENABLED = booleanPreferencesKey("lyricsV2LrcBounceEnabled")
+private val LYRICS_ROMANIZE_ARABIC = booleanPreferencesKey("lyricsRomanizeArabic")
+private val LYRICS_ROMANIZE_JAPANESE = booleanPreferencesKey("lyricsRomanizeJapanese")
 private val LYRICS_ROMANIZE_KOREAN = booleanPreferencesKey("lyricsRomanizeKorean")
 private val LYRICS_ROMANIZE_CHINESE = booleanPreferencesKey("lyricsRomanizeChinese")
 private val LYRICS_ROMANIZE_HINDI = booleanPreferencesKey("lyricsRomanizeHindi")
 private val LYRICS_ROMANIZE_OTHER_LANGUAGES = booleanPreferencesKey("lyricsRomanizeOtherLanguages")
+private val LYRICS_SHOWS_ROMANIZATION_ONLY = booleanPreferencesKey("lyricsShowsRomanizationOnly")
 private val FIND_MISSING_LYRICS = booleanPreferencesKey("find_missing_lyrics")
 private val LYRICS_EDITOR_FOLLOWS_PLAYBACK = booleanPreferencesKey("lyrics_editor_follows_playback")
 
@@ -94,6 +97,16 @@ class LyricsSettings @Inject constructor(
 
     suspend fun setLrcBounceEnabled(enabled: Boolean) = set(LYRICS_V2_LRC_BOUNCE_ENABLED, enabled)
 
+    /** Whether lyrics in the Arabic script are romanized. */
+    val romanizeArabic: Setting<Boolean> = cache.setting { it[LYRICS_ROMANIZE_ARABIC] ?: true }
+
+    suspend fun setRomanizeArabic(enabled: Boolean) = set(LYRICS_ROMANIZE_ARABIC, enabled)
+
+    /** Whether Japanese is romanized - which it can be only once its dictionary is downloaded. */
+    val romanizeJapanese: Setting<Boolean> = cache.setting { it[LYRICS_ROMANIZE_JAPANESE] ?: true }
+
+    suspend fun setRomanizeJapanese(enabled: Boolean) = set(LYRICS_ROMANIZE_JAPANESE, enabled)
+
     val romanizeKorean: Setting<Boolean> = cache.setting { it[LYRICS_ROMANIZE_KOREAN] ?: true }
 
     suspend fun setRomanizeKorean(enabled: Boolean) = set(LYRICS_ROMANIZE_KOREAN, enabled)
@@ -110,11 +123,16 @@ class LyricsSettings @Inject constructor(
 
     suspend fun setRomanizeOtherLanguages(enabled: Boolean) = set(LYRICS_ROMANIZE_OTHER_LANGUAGES, enabled)
 
+    /** Whether a romanized line shows its romanization alone, in place of the original rather than over it. */
+    val showsRomanizationOnly: Setting<Boolean> = cache.setting { it[LYRICS_SHOWS_ROMANIZATION_ONLY] ?: false }
+
+    suspend fun setShowsRomanizationOnly(enabled: Boolean) = set(LYRICS_SHOWS_ROMANIZATION_ONLY, enabled)
+
     /**
      * Whether the playing track, and the ones either side of it in the queue, have lyrics looked for on the web
      * when their files hold none - the best found written into them.
      */
-    val findMissingLyrics: Setting<Boolean> = cache.setting { it[FIND_MISSING_LYRICS] ?: false }
+    val findMissingLyrics: Setting<Boolean> = cache.setting { it[FIND_MISSING_LYRICS] ?: true }
 
     suspend fun setFindMissingLyrics(enabled: Boolean) = set(FIND_MISSING_LYRICS, enabled)
 

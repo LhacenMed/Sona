@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 data class LyricsRomanizationPreferences(
+    val romanizeArabic: Boolean,
     val romanizeJapanese: Boolean,
     val romanizeKorean: Boolean,
     val romanizeChinese: Boolean,
@@ -22,7 +23,7 @@ data class LyricsRomanizationPreferences(
     val romanizeOther: Boolean,
 ) {
     val isEnabled: Boolean
-        get() = romanizeJapanese || romanizeKorean || romanizeChinese || romanizeHindi || romanizeOther
+        get() = romanizeArabic || romanizeJapanese || romanizeKorean || romanizeChinese || romanizeHindi || romanizeOther
 }
 
 @Suppress("RegExpRedundantEscape")
@@ -47,6 +48,7 @@ object LyricsUtils {
             UnicodeScript.KATAKANA,
             UnicodeScript.HANGUL,
             UnicodeScript.DEVANAGARI,
+            UnicodeScript.ARABIC,
         )
     private val genericRomanizationTransliterator =
         ThreadLocal.withInitial {
@@ -824,6 +826,9 @@ object LyricsUtils {
 
     fun isHindi(text: String): Boolean = text.any { hasScript(it, UnicodeScript.DEVANAGARI) }
 
+    /** Whether [text] is written in the Arabic script - Arabic's, and that of the languages written in it. */
+    fun isArabic(text: String): Boolean = text.any { hasScript(it, UnicodeScript.ARABIC) }
+
     fun hasOtherRomanizableScript(text: String): Boolean {
         return text.any { char ->
             if (!char.isLetter()) return@any false
@@ -839,6 +844,7 @@ object LyricsUtils {
         if (!preferences.isEnabled || text.isBlank()) return false
 
         return when {
+            preferences.romanizeArabic && isArabic(text) -> true
             preferences.romanizeJapanese && looksJapanese(text) -> true
             preferences.romanizeKorean && isKorean(text) -> true
             preferences.romanizeHindi && isHindi(text) -> true
@@ -870,6 +876,7 @@ object LyricsUtils {
                 ?.lowercase()
 
         return when (language) {
+            "ar" -> preferences.romanizeArabic
             "ja" -> preferences.romanizeJapanese
             "ko" -> preferences.romanizeKorean
             "zh", "cmn", "yue" -> preferences.romanizeChinese
@@ -903,6 +910,7 @@ object LyricsUtils {
 
         val romanized =
             when {
+                preferences.romanizeArabic && isArabic(text) -> romanizeWithIcu(text)
                 preferences.romanizeJapanese && looksJapanese(text) -> romanizeJapanese(text)
                 preferences.romanizeKorean && isKorean(text) -> romanizeKorean(text)
                 preferences.romanizeHindi && isHindi(text) -> romanizeWithIcu(text)

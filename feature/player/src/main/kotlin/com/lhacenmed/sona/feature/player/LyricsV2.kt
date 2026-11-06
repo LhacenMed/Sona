@@ -93,6 +93,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.data.lyrics.LyricsEntry
 import com.lhacenmed.sona.core.data.lyrics.LyricsRomanizationPreferences
 import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.providedRomanizedTextForEntry
 import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.romanizeLyricsLine
@@ -128,23 +129,28 @@ private const val MANUAL_SCROLL_TIMEOUT_MS = 3000L
 /** How many lines can be selected to share at once. */
 private const val MAX_SELECTION_LIMIT = 5
 
-private fun isRtlText(text: String): Boolean {
+/** The direction [text] reads in, by its first letter that has one - null for text with none: numbers, "...". */
+private fun readingDirectionOf(text: String): LayoutDirection? {
     for (ch in text) {
         when (Character.getDirectionality(ch)) {
             Character.DIRECTIONALITY_RIGHT_TO_LEFT,
             Character.DIRECTIONALITY_RIGHT_TO_LEFT_ARABIC,
             Character.DIRECTIONALITY_RIGHT_TO_LEFT_EMBEDDING,
             Character.DIRECTIONALITY_RIGHT_TO_LEFT_OVERRIDE,
-            -> return true
+            -> return LayoutDirection.Rtl
 
             Character.DIRECTIONALITY_LEFT_TO_RIGHT,
             Character.DIRECTIONALITY_LEFT_TO_RIGHT_EMBEDDING,
             Character.DIRECTIONALITY_LEFT_TO_RIGHT_OVERRIDE,
-            -> return false
+            -> return LayoutDirection.Ltr
         }
     }
-    return false
+    return null
 }
+
+/** A line's text as sung: its words joined, where it has them. */
+private fun LyricsEntry.sungText(): String =
+    words?.joinToString(separator = "") { it.text }?.takeIf { it.isNotBlank() } ?: text
 
 // ──────────────────────────────────────────────────────────────────────
 // Main Composable
@@ -183,13 +189,16 @@ internal fun LyricsV2(
     val glowFactor by lyricsViewModel.glowFactor.collectAsStateWithLifecycle()
     val fillTransitionWidth by lyricsViewModel.fillTransitionWidth.collectAsStateWithLifecycle()
     val lrcBounceEnabled by lyricsViewModel.lrcBounceEnabled.collectAsStateWithLifecycle()
+    val romanizeArabic by lyricsViewModel.romanizeArabic.collectAsStateWithLifecycle()
     val romanizeChinese by lyricsViewModel.romanizeChinese.collectAsStateWithLifecycle()
     val romanizeHindi by lyricsViewModel.romanizeHindi.collectAsStateWithLifecycle()
     val romanizeJapanese by lyricsViewModel.romanizeJapanese.collectAsStateWithLifecycle()
     val romanizeKorean by lyricsViewModel.romanizeKorean.collectAsStateWithLifecycle()
     val romanizeOtherLanguages by lyricsViewModel.romanizeOtherLanguages.collectAsStateWithLifecycle()
+    val showsRomanizationOnly by lyricsViewModel.showsRomanizationOnly.collectAsStateWithLifecycle()
     val romanizationPreferences =
         remember(
+            romanizeArabic,
             romanizeJapanese,
             romanizeKorean,
             romanizeChinese,
@@ -197,6 +206,7 @@ internal fun LyricsV2(
             romanizeOtherLanguages,
         ) {
             LyricsRomanizationPreferences(
+                romanizeArabic = romanizeArabic,
                 romanizeJapanese = romanizeJapanese,
                 romanizeKorean = romanizeKorean,
                 romanizeChinese = romanizeChinese,
@@ -214,6 +224,32 @@ internal fun LyricsV2(
     val isSynced = timeline?.isSynced == true
     val isTtmlFormat = timeline?.isWordSynced == true
     val entriesWithWords = timeline?.entries.orEmpty()
+
+    // ── Reading direction ──
+    // The lyrics' own: the direction most of their lines read in as shown - a line shown by its romanization alone
+    // reading as Latin - and the app's where none has one. It places what has no direction of its own: the
+    // instrumental break's note, and a line of numbers or dots.
+    val appLayoutDirection = LocalLayoutDirection.current
+    val lyricsDirection =
+        remember(entriesWithWords, romanizationPreferences, showsRomanizationOnly, appLayoutDirection) {
+            val lineDirections =
+                entriesWithWords.mapNotNull { entry ->
+                    val isShownRomanized =
+                        showsRomanizationOnly && romanizationPreferences.isEnabled &&
+                            (
+                                providedRomanizedTextForEntry(entry, romanizationPreferences) != null ||
+                                    shouldRomanizeLyricsLine(entry.text, romanizationPreferences)
+                            )
+                    if (isShownRomanized) LayoutDirection.Ltr else readingDirectionOf(entry.sungText())
+                }
+            val rtlCount = lineDirections.count { it == LayoutDirection.Rtl }
+            val ltrCount = lineDirections.size - rtlCount
+            when {
+                rtlCount > ltrCount -> LayoutDirection.Rtl
+                ltrCount > rtlCount -> LayoutDirection.Ltr
+                else -> appLayoutDirection
+            }
+        }
 
     // ── Romanization ──
     LaunchedEffect(entriesWithWords, romanizationPreferences) {
@@ -511,49 +547,52 @@ internal fun LyricsV2(
                             ),
                         label = "v2InstrumentalBlur",
                     )
-                    Box(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(
-                                    start = 12.dp,
-                                    end = 12.dp,
-                                    top =
-                                        if (index == 0 || (index == 1 && entriesWithWords[0] == HEAD_LYRICS_ENTRY)) {
-                                            0.dp
+                    // Laid out in the lyrics' direction, so the note stands where their lines start.
+                    CompositionLocalProvider(LocalLayoutDirection provides lyricsDirection) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(
+                                        start = 12.dp,
+                                        end = 12.dp,
+                                        top =
+                                            if (index == 0 || (index == 1 && entriesWithWords[0] == HEAD_LYRICS_ENTRY)) {
+                                                0.dp
+                                            } else {
+                                                (lyricsLineSpacing * 8).dp
+                                            },
+                                        bottom = (lyricsLineSpacing * 8).dp,
+                                    ).then(
+                                        if (lyricsLineBlur) {
+                                            Modifier.blur(
+                                                radiusX = animatedInstrBlur.dp,
+                                                radiusY = animatedInstrBlur.dp,
+                                                edgeTreatment = BlurredEdgeTreatment.Unbounded,
+                                            )
                                         } else {
-                                            (lyricsLineSpacing * 8).dp
+                                            Modifier
                                         },
-                                    bottom = (lyricsLineSpacing * 8).dp,
-                                ).then(
-                                    if (lyricsLineBlur) {
-                                        Modifier.blur(
-                                            radiusX = animatedInstrBlur.dp,
-                                            radiusY = animatedInstrBlur.dp,
-                                            edgeTreatment = BlurredEdgeTreatment.Unbounded,
-                                        )
-                                    } else {
-                                        Modifier
-                                    },
-                                ).graphicsLayer {
-                                    scaleX = animatedInstrScale
-                                    scaleY = animatedInstrScale
-                                    alpha = animatedInstrAlpha
-                                }.then(
-                                    if (lyricsClick && item.time > 0) {
-                                        Modifier.clickable { onSeek(item.time) }
-                                    } else {
-                                        Modifier
-                                    },
-                                ),
-                    ) {
-                        InstrumentalBreakItem(
-                            durationMs = item.durationMs,
-                            currentPositionMs = playbackPositionMs,
-                            startTimeMs = startTimeMs,
-                            textColor = textColor,
-                            inactiveAlpha = inactiveAlpha,
-                        )
+                                    ).graphicsLayer {
+                                        scaleX = animatedInstrScale
+                                        scaleY = animatedInstrScale
+                                        alpha = animatedInstrAlpha
+                                    }.then(
+                                        if (lyricsClick && item.time > 0) {
+                                            Modifier.clickable { onSeek(item.time) }
+                                        } else {
+                                            Modifier
+                                        },
+                                    ),
+                        ) {
+                            InstrumentalBreakItem(
+                                durationMs = item.durationMs,
+                                currentPositionMs = playbackPositionMs,
+                                startTimeMs = startTimeMs,
+                                textColor = textColor,
+                                inactiveAlpha = inactiveAlpha,
+                            )
+                        }
                     }
                     return@itemsIndexed
                 }
@@ -648,29 +687,32 @@ internal fun LyricsV2(
                         ),
                     label = "v2LineAlpha",
                 )
-                val lineTransformOrigin =
-                    remember(item.agent) {
-                        when (item.agent?.lowercase()) {
-                            "v2" -> TransformOrigin(1f, 0.5f)
-                            "v1", null -> TransformOrigin(0f, 0.5f)
-                            else -> TransformOrigin(0.5f, 0.5f)
-                        }
-                    }
-
                 // Background vocal detection
                 val isAllBackground = item.words?.all { it.isBackground || it.text.isBlank() } == true
-                val baseLayoutDirection = LocalLayoutDirection.current
-                val lineText =
-                    remember(item.text, item.words) {
-                        item.words
-                            ?.joinToString(separator = "") { it.text }
-                            ?.takeIf { it.isNotBlank() }
-                            ?: item.text
+
+                val romanizedText =
+                    if (romanizationPreferences.isEnabled) {
+                        val value by item.romanizedTextFlow.collectAsStateWithLifecycle()
+                        value
+                    } else {
+                        null
                     }
-                val lineIsRtl = remember(lineText) { isRtlText(lineText) }
+                // Shown by its romanization alone, that is the line - read, laid out and sung as it is.
+                val shownRomanization = romanizedText.takeIf { showsRomanizationOnly }
+                val shownText = remember(item, shownRomanization) { shownRomanization ?: item.sungText() }
+                // A line reads in its own direction; one with none, in the lyrics'.
                 val lineLayoutDirection =
-                    remember(lineIsRtl, baseLayoutDirection) {
-                        if (lineIsRtl) LayoutDirection.Rtl else baseLayoutDirection
+                    remember(shownText, lyricsDirection) { readingDirectionOf(shownText) ?: lyricsDirection }
+                val lineIsRtl = lineLayoutDirection == LayoutDirection.Rtl
+                // A line grows from where it is placed - its start, its end, or its centre - whichever side that is.
+                val lineTransformOrigin =
+                    remember(item.agent, lineIsRtl) {
+                        val startPivot = if (lineIsRtl) 1f else 0f
+                        when (item.agent?.lowercase()) {
+                            "v2" -> TransformOrigin(1f - startPivot, 0.5f)
+                            "v1", null -> TransformOrigin(startPivot, 0.5f)
+                            else -> TransformOrigin(0.5f, 0.5f)
+                        }
                     }
 
                 CompositionLocalProvider(LocalLayoutDirection provides lineLayoutDirection) {
@@ -745,15 +787,7 @@ internal fun LyricsV2(
                                 ),
                         horizontalAlignment = horizontalAlignment,
                     ) {
-                        val romanizedText =
-                            if (romanizationPreferences.isEnabled) {
-                                val value by item.romanizedTextFlow.collectAsStateWithLifecycle()
-                                value
-                            } else {
-                                null
-                            }
-
-                        if (romanizedText != null) {
+                        if (romanizedText != null && shownRomanization == null) {
                             val supplementaryBaseTextStyle = MaterialTheme.typography.bodyMedium
                             val supplementaryTextStyle =
                                 remember(supplementaryBaseTextStyle, lyricsTextSize, isAllBackground) {
@@ -776,7 +810,7 @@ internal fun LyricsV2(
                             )
                         }
 
-                        val words = item.words
+                        val words = item.words.takeIf { shownRomanization == null }
                         if (words != null && isSynced) {
                             LyricsLineV2(
                                 words = words,
@@ -794,8 +828,9 @@ internal fun LyricsV2(
                                 fillTransitionWidth = fillTransitionWidth,
                             )
                         } else if (isSynced) {
+                            // Its words' timings are the original's, so a line shown romanized is sung line by line.
                             LyricsLineLrcBounce(
-                                text = item.text,
+                                text = shownRomanization ?: item.text,
                                 isActive = isActive,
                                 textColor = textColor.copy(alpha = if (isActive) 1f else 0.52f),
                                 fontSize = lyricsTextSize,
@@ -806,7 +841,7 @@ internal fun LyricsV2(
                             )
                         } else {
                             Text(
-                                text = item.text,
+                                text = shownRomanization ?: item.text,
                                 style =
                                     MaterialTheme.typography.headlineMedium.copy(
                                         fontSize = if (isAllBackground) (lyricsTextSize * 0.82f).sp else lyricsTextSize.sp,
