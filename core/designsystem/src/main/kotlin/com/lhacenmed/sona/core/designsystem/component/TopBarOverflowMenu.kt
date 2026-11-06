@@ -1,7 +1,6 @@
 package com.lhacenmed.sona.core.designsystem.component
 
 import android.content.res.Resources
-import android.graphics.Typeface
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.view.MotionEvent
@@ -11,6 +10,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
@@ -26,7 +26,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.resolveAsTypeface
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -41,9 +44,6 @@ import kotlinx.coroutines.CancellationException
 
 /** How far a press must travel from where it landed on the overflow button before it drags the menu open. */
 private val DragToOpenThreshold = 10.dp
-
-/** The weight of Material's menu label, `labelLarge`: medium. */
-private val MenuLabelTypeface: Typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
 
 /** Everything the overflow menu is drawn from, as of the bar's latest composition. */
 internal data class OverflowMenuContent(
@@ -115,11 +115,17 @@ internal class TopBarOverflowMenu(content: OverflowMenuContent) {
  * The popup is Material's menu in colour: its container and content roles, read from the theme as it
  * is on this frame - mid-transition included. It is Material's menu in size too - the item height,
  * padding, icon and label of a `DropdownMenuItem` - on Sona's own corners, so it reads as one of the
- * app's components rather than something brought in.
+ * app's components rather than something brought in. Its label is the theme's `labelLarge` in the app's
+ * font, made a platform typeface the way Compose itself sets that text.
  */
 @Composable
 internal fun rememberTopBarOverflowMenu(actions: List<TopBarAction>): TopBarOverflowMenu {
     val colorScheme = MaterialTheme.colorScheme
+    val labelStyle = MaterialTheme.typography.labelLarge
+    val labelTypeface by LocalFontFamilyResolver.current.resolveAsTypeface(
+        fontFamily = labelStyle.fontFamily,
+        fontWeight = labelStyle.fontWeight ?: FontWeight.Normal,
+    )
     val content = OverflowMenuContent(
         actions = actions,
         iconPainters = actions.map { rememberVectorPainter(it.icon) },
@@ -127,7 +133,7 @@ internal fun rememberTopBarOverflowMenu(actions: List<TopBarAction>): TopBarOver
             backgroundColor = colorScheme.surfaceContainer.toArgb(),
             contentColor = colorScheme.onSurface.toArgb(),
             textSize = MaterialTheme.typography.labelLarge.fontSize.value,
-            textTypeface = MenuLabelTypeface,
+            textTypeface = labelTypeface,
             cornerRadiusDp = roundedRadius(SonaComponentStyle.CornerRadius).value,
             // Above Material's 112dp floor, on its 56dp menu width steps, so a menu of short labels is
             // not drawn tight around them.
