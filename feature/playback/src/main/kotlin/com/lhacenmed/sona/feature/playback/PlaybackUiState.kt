@@ -34,12 +34,6 @@ data class PlaybackUiState(
     val durationMs: Long = 0L,
     val shuffleEnabled: Boolean = false,
     val repeatMode: RepeatMode = RepeatMode.OFF,
-    /** Whether previous and next can act - previous includes rewinding the current track. */
-    val canSkipPrevious: Boolean = false,
-    val canSkipNext: Boolean = false,
-    /** Whether there is a track before or after the current one to move to. */
-    val hasPreviousTrack: Boolean = false,
-    val hasNextTrack: Boolean = false,
     /** The queue in the order it plays, shuffle included. */
     val queue: List<QueueEntry> = emptyList(),
     /** Where the current track sits in [queue], or -1 while nothing is loaded. */

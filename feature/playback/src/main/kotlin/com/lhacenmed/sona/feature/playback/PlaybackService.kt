@@ -202,6 +202,7 @@ class PlaybackService : MediaSessionService() {
                 .add(PlaybackSessionCommands.removeQueueItemCommand)
                 .add(PlaybackSessionCommands.removeTracksCommand)
                 .add(PlaybackSessionCommands.holdTrackCommand)
+                .add(PlaybackSessionCommands.skipCommand)
                 .build()
             return MediaSession.ConnectionResult.accept(
                 sessionCommands,
@@ -256,6 +257,9 @@ class PlaybackService : MediaSessionService() {
                     isTrackHeld = args.getBoolean(PlaybackSessionCommands.EXTRA_HOLD)
                     applyRepeatMode(repeatMode)
                 }
+
+                PlaybackSessionCommands.ACTION_SKIP ->
+                    args.getString(PlaybackSessionCommands.EXTRA_SKIP)?.let { forwardingPlayer.skip(TrackSkip.valueOf(it)) }
 
                 else -> return super.onCustomCommand(session, controller, customCommand, args)
             }

@@ -393,17 +393,27 @@ class PlaybackController @Inject constructor(
     /** The player's position at this moment, for a screen that follows it closer than [playbackState] ticks. */
     fun currentPositionMs(): Long = controller?.currentPosition ?: _playbackState.value.positionMs
 
+    /**
+     * Moves to the next track - after the last, the first - whatever the repeat mode: a press in the app always skips.
+     * On the player itself, as the system's next is hidden while a track repeats - see [PlaybackForwardingPlayer.skip].
+     */
     fun skipToNext() {
-        controller?.seekToNext()
+        skip(TrackSkip.NEXT)
     }
 
+    /** Moves to the previous track - before the first, the last - or rewinds first, where the user has it do so. */
     fun skipToPrevious() {
-        controller?.seekToPrevious()
+        skip(TrackSkip.PREVIOUS)
     }
 
     /** Moves to the track before the current one without rewinding the current one first - what a swipe means. */
     fun skipToPreviousTrack() {
-        controller?.seekToPreviousMediaItem()
+        skip(TrackSkip.PREVIOUS_TRACK)
+    }
+
+    private fun skip(skip: TrackSkip) {
+        val args = Bundle().apply { putString(PlaybackSessionCommands.EXTRA_SKIP, skip.name) }
+        controller?.sendCustomCommand(PlaybackSessionCommands.skipCommand, args)
     }
 
     fun playQueueItem(mediaItemIndex: Int) {
@@ -582,10 +592,6 @@ class PlaybackController @Inject constructor(
                 durationMs = currentDurationMsOrElse(it.durationMs),
                 shuffleEnabled = mediaController.shuffleModeEnabled,
                 repeatMode = storedRepeatMode,
-                canSkipPrevious = mediaController.isCommandAvailable(Player.COMMAND_SEEK_TO_PREVIOUS),
-                canSkipNext = mediaController.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT),
-                hasPreviousTrack = mediaController.hasPreviousMediaItem(),
-                hasNextTrack = mediaController.hasNextMediaItem(),
                 queue = queue,
                 currentQueueIndex = queue.indexOfFirst { entry -> entry.mediaItemIndex == currentMediaItemIndex },
                 playbackSpeed = mediaController.playbackParameters.speed,
