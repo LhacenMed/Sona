@@ -35,6 +35,37 @@
         </activity>
 
         <!--
+            A track or a video opened with Sona from another app - a file manager's "Open with", or a share - played in a
+            popup over that app rather than in Sona: see OpenMediaActivity. A task of its own, so it opens over that app
+            whatever of Sona is open; kept out of Recents, as it closes once it leaves the screen.
+        -->
+        <activity
+            android:name=".open.OpenMediaActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode|density"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Sona.Popup">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="audio/*" />
+                <data android:mimeType="video/*" />
+                <data android:mimeType="application/ogg" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="audio/*" />
+                <data android:mimeType="video/*" />
+                <data android:mimeType="application/ogg" />
+            </intent-filter>
+        </activity>
+
+        <!--
             The "Now Playing" widget - see PlaybackWidgets. A plain Android widget, as the Mini player is, not a HyperOS
             one: marked so, a widget leaves Android's own and joins Xiaomi's - one that must run in a process of its own,
             carry a version and pass Xiaomi's review before its launcher lists it, which a widget playback updates live

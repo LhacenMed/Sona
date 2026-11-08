@@ -1,9 +1,11 @@
 package com.lhacenmed.sona.feature.video
 
 import android.app.ActivityOptions
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.viewModels
@@ -37,11 +39,18 @@ internal const val EXTRA_OPENING = "opening"
 
 /**
  * Opens the video player as [request] says - full screen, or in its floating window, over the app, which goes on under it.
+ *
+ * [sharedUri] is a file another app let Sona read only for as long as what it opened stays open: handed on to the player's
+ * own window, so the video can still be read once that has closed.
  */
-fun Context.openVideoPlayer(request: VideoScreenRequest) {
+fun Context.openVideoPlayer(request: VideoScreenRequest, sharedUri: Uri? = null) {
     val intent = Intent(this, VideoPlayerActivity::class.java)
         .putExtra(EXTRA_FLOATING, request.isFloating)
         .putExtra(EXTRA_OPENING, request.opening)
+    sharedUri?.let { uri ->
+        intent.clipData = ClipData.newRawUri(null, uri)
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
     if (request.isFloating && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && hasFloatingWindows()) {
         // Straight into the window, never a moment full screen first.
         startActivity(intent, ActivityOptions.makeLaunchIntoPip(floatingWindowParams(null)).toBundle())

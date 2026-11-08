@@ -2,6 +2,7 @@ package com.lhacenmed.sona.feature.playback
 
 import android.content.ComponentName
 import android.content.Context
+import android.net.Uri
 import android.os.Bundle
 import androidx.annotation.OptIn
 import androidx.media3.common.C
@@ -266,6 +267,16 @@ class PlaybackController @Inject constructor(
      */
     fun reselect(track: Track) {
         if (track.isVideo) watchCurrent() else togglePlayPause()
+    }
+
+    /**
+     * Watches [uri], a video another app opened with Sona, in the video player's floating window over that app - apart
+     * from the library, as every outside file plays: see [outsideMediaItem]. The music pauses where it is.
+     */
+    fun watchOutsideVideo(uri: Uri, title: String) {
+        controller?.pause()
+        val video = VideoQueueItem(outsideVideo(uri, title), outsideMediaItem(uri, title, isVideo = true))
+        videoPlayback.open(listOf(video), startIndex = 0, opening = VideoPlayerOpening.FLOATING)
     }
 
     /**

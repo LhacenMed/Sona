@@ -10,4 +10,14 @@
     <style name="Theme.Sona" parent="Theme.Sona.V31">
         <item name="android:windowBackground">?attr/colorSurface</item>
     </style>
+
+    <!--
+        A popup over the app a file was opened from - see OpenMediaActivity: see-through, so that app stays where it is
+        behind it, and opened and closed as a dialog is.
+    -->
+    <style name="Theme.Sona.Popup" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation.Dialog</item>
+    </style>
 </resources>
