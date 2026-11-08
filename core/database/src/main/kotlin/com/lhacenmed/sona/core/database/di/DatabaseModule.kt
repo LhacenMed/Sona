@@ -22,10 +22,12 @@ import com.lhacenmed.sona.core.database.MIGRATION_20_21
 import com.lhacenmed.sona.core.database.MIGRATION_21_22
 import com.lhacenmed.sona.core.database.MIGRATION_22_23
 import com.lhacenmed.sona.core.database.MIGRATION_23_24
+import com.lhacenmed.sona.core.database.MIGRATION_24_25
 import com.lhacenmed.sona.core.database.SeedBuiltInPlaylists
 import com.lhacenmed.sona.core.database.SonaDatabase
 import com.lhacenmed.sona.core.database.dao.AddedDateDao
 import com.lhacenmed.sona.core.database.dao.FileYearDao
+import com.lhacenmed.sona.core.database.dao.ReplayHeatmapDao
 import com.lhacenmed.sona.core.database.dao.HeldLyricsDao
 import com.lhacenmed.sona.core.database.dao.AlbumDao
 import com.lhacenmed.sona.core.database.dao.ArrangementDao
@@ -56,7 +58,7 @@ object DatabaseModule {
     @Singleton
     fun provideSonaDatabase(@ApplicationContext context: Context): SonaDatabase =
         Room.databaseBuilder(context, SonaDatabase::class.java, SonaDatabase.FILE_NAME)
-            .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24)
+            .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25)
             // Seeds Favorites on a fresh install; MIGRATION_4_5 does the same for an existing one.
             .addCallback(SeedBuiltInPlaylists)
             // Still a net for a version pair no migration covers. Real migrations take precedence
@@ -117,4 +119,7 @@ object DatabaseModule {
 
     @Provides
     fun provideFileYearDao(database: SonaDatabase): FileYearDao = database.fileYearDao()
+
+    @Provides
+    fun provideReplayHeatmapDao(database: SonaDatabase): ReplayHeatmapDao = database.replayHeatmapDao()
 }

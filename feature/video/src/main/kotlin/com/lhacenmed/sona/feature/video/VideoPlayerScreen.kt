@@ -42,6 +42,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -148,6 +149,7 @@ internal fun VideoPlayerScreen(
     val showsTotalDuration by viewModel.showsTotalDuration.collectAsStateWithLifecycle()
     val subtitles by viewModel.subtitles.state.collectAsStateWithLifecycle()
     val subtitleStyle by viewModel.subtitleStyle.collectAsStateWithLifecycle()
+    val replayHeights by viewModel.replayHeights.collectAsStateWithLifecycle()
     val current = playback.current
     val windowSize = LocalWindowInfo.current.containerSize
     val isLandscape = windowSize.width > windowSize.height
@@ -171,6 +173,12 @@ internal fun VideoPlayerScreen(
     val subtitleFilePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let(viewModel::onAttachSubtitle)
     }
+    LaunchedEffect(scrub) {
+        snapshotFlow { scrub.isActive }.collect(viewModel::onScrubbingChange)
+    }
+    // A scrub is through one video: another under the finger - skipped to by a headset, after one failing, or the queue
+    // changed - calls it off. One running to its end waits for the scrub instead - see VideoPlayback.setScrubbing.
+    LaunchedEffect(current?.id, playback.currentQueueIndex) { scrub.cancel() }
     LaunchedEffect(viewModel) {
         viewModel.subtitles.readFailures.collect { context.toast(R.string.video_subtitle_failed) }
     }
@@ -210,7 +218,7 @@ internal fun VideoPlayerScreen(
     controls.HideAfterTimeout(
         when {
             session.isLocked -> VideoPlayerTokens.LockedHintTimeoutMs
-            panel != null || !playback.isPlaying || scrub.isActive -> null
+            panel != null || !playback.isPlaying || scrub.isHeld -> null
             else -> VideoPlayerTokens.ControlsTimeoutMs
         },
     )
@@ -365,6 +373,7 @@ internal fun VideoPlayerScreen(
                     showsTotalDuration = showsTotalDuration,
                     session = session,
                     scrub = scrub,
+                    replayHeights = replayHeights,
                     viewModel = viewModel,
                     onClose = onClose,
                     onLock = {
@@ -386,6 +395,7 @@ internal fun VideoPlayerScreen(
             scrub = scrub,
             frames = remember(viewModel) { ScrubFrames(viewModel::onScrubPreviewStart, viewModel::onScrubPreviewMove) },
             isVisible = scrub.isActive && areControlsUp,
+            isAboveHeatmap = replayHeights != null,
             videoWidth = pictureSize[0],
             videoHeight = pictureSize[1],
             durationMs = playback.durationMs,
@@ -441,6 +451,7 @@ private fun PlayerControls(
     showsTotalDuration: Boolean,
     session: VideoSession,
     scrub: VideoScrubState,
+    replayHeights: FloatArray?,
     viewModel: VideoPlayerViewModel,
     onClose: () -> Unit,
     onLock: () -> Unit,
@@ -490,7 +501,7 @@ private fun PlayerControls(
                         modifier = modifier,
                     )
                 },
-                seekBar = { modifier -> VideoSeekBar(position, durationMs, scrub, modifier) },
+                seekBar = { modifier -> VideoSeekBar(position, durationMs, scrub, replayHeights, modifier) },
                 times = { modifier -> VideoTimes(position, durationMs, scrub, showsTotalDuration, viewModel::onToggleEndTime, modifier) },
                 elapsedTime = { modifier -> VideoElapsedTime(position, scrub, modifier) },
                 endTime = { modifier -> VideoEndTime(position, durationMs, scrub, showsTotalDuration, viewModel::onToggleEndTime, modifier) },

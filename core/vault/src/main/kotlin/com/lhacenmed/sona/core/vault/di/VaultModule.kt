@@ -5,8 +5,10 @@ import androidx.room.Room
 import com.lhacenmed.sona.core.vault.data.VAULT_MIGRATION_1_2
 import com.lhacenmed.sona.core.vault.data.VAULT_MIGRATION_2_3
 import com.lhacenmed.sona.core.vault.data.VAULT_MIGRATION_3_4
+import com.lhacenmed.sona.core.vault.data.VAULT_MIGRATION_4_5
 import com.lhacenmed.sona.core.vault.data.VaultDatabase
 import com.lhacenmed.sona.core.vault.data.VaultItemDao
+import com.lhacenmed.sona.core.vault.data.VaultReplayHeatmapDao
 import com.lhacenmed.sona.core.vault.data.VaultResumePositionDao
 import com.lhacenmed.sona.core.vault.data.VaultVideoSubtitleDao
 import com.lhacenmed.sona.core.vault.vaultDirectory
@@ -25,7 +27,7 @@ object VaultModule {
     @Singleton
     fun provideVaultDatabase(@ApplicationContext context: Context): VaultDatabase =
         Room.databaseBuilder(context, VaultDatabase::class.java, File(context.vaultDirectory, "vault.db").path)
-            .addMigrations(VAULT_MIGRATION_1_2, VAULT_MIGRATION_2_3, VAULT_MIGRATION_3_4)
+            .addMigrations(VAULT_MIGRATION_1_2, VAULT_MIGRATION_2_3, VAULT_MIGRATION_3_4, VAULT_MIGRATION_4_5)
             .build()
 
     @Provides
@@ -36,4 +38,7 @@ object VaultModule {
 
     @Provides
     fun provideVaultVideoSubtitleDao(database: VaultDatabase): VaultVideoSubtitleDao = database.videoSubtitleDao()
+
+    @Provides
+    fun provideVaultReplayHeatmapDao(database: VaultDatabase): VaultReplayHeatmapDao = database.replayHeatmapDao()
 }

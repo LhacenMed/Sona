@@ -4,6 +4,8 @@ import android.net.Uri
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.common.lifecycle.isAppInForeground
 import com.lhacenmed.sona.core.datastore.LibrarySettings
+import com.lhacenmed.sona.core.model.ReplayHeatmap
+import com.lhacenmed.sona.core.model.ReplayHeatmapStore
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.VideoSubtitle
 import com.lhacenmed.sona.core.model.VideoSubtitleStore
@@ -11,6 +13,8 @@ import com.lhacenmed.sona.core.model.sort.SortCriterion
 import com.lhacenmed.sona.core.model.sort.SortOrder
 import com.lhacenmed.sona.core.vault.data.VaultItem
 import com.lhacenmed.sona.core.vault.data.VaultItemDao
+import com.lhacenmed.sona.core.vault.data.VaultReplayHeatmap
+import com.lhacenmed.sona.core.vault.data.VaultReplayHeatmapDao
 import com.lhacenmed.sona.core.vault.data.VaultResumePosition
 import com.lhacenmed.sona.core.vault.data.VaultResumePositionDao
 import com.lhacenmed.sona.core.vault.data.VaultVideoSubtitle
@@ -92,6 +96,7 @@ class VaultRepository @Inject internal constructor(
     private val itemDao: VaultItemDao,
     private val resumePositionDao: VaultResumePositionDao,
     private val videoSubtitleDao: VaultVideoSubtitleDao,
+    private val replayHeatmapDao: VaultReplayHeatmapDao,
     private val librarySettings: LibrarySettings,
     @ApplicationScope scope: CoroutineScope,
 ) {
@@ -320,6 +325,15 @@ class VaultRepository @Inject internal constructor(
 
         override suspend fun write(videoId: Long, subtitle: VideoSubtitle) =
             videoSubtitleDao.upsert(VaultVideoSubtitle(videoId, subtitle.attachedName, subtitle.offsetMs, subtitle.choice))
+    }
+
+    /** How often each moment of its videos has been watched, kept in the vault with the rest of it. */
+    val replayHeatmaps: ReplayHeatmapStore = object : ReplayHeatmapStore {
+        override suspend fun read(videoId: Long): ReplayHeatmap? =
+            replayHeatmapDao.get(videoId)?.let { ReplayHeatmap.fromBytes(it.durationMs, it.playedMs) }
+
+        override suspend fun write(videoId: Long, heatmap: ReplayHeatmap) =
+            replayHeatmapDao.upsert(VaultReplayHeatmap(videoId, heatmap.durationMs, heatmap.toBytes()))
     }
 
     /** Copies [track]'s file in from [source]. The library's copy is the caller's to delete once this returns. */

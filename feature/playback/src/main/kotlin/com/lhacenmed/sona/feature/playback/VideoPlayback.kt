@@ -22,6 +22,7 @@ import androidx.media3.session.MediaSession
 import com.lhacenmed.sona.core.datastore.ImageSettings
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.datastore.VideoSettings
+import com.lhacenmed.sona.core.model.ReplayHeatmap
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -29,6 +30,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -39,7 +41,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -140,6 +146,7 @@ class VideoPlayback @Inject constructor(
     private val playbackSettings: PlaybackSettings,
     private val listenHistory: ListenHistory,
     private val resumePositions: ResumePositions,
+    private val replayHeatmaps: ReplayHeatmaps,
     private val equalizer: SonaEqualizer,
     private val imageSettings: ImageSettings,
 ) {
@@ -153,6 +160,13 @@ class VideoPlayback @Inject constructor(
     /** The lines of the subtitle track playing, as they show - apart from [state], as they change so often. */
     val subtitleCues: StateFlow<List<Cue>> = _subtitleCues.asStateFlow()
 
+    /** How often each moment of the video playing has been watched, as it grows - null with none, or nothing playing. */
+    @kotlin.OptIn(ExperimentalCoroutinesApi::class)
+    val replayHeatmap: Flow<ReplayHeatmap?> = _state
+        .map { state -> state.current?.let { VideoKey(if (state.isPrivate) PlaybackSpace.Private else PlaybackSpace.Library, it.id) } }
+        .distinctUntilChanged()
+        .flatMapLatest { video -> video?.let(replayHeatmaps::observe) ?: flowOf(null) }
+
     private val screenRequests = Channel<VideoScreenRequest>(Channel.CONFLATED)
 
     /**
@@ -165,6 +179,15 @@ class VideoPlayback @Inject constructor(
     private val player: ExoPlayer by lazy(LazyThreadSafetyMode.NONE, ::buildPlayer)
 
     private val scrubPreview = VideoScrubPreviewPlayer(context, trackFiles)
+
+    /** Made with [player], on it. */
+    private lateinit var replayHeatmapRecorder: ReplayHeatmapRecorder
+
+    /** Whether the user is scrubbing through the video - see [setScrubbing]. */
+    private var isScrubbing = false
+
+    /** Whether the video ran to its end under a scrub, and waits there to be played on from wherever it lets go. */
+    private var isHeldAtEnd = false
 
     private var isOpen = false
 
@@ -203,6 +226,12 @@ class VideoPlayback @Inject constructor(
                 resumedFromMs = mediaItem?.takeUnless { reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT }
                     ?.let(resumePositions::startPositionOf)?.takeIf { it > 0L }
             }
+        }
+
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            // Paused at its end only for the scrub, not by stopping after the current video.
+            isHeldAtEnd = isScrubbing && !playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM &&
+                !videoSettings.repeatMode.value.stopsAfterCurrentTrack()
         }
 
         override fun onCues(cueGroup: CueGroup) {
@@ -293,6 +322,10 @@ class VideoPlayback @Inject constructor(
         _subtitleCues.value = emptyList()
 
         val player = player
+        // A scrub left on by a screen gone mid-way ends with it.
+        isScrubbing = false
+        isHeldAtEnd = false
+        replayHeatmapRecorder.isScrubbing = false
         // The last screen's surface, kept until now for its last frame to stand as it leaves: this video waits for its own.
         surfaceView = null
         player.clearVideoSurface()
@@ -415,6 +448,24 @@ class VideoPlayback @Inject constructor(
 
     fun moveScrubPreview(positionMs: Long) = scrubPreview.moveTo(positionMs)
 
+    /**
+     * Whether the user is scrubbing - the video playing on under it, and staying the one scrubbed through: run to its end, it
+     * waits there rather than going on to the next, and plays on from wherever the scrub lets go - on to the next, let go
+     * where it began. What plays meanwhile is not watched, so adds nothing to [replayHeatmap] - which takes in, as a scrub
+     * begins, what had played until then, to be shown as it stands.
+     */
+    fun setScrubbing(isScrubbing: Boolean) {
+        if (!isOpen || this.isScrubbing == isScrubbing) return
+        this.isScrubbing = isScrubbing
+        replayHeatmapRecorder.isScrubbing = isScrubbing
+        applyRepeatMode()
+        // Let go, after the seek it asked for: played on from there.
+        if (!isScrubbing && isHeldAtEnd) {
+            isHeldAtEnd = false
+            player.play()
+        }
+    }
+
     /** Plays the video from its beginning, rather than from where it came back. */
     fun startOver() {
         if (!isOpen) return
@@ -493,11 +544,11 @@ class VideoPlayback @Inject constructor(
             .build()
     }
 
-    /** Puts the videos' repeat mode on the player - and, stopping after the current video, the pause at its end. */
+    /** Puts the videos' repeat mode on the player - and, stopping after the current video or scrubbing, the pause at its end. */
     private fun applyRepeatMode() {
         val repeatMode = videoSettings.repeatMode.value
         player.repeatMode = repeatMode.toPlayerRepeatMode()
-        player.pauseAtEndOfMediaItems = repeatMode.stopsAfterCurrentTrack()
+        player.pauseAtEndOfMediaItems = repeatMode.stopsAfterCurrentTrack() || isScrubbing
     }
 
     private fun shutDown() {
@@ -587,6 +638,7 @@ class VideoPlayback @Inject constructor(
                 // On the player itself, so a video counts and is remembered exactly as one heard in the music player does.
                 PlayHistoryRecorder(player, scope, listenHistory, playbackSettings).attach()
                 ResumePositionRecorder(player, resumePositions).attach()
+                replayHeatmapRecorder = ReplayHeatmapRecorder(player, replayHeatmaps).also { it.attach() }
             }
     }
 

@@ -9,11 +9,27 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * The Private Folder's own list, apart from the library's database: that one is backed up, and the vault
  * is not - see `vaultDirectory`.
  */
-@Database(entities = [VaultItem::class, VaultResumePosition::class, VaultVideoSubtitle::class], version = 4, exportSchema = true)
+@Database(
+    entities = [VaultItem::class, VaultResumePosition::class, VaultVideoSubtitle::class, VaultReplayHeatmap::class],
+    version = 5,
+    exportSchema = true,
+)
 abstract class VaultDatabase : RoomDatabase() {
     abstract fun itemDao(): VaultItemDao
     abstract fun resumePositionDao(): VaultResumePositionDao
     abstract fun videoSubtitleDao(): VaultVideoSubtitleDao
+    abstract fun replayHeatmapDao(): VaultReplayHeatmapDao
+}
+
+/** How often each moment of each video has been watched. A table of its own, starting empty. */
+internal val VAULT_MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `vault_replay_heatmaps` (`itemId` INTEGER NOT NULL, `durationMs` INTEGER NOT NULL, " +
+                "`playedMs` BLOB NOT NULL, PRIMARY KEY(`itemId`), " +
+                "FOREIGN KEY(`itemId`) REFERENCES `vault_items`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        )
+    }
 }
 
 /** How many times each item was listened to through - none yet for every item already there. */

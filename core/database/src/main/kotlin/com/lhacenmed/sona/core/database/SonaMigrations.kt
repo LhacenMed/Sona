@@ -420,6 +420,17 @@ val MIGRATION_23_24 = object : Migration(23, 24) {
     }
 }
 
+/** How often each moment of each video has been watched - see `ReplayHeatmapEntity`. A table of its own, starting empty. */
+val MIGRATION_24_25 = object : Migration(24, 25) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `replay_heatmaps` (`trackId` INTEGER NOT NULL, `durationMs` INTEGER NOT NULL, " +
+                "`playedMs` BLOB NOT NULL, PRIMARY KEY(`trackId`), " +
+                "FOREIGN KEY(`trackId`) REFERENCES `tracks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        )
+    }
+}
+
 /**
  * Makes sure Favorites exists, every time the database is opened.
  *

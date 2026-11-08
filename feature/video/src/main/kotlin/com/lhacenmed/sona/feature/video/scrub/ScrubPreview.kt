@@ -61,14 +61,15 @@ internal class ScrubFrames(
 )
 
 /**
- * The frame a scrub has reached and the time it is at, standing over the seek bar's thumb while [isVisible] - placed as it is
- * laid out, so it follows the finger on every frame with nothing composed for it.
+ * The frame a scrub has reached and the time it is at, standing over the seek bar's thumb while [isVisible] - and over its Most
+ * replayed graph, [isAboveHeatmap] - placed as it is laid out, so it follows the finger on every frame with nothing composed for it.
  */
 @Composable
 internal fun ScrubPreview(
     scrub: VideoScrubState,
     frames: ScrubFrames,
     isVisible: Boolean,
+    isAboveHeatmap: Boolean,
     videoWidth: Int,
     videoHeight: Int,
     durationMs: Long,
@@ -78,7 +79,9 @@ internal fun ScrubPreview(
     val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val pictureSize = remember(videoWidth, videoHeight) { previewPictureSize(videoWidth, videoHeight) }
     val edgeMargin = with(density) { VideoPlayerTokens.PreviewEdgeMargin.toPx() }
-    val gap = with(density) { VideoPlayerTokens.PreviewGap.toPx() }
+    val gap = with(density) {
+        VideoPlayerTokens.PreviewGap.toPx() + if (isAboveHeatmap) (VideoPlayerTokens.HeatmapHeight + VideoPlayerTokens.HeatmapGap).toPx() else 0f
+    }
     Box(
         modifier = modifier
             .fillMaxSize()

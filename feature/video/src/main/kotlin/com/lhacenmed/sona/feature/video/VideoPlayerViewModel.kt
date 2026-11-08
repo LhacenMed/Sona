@@ -211,6 +211,19 @@ class VideoPlayerViewModel @Inject constructor(
 
     fun onScrubPreviewMove(positionMs: Long) = videoPlayback.moveScrubPreview(positionMs)
 
+    /**
+     * How high each moment of the video stands in its Most replayed graph, from 0 to 1 - null while no moment stands out,
+     * see [com.lhacenmed.sona.core.model.ReplayHeatmap.heights].
+     */
+    val replayHeights: StateFlow<FloatArray?> = videoPlayback.replayHeatmap
+        .map { it?.heights() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** A scrub has begun or ended - see [VideoPlayback.setScrubbing]. */
+    fun onScrubbingChange(isScrubbing: Boolean) {
+        video?.setScrubbing(isScrubbing)
+    }
+
     fun onSpeedChange(speed: Float) {
         video?.setPlaybackSpeed(speed)
     }

@@ -139,6 +139,49 @@ class VideoScrubStateTest {
     }
 
     @Test
+    fun `a scrub called off seeks nowhere, and the finger still down moves nothing until it lifts`() {
+        scrub.begin(fromMs = 1_000L)
+        scrub.moveTo(5_000L)
+        scrub.cancel()
+        assertFalse(scrub.isActive)
+        assertTrue(scrub.isHeld)
+
+        scrub.begin(fromMs = 0L)
+        drag(8_000L)
+        scrub.moveTo(9_000L)
+        assertFalse(scrub.isActive)
+        scrub.end()
+
+        assertEquals(emptyList<Long>(), sought)
+        assertFalse(scrub.isHeld)
+        assertEquals(2_000L, scrub.shownPositionMs(playerMs = 2_000L))
+    }
+
+    @Test
+    fun `once lifted, the next scrub goes as any other`() {
+        scrub.begin(fromMs = 1_000L)
+        scrub.cancel()
+        scrub.end()
+
+        scrub.begin(fromMs = 0L)
+        scrub.moveTo(4_000L)
+        scrub.end()
+
+        assertEquals(listOf(4_000L), sought)
+    }
+
+    @Test
+    fun `a video gone while the bar settles shows the new one's position at once`() {
+        scrub.begin(fromMs = 1_000L)
+        scrub.moveTo(5_000L)
+        scrub.end()
+        scrub.cancel()
+
+        assertEquals(0L, scrub.shownPositionMs(playerMs = 0L))
+        assertFalse(scrub.isHeld)
+    }
+
+    @Test
     fun `a preview wider than the screen still stands at its margin`() {
         assertEquals(8f, previewLeft(thumbX = 50f, previewWidth = 300f, screenWidth = 100f, edgeMargin = 8f), 0f)
     }

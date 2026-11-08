@@ -6,8 +6,8 @@ import androidx.room.Transaction
 
 /**
  * Hands everything the user made of one track to another - a copy of the same file, gone in with the track it is:
- * its playlist entries, its plays, where it was left, its place in every hand-made order, its queue entries,
- * and the playlist covers it is. A row the new track already has is kept, and the old one goes with its track.
+ * its playlist entries, its plays, where it was left, how often each moment of it was watched, its place in every
+ * hand-made order, its queue entries, and the playlist covers it is. A row the new track already has is kept, and the old one goes with its track.
  */
 @Dao
 interface TrackMoveDao {
@@ -17,6 +17,7 @@ interface TrackMoveDao {
         movePlaylistEntries(fromTrackId, toTrackId)
         movePlayStats(fromTrackId, toTrackId)
         moveResumePosition(fromTrackId, toTrackId)
+        moveReplayHeatmap(fromTrackId, toTrackId)
         moveArrangements(fromTrackId, toTrackId)
         moveQueueItems(fromTrackId, toTrackId)
         movePlaylistCovers(fromTrackId, toTrackId)
@@ -30,6 +31,9 @@ interface TrackMoveDao {
 
     @Query("UPDATE OR IGNORE resume_positions SET trackId = :toTrackId WHERE trackId = :fromTrackId")
     suspend fun moveResumePosition(fromTrackId: Long, toTrackId: Long)
+
+    @Query("UPDATE OR IGNORE replay_heatmaps SET trackId = :toTrackId WHERE trackId = :fromTrackId")
+    suspend fun moveReplayHeatmap(fromTrackId: Long, toTrackId: Long)
 
     @Query("UPDATE OR IGNORE arrangements SET trackId = :toTrackId WHERE trackId = :fromTrackId")
     suspend fun moveArrangements(fromTrackId: Long, toTrackId: Long)

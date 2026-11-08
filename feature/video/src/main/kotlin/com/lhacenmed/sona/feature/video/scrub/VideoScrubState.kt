@@ -18,6 +18,7 @@ private const val SettleTimeoutMs = 1_500L
 /**
  * A scrub through the video - by the seek bar's thumb or by a swipe across the picture, one and the same to everything
  * that shows it. The video plays on meanwhile: only letting go moves it, and letting go where the scrub began leaves it be.
+ * A scrub is through one video: should another take its place under the finger, it is called off - see [cancel].
  *
  * Each read of [targetMs] where it is drawn or laid out follows the finger without composing anything for it.
  */
@@ -45,12 +46,18 @@ internal class VideoScrubState(
     private var settlingMs: Long? = null
     private var settlingUntilMs = 0L
 
+    /** Whether a scrub was called off with the finger still down: nothing it does counts until it lifts. */
+    private var isCancelled by mutableStateOf(false)
+
+    /** Whether a finger scrubs, or has yet to lift from a scrub called off - the controls under it stay meanwhile. */
+    val isHeld: Boolean get() = isActive || isCancelled
+
     /** Whether the thumb has gone far enough from where it began to snap back to it, and whether it stands snapped there now. */
     private var hasLeftOrigin = false
     private var isSnapped = false
 
     fun begin(fromMs: Long) {
-        if (isActive) return
+        if (isActive || isCancelled) return
         originMs = fromMs
         targetMs = fromMs
         settlingMs = null
@@ -61,6 +68,7 @@ internal class VideoScrubState(
 
     /** Takes the scrub to [positionMs]. */
     fun moveTo(positionMs: Long) {
+        if (!isActive) return
         targetMs = positionMs
     }
 
@@ -69,6 +77,7 @@ internal class VideoScrubState(
      * began, snaps back there on coming within [snapRadiusMs], and stays until pulled out past [releaseRadiusMs] again.
      */
     fun dragTo(positionMs: Long, snapRadiusMs: Long, releaseRadiusMs: Long) {
+        if (!isActive) return
         val distanceMs = abs(positionMs - originMs)
         if (isSnapped) {
             if (distanceMs > releaseRadiusMs) isSnapped = false
@@ -82,12 +91,23 @@ internal class VideoScrubState(
 
     /** Lets go, the video going where the scrub reached - or left playing on, back where it began. */
     fun end() {
+        isCancelled = false
         if (!isActive) return
         isActive = false
         if (targetMs == originMs) return
         settlingMs = targetMs
         settlingUntilMs = now() + SettleTimeoutMs
         onSeek(targetMs)
+    }
+
+    /**
+     * Calls off the scrub, and whatever it was settling to: the video it was through has gone. It seeks nowhere, and the finger
+     * still down moves nothing until it lifts - nor does what it lets go of, a position in a video no longer there.
+     */
+    fun cancel() {
+        if (isActive) isCancelled = true
+        isActive = false
+        settlingMs = null
     }
 
     /** Where the bar stands, the player being at [playerMs]: never jumping back for a moment after letting go. */

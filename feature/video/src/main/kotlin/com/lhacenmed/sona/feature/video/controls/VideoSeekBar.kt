@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.feature.video.controls
 
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -16,6 +17,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -35,7 +37,8 @@ private val ThumbSlot = VideoPlayerTokens.ScrubThumbSize
 /**
  * Material's slider, for its dragging, touch target and accessibility, drawn as every player's: an upright thumb, and a thin
  * track either side of it, kept clear of it, saying how far the video is - all swelling under a scrub. Its thumb snaps back
- * to where a scrub began - see [VideoScrubState.dragTo].
+ * to where a scrub began - see [VideoScrubState.dragTo]. Under a scrub, the video's Most replayed graph - its [replayHeights] -
+ * rises over the track, where it has one.
  *
  * Everything that moves is read as it is drawn, so a scrub draws this again and composes nothing beyond the slider's own value.
  */
@@ -45,6 +48,7 @@ internal fun VideoSeekBar(
     position: VideoPosition,
     durationMs: Long,
     scrub: VideoScrubState,
+    replayHeights: FloatArray?,
     modifier: Modifier = Modifier,
 ) {
     val shownMs = scrub.shownPositionMs(position.positionMs)
@@ -54,6 +58,11 @@ internal fun VideoSeekBar(
         targetValue = if (scrub.isActive) 1f else 0f,
         animationSpec = tween(VideoPlayerTokens.ScrubFadeMs),
         label = "scrubProgress",
+    )
+    val heatmapReveal = animateFloatAsState(
+        targetValue = if (scrub.isActive && replayHeights != null) 1f else 0f,
+        animationSpec = tween(VideoPlayerTokens.HeatmapRevealMs, easing = FastOutSlowInEasing),
+        label = "heatmapReveal",
     )
     Slider(
         value = fractionOf(shownMs, durationMs),
@@ -93,6 +102,15 @@ internal fun VideoSeekBar(
                 val gap = VideoPlayerTokens.ThumbGap.toPx() / size.width.coerceAtLeast(1f)
                 drawSeekTrack(height, fraction + gap, 1f, VideoPlayerTokens.TrackColor)
                 drawSeekTrack(height, 0f, fraction - gap, VideoPlayerTokens.Accent)
+                val reveal = heatmapReveal.value
+                if (replayHeights != null && reveal > 0f) {
+                    drawReplayHeatmap(
+                        heights = replayHeights,
+                        bottom = (size.height - VideoPlayerTokens.ScrubTrackHeight.toPx()) / 2f - VideoPlayerTokens.HeatmapGap.toPx(),
+                        peak = VideoPlayerTokens.HeatmapHeight.toPx() * reveal,
+                        alpha = reveal,
+                    )
+                }
             }
         },
         modifier = modifier,
@@ -148,4 +166,30 @@ private fun DrawScope.drawSeekTrack(height: Float, from: Float, to: Float, color
         size = Size(width, height),
         cornerRadius = CornerRadius(height / 2f),
     )
+}
+
+/**
+ * The Most replayed graph, rising from [bottom] to [peak] above it where the video is most watched: a smooth curve through
+ * the middle of each moment, along the track as it runs - from the right where text runs that way.
+ */
+private fun DrawScope.drawReplayHeatmap(heights: FloatArray, bottom: Float, peak: Float, alpha: Float) {
+    val isRtl = layoutDirection == LayoutDirection.Rtl
+    fun along(x: Float): Float = if (isRtl) size.width - x else x
+    fun x(moment: Int): Float = size.width * (moment + 0.5f) / heights.size
+    fun y(moment: Int): Float = bottom - peak * heights[moment]
+    val last = heights.lastIndex
+    val path = Path().apply {
+        moveTo(along(0f), bottom)
+        lineTo(along(0f), y(0))
+        lineTo(along(x(0)), y(0))
+        // Through the middle between each two moments, bent towards the first, so the curve has no corners.
+        for (moment in 1..last) {
+            quadraticTo(along(x(moment - 1)), y(moment - 1), along((x(moment - 1) + x(moment)) / 2f), (y(moment - 1) + y(moment)) / 2f)
+        }
+        lineTo(along(x(last)), y(last))
+        lineTo(along(size.width), y(last))
+        lineTo(along(size.width), bottom)
+        close()
+    }
+    drawPath(path, VideoPlayerTokens.HeatmapColor, alpha = alpha)
 }

@@ -141,6 +141,11 @@ internal object VideoPlayerTokens {
     val ScrubThumbSize = DpSize(6.dp, 24.dp)
     val ThumbGap = 6.dp
 
+    /** The Most replayed graph over the seek track while a scrub is on: how tall it is at its peak, and how far above the track. */
+    val HeatmapHeight = 36.dp
+    val HeatmapGap = 4.dp
+    val HeatmapColor = Color.White.copy(alpha = 0.32f)
+
     /** The most of the screen's width and height a scrubbing preview takes, the picture's own shape within it. */
     val PreviewWidth = 176.dp
     val PreviewHeight = 99.dp
@@ -198,6 +203,7 @@ internal object VideoPlayerTokens {
 
     const val ChromeFadeMs = 220
     const val ScrubFadeMs = 90
+    const val HeatmapRevealMs = 240
     const val SubtitleLiftMs = 220
     const val MeterFadeMs = 120
 

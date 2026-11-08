@@ -17,6 +17,7 @@ import com.lhacenmed.sona.core.database.dao.MediaHashDao
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.PlaylistDao
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
+import com.lhacenmed.sona.core.database.dao.ReplayHeatmapDao
 import com.lhacenmed.sona.core.database.dao.ResumePositionDao
 import com.lhacenmed.sona.core.database.dao.TrackDao
 import com.lhacenmed.sona.core.database.dao.TrackMoveDao
@@ -35,6 +36,7 @@ import com.lhacenmed.sona.core.database.entity.PlayStatsEntity
 import com.lhacenmed.sona.core.database.entity.PlaylistEntity
 import com.lhacenmed.sona.core.database.entity.PlaylistTrackEntity
 import com.lhacenmed.sona.core.database.entity.QueueItemEntity
+import com.lhacenmed.sona.core.database.entity.ReplayHeatmapEntity
 import com.lhacenmed.sona.core.database.entity.ResumePositionEntity
 import com.lhacenmed.sona.core.database.entity.TrackEntity
 import com.lhacenmed.sona.core.database.entity.VideoSubtitleEntity
@@ -58,8 +60,9 @@ import com.lhacenmed.sona.core.database.entity.VideoSubtitleEntity
         AddedDateEntity::class,
         HeldLyricsEntity::class,
         FileYearEntity::class,
+        ReplayHeatmapEntity::class,
     ],
-    version = 24,
+    version = 25,
     exportSchema = true,
 )
 @TypeConverters(CoverArtUrisConverter::class, ArtistIdsConverter::class)
@@ -83,6 +86,7 @@ abstract class SonaDatabase : RoomDatabase() {
     abstract fun addedDateDao(): AddedDateDao
     abstract fun heldLyricsDao(): HeldLyricsDao
     abstract fun fileYearDao(): FileYearDao
+    abstract fun replayHeatmapDao(): ReplayHeatmapDao
 
     companion object {
         const val FILE_NAME = "sona.db"
