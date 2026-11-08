@@ -218,7 +218,7 @@ internal fun AutoTagRow(item: AutoTagItem, picks: SelectionState, onOpen: () -> 
         onClick = { if (item.hasChanges) picks.toggle(trackId) else onOpen() },
         onOpenOptions = onOpen,
         optionsIcon = SonaIcons.Edit,
-        optionsLabel = "Edit tags",
+        optionsLabel = "Edit info",
         cover = { isSelected ->
             SonaCoverArt(
                 coverArtUri = draft?.cover?.uriOr(item.track.coverArtUri) ?: item.track.coverArtUri,

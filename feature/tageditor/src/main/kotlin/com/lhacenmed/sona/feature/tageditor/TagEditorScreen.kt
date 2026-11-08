@@ -121,7 +121,7 @@ data class TagEditorScreen(val trackId: Long, val isInAutoTagRun: Boolean = fals
         }
 
         Column(modifier = Modifier.fillMaxSize()) {
-            SonaTopAppBar(title = "Edit tags", onNavigateBack = navigator::back)
+            SonaTopAppBar(title = "Edit info", onNavigateBack = navigator::back)
             if (draft == null) return@Column
 
             val track = draft.track

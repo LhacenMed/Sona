@@ -54,7 +54,7 @@
     <string name="player_max_selection_limit">Up to %d lines can be selected</string>
     <string name="player_share">Share</string>
     <string name="player_share_lyrics">Share lyrics</string>
-    <string name="player_edit">Edit</string>
+    <string name="player_edit">Edit lyrics</string>
     <string name="player_lyrics_sync_offset">Lyrics sync offset</string>
     <string name="player_lyrics_sync_offset_slider">Slider</string>
     <string name="player_lyrics_sync_offset_custom">Custom</string>
