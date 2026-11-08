@@ -27,8 +27,8 @@ import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.fab.ExtendedFloatingActionButtonContent
 import com.lhacenmed.sona.core.designsystem.component.fab.SonaExtendedFloatingActionButtons
+import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
-import com.lhacenmed.sona.core.designsystem.component.screen.screenList
 import com.lhacenmed.sona.core.designsystem.component.selectAllAction
 import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
 import com.lhacenmed.sona.core.designsystem.component.toast
@@ -98,26 +98,29 @@ data object ExcludedFoldersScreen : Screen {
                 return@Column
             }
             val listState = rememberLazyListState()
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize().screenList(listState),
-                contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
-            ) {
-                items(excludedFolders, key = { it }) { path ->
-                    SonaListRow(
-                        title = path.substringAfterLast('/'),
-                        subtitle = path.substringBeforeLast('/'),
-                        selection = picks,
-                        selectionKey = path,
-                        // Its files are out of the library: they are read from the device, a file's with its folder's.
-                        onClick = {
-                            val folder = if (File(path).isFile) path.substringBeforeLast('/') else path
-                            navigator.go(FolderExplorerScreen(folder, showsExcluded = true))
-                        },
-                        onOpenOptions = null,
-                        // An excluded folder is out of the library, its covers with it: the folder glyph stands for it.
-                        cover = { isSelected -> SonaFolderCover(coverArtUris = emptyList(), seed = path.hashCode(), isSelected = isSelected) },
-                    )
+            FastScroller(listState, Modifier.fillMaxSize()) { overscrollEffect ->
+                LazyColumn(
+                    state = listState,
+                    overscrollEffect = overscrollEffect,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+                ) {
+                    items(excludedFolders, key = { it }) { path ->
+                        SonaListRow(
+                            title = path.substringAfterLast('/'),
+                            subtitle = path.substringBeforeLast('/'),
+                            selection = picks,
+                            selectionKey = path,
+                            // Its files are out of the library: they are read from the device, a file's with its folder's.
+                            onClick = {
+                                val folder = if (File(path).isFile) path.substringBeforeLast('/') else path
+                                navigator.go(FolderExplorerScreen(folder, showsExcluded = true))
+                            },
+                            onOpenOptions = null,
+                            // An excluded folder is out of the library, its covers with it: the folder glyph stands for it.
+                            cover = { isSelected -> SonaFolderCover(coverArtUris = emptyList(), seed = path.hashCode(), isSelected = isSelected) },
+                        )
+                    }
                 }
             }
         }

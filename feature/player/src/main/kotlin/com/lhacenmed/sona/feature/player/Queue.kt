@@ -45,8 +45,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.LocalDragHandle
 import com.lhacenmed.sona.core.designsystem.component.SonaTrackRow
+import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.swipe.LocalSwipeActions
 import com.lhacenmed.sona.core.designsystem.component.swipe.SwipeAction
 import com.lhacenmed.sona.core.designsystem.component.swipe.SwipeActionTone
@@ -260,76 +262,83 @@ internal fun Queue(
                     onShuffleClick = viewModel::onToggleShuffle,
                 )
 
-                LazyColumn(
-                    state = lazyListState,
-                    // The gap under the divider is the list's own padding rather than a first row of
-                    // empty space, so it scrolls away with the rows and every row's index is its
-                    // place in the queue.
-                    contentPadding =
-                        WindowInsets.systemBars
-                            .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)
-                            .add(WindowInsets(top = 8.dp, bottom = QueueItemHeight + 8.dp))
-                            .asPaddingValues(),
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .nestedScroll(sheetScrollConnection),
-                ) {
-                    items(
-                        items = rows,
-                        key = { item -> item.entry.key },
-                        contentType = { "queue_item" },
-                    ) { item ->
-                        ReorderableItem(
-                            state = reorderableState,
-                            key = item.entry.key,
-                            // A row comes and goes at once, and only its neighbours move, sliding to close
-                            // the gap or to open it: a fade would leave the row that went half there, over
-                            // the ones taking its place.
-                            animateItemModifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null),
+                // The thumb stops above the queue's bar, which stands over the list's end - as its snackbar does.
+                val queueBarClearance = QueueItemHeight + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
+                CompositionLocalProvider(LocalBottomContentPadding provides queueBarClearance) {
+                    FastScroller(lazyListState, Modifier.weight(1f)) { overscrollEffect ->
+                        LazyColumn(
+                            state = lazyListState,
+                            // The gap under the divider is the list's own padding rather than a first row of
+                            // empty space, so it scrolls away with the rows and every row's index is its
+                            // place in the queue.
+                            contentPadding =
+                                WindowInsets.systemBars
+                                    .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)
+                                    .add(WindowInsets(top = 8.dp, bottom = QueueItemHeight + 8.dp))
+                                    .asPaddingValues(),
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .nestedScroll(sheetScrollConnection),
+                            overscrollEffect = overscrollEffect,
                         ) {
-                            val currentItem by rememberUpdatedState(item)
-                            val isActive = item.entry.key == currentPlayingKey
-                            // Towards the row's end it plays next - save the track playing, which is already
-                            // where it plays - and towards its start it leaves the queue, with an undo.
-                            val swipeActions =
-                                remember(isActive) {
-                                    SwipeActions(
-                                        startToEnd = if (isActive) {
-                                            null
-                                        } else {
-                                            SwipeAction(SonaIcons.PlayNext, SwipeActionTone.Primary) {
-                                                viewModel.onPlayQueueItemNext(currentItem)
-                                            }
-                                        },
-                                        endToStart = SwipeAction(SonaIcons.Delete, SwipeActionTone.Danger) {
-                                            onRemoveWithUndo(currentItem)
-                                        },
-                                    )
-                                }
-
-                            // The handle and the swipe reach the row through the composition, the way
-                            // every list in the app hands them over.
-                            CompositionLocalProvider(
-                                LocalDragHandle provides Modifier.draggableHandle(),
-                                LocalSwipeActions provides swipeActions,
-                            ) {
-                                SonaTrackRow(
-                                    track = item.track,
-                                    isCurrent = { isActive },
-                                    isPlaying = { playback.isPlaying && isActive },
-                                    selection = null,
-                                    selectionKey = null,
-                                    onClick = {
-                                        if (isActive) {
-                                            viewModel.onTogglePlayPause()
-                                        } else {
-                                            viewModel.onPlayQueueItem(currentItem)
+                            items(
+                                items = rows,
+                                key = { item -> item.entry.key },
+                                contentType = { "queue_item" },
+                            ) { item ->
+                                ReorderableItem(
+                                    state = reorderableState,
+                                    key = item.entry.key,
+                                    // A row comes and goes at once, and only its neighbours move, sliding to close
+                                    // the gap or to open it: a fade would leave the row that went half there, over
+                                    // the ones taking its place.
+                                    animateItemModifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null),
+                                ) {
+                                    val currentItem by rememberUpdatedState(item)
+                                    val isActive = item.entry.key == currentPlayingKey
+                                    // Towards the row's end it plays next - save the track playing, which is already
+                                    // where it plays - and towards its start it leaves the queue, with an undo.
+                                    val swipeActions =
+                                        remember(isActive) {
+                                            SwipeActions(
+                                                startToEnd = if (isActive) {
+                                                    null
+                                                } else {
+                                                    SwipeAction(SonaIcons.PlayNext, SwipeActionTone.Primary) {
+                                                        viewModel.onPlayQueueItemNext(currentItem)
+                                                    }
+                                                },
+                                                endToStart = SwipeAction(SonaIcons.Delete, SwipeActionTone.Danger) {
+                                                    onRemoveWithUndo(currentItem)
+                                                },
+                                            )
                                         }
-                                    },
-                                    onOpenOptions = { onMenuClick(item.track) },
-                                    containerColor = backgroundColor,
-                                )
+
+                                    // The handle and the swipe reach the row through the composition, the way
+                                    // every list in the app hands them over.
+                                    CompositionLocalProvider(
+                                        LocalDragHandle provides Modifier.draggableHandle(),
+                                        LocalSwipeActions provides swipeActions,
+                                    ) {
+                                        SonaTrackRow(
+                                            track = item.track,
+                                            isCurrent = { isActive },
+                                            isPlaying = { playback.isPlaying && isActive },
+                                            selection = null,
+                                            selectionKey = null,
+                                            onClick = {
+                                                if (isActive) {
+                                                    viewModel.onTogglePlayPause()
+                                                } else {
+                                                    viewModel.onPlayQueueItem(currentItem)
+                                                }
+                                            },
+                                            onOpenOptions = { onMenuClick(item.track) },
+                                            containerColor = backgroundColor,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

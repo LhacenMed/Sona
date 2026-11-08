@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -35,6 +36,7 @@ import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.SELECTED_ROW_TINT_ALPHA
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.component.dragSelection
+import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.rememberDragSelection
 import com.lhacenmed.sona.core.designsystem.component.selectableRow
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
@@ -101,29 +103,32 @@ internal fun DataTable(
             page.columns.forEach { column -> Cell(column, isHeader = true) }
         }
         HorizontalDivider()
-        LazyColumn(
-            state = listState,
-            modifier = if (dragSelection != null) Modifier.dragSelection(dragSelection) else Modifier,
-            contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
-        ) {
-            itemsIndexed(page.rows) { _, row ->
-                Row(
-                    Modifier
-                        .then(if (selection?.isSelected(row.rowId ?: Unit) == true) Modifier.background(selectedTint) else Modifier)
-                        .horizontalScroll(sideways)
-                        .then(
-                            when {
-                                selection != null && row.rowId != null ->
-                                    Modifier.selectableRow(selection, row.rowId, dragSelection, onClick = { onRowClick?.invoke(row) })
-                                onRowClick != null -> Modifier.clickable { onRowClick(row) }
-                                else -> Modifier
-                            },
-                        )
-                        .padding(vertical = 8.dp),
-                ) {
-                    row.cells.forEach { cell -> Cell(cell ?: "NULL", isHeader = false) }
+        FastScroller(listState, Modifier.weight(1f)) { overscrollEffect ->
+            LazyColumn(
+                state = listState,
+                modifier = if (dragSelection != null) Modifier.fillMaxSize().dragSelection(dragSelection) else Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+                overscrollEffect = overscrollEffect,
+            ) {
+                itemsIndexed(page.rows) { _, row ->
+                    Row(
+                        Modifier
+                            .then(if (selection?.isSelected(row.rowId ?: Unit) == true) Modifier.background(selectedTint) else Modifier)
+                            .horizontalScroll(sideways)
+                            .then(
+                                when {
+                                    selection != null && row.rowId != null ->
+                                        Modifier.selectableRow(selection, row.rowId, dragSelection, onClick = { onRowClick?.invoke(row) })
+                                    onRowClick != null -> Modifier.clickable { onRowClick(row) }
+                                    else -> Modifier
+                                },
+                            )
+                            .padding(vertical = 8.dp),
+                    ) {
+                        row.cells.forEach { cell -> Cell(cell ?: "NULL", isHeader = false) }
+                    }
+                    HorizontalDivider()
                 }
-                HorizontalDivider()
             }
         }
     }

@@ -45,3 +45,53 @@ private class KeyFinder(private val key: Any) : LazyListScope {
         itemCount++
     }
 }
+
+/** How many items past the first on screen a section is looked for in: about a screen of rows. */
+private const val SectionLookAhead = 32
+
+/**
+ * The section of the item [content] lays out at [index], by its key - or, for an item with none of its own, a heading
+ * or a row of another kind, of the first one after it that has one, within [SectionLookAhead] items: the section the
+ * rows on screen are in. Read off [content] as [indexOfKey] is.
+ */
+internal fun (LazyListScope.() -> Unit).sectionFrom(index: Int, sectionOf: (key: Any) -> String?): String? =
+    SectionFinder(index, sectionOf).apply(this).foundSection
+
+/** Counts the items a list's content lays out, asking each from the one it starts at for its section until one has one. */
+private class SectionFinder(private val from: Int, private val sectionOf: (key: Any) -> String?) : LazyListScope {
+    var foundSection: String? = null
+        private set
+    private var itemCount = 0
+
+    private fun look(key: Any?) {
+        if (foundSection != null || itemCount < from || itemCount > from + SectionLookAhead || key == null) return
+        foundSection = sectionOf(key)
+    }
+
+    override fun item(key: Any?, contentType: Any?, content: @Composable LazyItemScope.() -> Unit) {
+        look(key)
+        itemCount++
+    }
+
+    override fun items(
+        count: Int,
+        key: ((index: Int) -> Any)?,
+        contentType: (index: Int) -> Any?,
+        itemContent: @Composable LazyItemScope.(index: Int) -> Unit,
+    ) {
+        if (foundSection == null && key != null) {
+            val first = (from - itemCount).coerceAtLeast(0)
+            val last = (from + SectionLookAhead - itemCount).coerceAtMost(count - 1)
+            for (index in first..last) {
+                foundSection = sectionOf(key(index))
+                if (foundSection != null) break
+            }
+        }
+        itemCount += count
+    }
+
+    override fun stickyHeader(key: Any?, contentType: Any?, content: @Composable LazyItemScope.(Int) -> Unit) {
+        look(key)
+        itemCount++
+    }
+}

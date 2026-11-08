@@ -37,7 +37,7 @@ import com.lhacenmed.sona.core.designsystem.component.SonaTabRow
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.SonaVideoRow
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
-import com.lhacenmed.sona.core.designsystem.component.screen.screenList
+import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.sheet.SonaSortSheet
 import com.lhacenmed.sona.core.designsystem.component.sheet.sortAction
 import com.lhacenmed.sona.core.designsystem.component.topBarBackground
@@ -131,8 +131,10 @@ private fun PrivateFolderContent(viewModel: PrivateFolderViewModel) {
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), beyondViewportPageCount = 1) { page ->
             val isVideo = page == 0
             val items by (if (isVideo) viewModel.videos else viewModel.tracks).collectAsStateWithLifecycle()
+            val sectionOf by (if (isVideo) viewModel.videoSections else viewModel.trackSections).collectAsStateWithLifecycle()
             VaultItemList(
                 items = items,
+                sectionOf = sectionOf,
                 isVideo = isVideo,
                 playingItemId = playingItemId,
                 resumePositionMsOf = { item -> resumePositionsMs.value[item.id] ?: 0L },
@@ -158,10 +160,14 @@ private fun PrivateFolderContent(viewModel: PrivateFolderViewModel) {
     }
 }
 
-/** One tab's items - nothing while still being read, so the list never flashes empty first. */
+/**
+ * One tab's items - nothing while still being read, so the list never flashes empty first - with the section each sits
+ * in under the tab's sort, [sectionOf], named in the fast scroller's popup.
+ */
 @Composable
 private fun VaultItemList(
     items: List<VaultItem>?,
+    sectionOf: (VaultItem) -> String?,
     isVideo: Boolean,
     playingItemId: Long?,
     resumePositionMsOf: (VaultItem) -> Long,
@@ -185,37 +191,44 @@ private fun VaultItemList(
         return
     }
     val listState = rememberLazyListState()
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize().screenList(listState),
-        contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
-    ) {
-        items(items, key = VaultItem::id) { item ->
-            val isCurrent = item.id == playingItemId
-            val track = remember(item) { trackOf(item) }
-            if (item.isVideo) {
-                SonaVideoRow(
-                    video = track,
-                    resumePositionMs = { resumePositionMsOf(item) },
-                    isCurrent = { isCurrent },
-                    isPlaying = { false },
+    FastScroller(
+        listState = listState,
+        modifier = Modifier.fillMaxSize(),
+        sectionAt = { index -> items.getOrNull(index)?.let(sectionOf) },
+    ) { overscrollEffect ->
+        LazyColumn(
+            state = listState,
+            overscrollEffect = overscrollEffect,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+        ) {
+            items(items, key = VaultItem::id) { item ->
+                val isCurrent = item.id == playingItemId
+                val track = remember(item) { trackOf(item) }
+                if (item.isVideo) {
+                    SonaVideoRow(
+                        video = track,
+                        resumePositionMs = { resumePositionMsOf(item) },
+                        isCurrent = { isCurrent },
+                        isPlaying = { false },
+                        selection = null,
+                        selectionKey = null,
+                        onClick = { onPlay(item) },
+                        onOpenOptions = { onOpenOptions(item) },
+                    )
+                    return@items
+                }
+                SonaListRow(
+                    title = item.title,
+                    subtitle = item.subtitle,
                     selection = null,
                     selectionKey = null,
                     onClick = { onPlay(item) },
                     onOpenOptions = { onOpenOptions(item) },
-                )
-                return@items
-            }
-            SonaListRow(
-                title = item.title,
-                subtitle = item.subtitle,
-                selection = null,
-                selectionKey = null,
-                onClick = { onPlay(item) },
-                onOpenOptions = { onOpenOptions(item) },
-                isCurrent = isCurrent,
-            ) {
-                SonaCoverArt(coverArtUri = track.coverArtUri, contentDescription = null, isCurrent = isCurrent)
+                    isCurrent = isCurrent,
+                ) {
+                    SonaCoverArt(coverArtUri = track.coverArtUri, contentDescription = null, isCurrent = isCurrent)
+                }
             }
         }
     }
@@ -237,6 +250,13 @@ internal class PrivateFolderViewModel @Inject constructor(
 
     /** What either tab can be sorted by. */
     val sortCriteria: List<SortCriterion> get() = vault.sortCriteria
+
+    /** The section each video - or, for [trackSections], each track - sits in under its tab's sort. */
+    val videoSections: StateFlow<(VaultItem) -> String?> =
+        vault.sections(isVideo = true).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000)) { null }
+
+    val trackSections: StateFlow<(VaultItem) -> String?> =
+        vault.sections(isVideo = false).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000)) { null }
 
     private val videoSortOrder: StateFlow<SortOrder?> =
         vault.sortOrder(isVideo = true).stateIn(viewModelScope, SharingStarted.Eagerly, null)

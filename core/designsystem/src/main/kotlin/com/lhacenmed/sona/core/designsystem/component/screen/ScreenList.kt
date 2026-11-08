@@ -190,11 +190,11 @@ suspend fun LazyListState.scrollToRow(index: Int) {
  * and its FABs follow, offering a way back to its top - or, near its top, to its [playingRow] while that is
  * off screen.
  *
- * Applied to the layout the list fills. [FastScroller][com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller]
- * applies it itself, so every lazy list with a fast scroller has it. [isFastScrolling] steps the stack
- * aside while it holds; [scrollToTop] is what the way back does, and [scrollToRow] the way to the row.
+ * Applied to the layout the list fills, by [FastScroller][com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller]
+ * alone - the one way a screen marks its list, so every screen's list has a fast scroller. [isFastScrolling] steps
+ * the stack aside while it holds; [scrollToTop] is what the way back does, and [scrollToRow] the way to the row.
  */
-fun Modifier.screenList(
+internal fun Modifier.screenList(
     state: LazyListState,
     isFastScrolling: () -> Boolean = { false },
     scrollToTop: suspend () -> Unit = { state.scrollBackToTop() },
@@ -203,10 +203,10 @@ fun Modifier.screenList(
 ): Modifier = this then ScreenListElement(state, isFastScrolling, scrollToTop, playingRow, scrollToRow)
 
 /** [screenList] for a column scrolled with `verticalScroll(state)`, applied before it. */
-fun Modifier.screenList(state: ScrollState): Modifier =
+internal fun Modifier.screenList(state: ScrollState, isFastScrolling: () -> Boolean): Modifier =
     this then ScreenListElement(
         state = state,
-        isFastScrolling = { false },
+        isFastScrolling = isFastScrolling,
         scrollToTop = { state.animateScrollTo(0) },
         playingRow = { null },
         scrollToRow = {},

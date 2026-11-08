@@ -27,6 +27,7 @@ import com.lhacenmed.sona.core.designsystem.component.SonaFolderCover
 import com.lhacenmed.sona.core.designsystem.component.SonaListRow
 import com.lhacenmed.sona.core.designsystem.component.SonaTrackRow
 import com.lhacenmed.sona.core.designsystem.component.SonaVideoRow
+import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.section.rememberSectionListState
 import com.lhacenmed.sona.core.designsystem.component.section.section
 import com.lhacenmed.sona.core.model.FolderNode
@@ -100,79 +101,83 @@ internal fun FolderExplorerList(
         val folderRows = folders.map { folder -> FolderRowContent(folder, folderDisplayName(folder), explored.filesInside(folder)) }
         val fileCounts = folderRows.associate { it.folder.path to pluralStringResource(R.plurals.explorer_files, it.files.size, it.files.size) }
 
-        LazyColumn(
-            state = listStates.getOrPut(path) { LazyListState() },
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = contentPadding,
-        ) {
-            if (folderRows.isNotEmpty()) {
-                section(key = "folders", title = foldersTitle, state = sections) {
-                    items(folderRows, key = { "folder:${it.folder.path}" }) { row ->
-                        SonaListRow(
-                            title = row.name,
-                            subtitle = fileCounts.getValue(row.folder.path),
-                            selection = null,
-                            selectionKey = null,
-                            onClick = { navigation.open(row.folder.path) },
-                            onOpenOptions = picking?.let { { it.toggle(row.files) } },
-                            containerColor = rowColor,
-                            optionsIcon = picking?.boxOf(row.files) ?: Icons.Filled.CheckBoxOutlineBlank,
-                            optionsLabel = if (picking?.isPicked(row.files) == true) unpickLabel else pickLabel,
-                            cover = {
-                                SonaFolderCover(
-                                    coverArtUris = explored.coversOf(row.folder),
-                                    seed = row.folder.path.hashCode(),
-                                    isSelected = picking?.isPicked(row.files) == true,
-                                )
-                            },
-                        )
-                    }
-                }
-            }
-            var hasSectionAbove = folderRows.isNotEmpty()
-            for ((key, title, files) in listOf(Triple("music", musicTitle, music), Triple("videos", videosTitle, videos))) {
-                if (files.isEmpty()) continue
-                section(key = key, title = title, state = sections, hasDividerAbove = hasSectionAbove) {
-                    items(files, key = { "file:${it.id}" }) { file ->
-                        val isCurrent = { preview?.trackId == file.id }
-                        val isPlaying = { preview?.isPlaying == true }
-                        val onPick = picking?.let { { it.toggle(listOf(file)) } }
-                        val box = picking?.boxOf(listOf(file)) ?: Icons.Filled.CheckBoxOutlineBlank
-                        val boxLabel = if (picking?.isPicked(listOf(file)) == true) unpickLabel else pickLabel
-                        // Not here yet, there is nothing to play: a press picks it, as its box does.
-                        val onClick = if (isOnDevice) { { onPlay(file) } } else onPick ?: {}
-                        if (file.isVideo) {
-                            SonaVideoRow(
-                                video = file,
-                                resumePositionMs = { 0L },
-                                isCurrent = isCurrent,
-                                isPlaying = isPlaying,
+        val listState = listStates.getOrPut(path) { LazyListState() }
+        FastScroller(listState, Modifier.fillMaxSize()) { overscrollEffect ->
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = contentPadding,
+                overscrollEffect = overscrollEffect,
+            ) {
+                if (folderRows.isNotEmpty()) {
+                    section(key = "folders", title = foldersTitle, state = sections) {
+                        items(folderRows, key = { "folder:${it.folder.path}" }) { row ->
+                            SonaListRow(
+                                title = row.name,
+                                subtitle = fileCounts.getValue(row.folder.path),
                                 selection = null,
                                 selectionKey = null,
-                                onClick = onClick,
-                                onOpenOptions = onPick,
+                                onClick = { navigation.open(row.folder.path) },
+                                onOpenOptions = picking?.let { { it.toggle(row.files) } },
                                 containerColor = rowColor,
-                                optionsIcon = box,
-                                optionsLabel = boxLabel,
-                            )
-                        } else {
-                            SonaTrackRow(
-                                track = file,
-                                isCurrent = isCurrent,
-                                isPlaying = isPlaying,
-                                selection = null,
-                                selectionKey = null,
-                                onClick = onClick,
-                                onOpenOptions = onPick,
-                                subtitle = if (isOnDevice) null else formatFileSize(file.sizeBytes),
-                                containerColor = rowColor,
-                                optionsIcon = box,
-                                optionsLabel = boxLabel,
+                                optionsIcon = picking?.boxOf(row.files) ?: Icons.Filled.CheckBoxOutlineBlank,
+                                optionsLabel = if (picking?.isPicked(row.files) == true) unpickLabel else pickLabel,
+                                cover = {
+                                    SonaFolderCover(
+                                        coverArtUris = explored.coversOf(row.folder),
+                                        seed = row.folder.path.hashCode(),
+                                        isSelected = picking?.isPicked(row.files) == true,
+                                    )
+                                },
                             )
                         }
                     }
                 }
-                hasSectionAbove = true
+                var hasSectionAbove = folderRows.isNotEmpty()
+                for ((key, title, files) in listOf(Triple("music", musicTitle, music), Triple("videos", videosTitle, videos))) {
+                    if (files.isEmpty()) continue
+                    section(key = key, title = title, state = sections, hasDividerAbove = hasSectionAbove) {
+                        items(files, key = { "file:${it.id}" }) { file ->
+                            val isCurrent = { preview?.trackId == file.id }
+                            val isPlaying = { preview?.isPlaying == true }
+                            val onPick = picking?.let { { it.toggle(listOf(file)) } }
+                            val box = picking?.boxOf(listOf(file)) ?: Icons.Filled.CheckBoxOutlineBlank
+                            val boxLabel = if (picking?.isPicked(listOf(file)) == true) unpickLabel else pickLabel
+                            // Not here yet, there is nothing to play: a press picks it, as its box does.
+                            val onClick = if (isOnDevice) { { onPlay(file) } } else onPick ?: {}
+                            if (file.isVideo) {
+                                SonaVideoRow(
+                                    video = file,
+                                    resumePositionMs = { 0L },
+                                    isCurrent = isCurrent,
+                                    isPlaying = isPlaying,
+                                    selection = null,
+                                    selectionKey = null,
+                                    onClick = onClick,
+                                    onOpenOptions = onPick,
+                                    containerColor = rowColor,
+                                    optionsIcon = box,
+                                    optionsLabel = boxLabel,
+                                )
+                            } else {
+                                SonaTrackRow(
+                                    track = file,
+                                    isCurrent = isCurrent,
+                                    isPlaying = isPlaying,
+                                    selection = null,
+                                    selectionKey = null,
+                                    onClick = onClick,
+                                    onOpenOptions = onPick,
+                                    subtitle = if (isOnDevice) null else formatFileSize(file.sizeBytes),
+                                    containerColor = rowColor,
+                                    optionsIcon = box,
+                                    optionsLabel = boxLabel,
+                                )
+                            }
+                        }
+                    }
+                    hasSectionAbove = true
+                }
             }
         }
     }

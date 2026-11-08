@@ -49,8 +49,8 @@ import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.ShowMiniPlayerSeekBar
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
+import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
-import com.lhacenmed.sona.core.designsystem.component.screen.screenList
 import com.lhacenmed.sona.core.designsystem.component.selectAllAction
 import com.lhacenmed.sona.core.designsystem.component.swipe.SwipeAction
 import com.lhacenmed.sona.core.designsystem.component.swipe.SwipeActionTone
@@ -205,47 +205,50 @@ internal fun LyricsEditor(state: LyricsEditorState, confirmAction: TopBarAction,
             // Nothing while the file's lyrics are still being read, rather than saying it has none.
             if (state.isLoaded) NoLyrics()
         } else {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize().screenList(listState),
-                contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
-            ) {
-                items(state.lines, key = { it.id }) { line ->
-                    // The lines around one added or taken out glide to their places, as a queue's rows do.
-                    Column(modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)) {
-                        // Held still while lines are selected, as every swiping row in the app is.
-                        SwipeActionsBox(
-                            actions = SwipeActions(
-                                // Rightwards plays from the line, as its menu's Play from here does - heard at once.
-                                startToEnd = SwipeAction(SonaIcons.Play, SwipeActionTone.Primary) { state.playFrom(line.id) },
-                                endToStart = SwipeAction(SonaIcons.Delete, SwipeActionTone.Danger) { state.remove(line.id) },
-                            ).takeUnless { selection.isActive },
-                        ) {
-                            LyricsLineRow(
-                                line = line,
-                                isCurrent = line.id == currentLineId,
-                                isEdited = state.isEdited(line),
-                                canStamp = isTrackPlaying,
-                                selection = selection,
-                                actions = listOf(
-                                    TopBarAction(label = "Play from here", icon = Icons.Filled.PlayArrow) { state.playFrom(line.id) },
-                                    TopBarAction(label = "Add row above", icon = Icons.Filled.ArrowUpward) {
-                                        state.addLine(line.id, below = false)
-                                    },
-                                    TopBarAction(label = "Add row below", icon = Icons.Filled.ArrowDownward) {
-                                        state.addLine(line.id, below = true)
-                                    },
-                                    TopBarAction(label = "Reset timestamp", icon = Icons.Filled.RestartAlt, enabled = line.timeMs != 0L) {
-                                        state.resetTime(line.id)
-                                    },
-                                    TopBarAction(label = "Remove", icon = Icons.Filled.DeleteOutline) { state.remove(line.id) },
-                                ),
-                                onSetTime = { timeMs -> state.setTime(line.id, timeMs) },
-                                onStamp = { pressedAtUptimeMs -> state.stamp(line.id, pressedAtUptimeMs) },
-                                onEditText = { editingLineId = line.id },
-                            )
+            FastScroller(listState, Modifier.fillMaxSize()) { overscrollEffect ->
+                LazyColumn(
+                    state = listState,
+                    overscrollEffect = overscrollEffect,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+                ) {
+                    items(state.lines, key = { it.id }) { line ->
+                        // The lines around one added or taken out glide to their places, as a queue's rows do.
+                        Column(modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)) {
+                            // Held still while lines are selected, as every swiping row in the app is.
+                            SwipeActionsBox(
+                                actions = SwipeActions(
+                                    // Rightwards plays from the line, as its menu's Play from here does - heard at once.
+                                    startToEnd = SwipeAction(SonaIcons.Play, SwipeActionTone.Primary) { state.playFrom(line.id) },
+                                    endToStart = SwipeAction(SonaIcons.Delete, SwipeActionTone.Danger) { state.remove(line.id) },
+                                ).takeUnless { selection.isActive },
+                            ) {
+                                LyricsLineRow(
+                                    line = line,
+                                    isCurrent = line.id == currentLineId,
+                                    isEdited = state.isEdited(line),
+                                    canStamp = isTrackPlaying,
+                                    selection = selection,
+                                    actions = listOf(
+                                        TopBarAction(label = "Play from here", icon = Icons.Filled.PlayArrow) { state.playFrom(line.id) },
+                                        TopBarAction(label = "Add row above", icon = Icons.Filled.ArrowUpward) {
+                                            state.addLine(line.id, below = false)
+                                        },
+                                        TopBarAction(label = "Add row below", icon = Icons.Filled.ArrowDownward) {
+                                            state.addLine(line.id, below = true)
+                                        },
+                                        TopBarAction(label = "Reset timestamp", icon = Icons.Filled.RestartAlt, enabled = line.timeMs != 0L) {
+                                            state.resetTime(line.id)
+                                        },
+                                        TopBarAction(label = "Remove", icon = Icons.Filled.DeleteOutline) { state.remove(line.id) },
+                                    ),
+                                    onSetTime = { timeMs -> state.setTime(line.id, timeMs) },
+                                    onStamp = { pressedAtUptimeMs -> state.stamp(line.id, pressedAtUptimeMs) },
+                                    onEditText = { editingLineId = line.id },
+                                )
+                            }
+                            HorizontalDivider()
                         }
-                        HorizontalDivider()
                     }
                 }
             }

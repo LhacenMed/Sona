@@ -1,6 +1,10 @@
 package com.lhacenmed.sona.core.data.sort
 
+import com.lhacenmed.sona.core.common.sort.NumberSection
 import com.lhacenmed.sona.core.common.sort.SortField
+import com.lhacenmed.sona.core.common.sort.durationSection
+import com.lhacenmed.sona.core.common.sort.monthOfEpochMillisSection
+import com.lhacenmed.sona.core.common.sort.monthOfEpochSecondsSection
 import com.lhacenmed.sona.core.database.dao.PlaylistWithCount
 import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
@@ -170,7 +174,7 @@ internal object LibrarySortSpecs {
             SortCriterion.DURATION to tracksByDuration.ofEntry(),
             SortCriterion.DATE to tracksByDateAdded.ofEntry(),
             SortCriterion.DATE_ADDED to
-                listOf(SortField.Number<ListEntry> { it.addedAt }) + tracksByTitle.ofEntry(),
+                listOf(SortField.Number<ListEntry>(::monthOfEpochMillisSection) { it.addedAt }) + tracksByTitle.ofEntry(),
             SortCriterion.PLAY_COUNT to entriesByPlayCount,
         ),
         arrangement = entryArrangement,
@@ -183,7 +187,7 @@ internal object LibrarySortSpecs {
                 { entry -> field.read(entry.track) },
                 { entry -> field.isPlaceholder(entry.track) },
             )
-            is SortField.Number -> SortField.Number<ListEntry> { entry -> field.read(entry.track) }
+            is SortField.Number -> SortField.Number<ListEntry>(field.section) { entry -> field.read(entry.track) }
         }
     }
 
@@ -279,11 +283,15 @@ internal object LibrarySortSpecs {
         orderings = mapOf(
             SortCriterion.NAME to listOf(playlistName),
             SortCriterion.TRACK_COUNT to
-                listOf(SortField.Number<PlaylistWithCount> { it.trackCount.toLong() }, playlistName),
-            SortCriterion.DATE to listOf(SortField.Number<PlaylistWithCount> { it.modifiedAt }, playlistName),
-            SortCriterion.DURATION to listOf(SortField.Number<PlaylistWithCount> { it.durationMs }, playlistName),
-            SortCriterion.DATE_ADDED to listOf(SortField.Number<PlaylistWithCount> { it.createdAt }, playlistName),
-            SortCriterion.PLAY_COUNT to listOf(SortField.Number<PlaylistWithCount> { it.playCount.toLong() }, playlistName),
+                listOf(SortField.Number<PlaylistWithCount>(NumberSection) { it.trackCount.toLong() }, playlistName),
+            SortCriterion.DATE to
+                listOf(SortField.Number<PlaylistWithCount>(::monthOfEpochMillisSection) { it.modifiedAt }, playlistName),
+            SortCriterion.DURATION to
+                listOf(SortField.Number<PlaylistWithCount>(::durationSection) { it.durationMs }, playlistName),
+            SortCriterion.DATE_ADDED to
+                listOf(SortField.Number<PlaylistWithCount>(::monthOfEpochMillisSection) { it.createdAt }, playlistName),
+            SortCriterion.PLAY_COUNT to
+                listOf(SortField.Number<PlaylistWithCount>(NumberSection) { it.playCount.toLong() }, playlistName),
         ),
     )
 

@@ -61,7 +61,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.fab.ExtendedFloatingActionButtonContent
 import com.lhacenmed.sona.core.designsystem.component.fab.SonaExtendedFloatingActionButtons
-import com.lhacenmed.sona.core.designsystem.component.screen.screenList
+import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.theme.palette.ThemePalette
 import com.lhacenmed.sona.core.designsystem.theme.palette.ThemePalettes
@@ -124,26 +124,27 @@ data object ColorPaletteScreen : Screen {
         }
 
         val scrollState = rememberScrollState()
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .fillMaxSize()
-                .screenList(scrollState)
-                .verticalScroll(scrollState)
-                .padding(bottom = LocalBottomContentPadding.current),
-        ) {
-            Spacer(modifier = Modifier.height(16.dp))
-            PalettePreview(
-                palette = selectedSeeds,
-                isDarkTheme = theme.mode.isDark(),
-                modifier = Modifier.padding(horizontal = 24.dp),
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-            PaletteCarousel(
-                palettes = ThemePalettes.all,
-                selectedId = selectedPresetId,
-                onSelect = { viewModel.setColorPalette(it.id) },
-            )
+        FastScroller(scrollState, Modifier.fillMaxSize()) { overscrollEffect ->
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState, overscrollEffect = overscrollEffect)
+                    .padding(bottom = LocalBottomContentPadding.current),
+            ) {
+                Spacer(modifier = Modifier.height(16.dp))
+                PalettePreview(
+                    palette = selectedSeeds,
+                    isDarkTheme = theme.mode.isDark(),
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                PaletteCarousel(
+                    palettes = ThemePalettes.all,
+                    selectedId = selectedPresetId,
+                    onSelect = { viewModel.setColorPalette(it.id) },
+                )
+            }
         }
 
         SonaExtendedFloatingActionButtons(

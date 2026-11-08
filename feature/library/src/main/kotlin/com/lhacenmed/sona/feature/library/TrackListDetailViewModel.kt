@@ -30,13 +30,23 @@ import kotlinx.coroutines.launch
  */
 abstract class TrackListDetailViewModel(
     private val playbackController: PlaybackController,
-    repository: LibraryRepository,
+    private val repository: LibraryRepository,
 ) : ViewModel() {
 
     abstract val tracks: StateFlow<LibraryContent<Track>>
 
     /** How this list is sorted, or null for one whose order is its content - Recent and Most played. */
     open val sort: SortControl? = null
+
+    /**
+     * The section each track sits in under [sort]'s order - what the fast scroller's popup names. Null for a list with
+     * no sort, and while its sort names none. Read once [sort] is, which a subclass sets after this class is built.
+     */
+    val trackSections: StateFlow<((Track) -> String?)?> by lazy {
+        sort?.let { repository.collectionTrackSections(it.target) }
+            ?.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+            ?: MutableStateFlow(null)
+    }
 
     /**
      * The collection this screen is, which playing from here plays from.

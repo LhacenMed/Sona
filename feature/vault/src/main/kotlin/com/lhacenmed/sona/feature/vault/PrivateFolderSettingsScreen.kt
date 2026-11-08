@@ -1,6 +1,7 @@
 package com.lhacenmed.sona.feature.vault
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Switch
@@ -11,6 +12,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.SonaSettingsRow
 import com.lhacenmed.sona.core.designsystem.component.SonaSettingsValue
+import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.section.ColumnSection
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
@@ -46,40 +48,43 @@ internal data object PrivateFolderSettingsScreen : Screen {
             }
             val canUseBiometrics = enableBiometrics != null || current.unlocksWithBiometrics
 
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                ColumnSection(title = "Privacy") {
-                    SonaSettingsRow(
-                        title = "Hide Private Folder",
-                        summary = "It won't show in Settings. To open it, type your secret code into the library's search.",
-                        onClick = { setHidden(!current.isHidden) },
-                        trailing = { Switch(checked = current.isHidden, onCheckedChange = setHidden) },
-                    )
-                    SonaSettingsRow(
-                        title = "Secret code",
-                        summary = "Open the Private Folder by typing a code of your own into the library's search.",
-                        onClick = { navigator.go(VaultSecretCodeScreen()) },
-                        trailing = { SonaSettingsValue(if (current.hasSecretCode) "On" else "Off") },
-                    )
-                }
-                ColumnSection(title = "Unlocking") {
-                    SonaSettingsRow(
-                        title = "Unlock with biometrics",
-                        summary = if (canUseBiometrics) {
-                            "Open it with your fingerprint or face, your PIN still there for when they don't work."
-                        } else {
-                            "No fingerprint or face is set up on this device."
-                        },
-                        enabled = canUseBiometrics,
-                        onClick = { setUnlocksWithBiometrics(!current.unlocksWithBiometrics) },
-                        trailing = {
-                            Switch(checked = current.unlocksWithBiometrics, onCheckedChange = setUnlocksWithBiometrics, enabled = canUseBiometrics)
-                        },
-                    )
-                    SonaSettingsRow(
-                        title = "Change PIN",
-                        summary = "Choose a new PIN, after the one you have now.",
-                        onClick = { navigator.go(VaultChangePinScreen) },
-                    )
+            val scrollState = rememberScrollState()
+            FastScroller(scrollState, Modifier.fillMaxSize()) { overscrollEffect ->
+                Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState, overscrollEffect = overscrollEffect)) {
+                    ColumnSection(title = "Privacy") {
+                        SonaSettingsRow(
+                            title = "Hide Private Folder",
+                            summary = "It won't show in Settings. To open it, type your secret code into the library's search.",
+                            onClick = { setHidden(!current.isHidden) },
+                            trailing = { Switch(checked = current.isHidden, onCheckedChange = setHidden) },
+                        )
+                        SonaSettingsRow(
+                            title = "Secret code",
+                            summary = "Open the Private Folder by typing a code of your own into the library's search.",
+                            onClick = { navigator.go(VaultSecretCodeScreen()) },
+                            trailing = { SonaSettingsValue(if (current.hasSecretCode) "On" else "Off") },
+                        )
+                    }
+                    ColumnSection(title = "Unlocking") {
+                        SonaSettingsRow(
+                            title = "Unlock with biometrics",
+                            summary = if (canUseBiometrics) {
+                                "Open it with your fingerprint or face, your PIN still there for when they don't work."
+                            } else {
+                                "No fingerprint or face is set up on this device."
+                            },
+                            enabled = canUseBiometrics,
+                            onClick = { setUnlocksWithBiometrics(!current.unlocksWithBiometrics) },
+                            trailing = {
+                                Switch(checked = current.unlocksWithBiometrics, onCheckedChange = setUnlocksWithBiometrics, enabled = canUseBiometrics)
+                            },
+                        )
+                        SonaSettingsRow(
+                            title = "Change PIN",
+                            summary = "Choose a new PIN, after the one you have now.",
+                            onClick = { navigator.go(VaultChangePinScreen) },
+                        )
+                    }
                 }
             }
         }

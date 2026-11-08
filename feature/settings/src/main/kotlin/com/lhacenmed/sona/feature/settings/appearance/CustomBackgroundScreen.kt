@@ -56,7 +56,7 @@ import coil3.compose.AsyncImage
 import com.lhacenmed.sona.core.datastore.CustomBackground
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
-import com.lhacenmed.sona.core.designsystem.component.screen.screenList
+import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.navigation.LocalNavigator
@@ -141,22 +141,23 @@ data object CustomBackgroundScreen : Screen {
                 onNavigateBack = navigator::back,
             )
             val scrollState = rememberScrollState()
-            BoxWithConstraints(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .screenList(scrollState)
-                    .verticalScroll(scrollState)
-                    .padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = LocalBottomContentPadding.current),
-            ) {
-                if (maxWidth >= ExpandedContentBreakpoint) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.Top) {
-                        Column(modifier = Modifier.weight(1.1f), verticalArrangement = Arrangement.spacedBy(16.dp)) { image() }
-                        Column(modifier = Modifier.weight(0.9f), verticalArrangement = Arrangement.spacedBy(16.dp)) { adjustments() }
-                    }
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        image()
-                        adjustments()
+            FastScroller(scrollState, Modifier.fillMaxSize()) { overscrollEffect ->
+                BoxWithConstraints(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollState, overscrollEffect = overscrollEffect)
+                        .padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = LocalBottomContentPadding.current),
+                ) {
+                    if (maxWidth >= ExpandedContentBreakpoint) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.Top) {
+                            Column(modifier = Modifier.weight(1.1f), verticalArrangement = Arrangement.spacedBy(16.dp)) { image() }
+                            Column(modifier = Modifier.weight(0.9f), verticalArrangement = Arrangement.spacedBy(16.dp)) { adjustments() }
+                        }
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            image()
+                            adjustments()
+                        }
                     }
                 }
             }

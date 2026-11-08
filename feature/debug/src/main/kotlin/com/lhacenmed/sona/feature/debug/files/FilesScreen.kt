@@ -43,6 +43,7 @@ import com.lhacenmed.sona.core.designsystem.component.SonaEmptyState
 import com.lhacenmed.sona.core.designsystem.component.SonaListRow
 import com.lhacenmed.sona.core.designsystem.component.SonaPathBar
 import com.lhacenmed.sona.core.designsystem.component.dragSelection
+import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.rememberDragSelection
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.navigation.LocalNavigator
@@ -170,26 +171,29 @@ private fun FolderContents(
             val listState = listStates.getOrPut(shownPath) { LazyListState() }
             val dragSelection = rememberDragSelection(selection, listState, remember(list) { list.map { it.file.path } })
             CompositionLocalProvider(LocalDragSelection provides dragSelection) {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize().dragSelection(dragSelection),
-                    contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
-                ) {
-                    items(list, key = { it.file.path }) { entry ->
-                        val size = Formatter.formatShortFileSize(context, entry.sizeBytes)
-                        SonaListRow(
-                            title = if (shownPath == null) entry.file.path else entry.file.name,
-                            subtitle = "$size - ${DateUtils.getRelativeTimeSpanString(entry.file.lastModified())}",
-                            selection = selection,
-                            selectionKey = entry.file.path,
-                            onClick = {
-                                if (entry.file.isDirectory) onOpenFolder(entry.file.path) else navigator.go(FileContentScreen(entry.file.path))
-                            },
-                            onOpenOptions = null,
-                            cover = { isSelected ->
-                                DebugRowIcon(if (entry.file.isDirectory) Icons.Filled.Folder else Icons.Filled.Description, isSelected)
-                            },
-                        )
+                FastScroller(listState, Modifier.fillMaxSize()) { overscrollEffect ->
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize().dragSelection(dragSelection),
+                        contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+                        overscrollEffect = overscrollEffect,
+                    ) {
+                        items(list, key = { it.file.path }) { entry ->
+                            val size = Formatter.formatShortFileSize(context, entry.sizeBytes)
+                            SonaListRow(
+                                title = if (shownPath == null) entry.file.path else entry.file.name,
+                                subtitle = "$size - ${DateUtils.getRelativeTimeSpanString(entry.file.lastModified())}",
+                                selection = selection,
+                                selectionKey = entry.file.path,
+                                onClick = {
+                                    if (entry.file.isDirectory) onOpenFolder(entry.file.path) else navigator.go(FileContentScreen(entry.file.path))
+                                },
+                                onOpenOptions = null,
+                                cover = { isSelected ->
+                                    DebugRowIcon(if (entry.file.isDirectory) Icons.Filled.Folder else Icons.Filled.Description, isSelected)
+                                },
+                            )
+                        }
                     }
                 }
             }
@@ -205,16 +209,19 @@ internal data class FileContentScreen(val path: String) : Screen {
     override fun Content() {
         val content = rememberLoaded(path) { withContext(Dispatchers.IO) { shownContentOf(File(path)) } }
         Loaded(content) { text ->
-            Text(
-                text = text,
-                fontFamily = FontFamily.Monospace,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .horizontalScroll(rememberScrollState())
-                    .padding(16.dp),
-            )
+            val scrollState = rememberScrollState()
+            FastScroller(scrollState, Modifier.fillMaxSize()) { overscrollEffect ->
+                Text(
+                    text = text,
+                    fontFamily = FontFamily.Monospace,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollState, overscrollEffect = overscrollEffect)
+                        .horizontalScroll(rememberScrollState())
+                        .padding(16.dp),
+                )
+            }
         }
     }
 }

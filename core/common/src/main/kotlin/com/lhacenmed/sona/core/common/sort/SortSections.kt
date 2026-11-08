@@ -1,4 +1,4 @@
-package com.lhacenmed.sona.core.data.sort
+package com.lhacenmed.sona.core.common.sort
 
 import android.icu.text.MeasureFormat
 import android.icu.util.Measure
@@ -10,14 +10,14 @@ import java.util.Locale
 
 /*
  * How a number a list is sorted by names the section a row sits in - what a fast scroller's popup
- * shows. Auxio's, one per kind of number its lists sort by.
+ * shows. Auxio's, one per kind of number its lists sort by - the library's lists' and the Private Folder's alike.
  */
 
 /** A number as its own section: a year, a count - Auxio's `fmt_number`. */
-internal val NumberSection: (Long) -> String = Long::toString
+val NumberSection: (Long) -> String = Long::toString
 
 /** A duration's rough size - under a minute, whole minutes, then whole hours: Auxio's `formatDurationMsPopup`. */
-internal fun durationSection(durationMs: Long): String {
+fun durationSection(durationMs: Long): String {
     val totalMinutes = Math.floorDiv(durationMs, 60_000L)
     val totalHours = totalMinutes / 60
     val format = MeasureFormat.getInstance(Locale.getDefault(), MeasureFormat.FormatWidth.NARROW)
@@ -34,8 +34,11 @@ internal fun durationSection(durationMs: Long): String {
  * year of additions under one label. Two lines rather than one, so the popup can show both large; the
  * month is abbreviated the way the user's locale abbreviates it standing on its own.
  */
-internal fun monthOfEpochSecondsSection(epochSeconds: Long): String {
+fun monthOfEpochSecondsSection(epochSeconds: Long): String {
     val date = Instant.ofEpochSecond(epochSeconds).atZone(ZoneId.systemDefault())
     val month = DateTimeFormatter.ofPattern("LLL", Locale.getDefault()).format(date)
     return "$month\n${date.year}"
 }
+
+/** [monthOfEpochSecondsSection] for a moment given in milliseconds - when a track joined a playlist, or a file the Private Folder. */
+fun monthOfEpochMillisSection(epochMillis: Long): String = monthOfEpochSecondsSection(epochMillis / 1000)

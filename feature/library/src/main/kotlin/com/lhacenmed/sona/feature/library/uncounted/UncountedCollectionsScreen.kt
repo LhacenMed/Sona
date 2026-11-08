@@ -17,8 +17,8 @@ import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.SonaEmptyState
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
+import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
-import com.lhacenmed.sona.core.designsystem.component.screen.screenList
 import com.lhacenmed.sona.core.designsystem.component.selectAllAction
 import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
 import com.lhacenmed.sona.core.model.Album
@@ -76,21 +76,24 @@ data object UncountedCollectionsScreen : Screen {
                 return@Column
             }
             val listState = rememberLazyListState()
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize().screenList(listState),
-                contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
-            ) {
-                items(collections, key = { it.parent.toStorageKey() }) { collection ->
-                    // Nothing to open from here: a press only joins a selection already running.
-                    val open = {}
-                    when (val item = collection.item) {
-                        is Album -> AlbumRow(item, picks, isCurrent = { false }, isPlaying = { false }, onClick = open, onOpenOptions = null)
-                        is Artist -> ArtistRow(item, picks, isCurrent = { false }, isPlaying = { false }, onClick = open, onOpenOptions = null)
-                        is Genre -> GenreRow(item, picks, isCurrent = { false }, isPlaying = { false }, onClick = open, onOpenOptions = null)
-                        is Playlist ->
-                            PlaylistRow(item, picks, isCurrent = { false }, isPlaying = { false }, onClick = open, onOpenOptions = null)
-                        is Folder -> FolderRow(item, picks, isCurrent = { false }, isPlaying = { false }, onClick = open, onOpenOptions = null)
+            FastScroller(listState, Modifier.fillMaxSize()) { overscrollEffect ->
+                LazyColumn(
+                    state = listState,
+                    overscrollEffect = overscrollEffect,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+                ) {
+                    items(collections, key = { it.parent.toStorageKey() }) { collection ->
+                        // Nothing to open from here: a press only joins a selection already running.
+                        val open = {}
+                        when (val item = collection.item) {
+                            is Album -> AlbumRow(item, picks, isCurrent = { false }, isPlaying = { false }, onClick = open, onOpenOptions = null)
+                            is Artist -> ArtistRow(item, picks, isCurrent = { false }, isPlaying = { false }, onClick = open, onOpenOptions = null)
+                            is Genre -> GenreRow(item, picks, isCurrent = { false }, isPlaying = { false }, onClick = open, onOpenOptions = null)
+                            is Playlist ->
+                                PlaylistRow(item, picks, isCurrent = { false }, isPlaying = { false }, onClick = open, onOpenOptions = null)
+                            is Folder -> FolderRow(item, picks, isCurrent = { false }, isPlaying = { false }, onClick = open, onOpenOptions = null)
+                        }
                     }
                 }
             }

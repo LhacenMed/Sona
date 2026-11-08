@@ -69,7 +69,7 @@ import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.copyToClipboard
 import com.lhacenmed.sona.core.designsystem.component.fab.ExtendedFloatingActionButtonContent
 import com.lhacenmed.sona.core.designsystem.component.fab.SonaExtendedFloatingActionButtons
-import com.lhacenmed.sona.core.designsystem.component.screen.screenList
+import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.palette.ThemePalettes
@@ -203,60 +203,60 @@ data object ThemeCreatorScreen : Screen {
             )
 
             val scrollState = rememberScrollState()
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    // Above the keyboard, so the field it opens for is scrolled into view rather than the window slid.
-                    .imePadding()
-                    .screenList(scrollState)
-                    .verticalScroll(scrollState)
-                    .padding(bottom = LocalBottomContentPadding.current),
-            ) {
-                PalettePreview(
-                    palette = currentPalette,
-                    isDarkTheme = theme.mode.isDark(),
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-                )
-
-                EditorCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-                    Text(text = stringResource(R.string.theme_meta_title), style = MaterialTheme.typography.titleSmall)
-                    OutlinedTextField(
-                        value = themeName,
-                        onValueChange = { themeName = it.take(MaxThemeNameLength) },
-                        label = { Text(stringResource(R.string.theme_name_optional)) },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        modifier = Modifier.fillMaxWidth(),
+            // Above the keyboard, so the field it opens for is scrolled into view rather than the window slid.
+            FastScroller(scrollState, Modifier.fillMaxSize().imePadding()) { overscrollEffect ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollState, overscrollEffect = overscrollEffect)
+                        .padding(bottom = LocalBottomContentPadding.current),
+                ) {
+                    PalettePreview(
+                        palette = currentPalette,
+                        isDarkTheme = theme.mode.isDark(),
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
                     )
-                    Button(onClick = ::applyTheme, shapes = buttonPressShapes(), modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.theme_apply_button))
-                    }
-                }
 
-                SeedRolePicker(
-                    activeRole = activeRole,
-                    onRoleChange = { activeRole = it },
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-
-                SeedColorEditor(
-                    role = activeRole,
-                    color = when (activeRole) {
-                        SeedRole.PRIMARY -> primary
-                        SeedRole.SECONDARY -> secondary
-                        SeedRole.TERTIARY -> tertiary
-                        SeedRole.NEUTRAL -> neutral
-                    },
-                    onColorChange = { color ->
-                        when (activeRole) {
-                            SeedRole.PRIMARY -> primary = color
-                            SeedRole.SECONDARY -> secondary = color
-                            SeedRole.TERTIARY -> tertiary = color
-                            SeedRole.NEUTRAL -> neutral = color
+                    EditorCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                        Text(text = stringResource(R.string.theme_meta_title), style = MaterialTheme.typography.titleSmall)
+                        OutlinedTextField(
+                            value = themeName,
+                            onValueChange = { themeName = it.take(MaxThemeNameLength) },
+                            label = { Text(stringResource(R.string.theme_name_optional)) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Button(onClick = ::applyTheme, shapes = buttonPressShapes(), modifier = Modifier.fillMaxWidth()) {
+                            Text(stringResource(R.string.theme_apply_button))
                         }
-                    },
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
+                    }
+
+                    SeedRolePicker(
+                        activeRole = activeRole,
+                        onRoleChange = { activeRole = it },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+
+                    SeedColorEditor(
+                        role = activeRole,
+                        color = when (activeRole) {
+                            SeedRole.PRIMARY -> primary
+                            SeedRole.SECONDARY -> secondary
+                            SeedRole.TERTIARY -> tertiary
+                            SeedRole.NEUTRAL -> neutral
+                        },
+                        onColorChange = { color ->
+                            when (activeRole) {
+                                SeedRole.PRIMARY -> primary = color
+                                SeedRole.SECONDARY -> secondary = color
+                                SeedRole.TERTIARY -> tertiary = color
+                                SeedRole.NEUTRAL -> neutral = color
+                            }
+                        },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                }
             }
         }
 

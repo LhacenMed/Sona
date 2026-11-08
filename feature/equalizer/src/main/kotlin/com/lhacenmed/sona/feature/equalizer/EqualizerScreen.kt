@@ -87,7 +87,7 @@ import com.lhacenmed.sona.core.datastore.EqualizerSound
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
-import com.lhacenmed.sona.core.designsystem.component.screen.screenList
+import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
@@ -213,44 +213,47 @@ private fun EqualizerContent(
 ) {
     val choices = state.choices
     val listState = rememberLazyListState()
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize().screenList(listState),
-        contentPadding = PaddingValues(
-            start = 16.dp,
-            top = 12.dp,
-            end = 16.dp,
-            bottom = LocalBottomContentPadding.current + 28.dp,
-        ),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        item(key = "hero", contentType = "hero") {
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                EqualizerHero(choices.enabled, Modifier.widthIn(max = ContentMaxWidth), viewModel::setEnabled, onOpenSystemEqualizer)
+    FastScroller(listState, Modifier.fillMaxSize()) { overscrollEffect ->
+        LazyColumn(
+            state = listState,
+            overscrollEffect = overscrollEffect,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                top = 12.dp,
+                end = 16.dp,
+                bottom = LocalBottomContentPadding.current + 28.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            item(key = "hero", contentType = "hero") {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    EqualizerHero(choices.enabled, Modifier.widthIn(max = ContentMaxWidth), viewModel::setEnabled, onOpenSystemEqualizer)
+                }
             }
-        }
-        item(key = "mode", contentType = "mode") {
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                ModeSelector(choices.controlMode, Modifier.widthIn(max = ContentMaxWidth), viewModel::setControlMode)
+            item(key = "mode", contentType = "mode") {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    ModeSelector(choices.controlMode, Modifier.widthIn(max = ContentMaxWidth), viewModel::setControlMode)
+                }
             }
-        }
-        item(key = "controls", contentType = choices.controlMode) {
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-                AnimatedContent(
-                    targetState = choices.controlMode,
-                    transitionSpec = { (fadeIn(spring()) togetherWith fadeOut(spring())).using(SizeTransform(clip = false)) },
-                    label = "equalizerMode",
-                    modifier = Modifier.widthIn(max = ContentMaxWidth),
-                ) { mode ->
-                    when (mode) {
-                        EqualizerControlMode.BASIC -> BasicControls(state, viewModel)
-                        EqualizerControlMode.ADVANCED -> AdvancedControls(
-                            state = state,
-                            viewModel = viewModel,
-                            onShowSaveProfile = onShowSaveProfile,
-                            onShowManageProfiles = onShowManageProfiles,
-                            onImportProfiles = onImportProfiles,
-                        )
+            item(key = "controls", contentType = choices.controlMode) {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                    AnimatedContent(
+                        targetState = choices.controlMode,
+                        transitionSpec = { (fadeIn(spring()) togetherWith fadeOut(spring())).using(SizeTransform(clip = false)) },
+                        label = "equalizerMode",
+                        modifier = Modifier.widthIn(max = ContentMaxWidth),
+                    ) { mode ->
+                        when (mode) {
+                            EqualizerControlMode.BASIC -> BasicControls(state, viewModel)
+                            EqualizerControlMode.ADVANCED -> AdvancedControls(
+                                state = state,
+                                viewModel = viewModel,
+                                onShowSaveProfile = onShowSaveProfile,
+                                onShowManageProfiles = onShowManageProfiles,
+                                onImportProfiles = onImportProfiles,
+                            )
+                        }
                     }
                 }
             }

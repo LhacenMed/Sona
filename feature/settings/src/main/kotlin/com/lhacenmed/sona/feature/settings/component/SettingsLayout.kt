@@ -36,9 +36,9 @@ import androidx.compose.ui.layout.onPlaced
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.WindowTouchBlocker
+import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.screen.MaxArrivalWaitMillis
 import com.lhacenmed.sona.core.designsystem.component.screen.highlightArrival
-import com.lhacenmed.sona.core.designsystem.component.screen.screenList
 import com.lhacenmed.sona.core.designsystem.component.section.ColumnSection
 import com.lhacenmed.sona.core.designsystem.motion.rememberRubberBandOverscroll
 import com.lhacenmed.sona.core.navigation.LocalScreenEntered
@@ -93,15 +93,16 @@ fun SettingsList(
     val overscroll = rememberRubberBandOverscroll()
 
     Box(modifier = Modifier.fillMaxSize().clipToBounds()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .onPlaced { target?.list = it }
-                .screenList(scrollState)
-                .verticalScroll(scrollState, overscrollEffect = overscroll)
-                .padding(bottom = LocalBottomContentPadding.current),
-        ) {
-            CompositionLocalProvider(LocalSettingsScrollTarget provides target) { content() }
+        FastScroller(scrollState, Modifier.fillMaxSize(), overscroll = overscroll) { overscrollEffect ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .onPlaced { target?.list = it }
+                    .verticalScroll(scrollState, overscrollEffect = overscrollEffect)
+                    .padding(bottom = LocalBottomContentPadding.current),
+            ) {
+                CompositionLocalProvider(LocalSettingsScrollTarget provides target) { content() }
+            }
         }
         if (onPrivateFolderRevealed != null) {
             PrivateFolderOverscrollReveal(overscroll = overscroll, onRevealed = onPrivateFolderRevealed)
@@ -173,12 +174,15 @@ fun SettingsLazyList(
     listState: LazyListState = rememberLazyListState(),
     content: LazyListScope.() -> Unit,
 ) {
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize().screenList(listState),
-        contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
-        content = content,
-    )
+    FastScroller(listState, Modifier.fillMaxSize()) { overscrollEffect ->
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+            overscrollEffect = overscrollEffect,
+            content = content,
+        )
+    }
 }
 
 /** The line between two [SettingsSection]s. */

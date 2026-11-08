@@ -31,6 +31,30 @@ sealed interface SortField<in T> {
 }
 
 /**
+ * The section [item] sits in among items sorted by these fields - what a fast scroller's popup names it by, Auxio's
+ * `getPopupData`. Read off the first field, the one the order is decided by, so it always agrees with the sort: a
+ * name's initial as that name sorts, or a number's own section. Null where there is none: a missing year, a name the
+ * file never gave, a field with no sections.
+ */
+fun <T> List<SortField<T>>.sectionOf(item: T, intelligentSorting: Boolean): String? =
+    when (val field = firstOrNull()) {
+        null -> null
+        is SortField.Name -> if (field.isPlaceholder(item)) null else sectionInitial(field.read(item), intelligentSorting)
+        is SortField.Number -> field.section?.let { section -> field.read(item)?.let(section) }
+    }
+
+/**
+ * Whether items sorted by these fields fall into sections at all - not by a disc and track number, which name
+ * nothing, where a popup would have no name to give any row.
+ */
+val <T> List<SortField<T>>.namesSections: Boolean
+    get() = when (val field = firstOrNull()) {
+        null -> false
+        is SortField.Name -> true
+        is SortField.Number -> field.section != null
+    }
+
+/**
  * Sorts by [fields]: the first decides the order, in [direction]; each later one only breaks the ties
  * those before it left, and always ascending - reversing "Artist" should list artists Z to A, not play
  * every one of their albums backwards.

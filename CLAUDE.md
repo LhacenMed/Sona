@@ -20,6 +20,7 @@ The app uses Material 3 Expressive. Before writing a control, look in `core/desi
 | A list of rows | `SonaListRow`, in `section` where they are grouped | a hand-made `Row` |
 | A settings-style row | `feature/settings/.../component/SettingsItems.kt` | a hand-made `ListItem` |
 | A list's end clear of the mini player | `LocalBottomContentPadding` | a fixed padding |
+| A screen's scrolling list or column | `FastScroller` around it, with `sectionAt` where it is sorted | a bare `LazyColumn` or `verticalScroll` |
 
 `./gradlew checkExpressiveComponents` enforces the button and dialog rows, and every build runs it. Fix what it
 reports by using the component above.

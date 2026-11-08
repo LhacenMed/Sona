@@ -29,6 +29,7 @@ import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.core.designsystem.component.dragSelection
+import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.rememberDragSelection
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.component.section.rememberSectionListState
@@ -79,30 +80,33 @@ data object PreferencesScreen : Screen {
             )
             Loaded(files) { loaded ->
                 CompositionLocalProvider(LocalDragSelection provides dragSelection) {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize().dragSelection(dragSelection),
-                        contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
-                    ) {
-                        loaded.forEachIndexed { index, file ->
-                            val fileValues = values.filter { it.file == file }
-                            section(
-                                key = sectionKeyOf(file),
-                                title = "${file.kind.label}: ${file.name} (${file.values.size})",
-                                state = sections,
-                                actions = listOf(TopBarAction(label = "Select this file", icon = Icons.Filled.SelectAll) { selection.selectAll(fileValues) }),
-                                hasDividerAbove = index > 0,
-                            ) {
-                                items(fileValues, key = { "${sectionKeyOf(file)}:${it.key}" }) { item ->
-                                    SonaListRow(
-                                        title = item.key,
-                                        subtitle = "${item.value::class.simpleName}: ${preferenceText(item.value)}",
-                                        selection = selection,
-                                        selectionKey = item,
-                                        onClick = { editing = item },
-                                        onOpenOptions = null,
-                                        cover = { isSelected -> DebugRowIcon(Icons.Filled.Tune, isSelected) },
-                                    )
+                    FastScroller(listState, Modifier.fillMaxSize()) { overscrollEffect ->
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize().dragSelection(dragSelection),
+                            contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+                            overscrollEffect = overscrollEffect,
+                        ) {
+                            loaded.forEachIndexed { index, file ->
+                                val fileValues = values.filter { it.file == file }
+                                section(
+                                    key = sectionKeyOf(file),
+                                    title = "${file.kind.label}: ${file.name} (${file.values.size})",
+                                    state = sections,
+                                    actions = listOf(TopBarAction(label = "Select this file", icon = Icons.Filled.SelectAll) { selection.selectAll(fileValues) }),
+                                    hasDividerAbove = index > 0,
+                                ) {
+                                    items(fileValues, key = { "${sectionKeyOf(file)}:${it.key}" }) { item ->
+                                        SonaListRow(
+                                            title = item.key,
+                                            subtitle = "${item.value::class.simpleName}: ${preferenceText(item.value)}",
+                                            selection = selection,
+                                            selectionKey = item,
+                                            onClick = { editing = item },
+                                            onOpenOptions = null,
+                                            cover = { isSelected -> DebugRowIcon(Icons.Filled.Tune, isSelected) },
+                                        )
+                                    }
                                 }
                             }
                         }

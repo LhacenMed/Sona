@@ -239,6 +239,13 @@ class VaultRepository @Inject internal constructor(
         combine(itemDao.observe(isVideo), sortOrder(isVideo), librarySettings.intelligentSortingEnabled.flow, VaultSort::sort)
             .flowOn(Dispatchers.Default)
 
+    /** The section each item of the videos' list - or, unless [isVideo], the tracks' - sits in under its sort: what its fast scroller's popup names. */
+    fun sections(isVideo: Boolean): Flow<(VaultItem) -> String?> =
+        combine(sortOrder(isVideo), librarySettings.intelligentSortingEnabled.flow) { order, intelligent ->
+            val sectionOf: (VaultItem) -> String? = { item -> VaultSort.section(item, order, intelligent) }
+            sectionOf
+        }
+
     /** What the folder's lists can be sorted by. */
     val sortCriteria: List<SortCriterion> get() = VaultSort.criteria
 

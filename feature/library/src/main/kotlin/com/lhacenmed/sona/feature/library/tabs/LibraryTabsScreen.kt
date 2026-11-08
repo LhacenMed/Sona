@@ -18,7 +18,7 @@ import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.LocalDragHandle
 import com.lhacenmed.sona.core.designsystem.component.SonaSettingsRow
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
-import com.lhacenmed.sona.core.designsystem.component.screen.screenList
+import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.library.rememberReorderableRows
@@ -42,33 +42,36 @@ data object LibraryTabsScreen : Screen {
 
         Column(modifier = Modifier.fillMaxSize()) {
             SonaTopAppBar(title = "Library tabs", onNavigateBack = navigator::back)
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize().screenList(listState),
-                contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
-            ) {
-                reorderableRows(rows, key = { it.tab.name }) { (tab, isVisible) ->
-                    // Disabled rather than allowed-then-ignored, so the last visible tab's switch visibly can't be turned off.
-                    val canToggle = !(isVisible && visibleCount <= 1)
-                    SonaSettingsRow(
-                        title = tab.label,
-                        summary = "Opened at launch".takeIf { tab == openedAtLaunch },
-                        onClick = { viewModel.setTabVisible(tab, !isVisible) }.takeIf { canToggle },
-                        leading = {
-                            Icon(
-                                imageVector = Icons.Filled.DragHandle,
-                                contentDescription = "Reorder",
-                                modifier = LocalDragHandle.current ?: Modifier,
-                            )
-                        },
-                        trailing = {
-                            Switch(
-                                checked = isVisible,
-                                onCheckedChange = { checked -> viewModel.setTabVisible(tab, checked) },
-                                enabled = canToggle,
-                            )
-                        },
-                    )
+            FastScroller(listState, Modifier.fillMaxSize()) { overscrollEffect ->
+                LazyColumn(
+                    state = listState,
+                    overscrollEffect = overscrollEffect,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+                ) {
+                    reorderableRows(rows, key = { it.tab.name }) { (tab, isVisible) ->
+                        // Disabled rather than allowed-then-ignored, so the last visible tab's switch visibly can't be turned off.
+                        val canToggle = !(isVisible && visibleCount <= 1)
+                        SonaSettingsRow(
+                            title = tab.label,
+                            summary = "Opened at launch".takeIf { tab == openedAtLaunch },
+                            onClick = { viewModel.setTabVisible(tab, !isVisible) }.takeIf { canToggle },
+                            leading = {
+                                Icon(
+                                    imageVector = Icons.Filled.DragHandle,
+                                    contentDescription = "Reorder",
+                                    modifier = LocalDragHandle.current ?: Modifier,
+                                )
+                            },
+                            trailing = {
+                                Switch(
+                                    checked = isVisible,
+                                    onCheckedChange = { checked -> viewModel.setTabVisible(tab, checked) },
+                                    enabled = canToggle,
+                                )
+                            },
+                        )
+                    }
                 }
             }
         }

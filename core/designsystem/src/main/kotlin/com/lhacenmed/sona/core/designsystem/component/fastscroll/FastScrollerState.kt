@@ -1,7 +1,5 @@
 package com.lhacenmed.sona.core.designsystem.component.fastscroll
 
-import androidx.compose.foundation.gestures.stopScroll
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -15,16 +13,14 @@ import kotlinx.coroutines.launch
 private const val AUTO_HIDE_DELAY_MILLIS = 500L
 
 /**
- * Whether the thumb is out and whether it is being dragged - Auxio's `showingThumb` and `dragging` - and
- * the [metrics] the thumb and the list are placed by, one reckoning for both.
+ * Whether the thumb is out and whether it is being dragged - Auxio's `showingThumb` and `dragging` - over the
+ * [track] it moves.
  */
 @Stable
 internal class FastScrollerState(
-    private val listState: LazyListState,
+    val track: ScrollTrack,
     private val scope: CoroutineScope,
 ) {
-    val metrics = ListScrollMetrics()
-
     var isThumbShown by mutableStateOf(false)
         private set
 
@@ -43,7 +39,7 @@ internal class FastScrollerState(
         isThumbShown = true
         hideJob?.cancel()
         // A fling still running would fight the thumb for the list.
-        scope.launch { listState.stopScroll() }
+        scope.launch { track.stopScroll() }
     }
 
     fun stopDragging() {
@@ -60,7 +56,7 @@ internal class FastScrollerState(
     /** Puts the list where a thumb [thumbTopPx] down its [thumbRangePx] of travel stands for. */
     fun scrollToThumbTop(thumbTopPx: Float, thumbRangePx: Float) {
         if (thumbRangePx <= 0f) return
-        listState.scrollToFraction(thumbTopPx / thumbRangePx, metrics)
+        track.scrollToFraction(thumbTopPx / thumbRangePx)
     }
 
     private fun hideAfterDelay() {

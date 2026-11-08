@@ -231,6 +231,28 @@ class LibraryRepository @Inject constructor(
         .map { !it.isLoading }
         .stateIn(scope, SharingStarted.Eagerly, false)
 
+    /**
+     * The section each of a collection's tracks sits in under that collection's own sort - [target]'s - read as its
+     * list holds it: with its play count, and in a playlist with when it joined it. See [trackSections]. Null while
+     * that sort names no sections - the user's own order, or one by disc and track number.
+     */
+    fun collectionTrackSections(target: SortTarget): Flow<((Track) -> String?)?> {
+        // Every collection's tracks are sorted as the entries that hold them.
+        @Suppress("UNCHECKED_CAST")
+        val spec = LibrarySortSpecs.of(target.list) as SortSpec<ListEntry>
+        val joinedAt = target.instanceId?.takeIf { target.list == SortableList.PLAYLIST_TRACKS }?.let { playlistId ->
+            playlistDao.observeTracks(playlistId.toLong()).map { rows -> rows.associate { it.track.id to it.addedAt } }
+        } ?: flowOf(emptyMap())
+        return combine(sortOrders.order(target), intelligentSorting, playCounts, joinedAt) { order, intelligent, plays, joined ->
+            if (!spec.namesSections(order)) return@combine null
+            val sectionOf: (Track) -> String? = { track ->
+                val entry = ListEntry(track, addedAt = joined[track.id] ?: track.dateAddedSeconds, playCount = plays[track.id] ?: 0)
+                spec.section(entry, order, intelligent)
+            }
+            sectionOf
+        }
+    }
+
     // region Scoped reads
     //
     // Detail screens used to observe the entire tracks table and filter it down to one album's
@@ -312,9 +334,12 @@ class LibraryRepository @Inject constructor(
                 }
             }
 
+    /** Every playlist's row, read once for the list and for its sections alike. */
+    private val playlistRows = playlistDao.observeAll().shareIn(scope, SharingStarted.Eagerly, replay = 1)
+
     /** Every playlist in the chosen order, Favorites first, with the count and cover each row shows. */
     val playlists: StateFlow<LibraryContent<Playlist>> = combine(
-        playlistDao.observeAll().sortedFor(LibrarySortSpecs.playlists) { rows -> rows },
+        playlistRows.sortedFor(LibrarySortSpecs.playlists) { rows -> rows },
         playlistDao.observeCoverArt(),
         tracksOfPlaylistsCoveredBySortedTrack,
     ) { rows, coverRows, sortedTracksByPlaylist ->
@@ -343,6 +368,16 @@ class LibraryRepository @Inject constructor(
             }
     }
         .shareContent()
+
+    /** The section each playlist sits in, by its id, under the Playlists tab's sort - see [trackSections]. */
+    val playlistSections: StateFlow<(playlistId: Long) -> String?> =
+        combine(playlistRows, sortOrders.order(SortTarget(SortableList.PLAYLISTS)), intelligentSorting) { rows, order, intelligent ->
+            val rowsById = rows.associateBy { it.id }
+            val sectionOf: (Long) -> String? = { id -> rowsById[id]?.let { LibrarySortSpecs.playlists.section(it, order, intelligent) } }
+            sectionOf
+        }
+            .flowOn(defaultDispatcher)
+            .stateIn(scope, SharingStarted.Eagerly) { null }
 
     /** How many tracks Most played would show - its row's subtitle, and whether it is listed at all. */
     @OptIn(ExperimentalCoroutinesApi::class)

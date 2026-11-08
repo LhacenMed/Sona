@@ -96,6 +96,7 @@ data object PlaylistsScreen : Screen {
         val mostPlayedCount by viewModel.mostPlayedCount.collectAsStateWithLifecycle()
         val mostPlayedCoverArtUris by viewModel.mostPlayedCoverArtUris.collectAsStateWithLifecycle()
         val playback by viewModel.playback.collectAsStateWithLifecycle()
+        val playlistSections by viewModel.playlistSections.collectAsStateWithLifecycle()
         val selection = rememberSelectionState()
         val listState = rememberLazyListState()
         // What a row's swipe carries out - the options sheet's own actions.
@@ -199,6 +200,12 @@ data object PlaylistsScreen : Screen {
                     FastScroller(
                         listState = listState,
                         modifier = Modifier.fillMaxSize(),
+                        // Most played, on top, has no section of its own: it stands in the one of the playlist under it.
+                        sectionAt = { index ->
+                            items.asSequence().drop(index)
+                                .firstNotNullOfOrNull { (it as? PlaylistsRow.OfPlaylist)?.playlist?.id }
+                                ?.let(playlistSections)
+                        },
                         playingRow = { playingRow.value },
                     ) { overscrollEffect ->
                         CompositionLocalProvider(LocalDragSelection provides dragSelection) {

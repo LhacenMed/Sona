@@ -60,6 +60,7 @@ import com.lhacenmed.sona.core.designsystem.component.header.CollapsingHeaderSta
 import com.lhacenmed.sona.core.designsystem.component.header.collapsingHeaderDrag
 import com.lhacenmed.sona.core.designsystem.component.screen.PlayingRow
 import com.lhacenmed.sona.core.designsystem.component.screen.indexOfKey
+import com.lhacenmed.sona.core.designsystem.component.screen.sectionFrom
 import com.lhacenmed.sona.core.designsystem.component.screen.scrollBackToTop
 import com.lhacenmed.sona.core.designsystem.component.screen.scrollToRow
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
@@ -219,6 +220,10 @@ private const val HeaderShrink = 0.12f
  * [playingKey] is the key of the row the list marks as playing, if any - which the screen's scroll button
  * offers a way to while it is off screen, showing the playing bars while [isPlaying]: see
  * [com.lhacenmed.sona.core.designsystem.component.screen.PlayingRow].
+ *
+ * [sectionOfKey], where the list is sorted into sections, names the section of a row by its key - what the fast
+ * scroller's popup shows for the rows on screen, passing over a heading, or a row of another kind, to the next
+ * that has one.
  */
 @Composable
 fun DetailScaffold(
@@ -232,6 +237,7 @@ fun DetailScaffold(
     isReordering: () -> Boolean = { false },
     playingKey: () -> Any? = { null },
     isPlaying: () -> Boolean = { false },
+    sectionOfKey: ((key: Any) -> String?)? = null,
     content: LazyListScope.() -> Unit,
 ) {
     val listState = state.listState
@@ -301,6 +307,7 @@ fun DetailScaffold(
                         listState = listState,
                         modifier = Modifier.fillMaxSize(),
                         enabled = isCollapsed,
+                        sectionAt = sectionOfKey?.let { sectionOf -> { index -> content.sectionFrom(index, sectionOf) } },
                         scrollToTop = state::scrollToTop,
                         playingRow = { playingRow.value },
                         scrollToRow = state::scrollToRow,

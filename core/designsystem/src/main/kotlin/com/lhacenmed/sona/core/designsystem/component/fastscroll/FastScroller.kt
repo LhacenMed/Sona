@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.OverscrollEffect
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -119,8 +120,10 @@ private const val POPUP_BASE_ROTATION_DEGREES = 14f
  * [scrollToRow] that way.
  *
  * Only while [enabled], and only for a list with somewhere to scroll.
+ *
+ * Every screen's scrolling list stands in one - this, or the column's below - which is what makes it its screen's
+ * list: there is no other way to mark one, so no screen's list goes without a thumb.
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun FastScroller(
     listState: LazyListState,
@@ -133,11 +136,55 @@ fun FastScroller(
     overscroll: RubberBandOverscroll = rememberRubberBandOverscroll(),
     content: @Composable (overscrollEffect: OverscrollEffect) -> Unit,
 ) {
+    FastScrollerLayout(
+        track = remember(listState) { LazyListTrack(listState) },
+        markScreenList = { isFastScrolling ->
+            Modifier.screenList(listState, isFastScrolling, scrollToTop, playingRow, scrollToRow)
+        },
+        modifier = modifier,
+        enabled = enabled,
+        sectionAt = sectionAt,
+        overscroll = overscroll,
+        content = content,
+    )
+}
+
+/**
+ * [FastScroller] for a column scrolled with `verticalScroll(scrollState, overscrollEffect = it)` - a page of
+ * settings, a form: the thumb, without a popup, as a column has no rows of its own to name.
+ */
+@Composable
+fun FastScroller(
+    scrollState: ScrollState,
+    modifier: Modifier = Modifier,
+    overscroll: RubberBandOverscroll = rememberRubberBandOverscroll(),
+    content: @Composable (overscrollEffect: OverscrollEffect) -> Unit,
+) {
+    FastScrollerLayout(
+        track = remember(scrollState) { ColumnTrack(scrollState) },
+        markScreenList = { isFastScrolling -> Modifier.screenList(scrollState, isFastScrolling) },
+        modifier = modifier,
+        enabled = true,
+        sectionAt = null,
+        overscroll = overscroll,
+        content = content,
+    )
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun FastScrollerLayout(
+    track: ScrollTrack,
+    markScreenList: (isFastScrolling: () -> Boolean) -> Modifier,
+    modifier: Modifier,
+    enabled: Boolean,
+    sectionAt: ((index: Int) -> String?)?,
+    overscroll: RubberBandOverscroll,
+    content: @Composable (overscrollEffect: OverscrollEffect) -> Unit,
+) {
     val scope = rememberCoroutineScope()
-    val state = remember(listState, scope) { FastScrollerState(listState, scope) }
-    val canFastScroll by remember(listState) {
-        derivedStateOf { listState.canScrollForward || listState.canScrollBackward }
-    }
+    val state = remember(track, scope) { FastScrollerState(track, scope) }
+    val canFastScroll by remember(track) { derivedStateOf { track.canScroll } }
     val isActive = enabled && canFastScroll
     val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val density = LocalDensity.current
@@ -153,26 +200,20 @@ fun FastScroller(
             state.hide()
             return@LaunchedEffect
         }
-        snapshotFlow { Triple(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset, overscroll.stretch) }
+        snapshotFlow { track.position to overscroll.stretch }
             .drop(1)
-            .collect { if (listState.isScrollInProgress || overscroll.stretch != 0f) state.onScrolled() }
+            .collect { if (track.isScrollInProgress || overscroll.stretch != 0f) state.onScrolled() }
     }
 
     Box(
         modifier = modifier
-            .screenList(
-                listState,
-                isFastScrolling = { state.isDragging },
-                scrollToTop = scrollToTop,
-                playingRow = playingRow,
-                scrollToRow = scrollToRow,
-            )
+            .then(markScreenList { state.isDragging })
             .pointerInput(state, isActive, isRtl, bottomPaddingPx, edgeWidth) {
                 if (!isActive) return@pointerInput
                 val thumbWidthPx = ThumbWidth.toPx()
                 val edgeWidthPx = max(edgeWidth.toPx(), thumbWidthPx)
                 fun thumbRangePx() = thumbRangePx(size.height, bottomPaddingPx, thumbHeightPx)
-                fun thumbTopPx() = listState.scrollFraction(state.metrics) * thumbRangePx()
+                fun thumbTopPx() = track.scrollFraction() * thumbRangePx()
                 // The thumb's column, and the edge that reaches for it - never narrower than the column, and
                 // kept within the list: Auxio's `isUnder`. The thumb is taller than a touch target already.
                 val columnStart = if (isRtl) 0f else size.width - thumbWidthPx
@@ -277,7 +318,7 @@ fun FastScroller(
                     val squeeze = abs(stretch).coerceAtMost(thumbHeightPx - squeezedThumbHeightPx)
                     val thumb = measurable.measure(Constraints(maxHeight = (thumbHeightPx - squeeze).roundToInt()))
                     layout(thumb.width, constraints.maxHeight) {
-                        val top = listState.scrollFraction(state.metrics) * thumbRangePx(constraints.maxHeight, bottomPaddingPx, thumbHeightPx) +
+                        val top = track.scrollFraction() * thumbRangePx(constraints.maxHeight, bottomPaddingPx, thumbHeightPx) +
                             if (stretch < 0f) squeeze else 0f
                         thumb.placeRelativeWithLayer(0, top.roundToInt()) {
                             // Slid out past the end edge, whichever side that is.
@@ -310,7 +351,7 @@ fun FastScroller(
                 .layout { measurable, constraints ->
                     val popup = measurable.measure(Constraints())
                     layout(popup.width, constraints.maxHeight) {
-                        val thumbTop = listState.scrollFraction(state.metrics) *
+                        val thumbTop = track.scrollFraction() *
                             thumbRangePx(constraints.maxHeight, bottomPaddingPx, thumbHeightPx)
                         // Centred on the thumb, and kept within the list above the mini player.
                         val top = (thumbTop + (thumbHeightPx - popup.height) / 2)
@@ -321,8 +362,8 @@ fun FastScroller(
                 },
         ) {
             val latestSectionAt by rememberUpdatedState(sectionAt)
-            val section by remember(listState) {
-                derivedStateOf { latestSectionAt?.invoke(listState.firstVisibleItemIndex) ?: "?" }
+            val section by remember(track) {
+                derivedStateOf { latestSectionAt?.invoke(track.firstVisibleIndex) ?: "?" }
             }
             val haptics = LocalHapticFeedback.current
             val isShowing by rememberUpdatedState(transition.targetState == EnterExitState.Visible)
@@ -331,7 +372,7 @@ fun FastScroller(
                     if (isShowing) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 }
             }
-            FastScrollPopup(section = section, rotationDegrees = { listState.scrollFraction(state.metrics) * 360f })
+            FastScrollPopup(section = section, rotationDegrees = { track.scrollFraction() * 360f })
         }
     }
 }

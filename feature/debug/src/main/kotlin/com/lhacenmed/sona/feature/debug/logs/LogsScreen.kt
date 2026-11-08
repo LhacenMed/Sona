@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
@@ -30,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
+import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.debug.Loaded
@@ -83,12 +85,17 @@ data object LogsScreen : Screen {
             Loaded(lines) { all ->
                 val sideways = rememberScrollState()
                 val shown = remember(all, filter) { all.filter { it.contains(filter, ignoreCase = true) } }
-                LazyColumn(
-                    modifier = Modifier.horizontalScroll(sideways),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = LocalBottomContentPadding.current),
-                ) {
-                    items(shown) { line ->
-                        Text(line, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelSmall, softWrap = false)
+                val listState = rememberLazyListState()
+                FastScroller(listState, Modifier.fillMaxSize()) { overscrollEffect ->
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize().horizontalScroll(sideways),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = LocalBottomContentPadding.current),
+                        overscrollEffect = overscrollEffect,
+                    ) {
+                        items(shown) { line ->
+                            Text(line, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelSmall, softWrap = false)
+                        }
                     }
                 }
             }

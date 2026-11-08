@@ -640,6 +640,7 @@ internal fun TrackListDetail(
     removableList: RemovableTrackList? = (collection as? OptionsTarget.ForPlaylist)?.let { RemovableTrackList.Playlist(it.playlist) },
 ) {
     val tracks by viewModel.tracks.collectAsStateWithLifecycle()
+    val trackSections by viewModel.trackSections.collectAsStateWithLifecycle()
     val sections by viewModel.sections.collectAsStateWithLifecycle()
     val playback by viewModel.playback.collectAsStateWithLifecycle()
     val resumePositionsMs = viewModel.resumePositionsMs.collectAsStateWithLifecycle()
@@ -836,6 +837,14 @@ internal fun TrackListDetail(
                 contentKey = sections to visibleTracks,
                 playingKey = { playback.currentTrack?.id },
                 isPlaying = { playback.isPlaying },
+                // A track's row is keyed by its id; the rows of every other kind have no section of their own.
+                sectionOfKey = remember(trackSections, tracks) {
+                    trackSections?.let { sectionOf ->
+                        val tracksById = tracks.itemsOrEmpty.associateBy { it.id }
+                        val sectionOfKey: (Any) -> String? = { key -> (key as? Long)?.let(tracksById::get)?.let(sectionOf) }
+                        sectionOfKey
+                    }
+                },
                 dragSelection = dragSelection,
             ) {
                 if (searchQuery == null) {

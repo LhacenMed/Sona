@@ -46,6 +46,9 @@ class PlaylistsViewModel @Inject constructor(
 
     val sort: SortControl = sortOrders.control(SortableList.PLAYLISTS)
 
+    /** The section each playlist sits in, by its id, under [sort] - what the fast scroller's popup names. */
+    val playlistSections: StateFlow<(playlistId: Long) -> String?> = repository.playlistSections
+
     val mostPlayedCount: StateFlow<MostPlayedCount> = repository.mostPlayedCount
 
     val favoritesPlaylistId: Long get() = repository.favoritesPlaylistId

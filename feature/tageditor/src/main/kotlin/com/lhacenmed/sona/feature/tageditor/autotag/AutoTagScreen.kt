@@ -32,7 +32,7 @@ import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.core.designsystem.component.fab.ExtendedFloatingActionButtonContent
 import com.lhacenmed.sona.core.designsystem.component.fab.SonaExtendedFloatingActionButtons
-import com.lhacenmed.sona.core.designsystem.component.screen.screenList
+import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.section.ColumnSection
 import com.lhacenmed.sona.core.designsystem.component.section.rememberSectionListState
 import com.lhacenmed.sona.core.designsystem.component.section.section
@@ -94,32 +94,33 @@ private fun AutoTagSetup(viewModel: AutoTagViewModel) {
 
     Column(modifier = Modifier.fillMaxSize()) {
         SonaTopAppBar(title = "Auto-tag", onNavigateBack = navigator::back)
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .screenList(scrollState)
-                .verticalScroll(scrollState)
-                .padding(bottom = LocalBottomContentPadding.current),
-        ) {
-            ColumnSection(title = "Tracks") {
-                TracksRow(
-                    trackCount = tracks.size,
-                    folders = folders,
-                    leftOut = viewModel.leftOut,
-                    onClick = { isChoosingFolders = true },
+        FastScroller(scrollState, Modifier.fillMaxSize()) { overscrollEffect ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState, overscrollEffect = overscrollEffect)
+                    .padding(bottom = LocalBottomContentPadding.current),
+            ) {
+                ColumnSection(title = "Tracks") {
+                    TracksRow(
+                        trackCount = tracks.size,
+                        folders = folders,
+                        leftOut = viewModel.leftOut,
+                        onClick = { isChoosingFolders = true },
+                    )
+                }
+                HorizontalDivider()
+                ColumnSection(title = "Find") {
+                    FindChoices(choices = choices, onChange = { viewModel.choices = it })
+                    AdvancedChoices(choices = choices, onChange = { viewModel.choices = it })
+                }
+                Text(
+                    "The best match is picked for every track. Nothing is written until you have looked over what was found and saved it.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = SonaComponentStyle.ContentHorizontalPadding, vertical = 16.dp),
                 )
             }
-            HorizontalDivider()
-            ColumnSection(title = "Find") {
-                FindChoices(choices = choices, onChange = { viewModel.choices = it })
-                AdvancedChoices(choices = choices, onChange = { viewModel.choices = it })
-            }
-            Text(
-                "The best match is picked for every track. Nothing is written until you have looked over what was found and saved it.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = SonaComponentStyle.ContentHorizontalPadding, vertical = 16.dp),
-            )
         }
     }
 
@@ -173,25 +174,28 @@ private fun AutoTagReview(viewModel: AutoTagViewModel, session: AutoTagSession) 
                 onFinish = { if (picked.isEmpty()) viewModel.discard() else isConfirmingFinish = true },
             )
         }
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize().screenList(listState),
-            contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
-        ) {
-            val groups = AutoTagOutcome.entries.mapNotNull { outcome -> session.groups[outcome]?.let { outcome to it } }
-            groups.forEachIndexed { index, (outcome, items) ->
-                section(
-                    key = outcome.name,
-                    title = "${outcome.title} · ${items.size}",
-                    state = sections,
-                    hasDividerAbove = index > 0,
-                    actions = listOfNotNull(
-                        TopBarAction(label = "Try again", icon = Icons.Filled.Refresh, onClick = viewModel::retryUnreachable)
-                            .takeIf { outcome == AutoTagOutcome.UNREACHABLE && session.phase == AutoTagPhase.REVIEWING },
-                    ),
-                ) {
-                    items(items, key = { it.track.id }) { item ->
-                        AutoTagRow(item = item, picks = session.picks, onOpen = { navigator.go(TagEditorScreen(item.track.id, isInAutoTagRun = true)) })
+        FastScroller(listState, Modifier.fillMaxSize()) { overscrollEffect ->
+            LazyColumn(
+                state = listState,
+                overscrollEffect = overscrollEffect,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+            ) {
+                val groups = AutoTagOutcome.entries.mapNotNull { outcome -> session.groups[outcome]?.let { outcome to it } }
+                groups.forEachIndexed { index, (outcome, items) ->
+                    section(
+                        key = outcome.name,
+                        title = "${outcome.title} · ${items.size}",
+                        state = sections,
+                        hasDividerAbove = index > 0,
+                        actions = listOfNotNull(
+                            TopBarAction(label = "Try again", icon = Icons.Filled.Refresh, onClick = viewModel::retryUnreachable)
+                                .takeIf { outcome == AutoTagOutcome.UNREACHABLE && session.phase == AutoTagPhase.REVIEWING },
+                        ),
+                    ) {
+                        items(items, key = { it.track.id }) { item ->
+                            AutoTagRow(item = item, picks = session.picks, onOpen = { navigator.go(TagEditorScreen(item.track.id, isInAutoTagRun = true)) })
+                        }
                     }
                 }
             }

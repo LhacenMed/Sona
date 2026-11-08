@@ -28,7 +28,7 @@ import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.fab.ExtendedFloatingActionButtonContent
 import com.lhacenmed.sona.core.designsystem.component.fab.SonaExtendedFloatingActionButtons
 import com.lhacenmed.sona.core.designsystem.component.WindowBusyOverlay
-import com.lhacenmed.sona.core.designsystem.component.screen.screenList
+import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.section.ColumnSection
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.navigation.LocalNavigator
@@ -125,29 +125,29 @@ data class TagEditorScreen(val trackId: Long, val isInAutoTagRun: Boolean = fals
             if (draft == null) return@Column
 
             val track = draft.track
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    // Above the keyboard, so the field it opens for is scrolled into view rather than the window slid.
-                    .imePadding()
-                    .screenList(scrollState)
-                    .verticalScroll(scrollState)
-                    .padding(bottom = LocalBottomContentPadding.current),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                TrackTagDraftSections(
-                    draft = draft,
-                    isPlaying = isPlaying,
-                    onTogglePlayback = viewModel::togglePlayback,
-                    onEditLyrics = { navigator.go(LyricsEditorScreen(trackId, editsTagDraft = true)) },
-                )
+            // Above the keyboard, so the field it opens for is scrolled into view rather than the window slid.
+            FastScroller(scrollState, Modifier.fillMaxSize().imePadding()) { overscrollEffect ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollState, overscrollEffect = overscrollEffect)
+                        .padding(bottom = LocalBottomContentPadding.current),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    TrackTagDraftSections(
+                        draft = draft,
+                        isPlaying = isPlaying,
+                        onTogglePlayback = viewModel::togglePlayback,
+                        onEditLyrics = { navigator.go(LyricsEditorScreen(trackId, editsTagDraft = true)) },
+                    )
 
-                HorizontalDivider()
-                ColumnSection(title = "File") {
-                    FileFact(label = "Duration", value = formatDuration(track.durationMs))
-                    FileFact(label = "Format", value = File(track.path).extension.uppercase())
-                    draft.file?.bitrateKbps?.let { FileFact(label = "Bitrate", value = "$it kbps") }
-                    FileFact(label = "Path", value = track.path)
+                    HorizontalDivider()
+                    ColumnSection(title = "File") {
+                        FileFact(label = "Duration", value = formatDuration(track.durationMs))
+                        FileFact(label = "Format", value = File(track.path).extension.uppercase())
+                        draft.file?.bitrateKbps?.let { FileFact(label = "Bitrate", value = "$it kbps") }
+                        FileFact(label = "Path", value = track.path)
+                    }
                 }
             }
         }
