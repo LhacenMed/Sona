@@ -3,7 +3,6 @@ package com.lhacenmed.sona.core.designsystem.component
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
@@ -35,10 +34,10 @@ fun Context.toast(message: CharSequence) {
 fun Context.toast(@StringRes messageRes: Int) = toast(getText(messageRes))
 
 /**
- * Copies [text], confirming it with [confirmation]. From Android 13 the system shows what was copied
- * itself, so there the haptic alone confirms it - a toast would only say it twice.
+ * Copies [text], confirming it with [confirmation] as the app's [toast] - whatever Android version: not every system
+ * shows what was copied itself, HyperOS among them.
  */
 fun Context.copyToClipboard(text: CharSequence, confirmation: CharSequence) {
     getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText(confirmation, text))
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) performSonaHaptic() else toast(confirmation)
+    toast(confirmation)
 }
