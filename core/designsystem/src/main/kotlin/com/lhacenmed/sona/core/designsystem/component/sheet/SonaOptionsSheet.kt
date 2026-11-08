@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.component.FavoriteToggle
 import com.lhacenmed.sona.core.designsystem.component.SonaFavoriteButton
@@ -48,9 +49,27 @@ fun SonaOptionsSheetHeader(
                     .weight(1f)
                     .padding(start = 16.dp),
             ) {
-                Text(text = type, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                Text(text = name, style = MaterialTheme.typography.titleLarge)
-                Text(text = info, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                // Held to the lines a detail screen's header gives them, however long a name the file holds.
+                Text(
+                    text = type,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.titleLarge,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = info,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             if (favorite != null) SonaFavoriteButton(favorite)
         }
