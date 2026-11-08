@@ -399,6 +399,21 @@ val MIGRATION_21_22 = object : Migration(21, 22) {
 }
 
 /**
+ * The files seen holding lyrics - see `HeldLyricsEntity`. A table of its own, every row kept so far untouched; started
+ * with every file the lyrics index has already read lyrics from, so none of them is searched for again once emptied.
+ */
+val MIGRATION_22_23 = object : Migration(22, 23) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS `held_lyrics` (`path` TEXT NOT NULL, PRIMARY KEY(`path`))")
+        db.execSQL(
+            "INSERT OR IGNORE INTO `held_lyrics` (`path`) " +
+                "SELECT `tracks`.`path` FROM `lyrics_index` JOIN `tracks` ON `tracks`.`id` = `lyrics_index`.`rowid` " +
+                "WHERE `lyrics_index`.`lyrics` != ''",
+        )
+    }
+}
+
+/**
  * Makes sure Favorites exists, every time the database is opened.
  *
  * On open rather than on create, because creation is only one of the ways this database comes to

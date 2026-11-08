@@ -10,6 +10,7 @@ import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.playback.PlaybackSpace
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
+import com.lhacenmed.sona.feature.tageditor.LyricsSearchIndex
 import com.lhacenmed.sona.feature.tageditor.TrackTagsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -34,7 +35,10 @@ import kotlinx.coroutines.launch
  * Only while the user lets it, while the device is online, and while Sona may change files without asking:
  * elsewhere Android asks the user before every file, which nothing done unasked may do. Each track is looked for
  * once a run of the app, found or not; one that was skipped on the way - the queue moved on, the connection
- * dropped - is looked for the next time it comes round. The user may look for a track's again: [findLyricsNow].
+ * dropped - is looked for the next time it comes round. A file that has ever held lyrics - its own, or written by Sona -
+ * is never looked for, whatever it holds now: lyrics taken out or changed by hand stay as the user left them, rather
+ * than a search's guess being put back - see [LyricsSearchIndex.hasHeldLyrics]. The user may look for a track's again:
+ * [findLyricsNow].
  */
 @Singleton
 class MissingLyricsFinder @Inject constructor(
@@ -42,6 +46,7 @@ class MissingLyricsFinder @Inject constructor(
     private val playbackController: PlaybackController,
     private val libraryRepository: LibraryRepository,
     private val trackTagsRepository: TrackTagsRepository,
+    private val lyricsSearchIndex: LyricsSearchIndex,
     private val networkMonitor: NetworkMonitor,
     private val lyricsSettings: LyricsSettings,
     @ApplicationScope private val scope: CoroutineScope,
@@ -97,7 +102,12 @@ class MissingLyricsFinder @Inject constructor(
         // Videos are played for their sound, and are seldom songs to have lyrics for.
         val track = libraryRepository.tracksById.value[trackId]?.takeUnless { it.isVideo } ?: return
         try {
-            if (trackTagsRepository.readLyrics(track).isBlank()) lookUp(track)
+            when {
+                lyricsSearchIndex.hasHeldLyrics(track) -> Unit
+                trackTagsRepository.readLyrics(track).isBlank() -> lookUp(track)
+                // Holding lyrics the index has not read yet: remembered now, so they are never searched for over.
+                else -> lyricsSearchIndex.reindex(track)
+            }
             lookedForTrackIds += trackId
         } catch (cancellation: CancellationException) {
             throw cancellation

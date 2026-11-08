@@ -9,7 +9,9 @@ import com.lhacenmed.sona.core.data.contentUri
 import com.lhacenmed.sona.core.data.lyrics.LyricsUtils
 import com.lhacenmed.sona.core.data.search.SearchText
 import com.lhacenmed.sona.core.data.search.searchFormOf
+import com.lhacenmed.sona.core.database.dao.HeldLyricsDao
 import com.lhacenmed.sona.core.database.dao.LyricsIndexDao
+import com.lhacenmed.sona.core.database.entity.HeldLyricsEntity
 import com.lhacenmed.sona.core.database.entity.LyricsIndexEntity
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.scanner.MediaScanner
@@ -48,11 +50,15 @@ private const val DELETE_BATCH_SIZE = 500
  * search finds a song by its lyrics as soon as Sona has seen them, with nothing to turn on.
  *
  * Music alone: a video's sound has no lyrics in its file to speak of, and reading one is the slowest read.
+ *
+ * Every file it reads lyrics from is remembered as one that has held them - see [hasHeldLyrics] - so the files are read
+ * for lyrics in this one place.
  */
 @Singleton
 class LyricsSearchIndex @Inject constructor(
     @ApplicationContext private val context: Context,
     private val dao: LyricsIndexDao,
+    private val heldLyricsDao: HeldLyricsDao,
     repository: LibraryRepository,
     mediaScanner: MediaScanner,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
@@ -77,11 +83,20 @@ class LyricsSearchIndex @Inject constructor(
         return LyricsMatches(query, hits.associate { hit -> hit.trackId to bestLine(hit.lyrics, words) })
     }
 
-    /** Reads [track]'s lyrics again - its file just written, by Sona - so search finds it by what they are now. */
+    /**
+     * Reads [track]'s lyrics again - its file just written, by Sona, or just read holding some - so search finds it by
+     * what they are now.
+     */
     suspend fun reindex(track: Track) {
         if (track.isVideo) return
-        withContext(ioDispatcher) { dao.replace(listOf(indexed(track))) }
+        withContext(ioDispatcher) { replace(listOf(track)) }
     }
+
+    /**
+     * Whether [track]'s file has been seen holding lyrics - read here or written by Sona - whatever it holds now: lyrics
+     * taken out or changed are the user's, and missing lyrics are never looked for again for it.
+     */
+    suspend fun hasHeldLyrics(track: Track): Boolean = withContext(ioDispatcher) { heldLyricsDao.isHeld(track.path) }
 
     private suspend fun catchUp(tracks: List<Track>) {
         val signatures = dao.signatures().associate { it.trackId to it.signature }
@@ -89,7 +104,15 @@ class LyricsSearchIndex @Inject constructor(
         signatures.keys.filterNot(trackIds::contains).chunked(DELETE_BATCH_SIZE).forEach { dao.delete(it) }
         tracks.filter { signatures[it.id] != signatureOf(it) }
             .chunked(INDEX_BATCH_SIZE)
-            .forEach { batch -> dao.replace(batch.map(::indexed)) }
+            .forEach { batch -> replace(batch) }
+    }
+
+    /** Reads [tracks]' lyrics into the index, and remembers those holding any as having held them. */
+    private suspend fun replace(tracks: List<Track>) {
+        val rows = tracks.map(::indexed)
+        dao.replace(rows)
+        val pathsById = tracks.associate { it.id to it.path }
+        heldLyricsDao.insertAll(rows.filter { it.lyrics.isNotBlank() }.map { HeldLyricsEntity(pathsById.getValue(it.trackId)) })
     }
 
     private fun indexed(track: Track): LyricsIndexEntity {
