@@ -37,8 +37,8 @@ internal fun SelectionState.toLibraryTopBarSelection(
  * `onExploreNavigate`. [content] is handed what opens the sheet.
  *
  * The sheet holds the tracks the selection stands for, in the order their rows were selected, and
- * choosing any of its actions ends the selection, as every one of Auxio's selection actions does.
- * Only dismissing the sheet leaves the selection as it was.
+ * any of its actions done ends the selection, as every one of Auxio's selection actions does - one that
+ * asks first, once confirmed. Dismissing the sheet, or what it asks, leaves the selection as it was.
  */
 @Composable
 internal fun SelectionOptionsHost(
@@ -58,7 +58,7 @@ internal fun SelectionOptionsHost(
         OptionsSheet(
             target = it,
             onDismissRequest = { target = null },
-            onActionChosen = { selection.clear() },
+            onActionDone = { selection.clear() },
         )
     }
 }

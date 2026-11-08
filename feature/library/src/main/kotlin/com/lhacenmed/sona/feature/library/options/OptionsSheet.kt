@@ -30,15 +30,16 @@ import com.lhacenmed.sona.feature.library.favorite.favoriteItems
  * a dialog or a file picker takes the sheet out of sight without dismissing it, so the follow-up still
  * has somewhere to report to; the sheet is dismissed once that ends. Any other action slides it away.
  *
- * [onActionChosen] hears of any action being chosen, before it runs - how a selection's sheet ends the
- * selection, as Auxio's does for every one of its actions.
+ * [onActionDone] hears of an action once it has been done - at once for most, and for one with a follow-up once
+ * that is confirmed - how a selection's sheet ends the selection, as Auxio's does for every one of its actions,
+ * while a follow-up dismissed leaves every row picked.
  */
 @Composable
 fun OptionsSheet(
     target: OptionsTarget,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
-    onActionChosen: () -> Unit = {},
+    onActionDone: () -> Unit = {},
 ) {
     val actions = rememberOptionsActions()
     val disabledActions = target.disabledActions()
@@ -60,7 +61,7 @@ fun OptionsSheet(
                     favorite = favoriteItems?.let { items ->
                         val isFavorite = favorites.containsAll(items)
                         FavoriteToggle(isFavorite) {
-                            onActionChosen()
+                            onActionDone()
                             actions.viewModel.setFavorite(items, !isFavorite)
                         }
                     },
@@ -73,16 +74,18 @@ fun OptionsSheet(
                     icon = action.icon,
                     enabled = action !in disabledActions,
                     onClick = {
-                        onActionChosen()
                         actions.perform(target, action)
-                        if (!actions.isFollowingUp) dismiss()
+                        if (!actions.isFollowingUp) {
+                            onActionDone()
+                            dismiss()
+                        }
                     },
                 )
             }
         }
     }
 
-    OptionsFollowUps(actions = actions, onFinished = onDismissRequest)
+    OptionsFollowUps(actions = actions, onFinished = onDismissRequest, onActionDone = onActionDone)
 }
 
 @Composable

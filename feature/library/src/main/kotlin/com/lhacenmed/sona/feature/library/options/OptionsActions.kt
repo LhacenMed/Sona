@@ -170,7 +170,8 @@ internal fun rememberOptionsActions(): OptionsActions {
 }
 
 /**
- * Whatever dialog or file picker [actions] is waiting on. [onFinished] hears when it ends, whichever way;
+ * Whatever dialog or file picker [actions] is waiting on. [onFinished] hears when it ends, whichever way, and
+ * [onActionDone] only when it ends having done what was asked - confirmed, picked, saved - not dismissed;
  * [onCollectionDeleted] hears when a collection is gone - a playlist deleted, or every track of an album,
  * artist, genre or folder deleted from the device - which is how its own screen leaves once there is
  * nothing left to show.
@@ -179,6 +180,7 @@ internal fun rememberOptionsActions(): OptionsActions {
 internal fun OptionsFollowUps(
     actions: OptionsActions,
     onFinished: () -> Unit = {},
+    onActionDone: () -> Unit = {},
     onCollectionDeleted: () -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -205,6 +207,7 @@ internal fun OptionsFollowUps(
                 fullPlaylistIds = fullPlaylistIds,
                 onDismiss = finish,
                 onPlaylistSelected = { playlist ->
+                    onActionDone()
                     viewModel.addToPlaylist(target, playlist.id)
                     context.toast("Added to playlist")
                     finish()
@@ -219,6 +222,7 @@ internal fun OptionsFollowUps(
                     takenNames = playlists.itemsOrEmpty.map { it.name },
                     onDismiss = { isNamingNewPlaylist = false },
                     onConfirm = { name ->
+                        onActionDone()
                         viewModel.createPlaylistAndAddTo(target, name)
                         context.toast("Added to playlist")
                         finish()
@@ -235,6 +239,7 @@ internal fun OptionsFollowUps(
                 artists = followUp.artists,
                 onDismiss = finish,
                 onArtistSelected = { artist ->
+                    onActionDone()
                     finish()
                     navigator.go(ArtistDetailScreen(artist.id))
                 },
@@ -244,11 +249,13 @@ internal fun OptionsFollowUps(
         is FollowUp.ExcludeFolder -> ExcludeFoldersDialog(
             folderPaths = listOf(followUp.target.folder.path),
             onDismiss = finish,
+            onConfirmed = onActionDone,
         )
 
         is FollowUp.DeletePlaylist -> DeletePlaylistsDialog(
             playlists = listOf(followUp.target.playlist),
             onDismiss = finish,
+            onConfirmed = onActionDone,
             onDeleted = onCollectionDeleted,
         )
 
@@ -256,6 +263,7 @@ internal fun OptionsFollowUps(
             list = followUp.list,
             trackIds = listOf(followUp.target.track.id),
             onDismiss = finish,
+            onConfirmed = onActionDone,
         )
 
         is FollowUp.AddToPrivate -> {
@@ -264,7 +272,7 @@ internal fun OptionsFollowUps(
             LaunchedEffect(followUp) {
                 viewModel.loadTracks(followUp.target) { loaded -> if (loaded.isEmpty()) finish() else tracks = loaded }
             }
-            tracks?.let { loaded -> AddToPrivateDialog(tracks = loaded, onDismiss = finish, onMoved = finish) }
+            tracks?.let { loaded -> AddToPrivateDialog(tracks = loaded, onDismiss = finish, onConfirmed = onActionDone, onMoved = finish) }
         }
 
         is FollowUp.DeleteFromDevice -> {
@@ -277,6 +285,7 @@ internal fun OptionsFollowUps(
                 DeleteFromDeviceDialog(
                     tracks = loaded,
                     onDismiss = finish,
+                    onConfirmed = onActionDone,
                     onDeleted = {
                         if (followUp.target !is OptionsTarget.ForTrack && followUp.target !is OptionsTarget.ForSelection) {
                             onCollectionDeleted()
@@ -290,6 +299,7 @@ internal fun OptionsFollowUps(
             val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
                 finish()
                 if (uri != null) {
+                    onActionDone()
                     viewModel.importIntoPlaylist(
                         playlistId = followUp.target.playlist.id,
                         openStream = { context.contentResolver.openInputStream(uri) },
@@ -304,7 +314,10 @@ internal fun OptionsFollowUps(
         is FollowUp.ExportFile -> {
             val launcher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(M3U_MIME_TYPE)) { uri ->
                 finish()
-                if (uri != null) viewModel.exportTracks(followUp.target) { context.contentResolver.openOutputStream(uri) }
+                if (uri != null) {
+                    onActionDone()
+                    viewModel.exportTracks(followUp.target) { context.contentResolver.openOutputStream(uri) }
+                }
             }
             LaunchedEffect(followUp) { launcher.launch("${followUp.target.name()}.m3u") }
         }

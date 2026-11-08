@@ -131,12 +131,14 @@ internal fun RemoveFromListDialog(
  * Declined, the deletion still happens, through Android's own request, which asks every time.
  *
  * Either way the tracks leave the queue and every list the moment their files are gone, and
- * [onDeleted] hears it - how a collection's own screen leaves once the tracks it showed are gone.
+ * [onDeleted] hears it - how a collection's own screen leaves once the tracks it showed are gone. [onConfirmed]
+ * runs the moment the deletion starts, which is when a selection that asked for it ends.
  */
 @Composable
 internal fun DeleteFromDeviceDialog(
     tracks: List<Track>,
     onDismiss: () -> Unit,
+    onConfirmed: () -> Unit = {},
     onDeleted: () -> Unit = {},
 ) {
     val deleteFromDevice = rememberDeviceDeletion(tracks, onDeleted)
@@ -154,7 +156,10 @@ internal fun DeleteFromDeviceDialog(
         successMessage = deletionOutcome(tracks.size, succeeded = true),
         failureMessage = deletionOutcome(tracks.size, succeeded = false),
         onDismiss = onDismiss,
-        operation = deleteFromDevice,
+        operation = { onFinished ->
+            onConfirmed()
+            deleteFromDevice(onFinished)
+        },
     )
 }
 
@@ -162,12 +167,14 @@ internal fun DeleteFromDeviceDialog(
  * Moves [tracks] into the Private Folder - a track or a selection, from its options sheet, which offers it only once the
  * folder is set up, so opening it is not needed to put a file in. Copied in first, every one, then deleted from the
  * device exactly as [DeleteFromDeviceDialog] deletes - and the copies taken back out should that deletion not happen,
- * so no file is ever left in both places.
+ * so no file is ever left in both places. [onConfirmed] runs the moment the move starts, which is when a selection that
+ * asked for it ends.
  */
 @Composable
 internal fun AddToPrivateDialog(
     tracks: List<Track>,
     onDismiss: () -> Unit,
+    onConfirmed: () -> Unit = {},
     onMoved: () -> Unit = {},
 ) {
     val actionsViewModel: OptionsActionsViewModel = hiltViewModel()
@@ -187,6 +194,7 @@ internal fun AddToPrivateDialog(
         failureMessage = "Could not add to Private Folder",
         onDismiss = onDismiss,
         operation = { onFinished ->
+            onConfirmed()
             actionsViewModel.copyToPrivate(tracks) { items ->
                 if (items == null) {
                     onFinished(false)
