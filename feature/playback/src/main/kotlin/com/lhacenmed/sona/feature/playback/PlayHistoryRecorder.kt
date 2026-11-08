@@ -5,7 +5,6 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
-import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,7 +20,8 @@ private const val CountedListenFraction = 0.8
 /**
  * Keeps the play statistics Recent and Most played are made of - Fossify's `PlayHistoryRecorder`, attached to
  * the service's own [player], so every listen is recorded however playback was started - the app, the
- * notification, a headset, another controller - and whether or not any screen is open.
+ * notification, a headset, another controller - and whether or not any screen is open. A Private Folder
+ * item's listens count as a library track's do, written down in the folder instead - see [ListenHistory].
  *
  * Two things are recorded of each listen, one track playing through once:
  *
@@ -41,12 +41,12 @@ private const val CountedListenFraction = 0.8
 internal class PlayHistoryRecorder(
     private val player: Player,
     private val scope: CoroutineScope,
-    private val playStatsDao: PlayStatsDao,
+    private val history: ListenHistory,
     private val playbackSettings: PlaybackSettings,
 ) : Player.Listener {
 
-    /** The track of the listen under way, or null with nothing loaded. */
-    private var trackId: Long? = null
+    /** The item of the listen under way, or null with nothing loaded. */
+    private var item: MediaItem? = null
 
     /** The time played in the segments already over - those a pause or a seek ended. */
     private var listenedMs = 0L
@@ -71,7 +71,7 @@ internal class PlayHistoryRecorder(
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
         // A queue rebuilt or edited around the track playing leaves its listen as it was.
-        val isSameTrack = mediaItem?.trackId() == trackId
+        val isSameTrack = mediaItem?.mediaId == item?.mediaId
         if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED && isSameTrack) return
         startListen(mediaItem)
         if (player.isPlaying) startSegment()
@@ -101,7 +101,7 @@ internal class PlayHistoryRecorder(
 
     private fun startListen(mediaItem: MediaItem?) {
         countJob?.cancel()
-        trackId = mediaItem?.trackId()
+        item = mediaItem
         listenedMs = 0L
         segmentStartMs = C.TIME_UNSET
         isRecent = false
@@ -109,13 +109,13 @@ internal class PlayHistoryRecorder(
     }
 
     private fun startSegment() {
-        val id = trackId ?: return
+        val listened = item ?: return
         segmentStartMs = player.currentPosition
         if (!isRecent) {
             isRecent = true
             if (playbackSettings.pausesListenHistory.value) return
             val playedAt = System.currentTimeMillis()
-            scope.launch(Dispatchers.IO) { playStatsDao.recordPlayStarted(id, playedAt) }
+            scope.launch(Dispatchers.IO) { history.recordStarted(listened, playedAt) }
         }
     }
 
@@ -136,13 +136,13 @@ internal class PlayHistoryRecorder(
      */
     private fun scheduleCount() {
         countJob?.cancel()
-        val id = trackId ?: return
+        val listened = item ?: return
         if (isCounted || !player.isPlaying) return
         val durationMs = player.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: return
         val thresholdMs = (durationMs * CountedListenFraction).toLong()
         val remainingMs = thresholdMs - listened()
         if (remainingMs <= 0L) {
-            count(id)
+            count(listened)
             return
         }
         val speed = player.playbackParameters.speed.takeIf { it > 0f } ?: 1f
@@ -152,13 +152,11 @@ internal class PlayHistoryRecorder(
         }
     }
 
-    private fun count(id: Long) {
+    private fun count(listened: MediaItem) {
         isCounted = true
         // Looked at as the mark is reached, so a collection kept out of Most played mid-listen is followed at once.
         if (playbackSettings.pausesListenHistory.value || player.currentMediaItem?.playbackParent in playbackSettings.uncountedParents.value) return
         val playedAt = System.currentTimeMillis()
-        scope.launch(Dispatchers.IO) { playStatsDao.recordPlayCounted(id, playedAt) }
+        scope.launch(Dispatchers.IO) { history.recordCounted(listened, playedAt) }
     }
-
-    private fun MediaItem.trackId(): Long? = mediaId.toLongOrNull()
 }

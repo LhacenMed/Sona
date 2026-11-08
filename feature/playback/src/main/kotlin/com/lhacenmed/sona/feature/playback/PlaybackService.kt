@@ -31,7 +31,6 @@ import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.common.entry.AppEntry
 import com.lhacenmed.sona.core.data.contentUri
 import com.lhacenmed.sona.core.data.LibraryRepository
-import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
 import com.lhacenmed.sona.core.datastore.ImageSettings
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
@@ -85,7 +84,7 @@ class PlaybackService : MediaSessionService() {
     lateinit var equalizer: SonaEqualizer
 
     @Inject
-    lateinit var playStatsDao: PlayStatsDao
+    lateinit var listenHistory: ListenHistory
 
     @Inject
     lateinit var trackFiles: TrackFiles
@@ -343,7 +342,7 @@ class PlaybackService : MediaSessionService() {
         equalizer.attach(exoPlayer.audioSessionId)
 
         // On the player itself, so a listen is recorded however it was started and with no screen open.
-        playHistoryRecorder = PlayHistoryRecorder(exoPlayer, serviceScope, playStatsDao, playbackSettings).also { it.attach() }
+        playHistoryRecorder = PlayHistoryRecorder(exoPlayer, serviceScope, listenHistory, playbackSettings).also { it.attach() }
         resumePositionRecorder = ResumePositionRecorder(exoPlayer, resumePositions).also { it.attach() }
 
         forwardingPlayer = PlaybackForwardingPlayer(exoPlayer) { forwardingSettings }

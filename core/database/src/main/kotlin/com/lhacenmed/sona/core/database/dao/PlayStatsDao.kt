@@ -11,8 +11,18 @@ data class MostPlayedCount(
     val videoCount: Int,
 )
 
+/** How many times one track was listened to through. */
+data class TrackPlayCount(
+    val trackId: Long,
+    val playCount: Int,
+)
+
 @Dao
 interface PlayStatsDao {
+
+    /** Every track listened to through at least once, with how many times - what lists sorted by play count are ranked by. */
+    @Query("SELECT trackId, playCount FROM play_stats WHERE playCount > 0")
+    fun observePlayCounts(): Flow<List<TrackPlayCount>>
 
     /**
      * Stamps a track as just played, starting its row if this is the first time.

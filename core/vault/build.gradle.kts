@@ -27,6 +27,8 @@ dependencies {
     // `api`: what goes into the vault is a library Track.
     api(project(":core:model"))
     implementation(project(":core:common"))
+    // The library's name sorting, which the folder's lists are sorted by as the library's are.
+    implementation(project(":core:datastore"))
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

@@ -7,6 +7,9 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.lhacenmed.sona.core.model.sort.SortCriterion
+import com.lhacenmed.sona.core.model.sort.SortDirection
+import com.lhacenmed.sona.core.model.sort.SortOrder
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
@@ -26,6 +29,10 @@ private val SECRET_CODE_SALT = stringPreferencesKey("secret_code_salt")
 private val SECRET_CODE_HASH = stringPreferencesKey("secret_code_hash")
 private val IS_HIDDEN = booleanPreferencesKey("is_hidden")
 private val UNLOCKS_WITH_BIOMETRICS = booleanPreferencesKey("unlocks_with_biometrics")
+
+/** What a tab's list is sorted by, and which way - the videos', or the tracks'. */
+private fun sortCriterionKey(isVideo: Boolean) = stringPreferencesKey(if (isVideo) "videos_sort_criterion" else "tracks_sort_criterion")
+private fun sortDirectionKey(isVideo: Boolean) = stringPreferencesKey(if (isVideo) "videos_sort_direction" else "tracks_sort_direction")
 
 /** A secret code, as kept: salted and hashed, as the PIN is. */
 internal data class VaultSecretCode(val salt: String, val hash: String)
@@ -123,6 +130,20 @@ internal class VaultSettings @Inject constructor(@ApplicationContext context: Co
         dataStore.edit { prefs ->
             prefs.remove(FAILED_ATTEMPTS)
             prefs.remove(LOCKED_UNTIL)
+        }
+    }
+
+    /** How the videos' list - or, unless [isVideo], the tracks' - was last sorted; null until it ever was. */
+    fun sortOrder(isVideo: Boolean): Flow<SortOrder?> = dataStore.data.map { prefs ->
+        val criterion = prefs[sortCriterionKey(isVideo)] ?: return@map null
+        val direction = prefs[sortDirectionKey(isVideo)] ?: return@map null
+        runCatching { SortOrder(SortCriterion.valueOf(criterion), SortDirection.valueOf(direction)) }.getOrNull()
+    }
+
+    suspend fun setSortOrder(isVideo: Boolean, order: SortOrder) {
+        dataStore.edit { prefs ->
+            prefs[sortCriterionKey(isVideo)] = order.criterion.name
+            prefs[sortDirectionKey(isVideo)] = order.direction.name
         }
     }
 }

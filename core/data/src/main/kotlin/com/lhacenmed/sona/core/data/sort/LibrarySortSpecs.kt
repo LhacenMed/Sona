@@ -1,8 +1,10 @@
 package com.lhacenmed.sona.core.data.sort
 
+import com.lhacenmed.sona.core.common.sort.SortField
 import com.lhacenmed.sona.core.database.dao.PlaylistWithCount
 import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
+import com.lhacenmed.sona.core.model.CollectionStats
 import com.lhacenmed.sona.core.model.Folder
 import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.Track
@@ -13,14 +15,15 @@ import com.lhacenmed.sona.core.model.sort.SortOrder
 import com.lhacenmed.sona.core.model.sort.SortableList
 
 /**
- * A track as a collection holds it: where the user dragged it to - null until the collection is
- * arranged, or when the track joined it since - and when it joined: a playlist, when it was added to
- * it; any other collection, when its file joined the library.
+ * A track as a list holds it: where the user dragged it to - null until a collection is arranged, or
+ * when the track joined it since - when it joined: a playlist, when it was added to it; any other
+ * list, when its file joined the library - and how many times it was listened to through.
  */
 internal data class ListEntry(
     val track: Track,
     val addedAt: Long = track.dateAddedSeconds,
     val position: Int? = null,
+    val playCount: Int = 0,
 )
 
 /**
@@ -29,7 +32,9 @@ internal data class ListEntry(
  * Only what makes sense for the list is offered: an artist's tracks all share one artist, so that list
  * has no "Artist"; an album's tracks have a real order of their own, so that list has "Track number";
  * only a playlist has a second date - when a track joined it. Every collection's tracks can be put in
- * an order of the user's own by dragging, so each of those lists offers Custom too.
+ * an order of the user's own by dragging, so each of those lists offers Custom too. Every list offers
+ * Name, Duration, Date added and Play count: a collection's are what its tracks add up to - see
+ * [CollectionStats].
  *
  * Every ordering ends in a name or the album's own order, so items that tie on what was chosen - two
  * albums from one year - still come out in one defined order rather than in whatever order the
@@ -60,6 +65,10 @@ internal object LibrarySortSpecs {
     private val tracksByDuration: List<SortField<Track>> = listOf(trackDuration, trackTitle)
     private val tracksByDateAdded: List<SortField<Track>> = listOf(trackDateAdded, trackTitle)
 
+    /** Most listened to first once reversed, ties by title. */
+    private val entriesByPlayCount: List<SortField<ListEntry>> =
+        listOf(SortField.Number<ListEntry>(NumberSection) { it.playCount.toLong() }) + tracksByTitle.ofEntry()
+
     /** How every collection's tracks are arranged by hand - see [Arrangement]. */
     private val entryArrangement = Arrangement<ListEntry>(position = { it.position }, addedAt = { it.addedAt })
 
@@ -67,12 +76,13 @@ internal object LibrarySortSpecs {
         list = SortableList.TRACKS,
         default = SortOrder(SortCriterion.DATE_ADDED, SortDirection.DESCENDING),
         orderings = mapOf(
-            SortCriterion.NAME to tracksByTitle,
-            SortCriterion.ARTIST to tracksByArtist,
-            SortCriterion.ALBUM to tracksByAlbum,
-            SortCriterion.YEAR to tracksByYear,
-            SortCriterion.DURATION to tracksByDuration,
-            SortCriterion.DATE_ADDED to tracksByDateAdded,
+            SortCriterion.NAME to tracksByTitle.ofEntry(),
+            SortCriterion.ARTIST to tracksByArtist.ofEntry(),
+            SortCriterion.ALBUM to tracksByAlbum.ofEntry(),
+            SortCriterion.YEAR to tracksByYear.ofEntry(),
+            SortCriterion.DURATION to tracksByDuration.ofEntry(),
+            SortCriterion.DATE_ADDED to tracksByDateAdded.ofEntry(),
+            SortCriterion.PLAY_COUNT to entriesByPlayCount,
         ),
     )
 
@@ -81,9 +91,10 @@ internal object LibrarySortSpecs {
         list = SortableList.VIDEOS,
         default = SortOrder(SortCriterion.DATE_ADDED, SortDirection.DESCENDING),
         orderings = mapOf(
-            SortCriterion.NAME to tracksByTitle,
-            SortCriterion.DURATION to tracksByDuration,
-            SortCriterion.DATE_ADDED to tracksByDateAdded,
+            SortCriterion.NAME to tracksByTitle.ofEntry(),
+            SortCriterion.DURATION to tracksByDuration.ofEntry(),
+            SortCriterion.DATE_ADDED to tracksByDateAdded.ofEntry(),
+            SortCriterion.PLAY_COUNT to entriesByPlayCount,
         ),
     )
 
@@ -94,6 +105,8 @@ internal object LibrarySortSpecs {
             SortCriterion.TRACK_NUMBER to trackAlbumOrder.ofEntry(),
             SortCriterion.NAME to tracksByTitle.ofEntry(),
             SortCriterion.DURATION to tracksByDuration.ofEntry(),
+            SortCriterion.DATE_ADDED to tracksByDateAdded.ofEntry(),
+            SortCriterion.PLAY_COUNT to entriesByPlayCount,
         ),
         arrangement = entryArrangement,
     )
@@ -107,6 +120,7 @@ internal object LibrarySortSpecs {
             SortCriterion.YEAR to tracksByYear.ofEntry(),
             SortCriterion.DURATION to tracksByDuration.ofEntry(),
             SortCriterion.DATE_ADDED to tracksByDateAdded.ofEntry(),
+            SortCriterion.PLAY_COUNT to entriesByPlayCount,
         ),
         arrangement = entryArrangement,
     )
@@ -121,6 +135,7 @@ internal object LibrarySortSpecs {
             SortCriterion.YEAR to tracksByYear.ofEntry(),
             SortCriterion.DURATION to tracksByDuration.ofEntry(),
             SortCriterion.DATE_ADDED to tracksByDateAdded.ofEntry(),
+            SortCriterion.PLAY_COUNT to entriesByPlayCount,
         ),
         arrangement = entryArrangement,
     )
@@ -135,6 +150,7 @@ internal object LibrarySortSpecs {
             SortCriterion.YEAR to tracksByYear.ofEntry(),
             SortCriterion.DURATION to tracksByDuration.ofEntry(),
             SortCriterion.DATE_ADDED to tracksByDateAdded.ofEntry(),
+            SortCriterion.PLAY_COUNT to entriesByPlayCount,
         ),
         arrangement = entryArrangement,
     )
@@ -155,6 +171,7 @@ internal object LibrarySortSpecs {
             SortCriterion.DATE to tracksByDateAdded.ofEntry(),
             SortCriterion.DATE_ADDED to
                 listOf(SortField.Number<ListEntry> { it.addedAt }) + tracksByTitle.ofEntry(),
+            SortCriterion.PLAY_COUNT to entriesByPlayCount,
         ),
         arrangement = entryArrangement,
     )
@@ -174,6 +191,12 @@ internal object LibrarySortSpecs {
 
     // region Collections
 
+    /** What a collection's tracks add up to, as each orders a list of collections - see [CollectionStats]. */
+    private fun <T> byDuration(stats: (T) -> CollectionStats) = SortField.Number<T>(::durationSection) { stats(it).durationMs }
+    private fun <T> byDateAdded(stats: (T) -> CollectionStats) =
+        SortField.Number<T>(::monthOfEpochSecondsSection) { stats(it).dateAddedSeconds }
+    private fun <T> byPlayCount(stats: (T) -> CollectionStats) = SortField.Number<T>(NumberSection) { stats(it).playCount.toLong() }
+
     private val albumTitle = SortField.Name<Album>({ it.title }, { it.title == UnknownNames.ALBUM })
 
     val albums = SortSpec(
@@ -189,8 +212,10 @@ internal object LibrarySortSpecs {
             SortCriterion.YEAR to listOf(SortField.Number<Album>(NumberSection) { it.year?.toLong() }, albumTitle),
             SortCriterion.TRACK_COUNT to
                 listOf(SortField.Number<Album>(NumberSection) { it.trackCount.toLong() }, albumTitle),
+            SortCriterion.DURATION to listOf(byDuration(Album::stats), albumTitle),
             SortCriterion.DATE_ADDED to
                 listOf(SortField.Number<Album>(::monthOfEpochSecondsSection) { it.dateAddedSeconds }, albumTitle),
+            SortCriterion.PLAY_COUNT to listOf(byPlayCount(Album::stats), albumTitle),
         ),
     )
 
@@ -205,6 +230,9 @@ internal object LibrarySortSpecs {
                 listOf(SortField.Number<Artist>(NumberSection) { it.albumCount.toLong() }, artistName),
             SortCriterion.TRACK_COUNT to
                 listOf(SortField.Number<Artist>(NumberSection) { it.trackCount.toLong() }, artistName),
+            SortCriterion.DURATION to listOf(byDuration(Artist::stats), artistName),
+            SortCriterion.DATE_ADDED to listOf(byDateAdded(Artist::stats), artistName),
+            SortCriterion.PLAY_COUNT to listOf(byPlayCount(Artist::stats), artistName),
         ),
     )
 
@@ -217,6 +245,9 @@ internal object LibrarySortSpecs {
             SortCriterion.NAME to listOf(genreName),
             SortCriterion.TRACK_COUNT to
                 listOf(SortField.Number<Genre>(NumberSection) { it.trackCount.toLong() }, genreName),
+            SortCriterion.DURATION to listOf(byDuration(Genre::stats), genreName),
+            SortCriterion.DATE_ADDED to listOf(byDateAdded(Genre::stats), genreName),
+            SortCriterion.PLAY_COUNT to listOf(byPlayCount(Genre::stats), genreName),
         ),
     )
 
@@ -230,12 +261,18 @@ internal object LibrarySortSpecs {
             SortCriterion.NAME to listOf(folderName),
             SortCriterion.TRACK_COUNT to
                 listOf(SortField.Number<Folder>(NumberSection) { it.trackCount.toLong() }, folderName),
+            SortCriterion.DURATION to listOf(byDuration(Folder::stats), folderName),
+            SortCriterion.DATE_ADDED to listOf(byDateAdded(Folder::stats), folderName),
+            SortCriterion.PLAY_COUNT to listOf(byPlayCount(Folder::stats), folderName),
         ),
     )
 
     private val playlistName = SortField.Name<PlaylistWithCount>({ it.name })
 
-    /** "Date" is when the playlist last changed - made, renamed, or its tracks added, removed or moved. */
+    /**
+     * "Date" is when the playlist last changed - made, renamed, or its tracks added, removed or moved - and
+     * "Date added" when it was made.
+     */
     val playlists = SortSpec(
         list = SortableList.PLAYLISTS,
         default = SortOrder(SortCriterion.DATE, SortDirection.DESCENDING),
@@ -244,6 +281,9 @@ internal object LibrarySortSpecs {
             SortCriterion.TRACK_COUNT to
                 listOf(SortField.Number<PlaylistWithCount> { it.trackCount.toLong() }, playlistName),
             SortCriterion.DATE to listOf(SortField.Number<PlaylistWithCount> { it.modifiedAt }, playlistName),
+            SortCriterion.DURATION to listOf(SortField.Number<PlaylistWithCount> { it.durationMs }, playlistName),
+            SortCriterion.DATE_ADDED to listOf(SortField.Number<PlaylistWithCount> { it.createdAt }, playlistName),
+            SortCriterion.PLAY_COUNT to listOf(SortField.Number<PlaylistWithCount> { it.playCount.toLong() }, playlistName),
         ),
     )
 

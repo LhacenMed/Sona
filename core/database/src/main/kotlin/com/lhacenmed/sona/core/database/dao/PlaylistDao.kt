@@ -27,6 +27,12 @@ data class PlaylistWithCount(
     /** How many of [trackCount] are videos. */
     val videoCount: Int,
     val modifiedAt: Long,
+    /** When the playlist was made - when it joined the library's playlists. */
+    val createdAt: Long,
+    /** How long its tracks play together. */
+    val durationMs: Long,
+    /** How many times its tracks were listened to through, all together. */
+    val playCount: Int,
     val coverSource: PlaylistCoverSource,
     val coverTrackId: Long?,
     val coverImageUri: String?,
@@ -56,12 +62,14 @@ interface PlaylistDao {
     @Query(
         """
         SELECT p.id AS id, p.name AS name, p.isBuiltIn AS isBuiltIn, p.modifiedAt AS modifiedAt,
-               p.coverSource AS coverSource, p.coverTrackId AS coverTrackId,
+               p.createdAt AS createdAt, p.coverSource AS coverSource, p.coverTrackId AS coverTrackId,
                p.coverImageUri AS coverImageUri, ct.coverArtUri AS coverTrackArtUri,
-               COUNT(pt.trackId) AS trackCount, COALESCE(SUM(t.isVideo), 0) AS videoCount
+               COUNT(pt.trackId) AS trackCount, COALESCE(SUM(t.isVideo), 0) AS videoCount,
+               COALESCE(SUM(t.durationMs), 0) AS durationMs, COALESCE(SUM(s.playCount), 0) AS playCount
         FROM playlists p
         LEFT JOIN playlist_tracks pt ON pt.playlistId = p.id
         LEFT JOIN tracks t ON t.id = pt.trackId
+        LEFT JOIN play_stats s ON s.trackId = pt.trackId
         LEFT JOIN tracks ct ON ct.id = p.coverTrackId
         GROUP BY p.id
         """,

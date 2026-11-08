@@ -33,6 +33,7 @@ import com.lhacenmed.sona.core.datastore.LibrarySettings
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
+import com.lhacenmed.sona.core.model.CollectionStats
 import com.lhacenmed.sona.core.model.Folder
 import com.lhacenmed.sona.core.model.FolderView
 import com.lhacenmed.sona.core.model.Genre
@@ -52,6 +53,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -63,6 +65,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 
 /**
@@ -121,15 +124,25 @@ class LibraryRepository @Inject constructor(
         .distinctUntilChanged()
         .stateIn(scope, SharingStarted.Eagerly, librarySettings.folderView.value)
 
+    /**
+     * How many times each track was listened to through, by its id - what every list sorted by play count is
+     * ranked by. Only a listen counting changes it, not one merely starting, so a track starting re-sorts
+     * nothing. Shared once read rather than from an empty start, so a list sorted by it is never shown in
+     * another order first.
+     */
+    private val playCounts: SharedFlow<Map<Long, Int>> = playStatsDao.observePlayCounts()
+        .map { rows -> rows.associate { it.trackId to it.playCount } }
+        .distinctUntilChanged()
+        .shareIn(scope, SharingStarted.Eagerly, replay = 1)
+
     /** The music - every track but the videos, which are the Videos tab's alone. */
-    val tracks: StateFlow<LibraryContent<Track>> = trackDao.observeAll(isVideo = false)
-        .sortedFor(LibrarySortSpecs.tracks) { rows -> rows.map { it.toDomain() } }
-        .shareContent()
+    val tracks: StateFlow<LibraryContent<Track>> = sortedTabOf(isVideo = false, LibrarySortSpecs.tracks)
 
     /** Every video - the Videos tab. */
-    val videos: StateFlow<LibraryContent<Track>> = trackDao.observeAll(isVideo = true)
-        .sortedFor(LibrarySortSpecs.videos) { rows -> rows.map { it.toDomain() } }
-        .shareContent()
+    val videos: StateFlow<LibraryContent<Track>> = sortedTabOf(isVideo = true, LibrarySortSpecs.videos)
+
+    /** Every track and video, each collection's [CollectionStats] are worked out from. */
+    private val everyTrack: Flow<List<Track>> = combine(tracks.readyItems(), videos.readyItems(), List<Track>::plus)
 
     /**
      * The library tab [track] is listed on - the music or the videos - whole, as it is sorted: what it plays among, played
@@ -143,11 +156,13 @@ class LibraryRepository @Inject constructor(
         .stateIn(scope, SharingStarted.Eagerly, emptyMap())
 
     val albums: StateFlow<LibraryContent<Album>> = albumDao.observeAll()
-        .sortedFor(LibrarySortSpecs.albums) { rows -> rows.map { it.toDomain() } }
+        .withStatsBy { track -> listOf(track.albumId) }
+        .sortedFor(LibrarySortSpecs.albums) { (rows, stats) -> rows.map { it.toDomain().copy(stats = stats.of(it.id)) } }
         .shareContent()
 
     val artists: StateFlow<LibraryContent<Artist>> = artistDao.observeAll()
-        .sortedFor(LibrarySortSpecs.artists) { rows -> rows.map { it.toDomain() } }
+        .withStatsBy(Track::artistIds)
+        .sortedFor(LibrarySortSpecs.artists) { (rows, stats) -> rows.map { it.toDomain().copy(stats = stats.of(it.id)) } }
         .shareContent()
 
     /** [artists] as they are listed for choosing among - see [LibrarySettings.hidesCollaborators]. Every artist can still be opened. */
@@ -159,7 +174,8 @@ class LibraryRepository @Inject constructor(
     }.stateIn(scope, SharingStarted.Eagerly, LibraryContent.Loading)
 
     val genres: StateFlow<LibraryContent<Genre>> = genreDao.observeAll()
-        .sortedFor(LibrarySortSpecs.genres) { rows -> rows.map { it.toDomain() } }
+        .withStatsBy { track -> listOfNotNull(track.genreId) }
+        .sortedFor(LibrarySortSpecs.genres) { (rows, stats) -> rows.map { it.toDomain().copy(stats = stats.of(it.id)) } }
         .shareContent()
 
     /** The folders holding music, as the Folders tab lists them - see [FolderView]. */
@@ -203,8 +219,8 @@ class LibraryRepository @Inject constructor(
      * The section each row of a library tab sits in under that tab's current sort - what a fast
      * scroller's popup names it by. Kept in step with the sort the list itself is in.
      */
-    val trackSections: StateFlow<(Track) -> String?> = sectionsOf(LibrarySortSpecs.tracks)
-    val videoSections: StateFlow<(Track) -> String?> = sectionsOf(LibrarySortSpecs.videos)
+    val trackSections: StateFlow<(Track) -> String?> = sectionsOf(LibrarySortSpecs.tracks, ::tabEntryOf)
+    val videoSections: StateFlow<(Track) -> String?> = sectionsOf(LibrarySortSpecs.videos, ::tabEntryOf)
     val albumSections: StateFlow<(Album) -> String?> = sectionsOf(LibrarySortSpecs.albums)
     val artistSections: StateFlow<(Artist) -> String?> = sectionsOf(LibrarySortSpecs.artists)
     val genreSections: StateFlow<(Genre) -> String?> = sectionsOf(LibrarySortSpecs.genres)
@@ -573,10 +589,14 @@ class LibraryRepository @Inject constructor(
         instanceId: String,
         toEntry: (R) -> ListEntry,
     ): Flow<List<ListEntry>> =
-        combine(this, arrangementDao.observe(spec.list, instanceId), ::Pair)
-            .sortedFor(spec, instanceId) { (rows, arranged) ->
+        combine(this, arrangementDao.observe(spec.list, instanceId), playCounts, ::Triple)
+            .sortedFor(spec, instanceId) { (rows, arranged, plays) ->
                 val positions = arranged.associate { it.trackId to it.position }
-                rows.map { row -> toEntry(row).let { entry -> entry.copy(position = positions[entry.track.id]) } }
+                rows.map { row ->
+                    toEntry(row).let { entry ->
+                        entry.copy(position = positions[entry.track.id], playCount = plays[entry.track.id] ?: 0)
+                    }
+                }
             }
 
     private fun Flow<List<ListEntry>>.asTrackContent(): Flow<LibraryContent<Track>> =
@@ -605,14 +625,52 @@ class LibraryRepository @Inject constructor(
             spec.sort(toItems(rows), order, intelligent)
         }
 
-    /** [spec]'s sections under its list's current order, starting from the order already in memory. */
-    private fun <T> sectionsOf(spec: SortSpec<T>): StateFlow<(T) -> String?> {
+    /**
+     * [spec]'s sections under its list's current order, starting from the order already in memory - for each
+     * row's item, read as [spec]'s entry of it by [entryOf] with the play counts as they stand.
+     */
+    private fun <U, T> sectionsOf(spec: SortSpec<T>, entryOf: (U, playCounts: Map<Long, Int>) -> T): StateFlow<(U) -> String?> {
         val target = SortTarget(spec.list, null)
-        fun sectionsFor(order: SortOrder, intelligent: Boolean): (T) -> String? =
-            { item -> spec.section(item, order, intelligent) }
-        return combine(sortOrders.order(target), intelligentSorting, ::sectionsFor)
-            .stateIn(scope, SharingStarted.Eagerly, sectionsFor(sortOrders.currentOrder(target), intelligentSorting.value))
+        fun sectionsFor(order: SortOrder, intelligent: Boolean, plays: Map<Long, Int>): (U) -> String? =
+            { item -> spec.section(entryOf(item, plays), order, intelligent) }
+        return combine(sortOrders.order(target), intelligentSorting, playCounts, ::sectionsFor).stateIn(
+            scope,
+            SharingStarted.Eagerly,
+            sectionsFor(sortOrders.currentOrder(target), intelligentSorting.value, playCounts.replayCache.firstOrNull().orEmpty()),
+        )
     }
+
+    private fun <T> sectionsOf(spec: SortSpec<T>): StateFlow<(T) -> String?> = sectionsOf(spec) { item: T, _ -> item }
+
+    /** A library tab's track as its list holds it. */
+    private fun tabEntryOf(track: Track, playCounts: Map<Long, Int>) = ListEntry(track, playCount = playCounts[track.id] ?: 0)
+
+    /** The music - or, where [isVideo], the videos - sorted as [spec], their tab's, says. */
+    private fun sortedTabOf(isVideo: Boolean, spec: SortSpec<ListEntry>): StateFlow<LibraryContent<Track>> =
+        combine(trackDao.observeAll(isVideo), playCounts, ::Pair)
+            .sortedFor(spec) { (rows, plays) -> rows.map { tabEntryOf(it.toDomain(), plays) } }
+            .map { entries -> entries.map { it.track } }
+            .shareContent()
+
+    /**
+     * These collections' rows, with what each one's tracks add up to: the collections [keysOf] puts each track in,
+     * worked out afresh as the tracks or their play counts change.
+     */
+    private fun <R, K> Flow<List<R>>.withStatsBy(keysOf: (Track) -> Iterable<K>): Flow<Pair<List<R>, Map<K, CollectionStats>>> =
+        combine(this, everyTrack, playCounts) { rows, tracks, plays -> rows to tracks.statsBy(plays, keysOf) }
+
+    /** What the tracks of each collection [keysOf] puts them in add up to, by that collection. */
+    private fun <K> List<Track>.statsBy(playCounts: Map<Long, Int>, keysOf: (Track) -> Iterable<K>): Map<K, CollectionStats> {
+        val stats = HashMap<K, CollectionStats>()
+        for (track in this) {
+            val trackStats = CollectionStats(track.durationMs, playCounts[track.id] ?: 0, track.dateAddedSeconds)
+            for (key in keysOf(track)) stats.merge(key, trackStats, CollectionStats::plus)
+        }
+        return stats
+    }
+
+    /** The stats of [key]'s collection - none for one holding no track. */
+    private fun <K> Map<K, CollectionStats>.of(key: K): CollectionStats = this[key] ?: CollectionStats()
 
     /**
      * The folders holding music - or, where [isVideo], videos - with the count and cover each row shows, as [view]
@@ -620,17 +678,24 @@ class LibraryRepository @Inject constructor(
      * SQLite (`GROUP BY folderPath`), not by grouping the track list in memory.
      */
     private fun foldersOf(isVideo: Boolean, view: Flow<FolderView>): StateFlow<LibraryContent<Folder>> =
-        combine(trackDao.observeFolders(isVideo), trackDao.observeFolderCoverArt(isVideo), view) { rows, coverRows, folderView ->
+        combine(
+            trackDao.observeFolders(isVideo),
+            trackDao.observeFolderCoverArt(isVideo),
+            view,
+            (if (isVideo) videos else tracks).readyItems(),
+            playCounts,
+        ) { rows, coverRows, folderView, folderTracks, plays ->
             val listedUnder = if (folderView == FolderView.GROUPED) topMostFoldersOf(rows.map { it.path }) else emptyMap()
             fun listedPathOf(path: String) = listedUnder[path] ?: path
             val coversByPath = coverRows.groupBy { listedPathOf(it.path) }
+            val statsByPath = folderTracks.statsBy(plays) { track -> listOf(listedPathOf(track.folderPath)) }
             rows.groupBy { listedPathOf(it.path) }.map { (path, group) ->
                 FolderRow(path, group.sumOf { it.trackCount }).toDomain(
                     coverArtUris = rankedCoverArtUris(
                         coversByPath[path].orEmpty().groupingBy { it.coverArtUri }.fold(0) { count, row -> count + row.trackCount },
                     ),
                     isVideo = isVideo,
-                )
+                ).copy(stats = statsByPath.of(path))
             }
         }
             .sortedFor(LibrarySortSpecs.folders) { rows -> rows }

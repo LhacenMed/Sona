@@ -3,9 +3,12 @@ package com.lhacenmed.sona.core.vault
 import android.net.Uri
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.common.lifecycle.isAppInForeground
+import com.lhacenmed.sona.core.datastore.LibrarySettings
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.VideoSubtitle
 import com.lhacenmed.sona.core.model.VideoSubtitleStore
+import com.lhacenmed.sona.core.model.sort.SortCriterion
+import com.lhacenmed.sona.core.model.sort.SortOrder
 import com.lhacenmed.sona.core.vault.data.VaultItem
 import com.lhacenmed.sona.core.vault.data.VaultItemDao
 import com.lhacenmed.sona.core.vault.data.VaultResumePosition
@@ -23,7 +26,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -87,6 +92,7 @@ class VaultRepository @Inject internal constructor(
     private val itemDao: VaultItemDao,
     private val resumePositionDao: VaultResumePositionDao,
     private val videoSubtitleDao: VaultVideoSubtitleDao,
+    private val librarySettings: LibrarySettings,
     @ApplicationScope scope: CoroutineScope,
 ) {
     private val isUnlocked = MutableStateFlow(false)
@@ -225,7 +231,24 @@ class VaultRepository @Inject internal constructor(
     private fun VaultCredentials.answerMatches(answer: String): Boolean =
         VaultSecrets.matches(answer.normalizedAnswer(), answerSalt, answerHash)
 
-    fun items(isVideo: Boolean): Flow<List<VaultItem>> = itemDao.observe(isVideo)
+    /**
+     * The videos - or, unless [isVideo], the tracks - in the order their list is sorted by, its names compared as the
+     * library compares its own; sorted again as they, that order or the library's name sorting change.
+     */
+    fun items(isVideo: Boolean): Flow<List<VaultItem>> =
+        combine(itemDao.observe(isVideo), sortOrder(isVideo), librarySettings.intelligentSortingEnabled.flow, VaultSort::sort)
+            .flowOn(Dispatchers.Default)
+
+    /** What the folder's lists can be sorted by. */
+    val sortCriteria: List<SortCriterion> get() = VaultSort.criteria
+
+    /** How the videos' list - or, unless [isVideo], the tracks' - is sorted, now and as that changes. */
+    fun sortOrder(isVideo: Boolean): Flow<SortOrder> = settings.sortOrder(isVideo).map(VaultSort::resolve).distinctUntilChanged()
+
+    suspend fun setSortOrder(isVideo: Boolean, order: SortOrder) = settings.setSortOrder(isVideo, order)
+
+    /** Counts a listen of the item [itemId] that lasted long enough to mean it - see `ListenHistory`. */
+    suspend fun countPlay(itemId: Long) = itemDao.countPlay(itemId)
 
     /** Every item, by its id. */
     val itemsById: Flow<Map<Long, VaultItem>> = itemDao.observeAll().map { items -> items.associateBy(VaultItem::id) }

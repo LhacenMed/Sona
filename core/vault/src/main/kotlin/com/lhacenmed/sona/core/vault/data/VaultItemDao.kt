@@ -20,4 +20,7 @@ interface VaultItemDao {
 
     @Delete
     suspend fun delete(item: VaultItem)
+
+    @Query("UPDATE vault_items SET playCount = playCount + 1 WHERE id = :id")
+    suspend fun countPlay(id: Long)
 }

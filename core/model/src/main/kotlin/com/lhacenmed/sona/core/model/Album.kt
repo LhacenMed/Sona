@@ -11,4 +11,6 @@ data class Album(
     val dateAddedSeconds: Long,
     /** Every artist the album is credited to, [artistId] leading - as a track's [Track.artistIds] are. */
     val artistIds: List<Long> = listOf(artistId),
+    /** What its tracks add up to, as the library lists it - see [CollectionStats]. */
+    val stats: CollectionStats = CollectionStats(),
 )

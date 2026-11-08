@@ -131,13 +131,15 @@ data class AddCollectionsScreen(val playlistId: Long) : Screen {
             searchQuery = searchQuery,
             onSearchQueryChange = { searchQuery = it },
             visibleKeys = { visible.selectableKeys(CollectionTab.entries[pagerState.currentPage]) },
+            tabs = {
+                SonaTabRow(
+                    tabTitles = CollectionTab.entries.map { it.label },
+                    selectedPosition = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
+                    onTabClick = { page -> scope.launch { pagerState.animateScrollToPage(page) } },
+                    modifier = Modifier.padding(horizontal = SonaComponentStyle.ContentHorizontalPadding, vertical = 8.dp),
+                )
+            },
         ) {
-            SonaTabRow(
-                tabTitles = CollectionTab.entries.map { it.label },
-                selectedPosition = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
-                onTabClick = { page -> scope.launch { pagerState.animateScrollToPage(page) } },
-                modifier = Modifier.padding(horizontal = SonaComponentStyle.ContentHorizontalPadding, vertical = 8.dp),
-            )
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier

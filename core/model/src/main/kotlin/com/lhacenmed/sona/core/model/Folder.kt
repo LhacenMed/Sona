@@ -9,6 +9,8 @@ data class Folder(
     val coverArtUris: List<String>,
     /** A folder of the Videos tab - its videos alone - rather than of the Folders tab and its music. */
     val isVideo: Boolean,
+    /** What its tracks add up to, as the library lists it - see [CollectionStats]. */
+    val stats: CollectionStats = CollectionStats(),
 )
 
 /** What playing [this] folder plays from - its music, or its videos. */

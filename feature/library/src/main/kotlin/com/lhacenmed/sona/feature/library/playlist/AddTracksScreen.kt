@@ -73,13 +73,15 @@ data class AddTracksScreen(val playlistId: Long) : Screen {
                 val visible = if (MediaTab.entries[pagerState.currentPage] == MediaTab.VIDEOS) visibleVideos else visibleTracks
                 visible.itemsOrEmpty.map { SelectionKey.Track(it.id) }
             },
+            tabs = {
+                SonaTabRow(
+                    tabTitles = MediaTab.entries.map { it.label },
+                    selectedPosition = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
+                    onTabClick = { page -> scope.launch { pagerState.animateScrollToPage(page) } },
+                    modifier = Modifier.padding(horizontal = SonaComponentStyle.ContentHorizontalPadding, vertical = 8.dp),
+                )
+            },
         ) {
-            SonaTabRow(
-                tabTitles = MediaTab.entries.map { it.label },
-                selectedPosition = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
-                onTabClick = { page -> scope.launch { pagerState.animateScrollToPage(page) } },
-                modifier = Modifier.padding(horizontal = SonaComponentStyle.ContentHorizontalPadding, vertical = 8.dp),
-            )
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier

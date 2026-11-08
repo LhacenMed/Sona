@@ -25,4 +25,7 @@ enum class SortCriterion {
 
     /** When the item joined the list it is shown in: the library, or the playlist it sits in. */
     DATE_ADDED,
+
+    /** How many times it was listened to through - a collection, every one of its tracks together. */
+    PLAY_COUNT,
 }

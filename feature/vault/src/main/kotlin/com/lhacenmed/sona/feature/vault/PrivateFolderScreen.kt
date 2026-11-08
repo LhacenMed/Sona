@@ -38,9 +38,14 @@ import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.SonaVideoRow
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.screen.screenList
+import com.lhacenmed.sona.core.designsystem.component.sheet.SonaSortSheet
+import com.lhacenmed.sona.core.designsystem.component.sheet.sortAction
+import com.lhacenmed.sona.core.designsystem.component.topBarBackground
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.model.sort.SortCriterion
+import com.lhacenmed.sona.core.model.sort.SortOrder
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.core.vault.VaultRepository
 import com.lhacenmed.sona.core.vault.VaultState
@@ -83,51 +88,74 @@ data object PrivateFolderScreen : Screen {
             }
         }
 
-        Column(modifier = Modifier.fillMaxSize()) {
-            SonaTopAppBar(
-                title = "Private Folder",
-                onNavigateBack = navigator::back,
-                actions = if (isOpen) {
-                    listOf(TopBarAction(label = "Settings", icon = Icons.Filled.Settings, onClick = { navigator.go(PrivateFolderSettingsScreen) }))
-                } else {
-                    emptyList()
-                },
-            )
-            if (isOpen) PrivateFolderContent(viewModel)
+        if (isOpen) {
+            PrivateFolderContent(viewModel)
+        } else {
+            SonaTopAppBar(title = "Private Folder", onNavigateBack = navigator::back)
         }
     }
 }
 
+private val tabTitles = listOf("Videos", "Tracks")
+
 @Composable
 private fun PrivateFolderContent(viewModel: PrivateFolderViewModel) {
-    val tabTitles = listOf("Videos", "Tracks")
+    val navigator = LocalNavigator.current
     val pagerState = rememberPagerState(pageCount = { tabTitles.size })
     val scope = rememberCoroutineScope()
     val playingItemId by viewModel.playingItemId.collectAsStateWithLifecycle()
     val resumePositionsMs = viewModel.resumePositionsMs.collectAsStateWithLifecycle()
     var optionsItem by remember { mutableStateOf<VaultItem?>(null) }
+    // The tab whose list is being sorted - its videos, or its tracks - while its sheet is open.
+    var sortingVideos by remember { mutableStateOf<Boolean?>(null) }
 
-    SonaTabRow(
-        tabTitles = tabTitles,
-        selectedPosition = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
-        onTabClick = { page -> scope.launch { pagerState.animateScrollToPage(page) } },
-        modifier = Modifier.padding(horizontal = SonaComponentStyle.ContentHorizontalPadding, vertical = 8.dp),
-    )
-    HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), beyondViewportPageCount = 1) { page ->
-        val isVideo = page == 0
-        val items by (if (isVideo) viewModel.videos else viewModel.tracks).collectAsStateWithLifecycle()
-        VaultItemList(
-            items = items,
-            isVideo = isVideo,
-            playingItemId = playingItemId,
-            resumePositionMsOf = { item -> resumePositionsMs.value[item.id] ?: 0L },
-            trackOf = viewModel::trackOf,
-            onPlay = { item -> viewModel.play(item, items.orEmpty()) },
-            onOpenOptions = { optionsItem = it },
-        )
+    Column(modifier = Modifier.fillMaxSize()) {
+        // The bar and the tabs are one section, lifting as one once the list leaves its top - as the library's do.
+        Column(modifier = Modifier.topBarBackground()) {
+            SonaTopAppBar(
+                title = "Private Folder",
+                drawsBackground = false,
+                onNavigateBack = navigator::back,
+                actions = listOf(
+                    sortAction { sortingVideos = pagerState.settledPage == 0 },
+                    TopBarAction(label = "Settings", icon = Icons.Filled.Settings) { navigator.go(PrivateFolderSettingsScreen) },
+                ),
+            )
+            SonaTabRow(
+                tabTitles = tabTitles,
+                selectedPosition = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
+                onTabClick = { page -> scope.launch { pagerState.animateScrollToPage(page) } },
+                modifier = Modifier.padding(horizontal = SonaComponentStyle.ContentHorizontalPadding, vertical = 8.dp),
+            )
+        }
+        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), beyondViewportPageCount = 1) { page ->
+            val isVideo = page == 0
+            val items by (if (isVideo) viewModel.videos else viewModel.tracks).collectAsStateWithLifecycle()
+            VaultItemList(
+                items = items,
+                isVideo = isVideo,
+                playingItemId = playingItemId,
+                resumePositionMsOf = { item -> resumePositionsMs.value[item.id] ?: 0L },
+                trackOf = viewModel::trackOf,
+                onPlay = { item -> viewModel.play(item, items.orEmpty()) },
+                onOpenOptions = { optionsItem = it },
+            )
+        }
     }
 
     optionsItem?.let { item -> VaultItemOptions(item = item, onDismissRequest = { optionsItem = null }) }
+
+    sortingVideos?.let { isVideo ->
+        val order by viewModel.sortOrder(isVideo).collectAsStateWithLifecycle()
+        order?.let { initialOrder ->
+            SonaSortSheet(
+                criteria = viewModel.sortCriteria,
+                initialOrder = initialOrder,
+                onApply = { chosen, _ -> viewModel.setSortOrder(isVideo, chosen) },
+                onDismiss = { sortingVideos = null },
+            )
+        }
+    }
 }
 
 /** One tab's items - nothing while still being read, so the list never flashes empty first. */
@@ -206,6 +234,22 @@ internal class PrivateFolderViewModel @Inject constructor(
 
     val tracks: StateFlow<List<VaultItem>?> =
         vault.items(isVideo = false).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** What either tab can be sorted by. */
+    val sortCriteria: List<SortCriterion> get() = vault.sortCriteria
+
+    private val videoSortOrder: StateFlow<SortOrder?> =
+        vault.sortOrder(isVideo = true).stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    private val trackSortOrder: StateFlow<SortOrder?> =
+        vault.sortOrder(isVideo = false).stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** How the videos' tab - or, unless [isVideo], the tracks' - is sorted: null until read. */
+    fun sortOrder(isVideo: Boolean): StateFlow<SortOrder?> = if (isVideo) videoSortOrder else trackSortOrder
+
+    fun setSortOrder(isVideo: Boolean, order: SortOrder) {
+        viewModelScope.launch { vault.setSortOrder(isVideo, order) }
+    }
 
     /** Where each video was left - see [VaultRepository.resumePositionsMs]. */
     val resumePositionsMs: StateFlow<Map<Long, Long>> =

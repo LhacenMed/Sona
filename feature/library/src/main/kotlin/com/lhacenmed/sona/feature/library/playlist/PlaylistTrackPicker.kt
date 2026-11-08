@@ -20,6 +20,7 @@ import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
+import com.lhacenmed.sona.core.designsystem.component.topBarBackground
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDialog
 import com.lhacenmed.sona.core.designsystem.component.selectAllAction
 import com.lhacenmed.sona.core.designsystem.component.toast
@@ -29,7 +30,8 @@ import com.lhacenmed.sona.feature.library.selection.SelectionOptionsHost
 import com.lhacenmed.sona.feature.library.selection.toLibraryTopBarSelection
 
 /**
- * The shape both of a playlist's pickers share: a bar naming what is being picked, then [content]'s
+ * The shape both of a playlist's pickers share: a bar naming what is being picked, with [tabs] beneath it - the
+ * two lifting as one once the list leaves its top, as the library's bar and tabs do - then [content]'s
  * rows - ordinary library rows, which play or open with a tap, offer their options sheet, and start a
  * selection with a long press, exactly as they do in the library.
  *
@@ -52,6 +54,7 @@ internal fun PlaylistTrackPicker(
     searchQuery: String?,
     onSearchQueryChange: (String?) -> Unit,
     visibleKeys: () -> List<SelectionKey>,
+    tabs: @Composable ColumnScope.() -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val navigator = LocalNavigator.current
@@ -69,34 +72,38 @@ internal fun PlaylistTrackPicker(
 
     SelectionOptionsHost(selection) { openSelectionOptions ->
         Column(modifier = Modifier.fillMaxSize()) {
-            SonaTopAppBar(
-                title = title,
-                onNavigateBack = navigator::back,
-                actions = listOf(TopBarAction(label = "Search", icon = Icons.Filled.Search) { onSearchQueryChange("") }),
-                search = searchQuery?.let { query ->
-                    TopBarSearch(
-                        query = query,
-                        onQueryChange = onSearchQueryChange,
-                        onClose = { onSearchQueryChange(null) },
-                        actions = if (selection.isActive) {
-                            listOf(addAction, selection.selectAllAction(visibleKeys()))
-                        } else {
-                            emptyList()
-                        },
-                    )
-                },
-                // Left out while searching, so the field outranks the selection bar - and so the bar's
-                // back handling closes the search before it drops the picks.
-                selection = if (searchQuery == null) {
-                    selection.toLibraryTopBarSelection(
-                        listKeys = visibleKeys,
-                        actions = listOf(addAction),
-                        onMoreOptions = openSelectionOptions,
-                    )
-                } else {
-                    null
-                },
-            )
+            Column(modifier = Modifier.topBarBackground()) {
+                SonaTopAppBar(
+                    title = title,
+                drawsBackground = false,
+                    onNavigateBack = navigator::back,
+                    actions = listOf(TopBarAction(label = "Search", icon = Icons.Filled.Search) { onSearchQueryChange("") }),
+                    search = searchQuery?.let { query ->
+                        TopBarSearch(
+                            query = query,
+                            onQueryChange = onSearchQueryChange,
+                            onClose = { onSearchQueryChange(null) },
+                            actions = if (selection.isActive) {
+                                listOf(addAction, selection.selectAllAction(visibleKeys()))
+                            } else {
+                                emptyList()
+                            },
+                        )
+                    },
+                    // Left out while searching, so the field outranks the selection bar - and so the bar's
+                    // back handling closes the search before it drops the picks.
+                    selection = if (searchQuery == null) {
+                        selection.toLibraryTopBarSelection(
+                            listKeys = visibleKeys,
+                            actions = listOf(addAction),
+                            onMoreOptions = openSelectionOptions,
+                        )
+                    } else {
+                        null
+                    },
+                )
+                tabs()
+            }
             content()
         }
     }

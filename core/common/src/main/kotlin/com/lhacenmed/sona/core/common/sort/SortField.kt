@@ -1,17 +1,15 @@
-package com.lhacenmed.sona.core.data.sort
+package com.lhacenmed.sona.core.common.sort
 
-import com.lhacenmed.sona.core.common.sort.SortKey
-import com.lhacenmed.sona.core.common.sort.sortKeyFactory
 import com.lhacenmed.sona.core.model.sort.SortDirection
 
 /**
- * One value a list can be ordered by, read off each item.
+ * One value a list can be ordered by, read off each item - the library's lists' and the Private Folder's alike.
  *
  * Names and numbers are kept apart because they compare differently: a name goes through the
  * library's natural name sorting, a number compares as a number. A missing number - a track with no
  * year - is not a zero, and sorts after every present one whichever way the list runs.
  */
-internal sealed interface SortField<in T> {
+sealed interface SortField<in T> {
     /**
      * [isPlaceholder] marks a name the file never gave - "Unknown artist" and the like. Auxio's
      * `Name.Unknown` orders those before every real name, and so after them once the list is
@@ -40,7 +38,7 @@ internal sealed interface SortField<in T> {
  * Every item's keys are computed once, up front, and each distinct name is tokenised once however many
  * items share it: sorting tracks by artist tokenises each artist once, not once per track.
  */
-internal fun <T> List<T>.sortedByFields(
+fun <T> List<T>.sortedByFields(
     fields: List<SortField<T>>,
     direction: SortDirection,
     intelligentSorting: Boolean,

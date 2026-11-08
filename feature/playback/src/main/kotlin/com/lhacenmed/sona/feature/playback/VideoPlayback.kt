@@ -19,7 +19,6 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.session.MediaSession
-import com.lhacenmed.sona.core.database.dao.PlayStatsDao
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.datastore.VideoSettings
 import com.lhacenmed.sona.core.model.RepeatMode
@@ -138,7 +137,7 @@ class VideoPlayback @Inject constructor(
     private val trackFiles: TrackFiles,
     private val videoSettings: VideoSettings,
     private val playbackSettings: PlaybackSettings,
-    private val playStatsDao: PlayStatsDao,
+    private val listenHistory: ListenHistory,
     private val resumePositions: ResumePositions,
     private val equalizer: SonaEqualizer,
 ) {
@@ -577,7 +576,7 @@ class VideoPlayback @Inject constructor(
                 player.addListener(listener)
                 player.addAnalyticsListener(firstFrameListener)
                 // On the player itself, so a video counts and is remembered exactly as one heard in the music player does.
-                PlayHistoryRecorder(player, scope, playStatsDao, playbackSettings).attach()
+                PlayHistoryRecorder(player, scope, listenHistory, playbackSettings).attach()
                 ResumePositionRecorder(player, resumePositions).attach()
             }
     }

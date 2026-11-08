@@ -24,4 +24,6 @@ data class VaultItem(
     /** A video's frame, in pixels - 0 for a track, or where it is not known. */
     @ColumnInfo(defaultValue = "0") val width: Int = 0,
     @ColumnInfo(defaultValue = "0") val height: Int = 0,
+    /** How many times it was listened to through, counted as the library's tracks are - see `ListenHistory`. */
+    @ColumnInfo(defaultValue = "0") val playCount: Int = 0,
 )

@@ -1,6 +1,8 @@
 package com.lhacenmed.sona.core.data.sort
 
+import com.lhacenmed.sona.core.common.sort.SortField
 import com.lhacenmed.sona.core.common.sort.sectionInitial
+import com.lhacenmed.sona.core.common.sort.sortedByFields
 import com.lhacenmed.sona.core.model.sort.SortCriterion
 import com.lhacenmed.sona.core.model.sort.SortDirection
 import com.lhacenmed.sona.core.model.sort.SortOrder

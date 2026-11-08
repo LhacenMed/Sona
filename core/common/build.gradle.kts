@@ -19,6 +19,8 @@ android {
 }
 
 dependencies {
+    // A sort's direction, which the lists sorted here run in.
+    implementation(project(":core:model"))
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.kotlinx.coroutines.android)
