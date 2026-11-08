@@ -17,6 +17,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.ceil
 import kotlin.math.floor
+import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,6 +46,9 @@ data class EqualizerCapabilities(
  * [PlaybackService] attaches it to the player's session and releases it with the player. Opening the
  * session is announced, as ArchiveTune announces it, so the system's equalizer - and any other app's - can
  * shape it too.
+ *
+ * Its loudness enhancer also carries the volume boost - see [setVolumeBoost] - on top of the output gain the
+ * settings give, the one effect for both.
  */
 @Singleton
 class SonaEqualizer @Inject constructor(
@@ -55,6 +59,12 @@ class SonaEqualizer @Inject constructor(
 
     private var effects: AudioEffects? = null
     private var following: Job? = null
+
+    /** What the settings play, as last applied - kept so the boost can be applied with them. */
+    private var playing: EqualizerChoices? = null
+
+    /** The gain the volume boost adds, in millibels. */
+    private var volumeBoostMb = 0
 
     private val _capabilities = MutableStateFlow<EqualizerCapabilities?>(null)
 
@@ -81,7 +91,12 @@ class SonaEqualizer @Inject constructor(
         )
         effects = attached
         _capabilities.value = capabilities
-        following = scope.launch { settings.choices.flow.collect { attached.play(it, capabilities) } }
+        following = scope.launch {
+            settings.choices.flow.collect { choices ->
+                playing = choices
+                attached.play(choices, capabilities, volumeBoostMb)
+            }
+        }
         context.sendBroadcast(sessionIntent(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION, audioSessionId))
     }
 
@@ -93,6 +108,17 @@ class SonaEqualizer @Inject constructor(
         _capabilities.value = null
         attached.release()
         context.sendBroadcast(sessionIntent(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION, attached.sessionId))
+    }
+
+    /**
+     * Plays louder than the device's own loudest by [boost], 0 to 1: evenly in decibels up to [MAX_VOLUME_BOOST_MB] -
+     * what a volume past 100% reaches, up to 200%. 0 leaves the sound as the settings shape it.
+     */
+    fun setVolumeBoost(boost: Float) {
+        volumeBoostMb = (MAX_VOLUME_BOOST_MB * boost.coerceIn(0f, 1f)).roundToInt()
+        val attached = effects ?: return
+        val choices = playing ?: return
+        attached.play(choices, _capabilities.value ?: return, volumeBoostMb)
     }
 
     /** Every band at zero, and sound shaping on. */
@@ -145,11 +171,11 @@ private class AudioEffects(
 ) {
 
     /**
-     * Puts [choices] on every effect - ArchiveTune's `applyEqSettingsToEffects`. Each call is guarded: the
-     * effects can be released mid-way, as the player goes, and an effect a device refuses a value for keeps
-     * the rest working.
+     * Puts [choices] on every effect - ArchiveTune's `applyEqSettingsToEffects` - with [boostMb] more on the
+     * loudness enhancer's. Each call is guarded: the effects can be released mid-way, as the player goes, and an
+     * effect a device refuses a value for keeps the rest working.
      */
-    fun play(choices: EqualizerChoices, capabilities: EqualizerCapabilities) {
+    fun play(choices: EqualizerChoices, capabilities: EqualizerCapabilities, boostMb: Int) {
         val enabled = choices.enabled
         val sound = choices.sound
         val levels = resampleBandLevels(sound.bandLevelsMb, capabilities.bandCount)
@@ -166,8 +192,9 @@ private class AudioEffects(
             runCatching { it.setStrength(sound.virtualizerStrength.toShort()) }
         }
         loudnessEnhancer?.let {
-            runCatching { it.setTargetGain(sound.outputGainFor(levels)) }
-            runCatching { it.enabled = enabled && (sound.autoHeadroomEnabled || sound.outputGainEnabled) }
+            val shapesOutput = enabled && (sound.autoHeadroomEnabled || sound.outputGainEnabled)
+            runCatching { it.setTargetGain((if (shapesOutput) sound.outputGainFor(levels) else 0) + boostMb) }
+            runCatching { it.enabled = shapesOutput || boostMb > 0 }
         }
     }
 
@@ -186,6 +213,12 @@ private fun EqualizerSound.outputGainFor(levelsMb: List<Int>): Int =
         outputGainEnabled -> outputGainMb
         else -> 0
     }
+
+/**
+ * The most the volume boost adds, in millibels: +20 dB, where volume boosters commonly stop. The effect takes any gain,
+ * squeezing what passes full scale through its own limiter - past this, so hard that the sound pumps and breaks up.
+ */
+private const val MAX_VOLUME_BOOST_MB = 2000f
 
 private fun Equalizer.capabilities() = EqualizerCapabilities(
     // The platform reports centre frequencies in millihertz.

@@ -103,7 +103,7 @@ internal fun ResumePrompt(resumedFromMs: Long?, isVisible: Boolean, isLandscape:
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .height(VideoPlayerTokens.ResumePromptHeight)
-                    .background(VideoPlayerTokens.ResumePromptColor, CircleShape)
+                    .background(VideoPlayerTokens.Ground, CircleShape)
                     .padding(start = 14.dp, end = 4.dp),
             ) {
                 PlayerText(stringResource(R.string.video_resumed_from), VideoPlayerType.PromptLabel, color = VideoPlayerTokens.SecondaryContent)

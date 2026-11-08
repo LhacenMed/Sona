@@ -92,6 +92,7 @@ import com.lhacenmed.sona.feature.video.controls.videoButton
 import com.lhacenmed.sona.feature.video.gesture.GestureFeedback
 import com.lhacenmed.sona.feature.video.gesture.GestureFeedbackLayer
 import com.lhacenmed.sona.feature.video.gesture.GestureFeedbackState
+import com.lhacenmed.sona.feature.video.gesture.MaxVolumeLevel
 import com.lhacenmed.sona.feature.video.gesture.ScreenHalf
 import com.lhacenmed.sona.feature.video.gesture.TapZone
 import com.lhacenmed.sona.feature.video.gesture.VideoGestureActions
@@ -247,8 +248,12 @@ internal fun VideoPlayerScreen(
             onHoldStarted = { if (gestureSettings.longPressVibration) haptics.performHapticFeedback(HapticFeedbackType.LongPress) },
             brightness = brightness::level,
             setBrightness = { brightness.level = it },
-            volume = { volume.volumeFraction },
-            setVolume = volume::setVolumeFraction,
+            // A volume of 0 to MaxVolumeLevel: the device's own up to its loudest, then the boost past it.
+            volume = { volume.volumeFraction + viewModel.volumeBoost },
+            setVolume = { level ->
+                volume.setVolumeFraction(level.coerceAtMost(1f))
+                viewModel.onVolumeBoostChange((level - 1f).coerceAtLeast(0f))
+            },
             zoom = zoom,
         ),
     )
@@ -305,7 +310,7 @@ internal fun VideoPlayerScreen(
         if (showsLoader && !isLoaderInTransport) {
             // In the middle of the picture: in landscape exactly where the play button stands.
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                ContainedLoadingIndicator(containerColor = VideoPlayerTokens.PillColor, indicatorColor = VideoPlayerTokens.ContentColor)
+                ContainedLoadingIndicator(containerColor = VideoPlayerTokens.Ground, indicatorColor = VideoPlayerTokens.ContentColor)
             }
         }
 
@@ -521,7 +526,7 @@ private fun LockedControls(onUnlock: () -> Unit, onHint: () -> Unit) {
                 .height(VideoPlayerTokens.BarButtonSize)
                 .shadow(12.dp, CircleShape)
                 .clip(CircleShape)
-                .background(VideoPlayerTokens.PillColor)
+                .background(VideoPlayerTokens.Ground)
                 .combinedClickable(role = Role.Button, onClick = onHint, onLongClick = onUnlock)
                 .padding(start = 14.dp, end = 18.dp),
         ) {
@@ -619,7 +624,7 @@ private fun videoGestureActions(
                     }
                     ScreenHalf.END -> {
                         // Followed from the drag rather than read back: the volume moves in steps, a drag smoothly.
-                        val target = ((drag.volumeTarget ?: volume()) + fraction).coerceIn(0f, 1f)
+                        val target = ((drag.volumeTarget ?: volume()) + fraction).coerceIn(0f, MaxVolumeLevel)
                         drag.volumeTarget = target
                         setVolume(target)
                         feedback.show(GestureFeedback.Volume(target))

@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,12 +42,12 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.lhacenmed.sona.core.designsystem.player.formatPlaybackTime
+import com.lhacenmed.sona.feature.video.videoControlsPadding
 import com.lhacenmed.sona.feature.video.PlayerText
 import com.lhacenmed.sona.feature.video.VideoPlayerTokens
 import com.lhacenmed.sona.feature.video.VideoPlayerType
 import com.lhacenmed.sona.feature.video.controls.drawSeekTrack
 import com.lhacenmed.sona.feature.video.formatSeekDelta
-import com.lhacenmed.sona.feature.video.videoSafeArea
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.distinctUntilChanged
 
@@ -148,15 +147,16 @@ internal fun ScrubPill(scrub: VideoScrubState, isVisible: Boolean, durationMs: L
         visible = isVisible,
         enter = fadeIn(tween(VideoPlayerTokens.ScrubFadeMs)),
         exit = fadeOut(tween(VideoPlayerTokens.ScrubFadeMs)),
+        // Clear of the system bars and the cutout alike on either side, so it stands in the middle of the screen.
         modifier = modifier
-            .windowInsetsPadding(videoSafeArea)
+            .padding(videoControlsPadding(isLandscape = false))
             .padding(top = VideoPlayerTokens.PillTopMargin),
     ) {
         Column(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier
                 .width(VideoPlayerTokens.ScrubPillWidth)
-                .background(VideoPlayerTokens.PillColor, RoundedCornerShape(VideoPlayerTokens.ScrubPillCornerRadius))
+                .background(VideoPlayerTokens.Ground, RoundedCornerShape(VideoPlayerTokens.ScrubPillCornerRadius))
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {

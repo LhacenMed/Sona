@@ -21,9 +21,9 @@ import com.lhacenmed.sona.core.datastore.ImageSettings
 private const val DEFAULT_COVER_SIZE_PX = 512
 
 /**
- * The artwork the session hands the notification, the lock screen and connected devices: the playing
- * track's cover, or [DefaultCover] wherever the app itself would show it - covers turned off, a track
- * without artwork, or artwork that fails to load.
+ * The artwork every session - the music's and the video player's - hands the notification, the lock screen and
+ * connected devices: the playing track's cover, or [DefaultCover] wherever the app itself would show it - covers
+ * turned off, a track without artwork, or artwork that fails to load.
  *
  * Artwork loads exactly as it would without this: through the loader a session builds for itself when
  * given none, which the session still limits in size - a track's or a video's own being Android's thumbnail

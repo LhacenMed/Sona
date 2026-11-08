@@ -19,6 +19,7 @@ import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.vault.VaultRepository
 import com.lhacenmed.sona.feature.playback.MediaTrack
 import com.lhacenmed.sona.feature.playback.PlaybackController
+import com.lhacenmed.sona.feature.playback.SonaEqualizer
 import com.lhacenmed.sona.feature.playback.QueueVideo
 import com.lhacenmed.sona.feature.playback.VideoPlayback
 import com.lhacenmed.sona.feature.playback.VideoPlaybackState
@@ -74,6 +75,7 @@ class VideoPlayerViewModel @Inject constructor(
     private val videoSettings: VideoSettings,
     private val playbackSettings: PlaybackSettings,
     private val playerStyleSettings: PlayerStyleSettings,
+    private val equalizer: SonaEqualizer,
     librarySubtitles: LibrarySubtitleStore,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
@@ -128,6 +130,20 @@ class VideoPlayerViewModel @Inject constructor(
     fun onToggleEndTime() {
         viewModelScope.launch { playerStyleSettings.setShowsTotalDuration(!showsTotalDuration.value) }
     }
+
+    /**
+     * How far past the device's loudest the video plays, 0 to 1 - its volume from 100% to 200%, see
+     * [SonaEqualizer.setVolumeBoost]. For as long as this player is open: what plays after it plays as it did.
+     */
+    var volumeBoost = 0f
+        private set
+
+    fun onVolumeBoostChange(boost: Float) {
+        volumeBoost = boost
+        equalizer.setVolumeBoost(boost)
+    }
+
+    override fun onCleared() = equalizer.setVolumeBoost(0f)
 
     /** The subtitles of the video watched - each space's kept in its own store, and only the library's found beside it. */
     internal val subtitles = SubtitleSession(

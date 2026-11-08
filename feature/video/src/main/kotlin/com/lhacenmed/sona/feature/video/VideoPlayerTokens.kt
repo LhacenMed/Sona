@@ -70,13 +70,16 @@ internal object VideoPlayerTokens {
 
     val PanelColor = Color(0xF018181B)
 
-    /** What the transport's buttons stand on over the picture in landscape, so they read over any frame. */
-    val TransportGround = Color.Black.copy(alpha = 0.45f)
+    /**
+     * What everything floating over the picture stands on, so it reads over any frame: the landscape transport's buttons,
+     * the level meters, the feedback and scrub pills, the resume prompt, the loader and the way to unlock. One ground, so
+     * they all read as one set; [GroundPadding] is the room each keeps round what it holds.
+     */
+    val Ground = Color.Black.copy(alpha = 0.6f)
+    val GroundPadding = 8.dp
 
     /** Play's glyph on the [Accent] it stands on in portrait, below the picture. */
     val OnAccent = Color(0xFF1A1210)
-    val PillColor = Color(0xD118181B)
-    val ResumePromptColor = Color(0xEB242428)
     val ResumePromptDivider = Color.White.copy(alpha = 0.18f)
     val PanelDivider = Color.White.copy(alpha = 0.08f)
     val SegmentGround = Color.White.copy(alpha = 0.07f)

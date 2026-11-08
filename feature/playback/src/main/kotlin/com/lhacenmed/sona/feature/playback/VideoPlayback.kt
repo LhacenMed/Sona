@@ -19,6 +19,7 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.session.MediaSession
+import com.lhacenmed.sona.core.datastore.ImageSettings
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.datastore.VideoSettings
 import com.lhacenmed.sona.core.model.RepeatMode
@@ -140,6 +141,7 @@ class VideoPlayback @Inject constructor(
     private val listenHistory: ListenHistory,
     private val resumePositions: ResumePositions,
     private val equalizer: SonaEqualizer,
+    private val imageSettings: ImageSettings,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -236,7 +238,14 @@ class VideoPlayback @Inject constructor(
             if (surfaceView?.holder?.surface?.isValid != true) return
             pictureMediaId = eventTime.timeline.getWindow(eventTime.windowIndex, Timeline.Window()).mediaItem.mediaId
             if (isAwaitingPicture) startPlaying()
-            if (mediaSession == null) mediaSession = MediaSession.Builder(context, player).setId("video").build()
+            if (mediaSession == null) {
+                mediaSession = MediaSession.Builder(context, player)
+                    .setId("video")
+                    // The music's artwork loader, which draws a video's from its thumbnail: Media3's own would read the
+                    // whole video file into memory as a picture, and the collector's struggle with it freezes the screen.
+                    .setBitmapLoader(DefaultCoverBitmapLoader(context, imageSettings))
+                    .build()
+            }
             publish()
         }
     }

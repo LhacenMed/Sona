@@ -81,9 +81,9 @@ internal fun VideoTransport(
             onNext = onSkipNext,
             colors = PlayerTransportColors(
                 content = VideoPlayerTokens.ContentColor,
-                playContainer = VideoPlayerTokens.TransportGround,
+                playContainer = VideoPlayerTokens.Ground,
                 playContent = VideoPlayerTokens.ContentColor,
-                skipContainer = VideoPlayerTokens.TransportGround,
+                skipContainer = VideoPlayerTokens.Ground,
             ),
             isLoading = isLoading,
             spacing = VideoPlayerTokens.LandscapeTransportGap,

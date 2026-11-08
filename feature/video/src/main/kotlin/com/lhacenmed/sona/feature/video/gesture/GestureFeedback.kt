@@ -13,6 +13,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -50,6 +51,7 @@ import com.lhacenmed.sona.feature.video.VideoPlayerType
 import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
 import com.lhacenmed.sona.feature.video.formatSeekSeconds
 import com.lhacenmed.sona.feature.video.speedLabel
+import com.lhacenmed.sona.feature.video.videoControlsPadding
 import com.lhacenmed.sona.feature.video.videoSafeArea
 import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
@@ -64,10 +66,14 @@ internal sealed interface GestureFeedback {
 
     data class Brightness(val level: Float) : GestureFeedback
 
+    /** The volume, 0 to [MaxVolumeLevel]: the device's own, then boosted past its loudest. */
     data class Volume(val level: Float) : GestureFeedback
 
     data class Speed(val speed: Float) : PillFeedback
 }
+
+/** The loudest a volume drag reaches: 200%, the device's loudest boosted by up to +20 dB - see `VideoPlayerViewModel.volumeBoost`. */
+internal const val MaxVolumeLevel = 2f
 
 /** Feedback with no place of its own, shown on a pill beneath the top bar, clear of the transport. */
 internal sealed interface PillFeedback : GestureFeedback
@@ -213,7 +219,9 @@ private fun SeekChevrons(isForward: Boolean) {
 }
 
 /**
- * A level on a slim bar, its figure beneath it: drawn from the drag directly, with no easing to fall behind the finger.
+ * A level on a slim bar, its figure beneath it, on the ground everything over the picture stands on: drawn from the drag
+ * directly, with no easing to fall behind the finger. A level past 1 - a boosted volume - keeps the bar full, and fills
+ * it again from the bottom in the accent with what is past it.
  */
 @Composable
 private fun LevelMeter(icon: ImageVector, level: Float) {
@@ -222,18 +230,19 @@ private fun LevelMeter(icon: ImageVector, level: Float) {
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier
             .windowInsetsPadding(videoSafeArea)
-            .padding(horizontal = VideoPlayerTokens.MeterEdgeMargin),
+            .padding(horizontal = VideoPlayerTokens.MeterEdgeMargin)
+            .background(VideoPlayerTokens.Ground, CircleShape)
+            .padding(horizontal = VideoPlayerTokens.GroundPadding, vertical = VideoPlayerTokens.GroundPadding * 2),
     ) {
         Canvas(Modifier.size(VideoPlayerTokens.MeterTrackWidth, VideoPlayerTokens.MeterTrackHeight)) {
             val corner = CornerRadius(size.width / 2f)
+            fun fill(fraction: Float, color: Color) {
+                val filled = size.height * fraction.coerceIn(0f, 1f)
+                drawRoundRect(color, topLeft = Offset(0f, size.height - filled), size = Size(size.width, filled), cornerRadius = corner)
+            }
             drawRoundRect(VideoPlayerTokens.TrackColor, cornerRadius = corner)
-            val filled = size.height * level.coerceIn(0f, 1f)
-            drawRoundRect(
-                color = VideoPlayerTokens.ContentColor,
-                topLeft = Offset(0f, size.height - filled),
-                size = Size(size.width, filled),
-                cornerRadius = corner,
-            )
+            fill(level, VideoPlayerTokens.ContentColor)
+            fill(level - 1f, VideoPlayerTokens.Accent)
         }
         Icon(imageVector = icon, contentDescription = null, tint = VideoPlayerTokens.ContentColor, modifier = Modifier.size(VideoPlayerTokens.BarIconSize))
         PlayerText((level * 100).roundToInt().toString(), VideoPlayerType.MeterValue)
@@ -245,10 +254,11 @@ private fun FeedbackPill(feedback: PillFeedback) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
+        // Kept clear of the system bars and the cutout alike on either side, so it stands in the middle of the screen.
         modifier = Modifier
-            .windowInsetsPadding(videoSafeArea)
+            .padding(videoControlsPadding(isLandscape = false))
             .padding(top = VideoPlayerTokens.PillTopMargin)
-            .background(VideoPlayerTokens.PillColor, CircleShape)
+            .background(VideoPlayerTokens.Ground, CircleShape)
             .padding(horizontal = 18.dp, vertical = 12.dp),
     ) {
         Icon(
