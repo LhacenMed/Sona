@@ -6,6 +6,36 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-11-08
+
+### Added
+
+- Choose which files to restore from Google Drive by folder, with how many and how large they are.
+- Try again on a failed restore, which picks up where it stopped.
+- Shuffle and repeat say which mode they are on as they change.
+- Sort collections by length, plays and when they were added.
+- Tap the time at the end of the seek bar to see the whole length instead of the time left.
+- Tap what the player is playing from to open it.
+- Shuffle and repeat in the video player.
+
+### Changed
+
+- Restored files appear as the newest in the library, in the order they were added on the old device.
+- Restoring downloads several files at once, and a file that fails no longer stops the others.
+- A redesigned music player, matching the video player.
+- A redesigned video player, matching the music player.
+- The players' controls press together as button groups, and a control that is on is shown squared.
+- Lyrics you remove or change yourself are no longer looked up and put back.
+- Clearer names for editing a track's info, its lyrics and a playlist.
+
+### Fixed
+
+- Copying shows a confirmation on systems that do not show one themselves.
+- A long name no longer stretches the header of an options sheet.
+- Long titles in another language scroll the way it reads.
+- Next no longer flickers back while a track repeats, and skipping past either end of the queue goes round to the other.
+- Albums show their year, and follow a date edited in Sona.
+
 ## [1.6.19] - 2026-11-06
 
 ### Added
