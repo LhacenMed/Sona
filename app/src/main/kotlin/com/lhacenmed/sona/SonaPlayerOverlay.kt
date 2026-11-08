@@ -11,6 +11,8 @@ import com.lhacenmed.sona.core.navigation.PlayerOverlay
 import com.lhacenmed.sona.feature.equalizer.EqualizerScreen
 import com.lhacenmed.sona.feature.library.AlbumDetailScreen
 import com.lhacenmed.sona.feature.library.ArtistDetailScreen
+import com.lhacenmed.sona.feature.library.PlayingList
+import com.lhacenmed.sona.feature.library.playingListOf
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
 import com.lhacenmed.sona.feature.playback.PlaybackSpace
@@ -27,8 +29,8 @@ import javax.inject.Inject
 
 /**
  * The player laid over every activity - the library's, or over a Private Folder screen the folder's, each with
- * the options its tracks have: the library's album and artist screens, its lyrics editor and its options sheet;
- * the folder's own options.
+ * the options its tracks have: the library's album and artist screens, the list its queue plays from, its lyrics
+ * editor and its options sheet; the folder's own options.
  *
  * Whichever activity is in front opens the video player as a video starts being watched - see
  * [VideoPlayback.openings] - so it opens wherever a video was started from, and only once.
@@ -53,6 +55,7 @@ class SonaPlayerOverlay @Inject constructor(
                 space = PlaybackSpace.Private,
                 onGoToAlbum = null,
                 onGoToArtist = null,
+                onGoToPlayingFrom = null,
                 onOpenEqualizer = { navigator.go(EqualizerScreen) },
                 onEditLyrics = null,
                 trackOptionsSheet = { track, onDismissRequest -> VaultTrackOptionsSheet(track, onDismissRequest) },
@@ -64,6 +67,13 @@ class SonaPlayerOverlay @Inject constructor(
                 space = PlaybackSpace.Library,
                 onGoToAlbum = { albumId -> navigator.go(AlbumDetailScreen(albumId)) },
                 onGoToArtist = { artistId -> navigator.go(ArtistDetailScreen(artistId)) },
+                // A collection's own screen, or the library's tab for the whole library and every video.
+                onGoToPlayingFrom = { parent ->
+                    when (val list = playingListOf(parent)) {
+                        is PlayingList.OnScreen -> navigator.go(list.screen)
+                        is PlayingList.OnTab -> context.startActivity(MainActivity.libraryTabIntent(context, list.tab))
+                    }
+                },
                 onOpenEqualizer = { navigator.go(EqualizerScreen) },
                 // Over the lyrics sheet, which is still open on the way back, with the lyrics as saved.
                 onEditLyrics = { trackId -> navigator.go(LyricsEditorScreen(trackId)) },

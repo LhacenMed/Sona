@@ -110,6 +110,7 @@ internal fun ClickableArtist(
     val latestOnCreditedArtistClick by rememberUpdatedState(onCreditedArtistClick)
     val creditedNames = remember(artist, creditedArtists) { creditedNamesIn(artist, creditedArtists) }
     SonaMarquee(
+        text = artist,
         modifier =
             modifier.combinedClickable(
                 indication = null,

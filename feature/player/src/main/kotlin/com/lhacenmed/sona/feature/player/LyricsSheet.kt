@@ -163,6 +163,7 @@ internal fun LyricsSheet(
                 duration = duration,
                 onSliderValueChange = onSliderValueChange,
                 onSliderValueChangeFinished = onSliderValueChangeFinished,
+                viewModel = viewModel,
             )
             Spacer(Modifier.height(16.dp))
             DefaultTransportControls(

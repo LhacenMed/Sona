@@ -135,10 +135,7 @@ private fun PanelFrame(width: Dp, isLandscape: Boolean, content: @Composable Col
 internal fun PanelHeader(title: String, onClose: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().height(VideoPlayerTokens.BarButtonSize)) {
         PlayerText(title, VideoPlayerType.Title, modifier = Modifier.weight(1f))
-        VideoBarButton(
-            VideoAction(PlayerIcons.Close, stringResource(R.string.video_panel_close), onClose),
-            iconSize = 20.dp,
-        )
+        VideoBarButton(VideoAction(PlayerIcons.Close, stringResource(R.string.video_panel_close), onClose))
     }
 }
 

@@ -22,6 +22,7 @@ private val CUSTOM_BACKGROUND_IMAGE_URI = stringPreferencesKey("player_custom_im
 private val CUSTOM_BACKGROUND_BLUR = floatPreferencesKey("player_custom_blur")
 private val CUSTOM_BACKGROUND_CONTRAST = floatPreferencesKey("player_custom_contrast")
 private val CUSTOM_BACKGROUND_BRIGHTNESS = floatPreferencesKey("player_custom_brightness")
+private val SHOWS_TOTAL_DURATION = booleanPreferencesKey("player_shows_total_duration")
 
 /**
  * How the player looks - ArchiveTune's player appearance preferences, with its defaults.
@@ -58,6 +59,12 @@ class PlayerStyleSettings @Inject constructor(
         )
     }
 
+    /**
+     * Whether every player says how long what plays is at its seek bar's end, rather than how much of it is left - changed
+     * by a press on that time, in whichever player.
+     */
+    val showsTotalDuration: Setting<Boolean> = cache.setting { it[SHOWS_TOTAL_DURATION] ?: false }
+
     private suspend fun <T> set(key: Preferences.Key<T>, value: T) {
         dataStore.edit { it[key] = value }
     }
@@ -74,6 +81,8 @@ class PlayerStyleSettings @Inject constructor(
     suspend fun setHideThumbnail(enabled: Boolean) = set(HIDE_PLAYER_THUMBNAIL, enabled)
 
     suspend fun setSwipeToChangeTrack(enabled: Boolean) = set(SWIPE_TO_CHANGE_TRACK, enabled)
+
+    suspend fun setShowsTotalDuration(enabled: Boolean) = set(SHOWS_TOTAL_DURATION, enabled)
 
     /** The custom background's image, or none - a document uri the app holds a persisted read grant to. */
     suspend fun setCustomBackgroundImage(uri: String?) {

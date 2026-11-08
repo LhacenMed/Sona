@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.player.formatPlaybackTime
 import com.lhacenmed.sona.core.designsystem.component.SonaPlaybackModeButtons
 import com.lhacenmed.sona.core.designsystem.component.SonaTrackRow
 import com.lhacenmed.sona.core.model.RepeatMode
@@ -24,7 +25,6 @@ import com.lhacenmed.sona.feature.playback.labelRes
 import com.lhacenmed.sona.feature.video.R
 import com.lhacenmed.sona.feature.video.VideoPlayerTokens
 import com.lhacenmed.sona.feature.video.controls.VideoAction
-import com.lhacenmed.sona.feature.video.formatVideoTime
 import com.lhacenmed.sona.feature.video.speedLabel
 
 /** The speeds the speed button offers. */
@@ -91,7 +91,7 @@ internal fun ColumnScope.QueuePanel(
                     onClose()
                 },
                 onOpenOptions = null,
-                subtitle = formatVideoTime(item.video.durationMs),
+                subtitle = formatPlaybackTime(item.video.durationMs),
                 // The panel paints its own ground; a row painting another would seam against it.
                 containerColor = Color.Transparent,
             )

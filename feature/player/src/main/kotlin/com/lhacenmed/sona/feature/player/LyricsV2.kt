@@ -105,6 +105,7 @@ import com.lhacenmed.sona.core.data.lyrics.LyricsRomanizationPreferences
 import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.providedRomanizedTextForEntry
 import com.lhacenmed.sona.core.data.lyrics.LyricsUtils.shouldRomanizeLyricsLine
 import com.lhacenmed.sona.core.data.lyrics.WordTimestamp
+import com.lhacenmed.sona.core.designsystem.component.readingDirectionOf
 import com.lhacenmed.sona.core.designsystem.component.shimmer
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
@@ -134,25 +135,6 @@ private const val MANUAL_SCROLL_TIMEOUT_MS = 3000L
 
 /** How many lines can be selected to share at once. */
 private const val MAX_SELECTION_LIMIT = 5
-
-/** The direction [text] reads in, by its first letter that has one - null for text with none: numbers, "...". */
-private fun readingDirectionOf(text: String): LayoutDirection? {
-    for (ch in text) {
-        when (Character.getDirectionality(ch)) {
-            Character.DIRECTIONALITY_RIGHT_TO_LEFT,
-            Character.DIRECTIONALITY_RIGHT_TO_LEFT_ARABIC,
-            Character.DIRECTIONALITY_RIGHT_TO_LEFT_EMBEDDING,
-            Character.DIRECTIONALITY_RIGHT_TO_LEFT_OVERRIDE,
-            -> return LayoutDirection.Rtl
-
-            Character.DIRECTIONALITY_LEFT_TO_RIGHT,
-            Character.DIRECTIONALITY_LEFT_TO_RIGHT_EMBEDDING,
-            Character.DIRECTIONALITY_LEFT_TO_RIGHT_OVERRIDE,
-            -> return LayoutDirection.Ltr
-        }
-    }
-    return null
-}
 
 /** A line's text as sung: its words joined, where it has them. */
 private fun LyricsEntry.sungText(): String =

@@ -8,16 +8,10 @@ import org.junit.Test
 class VideoFormattingTest {
 
     @Test
-    fun `what is left reads with a true minus, and never below nothing`() {
-        assertEquals("−1:45:41", formatRemainingTime(6_341_000L))
-        assertEquals("−00:00", formatRemainingTime(-5L))
-    }
-
-    @Test
     fun `how far a scrub has gone always says which way`() {
         assertEquals("+16:28", formatSeekDelta(988_000L))
         assertEquals("−16:28", formatSeekDelta(-988_000L))
-        assertEquals("+00:00", formatSeekDelta(0L))
+        assertEquals("+0:00", formatSeekDelta(0L))
     }
 
     @Test

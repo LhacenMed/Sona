@@ -22,6 +22,9 @@ import com.lhacenmed.sona.core.designsystem.component.LocalMiniPlayerSeekBarRequ
 import com.lhacenmed.sona.core.designsystem.component.LocalPlayerSheetHeight
 import com.lhacenmed.sona.core.designsystem.component.MiniPlayerSeekBarRequests
 import com.lhacenmed.sona.core.designsystem.component.PlayerSheetHeight
+import com.lhacenmed.sona.core.designsystem.player.LocalPlayerCheckedColors
+import com.lhacenmed.sona.core.model.PlaybackParent
+import com.lhacenmed.sona.feature.player.background.playerColors
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackSpace
 
@@ -38,7 +41,7 @@ import com.lhacenmed.sona.feature.playback.PlaybackSpace
  * how high the player reaches up over it at every moment.
  *
  * It plays [space]'s tracks alone - see [PlayerViewModel]. What only the library's tracks have - an album
- * and an artist to go to, lyrics to edit - is offered where given.
+ * and an artist to go to, the list the queue plays from, lyrics to edit - is offered where given.
  *
  * [expandsOnOpen] opens on the full player, rather than the mini player, from the first frame where the track is
  * known by then, or rising into it once there is one - once only, so a screen recreated after it opened is left as
@@ -49,6 +52,7 @@ fun BottomSheetPlayerHost(
     space: PlaybackSpace,
     onGoToAlbum: ((Long) -> Unit)?,
     onGoToArtist: ((Long) -> Unit)?,
+    onGoToPlayingFrom: ((PlaybackParent?) -> Unit)?,
     onOpenEqualizer: () -> Unit,
     onEditLyrics: ((trackId: Long) -> Unit)?,
     trackOptionsSheet: @Composable (track: Track, onDismissRequest: () -> Unit) -> Unit,
@@ -112,18 +116,22 @@ fun BottomSheetPlayerHost(
             content()
         }
 
-        BottomSheetPlayer(
-            state = state,
-            uiState = uiState,
-            appearance = appearance,
-            sleepTimer = sleepTimer,
-            viewModel = viewModel,
-            miniPlayerSeekBarRequests = miniPlayerSeekBarRequests,
-            onGoToAlbum = onGoToAlbum,
-            onGoToArtist = onGoToArtist,
-            onOpenEqualizer = onOpenEqualizer,
-            onEditLyrics = onEditLyrics,
-            trackOptionsSheet = trackOptionsSheet,
-        )
+        // Every control within it - the player's, its lyrics sheet's and its queue bar's - is on in the one second accent.
+        CompositionLocalProvider(LocalPlayerCheckedColors provides playerColors().checked) {
+            BottomSheetPlayer(
+                state = state,
+                uiState = uiState,
+                appearance = appearance,
+                sleepTimer = sleepTimer,
+                viewModel = viewModel,
+                miniPlayerSeekBarRequests = miniPlayerSeekBarRequests,
+                onGoToAlbum = onGoToAlbum,
+                onGoToArtist = onGoToArtist,
+                onGoToPlayingFrom = onGoToPlayingFrom,
+                onOpenEqualizer = onOpenEqualizer,
+                onEditLyrics = onEditLyrics,
+                trackOptionsSheet = trackOptionsSheet,
+            )
+        }
     }
 }

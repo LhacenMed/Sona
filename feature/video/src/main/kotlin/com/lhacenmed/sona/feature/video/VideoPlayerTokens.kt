@@ -4,6 +4,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.displayCutout
@@ -13,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -20,10 +22,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
+import com.lhacenmed.sona.core.designsystem.player.PlayerControls
 
 /**
  * Every measure, colour and timing the video player is drawn with, in one place - so each control, panel and
@@ -35,7 +39,7 @@ import androidx.compose.ui.unit.sp
 internal object VideoPlayerTokens {
     val Accent = Color(0xFFFF9F6B)
     val ContentColor = Color.White
-    val SecondaryContent = Color.White.copy(alpha = 0.72f)
+    val SecondaryContent = Color.White.copy(alpha = PlayerControls.SecondaryAlpha)
     val UnchosenContent = Color.White.copy(alpha = 0.78f)
     val TertiaryContent = Color.White.copy(alpha = 0.62f)
     val DimmedContent = Color.White.copy(alpha = 0.5f)
@@ -47,12 +51,30 @@ internal object VideoPlayerTokens {
 
     val TopScrim = Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.62f), Color.Transparent))
     val BottomScrim = Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.70f)))
+
+    /**
+     * What the portrait foot stands on: deeper, and all the way up its controls, as a picture taller than the room left
+     * for it - or zoomed - runs on behind them, however light it is. It fades in over [PortraitScrimFade] above them.
+     */
+    val PortraitBottomScrim = Brush.verticalGradient(
+        0f to Color.Transparent,
+        0.25f to Color.Black.copy(alpha = 0.6f),
+        1f to Color.Black.copy(alpha = 0.85f),
+    )
+    val PortraitScrimFade = 56.dp
+
+    /** A control that is on, and play while paused: the accent's own dark tone, beneath a light one - see `PlayerCheckedColors`. */
+    val CheckedContainer = Color(0xFF5C3B2C)
+    val OnCheckedContainer = Color(0xFFFFDBCC)
     val PanelDim = Color.Black.copy(alpha = 0.45f)
 
     val PanelColor = Color(0xF018181B)
 
-    /** What the transport's buttons stand on over the picture, so they read over any frame. */
+    /** What the transport's buttons stand on over the picture in landscape, so they read over any frame. */
     val TransportGround = Color.Black.copy(alpha = 0.45f)
+
+    /** Play's glyph on the [Accent] it stands on in portrait, below the picture. */
+    val OnAccent = Color(0xFF1A1210)
     val PillColor = Color(0xD118181B)
     val ResumePromptColor = Color(0xEB242428)
     val ResumePromptDivider = Color.White.copy(alpha = 0.18f)
@@ -63,13 +85,12 @@ internal object VideoPlayerTokens {
     val TopScrimHeight = 112.dp
     val BottomScrimHeight = 140.dp
 
-    val BarButtonSize = 44.dp
-    val BarIconSize = 22.dp
-    val SkipButtonSize = 56.dp
-    val SkipIconSize = 28.dp
-    val PlayButtonSize = 64.dp
-    val PlayIconSize = 38.dp
-    val TransportGap = 28.dp
+    /** Every player's bar control - see [PlayerControls]. */
+    val BarButtonSize = PlayerControls.BarButtonSize
+    val BarIconSize = PlayerControls.BarIconSize
+
+    /** The landscape transport's gap: wider than portrait's, over a wider picture. */
+    val LandscapeTransportGap = 40.dp
 
     /** How far the controls keep from the edge, and how far text keeps to stand in line with the icons of those buttons. */
     val ControlsMargin = 8.dp
@@ -82,9 +103,19 @@ internal object VideoPlayerTokens {
     /** How far beneath the safe area's top a pill of feedback stands, clear of the top bar. */
     val PillTopMargin = 68.dp
 
-    /** The rows of the portrait layout's foot, and how far they stand from the bottom of the screen at the least. */
-    val PortraitSeekRowHeight = 32.dp
-    val PortraitControlsHeight = PortraitSeekRowHeight + BarButtonSize
+    /**
+     * The portrait layout's foot, as the music player's is: the seek bar and its times beneath it, the transport, then the
+     * bar, all on the keyline - the bars' buttons by their bounds - and how far it stands from the bottom of the screen at
+     * the least.
+     */
+    val PortraitKeyline = 24.dp
+    val PortraitSeekBarHeight = 32.dp
+    val PortraitTimesHeight = 16.dp
+    val PortraitTransportTopGap = 16.dp
+    val PortraitTransportBottomGap = 24.dp
+    val PortraitControlsHeight =
+        PortraitSeekBarHeight + PortraitTimesHeight + PortraitTransportTopGap + PlayerControls.PlayButtonSize +
+            PortraitTransportBottomGap + BarButtonSize
     val PortraitFootMargin = 12.dp
 
     /** Where subtitles stand above the bottom of the screen while the landscape controls are up, and while the resume prompt is. */
@@ -103,8 +134,9 @@ internal object VideoPlayerTokens {
 
     val SeekTrackHeight = 4.dp
     val ScrubTrackHeight = 6.dp
-    val ThumbRadius = 7.dp
-    val ScrubThumbRadius = 10.dp
+    val ThumbSize = DpSize(4.dp, 20.dp)
+    val ScrubThumbSize = DpSize(6.dp, 24.dp)
+    val ThumbGap = 6.dp
 
     /** The most of the screen's width and height a scrubbing preview takes, the picture's own shape within it. */
     val PreviewWidth = 176.dp
@@ -176,7 +208,6 @@ internal object VideoPlayerType {
 
     val Title = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold, lineHeight = 20.sp, letterSpacing = (-0.01).em)
     val Time = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium, fontFeatureSettings = Tabular)
-    val Speed = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, fontFeatureSettings = Tabular)
     val PreviewTime = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold, fontFeatureSettings = Tabular)
     val MeterValue = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, fontFeatureSettings = Tabular)
     val SeekAmount = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, fontFeatureSettings = Tabular)
@@ -196,6 +227,24 @@ internal object VideoPlayerType {
 @OptIn(ExperimentalLayoutApi::class)
 internal val videoSafeArea: WindowInsets
     @Composable get() = WindowInsets.systemBarsIgnoringVisibility.union(WindowInsets.displayCutout)
+
+/**
+ * What the controls keep clear of: [videoSafeArea] - its bottom in landscape alone, where the foot stands on it - its two
+ * sides evened out to the wider, so the controls stand centred on the screen, as the picture does, whichever side a
+ * cutout or the navigation bar is on.
+ */
+@Composable
+internal fun videoControlsPadding(isLandscape: Boolean): PaddingValues {
+    val safeArea = videoSafeArea.asPaddingValues()
+    val layoutDirection = LocalLayoutDirection.current
+    val side = max(safeArea.calculateLeftPadding(layoutDirection), safeArea.calculateRightPadding(layoutDirection))
+    return PaddingValues(
+        start = side,
+        end = side,
+        top = safeArea.calculateTopPadding(),
+        bottom = if (isLandscape) safeArea.calculateBottomPadding() else 0.dp,
+    )
+}
 
 /** How far the portrait layout's controls stand from the bottom of the screen - clear of the navigation bar, however tall. */
 internal val portraitFootMargin: Dp

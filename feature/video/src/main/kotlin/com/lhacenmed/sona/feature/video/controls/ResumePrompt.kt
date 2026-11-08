@@ -13,13 +13,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -38,14 +35,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.player.formatPlaybackTime
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.feature.video.PlayerText
 import com.lhacenmed.sona.feature.video.R
 import com.lhacenmed.sona.feature.video.VideoPlayerTokens
 import com.lhacenmed.sona.feature.video.VideoPlayerType
-import com.lhacenmed.sona.feature.video.formatVideoTime
 import com.lhacenmed.sona.feature.video.portraitFootMargin
-import com.lhacenmed.sona.feature.video.videoSafeArea
+import com.lhacenmed.sona.feature.video.videoControlsPadding
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
@@ -82,7 +79,6 @@ internal fun ResumePrompt(resumedFromMs: Long?, isVisible: Boolean, isLandscape:
     // A plain holder: what it says stays as it was while it fades away.
     val shownMs = remember { longArrayOf(0L) }
     if (resumedFromMs != null) shownMs[0] = resumedFromMs
-    val safeArea = if (isLandscape) videoSafeArea else videoSafeArea.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
     val footHeight = if (isLandscape) {
         VideoPlayerTokens.ControlsMargin + VideoPlayerTokens.BarButtonSize
     } else {
@@ -92,8 +88,11 @@ internal fun ResumePrompt(resumedFromMs: Long?, isVisible: Boolean, isLandscape:
         contentAlignment = Alignment.BottomStart,
         modifier = Modifier
             .fillMaxSize()
-            .windowInsetsPadding(safeArea)
-            .padding(start = VideoPlayerTokens.ControlsTextMargin, bottom = footHeight + VideoPlayerTokens.ResumePromptGap),
+            .padding(videoControlsPadding(isLandscape))
+            .padding(
+                start = if (isLandscape) VideoPlayerTokens.ControlsTextMargin else VideoPlayerTokens.PortraitKeyline,
+                bottom = footHeight + VideoPlayerTokens.ResumePromptGap,
+            ),
     ) {
         AnimatedVisibility(
             visible = isVisible,
@@ -108,7 +107,7 @@ internal fun ResumePrompt(resumedFromMs: Long?, isVisible: Boolean, isLandscape:
                     .padding(start = 14.dp, end = 4.dp),
             ) {
                 PlayerText(stringResource(R.string.video_resumed_from), VideoPlayerType.PromptLabel, color = VideoPlayerTokens.SecondaryContent)
-                PlayerText(formatVideoTime(shownMs[0]), VideoPlayerType.PromptTime, modifier = Modifier.padding(start = 4.dp))
+                PlayerText(formatPlaybackTime(shownMs[0]), VideoPlayerType.PromptTime, modifier = Modifier.padding(start = 4.dp))
                 Spacer(
                     Modifier
                         .padding(start = 10.dp, end = 4.dp)

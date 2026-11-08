@@ -34,6 +34,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.lhacenmed.sona.core.datastore.PlayerAppearance
 import com.lhacenmed.sona.core.designsystem.component.MiniPlayerSeekBarRequests
 import com.lhacenmed.sona.core.designsystem.effect.rememberDeviceMusicVolumeController
+import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.SleepTimerState
 import com.lhacenmed.sona.feature.player.background.PlayerBackground
@@ -68,6 +69,7 @@ internal fun BottomSheetPlayer(
     miniPlayerSeekBarRequests: MiniPlayerSeekBarRequests,
     onGoToAlbum: ((Long) -> Unit)?,
     onGoToArtist: ((Long) -> Unit)?,
+    onGoToPlayingFrom: ((PlaybackParent?) -> Unit)?,
     onOpenEqualizer: () -> Unit,
     onEditLyrics: ((trackId: Long) -> Unit)?,
     trackOptionsSheet: @Composable (track: Track, onDismissRequest: () -> Unit) -> Unit,
@@ -308,6 +310,12 @@ internal fun BottomSheetPlayer(
                 onOpenEqualizer = {
                     state.collapseSoft()
                     onOpenEqualizer()
+                },
+                onOpenPlayingFrom = onGoToPlayingFrom?.let { goToPlayingFrom ->
+                    {
+                        state.collapseSoft()
+                        goToPlayingFrom(playback.parent)
+                    }
                 },
                 viewModel = viewModel,
                 onSliderValueChange = onSliderValueChange,

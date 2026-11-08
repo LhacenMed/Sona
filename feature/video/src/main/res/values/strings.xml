@@ -2,8 +2,6 @@
     <string name="video_back">Back</string>
     <string name="video_play">Play</string>
     <string name="video_pause">Pause</string>
-    <string name="video_previous">Previous</string>
-    <string name="video_next">Next</string>
     <string name="video_queue">Queue</string>
     <string name="video_more">More</string>
 

@@ -12,6 +12,7 @@ import com.lhacenmed.sona.core.datastore.SubtitleTextSize
 import com.lhacenmed.sona.core.datastore.VideoAspect
 import com.lhacenmed.sona.core.datastore.VideoOrientation
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
+import com.lhacenmed.sona.core.datastore.PlayerStyleSettings
 import com.lhacenmed.sona.core.datastore.VideoSettings
 import com.lhacenmed.sona.core.datastore.stateIn
 import com.lhacenmed.sona.core.designsystem.component.toast
@@ -72,6 +73,7 @@ class VideoPlayerViewModel @Inject constructor(
     vault: VaultRepository,
     private val videoSettings: VideoSettings,
     private val playbackSettings: PlaybackSettings,
+    private val playerStyleSettings: PlayerStyleSettings,
     librarySubtitles: LibrarySubtitleStore,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
@@ -119,6 +121,13 @@ class VideoPlayerViewModel @Inject constructor(
     }
 
     val showClock: StateFlow<Boolean> = videoSettings.showClock.stateIn(viewModelScope)
+
+    /** Whether the seek bar's end says how long the video is rather than how much is left - every player's, see [PlayerStyleSettings.showsTotalDuration]. */
+    val showsTotalDuration: StateFlow<Boolean> = playerStyleSettings.showsTotalDuration.stateIn(viewModelScope)
+
+    fun onToggleEndTime() {
+        viewModelScope.launch { playerStyleSettings.setShowsTotalDuration(!showsTotalDuration.value) }
+    }
 
     /** The subtitles of the video watched - each space's kept in its own store, and only the library's found beside it. */
     internal val subtitles = SubtitleSession(
@@ -260,10 +269,15 @@ class VideoPlayerViewModel @Inject constructor(
         val aspect = _session.value.aspect.next()
         _session.update { it.copy(aspect = aspect) }
         if (videoSettings.keepAspect.value) viewModelScope.launch { videoSettings.setAspect(aspect) }
+        context.toast(aspect.labelRes)
     }
 
-    /** Moves on to the next way of standing, for as long as this player is open. */
-    fun onCycleOrientation() = _session.update { it.copy(orientation = it.orientation.next()) }
+    /** Moves on to the next way of standing, for as long as this player is open - and says which, as a toast. */
+    fun onCycleOrientation() {
+        val orientation = _session.value.orientation.next()
+        _session.update { it.copy(orientation = orientation) }
+        context.toast(orientation.labelRes)
+    }
 
     /** Has the video listened to from here on, in the music player - which closes this one. */
     fun onPlayAsAudio() {

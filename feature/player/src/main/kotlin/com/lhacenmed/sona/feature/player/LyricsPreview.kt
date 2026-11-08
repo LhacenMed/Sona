@@ -2,6 +2,9 @@
 
 package com.lhacenmed.sona.feature.player
 
+import androidx.compose.runtime.remember
+import androidx.compose.material3.ripple
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -25,7 +28,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
@@ -35,7 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.lhacenmed.sona.core.designsystem.theme.roundedShape
+import com.lhacenmed.sona.core.designsystem.theme.pressMorphingClip
 import com.lhacenmed.sona.core.model.Track
 
 /** The size the line is drawn at, in sp - the player's own, whatever size the sheet's lyrics are set to. */
@@ -73,18 +75,26 @@ internal fun LyricsPreview(
     val fadeHeight = lineHeight / 2
     val lineColor = textColor.copy(alpha = LyricsPreviewAlpha)
 
+    val interactionSource = remember { MutableInteractionSource() }
     Box(
         contentAlignment = Alignment.Center,
+        // On the keyline, pressed as an expressive button is, its text standing in from its edges as the title's does.
         modifier =
             modifier
                 .fillMaxWidth()
+                .padding(horizontal = PlayerHorizontalPadding)
                 .height(lineHeight + fadeHeight * 2)
-                .clip(roundedShape(PlayerPillCornerRadius))
-                .clickable(onClickLabel = stringResource(R.string.player_lyrics), onClick = onOpen),
+                .pressMorphingClip(interactionSource)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = ripple(),
+                    onClickLabel = stringResource(R.string.player_lyrics),
+                    onClick = onOpen,
+                ),
     ) {
         when {
             timeline == null -> {
-                Box(Modifier.fillMaxWidth().padding(horizontal = PlayerHorizontalPadding)) {
+                Box(Modifier.fillMaxWidth().padding(horizontal = LyricsLineHorizontalPadding)) {
                     ShimmerHost {
                         TextPlaceholder()
                     }
@@ -150,12 +160,8 @@ private fun LyricsPreviewLines(
     LazyColumn(
         state = listState,
         userScrollEnabled = false,
-        // Its text set in line with the title's.
-        contentPadding =
-            PaddingValues(
-                horizontal = PlayerHorizontalPadding - LyricsLineHorizontalPadding,
-                vertical = fadeHeight,
-            ),
+        // Each line stands its text in by its own padding, within the keyline the row stands on.
+        contentPadding = PaddingValues(vertical = fadeHeight),
         modifier =
             Modifier
                 .fillMaxSize()
@@ -205,7 +211,7 @@ private fun LyricsPreviewStatus(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = PlayerHorizontalPadding),
+                .padding(horizontal = LyricsLineHorizontalPadding),
     ) {
         if (isFinding) {
             CircularWavyProgressIndicator(

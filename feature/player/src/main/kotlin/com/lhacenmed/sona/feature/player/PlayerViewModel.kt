@@ -94,7 +94,7 @@ class PlayerViewModel @AssistedInject constructor(
     private val vault: VaultRepository,
     private val playbackController: PlaybackController,
     private val playbackSettings: PlaybackSettings,
-    playerStyleSettings: PlayerStyleSettings,
+    private val playerStyleSettings: PlayerStyleSettings,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -196,6 +196,13 @@ class PlayerViewModel @AssistedInject constructor(
         if (space == PlaybackSpace.Private) MutableStateFlow(emptyMap()) else repository.artistsById
 
     val appearance: StateFlow<PlayerAppearance> = playerStyleSettings.appearance.stateIn(viewModelScope)
+
+    /** Whether the seek bar's end says how long the track is rather than how much is left - see [PlayerStyleSettings.showsTotalDuration]. */
+    val showsTotalDuration: StateFlow<Boolean> = playerStyleSettings.showsTotalDuration.stateIn(viewModelScope)
+
+    fun onToggleEndTime() {
+        viewModelScope.launch { playerStyleSettings.setShowsTotalDuration(!showsTotalDuration.value) }
+    }
 
     val sleepTimer: StateFlow<SleepTimerState> = playbackController.sleepTimer
 

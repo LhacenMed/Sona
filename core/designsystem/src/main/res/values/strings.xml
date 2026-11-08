@@ -92,4 +92,10 @@
     <!-- The connection banner -->
     <string name="network_offline">No internet connection</string>
     <string name="network_back_online">Back online</string>
+
+    <!-- Every player's controls - see PlayerTransport and PlayerTimes -->
+    <string name="player_control_previous">Previous</string>
+    <string name="player_control_next">Next</string>
+    <string name="player_control_show_duration">Show the whole length</string>
+    <string name="player_control_show_remaining">Show the time left</string>
 </resources>

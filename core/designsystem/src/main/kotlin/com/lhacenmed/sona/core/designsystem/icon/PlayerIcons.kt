@@ -36,7 +36,7 @@ object PlayerIcons {
     val More by lazy {
         filledIcon(
             "More",
-            "M12 3.9a1.6 1.6 0 1 1 0 3.2a1.6 1.6 0 1 1 0-3.2zM12 10.4a1.6 1.6 0 1 1 0 3.2a1.6 1.6 0 1 1 0-3.2zM12 16.9a1.6 1.6 0 1 1 0 3.2a1.6 1.6 0 1 1 0-3.2z",
+            "M3.9 12a1.6 1.6 0 1 1 3.2 0a1.6 1.6 0 1 1-3.2 0zM10.4 12a1.6 1.6 0 1 1 3.2 0a1.6 1.6 0 1 1-3.2 0zM16.9 12a1.6 1.6 0 1 1 3.2 0a1.6 1.6 0 1 1-3.2 0z",
         )
     }
     val SkipPrevious by lazy { skipIcon("SkipPrevious", "M6.5 5.5v13", "M18.5 6.3v11.4L9.6 12z") }
@@ -105,12 +105,27 @@ object PlayerIcons {
             .fillPath("M13.7 11.5h3.1a1.2 1.2 0 0 1 1.2 1.2v2.1a1.2 1.2 0 0 1-1.2 1.2h-3.1a1.2 1.2 0 0 1-1.2-1.2v-2.1a1.2 1.2 0 0 1 1.2-1.2z", 0f)
             .build()
     }
-    val Rotate by lazy {
+    /** Turning with the device - and, held one way, [OrientationPortrait] and [OrientationLandscape]: the way it stands. */
+    val AutoRotate by lazy {
         strokeIcon(
-            "Rotate",
+            "AutoRotate",
             "M5.5 10h9a2.5 2.5 0 0 1 2.5 2.5v5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 3 17.5v-5A2.5 2.5 0 0 1 5.5 10z",
             "M12 3.5a7 7 0 0 1 7.5 6",
             "M21 7l-1.5 2.5L17 8",
+        )
+    }
+    val OrientationPortrait by lazy {
+        strokeIcon(
+            "OrientationPortrait",
+            "M8.5 3h7A2.5 2.5 0 0 1 18 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 6 18.5v-13A2.5 2.5 0 0 1 8.5 3z",
+            "M10.5 17.5h3",
+        )
+    }
+    val OrientationLandscape by lazy {
+        strokeIcon(
+            "OrientationLandscape",
+            "M3 8.5A2.5 2.5 0 0 1 5.5 6h13A2.5 2.5 0 0 1 21 8.5v7a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 15.5z",
+            "M17.5 10.5v3",
         )
     }
     val Volume by lazy { strokeIcon("Volume", "M4 9.5h3l4.5-4v13L7 14.5H4z", "M15.5 9a4 4 0 0 1 0 6", "M18 6.5a7.5 7.5 0 0 1 0 11") }

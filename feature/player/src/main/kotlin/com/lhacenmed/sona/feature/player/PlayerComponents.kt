@@ -7,28 +7,20 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -41,7 +33,6 @@ import androidx.compose.ui.unit.sp
 import com.lhacenmed.sona.core.datastore.PlayerSliderStyle
 import com.lhacenmed.sona.core.designsystem.component.SonaMarquee
 import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
-import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
@@ -79,13 +70,6 @@ fun RepeatMode.transportIconRes(): Int =
         RepeatMode.STOP_AFTER_CURRENT -> PlaybackR.drawable.repeat_one_stop
     }
 
-/** [transportIconRes] in the players' own icon set, for the expanded player. */
-internal fun RepeatMode.transportIcon(): ImageVector =
-    when (this) {
-        RepeatMode.OFF, RepeatMode.ALL -> PlayerIcons.Repeat
-        RepeatMode.ONE -> PlayerIcons.RepeatOne
-        RepeatMode.STOP_AFTER_CURRENT -> PlayerIcons.RepeatStop
-    }
 
 @DrawableRes
 internal fun favoriteIconRes(isFavorite: Boolean): Int =
@@ -93,46 +77,6 @@ internal fun favoriteIconRes(isFavorite: Boolean): Int =
 
 internal fun favoriteIcon(isFavorite: Boolean): ImageVector =
     if (isFavorite) PlayerIcons.Favorite else PlayerIcons.FavoriteBorder
-
-/**
- * A control of the player's bars: Material's icon button, pressing as every press in the app does, its glyph
- * [PlayerBarIconSize] within a [PlayerBarButtonSize] target. [isLit] marks one that is on - a toggle, or the view it
- * opens - with a dot beneath its glyph, in its [color].
- */
-@Composable
-internal fun PlayerBarButton(
-    icon: ImageVector,
-    contentDescription: String?,
-    color: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    isLit: Boolean = false,
-) {
-    Box(contentAlignment = Alignment.Center, modifier = modifier.size(PlayerBarButtonSize)) {
-        IconButton(
-            onClick = onClick,
-            shapes = iconButtonPressShapes(),
-            enabled = enabled,
-            colors = IconButtonDefaults.iconButtonColors(contentColor = color, disabledContentColor = color.copy(alpha = 0.38f)),
-            modifier = Modifier.matchParentSize(),
-        ) {
-            Icon(imageVector = icon, contentDescription = contentDescription, modifier = Modifier.size(PlayerBarIconSize))
-        }
-        if (isLit) PlayerLitDot(color, Modifier.align(Alignment.BottomCenter))
-    }
-}
-
-/** The dot beneath a control that is on. */
-@Composable
-internal fun PlayerLitDot(color: Color, modifier: Modifier = Modifier) {
-    Box(
-        modifier
-            .padding(bottom = PlayerLitDotInset)
-            .size(PlayerLitDotSize)
-            .background(color, CircleShape),
-    )
-}
 
 @Composable
 internal fun PlayerTitleText(
@@ -168,6 +112,7 @@ internal fun PlayerTitleSection(
         label = "",
     ) { title ->
         SonaMarquee(
+            text = title,
             modifier =
                 Modifier.combinedClickable(
                     enabled = true,
@@ -292,46 +237,5 @@ fun StyledPlaybackSlider(
                     ),
             )
         }
-    }
-}
-
-/** Where playback is, and how much is left of the track from there - in line with the seek bar's ends. */
-@Composable
-internal fun PlayerTimeLabel(
-    sliderPosition: Long?,
-    position: Long,
-    duration: Long,
-    textBackgroundColor: Color,
-    modifier: Modifier = Modifier,
-) {
-    val shownPosition = sliderPosition ?: position
-    val style =
-        MaterialTheme.typography.labelMedium.copy(
-            fontSize = 12.sp,
-            lineHeight = 16.sp,
-            fontWeight = FontWeight.Medium,
-            fontFeatureSettings = "tnum",
-        )
-    Box(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(horizontal = PlayerHorizontalPadding),
-    ) {
-        Text(
-            text = makeTimeString(shownPosition),
-            style = style,
-            color = textBackgroundColor,
-            maxLines = 1,
-            modifier = Modifier.align(Alignment.CenterStart),
-        )
-
-        Text(
-            text = if (duration > 0L) makeRemainingTimeString(duration - shownPosition) else "",
-            style = style,
-            color = textBackgroundColor.copy(alpha = PlayerSecondaryAlpha),
-            maxLines = 1,
-            modifier = Modifier.align(Alignment.CenterEnd),
-        )
     }
 }

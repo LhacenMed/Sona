@@ -11,7 +11,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -56,11 +55,12 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.datastore.PlayerSliderStyle
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverImage
+import com.lhacenmed.sona.core.designsystem.component.SonaMarquee
+import com.lhacenmed.sona.core.designsystem.player.formatPlaybackTime
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.effect.performSonaHaptic
 import com.lhacenmed.sona.core.designsystem.motion.RubberBandSettleDurationMillis
@@ -101,8 +101,6 @@ internal data class MiniPlayerContentColors(
 
 @Composable
 internal fun SwipeableMiniPlayerBox(
-    hasPreviousTrack: Boolean,
-    hasNextTrack: Boolean,
     // Off, the player holds still under the finger - ArchiveTune's swipe-to-change-song switch.
     swipeEnabled: Boolean,
     onSwipeToPrevious: () -> Unit,
@@ -116,8 +114,6 @@ internal fun SwipeableMiniPlayerBox(
 
     val view = LocalView.current
     // The gesture handler outlives compositions, so it reads these as they are when it runs.
-    val latestHasPreviousTrack by rememberUpdatedState(hasPreviousTrack)
-    val latestHasNextTrack by rememberUpdatedState(hasNextTrack)
     val latestOnSwipeToPrevious by rememberUpdatedState(onSwipeToPrevious)
     val latestOnSwipeToNext by rememberUpdatedState(onSwipeToNext)
 
@@ -151,17 +147,14 @@ internal fun SwipeableMiniPlayerBox(
                         var dragOffset = 0f
                         // The finger's travel, before the rubber band takes its share of it.
                         var dragPull = 0f
-                        // Past the skip threshold, towards a track: releasing now changes to it.
+                        // Past the skip threshold: releasing now changes track.
                         var isArmed = false
                         val velocityTracker = VelocityTracker()
                         val directionSign = if (layoutDirection == LayoutDirection.Rtl) -1f else 1f
 
-                        // Towards a track the player follows the finger up to the skip threshold and resists
-                        // past it; towards none it resists from the start, showing there is nothing there.
-                        fun armFor(pull: Float): Float {
-                            val hasTrack = if (pull > 0) latestHasPreviousTrack else latestHasNextTrack
-                            return if (hasTrack) playerWidth * SwipeArmFraction else 0f
-                        }
+                        // The player follows the finger up to the skip threshold and resists past it. Either way
+                        // there is a track to change to: past the queue's ends, the other end's.
+                        fun arm() = playerWidth * SwipeArmFraction
 
                         fun stretchLimit() = playerWidth * (SwipeStretchMaxFraction - SwipeArmFraction)
 
@@ -178,7 +171,7 @@ internal fun SwipeableMiniPlayerBox(
                             onDragStart = {
                                 // Taken up where a settle still under way has it, so a grab never jumps.
                                 dragOffset = offsetXAnimatable.value
-                                dragPull = rubberBandPull(dragOffset, armFor(dragOffset), stretchLimit())
+                                dragPull = rubberBandPull(dragOffset, arm(), stretchLimit())
                                 // Unarmed even if grabbed past the threshold, so the tick confirms every skip.
                                 isArmed = false
                                 velocityTracker.resetTracking()
@@ -187,7 +180,7 @@ internal fun SwipeableMiniPlayerBox(
                             onHorizontalDrag = { change, dragAmount ->
                                 velocityTracker.addPosition(change.uptimeMillis, change.position)
                                 dragPull += dragAmount * directionSign
-                                val arm = armFor(dragPull)
+                                val arm = arm()
                                 dragOffset = rubberBandOffset(dragPull, arm, stretchLimit())
                                 val reachedArm = arm > 0f && abs(dragOffset) >= arm
                                 // Felt both ways across the arm: the skip is live, or no longer is.
@@ -210,10 +203,10 @@ internal fun SwipeableMiniPlayerBox(
 
                                 if (shouldChangeSong) {
                                     // An armed skip has already ticked; a fling that never armed ticks now.
-                                    if (dragOffset > 0 && latestHasPreviousTrack) {
+                                    if (dragOffset > 0) {
                                         if (!isArmed) tick()
                                         latestOnSwipeToPrevious()
-                                    } else if (dragOffset < 0 && latestHasNextTrack) {
+                                    } else if (dragOffset < 0) {
                                         if (!isArmed) tick()
                                         latestOnSwipeToNext()
                                     }
@@ -225,9 +218,7 @@ internal fun SwipeableMiniPlayerBox(
         ) {
             content(offsetXAnimatable.value)
 
-            // No skip hint towards a missing track: the pull there only shows there is nothing to change to.
-            val hasTrackTowardsOffset = if (offsetXAnimatable.value > 0) hasPreviousTrack else hasNextTrack
-            if (hasTrackTowardsOffset && offsetXAnimatable.value.absoluteValue > 50f) {
+            if (offsetXAnimatable.value.absoluteValue > 50f) {
                 Box(
                     modifier =
                         Modifier
@@ -269,14 +260,9 @@ private fun RowScope.MiniPlayerInfo(
             transitionSpec = { fadeIn() togetherWith fadeOut() },
             label = "title",
         ) { title ->
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMediumEmphasized,
-                color = colors.title,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.basicMarquee(),
-            )
+            SonaMarquee(text = title) {
+                Text(text = title, style = MaterialTheme.typography.titleMediumEmphasized, color = colors.title, maxLines = 1)
+            }
         }
 
         AnimatedContent(
@@ -284,14 +270,9 @@ private fun RowScope.MiniPlayerInfo(
             transitionSpec = { fadeIn() togetherWith fadeOut() },
             label = "artist",
         ) { artist ->
-            Text(
-                text = artist,
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.secondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.basicMarquee(),
-            )
+            SonaMarquee(text = artist) {
+                Text(text = artist, style = MaterialTheme.typography.bodySmall, color = colors.secondary, maxLines = 1)
+            }
         }
     }
 }
@@ -353,7 +334,6 @@ private fun MiniPlayerTransportButton(
     onClick: () -> Unit,
     colors: MiniPlayerContentColors,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true,
     isPrimary: Boolean = false,
 ) {
     val view = LocalView.current
@@ -362,8 +342,6 @@ private fun MiniPlayerTransportButton(
         IconButtonDefaults.iconButtonColors(
             containerColor = if (isPrimary) colors.primaryButtonContainer else colors.secondaryButtonContainer,
             contentColor = if (isPrimary) colors.primaryButtonIcon else colors.buttonIcon,
-            disabledContainerColor = Color.Transparent,
-            disabledContentColor = colors.disabledButtonIcon,
         )
     val handleClick = {
         view.performContextClick()
@@ -382,7 +360,6 @@ private fun MiniPlayerTransportButton(
             onClick = handleClick,
             shapes = iconButtonPressShapes(),
             modifier = modifier.size(48.dp),
-            enabled = enabled,
             colors = buttonColors,
             content = content,
         )
@@ -391,7 +368,6 @@ private fun MiniPlayerTransportButton(
             onClick = handleClick,
             shapes = iconButtonPressShapes(),
             modifier = modifier.size(48.dp),
-            enabled = enabled,
             colors = buttonColors,
             content = content,
         )
@@ -454,7 +430,6 @@ private fun MiniPlayerTransportControls(
             iconResId = R.drawable.skip_previous,
             contentDescription = stringResource(R.string.player_previous),
             onClick = viewModel::onSkipPrevious,
-            enabled = playback.canSkipPrevious,
             colors = colors,
         )
 
@@ -473,7 +448,6 @@ private fun MiniPlayerTransportControls(
             iconResId = R.drawable.skip_next,
             contentDescription = stringResource(R.string.player_next),
             onClick = viewModel::onSkipNext,
-            enabled = playback.canSkipNext,
             colors = colors,
         )
     }
@@ -515,7 +489,7 @@ private fun RowScope.MiniPlayerSeekBar(
         verticalArrangement = Arrangement.Center,
     ) {
         Text(
-            text = "${makeTimeString(shownPosition)} / ${makeTimeString(duration)}",
+            text = "${formatPlaybackTime(shownPosition)} / ${formatPlaybackTime(duration)}",
             style = MaterialTheme.typography.labelMedium,
             color = colors.secondary,
             maxLines = 1,

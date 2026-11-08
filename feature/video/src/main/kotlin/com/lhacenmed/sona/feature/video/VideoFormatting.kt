@@ -2,29 +2,18 @@ package com.lhacenmed.sona.feature.video
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
+import androidx.annotation.StringRes
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.lhacenmed.sona.core.datastore.VideoAspect
+import com.lhacenmed.sona.core.datastore.VideoOrientation
+import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
+import com.lhacenmed.sona.core.designsystem.player.formatPlaybackTime
 import com.lhacenmed.sona.feature.playback.MediaTrack
 import java.util.Locale
 
-/** "mm:ss", or "h:mm:ss" from the hour on - the way a video player reads out a position. */
-internal fun formatVideoTime(timeMs: Long): String {
-    val totalSeconds = timeMs.coerceAtLeast(0L) / 1000
-    val hours = totalSeconds / 3600
-    val minutes = totalSeconds % 3600 / 60
-    val seconds = totalSeconds % 60
-    return if (hours > 0) {
-        String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds)
-    } else {
-        String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
-    }
-}
-
-/** What is left of a video: "\u22121:45:41". */
-internal fun formatRemainingTime(timeMs: Long): String = "$Minus${formatVideoTime(timeMs)}"
-
 /** How far a scrub has gone, always with its sign: "+16:28". */
 internal fun formatSeekDelta(deltaMs: Long): String =
-    (if (deltaMs < 0L) Minus else "+") + formatVideoTime(kotlin.math.abs(deltaMs))
+    (if (deltaMs < 0L) Minus else "+") + formatPlaybackTime(kotlin.math.abs(deltaMs))
 
 /** How far double taps have sought: "\u221210 s". */
 internal fun formatSeekSeconds(deltaMs: Long): String =
@@ -61,16 +50,32 @@ internal fun MediaTrack.displayName(index: Int): String {
     return listOfNotNull(name, channels, forced).joinToString(" \u00B7 ")
 }
 
-@Composable
-internal fun VideoAspect.label(): String =
-    stringResource(
-        when (this) {
-            VideoAspect.CROP -> R.string.video_aspect_crop
-            VideoAspect.STRETCH -> R.string.video_aspect_stretch
-            VideoAspect.RATIO_16_9 -> R.string.video_aspect_16_9
-            VideoAspect.RATIO_18_9 -> R.string.video_aspect_18_9
-            VideoAspect.RATIO_4_3 -> R.string.video_aspect_4_3
-            VideoAspect.ORIGINAL -> R.string.video_aspect_original
-            VideoAspect.FIT -> R.string.video_aspect_fit
-        },
-    )
+/** What each fitting is called - said, as the app's toast, as it is chosen. */
+@get:StringRes
+internal val VideoAspect.labelRes: Int
+    get() = when (this) {
+        VideoAspect.CROP -> R.string.video_aspect_crop
+        VideoAspect.STRETCH -> R.string.video_aspect_stretch
+        VideoAspect.RATIO_16_9 -> R.string.video_aspect_16_9
+        VideoAspect.RATIO_18_9 -> R.string.video_aspect_18_9
+        VideoAspect.RATIO_4_3 -> R.string.video_aspect_4_3
+        VideoAspect.ORIGINAL -> R.string.video_aspect_original
+        VideoAspect.FIT -> R.string.video_aspect_fit
+    }
+
+/** What each way of standing is called - the rotation button's name, and said, as the app's toast, as it is chosen. */
+@get:StringRes
+internal val VideoOrientation.labelRes: Int
+    get() = when (this) {
+        VideoOrientation.AUTO -> R.string.video_rotation_auto
+        VideoOrientation.PORTRAIT -> R.string.video_rotation_portrait
+        VideoOrientation.LANDSCAPE -> R.string.video_rotation_landscape
+    }
+
+/** The rotation button's icon for each way of standing, so it shows which the player is set to. */
+internal val VideoOrientation.icon: ImageVector
+    get() = when (this) {
+        VideoOrientation.AUTO -> PlayerIcons.AutoRotate
+        VideoOrientation.PORTRAIT -> PlayerIcons.OrientationPortrait
+        VideoOrientation.LANDSCAPE -> PlayerIcons.OrientationLandscape
+    }

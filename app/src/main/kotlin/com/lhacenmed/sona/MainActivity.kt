@@ -1,5 +1,6 @@
 package com.lhacenmed.sona
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
@@ -26,6 +27,7 @@ import com.lhacenmed.sona.core.navigation.AppPrompts
 import com.lhacenmed.sona.core.navigation.IntentNavigator
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.PlayerOverlay
+import com.lhacenmed.sona.feature.library.LibraryTabRequest
 import com.lhacenmed.sona.feature.library.PlayingList
 import com.lhacenmed.sona.feature.library.playingListOf
 import com.lhacenmed.sona.feature.playback.PlaybackController
@@ -42,6 +44,16 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 @AndroidEntryPoint
 class MainActivity : SonaActivity() {
+
+    companion object {
+        private const val EXTRA_LIBRARY_TAB = "com.lhacenmed.sona.extra.LIBRARY_TAB"
+
+        /** What takes the app back to the library - closing every screen over it - and on to [tab]. */
+        fun libraryTabIntent(context: Context, tab: LibraryTab): Intent =
+            Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                .putExtra(EXTRA_LIBRARY_TAB, tab.name)
+    }
 
     @Inject
     lateinit var mediaScanner: MediaScanner
@@ -72,6 +84,9 @@ class MainActivity : SonaActivity() {
 
     /** The library's tab a tap on the player from outside the app opened it on - see [arriveAtPlaying]. */
     private var playingTab by mutableStateOf<LibraryTab?>(null)
+
+    /** The library's tab last asked for from within the app - see [libraryTabIntent]. */
+    private var tabRequest by mutableStateOf<LibraryTabRequest?>(null)
 
     private val launchPermissionsLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
@@ -146,7 +161,7 @@ class MainActivity : SonaActivity() {
                 val navigator = remember { IntentNavigator(this, currentScreen = null) }
                 CompositionLocalProvider(LocalNavigator provides navigator) {
                     NetworkStatusHost(networkBanner) {
-                        AppShell(playerOverlay = playerOverlay, playingTab = playingTab)
+                        AppShell(playerOverlay = playerOverlay, playingTab = playingTab, tabRequest = tabRequest)
                         appPrompts.Content()
                     }
                 }
@@ -154,9 +169,10 @@ class MainActivity : SonaActivity() {
         }
     }
 
-    /** A notification, tapped while the app is already open. */
+    /** A notification, tapped while the app is already open - or a tab of the library asked for from within it. */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        intent.getStringExtra(EXTRA_LIBRARY_TAB)?.let { tab -> tabRequest = LibraryTabRequest(LibraryTab.valueOf(tab)) }
         arriveAtScreenOf(AppEntry.of(intent))
     }
 

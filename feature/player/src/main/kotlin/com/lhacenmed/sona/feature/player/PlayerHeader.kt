@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.feature.player
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,12 +18,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverArt
 import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
+import com.lhacenmed.sona.core.designsystem.player.PlayerBarButton
 import com.lhacenmed.sona.core.model.Track
 
 /** The size of the artwork beside the lyrics header's title. */
@@ -30,7 +33,8 @@ private val LyricsHeaderArtworkSize = 40.dp
 
 /**
  * The bar along the top of the player, beneath the status bar: the way back down to the mini player, what the queue plays
- * from - its name over its kind and how much it holds - then the equalizer and the track's options.
+ * from - its name over its kind and how much it holds - then the equalizer. What it plays from,
+ * pressed, is opened - [onOpenPlayingFrom], where there is one to open.
  */
 @Composable
 internal fun NowPlayingHeader(
@@ -39,7 +43,7 @@ internal fun NowPlayingHeader(
     contentColor: Color,
     onCollapse: () -> Unit,
     onOpenEqualizer: () -> Unit,
-    onMoreClick: () -> Unit,
+    onOpenPlayingFrom: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val isAllVideos = remember(queue) { queue.isNotEmpty() && queue.all { it.track.isVideo } }
@@ -52,10 +56,10 @@ internal fun NowPlayingHeader(
             title = playingFrom?.title() ?: stringResource(R.string.player_now_playing),
             subtitle = if (kind != null) stringResource(R.string.player_playing_from_detail, kind, count) else count,
             color = contentColor,
+            onClick = onOpenPlayingFrom,
             modifier = Modifier.weight(1f).padding(start = 4.dp),
         )
         PlayerBarButton(PlayerIcons.Equalizer, stringResource(R.string.player_equalizer), contentColor, onOpenEqualizer)
-        PlayerBarButton(PlayerIcons.More, stringResource(R.string.player_more_options), contentColor, onMoreClick)
     }
 }
 
@@ -89,7 +93,7 @@ internal fun LyricsHeader(
     }
 }
 
-/** A row of the player's header, its buttons' glyphs at either end on the player's keyline. */
+/** A row of the player's header, its buttons at either end on the player's keyline. */
 @Composable
 private fun PlayerHeaderBar(modifier: Modifier, content: @Composable RowScope.() -> Unit) {
     Row(
@@ -98,16 +102,32 @@ private fun PlayerHeaderBar(modifier: Modifier, content: @Composable RowScope.()
             modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(horizontal = PlayerButtonRowPadding)
+                .padding(horizontal = PlayerHorizontalPadding)
                 .height(PlayerBarButtonSize),
         content = content,
     )
 }
 
-/** The header's two lines: its title, and the quieter line beneath it. */
+/** The header's two lines: its title, and the quieter line beneath it - pressed as one, where there is an [onClick]. */
 @Composable
-private fun PlayerHeaderTitle(title: String, subtitle: String, color: Color, modifier: Modifier = Modifier) {
-    Column(verticalArrangement = Arrangement.spacedBy(1.dp), modifier = modifier) {
+private fun PlayerHeaderTitle(
+    title: String,
+    subtitle: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(1.dp),
+        modifier =
+            modifier
+                .clickable(
+                    enabled = onClick != null,
+                    role = Role.Button,
+                    interactionSource = null,
+                    indication = null,
+                ) { onClick?.invoke() },
+    ) {
         Text(
             text = title,
             style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold),

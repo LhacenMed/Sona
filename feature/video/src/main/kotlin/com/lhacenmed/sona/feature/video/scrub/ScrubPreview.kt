@@ -42,12 +42,12 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.lhacenmed.sona.core.designsystem.player.formatPlaybackTime
 import com.lhacenmed.sona.feature.video.PlayerText
 import com.lhacenmed.sona.feature.video.VideoPlayerTokens
 import com.lhacenmed.sona.feature.video.VideoPlayerType
 import com.lhacenmed.sona.feature.video.controls.drawSeekTrack
 import com.lhacenmed.sona.feature.video.formatSeekDelta
-import com.lhacenmed.sona.feature.video.formatVideoTime
 import com.lhacenmed.sona.feature.video.videoSafeArea
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -133,7 +133,7 @@ private fun PreviewPicture(scrub: VideoScrubState, frames: ScrubFrames, size: Dp
 @Composable
 private fun PreviewTimes(scrub: VideoScrubState) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        PlayerText(formatVideoTime(scrub.targetMs), VideoPlayerType.PreviewTime)
+        PlayerText(formatPlaybackTime(scrub.targetMs), VideoPlayerType.PreviewTime)
         PlayerText(formatSeekDelta(scrub.targetMs - scrub.originMs), VideoPlayerType.Time, color = VideoPlayerTokens.SecondaryContent)
     }
 }
@@ -160,8 +160,8 @@ internal fun ScrubPill(scrub: VideoScrubState, isVisible: Boolean, durationMs: L
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                PlayerText(formatVideoTime(scrub.targetMs), VideoPlayerType.PreviewTime)
-                PlayerText(" / ${formatVideoTime(durationMs)}", VideoPlayerType.Time, color = VideoPlayerTokens.SecondaryContent)
+                PlayerText(formatPlaybackTime(scrub.targetMs), VideoPlayerType.PreviewTime)
+                PlayerText(" / ${formatPlaybackTime(durationMs)}", VideoPlayerType.Time, color = VideoPlayerTokens.SecondaryContent)
                 Spacer(Modifier.weight(1f))
                 PlayerText(formatSeekDelta(scrub.targetMs - scrub.originMs), VideoPlayerType.SeekAmount)
             }

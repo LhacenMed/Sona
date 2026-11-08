@@ -11,11 +11,22 @@ import androidx.compose.material3.ButtonShapes
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.IconButtonShapes
+import androidx.compose.material3.IconToggleButtonShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ToggleButtonShapes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.toRect
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
@@ -34,7 +45,10 @@ object SonaComponentStyle {
      */
     val ContentHorizontalPadding = 16.dp
 
-    /** The corners everything rests with: Material's medium corner. */
+    /**
+     * The corners everything rests with: Material's medium corner - and what a control that is on squares to, a pill at
+     * rest, while it is on: less square than a press, which tightens it further still.
+     */
     val CornerRadius = 12.dp
 
     /**
@@ -66,6 +80,29 @@ fun buttonPressShapes(): ButtonShapes =
 @Composable
 fun iconButtonPressShapes(): IconButtonShapes =
     IconButtonDefaults.shapes(shape = pillShape, pressedShape = roundedShape(SonaComponentStyle.PressedCornerRadius))
+
+/**
+ * The shapes every icon toggle presses with: a pill while off, squaring to [SonaComponentStyle.CornerRadius] while on,
+ * and tightening to [SonaComponentStyle.PressedCornerRadius] while held either way.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun iconTogglePressShapes(): IconToggleButtonShapes =
+    IconButtonDefaults.toggleableShapes(
+        shape = pillShape,
+        pressedShape = roundedShape(SonaComponentStyle.PressedCornerRadius),
+        checkedShape = roundedShape(SonaComponentStyle.CornerRadius),
+    )
+
+/** The shapes every labelled toggle presses with - see [iconTogglePressShapes]. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun togglePressShapes(): ToggleButtonShapes =
+    ToggleButtonShapes(
+        shape = pillShape,
+        pressedShape = roundedShape(SonaComponentStyle.PressedCornerRadius),
+        checkedShape = roundedShape(SonaComponentStyle.CornerRadius),
+    )
 
 /**
  * The shapes the first button of a connected group presses with: Material's own, its inner corners
@@ -134,4 +171,24 @@ fun rememberPressFraction(interactionSource: InteractionSource): State<Float> {
         animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
         label = "pressFraction",
     )
+}
+
+/**
+ * Clips what follows to a pill that tightens to [SonaComponentStyle.PressedCornerRadius] while [interactionSource] is
+ * held, on the motion every button presses with - an expressive button's press, for something pressable that is not a
+ * button: a row of text. Square throughout while round mode is off.
+ */
+@Composable
+fun Modifier.pressMorphingClip(interactionSource: InteractionSource): Modifier {
+    val pressFraction by rememberPressFraction(interactionSource)
+    return clip(PressMorphingShape(pressFraction, SonaComponentStyle.PressedCornerRadius, LocalIsRounded.current))
+}
+
+/** A pill [pressFraction] of the way to corners of [pressedRadius] - whatever its size - or a square, not [isRounded]. */
+private data class PressMorphingShape(val pressFraction: Float, val pressedRadius: Dp, val isRounded: Boolean) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        if (!isRounded) return Outline.Rectangle(size.toRect())
+        val radius = androidx.compose.ui.util.lerp(size.minDimension / 2f, with(density) { pressedRadius.toPx() }, pressFraction)
+        return Outline.Rounded(RoundRect(size.toRect(), CornerRadius(radius)))
+    }
 }

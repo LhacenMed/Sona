@@ -4,6 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
+import com.lhacenmed.sona.core.designsystem.player.PlayerCheckedColors
 
 /**
  * What the expanded player draws its text and controls in - ArchiveTune's `TextBackgroundColor`,
@@ -17,6 +18,8 @@ internal data class PlayerColors(
     val button: Color,
     /** What is drawn on [button]: the play button's icon. */
     val onButton: Color,
+    /** A control that is on, and play while paused: the second accent, beside [button]'s. */
+    val checked: PlayerCheckedColors,
 )
 
 /**
@@ -30,5 +33,6 @@ internal fun playerColors(): PlayerColors {
         content = colorScheme.onBackground,
         button = colorScheme.secondary,
         onButton = colorScheme.onSecondary,
+        checked = PlayerCheckedColors(container = colorScheme.secondaryContainer, content = colorScheme.onSecondaryContainer),
     )
 }

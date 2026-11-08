@@ -50,8 +50,6 @@ internal fun MiniPlayer(
     val contentColors = rememberMiniPlayerContentColors()
 
     SwipeableMiniPlayerBox(
-        hasPreviousTrack = playback.hasPreviousTrack,
-        hasNextTrack = playback.hasNextTrack,
         swipeEnabled = appearance.swipeToChangeTrack && seekBar == null,
         onSwipeToPrevious = viewModel::onSkipToPreviousTrack,
         onSwipeToNext = viewModel::onSkipNext,

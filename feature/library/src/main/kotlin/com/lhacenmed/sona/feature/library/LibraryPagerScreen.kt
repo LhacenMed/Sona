@@ -87,6 +87,7 @@ import kotlinx.coroutines.launch
  *
  * [playingTab] opens the library on that tab - while it is shown - at its playing row once the tab is in, the full
  * player over it - see [IntentNavigator.arriveAt][com.lhacenmed.sona.core.navigation.IntentNavigator.arriveAt].
+ * [tabRequest] slides it to its tab, while that is shown, as a tap on the tab does.
  */
 @Composable
 fun LibraryPagerScreen(
@@ -94,6 +95,7 @@ fun LibraryPagerScreen(
     modifier: Modifier = Modifier,
     actions: List<TopBarAction> = emptyList(),
     playingTab: LibraryTab? = null,
+    tabRequest: LibraryTabRequest? = null,
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
     val visibleTabs by viewModel.visibleTabs.collectAsStateWithLifecycle()
@@ -214,6 +216,10 @@ fun LibraryPagerScreen(
             isRevealDue = true
         }
         if (isRevealDue) PlayingRowReveal()
+
+        LaunchedEffect(tabRequest) {
+            tabRequest?.tab?.let(visibleTabs::indexOf)?.takeIf { it >= 0 }?.let { requestedPage = it }
+        }
 
         val selectedTab = visibleTabs[pagerState.settledPage]
 
@@ -430,3 +436,5 @@ private suspend fun LazyListState.glideToTop() {
     animateScrollBy(-(firstVisibleItemIndex * rowHeight + firstVisibleItemScrollOffset).toFloat(), TabMotion)
 }
 
+/** A tab of the library asked for - a request of its own each time, so the tab asked for again is gone to again. */
+class LibraryTabRequest(val tab: LibraryTab)

@@ -15,12 +15,16 @@ import com.lhacenmed.sona.core.designsystem.component.fab.FloatingActionButtonSt
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.PlayerOverlay
 import com.lhacenmed.sona.feature.library.LibraryPagerScreen
+import com.lhacenmed.sona.feature.library.LibraryTabRequest
 import com.lhacenmed.sona.feature.settings.QuickPlaySourceSetting
 import com.lhacenmed.sona.feature.settings.SettingsScreen
 
-/** [playingTab] opens the library on the tab the queue plays from, at its playing row, the full player over it. */
+/**
+ * [playingTab] opens the library on the tab the queue plays from, at its playing row, the full player over it;
+ * [tabRequest] slides it to a tab, as a tap on the tab does.
+ */
 @Composable
-fun AppShell(playerOverlay: PlayerOverlay, playingTab: LibraryTab?, modifier: Modifier = Modifier) {
+fun AppShell(playerOverlay: PlayerOverlay, playingTab: LibraryTab?, tabRequest: LibraryTabRequest?, modifier: Modifier = Modifier) {
     val navigator = LocalNavigator.current
 
     // The library owns the top bar rather than this Scaffold, because the bar has to become a
@@ -48,6 +52,7 @@ fun AppShell(playerOverlay: PlayerOverlay, playingTab: LibraryTab?, modifier: Mo
                         modifier = Modifier.padding(innerPadding),
                         actions = libraryActions,
                         playingTab = playingTab,
+                        tabRequest = tabRequest,
                     )
                 }
             }

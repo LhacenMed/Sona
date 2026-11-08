@@ -3,6 +3,7 @@
 package com.lhacenmed.sona.feature.player.style
 
 import android.content.res.Configuration
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -22,12 +23,11 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.ButtonGroupScope
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.IconToggleButton
+import androidx.compose.material3.IconToggleButtonColors
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -49,39 +49,39 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.coerceIn
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.datastore.PlayerAppearance
 import com.lhacenmed.sona.core.datastore.PlayerSliderStyle
 import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
-import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
+import com.lhacenmed.sona.core.designsystem.player.PlayerButtonGroup
+import com.lhacenmed.sona.core.designsystem.player.PlayerControls
+import com.lhacenmed.sona.core.designsystem.player.PlayerTimes
+import com.lhacenmed.sona.core.designsystem.player.PlayerTransport
+import com.lhacenmed.sona.core.designsystem.player.PlayerTransportColors
+import com.lhacenmed.sona.core.designsystem.player.playerButton
+import com.lhacenmed.sona.core.designsystem.player.transportIcon
+import com.lhacenmed.sona.core.designsystem.theme.iconTogglePressShapes
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
 import com.lhacenmed.sona.feature.player.InactiveToggleAlpha
 import com.lhacenmed.sona.feature.player.LyricsPillSlot
 import com.lhacenmed.sona.feature.player.NowPlayingHeader
-import com.lhacenmed.sona.feature.player.PlayerBarButton
 import com.lhacenmed.sona.feature.player.PlayerBarButtonSize
 import com.lhacenmed.sona.feature.player.PlayerBarIconSize
-import com.lhacenmed.sona.feature.player.PlayerButtonRowPadding
+import com.lhacenmed.sona.feature.player.PlayerGapAboveSeekBar
 import com.lhacenmed.sona.feature.player.PlayerHorizontalPadding
-import com.lhacenmed.sona.feature.player.PlayerLitDot
+import com.lhacenmed.sona.feature.player.PlayerSectionGap
 import com.lhacenmed.sona.feature.player.PlayerLyricsState
 import com.lhacenmed.sona.feature.player.PlayerPlayButtonSize
-import com.lhacenmed.sona.feature.player.PlayerPlayIconSize
 import com.lhacenmed.sona.feature.player.PlayerSeekBarHeight
 import com.lhacenmed.sona.feature.player.PlayerSeekThumbSize
 import com.lhacenmed.sona.feature.player.PlayerSeekTimeGap
-import com.lhacenmed.sona.feature.player.PlayerSkipButtonSize
-import com.lhacenmed.sona.feature.player.PlayerSkipIconSize
 import com.lhacenmed.sona.feature.player.PlayerSlider
-import com.lhacenmed.sona.feature.player.PlayerTimeLabel
 import com.lhacenmed.sona.feature.player.PlayerTitleActions
 import com.lhacenmed.sona.feature.player.PlayerTitleSection
-import com.lhacenmed.sona.feature.player.PlayerTransportGap
 import com.lhacenmed.sona.feature.player.PlayerUiState
 import com.lhacenmed.sona.feature.player.PlayerViewModel
 import com.lhacenmed.sona.feature.player.R
@@ -90,16 +90,12 @@ import com.lhacenmed.sona.feature.player.background.PlayerColors
 import com.lhacenmed.sona.feature.player.favoriteIcon
 import com.lhacenmed.sona.feature.player.lyricsPane
 import com.lhacenmed.sona.feature.player.playPauseIcon
-import com.lhacenmed.sona.feature.player.transportIcon
 
 /** The sheet the default player is drawn on: the app theme's own surface, black under a black theme. */
 internal object DefaultPlayerColors {
     val sheet: Color
         @Composable get() = MaterialTheme.colorScheme.surface
 }
-
-/** The least the transport keeps between its corners and the three in its middle. */
-private val TransportCornerClearance = 8.dp
 
 /**
  * The default player, laid out as the video player is: a header along the top, the artwork with the title and the line
@@ -135,6 +131,7 @@ internal fun DefaultPlayer(
     onMenuClick: () -> Unit,
     onCollapse: () -> Unit,
     onOpenEqualizer: () -> Unit,
+    onOpenPlayingFrom: (() -> Unit)?,
     viewModel: PlayerViewModel,
     onSliderValueChange: (Long) -> Unit,
     onSliderValueChangeFinished: () -> Unit,
@@ -182,7 +179,8 @@ internal fun DefaultPlayer(
             contentColor = contentColor,
             onCollapse = onCollapse,
             onOpenEqualizer = onOpenEqualizer,
-            onMoreClick = onMenuClick,
+            // Only what the library still holds: a collection gone since leaves nowhere to go.
+            onOpenPlayingFrom = onOpenPlayingFrom.takeIf { playingFrom != null },
             modifier = modifier,
         )
     }
@@ -193,6 +191,7 @@ internal fun DefaultPlayer(
             onToggleFavorite = if (uiState.canFavorite) viewModel::onToggleFavorite else null,
             colors = colors,
             titleActions = titleActions,
+            onMenuClick = onMenuClick,
             modifier = modifier,
         )
     }
@@ -220,6 +219,7 @@ internal fun DefaultPlayer(
                 duration = duration,
                 onSliderValueChange = onSliderValueChange,
                 onSliderValueChangeFinished = onSliderValueChangeFinished,
+                viewModel = viewModel,
                 modifier = seekBarModifier,
             )
             Spacer(Modifier.height(16.dp))
@@ -263,12 +263,12 @@ internal fun DefaultPlayer(
                             .statusBarsPadding(),
                 ) {
                     titleRow(Modifier)
-                    Spacer(Modifier.height(12.dp))
                     // Only lyrics that open in the player have a pill; their sheet is opened from the queue bar.
                     if (lyrics.opensInPlayer) {
+                        Spacer(Modifier.height(PlayerSectionGap))
                         LyricsPillSlot(lyrics, Modifier.padding(horizontal = PlayerHorizontalPadding))
-                        Spacer(Modifier.height(12.dp))
                     }
+                    Spacer(Modifier.height(PlayerGapAboveSeekBar))
                     seekBarAndTransport(Modifier)
                 }
             }
@@ -290,17 +290,16 @@ internal fun DefaultPlayer(
                     header(coverRecede)
                     thumbnail(Modifier.weight(1f).fillMaxWidth().then(coverRecede))
                     titleRow(titleRecede)
+                    // The pill, or the line playing, midway between the title and the seek bar's thumb.
+                    Spacer(Modifier.height(PlayerSectionGap))
                     if (lyrics.opensInPlayer) {
-                        Spacer(Modifier.height(12.dp))
                         LyricsPillSlot(lyrics, Modifier.padding(horizontal = PlayerHorizontalPadding))
-                        Spacer(Modifier.height(12.dp))
                     } else {
-                        Spacer(Modifier.height(10.dp))
                         CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides defaultTouchTarget) {
                             lyricsPreview(Modifier)
                         }
-                        Spacer(Modifier.height(24.dp))
                     }
+                    Spacer(Modifier.height(PlayerGapAboveSeekBar))
                 }
 
                 seekBarAndTransport(glide)
@@ -311,7 +310,10 @@ internal fun DefaultPlayer(
     }
 }
 
-/** The title and artist, with the favourite beside them. */
+/**
+ * The title and artist, with the favourite and the track's options together beside them - the favourite on, squared and
+ * filled, while the track is one.
+ */
 @Composable
 private fun DefaultTitleRow(
     track: Track,
@@ -320,18 +322,17 @@ private fun DefaultTitleRow(
     onToggleFavorite: (() -> Unit)?,
     colors: PlayerColors,
     titleActions: PlayerTitleActions,
+    onMenuClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val likeLabel = stringResource(R.string.player_like)
+    val moreLabel = stringResource(R.string.player_more_options)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier =
             modifier
                 .fillMaxWidth()
-                .padding(
-                    start = PlayerHorizontalPadding,
-                    // The button's glyph on the keyline; the title alone reaches the keyline itself.
-                    end = if (onToggleFavorite != null) PlayerButtonRowPadding else PlayerHorizontalPadding,
-                ),
+                .padding(horizontal = PlayerHorizontalPadding),
     ) {
         Column(modifier = Modifier.weight(1f)) {
             PlayerTitleSection(
@@ -341,15 +342,12 @@ private fun DefaultTitleRow(
             )
         }
 
-        if (onToggleFavorite != null) {
-            Spacer(modifier = Modifier.width(12.dp))
-            // The player's accent, as everything that is on in it.
-            PlayerBarButton(
-                icon = favoriteIcon(isFavorite),
-                contentDescription = stringResource(R.string.player_like),
-                color = if (isFavorite) colors.button else colors.content,
-                onClick = onToggleFavorite,
-            )
+        Spacer(modifier = Modifier.width(12.dp))
+        PlayerButtonGroup {
+            if (onToggleFavorite != null) {
+                playerButton(favoriteIcon(isFavorite), likeLabel, colors.content, onToggleFavorite, checked = isFavorite)
+            }
+            playerButton(PlayerIcons.More, moreLabel, colors.content, onMenuClick)
         }
     }
 }
@@ -365,8 +363,10 @@ internal fun DefaultSeekBar(
     duration: Long,
     onSliderValueChange: (Long) -> Unit,
     onSliderValueChangeFinished: () -> Unit,
+    viewModel: PlayerViewModel,
     modifier: Modifier = Modifier,
 ) {
+    val showsTotalDuration by viewModel.showsTotalDuration.collectAsStateWithLifecycle()
     Box(modifier = modifier.fillMaxWidth()) {
         PlayerSlider(
             sliderStyle = sliderStyle,
@@ -380,19 +380,22 @@ internal fun DefaultSeekBar(
         )
 
         // Beneath the thumb, not the touch target it is centred in.
-        PlayerTimeLabel(
-            sliderPosition = sliderPosition,
-            position = position,
-            duration = duration,
-            textBackgroundColor = colors.content,
-            modifier = Modifier.padding(top = (PlayerSeekBarHeight + PlayerSeekThumbSize.height) / 2 + PlayerSeekTimeGap),
+        PlayerTimes(
+            positionMs = sliderPosition ?: position,
+            durationMs = duration,
+            showsTotalDuration = showsTotalDuration,
+            onToggleEndTime = viewModel::onToggleEndTime,
+            color = colors.content,
+            modifier = Modifier
+                .padding(top = (PlayerSeekBarHeight + PlayerSeekThumbSize.height) / 2 + PlayerSeekTimeGap)
+                .padding(horizontal = PlayerHorizontalPadding),
         )
     }
 }
 
 /**
- * Shuffle at the start and repeat at the end, each lit while on, either side of previous, play/pause and next - which keep
- * as far apart as the row allows, up to [PlayerTransportGap].
+ * Shuffle at the start and repeat at the end, each on while on, either side of previous, play/pause and next - all five one
+ * button group, answering each other's presses, as far apart as the row allows - see [PlayerControls.transportGap].
  *
  * While the [lyrics] are open in the player, shuffle is their menu and repeat their close; with [hidesControls], the three
  * in the middle fade, leaving the two corners to the lyrics. The lyrics sheet draws it too, in the same place.
@@ -407,120 +410,111 @@ internal fun DefaultTransportControls(
     viewModel: PlayerViewModel,
     modifier: Modifier = Modifier,
 ) {
-    val contentColor = colors.content
     val haptic = LocalHapticFeedback.current
     val areMiddleControlsAway = hidesControls && lyrics.isOpenInPlayer
-    val middleControlsFade =
-        Modifier.graphicsLayer { alpha = if (hidesControls) 1f - lyrics.phase(0f, 0.3f) else 1f }
-    val skipColors = IconButtonDefaults.iconButtonColors(contentColor = contentColor, disabledContentColor = contentColor.copy(alpha = 0.38f))
-
-    val onPlayPause = {
-        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-        viewModel.onTogglePlayPause()
+    val withHaptic = { action: () -> Unit ->
+        {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            action()
+        }
     }
-    val onPrevious = {
-        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-        viewModel.onSkipPrevious()
-    }
-    val onNext = {
-        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-        viewModel.onSkipNext()
-    }
+    val shuffleLabel = stringResource(R.string.player_shuffle)
+    val repeatLabel = stringResource(R.string.player_repeat)
+    val lyricsMenuLabel = stringResource(R.string.player_more_options)
+    val lyricsCloseLabel = stringResource(R.string.player_close)
 
     BoxWithConstraints(
+        contentAlignment = Alignment.Center,
         modifier =
             modifier
                 .fillMaxWidth()
-                .padding(horizontal = PlayerButtonRowPadding)
+                .padding(horizontal = PlayerHorizontalPadding)
                 .height(PlayerPlayButtonSize),
     ) {
-        val middleWidth = PlayerSkipButtonSize * 2 + PlayerPlayButtonSize
-        val gap = ((maxWidth - (PlayerBarButtonSize + TransportCornerClearance) * 2 - middleWidth) / 2).coerceIn(0.dp, PlayerTransportGap)
+        val gap = PlayerControls.transportGap(maxWidth, hasCorners = true)
 
-        LyricsCornerButton(
-            lyrics = lyrics,
-            colors = colors,
-            playerIcon = PlayerIcons.Shuffle,
-            playerContentDescription = stringResource(R.string.player_shuffle),
-            isPlayerToggleOn = playback.shuffleEnabled,
-            lyricsIcon = PlayerIcons.More,
-            lyricsContentDescription = stringResource(R.string.player_more_options),
-            turnsIn = false,
-            onPlayerClick = viewModel::onToggleShuffle,
-            onLyricsClick = lyrics::showMenu,
-            modifier = Modifier.align(Alignment.CenterStart),
-        )
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(gap),
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.align(Alignment.Center),
-        ) {
-            IconButton(
-                onClick = onPrevious,
-                shapes = iconButtonPressShapes(),
-                enabled = playback.canSkipPrevious && !areMiddleControlsAway,
-                colors = skipColors,
-                modifier = Modifier.size(PlayerSkipButtonSize).then(middleControlsFade),
-            ) {
-                Icon(PlayerIcons.SkipPrevious, stringResource(R.string.player_previous), Modifier.size(PlayerSkipIconSize))
-            }
-
-            FilledIconButton(
-                onClick = onPlayPause,
-                shapes = iconButtonPressShapes(),
-                enabled = !areMiddleControlsAway,
-                colors =
-                    IconButtonDefaults.filledIconButtonColors(
-                        containerColor = colors.button,
-                        contentColor = colors.onButton,
-                        disabledContainerColor = colors.button,
-                        disabledContentColor = colors.onButton,
-                    ),
-                modifier = Modifier.size(PlayerPlayButtonSize).then(middleControlsFade),
-            ) {
-                if (isLoading) {
-                    CircularWavyProgressIndicator(modifier = Modifier.size(PlayerPlayIconSize), color = colors.onButton)
-                } else {
-                    Icon(
-                        imageVector = playback.playPauseIcon(),
-                        contentDescription = stringResource(if (playback.isPlaying) R.string.player_pause else R.string.player_play),
-                        modifier = Modifier.size(PlayerPlayIconSize),
-                    )
-                }
-            }
-
-            IconButton(
-                onClick = onNext,
-                shapes = iconButtonPressShapes(),
-                enabled = playback.canSkipNext && !areMiddleControlsAway,
-                colors = skipColors,
-                modifier = Modifier.size(PlayerSkipButtonSize).then(middleControlsFade),
-            ) {
-                Icon(PlayerIcons.SkipNext, stringResource(R.string.player_next), Modifier.size(PlayerSkipIconSize))
-            }
-        }
-
-        LyricsCornerButton(
-            lyrics = lyrics,
-            colors = colors,
-            playerIcon = playback.repeatMode.transportIcon(),
-            playerContentDescription = stringResource(R.string.player_repeat),
-            isPlayerToggleOn = playback.repeatMode != RepeatMode.OFF,
-            lyricsIcon = PlayerIcons.Close,
-            lyricsContentDescription = stringResource(R.string.player_close),
-            turnsIn = true,
-            onPlayerClick = viewModel::onCycleRepeatMode,
-            onLyricsClick = lyrics::close,
-            modifier = Modifier.align(Alignment.CenterEnd),
+        PlayerTransport(
+            playIcon = playback.playPauseIcon(),
+            playLabel = stringResource(if (playback.isPlaying) R.string.player_pause else R.string.player_play),
+            isPaused = !playback.isPlaying,
+            onPlayPause = withHaptic(viewModel::onTogglePlayPause),
+            onPrevious = withHaptic(viewModel::onSkipPrevious),
+            onNext = withHaptic(viewModel::onSkipNext),
+            colors = PlayerTransportColors(content = colors.content, playContainer = colors.button, playContent = colors.onButton),
+            isLoading = isLoading,
+            enabled = !areMiddleControlsAway,
+            spacing = gap,
+            controlsModifier = Modifier.graphicsLayer { alpha = if (hidesControls) 1f - lyrics.phase(0f, 0.3f) else 1f },
+            leading = {
+                lyricsCorner(
+                    lyrics = lyrics,
+                    colors = colors,
+                    playerIcon = PlayerIcons.Shuffle,
+                    playerContentDescription = shuffleLabel,
+                    isPlayerToggleOn = playback.shuffleEnabled,
+                    lyricsIcon = PlayerIcons.More,
+                    lyricsContentDescription = lyricsMenuLabel,
+                    turnsIn = false,
+                    onPlayerClick = viewModel::onToggleShuffle,
+                    onLyricsClick = lyrics::showMenu,
+                )
+            },
+            trailing = {
+                lyricsCorner(
+                    lyrics = lyrics,
+                    colors = colors,
+                    playerIcon = playback.repeatMode.transportIcon(),
+                    playerContentDescription = repeatLabel,
+                    isPlayerToggleOn = playback.repeatMode != RepeatMode.OFF,
+                    lyricsIcon = PlayerIcons.Close,
+                    lyricsContentDescription = lyricsCloseLabel,
+                    turnsIn = true,
+                    onPlayerClick = viewModel::onCycleRepeatMode,
+                    onLyricsClick = lyrics::close,
+                )
+            },
         )
     }
 }
 
+/** A [LyricsCornerButton] in the transport's group, pressing with the rest of it. */
+private fun ButtonGroupScope.lyricsCorner(
+    lyrics: PlayerLyricsState,
+    colors: PlayerColors,
+    playerIcon: ImageVector,
+    playerContentDescription: String,
+    isPlayerToggleOn: Boolean,
+    lyricsIcon: ImageVector,
+    lyricsContentDescription: String,
+    turnsIn: Boolean,
+    onPlayerClick: () -> Unit,
+    onLyricsClick: () -> Unit,
+) = customItem(
+    buttonGroupContent = {
+        val interactionSource = remember { MutableInteractionSource() }
+        LyricsCornerButton(
+            lyrics = lyrics,
+            colors = colors,
+            playerIcon = playerIcon,
+            playerContentDescription = playerContentDescription,
+            isPlayerToggleOn = isPlayerToggleOn,
+            lyricsIcon = lyricsIcon,
+            lyricsContentDescription = lyricsContentDescription,
+            turnsIn = turnsIn,
+            onPlayerClick = onPlayerClick,
+            onLyricsClick = onLyricsClick,
+            interactionSource = interactionSource,
+            modifier = Modifier.animateWidth(interactionSource),
+        )
+    },
+    // The transport always has the room for all five.
+    menuContent = {},
+)
+
 /**
- * A transport corner that is a player toggle - shuffle, repeat - lit while on, and, while the [lyrics] are open in the
- * player, one of theirs in its place: the toggle's glyph shrinks away as the lyrics' grows in. [turnsIn] turns the lyrics'
- * glyph into place as it comes - the way out of them.
+ * A transport corner that is a player toggle - shuffle, repeat - squared in the player's checked colours while on, and,
+ * while the [lyrics] are open in the player, one of theirs in its place: the toggle's glyph shrinks away as the lyrics'
+ * grows in. [turnsIn] turns the lyrics' glyph into place as it comes - the way out of them.
  */
 @Composable
 private fun LyricsCornerButton(
@@ -534,52 +528,56 @@ private fun LyricsCornerButton(
     turnsIn: Boolean,
     onPlayerClick: () -> Unit,
     onLyricsClick: () -> Unit,
+    interactionSource: MutableInteractionSource,
     modifier: Modifier = Modifier,
 ) {
     val isLyricsOpen = lyrics.isOpenInPlayer
-    Box(contentAlignment = Alignment.Center, modifier = modifier.size(PlayerBarButtonSize)) {
-        IconButton(
-            onClick = if (isLyricsOpen) onLyricsClick else onPlayerClick,
-            shapes = iconButtonPressShapes(),
-            colors = IconButtonDefaults.iconButtonColors(contentColor = colors.content),
-            modifier = Modifier.matchParentSize(),
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = playerIcon,
-                    contentDescription = if (isLyricsOpen) null else playerContentDescription,
-                    tint = if (isPlayerToggleOn) colors.button else colors.content.copy(alpha = InactiveToggleAlpha),
-                    modifier =
-                        Modifier
-                            .size(PlayerBarIconSize)
-                            .graphicsLayer {
-                                val swap = lyrics.phase(0.12f, 0.6f)
-                                alpha = 1f - swap
-                                scaleX = lerp(1f, 0.6f, swap)
-                                scaleY = scaleX
-                            },
-                )
-                Icon(
-                    imageVector = lyricsIcon,
-                    contentDescription = if (isLyricsOpen) lyricsContentDescription else null,
-                    tint = colors.content,
-                    modifier =
-                        Modifier
-                            .size(PlayerBarIconSize)
-                            .graphicsLayer {
-                                val swap = lyrics.phase(0.12f, 0.6f)
-                                alpha = swap
-                                scaleX = lerp(0.6f, 1f, swap)
-                                scaleY = scaleX
-                                if (turnsIn) rotationZ = lerp(-60f, 0f, swap)
-                            },
-                )
-            }
-        }
-        if (isPlayerToggleOn) {
-            PlayerLitDot(
-                color = colors.button,
-                modifier = Modifier.align(Alignment.BottomCenter).graphicsLayer { alpha = 1f - lyrics.phase(0.12f, 0.6f) },
+    // On only as the player's toggle: in the lyrics' place it is theirs, and never on.
+    val isOn = isPlayerToggleOn && !isLyricsOpen
+    IconToggleButton(
+        checked = isOn,
+        onCheckedChange = { if (isLyricsOpen) onLyricsClick() else onPlayerClick() },
+        shapes = iconTogglePressShapes(),
+        colors = IconToggleButtonColors(
+            containerColor = Color.Transparent,
+            contentColor = colors.content,
+            disabledContainerColor = Color.Transparent,
+            disabledContentColor = colors.content,
+            checkedContainerColor = colors.checked.container,
+            checkedContentColor = colors.checked.content,
+        ),
+        interactionSource = interactionSource,
+        modifier = modifier.size(PlayerBarButtonSize),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = playerIcon,
+                contentDescription = if (isLyricsOpen) null else playerContentDescription,
+                tint = if (isOn) colors.checked.content else colors.content.copy(alpha = InactiveToggleAlpha),
+                modifier =
+                    Modifier
+                        .size(PlayerBarIconSize)
+                        .graphicsLayer {
+                            val swap = lyrics.phase(0.12f, 0.6f)
+                            alpha = 1f - swap
+                            scaleX = lerp(1f, 0.6f, swap)
+                            scaleY = scaleX
+                        },
+            )
+            Icon(
+                imageVector = lyricsIcon,
+                contentDescription = if (isLyricsOpen) lyricsContentDescription else null,
+                tint = colors.content,
+                modifier =
+                    Modifier
+                        .size(PlayerBarIconSize)
+                        .graphicsLayer {
+                            val swap = lyrics.phase(0.12f, 0.6f)
+                            alpha = swap
+                            scaleX = lerp(0.6f, 1f, swap)
+                            scaleY = scaleX
+                            if (turnsIn) rotationZ = lerp(-60f, 0f, swap)
+                        },
             )
         }
     }

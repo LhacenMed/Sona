@@ -7,6 +7,7 @@ import android.view.SurfaceView
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -17,11 +18,9 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -57,7 +56,6 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.common.permission.AppPermission
@@ -73,20 +71,23 @@ import com.lhacenmed.sona.feature.video.controls.BatteryClock
 import com.lhacenmed.sona.feature.video.controls.ResumePrompt
 import com.lhacenmed.sona.feature.video.controls.VideoAction
 import com.lhacenmed.sona.feature.video.controls.VideoBarButton
-import com.lhacenmed.sona.feature.video.controls.VideoButtonGroup
 import com.lhacenmed.sona.feature.video.controls.VideoControlSlots
 import com.lhacenmed.sona.feature.video.controls.VideoControlsLayout
 import com.lhacenmed.sona.feature.video.controls.VideoControlsState
 import com.lhacenmed.sona.feature.video.controls.VideoElapsedTime
 import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
+import com.lhacenmed.sona.core.designsystem.player.LocalPlayerCheckedColors
+import com.lhacenmed.sona.core.designsystem.player.PlayerButtonGroup
+import com.lhacenmed.sona.core.designsystem.player.PlayerCheckedColors
+import com.lhacenmed.sona.core.designsystem.player.playerTextButton
 import com.lhacenmed.sona.feature.video.controls.VideoPosition
-import com.lhacenmed.sona.feature.video.controls.VideoRemainingTime
+import com.lhacenmed.sona.feature.video.controls.VideoEndTime
+import com.lhacenmed.sona.feature.video.controls.VideoTimes
 import com.lhacenmed.sona.feature.video.controls.VideoSeekBar
 import com.lhacenmed.sona.feature.video.controls.VideoTopBar
 import com.lhacenmed.sona.feature.video.controls.VideoTransport
 import com.lhacenmed.sona.feature.video.controls.rememberIsResumePromptDue
 import com.lhacenmed.sona.feature.video.controls.rememberVideoPosition
-import com.lhacenmed.sona.feature.video.controls.speedButton
 import com.lhacenmed.sona.feature.video.controls.videoButton
 import com.lhacenmed.sona.feature.video.gesture.GestureFeedback
 import com.lhacenmed.sona.feature.video.gesture.GestureFeedbackLayer
@@ -94,7 +95,6 @@ import com.lhacenmed.sona.feature.video.gesture.GestureFeedbackState
 import com.lhacenmed.sona.feature.video.gesture.ScreenHalf
 import com.lhacenmed.sona.feature.video.gesture.TapZone
 import com.lhacenmed.sona.feature.video.gesture.VideoGestureActions
-import com.lhacenmed.sona.feature.video.gesture.label
 import com.lhacenmed.sona.feature.video.gesture.videoGestures
 import com.lhacenmed.sona.feature.video.panel.MorePanel
 import com.lhacenmed.sona.feature.video.panel.PlayerPanelHost
@@ -111,7 +111,6 @@ import com.lhacenmed.sona.feature.video.subtitle.SubtitleSource
 import com.lhacenmed.sona.feature.video.surface.VideoFrame
 import com.lhacenmed.sona.feature.video.surface.VideoSurface
 import com.lhacenmed.sona.feature.video.surface.VideoZoomState
-import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -145,6 +144,7 @@ internal fun VideoPlayerScreen(
     val session by viewModel.session.collectAsStateWithLifecycle()
     val gestureSettings by viewModel.gestureSettings.collectAsStateWithLifecycle()
     val showClock by viewModel.showClock.collectAsStateWithLifecycle()
+    val showsTotalDuration by viewModel.showsTotalDuration.collectAsStateWithLifecycle()
     val subtitles by viewModel.subtitles.state.collectAsStateWithLifecycle()
     val subtitleStyle by viewModel.subtitleStyle.collectAsStateWithLifecycle()
     val current = playback.current
@@ -232,14 +232,6 @@ internal fun VideoPlayerScreen(
         videoHeight = pictureSize[1],
         positionMs = viewModel::currentPositionMs,
     )
-    val cycleOrientation = {
-        viewModel.onCycleOrientation()
-        feedback.flash(GestureFeedback.Orientation(session.orientation.next()))
-    }
-    val cycleAspect = {
-        viewModel.onCycleAspect()
-        feedback.flash(GestureFeedback.Aspect(session.aspect.next()))
-    }
 
     val gestureActions = rememberUpdatedState(
         videoGestureActions(
@@ -272,8 +264,6 @@ internal fun VideoPlayerScreen(
             videoWidth = pictureSize[0],
             videoHeight = pictureSize[1],
             zoom = zoom,
-            reservedTop = if (isLandscape) 0.dp else videoSafeArea.asPaddingValues().calculateTopPadding() + VideoPlayerTokens.BarButtonSize,
-            reservedBottom = if (isLandscape) 0.dp else portraitFootMargin + VideoPlayerTokens.PortraitControlsHeight,
             modifier = Modifier.fillMaxSize(),
         ) {
             VideoSurface(
@@ -310,14 +300,11 @@ internal fun VideoPlayerScreen(
         if (isFloating) return@Box
 
         val showsLoader = isLoaderShown
-        if (showsLoader) {
-            // In landscape, exactly where the play button stands; in portrait, over the picture, the controls being at the foot.
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.fillMaxSize().then(
-                    if (isLandscape) Modifier.windowInsetsPadding(videoSafeArea) else Modifier.offset { IntOffset(0, zoom.frameShiftPx.roundToInt()) },
-                ),
-            ) {
+        // In landscape the play button, in the middle of the picture, shows it while the controls are up.
+        val isLoaderInTransport = isLandscape && areControlsUp
+        if (showsLoader && !isLoaderInTransport) {
+            // In the middle of the picture: in landscape exactly where the play button stands.
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                 ContainedLoadingIndicator(containerColor = VideoPlayerTokens.PillColor, indicatorColor = VideoPlayerTokens.ContentColor)
             }
         }
@@ -369,8 +356,8 @@ internal fun VideoPlayerScreen(
                     position = position,
                     isLandscape = isLandscape,
                     isShowingSubtitles = subtitles.source is SubtitleSource.FromFile || subtitles.source is SubtitleSource.Embedded,
-                    isLoading = showsLoader,
-                    pictureShiftPx = { zoom.frameShiftPx },
+                    isLoading = showsLoader && isLoaderInTransport,
+                    showsTotalDuration = showsTotalDuration,
                     session = session,
                     scrub = scrub,
                     viewModel = viewModel,
@@ -379,8 +366,8 @@ internal fun VideoPlayerScreen(
                         viewModel.onLockedChange(true)
                         controls.show()
                     },
-                    onCycleOrientation = cycleOrientation,
-                    onCycleAspect = cycleAspect,
+                    onCycleOrientation = viewModel::onCycleOrientation,
+                    onCycleAspect = viewModel::onCycleAspect,
                     onFloat = onFloat,
                     onOpenPanel = { panel = it },
                 )
@@ -446,7 +433,7 @@ private fun PlayerControls(
     isLandscape: Boolean,
     isShowingSubtitles: Boolean,
     isLoading: Boolean,
-    pictureShiftPx: () -> Float,
+    showsTotalDuration: Boolean,
     session: VideoSession,
     scrub: VideoScrubState,
     viewModel: VideoPlayerViewModel,
@@ -460,12 +447,11 @@ private fun PlayerControls(
     val durationMs = playback.durationMs
     val topActions = listOf(
         VideoAction(PlayerIcons.Headphones, stringResource(R.string.video_play_as_audio), viewModel::onPlayAsAudio),
-        VideoAction(PlayerIcons.Queue, stringResource(R.string.video_queue), { onOpenPanel(VideoPanel.QUEUE) }),
         VideoAction(
             icon = PlayerIcons.Captions,
             label = stringResource(R.string.video_tracks),
             onClick = { onOpenPanel(VideoPanel.TRACKS) },
-            tint = if (isShowingSubtitles) VideoPlayerTokens.Accent else VideoPlayerTokens.ContentColor,
+            checked = isShowingSubtitles,
         ),
         VideoAction(PlayerIcons.More, stringResource(R.string.video_more), { onOpenPanel(VideoPanel.MORE) }),
     )
@@ -474,35 +460,45 @@ private fun PlayerControls(
     val trailingActions = listOf(
         VideoAction(PlayerIcons.Fit, stringResource(R.string.video_aspect), onCycleAspect),
         VideoAction(PlayerIcons.PictureInPicture, stringResource(R.string.video_floating_window), onClick = onFloat),
-        VideoAction(PlayerIcons.Rotate, session.orientation.label(), onCycleOrientation),
+        VideoAction(session.orientation.icon, stringResource(session.orientation.labelRes), onCycleOrientation),
+        VideoAction(PlayerIcons.Queue, stringResource(R.string.video_queue), { onOpenPanel(VideoPanel.QUEUE) }),
     )
-    VideoControlsLayout(
-        isLandscape = isLandscape,
-        pictureShiftPx = pictureShiftPx,
-        slots = VideoControlSlots(
-            topBar = { VideoTopBar(title, onClose, topActions) },
-            transport = { modifier ->
-                VideoTransport(
-                    isPlaying = playback.isPlaying,
-                    isLoading = isLoading,
-                    onTogglePlayPause = viewModel::onTogglePlayPause,
-                    onSkipPrevious = { viewModel.onSkipPrevious() }.takeIf { playback.canSkipPrevious },
-                    onSkipNext = { viewModel.onSkipNext() }.takeIf { playback.canSkipNext },
-                    modifier = modifier,
-                )
-            },
-            seekBar = { modifier -> VideoSeekBar(position, durationMs, scrub, modifier) },
-            elapsedTime = { modifier -> VideoElapsedTime(position, scrub, modifier) },
-            remainingTime = { modifier -> VideoRemainingTime(position, durationMs, scrub, modifier) },
-            leadingActions = { VideoBarButton(VideoAction(PlayerIcons.LockOpen, stringResource(R.string.video_lock), onLock)) },
-            trailingActions = {
-                VideoButtonGroup {
-                    speedButton(speed, speedName) { onOpenPanel(VideoPanel.SPEED) }
-                    trailingActions.forEach { videoButton(it) }
-                }
-            },
-        ),
-    )
+    // Every control within it that is on - the subtitles shown, play while paused - in the player's own second accent.
+    val checkedColors = remember { PlayerCheckedColors(VideoPlayerTokens.CheckedContainer, VideoPlayerTokens.OnCheckedContainer) }
+    CompositionLocalProvider(LocalPlayerCheckedColors provides checkedColors) {
+        VideoControlsLayout(
+            isLandscape = isLandscape,
+            slots = VideoControlSlots(
+                topBar = { VideoTopBar(title, onClose, topActions) },
+                transport = { modifier ->
+                    VideoTransport(
+                        isPlaying = playback.isPlaying,
+                        isLoading = isLoading,
+                        isLandscape = isLandscape,
+                        isShuffled = playback.isShuffled,
+                        repeatMode = playback.repeatMode,
+                        onTogglePlayPause = viewModel::onTogglePlayPause,
+                        onSkipPrevious = { viewModel.onSkipPrevious() }.takeIf { playback.canSkipPrevious },
+                        onSkipNext = { viewModel.onSkipNext() }.takeIf { playback.canSkipNext },
+                        onToggleShuffle = viewModel::onToggleShuffle,
+                        onCycleRepeatMode = viewModel::onCycleRepeatMode,
+                        modifier = modifier,
+                    )
+                },
+                seekBar = { modifier -> VideoSeekBar(position, durationMs, scrub, modifier) },
+                times = { modifier -> VideoTimes(position, durationMs, scrub, showsTotalDuration, viewModel::onToggleEndTime, modifier) },
+                elapsedTime = { modifier -> VideoElapsedTime(position, scrub, modifier) },
+                endTime = { modifier -> VideoEndTime(position, durationMs, scrub, showsTotalDuration, viewModel::onToggleEndTime, modifier) },
+                leadingActions = { VideoBarButton(VideoAction(PlayerIcons.LockOpen, stringResource(R.string.video_lock), onLock)) },
+                trailingActions = {
+                    PlayerButtonGroup {
+                        playerTextButton(speed, speedName, VideoPlayerTokens.ContentColor) { onOpenPanel(VideoPanel.SPEED) }
+                        trailingActions.forEach { videoButton(it) }
+                    }
+                },
+            ),
+        )
+    }
 }
 
 /**

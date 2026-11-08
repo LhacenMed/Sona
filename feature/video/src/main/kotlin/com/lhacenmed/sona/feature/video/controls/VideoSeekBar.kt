@@ -20,23 +20,22 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
-import com.lhacenmed.sona.feature.video.PlayerText
+import com.lhacenmed.sona.core.designsystem.player.PlayerElapsedTime
+import com.lhacenmed.sona.core.designsystem.player.PlayerEndTime
+import com.lhacenmed.sona.core.designsystem.player.PlayerTimes
 import com.lhacenmed.sona.feature.video.VideoPlayerTokens
-import com.lhacenmed.sona.feature.video.VideoPlayerType
-import com.lhacenmed.sona.feature.video.formatRemainingTime
-import com.lhacenmed.sona.feature.video.formatVideoTime
 import com.lhacenmed.sona.feature.video.scrub.VideoScrubState
 
-/** The widest the thumb is drawn, kept for it whatever its size, so the track never moves under the finger. */
-private val ThumbSlot = VideoPlayerTokens.ScrubThumbRadius * 2
+/** The widest and tallest the thumb is drawn, kept for it whatever its size, so the track never moves under the finger. */
+private val ThumbSlot = VideoPlayerTokens.ScrubThumbSize
 
 /**
- * Material's slider, for its dragging, touch target and accessibility, drawn as the player's: a thin track saying how far the
- * video is, swelling under a scrub. Its thumb snaps back to where a scrub began - see [VideoScrubState.dragTo].
+ * Material's slider, for its dragging, touch target and accessibility, drawn as every player's: an upright thumb, and a thin
+ * track either side of it, kept clear of it, saying how far the video is - all swelling under a scrub. Its thumb snaps back
+ * to where a scrub began - see [VideoScrubState.dragTo].
  *
  * Everything that moves is read as it is drawn, so a scrub draws this again and composes nothing beyond the slider's own value.
  */
@@ -73,7 +72,13 @@ internal fun VideoSeekBar(
         interactionSource = interactionSource,
         thumb = {
             Canvas(Modifier.size(ThumbSlot)) {
-                drawCircle(VideoPlayerTokens.Accent, lerp(VideoPlayerTokens.ThumbRadius, VideoPlayerTokens.ScrubThumbRadius, scrubProgress.value).toPx())
+                val thumb = lerp(VideoPlayerTokens.ThumbSize, VideoPlayerTokens.ScrubThumbSize, scrubProgress.value).toSize()
+                drawRoundRect(
+                    color = VideoPlayerTokens.Accent,
+                    topLeft = Offset((size.width - thumb.width) / 2f, (size.height - thumb.height) / 2f),
+                    size = thumb,
+                    cornerRadius = CornerRadius(thumb.width / 2f),
+                )
             }
         },
         track = { sliderState ->
@@ -84,8 +89,10 @@ internal fun VideoSeekBar(
                     .onGloballyPositioned { scrub.trackBounds = it.boundsInRoot() },
             ) {
                 val height = lerp(VideoPlayerTokens.SeekTrackHeight, VideoPlayerTokens.ScrubTrackHeight, scrubProgress.value).toPx()
-                drawSeekTrack(height, 1f, VideoPlayerTokens.TrackColor)
-                drawSeekTrack(height, sliderState.coercedValueAsFraction, VideoPlayerTokens.Accent)
+                val fraction = sliderState.coercedValueAsFraction
+                val gap = VideoPlayerTokens.ThumbGap.toPx() / size.width.coerceAtLeast(1f)
+                drawSeekTrack(height, fraction + gap, 1f, VideoPlayerTokens.TrackColor)
+                drawSeekTrack(height, 0f, fraction - gap, VideoPlayerTokens.Accent)
             }
         },
         modifier = modifier,
@@ -95,35 +102,49 @@ internal fun VideoSeekBar(
 /** How far the video is - or a scrub has reached, as the bar stands. */
 @Composable
 internal fun VideoElapsedTime(position: VideoPosition, scrub: VideoScrubState, modifier: Modifier = Modifier) {
-    PlayerText(text = formatVideoTime(scrub.shownPositionMs(position.positionMs)), style = VideoPlayerType.Time, modifier = modifier)
+    PlayerElapsedTime(scrub.shownPositionMs(position.positionMs), VideoPlayerTokens.ContentColor, modifier)
 }
 
-/** How much is left of the video from where the bar stands. */
+/** The time at the seek bar's end, from where the bar stands - see [PlayerEndTime]. */
 @Composable
-internal fun VideoRemainingTime(
+internal fun VideoEndTime(
     position: VideoPosition,
     durationMs: Long,
     scrub: VideoScrubState,
+    showsTotalDuration: Boolean,
+    onToggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    PlayerText(
-        text = formatRemainingTime(durationMs - scrub.shownPositionMs(position.positionMs)),
-        style = VideoPlayerType.Time,
-        color = VideoPlayerTokens.SecondaryContent,
-        textAlign = TextAlign.End,
-        modifier = modifier,
-    )
+    PlayerEndTime(scrub.shownPositionMs(position.positionMs), durationMs, showsTotalDuration, onToggle, VideoPlayerTokens.ContentColor, modifier)
+}
+
+/** Both times, beneath the seek bar - see [PlayerTimes]. */
+@Composable
+internal fun VideoTimes(
+    position: VideoPosition,
+    durationMs: Long,
+    scrub: VideoScrubState,
+    showsTotalDuration: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    PlayerTimes(scrub.shownPositionMs(position.positionMs), durationMs, showsTotalDuration, onToggle, VideoPlayerTokens.ContentColor, modifier)
 }
 
 private fun fractionOf(positionMs: Long, durationMs: Long): Float =
     if (durationMs > 0L) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
 
 /** A pill along the track from its start to [fraction] of it - from the right, where text runs that way. */
-internal fun DrawScope.drawSeekTrack(height: Float, fraction: Float, color: Color) {
-    val width = size.width * fraction
+internal fun DrawScope.drawSeekTrack(height: Float, fraction: Float, color: Color) = drawSeekTrack(height, 0f, fraction, color)
+
+/** A pill along the track from [from] to [to] of it - nothing where they leave no room - from the right where text runs that way. */
+private fun DrawScope.drawSeekTrack(height: Float, from: Float, to: Float, color: Color) {
+    val start = size.width * from.coerceIn(0f, 1f)
+    val width = size.width * to.coerceIn(0f, 1f) - start
+    if (width <= 0f) return
     drawRoundRect(
         color = color,
-        topLeft = Offset(if (layoutDirection == LayoutDirection.Rtl) size.width - width else 0f, (size.height - height) / 2f),
+        topLeft = Offset(if (layoutDirection == LayoutDirection.Rtl) size.width - start - width else start, (size.height - height) / 2f),
         size = Size(width, height),
         cornerRadius = CornerRadius(height / 2f),
     )

@@ -24,10 +24,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AspectRatio
-import androidx.compose.material.icons.rounded.ScreenLockLandscape
-import androidx.compose.material.icons.rounded.ScreenLockPortrait
-import androidx.compose.material.icons.rounded.ScreenRotation
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -47,15 +43,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.lhacenmed.sona.core.datastore.VideoAspect
-import com.lhacenmed.sona.core.datastore.VideoOrientation
 import com.lhacenmed.sona.feature.video.PlayerText
 import com.lhacenmed.sona.feature.video.R
 import com.lhacenmed.sona.feature.video.VideoPlayerTokens
 import com.lhacenmed.sona.feature.video.VideoPlayerType
 import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
 import com.lhacenmed.sona.feature.video.formatSeekSeconds
-import com.lhacenmed.sona.feature.video.label
 import com.lhacenmed.sona.feature.video.speedLabel
 import com.lhacenmed.sona.feature.video.videoSafeArea
 import kotlin.math.roundToInt
@@ -74,10 +67,6 @@ internal sealed interface GestureFeedback {
     data class Volume(val level: Float) : GestureFeedback
 
     data class Speed(val speed: Float) : PillFeedback
-
-    data class Aspect(val aspect: VideoAspect) : PillFeedback
-
-    data class Orientation(val orientation: VideoOrientation) : PillFeedback
 }
 
 /** Feedback with no place of its own, shown on a pill beneath the top bar, clear of the transport. */
@@ -275,31 +264,9 @@ private fun FeedbackPill(feedback: PillFeedback) {
 private val PillFeedback.icon: ImageVector
     get() = when (this) {
         is GestureFeedback.Speed -> Icons.Rounded.Speed
-        is GestureFeedback.Aspect -> Icons.Rounded.AspectRatio
-        is GestureFeedback.Orientation -> orientation.icon
     }
-
-/** The rotation button's icon for each way of standing - and its feedback's. */
-internal val VideoOrientation.icon: ImageVector
-    get() = when (this) {
-        VideoOrientation.AUTO -> Icons.Rounded.ScreenRotation
-        VideoOrientation.PORTRAIT -> Icons.Rounded.ScreenLockPortrait
-        VideoOrientation.LANDSCAPE -> Icons.Rounded.ScreenLockLandscape
-    }
-
-@Composable
-internal fun VideoOrientation.label(): String =
-    stringResource(
-        when (this) {
-            VideoOrientation.AUTO -> R.string.video_rotation_auto
-            VideoOrientation.PORTRAIT -> R.string.video_rotation_portrait
-            VideoOrientation.LANDSCAPE -> R.string.video_rotation_landscape
-        },
-    )
 
 @Composable
 private fun PillFeedback.text(): String = when (this) {
     is GestureFeedback.Speed -> speedLabel(speed)
-    is GestureFeedback.Aspect -> aspect.label()
-    is GestureFeedback.Orientation -> orientation.label()
 }
