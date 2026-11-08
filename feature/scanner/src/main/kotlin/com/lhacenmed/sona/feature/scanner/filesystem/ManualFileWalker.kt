@@ -110,10 +110,6 @@ class ManualFileWalker @Inject constructor(
             val album = if (isVideo) folderName else retriever.tagText(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: folderName
             val trackNumber = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER).firstNumber()
             val discNumber = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DISC_NUMBER).firstNumber()
-            // A date may be written whole - "2019-05-03" - as MP4 keeps it: its year is what leads it.
-            val year = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_YEAR)
-                ?.let { Regex("\\d{4}").find(it)?.value?.toInt() }
-                ?.takeIf { it > 0 }
             val genre = retriever.tagText(MediaMetadataRetriever.METADATA_KEY_GENRE).takeUnless { isVideo }
             val dateAddedSeconds = runCatching { File(path).lastModified() / 1000L }.getOrDefault(0L)
 
@@ -135,7 +131,8 @@ class ManualFileWalker @Inject constructor(
                 durationMs = durationMs,
                 trackNumber = trackNumber,
                 discNumber = discNumber,
-                year = year,
+                // Read from the file with every other track's - see FileYears.
+                year = null,
                 dateAddedSeconds = dateAddedSeconds,
                 // Its own cover, as every track's and video's is, stamped with its latest change.
                 coverArtUri = Uri.fromFile(File(path)).withCoverVersion(File(path).lastModified()),

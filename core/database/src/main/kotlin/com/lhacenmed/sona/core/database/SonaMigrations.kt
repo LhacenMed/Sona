@@ -413,6 +413,13 @@ val MIGRATION_22_23 = object : Migration(22, 23) {
     }
 }
 
+/** The years read from files MediaStore gives none - see `FileYearEntity`. A table of its own, starting empty. */
+val MIGRATION_23_24 = object : Migration(23, 24) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS `file_years` (`path` TEXT NOT NULL, `signature` INTEGER NOT NULL, `year` INTEGER, PRIMARY KEY(`path`))")
+    }
+}
+
 /**
  * Makes sure Favorites exists, every time the database is opened.
  *

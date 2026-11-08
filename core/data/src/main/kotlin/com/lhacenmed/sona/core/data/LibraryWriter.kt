@@ -8,6 +8,7 @@ import com.lhacenmed.sona.core.database.SonaDatabase
 import com.lhacenmed.sona.core.database.dao.AddedDateDao
 import com.lhacenmed.sona.core.database.dao.AlbumDao
 import com.lhacenmed.sona.core.database.dao.ArtistDao
+import com.lhacenmed.sona.core.database.dao.FileYearDao
 import com.lhacenmed.sona.core.database.dao.GenreDao
 import com.lhacenmed.sona.core.database.dao.HeldLyricsDao
 import com.lhacenmed.sona.core.database.dao.TrackDao
@@ -94,6 +95,7 @@ class LibraryWriter @Inject constructor(
     private val albumDao: AlbumDao,
     private val artistDao: ArtistDao,
     private val genreDao: GenreDao,
+    private val fileYearDao: FileYearDao,
     private val heldLyricsDao: HeldLyricsDao,
     private val mediaFingerprints: MediaFingerprints,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
@@ -165,6 +167,7 @@ class LibraryWriter @Inject constructor(
             trackDiff.deleted.mapNotNull { storedTracks[it]?.path }.chunked(MAX_BIND_ARGS).forEach { paths ->
                 addedDateDao.deleteByPaths(paths)
                 heldLyricsDao.deleteByPaths(paths)
+                fileYearDao.deleteByPaths(paths)
             }
 
             albumDiff.deleted.chunked(MAX_BIND_ARGS).forEach { albumDao.deleteByIds(it) }

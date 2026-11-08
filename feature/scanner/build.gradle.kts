@@ -33,6 +33,8 @@ dependencies {
     ksp(libs.hilt.compiler)
 
     implementation(libs.kotlinx.coroutines.android)
+    // Reads each music file's date as the tag editor writes it - the same TagLib, so what is written is what is read.
+    implementation(libs.taglib)
 
     testImplementation(libs.junit)
 }

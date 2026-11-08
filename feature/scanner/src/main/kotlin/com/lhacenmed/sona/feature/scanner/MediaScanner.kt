@@ -116,6 +116,7 @@ class MediaScanner @Inject constructor(
     private val librarySubtitles: LibrarySubtitleStore,
     private val trackDao: TrackDao,
     private val addedDateDao: AddedDateDao,
+    private val fileYears: FileYears,
     private val librarySettings: LibrarySettings,
     private val scanSettings: ScanSettings,
     mediaStoreChangeObserver: MediaStoreChangeObserver,
@@ -280,6 +281,9 @@ class MediaScanner @Inject constructor(
                 track.artistId !in artistIds
         }
 
+        // Dated before any album is made of them: an album is as old as most of its tracks.
+        tracks = fileYears.dated(tracks)
+
         // From here on every track names exactly one genre, and every genre is one row per name.
         tracks = canonicalGenreTracks(tracks, mediaStoreResult.genres)
 
@@ -313,7 +317,7 @@ class MediaScanner @Inject constructor(
         } else {
             // A refresh: MediaStore is all that changed, so what the last walk found is kept as is.
             storedUnindexedTracks(tracks + videos)
-        }.withAddedDates(addedDates).partition { it.isVideo }
+        }.withAddedDates(addedDates).let { fileYears.dated(it) }.partition { it.isVideo }
 
         if (manualTracks.isNotEmpty()) {
             val merged = mergeManualTracks(
