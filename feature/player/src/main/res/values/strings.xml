@@ -3,8 +3,16 @@
     <string name="player_collapse">Collapse player</string>
     <string name="player_equalizer">Equalizer</string>
     <string name="player_hidden_thumbnail">Cover hidden</string>
-    <!-- The line under "Now Playing": a collection's name, then what kind of collection it is. -->
-    <string name="player_playing_from_collection">%1$s • %2$s</string>
+    <!-- The header's second line: what kind of collection the queue plays from, then how much it holds. -->
+    <string name="player_playing_from_detail">%1$s · %2$s</string>
+    <plurals name="player_song_count">
+        <item quantity="one">1 song</item>
+        <item quantity="other">%d songs</item>
+    </plurals>
+    <plurals name="player_video_count">
+        <item quantity="one">1 video</item>
+        <item quantity="other">%d videos</item>
+    </plurals>
     <string name="player_playing_from_all_tracks">All tracks</string>
     <string name="player_playing_from_videos">Videos</string>
     <string name="player_playing_from_recently_played">Recent</string>
@@ -25,12 +33,12 @@
     <string name="player_more_options">More options</string>
     <string name="player_like">Like</string>
     <string name="player_shuffle_on">Shuffle on</string>
+    <string name="player_shuffle">Shuffle</string>
+    <string name="player_repeat">Repeat</string>
     <string name="player_play">Play</string>
     <string name="player_pause">Pause</string>
     <string name="player_previous">Previous</string>
     <string name="player_next">Next</string>
-    <string name="player_minimum_volume">Minimum Volume</string>
-    <string name="player_maximum_volume">Maximum Volume</string>
     <string name="player_seek_forward">+%1$d seconds forwards</string>
     <string name="player_seek_backward">-%1$d seconds backwards</string>
     <string name="player_removed_song_from_queue">Removed \"%s\" from queue</string>

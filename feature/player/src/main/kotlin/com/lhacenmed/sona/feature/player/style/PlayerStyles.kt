@@ -18,8 +18,9 @@ import com.lhacenmed.sona.feature.player.background.PlayerColors
 // expanded player, and the queue bar along its bottom - and says where its lyrics open; the rest of the
 // player (mini player, queue, lyrics, gestures, seeking) is shared by every style. Where the lyrics open in
 // the player, a style places their pill and makes way for the lyrics it opens into; where they open in their
-// own sheet, it places their line - the preview, which opens them - and its queue bar offers the way in too. These `when`s are exhaustive, so a new PlayerStyle entry
-// does not compile until it has a branch in each.
+// own sheet, it places their line - the preview, which opens them - and its queue bar offers the way in too, the
+// sheet drawing its seek bar, transport and queue bar again in their places. These `when`s are exhaustive, so a
+// new PlayerStyle entry does not compile until it has a branch in each.
 
 /** Where the style's lyrics open. */
 internal val PlayerStyle.lyricsPresentation: LyricsPresentation
@@ -89,28 +90,27 @@ internal fun PlayerStyle.ExpandedPlayer(
     }
 }
 
-/**
- * The bar the queue sheet shows while collapsed: the way into the queue, the sleep timer and - with
- * [onShowLyrics], for lyrics that open in their own sheet - the lyrics.
- */
+/** The bar the queue sheet shows while collapsed: the lyrics, the sleep timer and the way into the queue. */
 @Composable
 internal fun PlayerStyle.QueueBar(
-    contentColor: Color,
+    colors: PlayerColors,
+    isLyricsOpen: Boolean,
     sleepTimerEnabled: Boolean,
     sleepTimerTimeLeft: Long,
+    onToggleLyrics: () -> Unit,
     onExpandQueue: () -> Unit,
     onSleepTimerClick: () -> Unit,
-    onShowLyrics: (() -> Unit)?,
 ) {
     when (this) {
         PlayerStyle.DEFAULT, PlayerStyle.IMMERSIVE ->
             DefaultQueueBar(
-                contentColor = contentColor,
+                colors = colors,
+                isLyricsOpen = isLyricsOpen,
                 sleepTimerEnabled = sleepTimerEnabled,
                 sleepTimerTimeLeft = sleepTimerTimeLeft,
+                onToggleLyrics = onToggleLyrics,
                 onExpandQueue = onExpandQueue,
                 onSleepTimerClick = onSleepTimerClick,
-                onShowLyrics = onShowLyrics,
             )
     }
 }

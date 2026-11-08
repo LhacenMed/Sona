@@ -1,4 +1,4 @@
-package com.lhacenmed.sona.feature.video.controls
+package com.lhacenmed.sona.core.designsystem.icon
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -8,9 +8,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.unit.dp
 
-/** The player's own icon set: rounded strokes on a 24 unit grid, drawn once and tinted by whatever shows them. */
-internal object VideoIcons {
+/**
+ * The players' own icon set - the music player's and the video player's alike, so both speak one visual language:
+ * rounded strokes on a 24 unit grid, drawn once and tinted by whatever shows them.
+ */
+object PlayerIcons {
     val Back by lazy { strokeIcon("Back", "M15 5l-7 7 7 7") }
+    val ChevronDown by lazy { strokeIcon("ChevronDown", "M6 9l6 6 6-6") }
     val Close by lazy { strokeIcon("Close", "M6 6l12 12M18 6L6 18") }
     val Check by lazy { strokeIcon("Check", "M5 12.5l4.5 4.5L19 7.5", strokeWidth = 2f) }
     val Add by lazy { strokeIcon("Add", "M12 5v14M5 12h14") }
@@ -44,6 +48,40 @@ internal object VideoIcons {
         )
     }
     val Play by lazy { filledIcon("Play", "M7.7 5.6v12.8l10.4-6.4z", strokeWidth = 1.5f) }
+    val Replay by lazy { strokeIcon("Replay", "M4.5 12a7.5 7.5 0 1 0 2.2-5.3", "M4.5 4.5v4h4", strokeWidth = 2f) }
+    val Shuffle by lazy {
+        strokeIcon(
+            "Shuffle",
+            "M4 7h3c2 0 3.2 1 4.3 2.7l1.4 2.6C13.8 14 15 17 18 17h2",
+            "M4 17h3c1.3 0 2.2-.5 3-1.3",
+            "M14.3 8.3C15.2 7.5 16.3 7 18 7h2",
+            "M17.5 4.5L20 7l-2.5 2.5",
+            "M17.5 14.5L20 17l-2.5 2.5",
+        )
+    }
+    val Repeat by lazy { strokeIcon("Repeat", *RepeatLoop) }
+    val RepeatOne by lazy { strokeIcon("RepeatOne", *RepeatLoop, "M11 10.5l1.5-1v5") }
+
+    /** Repeat that stops once the track playing ends - the loop around a stop. */
+    val RepeatStop by lazy {
+        ImageVector.Builder("RepeatStop", 24.dp, 24.dp, 24f, 24f)
+            .apply { RepeatLoop.forEach { strokePath(it, 1.75f) } }
+            .fillPath("M10.6 10h2.8a.6.6 0 0 1 .6.6v2.8a.6.6 0 0 1-.6.6h-2.8a.6.6 0 0 1-.6-.6v-2.8a.6.6 0 0 1 .6-.6z", 0f)
+            .build()
+    }
+    val Lyrics by lazy {
+        strokeIcon(
+            "Lyrics",
+            "M6 4.5h12A2.5 2.5 0 0 1 20.5 7v8a2.5 2.5 0 0 1-2.5 2.5h-6l-4.5 3v-3H6A2.5 2.5 0 0 1 3.5 15V7A2.5 2.5 0 0 1 6 4.5z",
+            "M8 9.5h8M8 13h5",
+        )
+    }
+    val SleepTimer by lazy { strokeIcon("SleepTimer", "M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z") }
+    val Equalizer by lazy { strokeIcon("Equalizer", "M6 4v5M6 13v7M12 4v9M12 17v3M18 4v3M18 11v9", "M4 11h4M10 15h4M16 9h4") }
+    val Favorite by lazy {
+        ImageVector.Builder("Favorite", 24.dp, 24.dp, 24f, 24f).fillPath(HeartPath, 1.75f).build()
+    }
+    val FavoriteBorder by lazy { strokeIcon("FavoriteBorder", HeartPath) }
     val LockOpen by lazy {
         strokeIcon(
             "LockOpen",
@@ -88,6 +126,10 @@ internal object VideoIcons {
     /** Points back; drawn mirrored for the way forward. */
     val SeekChevron by lazy { filledIcon("SeekChevron", "M17 6v12L8 12z") }
 }
+
+private val RepeatLoop = arrayOf("M17 3.5l3 3-3 3", "M4 11.5v-1a4 4 0 0 1 4-4h12", "M7 20.5l-3-3 3-3", "M20 12.5v1a4 4 0 0 1-4 4H4")
+
+private const val HeartPath = "M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z"
 
 private fun skipIcon(name: String, bar: String, triangle: String): ImageVector =
     ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f).strokePath(bar, 2f).fillPath(triangle, 1.5f).build()

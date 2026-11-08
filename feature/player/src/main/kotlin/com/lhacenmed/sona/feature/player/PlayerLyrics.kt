@@ -1,6 +1,5 @@
 package com.lhacenmed.sona.feature.player
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
@@ -79,7 +78,7 @@ internal enum class LyricsPresentation {
     /** Grown in place from a pill above the seek bar: [PlayerLyrics]. */
     IN_PLAYER,
 
-    /** In a sheet of their own over the player, opened from its queue bar: [LyricsSheetTransition]. */
+    /** In a sheet of their own over the player, opened from its line or its queue bar: [LyricsSheetTransition]. */
     SHEET,
 }
 
@@ -92,8 +91,9 @@ internal enum class LyricsPresentation {
  * along [progress], each over its own part of it - [phase]. [PlayerLyrics] draws the pill and what it grows into
  * above the style.
  *
- * Otherwise they open from the queue bar into a sheet of their own over the player - [LyricsSheetTransition] - and
- * the style stays as it is: [progress] stays at 0.
+ * Otherwise they open from the player's line or its queue bar into a sheet of their own over the player -
+ * [LyricsSheetTransition] - and the style stays as it is: [progress] stays at 0. Back closes them either way - see
+ * `BottomSheetPlayer`.
  */
 @Stable
 internal class PlayerLyricsState(
@@ -203,7 +203,7 @@ internal fun Modifier.lyricsPane(state: PlayerLyricsState): Modifier =
 /**
  * The pill and the lyrics it grows into, laid over the player style that placed them, so the line in the pill
  * and the lines it opens onto are one surface. The open lyrics are laid out once, where they end up, and
- * revealed as the pill grows over them, so nothing is measured again while it moves. Back closes them.
+ * revealed as the pill grows over them, so nothing is measured again while it moves.
  */
 @Composable
 internal fun PlayerLyrics(
@@ -223,8 +223,6 @@ internal fun PlayerLyrics(
 ) {
     val timeline = lyrics.timeline
     val isFindingLyrics = lyrics.isFinding
-
-    BackHandler(enabled = state.isOpen, onBack = state::close)
 
     Box(
         modifier =

@@ -55,6 +55,7 @@ import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.datastore.PlayerStyle
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.SleepTimerState
+import com.lhacenmed.sona.feature.player.background.PlayerColors
 import com.lhacenmed.sona.feature.player.style.QueueBar
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -64,9 +65,9 @@ import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 /**
- * The queue: a bar along the bottom of the full player - queue and sleep timer, and the way into the [lyrics]
- * where they open in a sheet of their own, in the player style's own shape, sliding out of the way while they
- * are open in the player - that expands into the queue itself, where every row plays when tapped, moves by its
+ * The queue: a bar along the bottom of the full player - the [lyrics], the sleep timer and the queue, in the player
+ * style's own shape, sliding out of the way while the lyrics are open in the player - that expands into the queue
+ * itself, where every row plays when tapped, moves by its
  * handle, and is swiped towards its end to play next or towards its start to leave the queue, shuffled or
  * not. Ported from ArchiveTune's `Queue`.
  *
@@ -81,8 +82,8 @@ internal fun Queue(
     playerBottomSheetState: BottomSheetState,
     uiState: PlayerUiState,
     playerStyle: PlayerStyle,
-    // What the collapsed bar draws in: the player's own content colour, since it sits over the player.
-    barContentColor: Color,
+    // What the collapsed bar draws in: the player's own colours, since it sits over the player.
+    barColors: PlayerColors,
     sleepTimer: SleepTimerState,
     durationMs: Long,
     backgroundColor: Color,
@@ -143,12 +144,13 @@ internal fun Queue(
                     },
             ) {
                 playerStyle.QueueBar(
-                    contentColor = barContentColor,
+                    colors = barColors,
+                    isLyricsOpen = lyrics.isOpen,
                     sleepTimerEnabled = sleepTimerEnabled,
                     sleepTimerTimeLeft = sleepTimerTimeLeft,
+                    onToggleLyrics = { if (lyrics.isOpen) lyrics.close() else lyrics.open() },
                     onExpandQueue = openQueue,
                     onSleepTimerClick = onSleepTimerClick,
-                    onShowLyrics = if (lyrics.opensInPlayer) null else lyrics::open,
                 )
             }
         },

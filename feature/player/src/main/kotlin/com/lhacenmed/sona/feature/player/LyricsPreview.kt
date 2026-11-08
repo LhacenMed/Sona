@@ -39,12 +39,15 @@ import com.lhacenmed.sona.core.designsystem.theme.roundedShape
 import com.lhacenmed.sona.core.model.Track
 
 /** The size the line is drawn at, in sp - the player's own, whatever size the sheet's lyrics are set to. */
-private const val LyricsPreviewTextSize = 18f
+private const val LyricsPreviewTextSize = 15f
+
+/** How quiet the line is beneath the title - quieter than the artist, so the title leads. */
+private const val LyricsPreviewAlpha = 0.56f
 
 /**
- * The line playing, in the player - for lyrics that open in a sheet of their own, which a tap on it opens. It is
- * drawn, lit and moved on from as the sheet draws its lines, the lines before and after it seen only as they slide
- * through its faded top and bottom.
+ * The line playing, beneath the title - for lyrics that open in a sheet of their own, which a tap on it opens. It is
+ * drawn, lit and moved on from as the sheet draws its lines, quieter than the title, the lines before and after it seen
+ * only as they slide through its faded top and bottom.
  *
  * It is one row tall - a line too long for it cut short with an ellipsis - between a faded half row above and below,
  * so the player around it stays where it is whatever the track holds: while its lyrics are read, looked for or
@@ -68,6 +71,7 @@ internal fun LyricsPreview(
     val timeline = lyrics.timeline
     val lineHeight = with(LocalDensity.current) { (LyricsPreviewTextSize * LyricsWordLineHeight).sp.toDp() }
     val fadeHeight = lineHeight / 2
+    val lineColor = textColor.copy(alpha = LyricsPreviewAlpha)
 
     Box(
         contentAlignment = Alignment.Center,
@@ -93,7 +97,7 @@ internal fun LyricsPreview(
                     LyricsPreviewStatus(
                         isFinding = isFinding,
                         track = track,
-                        textColor = textColor,
+                        textColor = lineColor,
                         lyricsViewModel = lyricsViewModel,
                     )
                 }
@@ -108,7 +112,7 @@ internal fun LyricsPreview(
                     style = style,
                     lineHeight = lineHeight,
                     fadeHeight = fadeHeight,
-                    textColor = textColor,
+                    textColor = lineColor,
                 )
             }
         }
@@ -188,7 +192,7 @@ private fun LyricsPreviewLines(
     }
 }
 
-/** No lines to show: being looked for on the web, or none found - with the way to look for them again. */
+/** No lines to show: being looked for on the web, or none found - with the way to look for them again. In [textColor], already quiet. */
 @Composable
 private fun LyricsPreviewStatus(
     isFinding: Boolean,
@@ -212,7 +216,7 @@ private fun LyricsPreviewStatus(
             Spacer(Modifier.width(12.dp))
             Text(
                 text = stringResource(R.string.player_lyrics_finding),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 color = textColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -221,7 +225,7 @@ private fun LyricsPreviewStatus(
             Text(
                 text = stringResource(R.string.player_lyrics_not_found),
                 style = MaterialTheme.typography.bodyLarge,
-                color = textColor.copy(alpha = 0.6f),
+                color = textColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),

@@ -13,29 +13,20 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.foundation.hoverable
-import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderColors
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.SliderState
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
@@ -46,8 +37,8 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
@@ -82,7 +73,8 @@ internal data class SquigglesSpec(
 )
 
 /**
- * A slider whose played part is a travelling wave that flattens while dragged.
+ * A slider whose played part is a travelling wave that flattens while dragged - Material's own upright thumb between
+ * the wave and the rest of the track, each kept [PlayerSeekThumbGap] clear of it, as Material's flat track is.
  *
  * Built here rather than taken from the published artifact: that artifact calls a material3 `Slider`
  * overload which now survives only as a hidden binary-compatibility stub, one that drops `valueRange` -
@@ -97,9 +89,9 @@ internal fun SquigglySlider(
     onValueChangeFinished: () -> Unit,
     colors: SliderColors,
     squigglesSpec: SquigglesSpec,
+    interactionSource: MutableInteractionSource,
     modifier: Modifier = Modifier,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
     val animationProgress = rememberSquigglesAnimationProgress()
 
     Slider(
@@ -110,17 +102,7 @@ internal fun SquigglySlider(
         colors = colors,
         interactionSource = interactionSource,
         valueRange = valueRange,
-        thumb = {
-            SquigglyThumb(
-                interactionSource = interactionSource,
-                colors = colors,
-                thumbSize =
-                    DpSize(
-                        width = squigglesSpec.strokeWidth.coerceAtLeast(4.dp),
-                        height = (squigglesSpec.strokeWidth * 4).coerceAtLeast(16.dp),
-                    ),
-            )
-        },
+        thumb = { SliderDefaults.Thumb(interactionSource = interactionSource, colors = colors, thumbSize = PlayerSeekThumbSize) },
         track = { sliderState ->
             SquigglyTrack(
                 interactionSource = interactionSource,
@@ -131,32 +113,6 @@ internal fun SquigglySlider(
             )
         },
     )
-}
-
-@Composable
-private fun SquigglyThumb(
-    interactionSource: MutableInteractionSource,
-    colors: SliderColors,
-    thumbSize: DpSize,
-) {
-    Box(
-        modifier = Modifier.sizeIn(minWidth = 20.dp, minHeight = 20.dp), // Set by Slider.
-        contentAlignment = Alignment.Center,
-    ) {
-        Spacer(
-            Modifier
-                .size(thumbSize)
-                .indication(
-                    interactionSource = interactionSource,
-                    indication =
-                        ripple(
-                            bounded = false,
-                            radius = maxOf(thumbSize.width, thumbSize.height) + 4.dp,
-                        ),
-                ).hoverable(interactionSource = interactionSource)
-                .background(colors.thumbColor, RoundedCornerShape(4.dp)),
-        )
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -196,39 +152,43 @@ private fun SquigglyTrack(
                             ),
                     )
                 onDrawBehind {
+                    // Each part ends where Material's flat track would: the thumb's half and the gap short of its centre.
+                    val thumbWidth = PlayerSeekThumbSize.width.toPx()
+                    val clearance = thumbWidth / 2 + PlayerSeekThumbGap.toPx()
+                    val strokeWidth = squigglesSpec.strokeWidth.toPx()
+                    val thumbCentre = thumbWidth / 2 + (size.width - thumbWidth) * sliderState.valueFraction
+                    val playedEnd = thumbCentre - clearance
+                    val restStart = thumbCentre + clearance
                     val isRtl = layoutDirection == LayoutDirection.Rtl
-                    val sliderLeft = Offset(0f, center.y)
-                    val sliderRight = Offset(size.width, center.y)
-                    val sliderStart = if (isRtl) sliderRight else sliderLeft
-                    val sliderEnd = if (isRtl) sliderLeft else sliderRight
-                    val sliderValueEnd =
-                        Offset(
-                            x = sliderStart.x + (sliderEnd.x - sliderStart.x) * sliderState.valueFraction,
-                            y = center.y,
-                        )
-                    drawLine(
-                        color = inactiveTrackColor,
-                        start = sliderValueEnd,
-                        end = sliderEnd,
-                        strokeWidth = squigglesSpec.strokeWidth.toPx(),
-                        cap = StrokeCap.Round,
-                    )
-                    path.rewind()
-                    buildSquiggles(
-                        path = path,
-                        squigglesSpec = squigglesSpec.copy(amplitude = animatedAmplitude),
-                        startOffset = sliderStart,
-                        endOffset = sliderValueEnd,
-                        animationProgress = animationProgress.value,
-                    )
-                    // Clip the active track because it can exceed the
-                    // thumb's offset because of its rounded shape.
-                    clipRect(right = sliderValueEnd.x) {
-                        drawPath(
-                            path = path,
-                            color = activeTrackColor,
-                            style = pathStyle,
-                        )
+                    // Laid out from the left, then mirrored where text runs the other way.
+                    withTransform({ if (isRtl) scale(scaleX = -1f, scaleY = 1f, pivot = center) }) {
+                        if (restStart + strokeWidth / 2 < size.width) {
+                            drawLine(
+                                color = inactiveTrackColor,
+                                start = Offset(restStart + strokeWidth / 2, center.y),
+                                end = Offset(size.width - strokeWidth / 2, center.y),
+                                strokeWidth = strokeWidth,
+                                cap = StrokeCap.Round,
+                            )
+                        }
+                        if (playedEnd > 0f) {
+                            path.rewind()
+                            buildSquiggles(
+                                path = path,
+                                squigglesSpec = squigglesSpec.copy(amplitude = animatedAmplitude),
+                                startOffset = Offset(0f, center.y),
+                                endOffset = Offset(playedEnd, center.y),
+                                animationProgress = animationProgress.value,
+                            )
+                            // Clipped, as its rounded cap would otherwise reach past where it ends.
+                            clipRect(right = playedEnd) {
+                                drawPath(
+                                    path = path,
+                                    color = activeTrackColor,
+                                    style = pathStyle,
+                                )
+                            }
+                        }
                     }
                 }
             },

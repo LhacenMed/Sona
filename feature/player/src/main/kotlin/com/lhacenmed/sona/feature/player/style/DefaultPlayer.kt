@@ -3,11 +3,6 @@
 package com.lhacenmed.sona.feature.player.style
 
 import android.content.res.Configuration
-import androidx.annotation.DrawableRes
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -18,21 +13,25 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -42,41 +41,56 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.coerceIn
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
-import com.lhacenmed.sona.core.designsystem.theme.roundedShape
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.datastore.PlayerAppearance
 import com.lhacenmed.sona.core.datastore.PlayerSliderStyle
+import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
+import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
 import com.lhacenmed.sona.feature.player.InactiveToggleAlpha
 import com.lhacenmed.sona.feature.player.LyricsPillSlot
+import com.lhacenmed.sona.feature.player.NowPlayingHeader
+import com.lhacenmed.sona.feature.player.PlayerBarButton
+import com.lhacenmed.sona.feature.player.PlayerBarButtonSize
+import com.lhacenmed.sona.feature.player.PlayerBarIconSize
+import com.lhacenmed.sona.feature.player.PlayerButtonRowPadding
 import com.lhacenmed.sona.feature.player.PlayerHorizontalPadding
+import com.lhacenmed.sona.feature.player.PlayerLitDot
 import com.lhacenmed.sona.feature.player.PlayerLyricsState
+import com.lhacenmed.sona.feature.player.PlayerPlayButtonSize
+import com.lhacenmed.sona.feature.player.PlayerPlayIconSize
+import com.lhacenmed.sona.feature.player.PlayerSeekBarHeight
+import com.lhacenmed.sona.feature.player.PlayerSeekThumbSize
+import com.lhacenmed.sona.feature.player.PlayerSeekTimeGap
+import com.lhacenmed.sona.feature.player.PlayerSkipButtonSize
+import com.lhacenmed.sona.feature.player.PlayerSkipIconSize
 import com.lhacenmed.sona.feature.player.PlayerSlider
 import com.lhacenmed.sona.feature.player.PlayerTimeLabel
 import com.lhacenmed.sona.feature.player.PlayerTitleActions
 import com.lhacenmed.sona.feature.player.PlayerTitleSection
+import com.lhacenmed.sona.feature.player.PlayerTransportGap
 import com.lhacenmed.sona.feature.player.PlayerUiState
 import com.lhacenmed.sona.feature.player.PlayerViewModel
 import com.lhacenmed.sona.feature.player.R
 import com.lhacenmed.sona.feature.player.Thumbnail
 import com.lhacenmed.sona.feature.player.background.PlayerColors
-import com.lhacenmed.sona.feature.player.favoriteIconRes
+import com.lhacenmed.sona.feature.player.favoriteIcon
 import com.lhacenmed.sona.feature.player.lyricsPane
-import com.lhacenmed.sona.feature.player.playPauseIconRes
-import com.lhacenmed.sona.feature.player.transportIconRes
-import com.lhacenmed.sona.feature.playback.R as PlaybackR
+import com.lhacenmed.sona.feature.player.playPauseIcon
+import com.lhacenmed.sona.feature.player.transportIcon
 
 /** The sheet the default player is drawn on: the app theme's own surface, black under a black theme. */
 internal object DefaultPlayerColors {
@@ -84,20 +98,24 @@ internal object DefaultPlayerColors {
         @Composable get() = MaterialTheme.colorScheme.surface
 }
 
+/** The least the transport keeps between its corners and the three in its middle. */
+private val TransportCornerClearance = 8.dp
+
 /**
- * The default player: the artwork above its title, seek bar and transport - side by side in landscape. Ported
- * from ArchiveTune's Cinematic player. Both `PlayerStyle.DEFAULT` and `IMMERSIVE` are drawn with it,
- * told apart by where their [lyrics] open.
+ * The default player, laid out as the video player is: a header along the top, the artwork with the title and the line
+ * playing beneath it, then the seek bar and its times, the transport, and the queue bar along the foot - the artwork beside
+ * the rest in landscape. Both `PlayerStyle.DEFAULT` and `IMMERSIVE` are drawn with it, told apart by where their [lyrics]
+ * open.
  *
- * Lyrics that open in a sheet of their own - the default style's - leave the player as it is under them. In
- * portrait, their line playing is beneath the title - [lyricsPreview] - and opens the sheet; landscape has no room
- * for it beside the seek bar and transport.
+ * Lyrics that open in a sheet of their own - the default style's - leave the player as it is under them: the sheet draws
+ * the same seek bar, transport and queue bar in the same places - see `LyricsSheet`. Beneath the title in portrait, their
+ * line playing - [lyricsPreview] - opens them; landscape has no room for it beside the seek bar and transport.
  *
- * Lyrics that open in the player - the immersive style's - show their line in a pill above the seek bar, and
- * grow from it over the artwork, which recedes: in portrait the title goes with it, and the seek bar and
- * transport glide down into the room the queue bar leaves; in landscape they stay beside the lyrics. Shuffle
- * becomes the lyrics' menu and repeat their close, in place. With the player controls hidden under the lyrics,
- * the seek bar and the middle of the transport fade, and the lyrics take their room too.
+ * Lyrics that open in the player - the immersive style's - show their line in a pill above the seek bar, and grow from it
+ * over the header and the artwork, which recede: in portrait the title goes with them, and the seek bar and transport glide
+ * down into the room the queue bar leaves; in landscape they stay beside the lyrics. Shuffle becomes the lyrics' menu and
+ * repeat their close, in place. With the player controls hidden under the lyrics, the seek bar and the middle of the
+ * transport fade, and the lyrics take their room too.
  */
 @Composable
 internal fun DefaultPlayer(
@@ -125,6 +143,9 @@ internal fun DefaultPlayer(
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val hidesControls = !lyrics.showsPlayerControls
     val density = LocalDensity.current
+    val playingFrom by viewModel.playingFrom.collectAsStateWithLifecycle()
+    // The touch target everything but the player's own bars keeps - the line playing's search among them.
+    val defaultTouchTarget = LocalMinimumInteractiveComponentSize.current
 
     // Portrait only: how far the seek bar and transport glide down - the queue bar's room above the navigation bar.
     val bottomInset = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
@@ -154,48 +175,26 @@ internal fun DefaultPlayer(
             .graphicsLayer { alpha = if (hidesControls) 1f - lyrics.phase(0f, 0.3f) else 1f }
             .onSizeChanged { seekBarHeightPx = it.height }
 
+    val header: @Composable (Modifier) -> Unit = { modifier ->
+        NowPlayingHeader(
+            playingFrom = playingFrom,
+            queue = uiState.queue,
+            contentColor = contentColor,
+            onCollapse = onCollapse,
+            onOpenEqualizer = onOpenEqualizer,
+            onMoreClick = onMenuClick,
+            modifier = modifier,
+        )
+    }
     val titleRow: @Composable (Modifier) -> Unit = { modifier ->
         DefaultTitleRow(
             track = track,
             isFavorite = uiState.isCurrentTrackFavorite,
-            canFavorite = uiState.canFavorite,
-            contentColor = contentColor,
+            onToggleFavorite = if (uiState.canFavorite) viewModel::onToggleFavorite else null,
+            colors = colors,
             titleActions = titleActions,
-            onMenuClick = onMenuClick,
-            viewModel = viewModel,
             modifier = modifier,
         )
-    }
-    val seekBar: @Composable () -> Unit = {
-        DefaultSeekBar(
-            sliderStyle = appearance.sliderStyle,
-            isPlaying = uiState.playback.isPlaying,
-            colors = colors,
-            sliderPosition = sliderPosition,
-            position = position,
-            duration = duration,
-            onSliderValueChange = onSliderValueChange,
-            onSliderValueChangeFinished = onSliderValueChangeFinished,
-            modifier = seekBarModifier,
-        )
-    }
-    val transport: @Composable (Modifier) -> Unit = { modifier ->
-        DefaultTransportControls(
-            playback = uiState.playback,
-            isLoading = isLoading,
-            colors = colors,
-            lyrics = lyrics,
-            hidesControls = hidesControls,
-            viewModel = viewModel,
-            modifier = modifier,
-        )
-    }
-    // Only lyrics that open in the player have a pill; their sheet is opened from the queue bar.
-    val lyricsPill: @Composable () -> Unit = {
-        if (lyrics.opensInPlayer) {
-            LyricsPillSlot(lyrics, Modifier.padding(horizontal = PlayerHorizontalPadding))
-            Spacer(Modifier.height(12.dp))
-        }
     }
     val thumbnail: @Composable (Modifier) -> Unit = { modifier ->
         Thumbnail(
@@ -205,131 +204,159 @@ internal fun DefaultPlayer(
             hideThumbnail = appearance.hideThumbnail,
             swipeToChangeTrack = appearance.swipeToChangeTrack,
             isPlayerExpanded = isPlayerExpanded,
-            onCollapse = onCollapse,
-            onOpenEqualizer = onOpenEqualizer,
             viewModel = viewModel,
             modifier = modifier,
         )
     }
-
-    if (isLandscape) {
-        Row(
-            modifier =
-                Modifier
-                    .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
-                    .padding(bottom = queueBarHeight + 48.dp),
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .lyricsPane(lyrics),
-            ) {
-                val thumbnailSize = (LocalConfiguration.current.screenWidthDp * 0.4).dp
-                thumbnail(Modifier.size(thumbnailSize).then(coverRecede))
-            }
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)),
-            ) {
-                Spacer(Modifier.weight(1f))
-
-                titleRow(Modifier)
-                Spacer(Modifier.height(12.dp))
-                lyricsPill()
-                seekBar()
-                transport(Modifier)
-
-                Spacer(Modifier.weight(1f))
-            }
+    // The seek bar and its times, then the transport.
+    val seekBarAndTransport: @Composable (Modifier) -> Unit = { transportModifier ->
+        Column {
+            DefaultSeekBar(
+                sliderStyle = appearance.sliderStyle,
+                isPlaying = uiState.playback.isPlaying,
+                colors = colors,
+                sliderPosition = sliderPosition,
+                position = position,
+                duration = duration,
+                onSliderValueChange = onSliderValueChange,
+                onSliderValueChangeFinished = onSliderValueChangeFinished,
+                modifier = seekBarModifier,
+            )
+            Spacer(Modifier.height(16.dp))
+            DefaultTransportControls(
+                playback = uiState.playback,
+                isLoading = isLoading,
+                colors = colors,
+                lyrics = lyrics,
+                hidesControls = hidesControls,
+                viewModel = viewModel,
+                modifier = transportModifier,
+            )
         }
-    } else {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier =
-                Modifier
-                    .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
-                    .padding(bottom = queueBarHeight),
-        ) {
-            // Everything the open lyrics are drawn over: the artwork and its header, the title and the pill - or, for
-            // lyrics in a sheet, the line playing, whose faded top and bottom keep it clear of the title and the seek bar.
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
+    }
+
+    // The bars' buttons are their own touch targets: Material would otherwise pad each out past the player's keyline.
+    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides PlayerBarButtonSize) {
+        if (isLandscape) {
+            Row(
                 modifier =
                     Modifier
-                        .weight(1f)
-                        .lyricsPane(lyrics),
+                        .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
+                        .padding(bottom = queueBarHeight),
             ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.weight(1f).then(coverRecede),
+                Column(
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .lyricsPane(lyrics),
                 ) {
-                    thumbnail(Modifier)
+                    header(coverRecede)
+                    thumbnail(Modifier.weight(1f).fillMaxWidth().then(coverRecede))
                 }
-                titleRow(titleRecede)
-                if (lyrics.opensInPlayer) {
+                Column(
+                    verticalArrangement = Arrangement.Center,
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .statusBarsPadding(),
+                ) {
+                    titleRow(Modifier)
                     Spacer(Modifier.height(12.dp))
-                    lyricsPill()
-                } else {
-                    lyricsPreview(Modifier)
+                    // Only lyrics that open in the player have a pill; their sheet is opened from the queue bar.
+                    if (lyrics.opensInPlayer) {
+                        LyricsPillSlot(lyrics, Modifier.padding(horizontal = PlayerHorizontalPadding))
+                        Spacer(Modifier.height(12.dp))
+                    }
+                    seekBarAndTransport(Modifier)
                 }
             }
+        } else {
+            Column(
+                modifier =
+                    Modifier
+                        .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
+                        .padding(bottom = queueBarHeight),
+            ) {
+                // Everything the open lyrics are drawn over: the header, the artwork, the title and the pill - or, for
+                // lyrics in a sheet, the line playing, whose faded top and bottom keep it clear of the title and the seek bar.
+                Column(
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .lyricsPane(lyrics),
+                ) {
+                    header(coverRecede)
+                    thumbnail(Modifier.weight(1f).fillMaxWidth().then(coverRecede))
+                    titleRow(titleRecede)
+                    if (lyrics.opensInPlayer) {
+                        Spacer(Modifier.height(12.dp))
+                        LyricsPillSlot(lyrics, Modifier.padding(horizontal = PlayerHorizontalPadding))
+                        Spacer(Modifier.height(12.dp))
+                    } else {
+                        Spacer(Modifier.height(10.dp))
+                        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides defaultTouchTarget) {
+                            lyricsPreview(Modifier)
+                        }
+                        Spacer(Modifier.height(24.dp))
+                    }
+                }
 
-            seekBar()
-            transport(glide)
+                seekBarAndTransport(glide)
 
-            Spacer(Modifier.height(30.dp))
+                Spacer(Modifier.height(14.dp))
+            }
         }
     }
 }
 
-/** The title and artist, with the track's actions beside them. */
+/** The title and artist, with the favourite beside them. */
 @Composable
 private fun DefaultTitleRow(
     track: Track,
     isFavorite: Boolean,
-    canFavorite: Boolean,
-    contentColor: Color,
+    /** Null for a track that cannot be a favourite, which leaves its button out. */
+    onToggleFavorite: (() -> Unit)?,
+    colors: PlayerColors,
     titleActions: PlayerTitleActions,
-    onMenuClick: () -> Unit,
-    viewModel: PlayerViewModel,
     modifier: Modifier = Modifier,
 ) {
     Row(
-        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
         modifier =
             modifier
                 .fillMaxWidth()
-                .padding(horizontal = PlayerHorizontalPadding),
+                .padding(
+                    start = PlayerHorizontalPadding,
+                    // The button's glyph on the keyline; the title alone reaches the keyline itself.
+                    end = if (onToggleFavorite != null) PlayerButtonRowPadding else PlayerHorizontalPadding,
+                ),
     ) {
         Column(modifier = Modifier.weight(1f)) {
             PlayerTitleSection(
                 track = track,
-                textBackgroundColor = contentColor,
+                textBackgroundColor = colors.content,
                 titleActions = titleActions,
             )
         }
 
-        Spacer(modifier = Modifier.width(12.dp))
-
-        DefaultTrackActions(
-            contentColor = contentColor,
-            isFavorite = isFavorite,
-            onToggleFavorite = if (canFavorite) viewModel::onToggleFavorite else null,
-            onMenuClick = onMenuClick,
-        )
+        if (onToggleFavorite != null) {
+            Spacer(modifier = Modifier.width(12.dp))
+            // The player's accent, as everything that is on in it.
+            PlayerBarButton(
+                icon = favoriteIcon(isFavorite),
+                contentDescription = stringResource(R.string.player_like),
+                color = if (isFavorite) colors.button else colors.content,
+                onClick = onToggleFavorite,
+            )
+        }
     }
 }
 
-/** The seek bar and its times, with the gap down to the transport. */
+/** The seek bar, with its times beneath its thumb - the player's, and its lyrics sheet's in the same place. */
 @Composable
-private fun DefaultSeekBar(
+internal fun DefaultSeekBar(
     sliderStyle: PlayerSliderStyle,
     isPlaying: Boolean,
     colors: PlayerColors,
@@ -340,7 +367,7 @@ private fun DefaultSeekBar(
     onSliderValueChangeFinished: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier) {
+    Box(modifier = modifier.fillMaxWidth()) {
         PlayerSlider(
             sliderStyle = sliderStyle,
             sliderPosition = sliderPosition,
@@ -352,90 +379,26 @@ private fun DefaultSeekBar(
             onValueChangeFinished = onSliderValueChangeFinished,
         )
 
-        Spacer(Modifier.height(4.dp))
-
+        // Beneath the thumb, not the touch target it is centred in.
         PlayerTimeLabel(
             sliderPosition = sliderPosition,
             position = position,
             duration = duration,
             textBackgroundColor = colors.content,
+            modifier = Modifier.padding(top = (PlayerSeekBarHeight + PlayerSeekThumbSize.height) / 2 + PlayerSeekTimeGap),
         )
-
-        Spacer(Modifier.height(12.dp))
     }
 }
 
 /**
- * Favourite and more, as glass cards beside the title. Sharing is in the track's options sheet, which
- * more opens, so the title keeps the room a third card would take.
- */
-@Composable
-private fun DefaultTrackActions(
-    contentColor: Color,
-    isFavorite: Boolean,
-    /** Null for a track that cannot be a favourite, which leaves its card out. */
-    onToggleFavorite: (() -> Unit)?,
-    onMenuClick: () -> Unit,
-) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (onToggleFavorite != null) Surface(
-            onClick = onToggleFavorite,
-            shape = roundedShape(14.dp),
-            color =
-                if (isFavorite) {
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
-                } else {
-                    contentColor.copy(alpha = 0.12f)
-                },
-            modifier =
-                Modifier
-                    .height(44.dp)
-                    .width(44.dp),
-        ) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                Icon(
-                    painter = painterResource(favoriteIconRes(isFavorite)),
-                    contentDescription = null,
-                    // The theme's own colour, as the queue's favourite button marks a favourite.
-                    tint = if (isFavorite) MaterialTheme.colorScheme.primary else contentColor,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-        }
-
-        Surface(
-            onClick = onMenuClick,
-            shape = roundedShape(14.dp),
-            color = contentColor.copy(alpha = 0.12f),
-            modifier =
-                Modifier
-                    .height(44.dp)
-                    .width(44.dp),
-        ) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                Icon(
-                    painter = painterResource(R.drawable.more_horiz),
-                    contentDescription = null,
-                    tint = contentColor,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-        }
-    }
-}
-
-/**
- * Shuffle, previous, play/pause, next and repeat, scaled down together to fit a narrow screen. The
- * play/pause button squares off while playing.
+ * Shuffle at the start and repeat at the end, each lit while on, either side of previous, play/pause and next - which keep
+ * as far apart as the row allows, up to [PlayerTransportGap].
  *
- * While the [lyrics] are open in the player, shuffle is their menu and repeat their close; with [hidesControls],
- * the three in the middle fade, leaving the two corners to the lyrics.
+ * While the [lyrics] are open in the player, shuffle is their menu and repeat their close; with [hidesControls], the three
+ * in the middle fade, leaving the two corners to the lyrics. The lyrics sheet draws it too, in the same place.
  */
 @Composable
-private fun DefaultTransportControls(
+internal fun DefaultTransportControls(
     playback: PlaybackUiState,
     isLoading: Boolean,
     colors: PlayerColors,
@@ -445,16 +408,11 @@ private fun DefaultTransportControls(
     modifier: Modifier = Modifier,
 ) {
     val contentColor = colors.content
-    val onButtonColor = colors.onButton
     val haptic = LocalHapticFeedback.current
-    val view = LocalView.current
-    val shuffleEnabled = playback.shuffleEnabled
-    val repeatMode = playback.repeatMode
-    val canSkipPrevious = playback.canSkipPrevious
-    val canSkipNext = playback.canSkipNext
     val areMiddleControlsAway = hidesControls && lyrics.isOpenInPlayer
     val middleControlsFade =
         Modifier.graphicsLayer { alpha = if (hidesControls) 1f - lyrics.phase(0f, 0.3f) else 1f }
+    val skipColors = IconButtonDefaults.iconButtonColors(contentColor = contentColor, disabledContentColor = contentColor.copy(alpha = 0.38f))
 
     val onPlayPause = {
         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -468,241 +426,160 @@ private fun DefaultTransportControls(
         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
         viewModel.onSkipNext()
     }
-    val onShuffle = {
-        view.performContextClick()
-        viewModel.onToggleShuffle()
-    }
-    val onRepeat = {
-        view.performContextClick()
-        viewModel.onCycleRepeatMode()
-    }
-
-    val playPauseCorner by animateDpAsState(
-        targetValue = if (playback.isPlaying) 28.dp else 44.dp,
-        animationSpec =
-            spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessMedium,
-            ),
-        label = "playPauseCorner",
-    )
 
     BoxWithConstraints(
         modifier =
             modifier
                 .fillMaxWidth()
-                .padding(horizontal = PlayerHorizontalPadding),
+                .padding(horizontal = PlayerButtonRowPadding)
+                .height(PlayerPlayButtonSize),
     ) {
-        val baseLarge = 56.dp
-        val baseSmall = 46.dp
-        val baseGap = 12.dp
-        val baseLargeIcon = 28.dp
-        val baseSmallIcon = 22.dp
-        val baseLargeRadius = 18.dp
-        val baseSmallRadius = 16.dp
-        val centerSize = 88.dp
-        val centerPadding = 40.dp
-        val sideTotal = (maxWidth - centerSize - centerPadding) / 2f
-        val scale =
-            ((sideTotal - baseGap) / (baseLarge + baseSmall)).coerceAtMost(1f).coerceAtLeast(0.6f)
-        val large = baseLarge * scale
-        val small = baseSmall * scale
-        val gap = baseGap * scale
-        val largeIcon = baseLargeIcon * scale
-        val smallIcon = baseSmallIcon * scale
-        val largeRadius = baseLargeRadius * scale
-        val smallRadius = baseSmallRadius * scale
+        val middleWidth = PlayerSkipButtonSize * 2 + PlayerPlayButtonSize
+        val gap = ((maxWidth - (PlayerBarButtonSize + TransportCornerClearance) * 2 - middleWidth) / 2).coerceIn(0.dp, PlayerTransportGap)
+
+        LyricsCornerButton(
+            lyrics = lyrics,
+            colors = colors,
+            playerIcon = PlayerIcons.Shuffle,
+            playerContentDescription = stringResource(R.string.player_shuffle),
+            isPlayerToggleOn = playback.shuffleEnabled,
+            lyricsIcon = PlayerIcons.More,
+            lyricsContentDescription = stringResource(R.string.player_more_options),
+            turnsIn = false,
+            onPlayerClick = viewModel::onToggleShuffle,
+            onLyricsClick = lyrics::showMenu,
+            modifier = Modifier.align(Alignment.CenterStart),
+        )
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(gap),
             verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.align(Alignment.Center),
         ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
+            IconButton(
+                onClick = onPrevious,
+                shapes = iconButtonPressShapes(),
+                enabled = playback.canSkipPrevious && !areMiddleControlsAway,
+                colors = skipColors,
+                modifier = Modifier.size(PlayerSkipButtonSize).then(middleControlsFade),
             ) {
-                LyricsCornerButton(
-                    lyrics = lyrics,
-                    size = small,
-                    radius = smallRadius,
-                    iconSize = smallIcon,
-                    contentColor = contentColor,
-                    playerIconRes = PlaybackR.drawable.shuffle,
-                    isPlayerToggleOn = shuffleEnabled,
-                    lyricsIconRes = R.drawable.more_horiz,
-                    lyricsContentDescription = stringResource(R.string.player_more_options),
-                    isLyricsAccent = false,
-                    onPlayerClick = onShuffle,
-                    onLyricsClick = lyrics::showMenu,
-                )
-
-                Spacer(modifier = Modifier.width(gap))
-
-                Surface(
-                    onClick = onPrevious,
-                    enabled = canSkipPrevious && !areMiddleControlsAway,
-                    shape = roundedShape(largeRadius),
-                    color = contentColor.copy(alpha = 0.15f),
-                    modifier = Modifier.size(large).then(middleControlsFade),
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.skip_previous),
-                            contentDescription = null,
-                            tint = contentColor.copy(alpha = if (canSkipPrevious) 1f else 0.4f),
-                            modifier = Modifier.size(largeIcon),
-                        )
-                    }
-                }
+                Icon(PlayerIcons.SkipPrevious, stringResource(R.string.player_previous), Modifier.size(PlayerSkipIconSize))
             }
 
-            Surface(
+            FilledIconButton(
                 onClick = onPlayPause,
+                shapes = iconButtonPressShapes(),
                 enabled = !areMiddleControlsAway,
-                shape = roundedShape(playPauseCorner),
-                color = colors.button,
-                modifier =
-                    Modifier
-                        .padding(horizontal = 20.dp)
-                        .size(88.dp)
-                        .then(middleControlsFade),
+                colors =
+                    IconButtonDefaults.filledIconButtonColors(
+                        containerColor = colors.button,
+                        contentColor = colors.onButton,
+                        disabledContainerColor = colors.button,
+                        disabledContentColor = colors.onButton,
+                    ),
+                modifier = Modifier.size(PlayerPlayButtonSize).then(middleControlsFade),
             ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (isLoading) {
-                        CircularWavyProgressIndicator(
-                            modifier = Modifier.size(40.dp),
-                            color = onButtonColor,
-                        )
-                    } else {
-                        Icon(
-                            painter = painterResource(playback.playPauseIconRes()),
-                            contentDescription = null,
-                            tint = onButtonColor,
-                            modifier = Modifier.size(44.dp),
-                        )
-                    }
+                if (isLoading) {
+                    CircularWavyProgressIndicator(modifier = Modifier.size(PlayerPlayIconSize), color = colors.onButton)
+                } else {
+                    Icon(
+                        imageVector = playback.playPauseIcon(),
+                        contentDescription = stringResource(if (playback.isPlaying) R.string.player_pause else R.string.player_play),
+                        modifier = Modifier.size(PlayerPlayIconSize),
+                    )
                 }
             }
-            Row(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.Start,
-                verticalAlignment = Alignment.CenterVertically,
+
+            IconButton(
+                onClick = onNext,
+                shapes = iconButtonPressShapes(),
+                enabled = playback.canSkipNext && !areMiddleControlsAway,
+                colors = skipColors,
+                modifier = Modifier.size(PlayerSkipButtonSize).then(middleControlsFade),
             ) {
-                Surface(
-                    onClick = onNext,
-                    enabled = canSkipNext && !areMiddleControlsAway,
-                    shape = roundedShape(largeRadius),
-                    color = contentColor.copy(alpha = 0.15f),
-                    modifier = Modifier.size(large).then(middleControlsFade),
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.skip_next),
-                            contentDescription = null,
-                            tint = contentColor.copy(alpha = if (canSkipNext) 1f else 0.4f),
-                            modifier = Modifier.size(largeIcon),
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(gap))
-
-                LyricsCornerButton(
-                    lyrics = lyrics,
-                    size = small,
-                    radius = smallRadius,
-                    iconSize = smallIcon,
-                    contentColor = contentColor,
-                    playerIconRes = repeatMode.transportIconRes(),
-                    isPlayerToggleOn = repeatMode != RepeatMode.OFF,
-                    lyricsIconRes = R.drawable.close,
-                    lyricsContentDescription = stringResource(R.string.player_close),
-                    isLyricsAccent = true,
-                    onPlayerClick = onRepeat,
-                    onLyricsClick = lyrics::close,
-                )
+                Icon(PlayerIcons.SkipNext, stringResource(R.string.player_next), Modifier.size(PlayerSkipIconSize))
             }
         }
+
+        LyricsCornerButton(
+            lyrics = lyrics,
+            colors = colors,
+            playerIcon = playback.repeatMode.transportIcon(),
+            playerContentDescription = stringResource(R.string.player_repeat),
+            isPlayerToggleOn = playback.repeatMode != RepeatMode.OFF,
+            lyricsIcon = PlayerIcons.Close,
+            lyricsContentDescription = stringResource(R.string.player_close),
+            turnsIn = true,
+            onPlayerClick = viewModel::onCycleRepeatMode,
+            onLyricsClick = lyrics::close,
+            modifier = Modifier.align(Alignment.CenterEnd),
+        )
     }
 }
 
 /**
- * A transport corner that is a player toggle - shuffle, repeat - and, while the [lyrics] are open in the player, one of
- * theirs in its place: the toggle's glyph shrinks away as the lyrics' grows in. [isLyricsAccent] lights it
- * for the way out of the lyrics, which turns into place as it comes.
+ * A transport corner that is a player toggle - shuffle, repeat - lit while on, and, while the [lyrics] are open in the
+ * player, one of theirs in its place: the toggle's glyph shrinks away as the lyrics' grows in. [turnsIn] turns the lyrics'
+ * glyph into place as it comes - the way out of them.
  */
 @Composable
 private fun LyricsCornerButton(
     lyrics: PlayerLyricsState,
-    size: Dp,
-    radius: Dp,
-    iconSize: Dp,
-    contentColor: Color,
-    @DrawableRes playerIconRes: Int,
+    colors: PlayerColors,
+    playerIcon: ImageVector,
+    playerContentDescription: String,
     isPlayerToggleOn: Boolean,
-    @DrawableRes lyricsIconRes: Int,
+    lyricsIcon: ImageVector,
     lyricsContentDescription: String,
-    isLyricsAccent: Boolean,
+    turnsIn: Boolean,
     onPlayerClick: () -> Unit,
     onLyricsClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val isLyricsOpen = lyrics.isOpenInPlayer
-    Surface(
-        onClick = if (isLyricsOpen) onLyricsClick else onPlayerClick,
-        shape = roundedShape(radius),
-        color = contentColor.copy(alpha = if (isPlayerToggleOn) 0.2f else 0.08f),
-        modifier = Modifier.size(size),
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
+    Box(contentAlignment = Alignment.Center, modifier = modifier.size(PlayerBarButtonSize)) {
+        IconButton(
+            onClick = if (isLyricsOpen) onLyricsClick else onPlayerClick,
+            shapes = iconButtonPressShapes(),
+            colors = IconButtonDefaults.iconButtonColors(contentColor = colors.content),
+            modifier = Modifier.matchParentSize(),
         ) {
-            if (isLyricsAccent) {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .graphicsLayer { alpha = lyrics.phase(0.12f, 0.6f) }
-                        .background(contentColor.copy(alpha = 0.2f)),
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = playerIcon,
+                    contentDescription = if (isLyricsOpen) null else playerContentDescription,
+                    tint = if (isPlayerToggleOn) colors.button else colors.content.copy(alpha = InactiveToggleAlpha),
+                    modifier =
+                        Modifier
+                            .size(PlayerBarIconSize)
+                            .graphicsLayer {
+                                val swap = lyrics.phase(0.12f, 0.6f)
+                                alpha = 1f - swap
+                                scaleX = lerp(1f, 0.6f, swap)
+                                scaleY = scaleX
+                            },
+                )
+                Icon(
+                    imageVector = lyricsIcon,
+                    contentDescription = if (isLyricsOpen) lyricsContentDescription else null,
+                    tint = colors.content,
+                    modifier =
+                        Modifier
+                            .size(PlayerBarIconSize)
+                            .graphicsLayer {
+                                val swap = lyrics.phase(0.12f, 0.6f)
+                                alpha = swap
+                                scaleX = lerp(0.6f, 1f, swap)
+                                scaleY = scaleX
+                                if (turnsIn) rotationZ = lerp(-60f, 0f, swap)
+                            },
                 )
             }
-            Icon(
-                painter = painterResource(playerIconRes),
-                contentDescription = null,
-                tint = contentColor.copy(alpha = if (isPlayerToggleOn) 1f else InactiveToggleAlpha),
-                modifier =
-                    Modifier
-                        .size(iconSize)
-                        .graphicsLayer {
-                            val swap = lyrics.phase(0.12f, 0.6f)
-                            alpha = 1f - swap
-                            scaleX = lerp(1f, 0.6f, swap)
-                            scaleY = scaleX
-                        },
-            )
-            Icon(
-                painter = painterResource(lyricsIconRes),
-                contentDescription = if (isLyricsOpen) lyricsContentDescription else null,
-                tint = contentColor,
-                modifier =
-                    Modifier
-                        .size(iconSize)
-                        .graphicsLayer {
-                            val swap = lyrics.phase(0.12f, 0.6f)
-                            alpha = swap
-                            scaleX = lerp(0.6f, 1f, swap)
-                            scaleY = scaleX
-                            if (isLyricsAccent) rotationZ = lerp(-60f, 0f, swap)
-                        },
+        }
+        if (isPlayerToggleOn) {
+            PlayerLitDot(
+                color = colors.button,
+                modifier = Modifier.align(Alignment.BottomCenter).graphicsLayer { alpha = 1f - lyrics.phase(0.12f, 0.6f) },
             )
         }
     }

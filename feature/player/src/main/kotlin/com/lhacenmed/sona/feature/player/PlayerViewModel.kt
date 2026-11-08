@@ -1,10 +1,12 @@
 package com.lhacenmed.sona.feature.player
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.itemsOrEmpty
+import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.datastore.PlayerAppearance
 import com.lhacenmed.sona.core.datastore.PlayerStyleSettings
 import com.lhacenmed.sona.core.datastore.stateIn
@@ -15,16 +17,19 @@ import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.vault.VaultRepository
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.playback.PlaybackSpace
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
 import com.lhacenmed.sona.feature.playback.QueueEntry
 import com.lhacenmed.sona.feature.playback.SleepTimerState
+import com.lhacenmed.sona.feature.playback.labelRes
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -38,6 +43,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
+import com.lhacenmed.sona.feature.playback.R as PlaybackR
 
 /**
  * How long a track must keep loading before the player says so. A local file loads in a moment, and a
@@ -87,7 +93,9 @@ class PlayerViewModel @AssistedInject constructor(
     private val repository: LibraryRepository,
     private val vault: VaultRepository,
     private val playbackController: PlaybackController,
+    private val playbackSettings: PlaybackSettings,
     playerStyleSettings: PlayerStyleSettings,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     @AssistedFactory
@@ -155,7 +163,7 @@ class PlayerViewModel @AssistedInject constructor(
     )
 
     /**
-     * What the queue is playing from, for the line under "Now Playing" - renamed as its collection is.
+     * What the queue is playing from, for the player's header - renamed as its collection is.
      * Started from the library already in memory, so the line is right on the player's first frame.
      */
     internal val playingFrom: StateFlow<PlayingFrom?> = if (space == PlaybackSpace.Private) {
@@ -215,13 +223,18 @@ class PlayerViewModel @AssistedInject constructor(
         playbackController.seekTo(positionMs)
     }
 
+    /** Shuffles the queue, or stops - and says which, as a toast: felt as well as seen. */
     fun onToggleShuffle() {
-        playbackController.setShuffleEnabled(!playbackController.playbackState.value.shuffleEnabled)
+        val isShuffled = !playbackController.playbackState.value.shuffleEnabled
+        playbackController.setShuffleEnabled(isShuffled)
+        context.toast(if (isShuffled) PlaybackR.string.playback_action_shuffle_on else PlaybackR.string.playback_action_shuffle_off)
     }
 
-    /** Steps the repeat button through its enabled modes, in Fossify's order. */
+    /** Steps the repeat button through its enabled modes, in Fossify's order - and says which it is on, as a toast. */
     fun onCycleRepeatMode() {
+        val nextMode = uiState.value.playback.repeatMode.next(playbackSettings.stopAfterCurrentEnabled.value)
         playbackController.cycleRepeatMode()
+        context.toast(nextMode.labelRes)
     }
 
     fun onToggleFavorite() {

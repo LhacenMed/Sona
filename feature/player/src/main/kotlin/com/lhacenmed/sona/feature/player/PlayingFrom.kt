@@ -9,7 +9,7 @@ import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
 
-/** What the playing queue was built from, as the player names it under "Now Playing". */
+/** What the playing queue was built from, as the player's header names it. */
 internal sealed interface PlayingFrom {
     /** One of the library's collections, named alongside what kind of collection it is. */
     data class Collection(val name: String, val kind: CollectionKind) : PlayingFrom
@@ -55,19 +55,23 @@ internal fun playingFromOf(
 
 private fun String.named(kind: CollectionKind) = PlayingFrom.Collection(name = this, kind = kind)
 
-/**
- * "Name • Kind" for a collection. The whole library, the videos and the two listening histories are named
- * alone: none of them is a collection of a kind the library has.
- */
+/** What the header names: the collection's own name, or the whole library, the videos or a listening history. */
 @Composable
-internal fun PlayingFrom.label(): String =
+internal fun PlayingFrom.title(): String =
     when (this) {
-        is PlayingFrom.Collection -> stringResource(R.string.player_playing_from_collection, name, kind.label())
+        is PlayingFrom.Collection -> name
         PlayingFrom.AllTracks -> stringResource(R.string.player_playing_from_all_tracks)
         PlayingFrom.Videos -> stringResource(R.string.player_playing_from_videos)
         PlayingFrom.RecentlyPlayed -> stringResource(R.string.player_playing_from_recently_played)
         PlayingFrom.MostPlayed -> stringResource(R.string.player_playing_from_most_played)
     }
+
+/**
+ * What kind of collection it is, said beneath its name - or null for the whole library, the videos and the two
+ * listening histories, none of which is a collection of a kind the library has.
+ */
+@Composable
+internal fun PlayingFrom.kindLabel(): String? = (this as? PlayingFrom.Collection)?.kind?.label()
 
 @Composable
 private fun CollectionKind.label(): String =

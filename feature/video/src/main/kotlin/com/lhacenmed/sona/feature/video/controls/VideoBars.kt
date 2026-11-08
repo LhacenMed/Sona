@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
 import com.lhacenmed.sona.feature.video.PlayerText
 import com.lhacenmed.sona.feature.video.R
 import com.lhacenmed.sona.feature.video.VideoPlayerTokens
@@ -30,7 +31,7 @@ internal fun VideoTopBar(
             .fillMaxWidth()
             .height(VideoPlayerTokens.BarButtonSize),
     ) {
-        VideoBarButton(VideoAction(VideoIcons.Back, stringResource(R.string.video_back), onBack))
+        VideoBarButton(VideoAction(PlayerIcons.Back, stringResource(R.string.video_back), onBack))
         // A long name scrolls by rather than being cut, so all of it can be read.
         PlayerText(title, VideoPlayerType.Title, modifier = Modifier.weight(1f).padding(start = 4.dp).basicMarquee())
         VideoButtonGroup {
@@ -53,14 +54,14 @@ internal fun VideoTransport(
     onSkipNext: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    val previous = VideoAction(VideoIcons.SkipPrevious, stringResource(R.string.video_previous), onSkipPrevious)
+    val previous = VideoAction(PlayerIcons.SkipPrevious, stringResource(R.string.video_previous), onSkipPrevious)
     val playPause = VideoAction(
-        icon = if (isPlaying) VideoIcons.Pause else VideoIcons.Play,
+        icon = if (isPlaying) PlayerIcons.Pause else PlayerIcons.Play,
         label = stringResource(if (isPlaying) R.string.video_pause else R.string.video_play),
         onClick = onTogglePlayPause,
         tint = if (isLoading) Color.Transparent else VideoPlayerTokens.ContentColor,
     )
-    val next = VideoAction(VideoIcons.SkipNext, stringResource(R.string.video_next), onSkipNext)
+    val next = VideoAction(PlayerIcons.SkipNext, stringResource(R.string.video_next), onSkipNext)
     VideoButtonGroup(modifier = modifier, spacing = VideoPlayerTokens.TransportGap) {
         // On a ground of their own: in the middle of the picture, no scrim lies behind them.
         videoButton(previous, VideoPlayerTokens.SkipButtonSize, VideoPlayerTokens.SkipIconSize, VideoPlayerTokens.TransportGround)

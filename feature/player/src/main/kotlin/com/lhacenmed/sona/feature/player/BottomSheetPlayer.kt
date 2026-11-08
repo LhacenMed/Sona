@@ -239,19 +239,8 @@ internal fun BottomSheetPlayer(
                         }
                     }
                 },
-        backgroundColor = run {
-            val progress =
-                ((state.value - state.collapsedBound) / (state.expandedBound - state.collapsedBound))
-                    .coerceIn(0f, 1f)
-            // Only start fading when very close to dismissal (last 20%)
-            val fadeProgress =
-                if (progress < 0.2f) {
-                    ((0.2f - progress) / 0.2f).coerceIn(0f, 1f)
-                } else {
-                    0f
-                }
-            playerStyle.sheetColor().copy(alpha = 1f - fadeProgress)
-        },
+        // Faded in by the sheet as it opens, as it is drawn - read here, every frame of a drag would compose the player again.
+        backgroundColor = playerStyle.sheetColor(),
         onDismiss = viewModel::onStopAndClearQueue,
         collapsedContent = {
             MiniPlayer(
@@ -326,6 +315,13 @@ internal fun BottomSheetPlayer(
             )
         }
 
+        // Back closes the open lyrics before the player, wherever they open. Composed in the sheet, and only while it can
+        // answer, so it is registered after the sheet's own back - which the sheet registers as it expands - and is asked
+        // first; the queue's, registered as the queue rises over them, is asked before it.
+        if (lyrics.isOpen && state.isExpandedOrExpanding) {
+            BackHandler(onBack = lyrics::close)
+        }
+
         // Lyrics in the player are drawn under the queue; their sheet covers it, as it does the whole player.
         if (track != null && trackLyrics != null && lyrics.opensInPlayer) {
             PlayerLyrics(
@@ -347,7 +343,7 @@ internal fun BottomSheetPlayer(
             playerBottomSheetState = state,
             uiState = uiState,
             playerStyle = playerStyle,
-            barContentColor = playerColors.content,
+            barColors = playerColors,
             sleepTimer = sleepTimer,
             durationMs = duration,
             backgroundColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -359,18 +355,24 @@ internal fun BottomSheetPlayer(
         )
 
         if (track != null && trackLyrics != null && !lyrics.opensInPlayer) {
-            LyricsSheetTransition(
-                state = lyrics,
-                backHandlerEnabled = lyrics.isOpen && state.isExpandedOrExpanding,
-                track = track,
-                lyrics = trackLyrics,
-                playback = playback,
-                durationMs = duration,
-                appearance = appearance,
-                lyricsSyncOffset = lyricsSyncOffset,
-                viewModel = viewModel,
-                lyricsViewModel = lyricsViewModel,
-            )
+            LyricsSheetTransition(isOpen = lyrics.isOpen) {
+                LyricsSheet(
+                    track = track,
+                    lyrics = trackLyrics,
+                    playback = playback,
+                    appearance = appearance,
+                    lyricsState = lyrics,
+                    isLoading = isLoading,
+                    sliderPosition = sliderPosition,
+                    position = position,
+                    duration = duration,
+                    lyricsSyncOffset = lyricsSyncOffset,
+                    onSliderValueChange = onSliderValueChange,
+                    onSliderValueChangeFinished = onSliderValueChangeFinished,
+                    viewModel = viewModel,
+                    lyricsViewModel = lyricsViewModel,
+                )
+            }
         }
     }
 

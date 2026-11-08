@@ -14,12 +14,14 @@ import com.lhacenmed.sona.core.datastore.VideoOrientation
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.datastore.VideoSettings
 import com.lhacenmed.sona.core.datastore.stateIn
+import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.vault.VaultRepository
 import com.lhacenmed.sona.feature.playback.MediaTrack
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.playback.QueueVideo
 import com.lhacenmed.sona.feature.playback.VideoPlayback
 import com.lhacenmed.sona.feature.playback.VideoPlaybackState
+import com.lhacenmed.sona.feature.playback.labelRes
 import com.lhacenmed.sona.feature.video.subtitle.SubtitleSession
 import com.lhacenmed.sona.feature.video.subtitle.SubtitleStyle
 import com.lhacenmed.sona.feature.video.subtitle.WatchedVideo
@@ -37,6 +39,7 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.lhacenmed.sona.feature.playback.R as PlaybackR
 
 /** What the user chose in this player, as long as it is open - stored too where a setting says to keep it. */
 data class VideoSession(
@@ -70,7 +73,7 @@ class VideoPlayerViewModel @Inject constructor(
     private val videoSettings: VideoSettings,
     private val playbackSettings: PlaybackSettings,
     librarySubtitles: LibrarySubtitleStore,
-    @ApplicationContext context: Context,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     private val opening: Long = savedStateHandle[EXTRA_OPENING] ?: 0L
@@ -201,13 +204,16 @@ class VideoPlayerViewModel @Inject constructor(
 
     /** Shuffles the videos, or stops - the videos' own shuffle, kept for the next ones; the player follows it. */
     fun onToggleShuffle() {
-        val isShuffled = video?.state?.value?.isShuffled ?: return
-        viewModelScope.launch { videoSettings.setShuffleEnabled(!isShuffled) }
+        val isShuffled = !(video?.state?.value?.isShuffled ?: return)
+        viewModelScope.launch { videoSettings.setShuffleEnabled(isShuffled) }
+        context.toast(if (isShuffled) PlaybackR.string.playback_action_shuffle_on else PlaybackR.string.playback_action_shuffle_off)
     }
 
     /** Moves the videos' repeat mode on - kept for the next ones; the player follows it. */
     fun onCycleRepeatMode() {
-        viewModelScope.launch { videoSettings.cycleRepeatMode(playbackSettings.stopAfterCurrentEnabled.value) }
+        val stopAfterCurrentEnabled = playbackSettings.stopAfterCurrentEnabled.value
+        viewModelScope.launch { videoSettings.cycleRepeatMode(stopAfterCurrentEnabled) }
+        context.toast(videoSettings.repeatMode.value.next(stopAfterCurrentEnabled).labelRes)
     }
 
     /** Silences the video, or lets it be heard - and keeps that for the next one. */

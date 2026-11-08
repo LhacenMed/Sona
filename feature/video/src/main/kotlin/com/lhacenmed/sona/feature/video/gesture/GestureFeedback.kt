@@ -53,7 +53,7 @@ import com.lhacenmed.sona.feature.video.PlayerText
 import com.lhacenmed.sona.feature.video.R
 import com.lhacenmed.sona.feature.video.VideoPlayerTokens
 import com.lhacenmed.sona.feature.video.VideoPlayerType
-import com.lhacenmed.sona.feature.video.controls.VideoIcons
+import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
 import com.lhacenmed.sona.feature.video.formatSeekSeconds
 import com.lhacenmed.sona.feature.video.label
 import com.lhacenmed.sona.feature.video.speedLabel
@@ -133,10 +133,10 @@ internal fun GestureFeedbackLayer(state: GestureFeedbackState, modifier: Modifie
     Box(modifier = modifier.fillMaxSize()) {
         Shown(current as? GestureFeedback.DoubleTapSeek) { seek -> SeekRipple(seek.deltaMs) }
         Shown(current as? GestureFeedback.Brightness, AbsoluteAlignment.CenterLeft, fadeMs = VideoPlayerTokens.MeterFadeMs) { brightness ->
-            LevelMeter(VideoIcons.Brightness, brightness.level)
+            LevelMeter(PlayerIcons.Brightness, brightness.level)
         }
         Shown(current as? GestureFeedback.Volume, AbsoluteAlignment.CenterRight, fadeMs = VideoPlayerTokens.MeterFadeMs) { volume ->
-            LevelMeter(if (volume.level > 0f) VideoIcons.Volume else VideoIcons.Muted, volume.level)
+            LevelMeter(if (volume.level > 0f) PlayerIcons.Volume else PlayerIcons.Muted, volume.level)
         }
         Shown(current as? PillFeedback, Alignment.TopCenter) { FeedbackPill(it) }
     }
@@ -207,7 +207,7 @@ private fun SeekChevrons(isForward: Boolean) {
     Row(modifier = Modifier.graphicsLayer { scaleX = if (isForward) -1f else 1f }) {
         for (index in 0 until 3) {
             Icon(
-                imageVector = VideoIcons.SeekChevron,
+                imageVector = PlayerIcons.SeekChevron,
                 contentDescription = null,
                 tint = VideoPlayerTokens.ContentColor,
                 modifier = Modifier

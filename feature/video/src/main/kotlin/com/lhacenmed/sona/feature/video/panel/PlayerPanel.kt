@@ -58,7 +58,7 @@ import com.lhacenmed.sona.feature.video.VideoPlayerTokens
 import com.lhacenmed.sona.feature.video.VideoPlayerType
 import com.lhacenmed.sona.feature.video.controls.VideoAction
 import com.lhacenmed.sona.feature.video.controls.VideoBarButton
-import com.lhacenmed.sona.feature.video.controls.VideoIcons
+import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
 
 /** The panels the player opens over itself. */
 internal enum class VideoPanel(val width: Dp) {
@@ -136,7 +136,7 @@ internal fun PanelHeader(title: String, onClose: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().height(VideoPlayerTokens.BarButtonSize)) {
         PlayerText(title, VideoPlayerType.Title, modifier = Modifier.weight(1f))
         VideoBarButton(
-            VideoAction(VideoIcons.Close, stringResource(R.string.video_panel_close), onClose),
+            VideoAction(PlayerIcons.Close, stringResource(R.string.video_panel_close), onClose),
             iconSize = 20.dp,
         )
     }
@@ -166,7 +166,7 @@ internal fun PanelChoiceRow(label: String, isChosen: Boolean, onClick: () -> Uni
             .padding(horizontal = 10.dp),
     ) {
         if (isChosen) {
-            Icon(VideoIcons.Check, contentDescription = null, tint = VideoPlayerTokens.Accent, modifier = Modifier.size(18.dp))
+            Icon(PlayerIcons.Check, contentDescription = null, tint = VideoPlayerTokens.Accent, modifier = Modifier.size(18.dp))
         } else {
             Spacer(Modifier.size(18.dp))
         }

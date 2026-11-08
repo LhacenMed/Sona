@@ -78,7 +78,7 @@ import com.lhacenmed.sona.feature.video.controls.VideoControlSlots
 import com.lhacenmed.sona.feature.video.controls.VideoControlsLayout
 import com.lhacenmed.sona.feature.video.controls.VideoControlsState
 import com.lhacenmed.sona.feature.video.controls.VideoElapsedTime
-import com.lhacenmed.sona.feature.video.controls.VideoIcons
+import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
 import com.lhacenmed.sona.feature.video.controls.VideoPosition
 import com.lhacenmed.sona.feature.video.controls.VideoRemainingTime
 import com.lhacenmed.sona.feature.video.controls.VideoSeekBar
@@ -459,22 +459,22 @@ private fun PlayerControls(
 ) {
     val durationMs = playback.durationMs
     val topActions = listOf(
-        VideoAction(VideoIcons.Headphones, stringResource(R.string.video_play_as_audio), viewModel::onPlayAsAudio),
-        VideoAction(VideoIcons.Queue, stringResource(R.string.video_queue), { onOpenPanel(VideoPanel.QUEUE) }),
+        VideoAction(PlayerIcons.Headphones, stringResource(R.string.video_play_as_audio), viewModel::onPlayAsAudio),
+        VideoAction(PlayerIcons.Queue, stringResource(R.string.video_queue), { onOpenPanel(VideoPanel.QUEUE) }),
         VideoAction(
-            icon = VideoIcons.Captions,
+            icon = PlayerIcons.Captions,
             label = stringResource(R.string.video_tracks),
             onClick = { onOpenPanel(VideoPanel.TRACKS) },
             tint = if (isShowingSubtitles) VideoPlayerTokens.Accent else VideoPlayerTokens.ContentColor,
         ),
-        VideoAction(VideoIcons.More, stringResource(R.string.video_more), { onOpenPanel(VideoPanel.MORE) }),
+        VideoAction(PlayerIcons.More, stringResource(R.string.video_more), { onOpenPanel(VideoPanel.MORE) }),
     )
     val speed = speedLabel(playback.playbackSpeed)
     val speedName = stringResource(R.string.video_speed)
     val trailingActions = listOf(
-        VideoAction(VideoIcons.Fit, stringResource(R.string.video_aspect), onCycleAspect),
-        VideoAction(VideoIcons.PictureInPicture, stringResource(R.string.video_floating_window), onClick = onFloat),
-        VideoAction(VideoIcons.Rotate, session.orientation.label(), onCycleOrientation),
+        VideoAction(PlayerIcons.Fit, stringResource(R.string.video_aspect), onCycleAspect),
+        VideoAction(PlayerIcons.PictureInPicture, stringResource(R.string.video_floating_window), onClick = onFloat),
+        VideoAction(PlayerIcons.Rotate, session.orientation.label(), onCycleOrientation),
     )
     VideoControlsLayout(
         isLandscape = isLandscape,
@@ -494,7 +494,7 @@ private fun PlayerControls(
             seekBar = { modifier -> VideoSeekBar(position, durationMs, scrub, modifier) },
             elapsedTime = { modifier -> VideoElapsedTime(position, scrub, modifier) },
             remainingTime = { modifier -> VideoRemainingTime(position, durationMs, scrub, modifier) },
-            leadingActions = { VideoBarButton(VideoAction(VideoIcons.LockOpen, stringResource(R.string.video_lock), onLock)) },
+            leadingActions = { VideoBarButton(VideoAction(PlayerIcons.LockOpen, stringResource(R.string.video_lock), onLock)) },
             trailingActions = {
                 VideoButtonGroup {
                     speedButton(speed, speedName) { onOpenPanel(VideoPanel.SPEED) }
@@ -529,7 +529,7 @@ private fun LockedControls(onUnlock: () -> Unit, onHint: () -> Unit) {
                 .combinedClickable(role = Role.Button, onClick = onHint, onLongClick = onUnlock)
                 .padding(start = 14.dp, end = 18.dp),
         ) {
-            Icon(VideoIcons.Locked, contentDescription = null, tint = VideoPlayerTokens.ContentColor, modifier = Modifier.size(18.dp))
+            Icon(PlayerIcons.Locked, contentDescription = null, tint = VideoPlayerTokens.ContentColor, modifier = Modifier.size(18.dp))
             PlayerText(stringResource(R.string.video_hold_to_unlock), VideoPlayerType.Pill)
         }
     }

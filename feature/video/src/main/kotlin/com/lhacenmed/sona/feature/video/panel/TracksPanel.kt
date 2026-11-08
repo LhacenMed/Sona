@@ -42,7 +42,7 @@ import com.lhacenmed.sona.feature.video.PlayerText
 import com.lhacenmed.sona.feature.video.R
 import com.lhacenmed.sona.feature.video.VideoPlayerTokens
 import com.lhacenmed.sona.feature.video.VideoPlayerType
-import com.lhacenmed.sona.feature.video.controls.VideoIcons
+import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
 import com.lhacenmed.sona.feature.video.displayName
 import com.lhacenmed.sona.feature.video.formatSubtitleOffset
 import com.lhacenmed.sona.feature.video.subtitle.SubtitleSource
@@ -82,7 +82,7 @@ internal fun ColumnScope.TracksPanel(
         Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
             PanelSectionTitle(stringResource(R.string.video_tracks_subtitles))
             SubtitleChoices(subtitles, onSelectSubtitle)
-            PanelActionRow(VideoIcons.Add, stringResource(R.string.video_tracks_add_file), onAddFile, color = VideoPlayerTokens.TertiaryContent)
+            PanelActionRow(PlayerIcons.Add, stringResource(R.string.video_tracks_add_file), onAddFile, color = VideoPlayerTokens.TertiaryContent)
         }
     }
     PanelDivider()

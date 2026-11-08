@@ -18,6 +18,9 @@ internal fun makeTimeString(durationMs: Long): String {
     }
 }
 
+/** How much is left, "−m:ss" - as the video player's seek bar says it. */
+internal fun makeRemainingTimeString(remainingMs: Long): String = "−" + makeTimeString(remainingMs)
+
 /** The light tick ArchiveTune's player controls answer a press with. */
 @Suppress("DEPRECATION")
 internal fun View.performContextClick() {
