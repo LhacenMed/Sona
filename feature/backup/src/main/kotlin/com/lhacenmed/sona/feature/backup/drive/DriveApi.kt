@@ -234,10 +234,6 @@ internal class DriveApi @Inject constructor(
     suspend fun checksumOf(id: String): String? =
         json(Request.Builder().url("$FILES_URL/$id?fields=sha256Checksum")).optString("sha256Checksum").takeIf { it.isNotEmpty() }
 
-    suspend fun download(id: String, file: File) {
-        open(id).use { input -> file.outputStream().use { input.copyTo(it) } }
-    }
-
     suspend fun open(id: String): InputStream = call(Request.Builder().url("$FILES_URL/$id?alt=media")).body!!.byteStream()
 
     suspend fun delete(id: String) {

@@ -92,7 +92,8 @@ data class BackedUpVideoSubtitle(
 /**
  * A library file as it was backed up: what its bytes were - [fingerprint] - and where it lay. Every library file is
  * listed, so a restore finds each one a playlist or the history names; [isKeptInDrive] says whether its folder was
- * one the user backs up to Drive, which only those are.
+ * one the user backs up to Drive, which only those are. [addedAtSeconds] is when the library counted it added - 0 in
+ * a backup made before it was kept - so files brought back keep the order they were added in.
  */
 @Serializable
 data class BackedUpMedia(
@@ -103,6 +104,7 @@ data class BackedUpMedia(
     val isVideo: Boolean,
     val isKeptInDrive: Boolean = true,
     val durationMs: Long = 0L,
+    val addedAtSeconds: Long = 0L,
 )
 
 /** One stored setting's value, of each kind a settings file holds. */

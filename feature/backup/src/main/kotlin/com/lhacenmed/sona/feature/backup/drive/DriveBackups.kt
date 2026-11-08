@@ -208,20 +208,19 @@ internal class DriveMedia(
     suspend fun isSettled(media: List<BackedUpMedia>): Boolean =
         planDriveMedia(wantedOf(media), stored().values).all { it is MediaStep.Keep && !it.needsDetails }
 
-    override suspend fun download(fingerprint: String, file: File) {
-        val id = stored().getValue(identityOf(fingerprint)).id
-        if (key == null) return api.download(id, file)
-        val sealed = File(file.path + ".sealed")
-        try {
-            api.download(id, sealed)
-            withContext(ioDispatcher) {
-                sealed.inputStream().buffered().use { input ->
-                    BackupCipher.saltOf(input)
-                    BackupCipher.decrypting(input, key).use { plain -> file.outputStream().use { plain.copyTo(it) } }
-                }
+    /** Unsealed as it arrives, where it is sealed - never written to the device as Drive keeps it. */
+    override suspend fun open(fingerprint: String): InputStream {
+        val input = api.open(stored().getValue(identityOf(fingerprint)).id)
+        if (key == null) return input
+        return withContext(ioDispatcher) {
+            val buffered = input.buffered()
+            try {
+                BackupCipher.saltOf(buffered)
+                BackupCipher.decrypting(buffered, key)
+            } catch (e: IOException) {
+                buffered.close()
+                throw e
             }
-        } finally {
-            sealed.delete()
         }
     }
 

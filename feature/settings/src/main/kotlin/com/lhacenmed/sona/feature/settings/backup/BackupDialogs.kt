@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.feature.settings.backup
 
+import android.text.format.Formatter
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -9,7 +10,9 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,11 +27,18 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.common.permission.AppPermission
+import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
+import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialogSwitch
 import com.lhacenmed.sona.core.designsystem.component.toast
+import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
+import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.backup.BackupFolder
+import com.lhacenmed.sona.feature.backup.BackupFolders
 import com.lhacenmed.sona.feature.backup.RestorePreview
+import com.lhacenmed.sona.feature.explorer.FolderPickerSheet
+import com.lhacenmed.sona.feature.explorer.FolderPickerTab
 import com.lhacenmed.sona.feature.settings.R
 
 /** Asks for the passphrase backups are encrypted with from now on - twice, so a typo cannot lock them away. */
@@ -151,6 +161,7 @@ internal fun RestoreDialog(
     step: RestoreStep,
     onPassphrase: (String) -> Unit,
     onRestore: (filesToRestore: Set<String>) -> Unit,
+    onRetryDrive: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val cancelLabel = stringResource(R.string.dialog_cancel)
@@ -184,7 +195,7 @@ internal fun RestoreDialog(
             }
         }
 
-        is RestoreStep.Ready -> RestorePreviewDialog(step.preview, onRestore, onDismiss)
+        is RestoreStep.Ready -> RestorePreviewDialog(step.preview, onRestore, onRetryDrive, onDismiss)
 
         is RestoreStep.Problem -> {
             val okLabel = stringResource(R.string.restore_ok)
@@ -199,17 +210,42 @@ internal fun RestoreDialog(
     }
 }
 
+/**
+ * What restoring a backup does, in brief: when it was made, that it adds to this device rather than replaces - and,
+ * where Drive keeps files this device lacks, which to download, every one to begin with. Their row says how many
+ * and how large; its switch takes all or none, and a press opens them by kind and folder to pick among. Where Drive
+ * could not be reached, that row's place says so, with Try again - [onRetryDrive] - and a toast says it as it opens.
+ */
 @Composable
 private fun RestorePreviewDialog(
     preview: RestorePreview,
     onRestore: (filesToRestore: Set<String>) -> Unit,
+    onRetryDrive: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    val media = preview.media
-    var filesToRestore by remember(media) { mutableStateOf(media.missing.map { it.media.fingerprint }.toSet()) }
+    val files = preview.files
+    var picked by remember(files) { mutableStateOf(files.all) }
+    var isPickingFiles by remember { mutableStateOf(false) }
+    val filesTitle = stringResource(R.string.restore_files_title)
     val cancelLabel = stringResource(R.string.dialog_cancel)
     val restoreLabel = stringResource(R.string.restore_action)
+
+    LaunchedEffect(preview) { if (preview.isDriveUnreachable) context.toast(R.string.restore_drive_unreachable) }
+
+    // The sheet stands in the dialog's place while it is open, rather than over it.
+    if (isPickingFiles) {
+        FolderPickerSheet(
+            title = filesTitle,
+            tabs = mediaPickerTabs(files.music, files.videos),
+            initiallyPicked = picked,
+            confirmLabel = { context.getString(R.string.restore_files_done) },
+            onConfirm = { picked = it },
+            onDismissRequest = { isPickingFiles = false },
+            isOnDevice = false,
+        )
+        return
+    }
 
     SonaDialog(
         onDismissRequest = onDismiss,
@@ -219,6 +255,7 @@ private fun RestorePreviewDialog(
             actionButton(
                 label = restoreLabel,
                 onClick = {
+                    val filesToRestore = files.fingerprintsOf(picked)
                     // Files are written back where they were, which only managing all files allows.
                     if (filesToRestore.isNotEmpty() && !AppPermission.FILE_CHANGES.isGranted(context)) {
                         context.toast(R.string.restore_file_access_needed)
@@ -230,30 +267,51 @@ private fun RestorePreviewDialog(
             )
         },
     ) {
-        Fact(stringResource(R.string.restore_made), formatDate(context, preview.createdAt))
-        Fact(stringResource(R.string.restore_playlists), preview.playlistCount.toString())
-        Fact(stringResource(R.string.restore_played_tracks), preview.playedTrackCount.toString())
-        Fact(stringResource(R.string.restore_files_here), media.present.size.toString())
-        if (media.unavailable.isNotEmpty()) Fact(stringResource(R.string.restore_files_lost), media.unavailable.size.toString())
-        if (media.missing.isNotEmpty()) {
-            Text(
-                text = stringResource(R.string.restore_files_from_drive),
-                style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.padding(top = 16.dp),
-            )
-            media.missing.forEach { missing ->
-                val fingerprint = missing.media.fingerprint
-                CheckRow(missing.media.path.substringAfterLast('/'), fingerprint in filesToRestore) { chosen ->
-                    filesToRestore = if (chosen) filesToRestore + fingerprint else filesToRestore - fingerprint
-                }
-            }
-        }
         Text(
-            text = stringResource(R.string.restore_merge_note),
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(top = 16.dp),
+            text = stringResource(R.string.restore_backed_up, formatDate(context, preview.createdAt)),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
         )
+        Text(text = stringResource(R.string.restore_merge_note), modifier = Modifier.padding(top = 8.dp, bottom = 8.dp))
+        if (preview.isDriveUnreachable) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                Text(
+                    text = stringResource(R.string.restore_drive_unreachable),
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = onRetryDrive, shapes = buttonPressShapes()) { Text(stringResource(R.string.restore_drive_retry)) }
+            }
+        } else if (!files.isEmpty()) {
+            val music = files.pickedMusic(picked)
+            val videos = files.pickedVideos(picked)
+            SonaDialogSwitch(
+                label = filesTitle,
+                summary = mediaSummary(music, videos),
+                checked = music.isNotEmpty() || videos.isNotEmpty(),
+                onCheckedChange = { downloads -> picked = if (downloads) files.all else emptySet() },
+                onClick = { isPickingFiles = true },
+            )
+        }
     }
+}
+
+/** Music and videos, each under its own tab and keyed by its kind; a kind with no file has no tab, nothing being under it to pick. */
+@Composable
+internal fun mediaPickerTabs(music: List<Track>, videos: List<Track>): List<FolderPickerTab> = listOf(
+    FolderPickerTab(stringResource(R.string.backup_folders_music), music, BackupFolders.MUSIC_KEY_PREFIX),
+    FolderPickerTab(stringResource(R.string.backup_folders_videos), videos, BackupFolders.VIDEOS_KEY_PREFIX),
+).filter { it.files.isNotEmpty() }
+
+/** "12 songs • 3 videos • 1.5 GB" - how many of each kind, and their size together - or None. */
+@Composable
+private fun mediaSummary(music: List<Track>, videos: List<Track>): String {
+    if (music.isEmpty() && videos.isEmpty()) return stringResource(R.string.backup_folders_none)
+    return listOfNotNull(
+        music.size.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.backup_folder_songs, it, it) },
+        videos.size.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.backup_folder_videos, it, it) },
+        Formatter.formatShortFileSize(LocalContext.current, (music + videos).sumOf { it.sizeBytes }),
+    ).joinToString(InfoSeparator)
 }
 
 /**

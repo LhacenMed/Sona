@@ -52,6 +52,9 @@ class FolderPickerTab(val title: String, val files: List<Track>, val keyPrefix: 
  * file of the tab on screen is picked - then Cancel and the confirm, which [confirmLabel] names for how many files
  * are picked. Confirming hands [onConfirm] the keys picked; it waits for the choice to differ from
  * [initiallyPicked], as there is nothing to take before.
+ *
+ * Files not [isOnDevice] - a backup's, still in Drive - have nothing to listen to: a press picks one, as its box
+ * does, and a song shows its size, its tags never read.
  */
 @Composable
 fun FolderPickerSheet(
@@ -61,6 +64,7 @@ fun FolderPickerSheet(
     confirmLabel: (pickedFileCount: Int) -> String,
     onConfirm: (picked: Set<String>) -> Unit,
     onDismissRequest: () -> Unit,
+    isOnDevice: Boolean = true,
 ) {
     val previewViewModel: ExplorerPreviewViewModel = hiltViewModel()
     val preview by previewViewModel.preview.collectAsStateWithLifecycle()
@@ -106,6 +110,7 @@ fun FolderPickerSheet(
                 preview = preview,
                 onPlay = previewViewModel::play,
                 picking = ExplorerPicking(picksByPrefix.getValue(tab.keyPrefix), keys) { keys = it },
+                isOnDevice = isOnDevice,
                 // The sheet already paints its own background; a row painting its own would seam against it.
                 rowColor = Color.Transparent,
             )

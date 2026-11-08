@@ -32,10 +32,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDialog
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.navigation.Screen
-import com.lhacenmed.sona.feature.backup.BackupFolders
 import com.lhacenmed.sona.feature.backup.BackupOutcome
 import com.lhacenmed.sona.feature.explorer.FolderPickerSheet
-import com.lhacenmed.sona.feature.explorer.FolderPickerTab
 import com.lhacenmed.sona.feature.backup.BackupSchedule
 import com.lhacenmed.sona.feature.backup.work.BackupFailure
 import com.lhacenmed.sona.feature.backup.work.BackupRun
@@ -94,6 +92,8 @@ data object BackupScreen : Screen {
 
         RunOutcomeToast(backupRun, successRes = R.string.backup_done, failureRes = R.string.backup_failed)
         RunOutcomeToast(restoreRun, successRes = R.string.restore_done, failureRes = R.string.restore_failed)
+        // The retry row below the backups stays; this says why they are not all there.
+        LaunchedEffect(driveBackups) { if (driveBackups == SettingsLoad.Failed) context.toast(R.string.restore_drive_failed) }
         // Over - with this screen open or not - so nothing is left asking about it.
         if (!isBackingUp) isStoppingBackup = false
 
@@ -222,11 +222,7 @@ data object BackupScreen : Screen {
             filePicks?.let { files ->
                 FolderPickerSheet(
                     title = stringResource(R.string.backup_folders_title),
-                    // A kind with no file has no tab: there is nothing to pick under it.
-                    tabs = listOf(
-                        FolderPickerTab(stringResource(R.string.backup_folders_music), files.music, BackupFolders.MUSIC_KEY_PREFIX),
-                        FolderPickerTab(stringResource(R.string.backup_folders_videos), files.videos, BackupFolders.VIDEOS_KEY_PREFIX),
-                    ).filter { it.files.isNotEmpty() },
+                    tabs = mediaPickerTabs(files.music, files.videos),
                     initiallyPicked = files.picked,
                     confirmLabel = { context.getString(R.string.backup_folders_save) },
                     onConfirm = viewModel::backUpFolders,
@@ -278,6 +274,7 @@ data object BackupScreen : Screen {
                 step = step,
                 onPassphrase = viewModel::submitPassphrase,
                 onRestore = viewModel::restore,
+                onRetryDrive = viewModel::retryDriveCheck,
                 onDismiss = viewModel::dismissRestore,
             )
         }

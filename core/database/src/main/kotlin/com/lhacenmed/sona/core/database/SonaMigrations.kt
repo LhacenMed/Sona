@@ -389,6 +389,16 @@ val MIGRATION_20_21 = object : Migration(20, 21) {
 }
 
 /**
+ * When restored files count as added - see `AddedDateEntity`. A table of its own, starting empty; every row kept so far
+ * is untouched.
+ */
+val MIGRATION_21_22 = object : Migration(21, 22) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS `added_dates` (`path` TEXT NOT NULL, `addedAtSeconds` INTEGER NOT NULL, PRIMARY KEY(`path`))")
+    }
+}
+
+/**
  * Makes sure Favorites exists, every time the database is opened.
  *
  * On open rather than on create, because creation is only one of the ways this database comes to

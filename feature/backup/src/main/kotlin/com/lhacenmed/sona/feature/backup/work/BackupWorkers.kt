@@ -49,7 +49,7 @@ internal class BackupWorker(context: Context, params: WorkerParameters) : Corout
             throw cancellation
         } catch (e: Exception) {
             // An automatic backup is tried again later; one the user asked for says it failed, and why where it can.
-            if (isAutomatic) Result.retry() else failure(e, R.string.backup_failed_title, canRetry = true)
+            if (isAutomatic) Result.retry() else failure(e, R.string.backup_failed_title, retry = BackupAction.RETRY)
         }
     }
 }
@@ -79,23 +79,24 @@ internal class RestoreWorker(context: Context, params: WorkerParameters) : Corou
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (e: Exception) {
-            failure(e, R.string.restore_failed_title, canRetry = false)
+            // Run again, a restore carries on from where it stopped.
+            failure(e, R.string.restore_failed_title, retry = BackupAction.RETRY_RESTORE)
         }
     }
 }
 
 /**
  * A run failed by [exception] - with the reason, where it is one the user can act on, else with what went wrong -
- * said in a notification too, titled [titleRes], with Try again where it [canRetry]: the run may have been left
+ * said in a notification too, titled [titleRes], with [retry] to try again: the run may have been left
  * long before, the screen that started it closed.
  */
-private fun CoroutineWorker.failure(exception: Exception, @StringRes titleRes: Int, canRetry: Boolean): ListenableWorker.Result {
+private fun CoroutineWorker.failure(exception: Exception, @StringRes titleRes: Int, retry: BackupAction): ListenableWorker.Result {
     if (exception is DriveAccessLostException) {
-        postFailedNotification(applicationContext, titleRes, applicationContext.getString(R.string.backup_failed_drive_access), canRetry = false)
+        postFailedNotification(applicationContext, titleRes, applicationContext.getString(R.string.backup_failed_drive_access), retry = null)
         return ListenableWorker.Result.failure(workDataOf(KEY_FAILURE to BackupFailure.DRIVE_ACCESS_LOST.name))
     }
     val detail = exception.detail()
-    postFailedNotification(applicationContext, titleRes, detail, canRetry)
+    postFailedNotification(applicationContext, titleRes, detail, retry)
     return ListenableWorker.Result.failure(workDataOf(KEY_FAILURE_DETAIL to detail))
 }
 

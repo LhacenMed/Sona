@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import com.lhacenmed.sona.core.common.format.formatFileSize
 import com.lhacenmed.sona.core.designsystem.component.SonaEmptyState
 import com.lhacenmed.sona.core.designsystem.component.SonaFolderCover
 import com.lhacenmed.sona.core.designsystem.component.SonaListRow
@@ -58,7 +59,8 @@ internal class ExplorerPicking(val picks: FolderPicks, val keys: Set<String>, va
  *
  * Opening a folder slides it in from the side, and going back slides it out the way it came; each folder keeps
  * where it was scrolled to, so coming back to one finds it as it was left. Rows are painted [rowColor] - a sheet's
- * own background, which a row painting the screen's would seam against.
+ * own background, which a row painting the screen's would seam against. Files not [isOnDevice] are picked with a
+ * press rather than played, and a song shows its size.
  */
 @Composable
 internal fun FolderExplorerList(
@@ -68,6 +70,7 @@ internal fun FolderExplorerList(
     onPlay: (Track) -> Unit,
     picking: ExplorerPicking?,
     modifier: Modifier = Modifier,
+    isOnDevice: Boolean = true,
     contentPadding: PaddingValues = PaddingValues(),
     rowColor: Color = MaterialTheme.colorScheme.surface,
 ) {
@@ -136,6 +139,8 @@ internal fun FolderExplorerList(
                         val onPick = picking?.let { { it.toggle(listOf(file)) } }
                         val box = picking?.boxOf(listOf(file)) ?: Icons.Filled.CheckBoxOutlineBlank
                         val boxLabel = if (picking?.isPicked(listOf(file)) == true) unpickLabel else pickLabel
+                        // Not here yet, there is nothing to play: a press picks it, as its box does.
+                        val onClick = if (isOnDevice) { { onPlay(file) } } else onPick ?: {}
                         if (file.isVideo) {
                             SonaVideoRow(
                                 video = file,
@@ -144,7 +149,7 @@ internal fun FolderExplorerList(
                                 isPlaying = isPlaying,
                                 selection = null,
                                 selectionKey = null,
-                                onClick = { onPlay(file) },
+                                onClick = onClick,
                                 onOpenOptions = onPick,
                                 containerColor = rowColor,
                                 optionsIcon = box,
@@ -157,8 +162,9 @@ internal fun FolderExplorerList(
                                 isPlaying = isPlaying,
                                 selection = null,
                                 selectionKey = null,
-                                onClick = { onPlay(file) },
+                                onClick = onClick,
                                 onOpenOptions = onPick,
+                                subtitle = if (isOnDevice) null else formatFileSize(file.sizeBytes),
                                 containerColor = rowColor,
                                 optionsIcon = box,
                                 optionsLabel = boxLabel,

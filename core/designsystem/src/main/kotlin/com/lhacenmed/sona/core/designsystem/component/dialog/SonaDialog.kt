@@ -1,11 +1,13 @@
 package com.lhacenmed.sona.core.designsystem.component.dialog
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -16,7 +18,9 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
@@ -133,6 +137,35 @@ fun SonaDialogOption(
     ) {
         RadioButton(selected = selected, onClick = null)
         Text(text = label, modifier = Modifier.padding(start = 16.dp))
+    }
+}
+
+/**
+ * Something a dialog does or not, with a choice behind it - [label] over [summary], then a switch past a divider:
+ * the row's press opens the choice, [onClick], and the switch turns the whole of it on or off. Its press reaches
+ * the dialog's edges as a [SonaDialogOption]'s does.
+ */
+@Composable
+fun SonaDialogSwitch(
+    label: String,
+    summary: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .acrossDialog()
+            .clickable(onClick = onClick)
+            .padding(horizontal = DialogPadding, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+            Text(text = summary, style = MaterialTheme.typography.bodyMedium)
+        }
+        VerticalDivider(modifier = Modifier.padding(horizontal = 16.dp).height(32.dp))
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 

@@ -115,17 +115,17 @@ internal fun postPausedNotification(context: Context) {
 internal fun cancelPausedNotification(context: Context) = SonaNotifications.cancel(context, SonaNotificationId.BACKUP_PAUSED)
 
 /**
- * Says a backup or a restore the user started failed - titled by [titleRes], with [reason] in full - with, for a
- * backup, Try again. Left until pressed away, or the next run starts.
+ * Says a backup or a restore the user started failed - titled by [titleRes], with [reason] in full - with [retry], its
+ * Try again, where it can be. Left until pressed away, or the next run starts.
  */
-internal fun postFailedNotification(context: Context, @StringRes titleRes: Int, reason: String, canRetry: Boolean) {
+internal fun postFailedNotification(context: Context, @StringRes titleRes: Int, reason: String, retry: BackupAction?) {
     val notification = SonaNotifications.builder(context, SonaNotificationChannel.BACKUP)
         .setContentTitle(context.getString(titleRes))
         .setContentText(reason)
         .setStyle(NotificationCompat.BigTextStyle().bigText(reason))
         .setCategory(NotificationCompat.CATEGORY_ERROR)
         .setAutoCancel(true)
-        .apply { if (canRetry) BackupAction.RETRY.let { addAction(it.iconRes, context.getString(it.labelRes), it.intent(context)) } }
+        .apply { retry?.let { addAction(it.iconRes, context.getString(it.labelRes), it.intent(context)) } }
         .build()
     SonaNotifications.post(context, SonaNotificationId.BACKUP_FAILED, notification)
 }
@@ -138,6 +138,7 @@ internal enum class BackupAction(@StringRes val labelRes: Int, val iconRes: Int)
     RESUME(R.string.backup_notification_resume, android.R.drawable.ic_media_play),
     STOP(R.string.backup_notification_stop, android.R.drawable.ic_menu_close_clear_cancel),
     RETRY(R.string.backup_notification_retry, android.R.drawable.ic_popup_sync),
+    RETRY_RESTORE(R.string.backup_notification_retry, android.R.drawable.ic_popup_sync),
     ;
 
     val intentAction = "com.lhacenmed.sona.backup.action.$name"

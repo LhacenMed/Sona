@@ -10,6 +10,7 @@ import com.lhacenmed.sona.core.data.GONE_FILE_SETTLE_MS
 import com.lhacenmed.sona.core.data.LibrarySubtitleStore
 import com.lhacenmed.sona.core.data.LibraryWriter
 import com.lhacenmed.sona.core.data.SyncStats
+import com.lhacenmed.sona.core.database.dao.AddedDateDao
 import com.lhacenmed.sona.core.database.dao.TrackDao
 import com.lhacenmed.sona.core.database.entity.toDomain
 import com.lhacenmed.sona.core.database.stableIdOf
@@ -114,6 +115,7 @@ class MediaScanner @Inject constructor(
     private val libraryWriter: LibraryWriter,
     private val librarySubtitles: LibrarySubtitleStore,
     private val trackDao: TrackDao,
+    private val addedDateDao: AddedDateDao,
     private val librarySettings: LibrarySettings,
     private val scanSettings: ScanSettings,
     mediaStoreChangeObserver: MediaStoreChangeObserver,
@@ -263,6 +265,8 @@ class MediaScanner @Inject constructor(
 
     private suspend fun runScan(excludedFolders: Set<String>, walksStorage: Boolean): SyncStats {
         val mediaStoreResult = mediaStoreQuerier.query()
+        // Before anything is derived from them - an album is as new as its first track.
+        val addedDates = addedDateDao.getAll().associate { it.path to it.addedAtSeconds }
 
         val albumIds = mediaStoreResult.albums.mapTo(HashSet()) { it.id }
         val artistIds = mediaStoreResult.artists.mapTo(HashSet()) { it.id }
@@ -270,7 +274,7 @@ class MediaScanner @Inject constructor(
         // Drop tracks in an excluded folder, and tracks whose album/artist row didn't make it
         // through MediaStore's own query (Audio.Albums/Audio.Artists only return rows with at least
         // one track/album, so a track referencing a since-emptied album/artist is orphaned).
-        var tracks = mediaStoreResult.tracks.filterNot { track ->
+        var tracks = mediaStoreResult.tracks.withAddedDates(addedDates).filterNot { track ->
             track.folderPath in excludedFolders || track.path in excludedFolders ||
                 track.albumId !in albumIds ||
                 track.artistId !in artistIds
@@ -295,7 +299,7 @@ class MediaScanner @Inject constructor(
 
         // Videos are rows of their own: no album, artist or genre is made of them, so they skip every
         // pass above and are stored alongside the music.
-        val videos = mediaStoreResult.videos.filterNot { it.folderPath in excludedFolders || it.path in excludedFolders }
+        val videos = mediaStoreResult.videos.withAddedDates(addedDates).filterNot { it.folderPath in excludedFolders || it.path in excludedFolders }
 
         var stats = SyncStats()
         val (manualVideos, manualTracks) = if (walksStorage) {
@@ -309,7 +313,7 @@ class MediaScanner @Inject constructor(
         } else {
             // A refresh: MediaStore is all that changed, so what the last walk found is kept as is.
             storedUnindexedTracks(tracks + videos)
-        }.partition { it.isVideo }
+        }.withAddedDates(addedDates).partition { it.isVideo }
 
         if (manualTracks.isNotEmpty()) {
             val merged = mergeManualTracks(
@@ -657,6 +661,10 @@ class MediaScanner @Inject constructor(
 }
 
 /** The year most of [tracks] give, the earliest of a tie, or null where none gives one. */
+/** These tracks, each counted as added when [addedDates] says - see `AddedDateEntity` - where it says. */
+private fun List<Track>.withAddedDates(addedDates: Map<String, Long>): List<Track> =
+    if (addedDates.isEmpty()) this else map { track -> addedDates[track.path]?.let { track.copy(dateAddedSeconds = it) } ?: track }
+
 private fun commonestYear(tracks: List<Track>): Int? =
     tracks.mapNotNull { it.year }.groupingBy { it }.eachCount().entries
         .minWithOrNull(compareByDescending<Map.Entry<Int, Int>> { it.value }.thenBy { it.key })

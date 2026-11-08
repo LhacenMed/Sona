@@ -3,6 +3,7 @@ package com.lhacenmed.sona.core.database
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import com.lhacenmed.sona.core.database.dao.AddedDateDao
 import com.lhacenmed.sona.core.database.dao.AlbumDao
 import com.lhacenmed.sona.core.database.dao.ArrangementDao
 import com.lhacenmed.sona.core.database.dao.ArtistDao
@@ -18,6 +19,7 @@ import com.lhacenmed.sona.core.database.dao.ResumePositionDao
 import com.lhacenmed.sona.core.database.dao.TrackDao
 import com.lhacenmed.sona.core.database.dao.TrackMoveDao
 import com.lhacenmed.sona.core.database.dao.VideoSubtitleDao
+import com.lhacenmed.sona.core.database.entity.AddedDateEntity
 import com.lhacenmed.sona.core.database.entity.AlbumEntity
 import com.lhacenmed.sona.core.database.entity.ArrangementEntity
 import com.lhacenmed.sona.core.database.entity.ArtistEntity
@@ -49,8 +51,9 @@ import com.lhacenmed.sona.core.database.entity.VideoSubtitleEntity
         LyricsIndexEntity::class,
         MediaHashEntity::class,
         VideoSubtitleEntity::class,
+        AddedDateEntity::class,
     ],
-    version = 21,
+    version = 22,
     exportSchema = true,
 )
 @TypeConverters(CoverArtUrisConverter::class, ArtistIdsConverter::class)
@@ -71,6 +74,7 @@ abstract class SonaDatabase : RoomDatabase() {
     abstract fun mediaHashDao(): MediaHashDao
     abstract fun backupDao(): BackupDao
     abstract fun videoSubtitleDao(): VideoSubtitleDao
+    abstract fun addedDateDao(): AddedDateDao
 
     companion object {
         const val FILE_NAME = "sona.db"

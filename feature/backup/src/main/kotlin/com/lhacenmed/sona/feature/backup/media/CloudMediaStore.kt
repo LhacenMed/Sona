@@ -1,6 +1,6 @@
 package com.lhacenmed.sona.feature.backup.media
 
-import java.io.File
+import java.io.InputStream
 
 /**
  * Where the library's files are kept in the cloud - each once, by its fingerprint - for a restore to bring
@@ -11,6 +11,6 @@ interface CloudMediaStore {
     /** Which of [fingerprints] are kept. */
     suspend fun keeps(fingerprints: Collection<String>): Set<String>
 
-    /** Downloads the file with [fingerprint] into [file], replacing whatever was there. */
-    suspend fun download(fingerprint: String, file: File)
+    /** The bytes of the file with [fingerprint], as they were backed up - read as they arrive. */
+    suspend fun open(fingerprint: String): InputStream
 }

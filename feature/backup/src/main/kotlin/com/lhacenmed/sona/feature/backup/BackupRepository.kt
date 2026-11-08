@@ -13,6 +13,16 @@ import com.lhacenmed.sona.core.data.background.CustomBackgroundImages
 import com.lhacenmed.sona.core.data.playlist.PlaylistCoverImages
 import com.lhacenmed.sona.core.database.SonaDatabase
 import com.lhacenmed.sona.core.database.dao.BackupDao
+import com.lhacenmed.sona.core.database.dao.AddedDateDao
+import com.lhacenmed.sona.core.database.entity.AddedDateEntity
+import com.lhacenmed.sona.feature.backup.drive.DriveAccessLostException
+import com.lhacenmed.sona.feature.backup.media.MissingMedia
+import com.lhacenmed.sona.feature.backup.media.restoredAddedDates
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import com.lhacenmed.sona.core.database.entity.PlaylistCoverSource
 import com.lhacenmed.sona.core.datastore.PlayerStyleSettings
 import com.lhacenmed.sona.core.datastore.SettingsBackup
@@ -56,6 +66,9 @@ private const val INCOMING_DIRECTORY_NAME = ".incoming"
 private const val FILES_TO_RESTORE_NAME = "files-to-restore"
 private const val RESTORE_KEY_NAME = "key"
 
+/** How many files download at once - as many as upload at once, see `DriveMedia`. */
+private const val PARALLEL_DOWNLOADS = 4
+
 /** How a backup ended. */
 enum class BackupOutcome {
     /** Nothing written: it would have held just what the last one did. */
@@ -73,12 +86,14 @@ enum class BackupOutcome {
     SAVED_DRIVE_FULL,
 }
 
-/** What restoring an opened backup would do, worked out before anything changes. */
+/**
+ * What restoring an opened backup would do, worked out before anything changes: when it was made, and the files it can
+ * bring back from Drive - none where Drive is connected but [isDriveUnreachable], to be looked at again.
+ */
 data class RestorePreview(
     val createdAt: Long,
-    val playlistCount: Int,
-    val playedTrackCount: Int,
-    val media: MediaPlan,
+    val files: RestoreFiles,
+    val isDriveUnreachable: Boolean,
 )
 
 /** How opening a backup went. */
@@ -125,6 +140,7 @@ class BackupRepository @Inject constructor(
     private val driveBackups: DriveBackups,
     private val backupFolders: BackupFolders,
     private val librarySubtitles: LibrarySubtitleStore,
+    private val addedDateDao: AddedDateDao,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
     /**
@@ -159,7 +175,16 @@ class BackupRepository @Inject constructor(
             onProgress(BackupProgress(BackupStep.CHECKING_FILES, index, trackFiles.size))
             val fingerprint = fingerprints.of(track.path) ?: return@mapIndexedNotNull null
             val file = File(track.path)
-            BackedUpMedia(fingerprint, track.path, file.length(), file.lastModified(), track.isVideo, backupFolders.isBackedUp(track.folderPath, track.path, track.isVideo, foldersLeftOut), track.durationMs)
+            BackedUpMedia(
+                fingerprint = fingerprint,
+                path = track.path,
+                sizeBytes = file.length(),
+                modifiedAt = file.lastModified(),
+                isVideo = track.isVideo,
+                isKeptInDrive = backupFolders.isBackedUp(track.folderPath, track.path, track.isVideo, foldersLeftOut),
+                durationMs = track.durationMs,
+                addedAtSeconds = track.dateAddedSeconds,
+            )
         }
         onProgress(BackupProgress(BackupStep.READING_LIBRARY))
 
@@ -390,6 +415,17 @@ class BackupRepository @Inject constructor(
         }
     }
 
+    /** Works out again what restoring the backup [open] last opened would do - once Drive could not be reached. */
+    suspend fun reopen(): OpenedBackup = withContext(ioDispatcher) {
+        try {
+            OpenedBackup.Ready(previewOf(BackupArchive.read(restoreDirectory), restoreKey()))
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Exception) {
+            OpenedBackup.Unreadable
+        }
+    }
+
     /** Chooses, by fingerprint, which of the files this device is missing the next [restore] brings back. */
     suspend fun chooseFilesToRestore(fingerprints: Set<String>) = withContext(ioDispatcher) {
         File(restoreDirectory, FILES_TO_RESTORE_NAME).writeText(fingerprints.joinToString("\n"))
@@ -397,66 +433,114 @@ class BackupRepository @Inject constructor(
 
     /**
      * Restores the backup [open] last opened: the library merged into this device's, every setting, the user's
-     * own files - and the missing files chosen with [chooseFilesToRestore], brought back from the cloud, the
-     * library merged again once they are in.
+     * own files - and the missing files chosen with [chooseFilesToRestore], brought back from the cloud
+     * [PARALLEL_DOWNLOADS] at a time, counted added in the order they were where backed up and newest here - see
+     * [restoredAddedDates] - and the library merged again once they are in.
+     *
+     * A file that does not download leaves the others to go on, and the restore failed once they are done, its
+     * backup kept unpacked: run again, it finds what came in already and brings back only the rest.
      */
     suspend fun restore(onProgress: (BackupProgress) -> Unit) = withContext(ioDispatcher) {
         onProgress(BackupProgress(BackupStep.READING_BACKUP))
         val contents = BackupArchive.read(restoreDirectory)
         val filesToRestore = File(restoreDirectory, FILES_TO_RESTORE_NAME).takeIf { it.isFile }?.readLines()?.toSet().orEmpty()
-        val key = File(restoreDirectory, RESTORE_KEY_NAME).takeIf { it.isFile }?.readLines()?.let { (salt, bytes) ->
-            BackupKey(salt.fromBase64(), bytes.fromBase64())
-        }
+        // One for the whole run, so Drive's files are listed once.
+        val cloud = driveBackups.media(restoreKey())
+        val restorer = restorerOf(cloud)
         // A fresh install has not read its library yet; every track the backup names is looked for in it.
         onProgress(BackupProgress(BackupStep.FINDING_FILES))
         mediaScanner.rescan()
-        val plan = mediaPlanOf(contents, key)
+        // Asked only where files are to come from it: out of reach, the restore fails, to be tried again, rather than
+        // leave them behind unsaid.
+        val inCloud = if (filesToRestore.isEmpty()) emptySet() else cloudFingerprints(contents, cloud)
+        val plan = mediaPlanOf(contents, restorer, inCloud)
         onProgress(BackupProgress(BackupStep.RESTORING_LIBRARY))
         val playlistIds = mergeLibrary(contents, plan.present)
         restoreSettingsAndFiles(contents, playlistIds)
 
         val missing = plan.missing.filter { it.media.fingerprint in filesToRestore }
         if (missing.isNotEmpty()) {
-            val restorer = restorerOf(driveBackups.media(key))
-            val restored = missing.mapIndexed { index, item ->
-                onProgress(BackupProgress(BackupStep.DOWNLOADING_FILES, index, missing.size))
-                restorer.restore(item.media).also { fingerprints.remember(it, item.media.fingerprint) }
+            val downloads = download(missing, restorer, onProgress)
+            if (downloads.restored.isNotEmpty()) {
+                onProgress(BackupProgress(BackupStep.ADDING_FILES))
+                scanIntoMediaStore(downloads.restored.map { it.second })
+                recordAddedDates(downloads.restored)
+                // Forced: the files may be in already, read by a scan their arrival started, without the dates just kept.
+                mediaScanner.rescan(force = true)
+                // Where each restored file now is, for every path the backup had its bytes at - nothing to compare again.
+                val restoredAt = downloads.restored.flatMap { (item, file) -> (listOf(item.media.path) + item.otherPaths).map { it to file.path } }
+                mergeLibrary(contents, plan.present + restoredAt)
             }
-            onProgress(BackupProgress(BackupStep.ADDING_FILES))
-            scanIntoMediaStore(restored)
-            mediaScanner.rescan()
-            mergeLibrary(contents, mediaPlanOf(contents, key).present)
+            if (downloads.failed > 0) throw IOException("${downloads.failed} of ${missing.size} files could not be downloaded")
         }
         restoreDirectory.deleteRecursively()
     }
 
-    private suspend fun previewOf(contents: BackupContents, key: BackupKey?) = RestorePreview(
-        createdAt = contents.manifest.createdAt,
-        playlistCount = contents.library.playlists.size,
-        playedTrackCount = contents.library.playStats.count { it.playCount > 0 },
-        media = mediaPlanOf(contents, key),
+    /**
+     * Brings [missing] back, [PARALLEL_DOWNLOADS] at a time, each checked and remembered by its fingerprint. One that
+     * fails is counted and left; losing access to Drive stops them all.
+     */
+    private suspend fun download(missing: List<MissingMedia>, restorer: MediaRestorer, onProgress: (BackupProgress) -> Unit): Downloads =
+        coroutineScope {
+            val slots = Semaphore(PARALLEL_DOWNLOADS)
+            val done = AtomicInteger()
+            onProgress(BackupProgress(BackupStep.DOWNLOADING_FILES, 0, missing.size))
+            val results = missing.map { item ->
+                async {
+                    slots.withPermit {
+                        try {
+                            val file = restorer.restore(item.media)
+                            fingerprints.remember(file, item.media.fingerprint)
+                            item to file
+                        } catch (e: DriveAccessLostException) {
+                            throw e
+                        } catch (_: IOException) {
+                            null
+                        } finally {
+                            onProgress(BackupProgress(BackupStep.DOWNLOADING_FILES, done.incrementAndGet(), missing.size))
+                        }
+                    }
+                }
+            }.awaitAll()
+            Downloads(restored = results.filterNotNull(), failed = results.count { it == null })
+        }
+
+    /** Counts [restored] added now, newest in the library, in the order they were added where backed up. */
+    private suspend fun recordAddedDates(restored: List<Pair<MissingMedia, File>>) {
+        val restoredPaths = restored.mapTo(HashSet()) { it.second.path }
+        val libraryNewest = backupDao.trackFiles().filter { it.path !in restoredPaths }.maxOfOrNull { it.dateAddedSeconds } ?: 0L
+        val dates = restoredAddedDates(restored.map { (item, file) -> item.media to file.path }, libraryNewest, System.currentTimeMillis() / 1000)
+        addedDateDao.upsertAll(dates.map { (path, addedAt) -> AddedDateEntity(path, addedAt) })
+    }
+
+    private suspend fun previewOf(contents: BackupContents, key: BackupKey?): RestorePreview {
+        val cloud = driveBackups.media(key)
+        val createdAt = contents.manifest.createdAt
+        val inCloud = try {
+            cloudFingerprints(contents, cloud)
+        } catch (_: IOException) {
+            return RestorePreview(createdAt, RestoreFiles(emptyList()), isDriveUnreachable = true)
+        }
+        return RestorePreview(createdAt, RestoreFiles(mediaPlanOf(contents, restorerOf(cloud), inCloud).missing), isDriveUnreachable = false)
+    }
+
+    /** Which of the backup's files [cloud] keeps - none while Drive is not connected. Asks Drive, so it may fail. */
+    private suspend fun cloudFingerprints(contents: BackupContents, cloud: CloudMediaStore): Set<String> =
+        if (backupSettings.isDriveConnectedNow()) cloud.keeps(contents.library.media.map { it.fingerprint }) else emptySet()
+
+    /** How the backup's files stand against this device, with [inCloud] those the cloud keeps. */
+    private suspend fun mediaPlanOf(contents: BackupContents, restorer: MediaRestorer, inCloud: Set<String>): MediaPlan = reconcileMedia(
+        media = contents.library.media,
+        libraryFiles = backupDao.trackFiles().map { LibraryFile(it.path, it.durationMs) },
+        placeOf = restorer::placeOf,
+        sizeOf = { path -> File(path).takeIf { it.isFile }?.length() },
+        fingerprintOf = fingerprints::of,
+        cloudFingerprints = inCloud,
     )
 
-    /** How the backup's files stand against this device - and, while Drive is connected and reachable, against Drive. */
-    private suspend fun mediaPlanOf(contents: BackupContents, key: BackupKey?): MediaPlan {
-        val media = contents.library.media
-        val inDrive = if (backupSettings.isDriveConnectedNow()) {
-            try {
-                driveBackups.media(key).keeps(media.map { it.fingerprint })
-            } catch (_: IOException) {
-                emptySet()
-            }
-        } else {
-            emptySet()
-        }
-        return reconcileMedia(
-            media = media,
-            libraryFiles = backupDao.trackFiles().map { LibraryFile(it.path, it.durationMs) },
-            placeOf = restorerOf(driveBackups.media(key))::placeOf,
-            sizeOf = { path -> File(path).takeIf { it.isFile }?.length() },
-            fingerprintOf = fingerprints::of,
-            cloudFingerprints = inDrive,
-        )
+    /** The key the backup [open] last opened was sealed with, kept beside it - or null for a plain one. */
+    private fun restoreKey(): BackupKey? = File(restoreDirectory, RESTORE_KEY_NAME).takeIf { it.isFile }?.readLines()?.let { (salt, bytes) ->
+        BackupKey(salt.fromBase64(), bytes.fromBase64())
     }
 
     private fun restorerOf(cloud: CloudMediaStore) = MediaRestorer(
@@ -536,6 +620,9 @@ class BackupRepository @Inject constructor(
     private fun appVersionCode(): Long =
         PackageInfoCompat.getLongVersionCode(context.packageManager.getPackageInfo(context.packageName, 0))
 }
+
+/** The files a restore brought back - each, and where it now is - and how many did not come. */
+private class Downloads(val restored: List<Pair<MissingMedia, File>>, val failed: Int)
 
 private fun fileOf(uri: String): File? = Uri.parse(uri).takeIf { it.scheme == "file" }?.path?.let(::File)
 

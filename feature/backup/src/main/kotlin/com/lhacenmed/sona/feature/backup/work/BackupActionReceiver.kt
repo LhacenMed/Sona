@@ -21,6 +21,7 @@ class BackupActionReceiver : BroadcastReceiver() {
                     BackupAction.RESUME -> BackupWork.resumeBackup(appContext)
                     BackupAction.STOP -> BackupWork.stopBackup(appContext)
                     BackupAction.RETRY -> BackupWork.backUp(appContext)
+                    BackupAction.RETRY_RESTORE -> BackupWork.restore(appContext)
                 }
             } finally {
                 pending.finish()

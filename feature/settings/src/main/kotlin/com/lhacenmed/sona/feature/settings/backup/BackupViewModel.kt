@@ -237,6 +237,12 @@ class BackupViewModel @Inject constructor(
         }
     }
 
+    /** Looks again at what the backup opened would bring back from Drive, which could not be reached. */
+    fun retryDriveCheck() {
+        _restoreStep.value = RestoreStep.Opening
+        opening = viewModelScope.launch { _restoreStep.value = stepOf(repository.reopen()) }
+    }
+
     fun dismissRestore() {
         opening?.cancel()
         _restoreStep.value = null
@@ -246,14 +252,14 @@ class BackupViewModel @Inject constructor(
     private fun openWith(read: suspend () -> InputStream, passphrase: CharArray? = null) {
         openBackup = read
         _restoreStep.value = RestoreStep.Opening
-        opening = viewModelScope.launch {
-            _restoreStep.value = when (val opened = repository.open(read, passphrase)) {
-                is OpenedBackup.Ready -> RestoreStep.Ready(opened.preview)
-                OpenedBackup.NeedsPassphrase -> RestoreStep.Passphrase(isWrong = false)
-                OpenedBackup.WrongPassphrase -> RestoreStep.Passphrase(isWrong = true)
-                OpenedBackup.Unsupported -> RestoreStep.Problem(R.string.restore_unsupported)
-                OpenedBackup.Unreadable -> RestoreStep.Problem(R.string.restore_unreadable)
-            }
-        }
+        opening = viewModelScope.launch { _restoreStep.value = stepOf(repository.open(read, passphrase)) }
+    }
+
+    private fun stepOf(opened: OpenedBackup): RestoreStep = when (opened) {
+        is OpenedBackup.Ready -> RestoreStep.Ready(opened.preview)
+        OpenedBackup.NeedsPassphrase -> RestoreStep.Passphrase(isWrong = false)
+        OpenedBackup.WrongPassphrase -> RestoreStep.Passphrase(isWrong = true)
+        OpenedBackup.Unsupported -> RestoreStep.Problem(R.string.restore_unsupported)
+        OpenedBackup.Unreadable -> RestoreStep.Problem(R.string.restore_unreadable)
     }
 }

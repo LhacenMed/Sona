@@ -20,6 +20,7 @@ data class TrackFile(
     val folderPath: String,
     val isVideo: Boolean,
     val durationMs: Long,
+    val dateAddedSeconds: Long,
 )
 
 /**
@@ -31,7 +32,7 @@ data class TrackFile(
 @Dao
 interface BackupDao {
 
-    @Query("SELECT id, path, folderPath, isVideo, durationMs FROM tracks")
+    @Query("SELECT id, path, folderPath, isVideo, durationMs, dateAddedSeconds FROM tracks")
     suspend fun trackFiles(): List<TrackFile>
 
     @Query("SELECT * FROM playlists")

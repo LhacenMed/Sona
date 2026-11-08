@@ -5,6 +5,7 @@ import androidx.room.withTransaction
 import com.lhacenmed.sona.core.common.di.IoDispatcher
 import com.lhacenmed.sona.core.data.fingerprint.MediaFingerprints
 import com.lhacenmed.sona.core.database.SonaDatabase
+import com.lhacenmed.sona.core.database.dao.AddedDateDao
 import com.lhacenmed.sona.core.database.dao.AlbumDao
 import com.lhacenmed.sona.core.database.dao.ArtistDao
 import com.lhacenmed.sona.core.database.dao.GenreDao
@@ -88,6 +89,7 @@ class LibraryWriter @Inject constructor(
     private val database: SonaDatabase,
     private val trackDao: TrackDao,
     private val trackMoveDao: TrackMoveDao,
+    private val addedDateDao: AddedDateDao,
     private val albumDao: AlbumDao,
     private val artistDao: ArtistDao,
     private val genreDao: GenreDao,
@@ -151,8 +153,13 @@ class LibraryWriter @Inject constructor(
             }
             if (trackDiff.upserts.isNotEmpty()) trackDao.upsertAll(trackDiff.upserts)
 
-            moves.forEach { (path, moved) -> mediaFingerprints.moved(moved.path, path) }
+            moves.forEach { (path, moved) ->
+                mediaFingerprints.moved(moved.path, path)
+                addedDateDao.move(moved.path, path)
+            }
             trackDiff.deleted.chunked(MAX_BIND_ARGS).forEach { trackDao.deleteByIds(it) }
+            // Gone with its track, so a file found at that path later is new as any.
+            trackDiff.deleted.mapNotNull { storedTracks[it]?.path }.chunked(MAX_BIND_ARGS).forEach { addedDateDao.deleteByPaths(it) }
 
             albumDiff.deleted.chunked(MAX_BIND_ARGS).forEach { albumDao.deleteByIds(it) }
             artistDiff.deleted.chunked(MAX_BIND_ARGS).forEach { artistDao.deleteByIds(it) }

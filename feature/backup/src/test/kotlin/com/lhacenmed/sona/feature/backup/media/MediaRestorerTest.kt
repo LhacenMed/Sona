@@ -4,6 +4,7 @@ import com.lhacenmed.sona.core.data.fingerprint.fingerprintOf
 import com.lhacenmed.sona.feature.backup.BackedUpMedia
 import java.io.File
 import java.io.IOException
+import java.io.InputStream
 import kotlin.io.path.createTempDirectory
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -22,9 +23,9 @@ class MediaRestorerTest {
 
         override suspend fun keeps(fingerprints: Collection<String>) = fingerprints.filterTo(mutableSetOf()) { it in files }
 
-        override suspend fun download(fingerprint: String, file: File) {
+        override suspend fun open(fingerprint: String): InputStream {
             downloads++
-            file.writeBytes(files.getValue(fingerprint))
+            return files.getValue(fingerprint).inputStream()
         }
     }
 

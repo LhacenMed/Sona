@@ -483,13 +483,12 @@
     <string name="restore_unsupported">Made by a newer version of Sona. Update Sona to restore it.</string>
     <string name="restore_unreadable">Not a Sona backup, or a damaged one.</string>
     <string name="restore_file_access_needed">Allow Sona to manage files, then restore again</string>
-    <string name="restore_made">Made</string>
-    <string name="restore_playlists">Playlists</string>
-    <string name="restore_played_tracks">Played tracks</string>
-    <string name="restore_files_here">Files on this device</string>
-    <string name="restore_files_lost">Files that can\'t be restored</string>
-    <string name="restore_files_from_drive">Restore from Google Drive</string>
-    <string name="restore_merge_note">Nothing on this device is removed.</string>
+    <string name="restore_backed_up">Backed up %1$s</string>
+    <string name="restore_merge_note">Its playlists, favorites, history and settings are added to this device. Nothing here is removed.</string>
+    <string name="restore_files_title">Download from Google Drive</string>
+    <string name="restore_files_done">Done</string>
+    <string name="restore_drive_unreachable">Couldn’t reach Google Drive</string>
+    <string name="restore_drive_retry">Try again</string>
 
     <!-- Updates -->
     <string name="updates_current_version">Current version</string>
