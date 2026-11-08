@@ -15,6 +15,7 @@ import com.lhacenmed.sona.core.designsystem.component.cover.MediaThumbnailFetche
 import com.lhacenmed.sona.core.designsystem.effect.SonaEffects
 import com.lhacenmed.sona.feature.backup.BackupSettings
 import com.lhacenmed.sona.feature.backup.work.BackupWork
+import com.lhacenmed.sona.feature.feedback.CrashReports
 import com.lhacenmed.sona.feature.tageditor.lyrics.MissingLyricsFinder
 import com.lhacenmed.sona.feature.update.UpdateMonitor
 import com.lhacenmed.sona.feature.update.notification.UpdateNotifier
@@ -62,6 +63,9 @@ class SonaApplication : Application(), SingletonImageLoader.Factory {
     @Inject
     lateinit var backupSettings: BackupSettings
 
+    @Inject
+    lateinit var crashReports: CrashReports
+
     /** Coil's own loader, drawing a track's or a video's cover from Android's thumbnail of its file - see [MediaThumbnailFetcher]. */
     override fun newImageLoader(context: PlatformContext): ImageLoader =
         ImageLoader.Builder(context)
@@ -70,6 +74,8 @@ class SonaApplication : Application(), SingletonImageLoader.Factory {
 
     override fun onCreate() {
         super.onCreate()
+        // Before anything else can crash, so even a crash as the app starts is there to be reported next time.
+        crashReports.install()
         // First, and blocking: every setting is in memory before the first activity, the playback
         // service or a media button is created, so each of them starts with the user's choices
         // already in place - the way it would start with defaults - instead of correcting itself

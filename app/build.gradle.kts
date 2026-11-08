@@ -231,6 +231,7 @@ dependencies {
     implementation(project(":feature:vault"))
     implementation(project(":feature:backup"))
     implementation(project(":feature:explorer"))
+    implementation(project(":feature:feedback"))
     // Only in a debug build: none of it, nor anything it can reach, is in what users install.
     debugImplementation(project(":feature:debug"))
 

@@ -1,0 +1,32 @@
+name: Feedback from the app
+description: Sent from Sona's Send feedback screen - a problem, or an idea, in your own words.
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What's on your mind
+      description: Something not working, too small, or confusing - or an idea to make Sona better.
+    validations:
+      required: true
+
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshots or videos
+      description: Drag the screenshots or recordings that show it here.
+
+  - type: input
+    id: version
+    attributes:
+      label: Sona version
+
+  - type: input
+    id: device
+    attributes:
+      label: Device
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log
+      render: text

@@ -1,0 +1,24 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- The phone's email apps, so feedback opens straight in the one it uses - see FeedbackReport.emailIntent. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="mailto" />
+        </intent>
+    </queries>
+
+    <application>
+        <!-- Hands a report's log file to the email app it is sent with. -->
+        <provider
+            android:name=".FeedbackFileProvider"
+            android:authorities="${applicationId}.feedback"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/feedback_file_paths" />
+        </provider>
+    </application>
+
+</manifest>

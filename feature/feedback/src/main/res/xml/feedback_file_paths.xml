@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Exposes cacheDir/feedback/, the log a report sends, to the email app it is sent with. -->
+    <cache-path name="feedback" path="feedback/" />
+</paths>

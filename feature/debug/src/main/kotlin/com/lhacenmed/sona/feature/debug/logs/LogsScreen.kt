@@ -3,7 +3,6 @@
 package com.lhacenmed.sona.feature.debug.logs
 
 import android.content.Context
-import android.os.Process
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -30,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.common.log.AppLog
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
@@ -43,11 +43,6 @@ import kotlinx.coroutines.withContext
 /** How many of the latest log lines are read. */
 private const val MAX_LOG_LINES = 2_000
 
-private fun logcat(vararg arguments: String): List<String> {
-    val process = ProcessBuilder("logcat", *arguments).redirectErrorStream(true).start()
-    return process.inputStream.bufferedReader().use { it.readLines() }
-}
-
 /** What this process has logged, newest first, narrowed by what a line must contain. */
 data object LogsScreen : Screen {
     override fun title(context: Context): String = "Logs"
@@ -59,7 +54,7 @@ data object LogsScreen : Screen {
         var filter by rememberSaveable { mutableStateOf("") }
         val lines = rememberLoaded(version) {
             withContext(Dispatchers.IO) {
-                logcat("-d", "-v", "time", "-t", MAX_LOG_LINES.toString(), "--pid=${Process.myPid()}").asReversed()
+                AppLog.recentLines(MAX_LOG_LINES).asReversed()
             }
         }
         Column(Modifier.fillMaxSize()) {
@@ -76,7 +71,7 @@ data object LogsScreen : Screen {
                     shapes = buttonPressShapes(),
                     onClick = {
                         scope.launch {
-                            withContext(Dispatchers.IO) { logcat("-c") }
+                            withContext(Dispatchers.IO) { AppLog.clear() }
                             version++
                         }
                     },

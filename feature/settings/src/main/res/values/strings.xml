@@ -52,6 +52,8 @@
     <string name="updates_summary">Check for new versions</string>
     <string name="about_title">About</string>
     <string name="about_summary">Version, licenses, and the people behind Sona</string>
+    <string name="feedback_category_title">Send feedback</string>
+    <string name="feedback_category_summary">Report a bug or suggest an idea</string>
 
     <!-- Appearance -->
     <string name="appearance_theme_section">Theme</string>

@@ -13,6 +13,8 @@ object GitHub {
     const val REPOSITORY_URL = "https://github.com/$OWNER/$REPOSITORY"
     const val RELEASES_URL = "$REPOSITORY_URL/releases"
     const val ISSUES_URL = "$REPOSITORY_URL/issues"
+    /** Where an issue is opened, one of the repository's issue forms filled in from the query - see `.github/ISSUE_TEMPLATE`. */
+    const val NEW_ISSUE_URL = "$ISSUES_URL/new"
     const val PROFILE_URL = "https://github.com/$OWNER"
     const val AVATAR_URL = "https://github.com/$OWNER.png"
 

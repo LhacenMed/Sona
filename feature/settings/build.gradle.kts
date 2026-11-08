@@ -37,6 +37,7 @@ dependencies {
     implementation(project(":feature:tageditor"))
     implementation(project(":feature:backup"))
     implementation(project(":feature:explorer"))
+    implementation(project(":feature:feedback"))
     implementation(project(":feature:equalizer"))
 
     testImplementation(libs.junit)

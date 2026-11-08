@@ -1,0 +1,24 @@
+<resources>
+    <string name="feedback_title">Send feedback</string>
+
+    <string name="feedback_intro">Something not working, too small, or confusing? Or an idea to make Sona better? Tell us in your own words.</string>
+    <string name="feedback_message_hint">For example: the buttons in the player are too small to tap</string>
+
+    <string name="feedback_add_media">Add screenshots or videos</string>
+    <string name="feedback_remove_media">Remove</string>
+
+    <string name="feedback_include_diagnostics">Include phone details and app log</string>
+    <string name="feedback_include_diagnostics_summary">Helps find the problem: %1$s</string>
+
+    <string name="feedback_send">Send</string>
+    <string name="feedback_send_with">Send feedback with</string>
+    <string name="feedback_no_email_app">No email app to send it with. Try posting it on GitHub instead.</string>
+    <string name="feedback_post_on_github">Post on GitHub instead</string>
+    <string name="feedback_github_note">Public, with a GitHub account. Add your screenshots on the page that opens.</string>
+
+    <string name="feedback_crash_title">Sona stopped working</string>
+    <string name="feedback_crash_message">It closed unexpectedly the last time it was open. Want to let us know? It only takes a tap - the details are added for you.</string>
+    <string name="feedback_crash_not_now">Not now</string>
+    <string name="feedback_crash_report">Report</string>
+    <string name="feedback_crash_message_prefill">Sona closed unexpectedly.</string>
+</resources>
