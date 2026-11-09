@@ -16,6 +16,7 @@ import com.lhacenmed.sona.core.datastore.PlayerStyleSettings
 import com.lhacenmed.sona.core.datastore.VideoSettings
 import com.lhacenmed.sona.core.datastore.stateIn
 import com.lhacenmed.sona.core.designsystem.component.toast
+import com.lhacenmed.sona.core.model.VideoChapter
 import com.lhacenmed.sona.core.vault.VaultRepository
 import com.lhacenmed.sona.feature.playback.MediaTrack
 import com.lhacenmed.sona.feature.playback.PlaybackController
@@ -177,6 +178,9 @@ class VideoPlayerViewModel @Inject constructor(
         return lastPositionMs
     }
 
+    /** How far ahead the player has read the video, at this moment - as far as it is, once this screen's opening is over. */
+    fun bufferedPositionMs(): Long = video?.bufferedPositionMs() ?: lastPositionMs
+
     fun onTogglePlayPause() {
         video?.togglePlayPause()
     }
@@ -211,13 +215,13 @@ class VideoPlayerViewModel @Inject constructor(
 
     fun onScrubPreviewMove(positionMs: Long) = videoPlayback.moveScrubPreview(positionMs)
 
-    /**
-     * How high each moment of the video stands in its Most replayed graph, from 0 to 1 - null while no moment stands out,
-     * see [com.lhacenmed.sona.core.model.ReplayHeatmap.heights].
-     */
-    val replayHeights: StateFlow<FloatArray?> = videoPlayback.replayHeatmap
-        .map { it?.heights() }
+    /** How high each moment of the video stands in its Most replayed graph, from 0 to 1 - see [VideoPlayback.replayHeights]. */
+    val replayHeights: StateFlow<FloatArray?> = videoPlayback.replayHeights
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** The video's chapters, in the order they come - none for one without. */
+    val chapters: StateFlow<List<VideoChapter>> = videoPlayback.chapters
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** A scrub has begun or ended - see [VideoPlayback.setScrubbing]. */
     fun onScrubbingChange(isScrubbing: Boolean) {

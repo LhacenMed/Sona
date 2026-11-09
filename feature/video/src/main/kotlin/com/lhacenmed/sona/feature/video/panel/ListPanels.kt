@@ -18,6 +18,7 @@ import com.lhacenmed.sona.core.designsystem.player.formatPlaybackTime
 import com.lhacenmed.sona.core.designsystem.component.SonaPlaybackModeButtons
 import com.lhacenmed.sona.core.designsystem.component.SonaTrackRow
 import com.lhacenmed.sona.core.model.RepeatMode
+import com.lhacenmed.sona.core.model.VideoChapter
 import com.lhacenmed.sona.feature.playback.QueueVideo
 import com.lhacenmed.sona.feature.playback.R as PlaybackR
 import com.lhacenmed.sona.feature.playback.iconRes
@@ -95,6 +96,23 @@ internal fun ColumnScope.QueuePanel(
                 // The panel paints its own ground; a row painting another would seam against it.
                 containerColor = Color.Transparent,
             )
+        }
+    }
+}
+
+/** The video's chapters, each with where it starts, the one playing chosen - picking one goes to it, and closes it. */
+@Composable
+internal fun ColumnScope.ChaptersPanel(chapters: List<VideoChapter>, currentIndex: Int?, onSelect: (VideoChapter) -> Unit, onClose: () -> Unit) {
+    PanelHeader(stringResource(R.string.video_chapters), onClose)
+    LazyColumn(
+        state = rememberLazyListState(initialFirstVisibleItemIndex = ((currentIndex ?: 0) - 1).coerceAtLeast(0)),
+        modifier = Modifier.weight(1f, fill = false),
+    ) {
+        itemsIndexed(chapters) { index, chapter ->
+            PanelChoiceRow("${formatPlaybackTime(chapter.startMs)}  ${chapter.title}", index == currentIndex, {
+                onSelect(chapter)
+                onClose()
+            })
         }
     }
 }

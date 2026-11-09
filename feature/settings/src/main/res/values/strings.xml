@@ -609,4 +609,17 @@
     <string name="video_long_press_vibration_summary">Vibrate as a long press speeds the video up</string>
     <string name="video_zoom_pan_title">Zoom pan</string>
     <string name="video_zoom_pan_summary">Pinch to zoom the video, and drag two fingers to pan it while enlarged</string>
+    <string name="downloads_settings_title">Downloads</string>
+    <string name="downloads_settings_summary">The downloader, and yt-dlp</string>
+    <string name="downloads_settings_downloader_section">Downloading</string>
+    <string name="downloads_settings_downloader_title">Downloader</string>
+    <string name="downloads_settings_downloader_download_summary">Download Python, FFmpeg and yt-dlp (about 50 MB) to download from links</string>
+    <string name="downloads_settings_downloader_downloading_summary">Downloading: %1$s of %2$s</string>
+    <string name="downloads_settings_downloader_summary">Ready to download from links</string>
+    <string name="downloads_settings_downloader_failed_summary">Couldn\'t be downloaded. Try again</string>
+    <string name="downloads_settings_ytdlp_title">Update yt-dlp</string>
+    <string name="downloads_settings_ytdlp_summary">Version %1$s - brought up to date every week by itself</string>
+    <string name="downloads_settings_ytdlp_unavailable">Comes with the downloader</string>
+    <string name="downloads_settings_open_title">Downloads</string>
+    <string name="downloads_settings_open_summary">Download from a link, and see what is downloading</string>
 </resources>

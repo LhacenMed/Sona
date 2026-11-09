@@ -1,5 +1,10 @@
 package com.lhacenmed.sona.feature.video.controls
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,8 +18,10 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.player.PlayerControls
 import com.lhacenmed.sona.feature.video.VideoPlayerTokens
@@ -47,6 +54,7 @@ internal class VideoControlSlots(
 @Composable
 internal fun VideoControlsLayout(
     isLandscape: Boolean,
+    isScrubbing: Boolean,
     slots: VideoControlSlots,
     modifier: Modifier = Modifier,
 ) {
@@ -66,14 +74,29 @@ internal fun VideoControlsLayout(
                 )
             }
 
-            // In the middle of the screen in landscape, as the picture is, whatever the system bars and cutout take of it.
-            if (isLandscape) slots.transport(Modifier.align(Alignment.Center))
+            // Under a scrub the picture dims, for the frame a scrub reaches to stand out over it.
+            val scrubbing by animateFloatAsState(if (isScrubbing) 1f else 0f, tween(VideoPlayerTokens.ScrubChromeFadeMs), label = "scrubbing")
+            Box(Modifier.fillMaxSize().graphicsLayer { alpha = scrubbing }.background(VideoPlayerTokens.ScrubDim))
+
+            // In the middle of the screen in landscape, as the picture is, whatever the system bars and cutout take of it - out
+            // of the way of the scrub's frame under a scrub.
+            if (isLandscape) {
+                AnimatedVisibility(
+                    visible = !isScrubbing,
+                    enter = fadeIn(tween(VideoPlayerTokens.ScrubChromeFadeMs)),
+                    exit = fadeOut(tween(VideoPlayerTokens.ScrubChromeFadeMs)),
+                    modifier = Modifier.align(Alignment.Center),
+                ) {
+                    slots.transport(Modifier)
+                }
+            }
             Box(modifier = Modifier.fillMaxSize().padding(videoControlsPadding(isLandscape))) {
                 val barMargin = if (isLandscape) VideoPlayerTokens.ControlsMargin else VideoPlayerTokens.PortraitKeyline
                 Box(
                     Modifier
                         .align(Alignment.TopCenter)
-                        .padding(start = barMargin, end = barMargin, top = if (isLandscape) VideoPlayerTokens.ControlsMargin else 0.dp),
+                        .padding(start = barMargin, end = barMargin, top = if (isLandscape) VideoPlayerTokens.ControlsMargin else 0.dp)
+                        .graphicsLayer { alpha = 1f - (1f - VideoPlayerTokens.ScrubbingTopBarAlpha) * scrubbing },
                 ) {
                     slots.topBar()
                 }

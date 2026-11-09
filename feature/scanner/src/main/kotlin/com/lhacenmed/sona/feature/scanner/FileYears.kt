@@ -30,7 +30,7 @@ class FileYears @Inject constructor(private val dao: FileYearDao) {
         val stored = dao.getAll().associateBy { it.path }
         val read = mutableListOf<FileYearEntity>()
         val yearsById = music.associate { track ->
-            val signature = signatureOf(track.path)
+            val signature = fileSignature(track.path, READ_VERSION)
             val known = stored[track.path]?.takeIf { it.signature == signature }
             val year = if (known != null) known.year else readYear(track.path).also { read += FileYearEntity(track.path, signature, it) }
             track.id to year
@@ -47,7 +47,4 @@ class FileYears @Inject constructor(private val dao: FileYearDao) {
             date?.let { YearPattern.find(it)?.value?.toInt() }?.takeIf { it > 0 }
         }
     }.getOrNull()
-
-    /** The file's last change and size, as one number, with how it is read - as the lyrics index tells a file changed. */
-    private fun signatureOf(path: String): Long = File(path).let { file -> (file.lastModified() * 31 + file.length()) * 31 + READ_VERSION }
 }

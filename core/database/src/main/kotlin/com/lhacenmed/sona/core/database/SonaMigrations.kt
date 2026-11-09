@@ -431,6 +431,59 @@ val MIGRATION_24_25 = object : Migration(24, 25) {
     }
 }
 
+/** The downloads asked for, and the Most replayed graphs downloaded videos came with - two tables of their own, empty. */
+val MIGRATION_25_26 = object : Migration(25, 26) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `downloads` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `url` TEXT NOT NULL, " +
+                "`title` TEXT, `kind` TEXT NOT NULL, `videoQuality` TEXT NOT NULL, `audioFormat` TEXT NOT NULL, " +
+                "`captions` INTEGER NOT NULL, `skipSponsors` INTEGER NOT NULL, `status` TEXT NOT NULL, `error` TEXT, " +
+                "`createdAt` INTEGER NOT NULL)",
+        )
+        db.execSQL("CREATE TABLE IF NOT EXISTS `online_heatmaps` (`path` TEXT NOT NULL, `heights` BLOB NOT NULL, PRIMARY KEY(`path`))")
+    }
+}
+
+/**
+ * The sites' Most replayed graphs kept by track rather than by file, so each goes where its track goes, and with it: the
+ * table made anew, each graph kept for the track whose file it was downloaded to - one whose file the library has not read
+ * in has no track to go with, and goes.
+ */
+val MIGRATION_26_27 = object : Migration(26, 27) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `online_heatmaps_by_track` (`trackId` INTEGER NOT NULL, `heights` BLOB NOT NULL, " +
+                "PRIMARY KEY(`trackId`), FOREIGN KEY(`trackId`) REFERENCES `tracks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        )
+        db.execSQL(
+            "INSERT OR REPLACE INTO `online_heatmaps_by_track` (`trackId`, `heights`) " +
+                "SELECT `tracks`.`id`, `online_heatmaps`.`heights` FROM `online_heatmaps` JOIN `tracks` ON `tracks`.`path` = `online_heatmaps`.`path`",
+        )
+        db.execSQL("DROP TABLE `online_heatmaps`")
+        db.execSQL("ALTER TABLE `online_heatmaps_by_track` RENAME TO `online_heatmaps`")
+    }
+}
+
+/** Downloaded videos' chapters, by track - see `VideoChapterEntity`. A table of its own, starting empty. */
+val MIGRATION_27_28 = object : Migration(27, 28) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `video_chapters` (`trackId` INTEGER NOT NULL, `startMs` INTEGER NOT NULL, `title` TEXT NOT NULL, " +
+                "PRIMARY KEY(`trackId`, `startMs`), FOREIGN KEY(`trackId`) REFERENCES `tracks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        )
+    }
+}
+
+/** Which videos' files have been read for what they carry of their sites - see `VideoExtraReadEntity`. Empty: each is read once. */
+val MIGRATION_28_29 = object : Migration(28, 29) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `video_extra_reads` (`trackId` INTEGER NOT NULL, `signature` INTEGER NOT NULL, " +
+                "PRIMARY KEY(`trackId`), FOREIGN KEY(`trackId`) REFERENCES `tracks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        )
+    }
+}
+
 /**
  * Makes sure Favorites exists, every time the database is opened.
  *

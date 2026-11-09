@@ -22,7 +22,11 @@ import androidx.media3.session.MediaSession
 import com.lhacenmed.sona.core.datastore.ImageSettings
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.datastore.VideoSettings
+import com.lhacenmed.sona.core.database.dao.OnlineHeatmapDao
+import com.lhacenmed.sona.core.database.dao.VideoChapterDao
+import com.lhacenmed.sona.core.database.entity.toDomain
 import com.lhacenmed.sona.core.model.ReplayHeatmap
+import com.lhacenmed.sona.core.model.VideoChapter
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -147,6 +151,8 @@ class VideoPlayback @Inject constructor(
     private val listenHistory: ListenHistory,
     private val resumePositions: ResumePositions,
     private val replayHeatmaps: ReplayHeatmaps,
+    private val onlineHeatmaps: OnlineHeatmapDao,
+    private val videoChapters: VideoChapterDao,
     private val equalizer: SonaEqualizer,
     private val imageSettings: ImageSettings,
 ) {
@@ -160,12 +166,32 @@ class VideoPlayback @Inject constructor(
     /** The lines of the subtitle track playing, as they show - apart from [state], as they change so often. */
     val subtitleCues: StateFlow<List<Cue>> = _subtitleCues.asStateFlow()
 
-    /** How often each moment of the video playing has been watched, as it grows - null with none, or nothing playing. */
-    @kotlin.OptIn(ExperimentalCoroutinesApi::class)
-    val replayHeatmap: Flow<ReplayHeatmap?> = _state
+    /** The video playing, by its id in its space - what its heatmaps and chapters are kept by. */
+    private val watchedVideo: Flow<VideoKey?> = _state
         .map { state -> state.current?.let { VideoKey(if (state.isPrivate) PlaybackSpace.Private else PlaybackSpace.Library, it.id) } }
         .distinctUntilChanged()
-        .flatMapLatest { video -> video?.let(replayHeatmaps::observe) ?: flowOf(null) }
+
+    /**
+     * The heights of the Most replayed graph of the video playing, from 0 to 1 along it - null with none to show, or nothing
+     * playing. The site's own where it was downloaded with one - YouTube's, from everyone's watching - and this device's
+     * otherwise, as it grows - see [ReplayHeatmap.heights].
+     */
+    @kotlin.OptIn(ExperimentalCoroutinesApi::class)
+    val replayHeights: Flow<FloatArray?> = watchedVideo
+        .flatMapLatest { video ->
+            if (video == null) return@flatMapLatest flowOf(null)
+            // Only the library's videos were downloaded where a site could give them one.
+            val online = if (video.space == PlaybackSpace.Library) onlineHeatmaps.observe(video.id) else flowOf(null)
+            combine(online, replayHeatmaps.observe(video)) { site, own -> site?.heightsAlong() ?: own?.heights() }
+        }
+
+    /** The playing video's chapters, as its site marks them - none for one downloaded without, or not downloaded at all. */
+    @kotlin.OptIn(ExperimentalCoroutinesApi::class)
+    val chapters: Flow<List<VideoChapter>> = watchedVideo
+        .flatMapLatest { video ->
+            // Only the library's videos were downloaded where a site could give them chapters.
+            if (video?.space == PlaybackSpace.Library) videoChapters.observe(video.id).map { rows -> rows.map { it.toDomain() } } else flowOf(emptyList())
+        }
 
     private val screenRequests = Channel<VideoScreenRequest>(Channel.CONFLATED)
 
@@ -503,6 +529,9 @@ class VideoPlayback @Inject constructor(
 
     /** The player's position at this moment, for whatever follows it closer than [state] could. */
     fun currentPositionMs(): Long = if (isOpen) player.currentPosition else 0L
+
+    /** How far ahead the player has read the video, at this moment. */
+    fun bufferedPositionMs(): Long = if (isOpen) player.bufferedPosition else 0L
 
     /** The language a file's audio is played in from now on, wherever it has a track in it. */
     fun setPreferredAudioLanguage(language: String) {

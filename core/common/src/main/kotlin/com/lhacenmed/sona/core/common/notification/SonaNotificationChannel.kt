@@ -75,6 +75,15 @@ enum class SonaNotificationChannel(
         importance = NotificationManagerCompat.IMPORTANCE_LOW,
         entry = AppEntry.BACKUP,
     ),
+
+    /** A link downloading, then saved or failed. */
+    DOWNLOADS(
+        id = "downloads",
+        nameRes = R.string.notification_channel_downloads,
+        descriptionRes = R.string.notification_channel_downloads_description,
+        importance = NotificationManagerCompat.IMPORTANCE_LOW,
+        entry = AppEntry.DOWNLOADS,
+    ),
 }
 
 /** Every notification's id, in one place so no two features ever post under the same one. */
@@ -87,5 +96,7 @@ object SonaNotificationId {
     const val BACKUP = 4500
     const val BACKUP_PAUSED = 4501
     const val BACKUP_FAILED = 4502
+    const val DOWNLOAD = 4600
+    const val DOWNLOAD_RESULT = 4601
     const val UPDATE_AVAILABLE = 9999
 }

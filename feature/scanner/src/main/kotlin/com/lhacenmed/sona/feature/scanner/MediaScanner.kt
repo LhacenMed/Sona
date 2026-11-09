@@ -117,6 +117,7 @@ class MediaScanner @Inject constructor(
     private val trackDao: TrackDao,
     private val addedDateDao: AddedDateDao,
     private val fileYears: FileYears,
+    private val videoExtras: VideoExtras,
     private val librarySettings: LibrarySettings,
     private val scanSettings: ScanSettings,
     mediaStoreChangeObserver: MediaStoreChangeObserver,
@@ -338,6 +339,8 @@ class MediaScanner @Inject constructor(
         // already stored exactly this, it opens no transaction at all.
         _progress.value = ScanProgress(ScanStep.SAVING)
         stats += libraryWriter.sync(tracks + videos + manualVideos, albums, artists, genres)
+        // Once the videos are tracks: what their files carry is kept by track.
+        videoExtras.index(videos + manualVideos)
         return stats
     }
 

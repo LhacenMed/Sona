@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 object PlayerIcons {
     val Back by lazy { strokeIcon("Back", "M15 5l-7 7 7 7") }
     val ChevronDown by lazy { strokeIcon("ChevronDown", "M6 9l6 6 6-6") }
+    val ChevronRight by lazy { strokeIcon("ChevronRight", "M9 6l6 6-6 6", strokeWidth = 2f) }
     val Close by lazy { strokeIcon("Close", "M6 6l12 12M18 6L6 18") }
     val Check by lazy { strokeIcon("Check", "M5 12.5l4.5 4.5L19 7.5", strokeWidth = 2f) }
     val Add by lazy { strokeIcon("Add", "M12 5v14M5 12h14") }

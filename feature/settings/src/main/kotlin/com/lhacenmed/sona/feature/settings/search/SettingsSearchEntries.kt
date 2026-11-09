@@ -208,6 +208,13 @@ internal val SettingsSearchEntries: List<SettingsSearchEntry> = with(SettingsCat
         row(R.string.haptics_title, R.string.haptics_summary),
         row(R.string.block_screenshots_title, R.string.block_screenshots_summary),
     )
+} + with(SettingsCategory.Downloads) {
+    section(
+        R.string.downloads_settings_downloader_section,
+        row(R.string.downloads_settings_downloader_title, R.string.downloads_settings_downloader_summary),
+        row(R.string.downloads_settings_ytdlp_title),
+        row(R.string.downloads_settings_open_title, R.string.downloads_settings_open_summary),
+    )
 } + with(SettingsCategory.ListeningStats) {
     section(R.string.stats_period_section, row(R.string.stats_period_title))
 } + with(SettingsCategory.Permissions) {

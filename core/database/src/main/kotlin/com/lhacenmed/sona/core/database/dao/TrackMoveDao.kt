@@ -6,8 +6,9 @@ import androidx.room.Transaction
 
 /**
  * Hands everything the user made of one track to another - a copy of the same file, gone in with the track it is:
- * its playlist entries, its plays, where it was left, how often each moment of it was watched, its place in every
- * hand-made order, its queue entries, and the playlist covers it is. A row the new track already has is kept, and the old one goes with its track.
+ * its playlist entries, its plays, where it was left, how often each moment of it was watched - by the device and by the
+ * site it came from - its chapters, its place in every hand-made order, its queue entries, and the playlist covers it is.
+ * A row the new track already has is kept, and the old one goes with its track.
  */
 @Dao
 interface TrackMoveDao {
@@ -18,6 +19,8 @@ interface TrackMoveDao {
         movePlayStats(fromTrackId, toTrackId)
         moveResumePosition(fromTrackId, toTrackId)
         moveReplayHeatmap(fromTrackId, toTrackId)
+        moveOnlineHeatmap(fromTrackId, toTrackId)
+        moveChapters(fromTrackId, toTrackId)
         moveArrangements(fromTrackId, toTrackId)
         moveQueueItems(fromTrackId, toTrackId)
         movePlaylistCovers(fromTrackId, toTrackId)
@@ -34,6 +37,12 @@ interface TrackMoveDao {
 
     @Query("UPDATE OR IGNORE replay_heatmaps SET trackId = :toTrackId WHERE trackId = :fromTrackId")
     suspend fun moveReplayHeatmap(fromTrackId: Long, toTrackId: Long)
+
+    @Query("UPDATE OR IGNORE online_heatmaps SET trackId = :toTrackId WHERE trackId = :fromTrackId")
+    suspend fun moveOnlineHeatmap(fromTrackId: Long, toTrackId: Long)
+
+    @Query("UPDATE OR IGNORE video_chapters SET trackId = :toTrackId WHERE trackId = :fromTrackId")
+    suspend fun moveChapters(fromTrackId: Long, toTrackId: Long)
 
     @Query("UPDATE OR IGNORE arrangements SET trackId = :toTrackId WHERE trackId = :fromTrackId")
     suspend fun moveArrangements(fromTrackId: Long, toTrackId: Long)

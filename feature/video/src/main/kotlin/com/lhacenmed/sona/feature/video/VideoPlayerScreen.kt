@@ -48,6 +48,12 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.lhacenmed.sona.feature.video.panel.ChaptersPanel
+import com.lhacenmed.sona.core.model.indexAt
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -61,6 +67,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.data.contentUri
+import com.lhacenmed.sona.core.model.VideoChapter
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.effect.rememberDeviceMusicVolumeController
 import com.lhacenmed.sona.core.model.Track
@@ -150,6 +157,7 @@ internal fun VideoPlayerScreen(
     val subtitles by viewModel.subtitles.state.collectAsStateWithLifecycle()
     val subtitleStyle by viewModel.subtitleStyle.collectAsStateWithLifecycle()
     val replayHeights by viewModel.replayHeights.collectAsStateWithLifecycle()
+    val chapters by viewModel.chapters.collectAsStateWithLifecycle()
     val current = playback.current
     val windowSize = LocalWindowInfo.current.containerSize
     val isLandscape = windowSize.width > windowSize.height
@@ -228,7 +236,7 @@ internal fun VideoPlayerScreen(
     // A panel has no room in the floating window: it is closed as the player floats.
     LaunchedEffect(isFloating) { if (isFloating) panel = null }
 
-    val position = rememberVideoPosition(viewModel::currentPositionMs, isFollowing = !session.isLocked && !isFloating)
+    val position = rememberVideoPosition(viewModel::currentPositionMs, viewModel::bufferedPositionMs, isFollowing = !session.isLocked && !isFloating)
     val isLoaderShown by produceState(false, playback.isBuffering) {
         if (playback.isBuffering) delay(VideoPlayerTokens.LoaderDelayMs)
         value = playback.isBuffering
@@ -290,6 +298,7 @@ internal fun VideoPlayerScreen(
                 },
             )
         }
+        val subtitleAlpha by animateFloatAsState(if (scrub.isActive) 0f else 1f, tween(VideoPlayerTokens.ScrubChromeFadeMs), label = "subtitles")
         if (panel != null) Box(Modifier.fillMaxSize().background(VideoPlayerTokens.PanelDim))
         if (!isPictureShown) {
             Box(Modifier.fillMaxSize().background(Color.Black))
@@ -306,6 +315,8 @@ internal fun VideoPlayerScreen(
                 isResumePromptUp = isResumePromptUp,
                 openPanelWidth = panel?.width?.takeIf { isLandscape },
                 pictureBottomPx = { zoom.frameBottomPx },
+                // Out of the way of the scrub's frame under a scrub.
+                modifier = Modifier.graphicsLayer { alpha = subtitleAlpha },
             )
         }
 
@@ -374,6 +385,7 @@ internal fun VideoPlayerScreen(
                     session = session,
                     scrub = scrub,
                     replayHeights = replayHeights,
+                    chapters = chapters,
                     viewModel = viewModel,
                     onClose = onClose,
                     onLock = {
@@ -390,7 +402,7 @@ internal fun VideoPlayerScreen(
 
         ResumePrompt(playback.resumedFromMs, isResumePromptUp, isLandscape, viewModel::onStartOver)
 
-        ScrubPill(scrub, isVisible = scrub.isActive && !areControlsUp, playback.durationMs, Modifier.align(Alignment.TopCenter))
+        ScrubPill(scrub, isVisible = scrub.isActive && !areControlsUp, playback.durationMs, chapters, Modifier.align(Alignment.TopCenter))
         ScrubPreview(
             scrub = scrub,
             frames = remember(viewModel) { ScrubFrames(viewModel::onScrubPreviewStart, viewModel::onScrubPreviewMove) },
@@ -399,6 +411,7 @@ internal fun VideoPlayerScreen(
             videoWidth = pictureSize[0],
             videoHeight = pictureSize[1],
             durationMs = playback.durationMs,
+            chapters = chapters,
         )
 
         PlayerPanelHost(panel, isLandscape) { shown ->
@@ -430,6 +443,13 @@ internal fun VideoPlayerScreen(
 
                 VideoPanel.SPEED -> SpeedPanel(playback.playbackSpeed, viewModel::onSpeedChange, close)
 
+                VideoPanel.CHAPTERS -> ChaptersPanel(
+                    chapters = chapters,
+                    currentIndex = chapters.indexAt(viewModel.currentPositionMs()),
+                    onSelect = { viewModel.onSeek(it.startMs) },
+                    onClose = close,
+                )
+
                 VideoPanel.MORE -> MorePanel(
                     actions = moreActions(playback, viewModel, screenshot, onOpenEqualizer),
                     onClose = close,
@@ -452,6 +472,7 @@ private fun PlayerControls(
     session: VideoSession,
     scrub: VideoScrubState,
     replayHeights: FloatArray?,
+    chapters: List<VideoChapter>,
     viewModel: VideoPlayerViewModel,
     onClose: () -> Unit,
     onLock: () -> Unit,
@@ -461,6 +482,8 @@ private fun PlayerControls(
     onOpenPanel: (VideoPanel) -> Unit,
 ) {
     val durationMs = playback.durationMs
+    // Read as the position moves, but changing only as another chapter starts: the bar composes once a chapter.
+    val chapterIndex by remember(chapters, position) { derivedStateOf { chapters.indexAt(position.positionMs) } }
     val topActions = listOf(
         VideoAction(PlayerIcons.Headphones, stringResource(R.string.video_play_as_audio), viewModel::onPlayAsAudio),
         VideoAction(
@@ -484,8 +507,17 @@ private fun PlayerControls(
     CompositionLocalProvider(LocalPlayerCheckedColors provides checkedColors) {
         VideoControlsLayout(
             isLandscape = isLandscape,
+            isScrubbing = scrub.isActive,
             slots = VideoControlSlots(
-                topBar = { VideoTopBar(title, onClose, topActions) },
+                topBar = {
+                    VideoTopBar(
+                        title = title,
+                        chapter = chapterIndex?.let { stringResource(R.string.video_chapter, it + 1, chapters[it].title) },
+                        onOpenChapters = { onOpenPanel(VideoPanel.CHAPTERS) },
+                        onBack = onClose,
+                        actions = topActions,
+                    )
+                },
                 transport = { modifier ->
                     VideoTransport(
                         isPlaying = playback.isPlaying,
@@ -501,7 +533,7 @@ private fun PlayerControls(
                         modifier = modifier,
                     )
                 },
-                seekBar = { modifier -> VideoSeekBar(position, durationMs, scrub, replayHeights, modifier) },
+                seekBar = { modifier -> VideoSeekBar(position, durationMs, scrub, replayHeights, chapters, modifier) },
                 times = { modifier -> VideoTimes(position, durationMs, scrub, showsTotalDuration, viewModel::onToggleEndTime, modifier) },
                 elapsedTime = { modifier -> VideoElapsedTime(position, scrub, modifier) },
                 endTime = { modifier -> VideoEndTime(position, durationMs, scrub, showsTotalDuration, viewModel::onToggleEndTime, modifier) },

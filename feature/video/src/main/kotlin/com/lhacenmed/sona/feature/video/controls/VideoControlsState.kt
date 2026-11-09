@@ -74,19 +74,24 @@ internal class VideoControlsState {
 @Stable
 internal class VideoPosition(positionMs: Long) {
     var positionMs by mutableLongStateOf(positionMs)
+
+    /** How far ahead of [positionMs] the video has been read. */
+    var bufferedMs by mutableLongStateOf(positionMs)
 }
 
 /** The player's [VideoPosition], read for as long as [isFollowing] and the screen is started - not while nothing shows it. */
 @Composable
-internal fun rememberVideoPosition(currentPositionMs: () -> Long, isFollowing: Boolean): VideoPosition {
+internal fun rememberVideoPosition(currentPositionMs: () -> Long, bufferedPositionMs: () -> Long, isFollowing: Boolean): VideoPosition {
     val position = remember { VideoPosition(currentPositionMs()) }
     val latestCurrentPositionMs by rememberUpdatedState(currentPositionMs)
+    val latestBufferedPositionMs by rememberUpdatedState(bufferedPositionMs)
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(isFollowing, lifecycleOwner) {
         if (!isFollowing) return@LaunchedEffect
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (isActive) {
                 position.positionMs = latestCurrentPositionMs()
+                position.bufferedMs = latestBufferedPositionMs()
                 delay(VideoPlayerTokens.PositionTickMs)
             }
         }

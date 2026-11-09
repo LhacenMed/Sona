@@ -30,6 +30,7 @@ class SettingsLoader @Inject constructor(
     private val updateSettings: UpdateSettings,
     private val effectSettings: EffectSettings,
     private val videoSettings: VideoSettings,
+    private val downloadSettings: DownloadSettings,
     private val settingsSearchHistory: SettingsSearchHistory,
 ) {
     suspend fun load() {
@@ -46,6 +47,7 @@ class SettingsLoader @Inject constructor(
         updateSettings.awaitLoaded()
         effectSettings.awaitLoaded()
         videoSettings.awaitLoaded()
+        downloadSettings.awaitLoaded()
         settingsSearchHistory.awaitLoaded()
     }
 }

@@ -66,6 +66,7 @@ internal enum class VideoPanel(val width: Dp) {
     QUEUE(VideoPlayerTokens.ListPanelWidth),
     SPEED(VideoPlayerTokens.ListPanelWidth),
     MORE(VideoPlayerTokens.ListPanelWidth),
+    CHAPTERS(VideoPlayerTokens.ListPanelWidth),
 }
 
 /**

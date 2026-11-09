@@ -2,6 +2,7 @@ package com.lhacenmed.sona.feature.settings
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ShowChart
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Feedback
 import androidx.compose.material.icons.filled.Info
@@ -20,6 +21,7 @@ import com.lhacenmed.sona.feature.feedback.FeedbackScreen
 import com.lhacenmed.sona.feature.settings.about.AboutScreen
 import com.lhacenmed.sona.feature.settings.appearance.AppearanceScreen
 import com.lhacenmed.sona.feature.settings.backup.BackupScreen
+import com.lhacenmed.sona.feature.settings.screen.DownloadsSettingsScreen
 import com.lhacenmed.sona.feature.settings.screen.BehaviorScreen
 import com.lhacenmed.sona.feature.settings.screen.ContentScreen
 import com.lhacenmed.sona.feature.settings.screen.ListeningStatsScreen
@@ -92,6 +94,13 @@ enum class SettingsCategory(
         summaryRes = R.string.behavior_summary,
         icon = Icons.Filled.TouchApp,
         screen = BehaviorScreen,
+    ),
+    Downloads(
+        group = SettingsGroup.YourMusic,
+        titleRes = R.string.downloads_settings_title,
+        summaryRes = R.string.downloads_settings_summary,
+        icon = Icons.Filled.Download,
+        screen = DownloadsSettingsScreen,
     ),
     ListeningStats(
         group = SettingsGroup.YourMusic,

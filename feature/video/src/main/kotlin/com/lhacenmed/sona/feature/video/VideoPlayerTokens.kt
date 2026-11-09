@@ -135,11 +135,30 @@ internal object VideoPlayerTokens {
     val ScrubPillWidth = 248.dp
     val ScrubPillCornerRadius = 16.dp
 
+    /**
+     * The seek line: cut at each chapter by [ChapterGap], and cleared [ThumbClearance] either side of the upright thumb. Under a
+     * scrub every chapter thickens from [SeekTrackHeight] to [ScrubTrackHeight], the one the thumb is over to
+     * [ScrubChapterHeight], and the thumb swells from [ThumbSize] to [ScrubThumbSize].
+     */
     val SeekTrackHeight = 4.dp
     val ScrubTrackHeight = 6.dp
+    val ScrubChapterHeight = 12.dp
+    val ChapterGap = 3.dp
+    val ThumbClearance = 4.dp
     val ThumbSize = DpSize(4.dp, 20.dp)
-    val ScrubThumbSize = DpSize(6.dp, 24.dp)
-    val ThumbGap = 6.dp
+    val ScrubThumbSize = DpSize(6.dp, 28.dp)
+
+    /** The seek line's ground, as much of the video as is read ahead, and as far as a scrub has reached. */
+    val SegmentColor = Color.White.copy(alpha = 0.22f)
+    val BufferedColor = Color.White.copy(alpha = 0.18f)
+    val ScrubbedColor = Color.White.copy(alpha = 0.62f)
+
+    /** Under a scrub: the picture dimmed by [ScrubDim], and the top bar faded to [ScrubbingTopBarAlpha]. */
+    val ScrubDim = Color.Black.copy(alpha = 0.38f)
+    const val ScrubbingTopBarAlpha = 0.35f
+
+    /** The widest the time a scrub has reached stands, with the title of the chapter it is in. */
+    val PreviewLabelMaxWidth = 240.dp
 
     /** The Most replayed graph over the seek track while a scrub is on: how tall it is at its peak, and how far above the track. */
     val HeatmapHeight = 36.dp
@@ -204,6 +223,8 @@ internal object VideoPlayerTokens {
     const val ChromeFadeMs = 220
     const val ScrubFadeMs = 90
     const val HeatmapRevealMs = 240
+    const val SeekMotionMs = 160
+    const val ScrubChromeFadeMs = 180
     const val SubtitleLiftMs = 220
     const val MeterFadeMs = 120
 
@@ -217,6 +238,8 @@ internal object VideoPlayerType {
 
     val Title = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold, lineHeight = 20.sp, letterSpacing = (-0.01).em)
     val Time = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium, fontFeatureSettings = Tabular)
+    val Chapter = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium, lineHeight = 16.sp)
+    val PreviewChapter = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium, lineHeight = 18.sp)
     val PreviewTime = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold, fontFeatureSettings = Tabular)
     val MeterValue = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, fontFeatureSettings = Tabular)
     val SeekAmount = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, fontFeatureSettings = Tabular)

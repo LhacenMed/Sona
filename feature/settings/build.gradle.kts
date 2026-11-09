@@ -39,6 +39,8 @@ dependencies {
     implementation(project(":feature:explorer"))
     implementation(project(":feature:feedback"))
     implementation(project(":feature:equalizer"))
+    implementation(project(":feature:download"))
+    implementation(project(":core:downloader"))
 
     testImplementation(libs.junit)
 

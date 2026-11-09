@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -46,7 +47,11 @@ import com.lhacenmed.sona.feature.video.videoControlsPadding
 import com.lhacenmed.sona.feature.video.PlayerText
 import com.lhacenmed.sona.feature.video.VideoPlayerTokens
 import com.lhacenmed.sona.feature.video.VideoPlayerType
-import com.lhacenmed.sona.feature.video.controls.drawSeekTrack
+import com.lhacenmed.sona.core.model.VideoChapter
+import com.lhacenmed.sona.core.model.indexAt
+import com.lhacenmed.sona.feature.video.controls.chapterStartsOf
+import com.lhacenmed.sona.feature.video.controls.drawSeekLine
+import com.lhacenmed.sona.feature.video.controls.fractionOf
 import com.lhacenmed.sona.feature.video.formatSeekDelta
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -73,6 +78,7 @@ internal fun ScrubPreview(
     videoWidth: Int,
     videoHeight: Int,
     durationMs: Long,
+    chapters: List<VideoChapter>,
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
@@ -107,7 +113,7 @@ internal fun ScrubPreview(
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 PreviewPicture(scrub, frames, pictureSize)
-                PreviewTimes(scrub)
+                PreviewTimes(scrub, chapters)
             }
         }
     }
@@ -132,20 +138,31 @@ private fun PreviewPicture(scrub: VideoScrubState, frames: ScrubFrames, size: Dp
     )
 }
 
+/** The time a scrub has reached, and the title of the chapter it is in. */
 @Composable
-private fun PreviewTimes(scrub: VideoScrubState) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+private fun PreviewTimes(scrub: VideoScrubState, chapters: List<VideoChapter>) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.widthIn(max = VideoPlayerTokens.PreviewLabelMaxWidth),
+    ) {
         PlayerText(formatPlaybackTime(scrub.targetMs), VideoPlayerType.PreviewTime)
-        PlayerText(formatSeekDelta(scrub.targetMs - scrub.originMs), VideoPlayerType.Time, color = VideoPlayerTokens.SecondaryContent)
+        chapterTitleAt(chapters, scrub.targetMs)?.let { title ->
+            PlayerText(title, VideoPlayerType.PreviewChapter, color = VideoPlayerTokens.SecondaryContent)
+        }
     }
 }
 
+/** The title of the chapter [positionMs] is in - null for a video without chapters. */
+private fun chapterTitleAt(chapters: List<VideoChapter>, positionMs: Long): String? = chapters.indexAt(positionMs)?.let { chapters[it].title }
+
 /**
  * A scrub by a swipe with the controls away, which it leaves away: a pill beneath where the top bar would be saying where the
- * finger has taken the video, out of how long, how far that is from where it was, and where that lies along the video.
+ * finger has taken the video, out of how long, how far that is from where it was, the chapter it is in, and where that lies
+ * along the video.
  */
 @Composable
-internal fun ScrubPill(scrub: VideoScrubState, isVisible: Boolean, durationMs: Long, modifier: Modifier = Modifier) {
+internal fun ScrubPill(scrub: VideoScrubState, isVisible: Boolean, durationMs: Long, chapters: List<VideoChapter>, modifier: Modifier = Modifier) {
     AnimatedVisibility(
         visible = isVisible,
         enter = fadeIn(tween(VideoPlayerTokens.ScrubFadeMs)),
@@ -168,10 +185,18 @@ internal fun ScrubPill(scrub: VideoScrubState, isVisible: Boolean, durationMs: L
                 Spacer(Modifier.weight(1f))
                 PlayerText(formatSeekDelta(scrub.targetMs - scrub.originMs), VideoPlayerType.SeekAmount)
             }
+            chapterTitleAt(chapters, scrub.targetMs)?.let { PlayerText(it, VideoPlayerType.Pill) }
+            val chapterStarts = remember(chapters, durationMs) { chapterStartsOf(chapters, durationMs) }
             Canvas(Modifier.fillMaxWidth().height(VideoPlayerTokens.SeekTrackHeight)) {
-                drawSeekTrack(size.height, 1f, VideoPlayerTokens.TrackColor)
-                val fraction = if (durationMs > 0L) (scrub.targetMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
-                drawSeekTrack(size.height, fraction, VideoPlayerTokens.Accent)
+                drawSeekLine(
+                    chapterStarts = chapterStarts,
+                    played = fractionOf(scrub.targetMs, durationMs),
+                    buffered = 0f,
+                    scrubbed = null,
+                    thumb = null,
+                    thumbWidth = 0f,
+                    heightOf = { size.height },
+                )
             }
         }
     }

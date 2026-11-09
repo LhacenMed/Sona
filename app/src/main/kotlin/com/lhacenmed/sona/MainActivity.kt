@@ -27,6 +27,8 @@ import com.lhacenmed.sona.core.navigation.AppPrompts
 import com.lhacenmed.sona.core.navigation.IntentNavigator
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.PlayerOverlay
+import com.lhacenmed.sona.feature.download.DownloadScreen
+import com.lhacenmed.sona.feature.download.linkIn
 import com.lhacenmed.sona.feature.library.LibraryTabRequest
 import com.lhacenmed.sona.feature.library.PlayingList
 import com.lhacenmed.sona.feature.library.playingListOf
@@ -105,7 +107,7 @@ class MainActivity : SonaActivity() {
             if (entry == AppEntry.NOW_PLAYING) {
                 withTimeoutOrNull(MaxFirstFrameHoldMillis) { arriveAtPlaying().join() }
             } else {
-                arriveAtScreenOf(entry)
+                if (savedInstanceState == null) arriveAtScreenOf(intent, entry)
             }
             showContent()
         }
@@ -173,7 +175,7 @@ class MainActivity : SonaActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         intent.getStringExtra(EXTRA_LIBRARY_TAB)?.let { tab -> tabRequest = LibraryTabRequest(LibraryTab.valueOf(tab)) }
-        arriveAtScreenOf(AppEntry.of(intent))
+        arriveAtScreenOf(intent, AppEntry.of(intent))
     }
 
     /**
@@ -191,14 +193,17 @@ class MainActivity : SonaActivity() {
         }
     }
 
-    /** Opens the screen [entry] names, where it names one. */
-    private fun arriveAtScreenOf(entry: AppEntry?) {
+    /** Opens the screen [entry] names, where it names one - or the download screen on a link shared to Sona. */
+    private fun arriveAtScreenOf(intent: Intent, entry: AppEntry?) {
+        val sharedLink = linkIn(intent.getStringExtra(Intent.EXTRA_TEXT))
         val screen = when (entry) {
             AppEntry.UPDATES -> UpdatesScreen
             AppEntry.BACKUP -> BackupScreen
             AppEntry.STORAGE -> StorageScreen
             AppEntry.AUTO_TAG -> AutoTagScreen()
-            AppEntry.NOW_PLAYING, AppEntry.AS_LEFT, null -> return
+            AppEntry.DOWNLOADS -> DownloadScreen(sharedLink)
+            AppEntry.NOW_PLAYING, AppEntry.AS_LEFT -> return
+            null -> if (intent.action == Intent.ACTION_SEND && sharedLink != null) DownloadScreen(sharedLink) else return
         }
         IntentNavigator(this, currentScreen = null).arriveAt(screen)
     }

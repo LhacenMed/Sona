@@ -27,18 +27,22 @@ enum class AppEntry(private val flags: Int) {
     BACKUP(flags = BACK_TO_LIBRARY),
     STORAGE(flags = BACK_TO_LIBRARY),
     AUTO_TAG(flags = BACK_TO_LIBRARY),
+    DOWNLOADS(flags = BACK_TO_LIBRARY),
     ;
 
     /** What opens the app here. One per entry, by its request code: Android tells pending intents apart by no extra. */
-    fun pendingIntent(context: Context): PendingIntent {
-        val launcher = checkNotNull(context.packageManager.getLaunchIntentForPackage(context.packageName))
-        val intent = if (this == AS_LEFT) launcher else launcher.addFlags(flags).putExtra(EXTRA_ENTRY, name)
-        return PendingIntent.getActivity(
+    fun pendingIntent(context: Context): PendingIntent =
+        PendingIntent.getActivity(
             context,
             ordinal,
-            intent,
+            intent(context),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+
+    /** What opens the app here, there and then - from outside it, as a share does. */
+    fun intent(context: Context): Intent {
+        val launcher = checkNotNull(context.packageManager.getLaunchIntentForPackage(context.packageName))
+        return if (this == AS_LEFT) launcher else launcher.addFlags(flags).putExtra(EXTRA_ENTRY, name)
     }
 
     companion object {

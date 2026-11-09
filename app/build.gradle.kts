@@ -177,6 +177,11 @@ android {
         // The coroutines debug agent's probes, and every library's version stamp: read by tooling, never
         // by the app.
         resources.excludes += listOf("DebugProbesKt.bin", "META-INF/*.version")
+        // The downloader's Python and FFmpeg libraries, 50 MB a processor: downloaded by those who download instead - see
+        // DownloaderRuntime. Their programs stay, unpacked to the device as files, for Android runs nothing else.
+        jniLibs.excludes += listOf("**/libpython.zip.so", "**/libffmpeg.zip.so")
+        jniLibs.useLegacyPackaging = true
+        jniLibs.keepDebugSymbols += listOf("**/libpython.so", "**/libffmpeg.so", "**/libffprobe.so", "**/libqjs.so")
     }
 
     compileOptions {
@@ -232,6 +237,7 @@ dependencies {
     implementation(project(":feature:backup"))
     implementation(project(":feature:explorer"))
     implementation(project(":feature:feedback"))
+    implementation(project(":feature:download"))
     // Only in a debug build: none of it, nor anything it can reach, is in what users install.
     debugImplementation(project(":feature:debug"))
 

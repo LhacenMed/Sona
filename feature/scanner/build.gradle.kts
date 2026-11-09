@@ -25,6 +25,8 @@ dependencies {
     implementation(project(":core:datastore"))
     implementation(project(":core:common"))
     implementation(project(":core:designsystem"))
+    // What a downloaded video carries of its site - see VideoExtras.
+    implementation(project(":core:downloader"))
 
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.core.ktx)

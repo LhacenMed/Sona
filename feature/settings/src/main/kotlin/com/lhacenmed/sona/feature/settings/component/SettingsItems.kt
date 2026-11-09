@@ -287,14 +287,15 @@ sealed interface SettingsDownload {
  * again. The whole row is the one target, as a switch row is: it downloads while there is nothing to turn on, and
  * turns it on and off once there is.
  *
- * The switch is there whatever the download's state, so the row keeps one shape from the first press to the last.
+ * The switch is there whatever the download's state, so the row keeps one shape from the first press to the last. A
+ * download that is all there is to it - nothing to turn on once it is here - has none: [checked] null.
  */
 @Composable
 fun SettingsDownloadItem(
     title: String,
     summary: String,
     download: SettingsDownload,
-    checked: Boolean,
+    checked: Boolean?,
     onCheckedChange: (Boolean) -> Unit,
     onDownload: () -> Unit,
     onCancel: () -> Unit,
@@ -305,7 +306,7 @@ fun SettingsDownloadItem(
     val action = when (download) {
         SettingsDownload.Available, SettingsDownload.Failed -> onDownload
         is SettingsDownload.InProgress -> onCancel
-        SettingsDownload.Done -> { { onCheckedChange(!checked) } }
+        SettingsDownload.Done -> checked?.let { { onCheckedChange(!it) } }
     }
     SonaSettingsRow(
         title = title,
@@ -332,8 +333,10 @@ fun SettingsDownloadItem(
                         }
                     }
                 }
-                Spacer(modifier = Modifier.width(DownloadControlSpacing))
-                Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = isDownloaded)
+                if (checked != null) {
+                    Spacer(modifier = Modifier.width(DownloadControlSpacing))
+                    Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = isDownloaded)
+                }
             }
         },
         modifier = modifier.settingsScrollTarget(title),
