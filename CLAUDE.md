@@ -9,7 +9,7 @@ The app uses Material 3 Expressive. Before writing a control, look in `core/desi
 `core/designsystem/.../theme/SonaComponentStyle.kt` for the app's own.
 
 | Need | Use | Not |
-|---|---|---|
+| --- | --- | --- |
 | Labelled button | Material's, with `shapes = buttonPressShapes()` | a button without `shapes` |
 | Icon button | `SonaIconButton`, or Material's with `shapes = iconButtonPressShapes()` | `IconButton` without `shapes` |
 | Several icon buttons | `SonaIconButtonGroup` | a `Row` of them |
