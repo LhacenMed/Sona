@@ -160,6 +160,7 @@ jobs:
           NAME: ${{ steps.version.outputs.name }}
           VERSION_CODE: ${{ steps.upload.outputs.version-code }}
           UNIVERSAL: ${{ steps.upload.outputs.universal }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           APK_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${UNIVERSAL}"
@@ -174,13 +175,44 @@ jobs:
             '{versionCode: $versionCode, versionName: $versionName, apkUrl: $apkUrl, notes: ($notes | rtrimstr("\n"))}' \
             > version.json
 
-          git add "$GRADLE_FILE" version.json CHANGELOG.md
-          git commit -m "release: ${TAG}"
+          # main as merged first - a fast-forward to what was released, adding no commit of its own. Then the release
+          # commit, made through GitHub's API rather than pushed, so GitHub signs it: Verified, on the commit the tag
+          # names. The API takes the files themselves, on main as it now stands, and fails should main have moved since.
           git push origin "HEAD:${MAIN_BRANCH}"
+          for file in "$GRADLE_FILE" version.json CHANGELOG.md; do
+            base64 -w0 "$file" > "${RUNNER_TEMP}/$(basename "$file").b64"
+          done
+          jq -n \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg branch "$MAIN_BRANCH" \
+            --arg headline "release: ${TAG}" \
+            --arg head "$(git rev-parse HEAD)" \
+            --arg gradle "$GRADLE_FILE" \
+            --rawfile gradleContents "${RUNNER_TEMP}/$(basename "$GRADLE_FILE").b64" \
+            --rawfile versionContents "${RUNNER_TEMP}/version.json.b64" \
+            --rawfile changelogContents "${RUNNER_TEMP}/CHANGELOG.md.b64" \
+            '{
+              query: "mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid } } }",
+              variables: { input: {
+                branch: { repositoryNameWithOwner: $repository, branchName: $branch },
+                message: { headline: $headline },
+                expectedHeadOid: $head,
+                fileChanges: { additions: [
+                  { path: $gradle, contents: $gradleContents },
+                  { path: "version.json", contents: $versionContents },
+                  { path: "CHANGELOG.md", contents: $changelogContents }
+                ] }
+              } }
+            }' > "${RUNNER_TEMP}/release-commit.json"
+          gh api graphql --input "${RUNNER_TEMP}/release-commit.json" --jq '.data.createCommitOnBranch.commit.oid'
+
+          # The steps after this one work from the release commit as GitHub made it.
+          git fetch origin "$MAIN_BRANCH"
+          git reset --hard "origin/${MAIN_BRANCH}"
           echo "apk_url=${APK_URL}" >> "$GITHUB_OUTPUT"
 
       # Publishing a draft creates the tag at --target, which now resolves to the
-      # release commit pushed above.
+      # release commit made above - signed by GitHub, so the tag shows Verified.
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
