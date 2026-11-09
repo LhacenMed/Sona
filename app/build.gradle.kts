@@ -65,7 +65,7 @@ sealed class Version(
 /** The last stable release - written by the release pipeline, and what a local build is versioned as. */
 val lastStableVersion: Version = Version.Stable(
     versionMajor = 1,
-    versionMinor = 7,
+    versionMinor = 8,
     versionPatch = 0,
 )
 

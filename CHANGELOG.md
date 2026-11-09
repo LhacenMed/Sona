@@ -6,6 +6,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-11-09
+
+### Added
+
+- A volume drag that boosts past the device's loudest, up to 200%.
+- A fast scroller on every scrolling screen, naming the section it is in.
+- A Most replayed graph over the seek bar while scrubbing.
+- Play a file opened from another app in a popup over it.
+- Send feedback from Settings, and report a crash the next time the app opens.
+- Download from a link with yt-dlp, the video's chapters and Most replayed kept in its file.
+
+### Fixed
+
+- End a selection only once its action is done.
+
 ## [1.7.0] - 2026-11-08
 
 ### Added
