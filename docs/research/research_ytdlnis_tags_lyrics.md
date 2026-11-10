@@ -34,6 +34,7 @@ kept transiently in a Parcelable data class attached to the download item / Room
 Package: `app/src/main/java/com/deniscerri/ytdl/util/extractors/music/`
 
 - **`MusicProvider` interface** (`MusicProvider.kt`): contract for a tag catalogue.
+
   ```kotlin
   interface MusicProvider {
       val id: String
@@ -42,6 +43,7 @@ Package: `app/src/main/java/com/deniscerri/ytdl/util/extractors/music/`
       suspend fun details(metadata: MusicMetadata): MusicMetadata = metadata // fill extended tags
   }
   ```
+
   Also hosts small Gson `JsonObject` extension helpers used by all providers: `str(key)`,
   `obj(key)`, `arr(key)`, and `firstNonBlank(vararg)` — all null/type-safe, degrading to "" on any
   parse issue (loose typing tolerance, since public APIs are inconsistent).
@@ -147,6 +149,7 @@ File: `app/src/main/java/com/deniscerri/ytdl/util/MusicTagUtil.kt`
        `renameToCleanName` (no-op if target already matches or already exists).
     5. Deletes the temp cover file if it was a downloaded temporary copy.
   - **`writeTags(file, metadata, cover)`** — the actual jaudiotagger calls:
+
     ```kotlin
     val audioFile = AudioFileIO.read(file)
     val tag = audioFile.tagOrCreateDefault
@@ -169,6 +172,7 @@ File: `app/src/main/java/com/deniscerri/ytdl/util/MusicTagUtil.kt`
     audioFile.tag = tag
     AudioFileIO.write(audioFile)
     ```
+
   - Private extension `Tag.write(key, value)`: skips blank values (never wipes a field the
     downloader might already have set) and wraps `setField` in `runCatching` so an unsupported
     key for a given container (e.g. some field on OGG/WAV) just logs a warning instead of
@@ -230,9 +234,11 @@ File: `app/src/main/java/com/deniscerri/ytdl/util/MusicTagUtil.kt`
     move/rename — never touches the file mid-download.
 
 ### 1.5 Cover art resolution
+
 File: `app/src/main/java/com/deniscerri/ytdl/util/MusicCoverUtil.kt` and
 `CoverSearchUtil.kt`/`BingImageSource.kt`/`CatalogueImageSource.kt` (not fully read, but
 relevant surface):
+
 - `MusicCoverUtil.store(context, uri)`: copies a user-picked `content://` image into
   `filesDir/music_covers/cover_<timestamp>.jpg` (SAF grants aren't durable enough to keep
   referencing directly); prunes covers older than 7 days.
@@ -253,10 +259,11 @@ relevant surface):
 
 ## 2. Lyrics fetching
 
-### 2.1 Sources — **LRCLIB primary, NetEase Cloud Music secondary**. No Musixmatch, no Genius.
+### 2.1 Sources — **LRCLIB primary, NetEase Cloud Music secondary**. No Musixmatch, no Genius
 
 File: `app/src/main/java/com/deniscerri/ytdl/util/extractors/music/LyricsProvider.kt` — tiny
 interface:
+
 ```kotlin
 interface LyricsProvider {
     val id: String
@@ -267,6 +274,7 @@ interface LyricsProvider {
 
 **`LrclibProvider`** (`LrclibProvider.kt`) — id `"lrclib"`, name `"LRCLIB"`. Base URL
 `https://lrclib.net/api`. No API key, no rate limit encountered in code (no key headers sent).
+
 - Tries the **exact-match endpoint** first: `GET /get?track_name=<title>&artist_name=<artist>`
   → JSON object with `syncedLyrics` and `plainLyrics` fields; timed (`syncedLyrics`) preferred
   over plain, via `.lyrics() = timed() ?: plain()`.
@@ -280,12 +288,14 @@ interface LyricsProvider {
 
 **`NeteaseProvider`** (`NeteaseProvider.kt`) — id `"netease"`, name `"NetEase"`. Base URL
 `https://music.163.com/api`. Two-step: search then read.
+
 - `GET /search/get?s=<title artist>&type=1&limit=5` → `result.songs[]`, takes first song's `id`.
 - `GET /song/lyric?id=<id>&lv=1&kv=1&tv=-1` → `lrc.lyric` string (already LRC-timed format,
   `lv=1` requests the "lyric version" with timestamps).
 - Used as a secondary source mainly for non-English tracks LRCLIB doesn't index.
 
 **`LyricsUtil`** (`LyricsUtil.kt`) — orchestrator, sequential (not parallel) fetch:
+
 ```kotlin
 private val providers = listOf(LrclibProvider, NeteaseProvider)
 val sources: List<Pair<String, String>> = providers.map { it.id to it.name }  // for UI picker
@@ -300,6 +310,7 @@ suspend fun fetch(artist: String, title: String, sourceId: String? = null): Stri
             }
     }
 ```
+
 - Sequential by design (unlike tag providers, which are parallel): "a lyrics fetch has nothing to
   rank" — first source with a non-blank answer wins, so the common case costs one request to
   LRCLIB only.
@@ -334,9 +345,10 @@ suspend fun fetch(artist: String, title: String, sourceId: String? = null): Stri
 
 ## 3. Networking stack
 
-### 3.1 HTTP client — **raw OkHttp**, no Retrofit, no Ktor.
+### 3.1 HTTP client — **raw OkHttp**, no Retrofit, no Ktor
 
 Single shared client object: `app/src/main/java/com/deniscerri/ytdl/util/extractors/music/MusicHttp.kt`
+
 ```kotlin
 object MusicHttp {
     private const val TIMEOUT_SECONDS = 8L
@@ -357,6 +369,7 @@ object MusicHttp {
     // from Dispatchers.IO by callers), and swallow all exceptions into null with a Log.w.
 }
 ```
+
 - No interceptors, no caching layer, no retry/backoff logic — a single blocking `execute()` per
   request, 8s connect+read timeout, everything wrapped in `runCatching` at the call site so a
   failed request degrades to "this source has nothing" rather than throwing.
@@ -377,11 +390,13 @@ object MusicHttp {
   to the next one or an empty/partial result.
 
 ### 3.2 Relevant Gradle dependencies (from `app/build.gradle`)
-```
+
+```groovy
 implementation 'com.google.code.gson:gson:2.13.2'
 implementation "com.squareup.okhttp3:okhttp:5.3.2"
 implementation "net.jthink:jaudiotagger:3.0.1"
 ```
+
 (Picasso is also used, for image loading — `com.squareup.picasso.Picasso`, version not confirmed
 from a single grep but referenced in `MusicCoverUtil.kt`; check `app/build.gradle` for exact
 Picasso version if needed.)
@@ -391,6 +406,7 @@ Picasso version if needed.)
 ## 4. Summary for Sona reimplementation
 
 To clone this system in Sona (`com.lhacenmed.sona`):
+
 1. **Tag catalogues**: hit Deezer (`api.deezer.com/search`, `/track/{id}`, `/album/{id}` — no
    key) and iTunes Search API (`itunes.apple.com/search?entity=song` — no key) concurrently,
    rank/dedupe results with a Levenshtein+weighted similarity scorer, let the user pick among

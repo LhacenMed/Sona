@@ -30,7 +30,7 @@ The two release workflows share one concurrency group, so they never run at once
 
 ## The flow
 
-```
+```text
 contributor ──PR──▶ dev ◀── maintainer's own commits
                      │
                      ├─ every push ─────────────▶ Checks: debug APK
@@ -44,14 +44,18 @@ contributor ──PR──▶ dev ◀── maintainer's own commits
 1. **Contributions.** Contributors open pull requests against `dev`. Checks builds them and checks their commits; the build's APK can be downloaded from the run to try the change. Merge them with **Create a merge commit** or **Rebase and merge** - both keep each commit and its trailers. Squash merging is turned off: it joins the commits' messages into one, where git no longer finds the trailers.
 2. **Your own work.** Commit to `dev` as usual. Each commit's subject is its line in the notes; add [changelog trailers](../CONTRIBUTING.md#changelog-trailers) where users deserve a better sentence than the subject.
 3. **An artifact.** When `dev` is worth trying:
+
    ```bash
    ./scripts/release.sh artifact beta
    ```
+
    It shows the version and the notes; say yes, and a few minutes later the pre-release is on GitHub and apps on the Artifact channel offer it. The issues its commits fix are told it can be tried. A commit pushed with a `Release: beta` trailer does the same.
 4. **Stable.** When the artifacts have been tried:
+
    ```bash
    ./scripts/release.sh
    ```
+
    It releases the version the artifacts lead to - or the next patch, with none out - with the notes of every commit since the last stable release. Say yes; the pipeline does the rest, and the issues are told the fix is out. `--edit` opens the notes to polish first, and `--bump minor` or `major` goes further.
 
 `release.sh` needs `gh` (logged in) and `jq`, and nothing else - it builds nothing locally, and closing it does not stop the release. `-y` releases without asking; `--help` lists the rest.
@@ -134,10 +138,12 @@ The range:
 - **A workflow fails before publishing** - a build error, a failed upload: nothing is public. Fix it and run the same `release.sh` command again. A draft left behind is removed by the next run.
 - **Bringing `dev` up to date fails** after a stable release: the release is out and `main` is right. Bring `dev` level with `git switch dev && git merge origin/main && git push`.
 - **Stable fails after pushing `main`**, before publishing: the release commit and the uploaded draft are both there, so finish the last two steps by hand rather than running it again, which would find nothing left to commit:
+
   ```bash
   gh release edit v1.6.0 --draft=false --prerelease=false   # tags main's release commit
   git fetch origin && git switch dev && git merge origin/main && git push   # brings dev up to date
   ```
+
 - **A merge conflict** from `dev` into `main` stops the stable release. Resolve it locally on `main`, push, and run `release.sh` again.
 - **A release is wrong once published**: publish a newer one. Deleting a published release and its tag makes its version free again for the pipelines, but apps that installed it keep it.
 

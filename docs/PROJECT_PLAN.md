@@ -18,7 +18,7 @@ UI, multi-module Gradle, offline-first (Room as the durable cache).
 ### Reference projects — which app to clone what from
 
 | Subsystem | Clone from | Local path |
-|---|---|---|
+| --- | --- | --- |
 | Media scanning, storage, cold-start/caching, in-app updater, player UI/notification/persistence | **Fossify Music Player** | `C:\Users\lhacenmed\AndroidStudioProjects\Music` |
 | Audio behaviour settings, ReplayGain, content settings (separators, intelligent sort, hide collaborators), image/cover settings | **Auxio** | `C:\Users\lhacenmed\AndroidStudioProjects\Auxio` |
 | Dynamic artwork-driven Material theming | **ArchiveTune** | `C:\Users\lhacenmed\AndroidStudioProjects\ArchiveTune` |
@@ -32,7 +32,7 @@ dedicated research agents. **Read these before spawning new research agents** �
 is already done.
 
 | File | Covers |
-|---|---|
+| --- | --- |
 | `research_music_app.md` | Fossify scanning, Room schema, cache/restore model, updater |
 | `research_fossify_player_notification_persistence.md` | Fossify player UI, media notification, queue persistence |
 | `research_fossify_fast_load_and_permission_ux.md` | Cold-start order, persist ordering, permission-vs-empty UI logic |
@@ -46,7 +46,7 @@ is already done.
 ## 2. Current status
 
 | Phase | Scope | State |
-|---|---|---|
+| --- | --- | --- |
 | 1 | Foundation: modules, scanner, Room, basic playback, track list | ✅ Complete, builds clean |
 | 2 | Navigation shell, all library tabs, search, sorting, settings | ✅ Complete, builds clean |
 | 3 | Full player, playback behaviour, persistence, notification, dynamic theming | ✅ Complete, builds clean |
@@ -66,7 +66,7 @@ This is a deliberate, user-approved standard, but it means runtime behaviour is 
 
 ### Module graph
 
-```
+```text
 :app                     Application, MainActivity, SonaApp, AppThemeViewModel
 core/
   :core:model            Pure Kotlin/JVM domain models (no Android deps)

@@ -121,7 +121,7 @@ Feature modules do not depend on each other unless they already do. If two featu
 
 Sona uses [Conventional Commits](https://www.conventionalcommits.org/):
 
-```
+```text
 <type>(<scope>): <summary>
 ```
 
@@ -131,7 +131,7 @@ Sona uses [Conventional Commits](https://www.conventionalcommits.org/):
 
 Examples from this repository:
 
-```
+```text
 feat(player): show what collection the queue is playing from
 fix(scanner): use case-insensitive matching for artist and album names
 perf(sort): compute each name's sort key once, not once per comparison
@@ -145,7 +145,7 @@ Sona's release notes are written by its commits. Every commit's subject is its l
 
 Where users deserve a better sentence than the subject, say it in [git trailers](https://git-scm.com/docs/git-interpret-trailers): `Key: value` lines closing the message, as its last paragraph, one per change. A commit's trailers take the place of its subject in the notes:
 
-```
+```text
 fix(player): keep the queue in place when a track is removed
 
 Removing a track re-sorted the queue from the top.

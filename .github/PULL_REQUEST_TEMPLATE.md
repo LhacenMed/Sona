@@ -1,3 +1,4 @@
+<!-- markdownlint-disable-file MD041 -->
 <!-- Target branch must be `dev`. See CONTRIBUTING.md. -->
 
 ## What

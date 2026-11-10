@@ -3,6 +3,7 @@
 Source project: `C:\Users\lhacenmed\AndroidStudioProjects\ArchiveTune`
 Package root: `moe.rukamori.archivetune`
 Relevant files (all under `app/src/main/kotlin/moe/rukamori/archivetune/`):
+
 - `ui/theme/Theme.kt` — core theme composable, color-scheme construction, animation, persistence codec
 - `ui/theme/PlayerColorExtractor.kt` — gradient/mesh color extraction from Palette for the player UI
 - `ui/theme/PlayerBackgroundColorUtils.kt` — HSV comfort clamps + gradient stop builders
@@ -14,6 +15,7 @@ Relevant files (all under `app/src/main/kotlin/moe/rukamori/archivetune/`):
 - `MainActivity.kt` (lines ~738-850) — wiring: DataStore → LaunchedEffect → Coil image decode → Palette extraction → `themeColor` state → `ArchiveTuneTheme`
 
 Gradle deps (`app/build.gradle.kts` / `gradle/libs.versions.toml`):
+
 - `androidx.palette:palette-ktx:1.0.0` (`libs.palette`) — Android Palette API, real bitmap→swatch extraction
 - `com.materialkolor:material-kolor:5.0.0-alpha07` — direct string coordinate (NOT in version catalog), wraps Google's `material-color-utilities` (HCT color space) and exposes `dynamicColorScheme(seedColor, isDark, contrastLevel, style)`, `PaletteStyle`, `toHct()`/`toColor()` extensions on Compose `Color`/`Hct`
 - `io.coil-kt.coil3:coil-compose` (v3.5.0) — async image loading, used to fetch/decode the current track's artwork bitmap
@@ -32,6 +34,7 @@ Gradle deps (`app/build.gradle.kts` / `gradle/libs.versions.toml`):
 3. For a non-null `song`, on `Dispatchers.Default`:
    - Loads artwork via Coil: `imageLoader.execute(ImageRequest.Builder(context).data(song.thumbnailUrl).allowHardware(false).build())`. `allowHardware(false)` is required because `Palette` needs to read raw pixels off a software bitmap (HARDWARE bitmaps can't be inspected pixel-by-pixel).
    - `result.image?.toBitmap()?.extractThemeColor()` — calls the extension function in `Theme.kt`:
+
      ```kotlin
      fun Bitmap.extractThemeColor(): Color {
          val palette = Palette.from(this).maximumColorCount(16).generate()
@@ -45,6 +48,7 @@ Gradle deps (`app/build.gradle.kts` / `gradle/libs.versions.toml`):
          return swatch?.rgb?.toComposeColor() ?: DefaultThemeColor
      }
      ```
+
      Priority order: vibrant → dominant → muted → light-vibrant → dark-vibrant → light-muted → dark-muted → hardcoded `DefaultThemeColor` (`0xFFED5564`, a pink/red).
    - Result posted back to `Dispatchers.Main`, assigning `themeColor = extractedColor ?: DefaultThemeColor`.
    - Any exception during load/extraction is caught and `themeColor` falls back to `DefaultThemeColor`.
@@ -77,6 +81,7 @@ Used only inside the Player UI (`ui/player/Player.kt`) for building multi-color 
 The single extracted `themeColor` (a `Color`, i.e. one RGB "seed") is turned into a **materialkolor** HCT-based scheme, not `androidx.palette`/manual tonal math directly (except `TonalPalettes.kt`, which is an alternate/unused-by-default helper producing per-tone maps via `Hct.from(...).withTone(...)`, likely for custom UI needing raw tonal stops rather than the M3 role names).
 
 Core function `materialKolorDynamicColorScheme(keyColor, isDark, contrastLevel=0.0, style)`:
+
 - Picks a `PaletteStyle` (`com.materialkolor.PaletteStyle`) based on the seed's HCT chroma (`seedColor.toHct().chroma`):
   - chroma < 4.0 → `PaletteStyle.Monochrome`
   - chroma < 12.0 → `PaletteStyle.Neutral`
@@ -93,6 +98,7 @@ Core function `materialKolorDynamicColorScheme(keyColor, isDark, contrastLevel=0
 ### `ArchiveTuneTheme` composable (Theme.kt, ~line 72)
 
 Signature:
+
 ```kotlin
 @Composable
 fun ArchiveTuneTheme(
@@ -106,7 +112,9 @@ fun ArchiveTuneTheme(
     content: @Composable () -> Unit,
 )
 ```
+
 Logic:
+
 1. `useSystemDynamicColor = (seedPalette == null && themeColor == DefaultThemeColor && SDK_INT >= S)` — i.e. system Monet (Android 12+ wallpaper colors) is used ONLY when there is no manual seed palette AND no extracted/custom theme color is active (still at the literal default). In practice this triggers when dynamic theming from album art is on but no track is playing yet / extraction reset to default, or theming is fully off with default settings.
 2. Font resolution: `produceState` async-loads a custom font file (`CustomFontLoader.loadFontFamily`) if `fontPreference == CUSTOM`; otherwise picks between `AppFontFamily` (default) / `FontFamily.Default` (system) / custom.
 3. `motionScheme = if (disableAnimations) DisabledMotionScheme else MotionScheme.expressive()` — a custom `MotionScheme` implementation whose 6 spec functions all return `snap()` when animations are disabled (used for low-RAM devices).
@@ -118,6 +126,7 @@ Logic:
 9. Custom `Shapes` object with fixed rounded-corner radii: extraSmall 8dp, small 12dp, medium 16dp, large 24dp, extraLarge 32dp.
 
 ### Propagation mechanism
+
 - **No custom CompositionLocal for the ColorScheme itself** — it rides on Compose Material3's own internal `LocalColorScheme` via `MaterialExpressiveTheme`/`MaterialTheme`, so any descendant reads it the normal way: `MaterialTheme.colorScheme.primary`, etc.
 - State ownership: `themeColor` is a `rememberSaveable` `MutableState<Color>` living in `MainActivity`'s Compose entry point (not a ViewModel/StateFlow) — it's mutated by the `LaunchedEffect` collecting the player's `currentMediaMetadata` Flow, and passed as a plain parameter into `ArchiveTuneTheme`. So the "pipeline" is: MediaSession Flow → LaunchedEffect side-effect → local `mutableStateOf<Color>` → recomposition of `ArchiveTuneTheme` → new `ColorScheme` (memoized via `remember(seedPalette, themeColor, darkTheme)`) → animated via `animateColorAsState` per-field → `MaterialExpressiveTheme` → whole app tree.
 - Custom fonts and font-preference propagate via two `staticCompositionLocalOf`: `LocalArchiveTuneFontPreference`, `LocalArchiveTuneFontFamily`.
@@ -140,6 +149,7 @@ Logic:
 All persisted via Jetpack DataStore `Preferences` (keys in `constants/PreferenceKeys.kt`), read/written with a `rememberPreference`/`rememberEnumPreference` delegate pattern (`by rememberPreference(Key, defaultValue)` gives a `MutableState`-like property that syncs to DataStore).
 
 Keys (all in `moe.rukamori.archivetune.constants`, `PreferenceKeys.kt`):
+
 - `DynamicThemeKey = booleanPreferencesKey("dynamicTheme")` — default `true`. Master toggle for "extract color from album art." Exposed in Settings → Appearance (`AppearanceSettings.kt` line ~152, a switch bound to `onDynamicThemeChange`).
 - `CustomThemeColorKey = stringPreferencesKey("customThemeColor")` — default `"default"`. Stores the manual theme selection used when `DynamicThemeKey` is off (or as the pre-S / no-track fallback). Its string encoding is polymorphic, decoded in `MainActivity.kt` (~line 757):
   - starts with `"#"` → a literal hex color string (single-color manual theme, parsed via `android.graphics.Color.parseColor`).

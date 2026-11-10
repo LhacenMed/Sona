@@ -44,6 +44,7 @@ distinct Gradle module, not a subpackage of the app).
 File: `app/src/main/java/org/oxycblt/auxio/playback/PlaybackSettings.kt`
 
 Interface (`PlaybackSettings`) exposes, among others:
+
 ```kotlin
 val headsetAutoplay: Boolean   // key: set_key_headset_autoplay = "auxio_headset_autoplay"
 val keepShuffle: Boolean       // key: set_key_keep_shuffle     = "KEY_KEEP_SHUFFLE"      (default true)
@@ -52,12 +53,14 @@ val pauseOnRepeat: Boolean     // key: set_key_repeat_pause     = "KEY_LOOP_PAUS
 val rememberPause: Boolean     // key: set_key_remember_pause   = "auxio_remember_pause"  (default false)
 val exitOnTaskRemoval: Boolean // key: set_key_task_exit
 ```
+
 All are simple `sharedPreferences.getBoolean(getString(R.string.set_key_x), default)` getters.
 Preference XML: `app/src/main/res/xml/preferences_audio.xml` (category "Playback") defines the
 four `SwitchPreferenceCompat`s for headset autoplay, rewind-with-prev (default true), pause-on-
 repeat (default false), remember-pause (default false).
 
 Listener interface fires two granular callbacks that consumers care about:
+
 ```kotlin
 interface Listener {
     fun onReplayGainSettingsChanged() {}
@@ -65,10 +68,12 @@ interface Listener {
     fun onPauseOnRepeatChanged() {}
 }
 ```
+
 (`keepShuffle`/`rewindWithPrev`/`rememberPause`/`headsetAutoplay` are read live, on-demand, at the
 moment of the playback action — there's no dedicated changed-callback for them.)
 
 ### Consumption points — `ExoPlaybackStateHolder`
+
 File: `app/src/main/java/org/oxycblt/auxio/playback/service/ExoPlaybackStateHolder.kt`
 (this is the `Player.Listener` + `PlaybackStateHolder` wrapping a real `ExoPlayer` instance).
 
@@ -77,6 +82,7 @@ whenever the current song changes via a user action. `rememberPause=false` (defa
 that: after `next()`, `prev()`, `goto(index)`, or `remove()` (when the removed item was the one
 currently playing), the code calls `player.play()` (or `player.pause()` in the wrap-around case in
 `next()`) unless `rememberPause` is true, in which case the play/pause state is left untouched:
+
 ```kotlin
 override fun next() {
     if (player.repeatMode == Player.REPEAT_MODE_ALL || player.hasNextMediaItem()) {
@@ -102,6 +108,7 @@ override fun prev() {
 **Pause on repeat** (`pauseOnRepeat`): implemented purely through media3's
 `player.pauseAtEndOfMediaItems` flag, recomputed whenever repeat mode changes or the setting
 changes:
+
 ```kotlin
 override fun repeatMode(repeatMode: RepeatMode) {
     player.repeatMode = ...
@@ -114,6 +121,7 @@ private fun updatePauseOnRepeat() {
         player.repeatMode == Player.REPEAT_MODE_ONE && playbackSettings.pauseOnRepeat
 }
 ```
+
 So it only engages when repeat-mode is TRACK (`REPEAT_MODE_ONE`); ExoPlayer itself then pauses at
 the end of each single-track loop instead of restarting it. No manual threshold/timer logic needed
 — it's a first-class `ExoPlayer` property.
@@ -121,6 +129,7 @@ the end of each single-track loop instead of restarting it. No manual threshold/
 **Rewind before skip back** (`rewindWithPrev`): This is literally whether Auxio calls the
 media3-standard `player.seekToPrevious()` (true / default) vs. an always-real-previous-track jump
 (false):
+
 ```kotlin
 override fun prev() {
     if (playbackSettings.rewindWithPrev) {
@@ -133,6 +142,7 @@ override fun prev() {
     ...
 }
 ```
+
 The actual "rewind if playback position is past N ms, else go to previous track" threshold logic
 is **not custom code in Auxio** — it is delegated entirely to media3's built-in
 `Player.seekToPrevious()` semantics: media3's default implementation restarts the current item
@@ -154,6 +164,7 @@ A `BroadcastReceiver` registered (via `ContextCompat.registerReceiver(..., RECEI
 for `AudioManager.ACTION_HEADSET_PLUG` and `AudioManager.ACTION_AUDIO_BECOMING_NOISY`. Comment
 explains why only wired-headset `ACTION_HEADSET_PLUG` is used (Bluetooth equivalents need
 BLUETOOTH_CONNECT permission + a prompt, deemed not worth it).
+
 ```kotlin
 AudioManager.ACTION_HEADSET_PLUG -> {
     when (intent.getIntExtra("state", -1)) {
@@ -178,6 +189,7 @@ private fun pauseFromHeadsetPlug() {
     if (playbackManager.currentSong != null) playbackManager.playing(false)
 }
 ```
+
 Note: pause-on-unplug (`ACTION_AUDIO_BECOMING_NOISY`) is **not gated by any setting** — it always
 pauses if something is loaded. Only the *resume-on-plug-in* behavior is gated by `headsetAutoplay`.
 
@@ -186,28 +198,37 @@ pauses if something is loaded. Only the *resume-on-plug-in* behavior is gated by
 ## 2. Volume normalization (ReplayGain)
 
 ### Settings
+
 File: `app/src/main/java/org/oxycblt/auxio/playback/PlaybackSettings.kt`
+
 ```kotlin
 val replayGainMode: ReplayGainMode      // key: set_key_replay_gain = "auxio_replay_gain", default DYNAMIC
 var replayGainPreAmp: ReplayGainPreAmp  // keys: set_key_pre_amp_with / set_key_pre_amp_without (both Float, default 0f each)
 ```
+
 `replayGainPreAmp` setter writes both floats atomically via `sharedPreferences.edit { putFloat(...); putFloat(...); apply() }`.
 
 ### `ReplayGainMode` enum
+
 File: `app/src/main/java/org/oxycblt/auxio/playback/replaygain/ReplayGainMode.kt`
+
 ```kotlin
 enum class ReplayGainMode { OFF, TRACK, ALBUM, DYNAMIC }
 ```
+
 Stored as int code via `IntegerTable`: `REPLAY_GAIN_MODE_OFF=0xA110`, `_TRACK=0xA111`,
 `_ALBUM=0xA112`, `_DYNAMIC=0xA113`. Selected via an `IntListPreference` (custom ListPreference
 storing an Int, see `settings/ui/IntListPreference.kt`) in `preferences_audio.xml`, default
 `@integer/replay_gain_dynamic`.
 
 ### `ReplayGainPreAmp`
+
 File: `.../replaygain/ReplayGainPreAmp.kt` — trivial:
+
 ```kotlin
 data class ReplayGainPreAmp(val with: Float, val without: Float)
 ```
+
 `with` = extra dB pre-amp applied when RG tags **are** present (added on top of resolved
 adjustment); `without` = the dB level used **instead of** any adjustment when RG tags are
 **absent** (not additive — it replaces the "0dB adjustment" case entirely). UI:
@@ -216,9 +237,11 @@ sets both to `0f`. `ReplayGainUtil.kt` has a tiny `Float.formatDb(context)` help
 `+`/`-` since Android number formatting won't show a `+` for positive floats.
 
 ### ReplayGain tag parsing (musikr module)
+
 File: `musikr/src/main/java/org/oxycblt/musikr/tag/parse/TagFields.kt` (lines ~256-287), operating
 over a media3 `Metadata` object already split into `xiph` / `mp4` / `id3v2` maps of frame-id →
 `List<String>`:
+
 ```kotlin
 internal fun Metadata.replayGainTrackAdjustment() =
     (xiph["R128_TRACK_GAIN"]?.parseR128Adjustment()
@@ -242,6 +265,7 @@ private fun List<String>.parseReplayGainAdjustment() =
 
 private val REPLAYGAIN_ADJUSTMENT_FILTER_REGEX by lazy { Regex("[^\\d.-]") }
 ```
+
 So it: (1) prefers Opus/Vorbis `R128_TRACK_GAIN`/`R128_ALBUM_GAIN` (integer Q7.8 fixed point,
 divide by 256 then +5 to align scale) over classic `REPLAYGAIN_*_GAIN` string tags (e.g.
 `"-6.5 dB"`), strips everything except digits/`.`/`-` via regex, parses as Float, and treats an
@@ -253,6 +277,7 @@ Result plumbed into `ReplayGainAdjustment(val track: Float?, val album: Float?)`
 `Song.replayGainAdjustment` (`musikr/.../Music.kt`).
 
 ### Applying gain — `ReplayGainAudioProcessor` (media3 `AudioProcessor`)
+
 File: `app/src/main/java/org/oxycblt/auxio/playback/replaygain/ReplayGainAudioProcessor.kt`
 
 Key design note (from the file's own doc comment): rather than using `Player`/`AudioTrack` volume
@@ -320,6 +345,7 @@ class ReplayGainAudioProcessor @Inject constructor(
     }
 }
 ```
+
 **DYNAMIC mode logic precisely**: use album gain only if the current *playback parent* the user
 launched from is literally an `Album` (`playbackManager.parent is Album`) AND that album equals
 the current song's own album (`currentSong.album == parent`) — i.e. "I am playing through this
@@ -332,6 +358,7 @@ desired for Sona, or special-case OFF to always use 0 dB / 1.0 volume).
 **Wiring into ExoPlayer** (`playback/service/ExoPlaybackStateHolder.kt`, in the `Factory.create()`
 method): the processor is injected straight into a custom `RenderersFactory` that builds only an
 audio renderer, via `DefaultAudioSink.Builder(context).setAudioProcessors(arrayOf(replayGainProcessor)).build()`:
+
 ```kotlin
 val audioRenderer = RenderersFactory { handler, _, audioListener, _, _ ->
     arrayOf<BaseRenderer>(
@@ -349,6 +376,7 @@ val exoPlayer = ExoPlayer.Builder(context, audioRenderer)
     .setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(), true)
     .build()
 ```
+
 `replayGainProcessor.attach()`/`.release()` are called alongside the holder's own `attach()`/`release()`.
 
 ---
@@ -356,23 +384,29 @@ val exoPlayer = ExoPlayer.Builder(context, audioRenderer)
 ## 3. Content/music settings
 
 File: `app/src/main/java/org/oxycblt/auxio/music/MusicSettings.kt`
+
 ```kotlin
 var separators: String           // key: set_key_separators    = "auxio_separators" (default "")
 val intelligentSorting: Boolean  // key: set_key_auto_sort_names = "auxio_auto_sort_names" (default TRUE)
 ```
+
 (`hideCollaborators` is actually stored/consumed under **HomeSettings**, not MusicSettings — see
 below; both preferences live together in the same "Content" screen XML though.)
 
 ### Multi-value tag separators
+
 Stored as a raw **string of separator characters** (not a bitmask/int) for extensibility:
 `sharedPreferences.getString(key, "") ?: ""`. UI: `music/interpret/SeparatorsDialog.kt`, a checkbox
 dialog (comma / semicolon / slash / plus / ampersand) that concatenates checked chars into that
 string. Chars are defined as constants in
 `musikr/src/main/java/org/oxycblt/musikr/tag/interpret/Separators.kt`:
+
 ```kotlin
 const val COMMA = ','; const val SEMICOLON = ';'; const val SLASH = '/'; const val PLUS = '+'; const val AND = '&'
 ```
+
 Splitting logic (`Separators.from(chars)` → `CharSeparators`):
+
 ```kotlin
 private data class CharSeparators(private val chars: Set<Char>) : Separators {
     override fun split(strings: List<String>) =
@@ -381,6 +415,7 @@ private data class CharSeparators(private val chars: Set<Char>) : Separators {
         string.splitEscaped { chars.contains(it) }.correctWhitespace()
 }
 ```
+
 - If the source tag format already yields multiple string values (e.g. a Vorbis comment with
   repeated `ARTIST=` fields, or ID3v2.4 multi-value frames), **no splitting is performed** — the
   separator setting only kicks in for single delimited strings like `"Artist1;Artist2"`.
@@ -394,6 +429,7 @@ private data class CharSeparators(private val chars: Set<Char>) : Separators {
   function, no split at all) — i.e. multi-value splitting is opt-in per character, off by default.
 
 ### Intelligent sorting — exact algorithm
+
 File: `musikr/src/main/java/org/oxycblt/musikr/tag/interpret/Naming.kt`
 Two `Naming` strategies chosen at index-time based on the `intelligentSorting` setting:
 `Naming.intelligent()` → `IntelligentNaming` object, `Naming.simple()` → `SimpleNaming` object.
@@ -407,6 +443,7 @@ Both produce a `Name.Known` (see `musikr/.../tag/Name.kt`) holding a `List<Token
 
 `IntelligentKnownName` (used when intelligent sorting is ON) — this is the actual "numeric prefix +
 article stripping" algorithm requested:
+
 ```kotlin
 private fun parseTokens(name: String): List<Token> {
     var stripped = name
@@ -447,7 +484,9 @@ private fun parseTokens(name: String): List<Token> {
 }
 private companion object { val TOKEN_REGEX = Regex("(\\d+)|(\\D+)") }
 ```
+
 Comparison (`Token.compareTo`, in `Name.kt`):
+
 ```kotlin
 override fun compareTo(other: Token): Int {
     val modeComp = type.compareTo(other.type)          // NUMERIC(0) always sorts before LEXICOGRAPHIC(1)
@@ -457,6 +496,7 @@ override fun compareTo(other: Token): Int {
     return collationKey.compareTo(other.collationKey)
 }
 ```
+
 And `Name.Known.compareTo` zips the two token lists and returns the first non-zero token
 comparison, falling back to comparing list sizes (so `"Abbey Road"` < `"Abbey Road (Remastered)"`).
 `Name.Unknown` (placeholder when no tag exists, one of `Placeholder.ALBUM/ARTIST/GENRE`) always
@@ -471,15 +511,19 @@ then collation, lexicographic ties broken by `Collator` (PRIMARY strength — lo
 case/accent-insensitive) comparison.
 
 ### Hide collaborators
+
 **Not stored in MusicSettings** — it's in `app/src/main/java/org/oxycblt/auxio/home/HomeSettings.kt`
 (it's a *home-tab display* filter, not an indexing rule) even though its UI checkbox lives in the
 same "Content" preference screen (`preferences_music.xml`):
+
 ```kotlin
 val shouldHideCollaborators: Boolean
     get() = sharedPreferences.getBoolean(getString(R.string.set_key_hide_collaborators), false)
     // key: "auxio_hide_collaborators", default false
 ```
+
 Consumption — `app/src/main/java/org/oxycblt/auxio/home/HomeGenerator.kt`:
+
 ```kotlin
 override fun artists() =
     musicRepository.library?.let { deviceLibrary ->
@@ -491,11 +535,14 @@ override fun artists() =
         }
     } ?: emptyList()
 ```
+
 The underlying model distinction (`musikr/src/main/java/org/oxycblt/musikr/model/ArtistImpl.kt`):
+
 ```kotlin
 override var explicitAlbums = core.albums                                             // albums where this artist is credited as an ALBUM ARTIST
 override var implicitAlbums = core.songs.mapTo(mutableSetOf()) { it.album } - core.albums  // albums the artist only appears on via individual song artist/featured credits
 ```
+
 So "hide collaborators" = only show artists that are directly credited as the **album artist** of
 at least one album; artists who only show up as a featured/track-level artist on other people's
 albums (`implicitAlbums` only, `explicitAlbums` empty) are hidden from the Artists tab. This
@@ -503,6 +550,7 @@ depends entirely on well-tagged libraries distinguishing ALBUMARTIST from ARTIST
 setting's description "works best on well-tagged libraries".
 
 ### Settings change propagation
+
 `MusicSettingsImpl.onSettingChanged` dispatches `onIndexingSettingChanged()` for `separators` and
 `auto_sort_names` changes (triggers a re-index), while `cover_mode`/`square_covers` changes are
 wired at the fragment level (`MusicPreferenceFragment.onSetupPreference`) to call
@@ -514,28 +562,35 @@ Settings listener mechanism.
 ## 4. Image settings
 
 File: `app/src/main/java/org/oxycblt/auxio/image/ImageSettings.kt`
+
 ```kotlin
 val coverMode: CoverMode          // key: set_key_cover_mode = "auxio_cover_mode2" (note the "2" — see migration below), default BALANCED
 val forceSquareCovers: Boolean    // key: set_key_square_covers = "auxio_square_covers", default false
 ```
+
 Migration logic in `ImageSettingsImpl.migrate()` handles 3 legacy pref generations (old boolean
 "show covers"/"quality covers" flags, and an older `auxio_cover_mode` int without the AS_IS
 option, clamping any migrated `HIGH_QUALITY` down to `BALANCED` since "high quality now has space
 characteristics that could be undesirable").
 
 ### `CoverMode` enum
+
 File: `app/src/main/java/org/oxycblt/auxio/image/CoverMode.kt`
+
 ```kotlin
 enum class CoverMode { OFF, SAVE_SPACE, BALANCED, HIGH_QUALITY, AS_IS }
 ```
+
 Int codes via `IntegerTable`: `COVER_MODE_OFF=0xA11C`, `_BALANCED=0xA11D`, `_HIGH_QUALITY=0xA11E`,
 `_SAVE_SPACE=0xA125`, `_AS_IS=0xA126`. Selected via `IntListPreference` in
 `preferences_music.xml`'s "Images" category, default `@integer/cover_mode_balanced`.
 
 ### How each mode affects extraction/caching
+
 File: `app/src/main/java/org/oxycblt/auxio/image/covers/SettingCovers.kt` — this is the piece that
 turns the enum into an actual **transcoding strategy** applied when covers are extracted from
 audio files and persisted to Auxio's private on-disk cover store (`filesDir/covers/`):
+
 ```kotlin
 override suspend fun mutate(context: Context, revision: UUID): MutableCovers<out Cover> {
     val coverStorage = CoverStorage.at(context.coversDir())
@@ -556,6 +611,7 @@ override suspend fun mutate(context: Context, revision: UUID): MutableCovers<out
     return MutableChainedCovers(storedCovers, fsCovers)  // tries embedded-tag cover first, falls back to filesystem image
 }
 ```
+
 So `CoverMode` doesn't just gate a UI quality flag — it's literally the JPEG re-encode
 `(maxDimensionPx, quality)` pair used once at index time when persisting extracted cover art to
 Auxio's private cache; `AS_IS` skips re-encoding altogether (keeps original bytes/format, e.g. PNG
@@ -564,9 +620,11 @@ Changing this setting triggers a full music library refresh (see `MusicPreferenc
 above) since covers need to be re-extracted under the new transcoding.
 
 ### Force square covers
+
 File: `app/src/main/java/org/oxycblt/auxio/image/coil/SquareCropTransformation.kt` — a Coil3
 `Transformation` (display-time crop, does **not** touch the stored cover bytes/cache from §4
 above — it's a separate, load-time step):
+
 ```kotlin
 class SquareCropTransformation : Transformation() {
     override val cacheKey = "SquareCropTransformation"
@@ -581,6 +639,7 @@ class SquareCropTransformation : Transformation() {
     }
 }
 ```
+
 When `forceSquareCovers` is on, this transformation is added to the Coil `ImageRequest.transformations`
 list wherever album art `ImageView`/composable requests are built (search call-sites of
 `ImageSettings.forceSquareCovers` in the UI binder code, e.g. album/song list adapters and the
@@ -591,6 +650,7 @@ that's exactly what `MusicPreferenceFragment.onSetupPreference` does for `set_ke
 `imageLoader.memoryCache?.clear()`.
 
 ### Image loading stack
+
 - **Coil 3** (`io.coil-kt.coil3:coil-core:3.4.0`, from `app/build.gradle`) is the image loader —
   not Glide.
 - DI: `app/src/main/java/org/oxycblt/auxio/image/coil/CoilModule.kt` builds a singleton
@@ -619,9 +679,11 @@ category name "Personalize" in the UI (`PersonalizePreferenceFragment` /
 Consumption: `app/src/main/java/org/oxycblt/auxio/playback/state/PlaybackCommand.kt`, in the logic
 that decides the `ShuffleMode` for a new-playback command (e.g. tapping a song from a list where
 the desired shuffle state isn't explicit):
+
 ```kotlin
 ShuffleMode.IMPLICIT -> playbackSettings.keepShuffle && playbackManager.isShuffled
 ```
+
 i.e. when a new playback command doesn't explicitly force shuffle on/off (`ShuffleMode.ON`/`OFF`,
 e.g. from a "Shuffle" button), and instead the command's shuffle mode is `IMPLICIT` (default when
 just tapping a song), the resolved boolean is: **keep whatever the current shuffle state already

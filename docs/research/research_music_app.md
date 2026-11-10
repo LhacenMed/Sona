@@ -4,6 +4,7 @@ Source project: `C:\Users\lhacenmed\AndroidStudioProjects\Music`
 Package: `org.fossify.musicplayer` (this is a fork of **Fossify Music Player** — NOT Auxio, despite one comment referencing "ported from Auxio's getAttrColorCompat"). Kotlin, min SDK 26, target/compile SDK 36, AGP 9.3.1, Kotlin 2.3.10.
 
 Key module layout (`app/src/main/kotlin/org/fossify/musicplayer/`):
+
 - `data/` — MediaScanner.kt, AudioHelper.kt, MusicDatabase.kt, MusicDatabaseMigrations.kt, RoomHelper.kt, TagHelper.kt, PlaylistIO.kt, `dao/*.kt`
 - `models/` — Track, Album, Artist, Genre, Folder, Playlist, PlayStats, QueueItem (all Room `@Entity` except Folder)
 - `helpers/` — Config.kt (SharedPreferences wrapper via Fossify Commons `BaseConfig`), Constants.kt
@@ -17,7 +18,9 @@ Key module layout (`app/src/main/kotlin/org/fossify/musicplayer/`):
 File: `data/MediaScanner.kt` (singleton, `MediaScanner.getInstance(app: Application)`).
 
 ### Strategy: MediaStore first, then manual filesystem fallback
+
 `scan(progress, callback)` (annotated `@Synchronized`, guarded by an internal `scanning` boolean so only one scan runs at a time) runs on a background thread (`ensureBackgroundThread`) and does, in order:
+
 1. `scanMediaStore()` — always.
 2. If `isQPlus()` (Android 10+): invoke callback with `complete=false` (partial UI update), then `scanFilesManually()` — a raw filesystem walk to catch files MediaStore hasn't indexed yet (e.g. pushed via `adb push`).
 3. `cleanupDatabase()` — removes DB rows for tracks/albums/artists/genres no longer present.
@@ -26,6 +29,7 @@ File: `data/MediaScanner.kt` (singleton, `MediaScanner.getInstance(app: Applicat
 Only one flow runs even if `scan()` is called re-entrantly while already scanning (early return after `maybeShowScanProgress()`).
 
 ### MediaStore querying (`scanMediaStore` → `getTracksSync/getArtistsSync/getAlbumsSync/getGenresSync/assignGenreToTracks`)
+
 Uses `content://` queries via `context.queryCursor(uri, projection, selection, args) { cursor -> ... }` (a Fossify Commons extension wrapping `ContentResolver.query`).
 
 - **Tracks**: `MediaStore.Audio.Media.EXTERNAL_CONTENT_URI` with projection: `_ID, DURATION, DATA, TITLE, ARTIST, ALBUM, ALBUM_ID, ARTIST_ID, TRACK, YEAR, DATE_ADDED`, plus conditionally `BUCKET_DISPLAY_NAME` (Q+) and `GENRE, GENRE_ID, DISC_NUMBER` (R+ / API 30+).
@@ -39,6 +43,7 @@ Uses `content://` queries via `context.queryCursor(uri, projection, selection, a
 - **Genre-track association**: on API ≤30 (`!isRPlus()`), `Audio.Media.GENRE_ID` doesn't exist, so genre membership is queried separately via `content://media/external/audio/genres/all/members` (`GENRE_CONTENT_URI` constant) using `Audio.Genres.Members.GENRE_ID/AUDIO_ID`, building a `Map<genreId, List<trackId>>` and back-filling `track.genreId`. On R+, `GENRE`/`GENRE_ID` columns come directly from the Media table.
 
 ### Post-processing / normalization (still inside `scanMediaStore`)
+
 - Excludes tracks whose parent folder is in `config.excludedFolders`, and tracks whose `albumId`/`artistId` don't match a fetched album/artist (orphans).
 - Recomputes `trackCnt` for each album from the actually-kept tracks (overriding MediaStore's own counts) and sets `album.dateAdded` from the first track's `dateAdded`.
 - Recomputes `artist.trackCnt`/`albumCnt` from kept tracks/albums (this is what "fixes" the swapped variable naming above), and picks `artist.albumArt` from the first album with non-empty cover art.
@@ -47,7 +52,9 @@ Uses `content://` queries via `context.queryCursor(uri, projection, selection, a
 - Calls `updateAllDatabases()` to persist everything found so far (see Section 2).
 
 ### Manual filesystem scan (`scanFilesManually` → `findTracksManually`/`findAudioFiles`)
+
 Only runs on Q+ (`isQPlus()`), as a supplement/fallback:
+
 - Roots: `context.internalStoragePath` and `context.sdCardPath` (Fossify Commons extensions resolving to physical storage roots).
 - `findAudioFiles(file, destination, excludedPaths)` recursively walks directories using plain `java.io.File` (`file.listFiles()`), skipping:
   - hidden files/dirs (`file.isHidden`),
@@ -64,18 +71,22 @@ Only runs on Q+ (`isQPlus()`), as a supplement/fallback:
 - Manually-found tracks/artists/albums/genres are grouped via `splitIntoArtists/Albums/Genres` (simple `groupBy` on artist/album/genre string, since there's no MediaStore ID to key on), with synthetic IDs from `hashCode()`.
 
 ### Format support
+
 No explicit whitelist of extensions in the scanner itself — relies on:
+
 - `path.isAudioFast()` (Fossify Commons, presumably extension-string based, e.g. mp3/m4a/flac/ogg/wav/wma/opus) for the manual filesystem walk.
 - `MediaMetadataRetriever` for manual-scan metadata (supports whatever Android's built-in decoder framework understands: MP3, AAC/M4A, FLAC, OGG/Vorbis, WAV, AMR, MIDI to a degree — codec-dependent, no format is explicitly excluded except at the *tag-editing* layer).
 - Tag *editing* (not scanning) via `TagHelper` explicitly excludes `wma` and `wav` (flaky in jaudiotagger) — see Section 1b below.
 
 ### Permissions
+
 - `getPermissionToRequest()` (helpers/Constants.kt:149): `PERMISSION_READ_MEDIA_AUDIO` (maps to `android.permission.READ_MEDIA_AUDIO`) if `isTiramisuPlus()` (API 33+), else `PERMISSION_WRITE_STORAGE` (legacy `WRITE_EXTERNAL_STORAGE`).
 - Requested in `MainActivity.onCreate()` via `handlePermission(getPermissionToRequest()) { granted -> if (granted) initActivity() else { toast + finish() } }` — a hard requirement; the app refuses to run without it.
 - Manifest declares: `READ_MEDIA_AUDIO`, `WRITE_EXTERNAL_STORAGE` (maxSdkVersion=32), `POST_NOTIFICATIONS` (for scan/update notifications), plus `android:requestLegacyExternalStorage="true"` (soft opt-out of scoped storage on API 29, ignored on 30+).
 - **No `MANAGE_EXTERNAL_STORAGE`** (all-files-access) is requested anywhere — the manual filesystem walk relies on legacy storage permission/READ_MEDIA_AUDIO scope, which on modern Android limits raw `File` access largely to what MediaStore itself would already know about; this is consistent with the comment that the manual scan exists mainly to catch freshly-`adb push`ed files before MediaStore re-indexes them, not to bypass scoped storage entirely.
 
 ### Folder exclusion
+
 - `config.excludedFolders: MutableSet<String>` (SharedPreferences string set, key `EXCLUDED_FOLDERS`), managed via `Config.addExcludedFolder/addExcludedFolders/removeExcludedFolder`, normalized by trimming trailing `/`.
 - Applied twice: (a) filtering MediaStore results by `track.path.getParentPath() in excludedFolders`, and (b) filtering the manual filesystem walk by checking both the exact path and its parent against `excludedPaths` (which is `pathsToIgnore + config.excludedFolders` — see `findTracksManually`).
 - UI: `fragments/ExcludedFoldersFragment.kt` + `adapters/ExcludedFoldersAdapter.kt` (not read in depth, but referenced).
@@ -94,6 +105,7 @@ No explicit whitelist of extensions in the scanner itself — relies on:
 )
 abstract class MusicDatabase : RoomDatabase()
 ```
+
 - DB file name: `"songs.db"`.
 - Singleton via double-checked locking `getInstance(context)`; `destroyInstance()` for tests/teardown.
 - Custom single-thread `queryExecutor` (`Executors.newSingleThreadExecutor()`) passed via `.setQueryExecutor(...)` — serializes all Room queries onto one background thread (not Room's default thread pool), presumably to avoid write races given how much manual SQL/cross-table sync happens (see `syncMetadataFromCanonicalTracks`).
@@ -103,7 +115,8 @@ abstract class MusicDatabase : RoomDatabase()
 ### Entities / schema (all in `models/`)
 
 **Track** (`@Entity(tableName = "tracks", indices = [Index(["media_store_id","playlist_id"], unique = true)])`):
-```
+
+```text
 id: Long (PK, autoGenerate)
 media_store_id: Long        // MediaStore _ID, or hashCode()-derived for manual-scan/unknown tracks
 title, artist, path, album, genre: String
@@ -120,6 +133,7 @@ order_in_playlist: Int
 flags: Int = 0               // bit 1 = FLAG_MANUAL_CACHE, bit 2 = FLAG_IS_CURRENT (transient/queue-only)
 date_added_to_playlist: Int = 0
 ```
+
 Important design point: **a track is denormalized/duplicated into one row per playlist it belongs to** (playlist_id=0 is the canonical/library row; membership in "All tracks", Favorites, History, Most Played, or a user playlist is a *separate row* with the same media_store_id but a different playlist_id, and its own `date_added_to_playlist`/`order_in_playlist`). This is why `SongsDao.syncMetadataFromCanonicalTracks()` exists — a hand-written UPDATE that copies mutable fields (title, artist, album, path, duration, cover_art, genre, genre_id, disc_number, year, folder_name, album_id, artist_id) from each canonical (playlist_id=0) row onto every other row sharing its media_store_id, run after every scan (`AudioHelper.syncPlaylistTrackMetadata()`, called from `MediaScanner.updateAllDatabases()`) so retagged/renamed files don't go stale in playlists.
 
 `Track.playCount` is `@Ignore` (not persisted on the entity) — actual play counts live in the separate `PlayStats` table and are joined in at query time (`AudioHelper.withPlayCounts()`).
@@ -139,10 +153,13 @@ Important design point: **a track is denormalized/duplicated into one row per pl
 **QueueItem** (`@Entity("queue_items", primaryKeys=["track_id"])`): `track_id, track_order, is_current, last_position` — this is literally the playback-queue persistence (see Section 3).
 
 ### DAOs (`data/dao/*.kt`)
+
 One interface per entity (`SongsDao`, `AlbumsDao`, `ArtistsDao`, `GenresDao`, `PlaylistsDao`, `PlayStatsDao`, `QueueItemsDao`), plain `@Insert(onConflict=REPLACE)` / `@Query` methods, no Flow/LiveData observed in what was read (reads appear to be one-shot, triggered manually after scans via EventBus + callback, not reactive DB observers).
 
 ### Writing scan results (`AudioHelper` in `data/AudioHelper.kt`, wraps the DAOs)
+
 `MediaScanner.updateAllDatabases()`:
+
 ```kotlin
 context.audioHelper.apply {
     insertTracks(newTracks)      // insertAll with OnConflictStrategy.REPLACE
@@ -155,9 +172,11 @@ updateAllTracksPlaylist()        // add newly-scanned, non-excluded tracks to th
                                   // skipping any media_store_id the user explicitly removed
                                   // (config.tracksRemovedFromAllTracksPlaylist)
 ```
+
 `cleanupDatabase()` (after both MediaStore + manual scans) computes the diff between what's now known (`newTracks`/`newAlbums`/etc, kept in memory across the whole scan run) and what's in the DB, deleting rows for tracks/albums/artists/genres that vanished. Artists get an update-in-place path too: if track/album counts changed, it deletes and reinserts.
 
 ### Tag reading/writing library
+
 - **Reading** (during scan): `android.media.MediaMetadataRetriever` — a **platform API**, not a third-party library. No jaudiotagger/TagLib usage for scanning.
 - **Writing/editing** (user-initiated tag edit dialog, `dialogs/EditDialog.kt` + `data/TagHelper.kt`): **jaudiotagger** (`net.jthink:jaudiotagger:3.0.1`).
   - `TagHelper.writeTag(track, newArtist, newTitle, newAlbum)`: copies the file out of MediaStore via `contentResolver.openInputStream(uri)` into a temp file (`activity.getTempFile("music", filename)`), edits tags with jaudiotagger (`AudioFileIO.read(temp)`, `tag.setField(FieldKey.TITLE/ARTIST/ALBUM)`, `audioFile.commit()`), writes the temp file's bytes back through `contentResolver.openOutputStream(uri, "w")`, deletes the temp file, then also updates MediaStore's own ContentValues (`TITLE/ARTIST/ALBUM`) directly via `contentResolver.update()` so MediaStore's cache reflects the edit immediately (avoiding a full rescan for a metadata edit).
@@ -166,11 +185,14 @@ updateAllTracksPlaylist()        // add newly-scanned, non-excluded tracks to th
   - `TagOptionSingleton.getInstance().isAndroid = true` set once in `init{}` — required jaudiotagger Android compatibility flag.
 
 ### Playlist import/export
+
 `data/PlaylistIO.kt`:
+
 - `M3uExporter`: writes an M3U file by hand (`#EXTM3U` header, `#EXTINF:<duration>,<artist> - <title>` + path per track) using Fossify Commons' `writeLn`.
 - `M3uImporter`: parses `.m3u`/`.m3u8` via **`com.github.bjoernpetersen:m3u-parser:1.4.0`** (`net.bjoernpetersen.m3u.M3uParser`), then matches each `M3uEntry` against the existing tracks table by path or title, and calls `audioHelper.addTracksToPlaylist(playlistId, matchedTracks)`.
 
 ### Cover art
+
 No caching/blob storage of images at all — `coverArt` is always a `content://media/external/audio/albumart/<id>` URI string (or empty), resolved lazily by the image-loading layer (e.g. Glide/Coil, not explored here) at render time; the manual-scan path leaves `coverArt = ""` since there's no MediaStore-backed album id to build a URI from.
 
 ---
@@ -203,12 +225,15 @@ Files: `update/AppUpdate.kt`, `update/UpdateChecker.kt`, `update/UpdateDownloade
 This is a **fully custom GitHub-raw-file update mechanism** — not the Play Store's in-app update API, not F-Droid's repo mechanism.
 
 ### Manifest source of truth
+
 `UpdateChecker.MANIFEST_URL = "https://raw.githubusercontent.com/LhacenMed/Music-Player/main/version.json"` — a static JSON file at the root of the GitHub repo (fetched as a raw file, not via GitHub's Releases API). Expected shape (`AppUpdate.fromJson`):
+
 ```json
 { "versionCode": 123, "versionName": "1.2.3", "apkUrl": "https://.../release.apk", "notes": "..." }
 ```
 
 ### Flow
+
 1. **Check** (`UpdateChecker.checkAsync`, called from `MainActivity.checkForAppUpdate()` on every launch unless `BuildConfig.DEBUG` or `!config.checkForUpdates` [a user-toggleable Settings preference, default true]):
    - Opens an `HttpURLConnection` (plain `java.net` — no Retrofit/OkHttp) to the manifest URL with a 15s connect/read timeout, reads the body as text, parses via `org.json.JSONObject`.
    - Returns the parsed `AppUpdate` only `if (it.versionCode > BuildConfig.VERSION_CODE)`, else null — comparison is purely local versionCode vs remote versionCode.
@@ -227,6 +252,7 @@ This is a **fully custom GitHub-raw-file update mechanism** — not the Play Sto
    - Otherwise: builds an install `Intent(ACTION_VIEW)` with `FileProvider.getUriForFile(context, "$packageName.provider", apkFile)`, MIME `application/vnd.android.package-archive`, flags `FLAG_GRANT_READ_URI_PERMISSION | FLAG_ACTIVITY_NEW_TASK`, and starts it — handing off to the system package installer UI.
 
 ### Permissions/manifest wiring for updates
+
 - `<uses-permission android:name="android.permission.INTERNET" />` — fetch manifest + APK.
 - `<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />` — required for `canRequestPackageInstalls()`/unknown-sources install flow.
 - `<service android:name=".update.UpdateService" android:exported="false" android:foregroundServiceType="dataSync" />`.
@@ -234,6 +260,7 @@ This is a **fully custom GitHub-raw-file update mechanism** — not the Play Sto
 - `POST_NOTIFICATIONS` permission (declared for the media-scan notification) is also what backs the update download's foreground notification.
 
 ### Notes for Sona
+
 - This is a **from-scratch bespoke updater**, not GitHub Releases API (`api.github.com/repos/.../releases/latest`) — it reads a hand-maintained `version.json` at the repo root via the raw-content CDN, which means whoever ships Sona updates this way would need a CI step that regenerates `version.json` with the new versionCode/versionName/apkUrl/notes on each release, and separately upload the APK to a GitHub Release (or any URL) that `apkUrl` points to.
 - No signature/checksum verification of the downloaded APK is performed before installing — relies entirely on Android's package installer verifying the APK signature matches the installed app's signing key.
 - Debug builds never check for updates (`BuildConfig.DEBUG` short-circuit) — worth replicating so devs aren't nagged.

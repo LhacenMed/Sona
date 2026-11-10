@@ -17,16 +17,16 @@ Sona plays the music stored on your device. It has no accounts, no streaming, no
 ## Screenshots
 
 | Library | Player | Queue | Lyrics |
-|:---:|:---:|:---:|:---:|
+| :---: | :---: | :---: | :---: |
 | <img src="docs/media/screenshots/library.jpg" width="200" alt="Library"> | <img src="docs/media/screenshots/player.jpg" width="200" alt="Player"> | <img src="docs/media/screenshots/queue.jpg" width="200" alt="Queue"> | <img src="docs/media/screenshots/lyrics.jpg" width="200" alt="Lyrics"> |
 
 | Album | Playlists | Selection | Settings |
-|:---:|:---:|:---:|:---:|
+| :---: | :---: | :---: | :---: |
 | <img src="docs/media/screenshots/album.jpg" width="200" alt="Album detail"> | <img src="docs/media/screenshots/playlists.jpg" width="200" alt="Playlists"> | <img src="docs/media/screenshots/selection.jpg" width="200" alt="Multi-select"> | <img src="docs/media/screenshots/settings.jpg" width="200" alt="Settings"> |
 
 ## Features
 
-**Library**
+### Library
 
 - Tabs for Tracks, Artists, Albums, Genres and Folders. Each tab can be hidden.
 - Search across all tabs from the top bar.
@@ -36,13 +36,13 @@ Sona plays the music stored on your device. It has no accounts, no streaming, no
 - Excluded folders, for audio you never want in the library.
 - The library updates by itself when files are added or removed.
 
-**Selection and actions**
+### Selection and actions
 
 - Long-press to select rows, including across tabs, then act on all of them at once.
 - An options sheet on every row: play, shuffle, play next, add to queue, add to playlist, go to artist or album, properties, share.
 - Sharing sends content links to the files, so large selections are shared without copying audio.
 
-**Playlists**
+### Playlists
 
 - Create, rename and delete playlists, or create one from a folder.
 - Drag tracks into a custom order.
@@ -50,7 +50,7 @@ Sona plays the music stored on your device. It has no accounts, no streaming, no
 - Import and export M3U files.
 - Favorites is a built-in playlist; Recent and Most played are built from your listening history.
 
-**Player and playback**
+### Player and playback
 
 - Mini player that expands into a full player; swipe the cover to change tracks.
 - Reorderable queue, with the collection it is playing from shown in the header.
@@ -60,7 +60,7 @@ Sona plays the music stored on your device. It has no accounts, no streaming, no
 - Media notification with shuffle, repeat and favorite controls.
 - Selectable player style and seek bar style.
 
-**Lyrics**
+### Lyrics
 
 - Reads lyrics embedded in audio files, including synced LRC, TTML and QRC.
 - Line-by-line and word-by-word highlighting with adjustable animation.
@@ -68,19 +68,19 @@ Sona plays the music stored on your device. It has no accounts, no streaming, no
 - Lyrics for upcoming queue items are preloaded.
 - Optionally looks online for lyrics a track's file lacks, and writes the best match into it (off by default).
 
-**Appearance**
+### Appearance
 
 - Material 3 with colours taken from the playing track's artwork, in light and dark themes.
 - Composed covers for collections, in several styles.
 
-**Backup and restore**
+### Backup and restore
 
 - Back up playlists, favorites, play history, settings, and the covers, background and font you chose - by hand, daily or weekly.
 - Backups are kept in `Android/media/com.lhacenmed.sona/Backup`, the latest one, and can be encrypted with a passphrase.
 - Connect Google Drive to keep backups there too, with one copy of each music and video file from the folders you choose (uploaded over Wi-Fi). A restore brings back only the files a device is missing, compared by their contents, so nothing is duplicated.
 - Restoring adds to what is on the device; nothing there is removed.
 
-**Updates**
+### Updates
 
 - Checks this repository for new releases, downloads the APK in the background, and hands it to the system installer. Can be set to check only on request.
 

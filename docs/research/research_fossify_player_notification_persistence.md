@@ -7,6 +7,7 @@ carousel cover pager, wavy seekbar, synced lyrics). Treat what follows as the ac
 implementation to port verbatim.
 
 Relevant Gradle deps (`gradle/libs.versions.toml` / `app/build.gradle.kts`):
+
 - `com.google.android.material:material` version `1.14.0-alpha10` (carries the vendored
   `com.google.android.material.bottomsheet.BackportBottomSheetBehavior` / `BackportBottomSheetDialogFragment`
   used everywhere instead of stock `BottomSheetBehavior`)
@@ -21,6 +22,7 @@ Relevant Gradle deps (`gradle/libs.versions.toml` / `app/build.gradle.kts`):
 ## 1. Full player UI (mini-bar -> expandable bottom sheet -> full player -> stacked queue sheet)
 
 ### Architecture summary
+
 There is **no separate "NowPlayingActivity"**. The whole player UI (mini bar + full panel + queue) is
 a reusable chunk of UI (`view_playback_sheet.xml`) hosted inside **every** activity that extends
 `SimpleMusicActivity` (e.g. `ScreenHostActivity`, `MainActivity`, `TracksActivity`, etc.), via
@@ -34,6 +36,7 @@ sheets stacked inside one CoordinatorLayout**, not a MotionLayout and not a sing
    `layoutDependsOn`/`onDependentViewChanged` against `current_track_bar`.
 
 Files:
+
 - `app/src/main/kotlin/org/fossify/musicplayer/activities/SimpleMusicActivity.kt` — the state machine
   (full body already quoted above/below); every hosted screen inherits playback UI by calling
   `setupPlaybackSheet()` in `onCreate`.
@@ -56,6 +59,7 @@ Files:
   `view_current_track_bar.xml`, `activity_screen_host.xml`, `item_queue_track.xml`.
 
 ### Bottom sheet XML skeleton (`view_playback_sheet.xml`) — verbatim
+
 ```xml
 <merge xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -155,8 +159,10 @@ Host activity layout (`activity_screen_host.xml`) wires it as the last sibling i
 CoordinatorLayout: `<include layout="@layout/view_playback_sheet" />`.
 
 ### Behavior classes (verbatim, load-bearing)
+
 `BaseBottomSheetBehavior` (shared base, `isFitToContents=false`, skip half-expanded, peek height derived
 from first child's measured height + gesture insets):
+
 ```kotlin
 abstract class BaseBottomSheetBehavior<V : View>(context: Context, attributeSet: AttributeSet?) :
     BackportBottomSheetBehavior<V>(context, attributeSet) {
@@ -198,6 +204,7 @@ abstract class BaseBottomSheetBehavior<V : View>(context: Context, attributeSet:
     }
 }
 ```
+
 `PlaybackBottomSheetBehavior` (`isHideable = true`; swiping the collapsed bar down hides/stops
 playback; `isHideableWhenDragging()` overridden so a drag starting from the *expanded* panel can only
 return to collapsed, never hide — vendor-added extension point):
@@ -217,10 +224,12 @@ inset by exactly `calculateConsumedByBar()` (peek height scaled by slide offset 
 hidden). Full source captured above.
 
 ### The state machine driving cross-sheet transitions
+
 `SimpleMusicActivity` implements `ViewTreeObserver.OnPreDrawListener` and recomputes **every visual
 transition value on every frame** from the two behaviors' `calculateSlideOffset()` (not from
 `BottomSheetCallback.onSlide`, since CoordinatorLayout is "overloaded too much to rely on its usual
 listener functionality" per the code comment). Key excerpt (`onPreDraw()`), fully quoted above — computes:
+
 - `sheetScrim.alpha` — dark scrim behind sheets as playback sheet nears full expansion + predictive-back "squish"
 - corner-size shrink of `PlaybackBottomSheetBehavior.sheetBackgroundDrawable` during predictive back
 - `trackBar.alpha` vs `panel.alpha` vs `queueContent.alpha` cross-fade as playback sheet slides 0→1 and
@@ -233,6 +242,7 @@ listener functionality" per the code comment). Key excerpt (`onPreDraw()`), full
   is the vendored `BackportBottomSheetBehavior`'s own predictive-back API, not hand-rolled.
 
 Sheet open/close verbs:
+
 ```kotlin
 fun tryOpenPlaybackPanel() {
     if (playbackSheetBehavior.targetState == BackportBottomSheetBehavior.STATE_COLLAPSED) {
@@ -253,12 +263,14 @@ private fun tryClosePlaybackPanel() {
 private fun tryShowSheets() { /* STATE_HIDDEN -> STATE_COLLAPSED, isDraggable = true */ }
 private fun tryHideAllSheets() { /* isDraggable = false, state = STATE_HIDDEN */ }
 ```
+
 Mini bar tap expands the panel (`trackBar.setOnClickListener { tryOpenPlaybackPanel() }`); swiping the
 mini bar down (`STATE_HIDDEN` reached while a track is still loaded) calls `stopPlayback()`, which sends
 `CustomCommands.CLOSE_PLAYER` to the service (stops playback for good — see persistence section).
 `PlaybackPanel`'s toolbar back arrow (`ic_down_24`) calls `tryClosePlaybackPanel()`.
 
 ### Cover carousel (horizontal artwork swipe)
+
 `ViewPager2` (`R.id.playback_pager`, aspect-ratio 1:1) + `CoverPagerAdapter` (Glide-loaded cover per
 page, `offscreenPageLimit = 1`) + `CarouselTransformer` (custom `PageTransformer` implementing Material's
 carousel "masking" look via `MaskableFrameLayout.setMaskRectF`, piecewise gap/reveal function, and 0.2x
@@ -275,6 +287,7 @@ captured above in `PlaybackPanel.kt` (`updateCarousel`, `schedulePagerCommand`, 
 `playerIndexOf`, `pagerPositionOf`).
 
 ### Seek bar
+
 Custom `StyledSeekBar` (`app/src/main/kotlin/org/fossify/musicplayer/views/StyledSeekBar.kt`) wraps a
 Material `Slider` (not a classic `SeekBar`) with wavy active-track rendering
 (`slider.setWaveEnabled(...)`, a Material3-expressive API). Values are stored/exchanged in
@@ -289,6 +302,7 @@ listener callbacks (those fire on player events only, not continuously). Progres
 `SimpleMusicActivity.scheduleTrackBarProgress`.
 
 ### Playback controls, favorite, more, equalizer
+
 All wired directly in `PlaybackPanel.initialize(...)` (full source above): `playbackPlayPause` →
 `togglePlayback()`; `playbackSkipPrev`/`playbackSkipNext` → `seekToPrevious()`/`seekToNext()` which
 **coalesce rapid taps** over a 150ms window (`seekWithDelay`/`seekByCount`) before issuing a single
@@ -312,6 +326,7 @@ each row's icon/text pulled straight from the `MenuItem`. Actions dispatch back 
 Properties, Share. Full source captured above.
 
 ### Lyrics
+
 `LyricsView` (custom `FrameLayout` wrapping a `RecyclerView` + `LyricsAdapter`) shows lyrics *inline in
 the full player panel* (`playbackLyrics` in the ViewBinding, referenced in `PlaybackPanel`), not as a
 separate screen. Supports both plain (`Lyrics.Plain`, just scrollable) and synced
@@ -339,6 +354,7 @@ the default provider entirely.
 
 `app/src/main/kotlin/org/fossify/musicplayer/playback/NotificationHelper.kt` exists but is **not** the
 media notification — it only builds three unrelated, plain `NotificationCompat` notifications:
+
 1. `createNoPermissionNotification()` — shown via `startForeground` when storage permission is missing
    (used from `PlaybackService.showNoPermissionNotification()`, delayed 100ms).
 2. `createMediaScannerNotification(...)` — library-scan progress.
@@ -347,7 +363,9 @@ All three share channel `music_player_channel` (`NotificationManager.IMPORTANCE_
 badge), created lazily via `NotificationHelper.createInstance(context)`.
 
 ### Session/player setup that feeds the automatic notification
+
 `app/src/main/kotlin/org/fossify/musicplayer/playback/PlayerInit.kt`:
+
 ```kotlin
 internal fun PlaybackService.initializeSessionAndPlayer(
     handleAudioFocus: Boolean,
@@ -370,6 +388,7 @@ internal fun PlaybackService.initializeSessionAndPlayer(
     }
 }
 ```
+
 `getSessionActivityIntent()` builds the notification's tap-target `PendingIntent` (opens `MainActivity`
 with `EXTRA_OPEN_PLAYER=true`, `FLAG_ACTIVITY_NEW_TASK|CLEAR_TOP|SINGLE_TOP`).
 
@@ -378,7 +397,9 @@ and audio-focus handling `true`, `setHandleAudioBecomingNoisy(true)`, custom see
 (`SEEK_INTERVAL_MS`), and a custom `AudioOnlyRenderersFactory`.
 
 ### Notification action buttons — via `CommandButton` custom layout, not manual PendingIntents
+
 `app/src/main/kotlin/org/fossify/musicplayer/playback/CustomCommands.kt`:
+
 ```kotlin
 enum class CustomCommands(val customAction: String) {
     CLOSE_PLAYER(customAction = PATH + "CLOSE_PLAYER"),
@@ -401,12 +422,14 @@ internal fun Context.getCustomLayout(): List<CommandButton> = listOf(
         .build()
 )
 ```
+
 So beyond media3's built-in play/pause/skip-next/skip-prev (auto-derived from `Player.Commands`), the
 **only extra notification button is "Close"**, added via `MediaSession.setCustomLayout(...)` /
 `mediaSession.setCustomLayout(controller, customLayout)` (re-sent in `onPostConnect` for newer
 controllers). There is no favorite button on the notification in this codebase.
 
 `MediaSessionCallback.onCustomCommand` dispatches these:
+
 ```kotlin
 when (command) {
     CustomCommands.CLOSE_PLAYER -> stopService()
@@ -416,9 +439,11 @@ when (command) {
     CustomCommands.SET_NEXT_ITEM -> setNextItem(args)
 }
 ```
+
 (`onConnect` adds all `customCommands` to `availableSessionCommands` for every controller.)
 
 ### Album art / lock-screen metadata
+
 Metadata (title/artist/artwork/duration) is **not manually pushed via `MediaSessionCompat.setMetadata`**
 — media3's session derives it automatically from each `MediaItem`'s `MediaMetadata` (built when tracks
 are turned into `MediaItem`s, see `models/toMediaItems`/`toMediaItem` — not read in this pass, but that's
@@ -429,6 +454,7 @@ custom Glide-into-notification code path (unlike the mini-bar/cover-carousel/lyr
 Glide, e.g. `CurrentTrackBar.updateCurrentTrack`, `CoverViewHolder.loadCover`).
 
 ### Service lifecycle
+
 ```kotlin
 class PlaybackService : MediaLibraryService(), MediaSessionService.Listener {
     override fun onCreate() {
@@ -465,6 +491,7 @@ class PlaybackService : MediaLibraryService(), MediaSessionService.Listener {
     }
 }
 ```
+
 Note the `companion object` cache of `currentMediaItem`/`isPlaying`/`nextMediaItem`: every UI class reads
 `PlaybackService.currentMediaItem` synchronously (e.g. to decide sheet visibility) rather than paying for
 a `MediaController` round trip, explicitly to keep UI responsive.
@@ -474,7 +501,9 @@ a `MediaController` round trip, explicitly to keep UI responsive.
 ## 3. Playback-state persistence (queue/position restore)
 
 ### Storage: Room table `queue_items`
+
 `app/src/main/kotlin/org/fossify/musicplayer/data/dao/QueueItemsDao.kt`:
+
 ```kotlin
 @Dao
 interface QueueItemsDao {
@@ -506,7 +535,9 @@ interface QueueItemsDao {
     fun deleteAllItems()
 }
 ```
+
 Model (`models/QueueItem.kt`):
+
 ```kotlin
 data class QueueItem(
     @ColumnInfo(name = "track_id") var trackId: Long,
@@ -519,9 +550,11 @@ data class QueueItem(
     }
 }
 ```
+
 `last_position` is stored in **whole seconds** (int), not ms — see the ms↔s conversions below.
 
 ### Write path — `AudioHelper` (`app/src/main/kotlin/org/fossify/musicplayer/data/AudioHelper.kt`)
+
 ```kotlin
 fun clearQueue() {
     context.queueDAO.deleteAllItems()
@@ -538,11 +571,14 @@ fun resetQueue(items: List<QueueItem>, currentTrackId: Long? = null, startPositi
     }
 }
 ```
+
 Every save is a **full delete-and-reinsert** of the whole queue table (not incremental), keeping it
 trivially consistent with whatever `mediaItems` order the player currently holds.
 
 ### When persistence happens: on (almost) every player event
+
 `app/src/main/kotlin/org/fossify/musicplayer/playback/PlayerListener.kt`:
+
 ```kotlin
 override fun onEvents(player: Player, events: Player.Events) {
     if (events.containsAny(
@@ -562,7 +598,9 @@ override fun onEvents(player: Player, events: Player.Events) {
     }
 }
 ```
+
 `updatePlaybackState()` (`PlayerInit.kt`):
+
 ```kotlin
 internal fun PlaybackService.updatePlaybackState() {
     withPlayer {
@@ -579,11 +617,13 @@ internal fun PlaybackService.updatePlaybackState() {
     }
 }
 ```
+
 So the queue + current track + position is re-saved **on essentially every relevant Player event** —
 transitions, seeks/discontinuities, timeline changes (queue edits), play/pause toggles — not on a timer
 and not only at pause/destroy. `MediaItemProvider.saveRecentItemsWithStartPosition` (already shown above)
 runs the actual DB write on a **single-thread `Executor`** (`MoreExecutors.listeningDecorator`), so writes
 are serialized and off the player thread:
+
 ```kotlin
 fun saveRecentItemsWithStartPosition(mediaItems: List<MediaItem>, current: MediaItem, startPosition: Long) {
     if (mediaItems.isEmpty()) return
@@ -599,6 +639,7 @@ fun clearRecentItems() {
     executor.execute { audioHelper.clearQueue() }
 }
 ```
+
 Stopping playback for good (mini-bar swipe-to-dismiss, or notification's Close button →
 `CustomCommands.CLOSE_PLAYER` → `PlaybackService.stopService()`) explicitly empties the player
 (`clearMediaItems()`) **and** clears the persisted queue (`mediaItemProvider.clearRecentItems()`) on the
@@ -606,7 +647,9 @@ Stopping playback for good (mini-bar swipe-to-dismiss, or notification's Close b
 the player closed across future launches until the user starts something new.
 
 ### Restore path — triggered by `maybePreparePlayer`, before/independent of library scan
+
 `app/src/main/kotlin/org/fossify/musicplayer/extensions/Player.kt`:
+
 ```kotlin
 var prepareInProgress = false
 inline fun Player.maybePreparePlayer(context: Context, crossinline callback: (success: Boolean) -> Unit) {
@@ -631,6 +674,7 @@ inline fun Player.maybePreparePlayer(context: Context, crossinline callback: (su
     }
 }
 ```
+
 Called from `SimpleControllerActivity.onCreate`/`onResume` (`maybePreparePlayer()`), i.e. **triggered by
 the first UI that attaches a `MediaController`**, guarded by a global `prepareInProgress` flag so only one
 restore ever runs even if multiple activities attach concurrently, and by `currentMediaItem == null` so
@@ -642,6 +686,7 @@ queue is resolved, specifically to start audio as fast as possible; the full que
 same callback a moment later and is spliced in via `addRemainingMediaItems`.
 
 `AudioHelper.getQueuedTracksLazily` (`data/AudioHelper.kt`):
+
 ```kotlin
 fun getQueuedTracksLazily(callback: (tracks: List<Track>, startIndex: Int, startPositionMs: Long) -> Unit) {
     ensureBackgroundThread {
@@ -665,6 +710,7 @@ fun getQueuedTracksLazily(callback: (tracks: List<Track>, startIndex: Int, start
     }
 }
 ```
+
 `getQueuedTracks(queueItems)` cross-references `queue_items.track_id` against
 `getAllTracks().associateBy { it.mediaStoreId }`, preserving `track_order`, and flags whichever row
 `isCurrent` with `FLAG_IS_CURRENT` on the returned `Track`.
@@ -677,14 +723,17 @@ or (once the tree is built) `getRecentItemsWithStartPosition()` which re-derives
 (`getMediaItemFromQueueItem`) instead of re-hitting the tracks table.
 
 ### Shuffle / repeat persistence
+
 Not stored in Room — stored in the app's `Config`/SharedPreferences (`context.config`), separately from
 the queue table:
+
 - `PlayerListener.onShuffleModeEnabledChanged` → `config.isShuffleEnabled = shuffleModeEnabled`
 - `PlayerListener.onRepeatModeChanged` → `config.playbackSetting = getPlaybackSetting(repeatMode)`
   (skipped when `playbackSetting == STOP_AFTER_CURRENT_TRACK`, a 4th custom mode media3's own
   `REPEAT_MODE_*` can't represent, handled manually by seeking to 0 + pausing on
   `MEDIA_ITEM_TRANSITION_REASON_REPEAT`).
 Restored in `PlayerInit.initializeSessionAndPlayer`:
+
 ```kotlin
 withPlayer {
     addListener(playerListener)
@@ -694,22 +743,26 @@ withPlayer {
     ...
 }
 ```
+
 i.e. applied to the freshly built `ExoPlayer` immediately on service creation, before any queue restore
 happens — shuffle re-ordering of the *actual restored queue* then happens naturally once
 `shuffleModeEnabled=true` is applied and the media items are set (media3 deals a shuffle order over
 whatever timeline it's given).
 
 ### Custom shuffle-order persistence-adjacent detail
+
 Manual queue reordering while shuffled doesn't call `Player.moveMediaItem` (which would operate on the
 underlying, unshuffled item order); instead `SimpleMusicActivity.movePlayOrderEntry` sends a custom
 session command `CustomCommands.SET_SHUFFLE_ORDER` with an `EXTRA_SHUFFLE_INDICES` int array, handled in
 `MediaSessionCallback.setShuffleOrder`:
+
 ```kotlin
 private fun setShuffleOrder(args: Bundle) {
     val indices = args.getIntArray(EXTRA_SHUFFLE_INDICES) ?: return
     withPlayer { setShuffleIndices(indices) }
 }
 ```
+
 (`setShuffleIndices` lives on `SimpleMusicPlayer`, not opened in this pass — flag for the implementer if
 shuffle-drag-to-reorder needs porting.)
 
@@ -718,6 +771,7 @@ shuffle-drag-to-reorder needs porting.)
 ## Files map (all paths absolute, for the porting engineer)
 
 Player UI:
+
 - `app/src/main/kotlin/org/fossify/musicplayer/activities/SimpleMusicActivity.kt`
 - `app/src/main/kotlin/org/fossify/musicplayer/activities/SimpleControllerActivity.kt`
 - `app/src/main/kotlin/org/fossify/musicplayer/activities/ScreenHostActivity.kt`
@@ -735,6 +789,7 @@ Player UI:
 - `app/src/main/res/layout/view_playback_sheet.xml`, `view_playback_panel.xml`, `view_current_track_bar.xml`, `activity_screen_host.xml`, `item_queue_track.xml`
 
 Notification/session:
+
 - `app/src/main/kotlin/org/fossify/musicplayer/playback/PlaybackService.kt`
 - `app/src/main/kotlin/org/fossify/musicplayer/playback/PlayerInit.kt`
 - `app/src/main/kotlin/org/fossify/musicplayer/playback/MediaSessionCallback.kt`
@@ -744,6 +799,7 @@ Notification/session:
 - `app/src/main/kotlin/org/fossify/musicplayer/playback/MediaItemProvider.kt`
 
 Persistence:
+
 - `app/src/main/kotlin/org/fossify/musicplayer/data/dao/QueueItemsDao.kt`
 - `app/src/main/kotlin/org/fossify/musicplayer/data/AudioHelper.kt` (`isFavorite`, `setFavorite`,
   `getQueuedTracks`, `getQueuedTracksLazily`, `clearQueue`, `resetQueue`)

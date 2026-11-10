@@ -48,9 +48,11 @@ override fun onCreate(savedInstanceState: Bundle?) {
 **Key finding: the permission check gates everything.** `initFragments()` (which creates the `ViewPagerAdapter` and therefore instantiates the tab fragments) is called only inside `initActivity()`, which itself only runs from the `handlePermission(...) { if (it) initActivity() }` callback. So no fragment exists, and no Room read happens, until the permission callback fires with `granted == true`. There is no separate "bind UI to already-persisted Room data first, then check permission" path — permission-check comes strictly before any UI/data binding in this codebase.
 
 Note `getPermissionToRequest()` (`app/src/main/kotlin/org/fossify/musicplayer/helpers/Constants.kt:149`):
+
 ```kotlin
 fun getPermissionToRequest() = if (isTiramisuPlus()) PERMISSION_READ_MEDIA_AUDIO else PERMISSION_WRITE_STORAGE
 ```
+
 `handlePermission` is a Fossify Commons `BaseSimpleActivity` extension (not vendored in this checkout — see caveat at the end of section 3). Commons' `handlePermission` conventionally checks `hasPermission()` synchronously first and invokes the callback immediately (same frame) if already granted, only showing the system permission dialog if not. Because the source isn't in this checkout, I can't quote it, but the call-site behavior in `MainActivity` matches: if permission is already granted, `initActivity()` should run essentially synchronously off `onCreate`, with no dialog and no visible gap. If the clone's `handlePermission`-equivalent instead does an async/deferred check (e.g. round-trips through a coroutine, `ActivityResultContracts` callback that posts to a later frame, or defaults to "not granted" until a callback resolves), that would explain both the flash of "permission not granted" and the slower first paint — the UI would sit ungated for a frame or more before the callback resolves true.
 
 ### `initActivity()` (lines 189-198)
@@ -149,6 +151,7 @@ private fun gotAlbums(activity: BaseSimpleActivity, cachedAlbums: ArrayList<Albu
 The conditional is purely: `mediaScanner.isScanning()` (a real boolean flag, `MediaScanner.isScanning()` returning the private `scanning` var) picks the placeholder *text* between "Loading files…" (`R.string.loading_files`) and "No items found" (commons' `R.string.no_items_found`); the placeholder's *visibility* is decided independently by `tracks.isEmpty()` / `albums.isEmpty()`. **There is no branch anywhere in these fragments that reads a permission-granted boolean or shows a "permission not granted" string.** Since fragments are only ever constructed after `handlePermission` has already resolved `true` (see `onCreate` above), Fossify structurally cannot show a permission-related message from inside the tab UI — a "permission not granted" flash in the clone must come from the clone's own code path, not from mirroring this logic.
 
 Layout, e.g. `app/src/main/res/layout/fragment_tracks.xml`:
+
 ```xml
 <org.fossify.commons.views.MyTextView
     android:id="@+id/tracks_placeholder"
@@ -156,6 +159,7 @@ Layout, e.g. `app/src/main/res/layout/fragment_tracks.xml`:
     android:text="@string/loading_files"
     ... />
 ```
+
 The placeholder's *default XML text* is `@string/loading_files` — so even before the first `setupFragment()` callback lands, if the placeholder were ever visible (e.g. list not yet populated) it would statically read "Loading files…", never a permission string. Same pattern applies to `fragment_albums.xml`, `fragment_artists.xml`, `fragment_genres.xml`, `fragment_folders.xml` (all found via grep on `no_items_found`/placeholder ids, not all individually opened, but they follow the identical `MyViewPagerFragment` subclass pattern seen in `TracksFragment`/`AlbumsFragment`).
 
 **Conclusion for section 1:** Fossify does NOT bind UI to persisted Room data *before* the permission check — the permission check is strictly first and gates fragment construction entirely. What makes Fossify feel instant is (a) `handlePermission` resolving synchronously/immediately when permission is already granted (no visible gate at all in the already-granted case, which is the common case after first run), and (b) once fragments exist, each fragment's `setupFragment()` reads directly from Room (already populated from the previous run) on a background thread and paints immediately, fully decoupled from whether the concurrently-running scan has produced anything yet. The "permission not granted" flash in the clone is most likely caused by the clone's UI briefly rendering before its own permission-check callback resolves, or by the clone showing a real "permission" UI state that Fossify's fragments never have in the first place.
@@ -281,6 +285,7 @@ if (isQPlus()) {
 ```
 
 Yes — this is real and exactly as described in the hypothesis. On Android 10+ (`isQPlus()`), after the fast `scanMediaStore()` finishes (and has already written the MediaStore-derived tracks/albums/artists/genres to Room), the callback fires once with `complete=false`. In `MainActivity.refreshAllFragments`, that callback body is:
+
 ```kotlin
 mediaScanner.scan(progress = showProgress && granted) { complete ->
     runOnUiThread {
@@ -291,6 +296,7 @@ mediaScanner.scan(progress = showProgress && granted) { complete ->
     }
 }
 ```
+
 So `getAllFragments().forEach { it.setupFragment(this) }` runs on **both** the `complete=false` and `complete=true` invocations — meaning fragments re-read Room and repaint once right after the fast MediaStore scan (typically sub-second), and then again after the much slower manual filesystem walk finishes. This is what produces a fast first real paint of scanned data distinct from the "already-persisted from last run" first paint described in section 1.
 
 On pre-Q devices (`!isQPlus()`), the `if (isQPlus())` block is skipped entirely, so `scanFilesManually()` never runs and only the single final `onScanComplete?.invoke(true)` fires — this is irrelevant to any modern device but worth noting for fidelity.
@@ -374,6 +380,7 @@ private fun updateAllDatabases() {
 ### DAO signatures (verbatim, from `app/src/main/kotlin/org/fossify/musicplayer/data/dao/*.kt`)
 
 `SongsDao.kt`:
+
 ```kotlin
 @Dao
 interface SongsDao {
@@ -389,6 +396,7 @@ interface SongsDao {
 ```
 
 `AlbumsDao.kt`:
+
 ```kotlin
 @Dao
 interface AlbumsDao {
@@ -402,6 +410,7 @@ interface AlbumsDao {
 ```
 
 `ArtistsDao.kt`:
+
 ```kotlin
 @Dao
 interface ArtistsDao {
@@ -415,6 +424,7 @@ interface ArtistsDao {
 ```
 
 `GenresDao.kt`:
+
 ```kotlin
 @Dao
 interface GenresDao {
