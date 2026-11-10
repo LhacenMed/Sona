@@ -24,6 +24,8 @@ coil = "3.5.0"
 okhttp = "4.12.0"
 taglib = "1.0.6"
 youtubedlAndroid = "0.18.1"
+newpipeExtractor = "v0.26.5"
+desugarJdkLibs = "2.1.5"
 palette = "1.0.0"
 materialKolor = "5.0.0-alpha07"
 hiltNavigationCompose = "1.2.0"
@@ -83,6 +85,8 @@ okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhtt
 taglib = { group = "io.github.kyant0", name = "taglib", version.ref = "taglib" }
 youtubedl-android-library = { group = "io.github.junkfood02.youtubedl-android", name = "library", version.ref = "youtubedlAndroid" }
 youtubedl-android-ffmpeg = { group = "io.github.junkfood02.youtubedl-android", name = "ffmpeg", version.ref = "youtubedlAndroid" }
+newpipe-extractor = { group = "com.github.TeamNewPipe", name = "NewPipeExtractor", version.ref = "newpipeExtractor" }
+desugar-jdk-libs = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugarJdkLibs" }
 androidx-palette = { group = "androidx.palette", name = "palette-ktx", version.ref = "palette" }
 materialkolor = { group = "com.materialkolor", name = "material-kolor", version.ref = "materialKolor" }
 androidsvg = { group = "com.caverock", name = "androidsvg-aar", version.ref = "androidsvg" }

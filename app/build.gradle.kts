@@ -187,6 +187,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // NewPipe's extractor - the downloader's YouTube reader - calls Java APIs Android 10 to 12 lack.
+        isCoreLibraryDesugaringEnabled = true
     }
 }
 
@@ -267,4 +269,5 @@ dependencies {
     implementation(libs.coil.network.okhttp)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
 }

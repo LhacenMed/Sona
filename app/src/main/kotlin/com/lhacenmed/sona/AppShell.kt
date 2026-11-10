@@ -3,7 +3,6 @@ package com.lhacenmed.sona
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -19,7 +18,6 @@ import com.lhacenmed.sona.feature.library.LibraryPagerScreen
 import com.lhacenmed.sona.feature.library.LibraryTabRequest
 import com.lhacenmed.sona.feature.settings.QuickPlaySourceSetting
 import com.lhacenmed.sona.feature.settings.SettingsScreen
-import com.lhacenmed.sona.feature.download.DownloadScreen
 
 /**
  * [playingTab] opens the library on the tab the queue plays from, at its playing row, the full player over it;
@@ -34,7 +32,6 @@ fun AppShell(playerOverlay: PlayerOverlay, playingTab: LibraryTab?, tabRequest: 
     // are the actions the shell itself contributes.
     val libraryActions = remember(navigator) {
         listOf(
-            TopBarAction(label = "Downloads", icon = Icons.Filled.Download) { navigator.go(DownloadScreen()) },
             TopBarAction(label = "Settings", icon = Icons.Filled.Settings) { navigator.go(SettingsScreen) },
         )
     }

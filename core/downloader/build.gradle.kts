@@ -13,6 +13,7 @@ android {
         // The version of youtubedl-android's runtime: its programs are in the app, and the rest of it - Python's and
         // FFmpeg's libraries - is downloaded from this very version, so the two always match. See DownloaderRuntime.
         buildConfigField("String", "RUNTIME_VERSION", "\"${libs.versions.youtubedlAndroid.get()}\"")
+        consumerProguardFiles("consumer-rules.pro")
     }
 
     buildFeatures {
@@ -38,6 +39,10 @@ dependencies {
     implementation(libs.okhttp)
     // What a download carries of its site beyond its format, written into it as tags - see EmbeddedExtras.
     implementation(libs.taglib)
+    // YouTube read in-process, without starting Python - see NewPipeSource.
+    implementation(libs.newpipe.extractor)
+    // The site readers' HTML parser - the version NewPipe already brings into the app, so it adds nothing to it. See sites.
+    implementation("org.jsoup:jsoup:1.22.2")
 
     // Their programs - Python's, FFmpeg's, ffprobe's and QuickJS's, a megabyte and a half - are what the app carries of
     // them: what they are run with, downloaded, is left out of it - see the app's packaging.
@@ -45,6 +50,8 @@ dependencies {
     implementation(libs.youtubedl.android.ffmpeg)
 
     testImplementation(libs.junit)
+    // Android's own org.json is a stub off the device.
+    testImplementation("org.json:json:20240303")
 }
 
 kotlin {

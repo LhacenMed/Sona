@@ -1,11 +1,16 @@
 package com.lhacenmed.sona.core.datastore
 
 import android.content.Context
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.model.DownloadChoices
+import com.lhacenmed.sona.core.model.DownloaderPreferences
+import com.lhacenmed.sona.core.model.SponsorSegment
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -17,7 +22,17 @@ private val AUDIO_FORMAT = stringPreferencesKey("download_audio_format")
 private val CAPTIONS = booleanPreferencesKey("download_captions")
 private val SKIP_SPONSORS = booleanPreferencesKey("download_skip_sponsors")
 
-/** How the user downloads - what a Quick download takes, and the download screen starts from. */
+private val DOWNLOADS_AT_ONCE = intPreferencesKey("download_at_once")
+private val WIFI_ONLY = booleanPreferencesKey("download_wifi_only")
+private val FOLDER_NAME = stringPreferencesKey("download_folder_name")
+private val FILE_NAME_TEMPLATE = stringPreferencesKey("download_file_name_template")
+private val SPONSOR_SEGMENTS = stringSetPreferencesKey("download_sponsor_segments")
+private val PROXY = stringPreferencesKey("download_proxy")
+private val RATE_LIMIT = stringPreferencesKey("download_rate_limit")
+private val USES_COOKIES = booleanPreferencesKey("download_uses_cookies")
+private val USES_ARCHIVE = booleanPreferencesKey("download_uses_archive")
+
+/** How the user downloads - what a Quick download takes, and the download screen starts from - and how downloading works. */
 @Singleton
 class DownloadSettings @Inject constructor(
     @ApplicationContext context: Context,
@@ -39,6 +54,23 @@ class DownloadSettings @Inject constructor(
         )
     }
 
+    val preferences: Setting<DownloaderPreferences> = cache.setting { preferences ->
+        val defaults = DownloaderPreferences()
+        DownloaderPreferences(
+            downloadsAtOnce = preferences[DOWNLOADS_AT_ONCE] ?: defaults.downloadsAtOnce,
+            wifiOnly = preferences[WIFI_ONLY] ?: defaults.wifiOnly,
+            folderName = preferences[FOLDER_NAME] ?: defaults.folderName,
+            fileNameTemplate = preferences[FILE_NAME_TEMPLATE] ?: defaults.fileNameTemplate,
+            sponsorSegments = preferences[SPONSOR_SEGMENTS]
+                ?.mapNotNull { id -> SponsorSegment.entries.firstOrNull { it.id == id } }?.toSet()
+                ?: defaults.sponsorSegments,
+            proxy = preferences[PROXY] ?: defaults.proxy,
+            rateLimit = preferences[RATE_LIMIT] ?: defaults.rateLimit,
+            usesCookies = preferences[USES_COOKIES] ?: defaults.usesCookies,
+            usesArchive = preferences[USES_ARCHIVE] ?: defaults.usesArchive,
+        )
+    }
+
     suspend fun setChoices(choices: DownloadChoices) {
         dataStore.edit {
             it[KIND] = choices.kind.name
@@ -47,5 +79,22 @@ class DownloadSettings @Inject constructor(
             it[CAPTIONS] = choices.captions
             it[SKIP_SPONSORS] = choices.skipSponsors
         }
+    }
+
+    /** Changes the preferences as [change] makes them from what they are. */
+    suspend fun updatePreferences(change: (DownloaderPreferences) -> DownloaderPreferences) {
+        dataStore.edit { it.write(change(preferences.value)) }
+    }
+
+    private fun MutablePreferences.write(preferences: DownloaderPreferences) {
+        this[DOWNLOADS_AT_ONCE] = preferences.downloadsAtOnce
+        this[WIFI_ONLY] = preferences.wifiOnly
+        this[FOLDER_NAME] = preferences.folderName
+        this[FILE_NAME_TEMPLATE] = preferences.fileNameTemplate
+        this[SPONSOR_SEGMENTS] = preferences.sponsorSegments.map { it.id }.toSet()
+        this[PROXY] = preferences.proxy
+        this[RATE_LIMIT] = preferences.rateLimit
+        this[USES_COOKIES] = preferences.usesCookies
+        this[USES_ARCHIVE] = preferences.usesArchive
     }
 }

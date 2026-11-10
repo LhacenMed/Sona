@@ -21,7 +21,7 @@ import com.lhacenmed.sona.feature.feedback.FeedbackScreen
 import com.lhacenmed.sona.feature.settings.about.AboutScreen
 import com.lhacenmed.sona.feature.settings.appearance.AppearanceScreen
 import com.lhacenmed.sona.feature.settings.backup.BackupScreen
-import com.lhacenmed.sona.feature.settings.screen.DownloadsSettingsScreen
+import com.lhacenmed.sona.feature.download.DownloadScreen
 import com.lhacenmed.sona.feature.settings.screen.BehaviorScreen
 import com.lhacenmed.sona.feature.settings.screen.ContentScreen
 import com.lhacenmed.sona.feature.settings.screen.ListeningStatsScreen
@@ -100,7 +100,8 @@ enum class SettingsCategory(
         titleRes = R.string.downloads_settings_title,
         summaryRes = R.string.downloads_settings_summary,
         icon = Icons.Filled.Download,
-        screen = DownloadsSettingsScreen,
+        // The downloads themselves; their settings are a tap away in the screen's bar.
+        screen = DownloadScreen(),
     ),
     ListeningStats(
         group = SettingsGroup.YourMusic,

@@ -94,6 +94,8 @@ data class TopBarSelection(
  *
  * The keyboard's search key puts the keyboard away, as it does in any search, and hands [onSearch] what was typed to
  * act on - for a screen whose search can be acted on as well as followed.
+ *
+ * [hint] is what the empty field says it is for - "Search" unless the field is for something else, as typing a link is.
  */
 @Immutable
 data class TopBarSearch(
@@ -103,6 +105,7 @@ data class TopBarSearch(
     val closesWithBack: Boolean = true,
     val actions: List<TopBarAction> = emptyList(),
     val onSearch: (() -> Unit)? = null,
+    val hint: String? = null,
 )
 
 /**
@@ -384,7 +387,7 @@ private fun SearchField(search: TopBarSearch) {
         modifier = Modifier
             .fillMaxWidth()
             .focusRequester(focusRequester),
-        placeholder = { Text(stringResource(R.string.top_bar_search_hint)) },
+        placeholder = { Text(search.hint ?: stringResource(R.string.top_bar_search_hint)) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(

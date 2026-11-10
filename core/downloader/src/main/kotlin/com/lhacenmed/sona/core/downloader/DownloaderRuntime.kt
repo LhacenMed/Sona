@@ -46,13 +46,40 @@ internal class RuntimeFiles(
     val ytDlp: File,
     val pythonHome: File,
     val libraryDirs: List<File>,
+    /** The OpenSSL configuration every connection yt-dlp makes opens with - see [TlsConfig]. */
+    val tlsConfig: File,
 )
+
+/**
+ * How yt-dlp's connections open: with the key exchanges OpenSSL offered before 3.5, as Seal's older Python still does.
+ *
+ * OpenSSL 3.5, which this Python carries, adds a post-quantum key exchange to every connection by default - a handshake
+ * few clients make yet, which sites that tell bots apart by their handshake, answer with 403 Forbidden.
+ * Offering the groups OpenSSL offered until 3.4 makes yt-dlp's handshake the long-familiar one again, for every site.
+ */
+private const val TlsConfig = """openssl_conf = openssl_init
+
+[openssl_init]
+ssl_conf = ssl_sect
+
+[ssl_sect]
+system_default = system_default_sect
+
+[system_default_sect]
+Groups = X25519:P-256:X448:P-521:P-384:ffdhe2048:ffdhe3072:ffdhe4096:ffdhe6144:ffdhe8192
+"""
 
 /** About how much a part of the downloader's files a download reports itself after. */
 private const val ReportEveryBytes = 512 * 1024L
 
-/** yt-dlp as its own project publishes it, the newest: kept up to date in place from then on - see [YtDlp.update]. */
-private const val YtDlpUrl = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp"
+/**
+ * The channel of yt-dlp's builds the app runs: nightly, as Seal's does - a site's reader fixed within a day of the site changing,
+ * rather than at the next release, weeks later. The one place it is named: downloaded from it here, updated on it in [YtDlp.update].
+ */
+internal const val YtDlpChannel = "nightly"
+
+/** yt-dlp as its own project publishes it on [YtDlpChannel], the newest: kept up to date in place from then on - see [YtDlp.update]. */
+private const val YtDlpUrl = "https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp"
 
 /**
  * The libraries Python and FFmpeg run with - each in youtubedl-android's archive on Maven Central, one zip per processor
@@ -96,6 +123,12 @@ class DownloaderRuntime @Inject constructor(
     /** Where yt-dlp keeps what it caches - the scripts YouTube is read with among it. */
     internal val cacheDir = File(home, "cache")
 
+    /** The cookies saved from signing in on sites, in the Netscape format yt-dlp reads - kept when the downloader is removed. */
+    val cookiesFile = File(context.noBackupFilesDir, "download-cookies.txt")
+
+    /** Every video downloaded while the archive is on, by its id at its site - the user's, so kept apart from the downloader. */
+    val archiveFile = File(context.filesDir, "download-archive.txt")
+
     private val client = OkHttpClient()
 
     private val _state = MutableStateFlow<RuntimeState>(RuntimeState.Missing)
@@ -121,8 +154,12 @@ class DownloaderRuntime @Inject constructor(
             ytDlp = ytDlpFile,
             pythonHome = File(python, "usr"),
             libraryDirs = listOf(File(python, "usr/lib"), File(RuntimeLibrary.FFMPEG.dir(versionDir), "usr/lib"), programs),
+            tlsConfig = tlsConfigFile.apply { if (!exists() || readText() != TlsConfig) writeText(TlsConfig) },
         )
     }
+
+    /** Where [TlsConfig] is written for yt-dlp's Python to read. */
+    private val tlsConfigFile = File(home, "openssl.cnf")
 
     /** Downloads the downloader, unless it is here already or on its way. */
     fun download() {

@@ -2,6 +2,8 @@ package com.lhacenmed.sona.core.downloader
 
 import com.lhacenmed.sona.core.model.DownloadChoices
 import com.lhacenmed.sona.core.model.DownloadKind
+import com.lhacenmed.sona.core.model.DownloadOptions
+import com.lhacenmed.sona.core.model.DownloaderPreferences
 
 /** How yt-dlp is asked to say what it does - one line each, Sona's own, apart from everything else it writes. */
 internal object YtDlpLines {
@@ -10,21 +12,23 @@ internal object YtDlpLines {
     const val SAVED = "SONA_SAVED"
 }
 
-/** SponsorBlock's segments a download leaves out, when it skips sponsors. */
-private const val SkippedSegments = "sponsor,selfpromo,interaction,music_offtopic"
-
 /** A music cover cut to a square from the middle of a video's wide frame. */
 private const val SquareCover = "ThumbnailsConvertor+ffmpeg_o:-c:v mjpeg -vf crop=\"'if(gt(ih,iw),iw,ih)':'if(gt(iw,ih),ih,iw)'\""
 
 /**
- * What yt-dlp is told to download with these choices - the one place each choice becomes yt-dlp's, so a choice added is a
- * line added here. [captionLanguage] is the device's language, whose captions are kept with English's.
+ * What yt-dlp is told to download with these choices, [options] and [preferences] - the one place each becomes yt-dlp's, so a
+ * choice added is a line added here. [captionLanguage] is the device's language, whose captions are kept with English's.
  */
-internal fun DownloadChoices.toArguments(captionLanguage: String): List<String> = buildList {
+internal fun DownloadChoices.toArguments(options: DownloadOptions, preferences: DownloaderPreferences, captionLanguage: String): List<String> = buildList {
     when (kind) {
         DownloadKind.VIDEO -> {
-            addAll(listOf("-f", "bv*+ba/b"))
-            videoQuality.height?.let { addAll(listOf("-S", "res:$it")) }
+            val formatId = options.formatId
+            if (formatId != null) {
+                addAll(listOf("-f", formatId))
+            } else {
+                addAll(listOf("-f", "bv*+ba/b"))
+                videoQuality.height?.let { addAll(listOf("-S", "res:$it")) }
+            }
             addAll(listOf("--merge-output-format", "mp4"))
             // In the video itself, as tracks of its own, which every player reads.
             if (captions) {
@@ -33,7 +37,7 @@ internal fun DownloadChoices.toArguments(captionLanguage: String): List<String> 
         }
 
         DownloadKind.AUDIO -> {
-            addAll(listOf("-f", "ba/b", "-x", "--audio-quality", "0"))
+            addAll(listOf("-f", options.formatId ?: "ba/b", "-x", "--audio-quality", "0"))
             audioFormat.extension?.let { addAll(listOf("--audio-format", it)) }
             addAll(listOf("--embed-thumbnail", "--convert-thumbnails", "jpg", "--ppa", SquareCover))
             // A song's own title and artist where the site knows them - YouTube Music's - the video's and its channel's otherwise.
@@ -41,22 +45,41 @@ internal fun DownloadChoices.toArguments(captionLanguage: String): List<String> 
         }
     }
     addAll(listOf("--embed-metadata", "--embed-chapters", "--parse-metadata", "%(release_year,upload_date)s:%(meta_date)s"))
-    if (skipSponsors) addAll(listOf("--sponsorblock-remove", SkippedSegments))
+    if (skipSponsors && preferences.sponsorSegments.isNotEmpty()) {
+        addAll(listOf("--sponsorblock-remove", preferences.sponsorSegments.joinToString(",") { it.id }))
+    }
+    options.clip?.let { addAll(listOf("--download-sections", "*${it.startSeconds}-${it.endSeconds}", "--force-keyframes-at-cuts")) }
+    if (options.splitChapters) add("--split-chapters")
+}
+
+/** What every request yt-dlp makes is told: through the proxy, at the rate, signed in and remembering what it downloaded. */
+internal fun DownloaderPreferences.networkArguments(runtime: DownloaderRuntime): List<String> = buildList {
+    proxy.takeIf(String::isNotBlank)?.let { addAll(listOf("--proxy", it.trim())) }
+    rateLimit.takeIf(String::isNotBlank)?.let { addAll(listOf("--limit-rate", it.trim())) }
+    if (usesCookies && runtime.cookiesFile.exists()) addAll(listOf("--cookies", runtime.cookiesFile.path))
+    if (usesArchive) addAll(listOf("--download-archive", runtime.archiveFile.path))
 }
 
 /**
- * What yt-dlp is told about every download, whatever was chosen: to save to [outputDir] by way of [tempDir], and to say
- * each item, its progress and each file saved - with its Most replayed graph and its chapters - on lines of Sona's own.
+ * What yt-dlp is told about every download, whatever was chosen: to save to [outputDir] by way of [tempDir], named by
+ * [fileNameTemplate] - a chapter's file within a folder of its video's, where it [splitsChapters] - and to say each item, its
+ * progress and each file saved - with its Most replayed graph and its chapters - on lines of Sona's own.
  */
-internal fun downloadArguments(outputDir: String, tempDir: String): List<String> = listOf(
-    "-P", "home:$outputDir",
-    "-P", "temp:$tempDir",
-    "-o", "%(title).150B [%(id)s].%(ext)s",
-    // A link to one video in a playlist is the video: a playlist's own link is still the playlist.
-    "--no-playlist",
-    "--no-mtime",
-    "--progress",
-    "--progress-template", "download:${YtDlpLines.PROGRESS} %(progress.downloaded_bytes)s %(progress.total_bytes,progress.total_bytes_estimate)s",
-    "--print", "before_dl:${YtDlpLines.ITEM} %(playlist_index|)s %(n_entries|)s %(title)s",
-    "--print", "after_move:${YtDlpLines.SAVED} %(.{filepath,heatmap,chapters})j",
-)
+internal fun downloadArguments(outputDir: String, tempDir: String, fileNameTemplate: String, splitsChapters: Boolean): List<String> = buildList {
+    addAll(listOf("-P", "home:$outputDir", "-P", "temp:$tempDir", "-o", fileNameTemplate))
+    if (splitsChapters) addAll(listOf("-o", "chapter:%(title).100B/%(section_number)02d - %(section_title).100B.%(ext)s"))
+    addAll(
+        listOf(
+            // A link to one video in a playlist is the video: a playlist's own link is still the playlist.
+            "--no-playlist",
+            // A stream in fragments - HLS, DASH - fetched eight at a time, as Seal fetches them.
+            "--concurrent-fragments", "8",
+            "--no-mtime",
+            "--progress",
+            "--progress-template",
+            "download:${YtDlpLines.PROGRESS} %(progress.downloaded_bytes)s %(progress.total_bytes,progress.total_bytes_estimate)s %(progress.speed)s",
+            "--print", "before_dl:${YtDlpLines.ITEM} %(playlist_index|)s %(n_entries|)s %(title)s",
+            "--print", "after_move:${YtDlpLines.SAVED} %(.{filepath,heatmap,chapters})j",
+        ),
+    )
+}

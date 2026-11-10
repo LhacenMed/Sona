@@ -19,6 +19,11 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // NewPipe's extractor is published on JitPack alone - and nothing else is taken from there.
+        exclusiveContent {
+            forRepository { maven("https://jitpack.io") }
+            filter { includeGroupByRegex("com\\.github\\.TeamNewPipe(\\..*)?") }
+        }
     }
 }
 

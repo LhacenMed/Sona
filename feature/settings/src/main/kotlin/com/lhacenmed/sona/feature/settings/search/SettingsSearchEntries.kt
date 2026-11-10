@@ -4,7 +4,9 @@ import androidx.annotation.StringRes
 import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
+import com.lhacenmed.sona.feature.download.R as DownloadR
 import com.lhacenmed.sona.feature.settings.SettingsCategory
+import com.lhacenmed.sona.feature.download.settings.DownloadsSettingsScreen
 import com.lhacenmed.sona.feature.settings.screen.LyricsAnimationScreen
 import com.lhacenmed.sona.feature.settings.screen.purposeRes
 import com.lhacenmed.sona.feature.settings.screen.titleRes
@@ -209,11 +211,35 @@ internal val SettingsSearchEntries: List<SettingsSearchEntry> = with(SettingsCat
         row(R.string.block_screenshots_title, R.string.block_screenshots_summary),
     )
 } + with(SettingsCategory.Downloads) {
+    // The category opens the downloads themselves: every one of its rows is on the settings their bar opens.
+    fun settingsRow(@StringRes titleRes: Int, @StringRes summaryRes: Int? = null) = row(titleRes, summaryRes, DownloadsSettingsScreen)
     section(
-        R.string.downloads_settings_downloader_section,
-        row(R.string.downloads_settings_downloader_title, R.string.downloads_settings_downloader_summary),
-        row(R.string.downloads_settings_ytdlp_title),
-        row(R.string.downloads_settings_open_title, R.string.downloads_settings_open_summary),
+        DownloadR.string.downloads_settings_downloader_section,
+        settingsRow(DownloadR.string.downloads_settings_downloader_title, DownloadR.string.downloads_settings_downloader_summary),
+        settingsRow(DownloadR.string.downloads_settings_ytdlp_title),
+    ) + section(
+        DownloadR.string.downloads_settings_queue_section,
+        settingsRow(DownloadR.string.downloads_settings_at_once_title),
+        settingsRow(DownloadR.string.downloads_settings_wifi_only_title, DownloadR.string.downloads_settings_wifi_only_summary),
+    ) + section(
+        DownloadR.string.downloads_settings_files_section,
+        settingsRow(DownloadR.string.downloads_settings_folder_title),
+        settingsRow(DownloadR.string.downloads_settings_file_names_title),
+        settingsRow(DownloadR.string.downloads_settings_segments_title),
+        settingsRow(DownloadR.string.downloads_settings_archive_title, DownloadR.string.downloads_settings_archive_summary),
+        settingsRow(DownloadR.string.downloads_settings_clear_archive_title, DownloadR.string.downloads_settings_clear_archive_summary),
+        settingsRow(DownloadR.string.downloads_settings_clear_history_title, DownloadR.string.downloads_settings_clear_history_summary),
+    ) + section(
+        DownloadR.string.downloads_settings_network_section,
+        settingsRow(DownloadR.string.downloads_settings_proxy_title),
+        settingsRow(DownloadR.string.downloads_settings_rate_title),
+        settingsRow(DownloadR.string.downloads_settings_cookies_title, DownloadR.string.downloads_settings_cookies_summary),
+        settingsRow(DownloadR.string.downloads_settings_use_cookies_title),
+    ) + section(
+        DownloadR.string.downloads_settings_tools_section,
+        settingsRow(DownloadR.string.downloads_settings_commands_title, DownloadR.string.downloads_settings_commands_summary),
+        settingsRow(DownloadR.string.downloads_settings_watches_title, DownloadR.string.downloads_settings_watches_summary),
+        settingsRow(DownloadR.string.downloads_settings_terminal_title, DownloadR.string.downloads_settings_terminal_summary),
     )
 } + with(SettingsCategory.ListeningStats) {
     section(R.string.stats_period_section, row(R.string.stats_period_title))

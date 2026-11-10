@@ -34,9 +34,13 @@ dependencies {
     // What downloads are brought into the library with.
     implementation(project(":feature:scanner"))
     implementation(project(":core:data"))
+    // What a saved download is played with, and its songs tagged with - the library's own.
+    implementation(project(":feature:playback"))
+    implementation(project(":feature:tageditor"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.work.runtime)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

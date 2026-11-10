@@ -485,6 +485,40 @@ val MIGRATION_28_29 = object : Migration(28, 29) {
 }
 
 /**
+ * What a download keeps beyond its choices - the one-off options it was asked with, why it failed, what it was found to be and
+ * what it saved, for the history - and the downloader's saved commands and watched channels, each a table starting empty.
+ * Every column is added: what is queued or done keeps all it had.
+ */
+val MIGRATION_29_30 = object : Migration(29, 30) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        listOf(
+            "`formatId` TEXT",
+            "`clipStart` INTEGER",
+            "`clipEnd` INTEGER",
+            "`splitChapters` INTEGER NOT NULL DEFAULT 0",
+            "`commandArguments` TEXT",
+            "`failure` TEXT",
+            "`thumbnailUrl` TEXT",
+            "`uploader` TEXT",
+            "`site` TEXT",
+            "`durationSeconds` INTEGER",
+            "`savedPaths` TEXT NOT NULL DEFAULT ''",
+            "`sizeBytes` INTEGER NOT NULL DEFAULT 0",
+            "`finishedAt` INTEGER",
+            "`startAt` INTEGER",
+        ).forEach { db.execSQL("ALTER TABLE `downloads` ADD COLUMN $it") }
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `download_commands` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`name` TEXT NOT NULL, `arguments` TEXT NOT NULL)",
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `download_watches` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `url` TEXT NOT NULL, " +
+                "`title` TEXT NOT NULL, `knownIds` TEXT NOT NULL, `createdAt` INTEGER NOT NULL)",
+        )
+    }
+}
+
+/**
  * Makes sure Favorites exists, every time the database is opened.
  *
  * On open rather than on create, because creation is only one of the ways this database comes to

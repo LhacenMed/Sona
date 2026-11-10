@@ -15,6 +15,7 @@ import com.lhacenmed.sona.core.designsystem.component.cover.MediaThumbnailFetche
 import com.lhacenmed.sona.core.designsystem.effect.SonaEffects
 import com.lhacenmed.sona.feature.backup.BackupSettings
 import com.lhacenmed.sona.feature.backup.work.BackupWork
+import com.lhacenmed.sona.feature.download.work.DownloadWork
 import com.lhacenmed.sona.feature.feedback.CrashReports
 import com.lhacenmed.sona.feature.tageditor.lyrics.MissingLyricsFinder
 import com.lhacenmed.sona.feature.update.UpdateMonitor
@@ -100,6 +101,8 @@ class SonaApplication : Application(), SingletonImageLoader.Factory {
         applicationScope.launch { updateSettings.notifications.flow.collect { UpdateNotifier.follow(this@SonaApplication, it) } }
         // Automatic backups are made exactly as often as the user chose.
         applicationScope.launch { backupSettings.schedule.collect { BackupWork.follow(this@SonaApplication, it) } }
+        // yt-dlp kept up to date, and watched channels looked at, whether or not the download screen is ever opened.
+        DownloadWork.followMaintenance(this)
         // The launcher shortcut is named and drawn for how quick play plays, so it follows that as it changes.
         // Calls to the system's shortcut service, so off the main thread as well.
         applicationScope.launch { quickPlaySettings.mode.flow.collect { QuickPlayShortcut.publish(this@SonaApplication, it) } }

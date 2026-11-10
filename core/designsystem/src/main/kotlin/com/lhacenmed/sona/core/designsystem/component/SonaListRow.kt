@@ -105,6 +105,9 @@ fun Modifier.selectableRow(
  * [containerColor] is what the row is painted on - the surface of whatever is listing it, so a row in
  * a sheet sits on the sheet's own colour rather than cutting a hole in it. [contentColor] is what reads
  * against it, taken from whatever is listing the row unless it is given one.
+ *
+ * [subtitleColor] marks a row whose subtitle is a warning - a download that failed - and [supporting] is
+ * what stands under the subtitle, for a row with more to show as it goes: a download's progress.
  */
 @Composable
 fun SonaListRow(
@@ -122,6 +125,8 @@ fun SonaListRow(
     contentColor: Color = LocalContentColor.current,
     optionsIcon: ImageVector = Icons.Filled.MoreHoriz,
     optionsLabel: String = "More options",
+    subtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    supporting: (@Composable () -> Unit)? = null,
     cover: @Composable (isSelected: Boolean) -> Unit,
 ) {
     val isSelected = selectionKey != null && selection?.isSelected(selectionKey) == true
@@ -181,10 +186,11 @@ fun SonaListRow(
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = subtitleColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    supporting?.invoke()
                 }
                 if (dragHandle != null) {
                     Box(

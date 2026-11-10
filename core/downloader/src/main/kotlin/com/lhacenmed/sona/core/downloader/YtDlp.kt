@@ -2,10 +2,11 @@ package com.lhacenmed.sona.core.downloader
 
 import android.content.Context
 import com.lhacenmed.sona.core.model.DownloadChoices
+import com.lhacenmed.sona.core.model.DownloadOptions
+import com.lhacenmed.sona.core.model.DownloaderPreferences
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.util.Locale
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
@@ -15,29 +16,17 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
 import org.json.JSONObject
-
-/** How long yt-dlp is left before it is brought up to date: the sites it reads change under it within weeks. */
-private val UpdateIntervalMs = TimeUnit.DAYS.toMillis(7)
-
-/** What a link leads to, as yt-dlp reads it before downloading. */
-data class MediaInfo(
-    val title: String,
-    val uploader: String?,
-    val durationSeconds: Long?,
-    val thumbnailUrl: String?,
-    /** How many videos it holds - null for one video. */
-    val playlistCount: Int?,
-)
 
 /** What a download says as it goes. */
 sealed interface DownloadEvent {
     /** Another of its videos begins - [index] of [count] for a playlist's. */
     data class Item(val title: String, val index: Int?, val count: Int?) : DownloadEvent
 
-    /** How far the file downloading is, from 0 to 1 - null while how large it is is unknown. */
-    data class Progress(val fraction: Float?) : DownloadEvent
+    /** How far the file downloading is - each null while unknown. */
+    data class Progress(val downloadedBytes: Long?, val totalBytes: Long?, val bytesPerSecond: Long?) : DownloadEvent {
+        val fraction: Float? get() = if (downloadedBytes != null && totalBytes != null && totalBytes > 0) (downloadedBytes.toFloat() / totalBytes).coerceIn(0f, 1f) else null
+    }
 
     /** A file saved where it belongs, with the Most replayed graph and the chapters its site gave it, as yt-dlp gives them - see [EmbeddedExtras]. */
     data class Saved(val file: File, val heatmapJson: String?, val chaptersJson: String?) : DownloadEvent
@@ -49,6 +38,9 @@ class DownloaderMissingException : Exception("The downloader is not downloaded")
 /** yt-dlp failed - with its own words why. */
 class YtDlpException(message: String) : Exception(message)
 
+/** What a download reads: the link itself, or [infoJson] - the link already read, so it is not read again. */
+class DownloadSource(val url: String, val infoJson: File?)
+
 /**
  * yt-dlp, run with the programs the app carries and what [DownloaderRuntime] downloaded for them - kept up to date in place.
  *
@@ -59,26 +51,33 @@ class YtDlp @Inject constructor(
     @ApplicationContext private val context: Context,
     private val runtime: DownloaderRuntime,
 ) {
-    /** What [url] leads to. */
-    suspend fun info(url: String): MediaInfo {
-        updateIfDue()
-        val json = JSONObject(run(listOf("-J", "--flat-playlist", "--no-playlist", url)))
-        val entries = json.optJSONArray("entries")
-        return MediaInfo(
-            title = json.optString("title").ifBlank { url },
-            uploader = json.stringOrNull("uploader") ?: json.stringOrNull("channel"),
-            durationSeconds = json.optDouble("duration").takeUnless { it.isNaN() }?.toLong(),
-            thumbnailUrl = json.stringOrNull("thumbnail") ?: entries?.optJSONObject(0)?.optJSONArray("thumbnails")?.lastThumbnail(),
-            playlistCount = if (json.optString("_type") == "playlist") json.optInt("playlist_count", entries?.length() ?: 0) else null,
-        )
+    /** [url], read into yt-dlp's info JSON - one video with its formats, or a playlist with its videos. */
+    internal suspend fun infoJson(url: String, preferences: DownloaderPreferences): JSONObject =
+        JSONObject(run(listOf("-J", "--flat-playlist", "--no-playlist") + preferences.networkArguments(runtime) + url))
+
+    /** Downloads [source] with [choices], [options] and [preferences] into [outputDir], saying what it does to [onEvent] as it goes. */
+    suspend fun download(
+        source: DownloadSource,
+        choices: DownloadChoices,
+        options: DownloadOptions,
+        preferences: DownloaderPreferences,
+        outputDir: File,
+        onEvent: (DownloadEvent) -> Unit,
+    ) {
+        val tempDir = File(context.cacheDir, "downloads").apply { mkdirs() }
+        val target = source.infoJson?.let { listOf("--load-info-json", it.path) } ?: listOf(source.url)
+        val arguments = choices.toArguments(options, preferences, Locale.getDefault().language) +
+            preferences.networkArguments(runtime) +
+            downloadArguments(outputDir.path, tempDir.path, preferences.fileNameTemplate, options.splitChapters) +
+            options.commandArguments?.let(::splitArguments).orEmpty() +
+            target
+        run(arguments, onLine = { line -> parseLine(line)?.let(onEvent) })
     }
 
-    /** Downloads [url] with [choices] into [outputDir], saying what it does to [onEvent] as it goes. */
-    suspend fun download(url: String, choices: DownloadChoices, outputDir: File, onEvent: (DownloadEvent) -> Unit) {
-        updateIfDue()
-        val tempDir = File(context.cacheDir, "downloads").apply { mkdirs() }
-        val arguments = choices.toArguments(Locale.getDefault().language) + downloadArguments(outputDir.path, tempDir.path) + url
-        run(arguments) { line -> parseLine(line)?.let(onEvent) }
+    /** Runs yt-dlp with [arguments] as typed, in [workingDir], every line it writes handed to [onLine] - the terminal's. */
+    suspend fun runTyped(arguments: List<String>, workingDir: File, onLine: (String) -> Unit) {
+        workingDir.mkdirs()
+        run(arguments, onLine, mergesErrors = true, workingDir = workingDir)
     }
 
     /** The version of yt-dlp in use - null while the downloader is not here. */
@@ -86,26 +85,26 @@ class YtDlp @Inject constructor(
 
     /** Brings yt-dlp up to date, saying what it is now. */
     suspend fun update(): String {
-        run(listOf("--update-to", "stable"))
-        // Not rewritten when already the newest: marked all the same, as checked now.
-        runtime.ytDlpFile.setLastModified(System.currentTimeMillis())
+        run(listOf("--update-to", YtDlpChannel))
         return version().orEmpty()
-    }
-
-    /** Brings yt-dlp up to date once it has gone a while without - quietly, a download going on with what it has otherwise. */
-    private suspend fun updateIfDue() {
-        if (System.currentTimeMillis() - runtime.ytDlpFile.lastModified() < UpdateIntervalMs) return
-        runCatching { update() }
     }
 
     /**
      * Runs yt-dlp with [arguments], handing each line it writes to [onLine], and gives back all it wrote - ended, with its
-     * process, as the calling coroutine is. Fails with yt-dlp's own words should it fail.
+     * process, as the calling coroutine is. Fails with yt-dlp's own words should it fail. [mergesErrors] hands its errors
+     * to [onLine] too, in the order it wrote them; [workingDir] is where what it is not told where to save is saved.
      */
-    private suspend fun run(arguments: List<String>, onLine: (String) -> Unit = {}): String = withContext(Dispatchers.IO) {
+    private suspend fun run(
+        arguments: List<String>,
+        onLine: (String) -> Unit = {},
+        mergesErrors: Boolean = false,
+        workingDir: File? = null,
+    ): String = withContext(Dispatchers.IO) {
         val files = runtime.files() ?: throw DownloaderMissingException()
         val command = listOf(files.python.path, files.ytDlp.path) + commonArguments(files) + arguments
-        val process = ProcessBuilder(command).apply { environment().putAll(environmentOf(files)) }.start()
+        val process = ProcessBuilder(command).redirectErrorStream(mergesErrors).directory(workingDir)
+            .apply { environment().putAll(environmentOf(files)) }
+            .start()
         val output = StringBuilder()
         try {
             val errors = coroutineScope {
@@ -125,7 +124,7 @@ class YtDlp @Inject constructor(
             }
             val exitCode = process.waitFor()
             ensureActive()
-            if (exitCode != 0) throw YtDlpException(failureOf(errors))
+            if (exitCode != 0) throw YtDlpException(failureOf(if (mergesErrors) output.toString() else errors))
             output.toString()
         } finally {
             process.destroy()
@@ -148,6 +147,7 @@ class YtDlp @Inject constructor(
     private fun environmentOf(files: RuntimeFiles) = mapOf(
         "LD_LIBRARY_PATH" to files.libraryDirs.joinToString(":") { it.path },
         "SSL_CERT_FILE" to File(files.pythonHome, "etc/tls/cert.pem").path,
+        "OPENSSL_CONF" to files.tlsConfig.path,
         "PYTHONHOME" to files.pythonHome.path,
         "HOME" to files.ytDlp.parent.orEmpty(),
         "TMPDIR" to context.cacheDir.path,
@@ -155,8 +155,11 @@ class YtDlp @Inject constructor(
     )
 }
 
-/** What a line yt-dlp wrote says, where it is one of Sona's own - see [YtDlpLines]. */
+/** What a line yt-dlp wrote says, where it is one of Sona's own - see [YtDlpLines] - or names a chapter's file. */
 internal fun parseLine(line: String): DownloadEvent? {
+    line.substringAfter("[SplitChapters] ", "").substringAfter("Destination: ", "").takeIf(String::isNotEmpty)?.let {
+        return DownloadEvent.Saved(File(it.trim()), heatmapJson = null, chaptersJson = null)
+    }
     val (tag, rest) = line.split(' ', limit = 2).let { it[0] to it.getOrElse(1) { "" } }
     return when (tag) {
         YtDlpLines.ITEM -> {
@@ -165,8 +168,8 @@ internal fun parseLine(line: String): DownloadEvent? {
         }
 
         YtDlpLines.PROGRESS -> {
-            val (downloaded, total) = rest.split(' ').let { it.getOrNull(0)?.toDoubleOrNull() to it.getOrNull(1)?.toDoubleOrNull() }
-            DownloadEvent.Progress(if (downloaded != null && total != null && total > 0.0) (downloaded / total).toFloat().coerceIn(0f, 1f) else null)
+            val values = rest.split(' ').map { it.toDoubleOrNull()?.toLong() }
+            DownloadEvent.Progress(values.getOrNull(0), values.getOrNull(1), values.getOrNull(2))
         }
 
         YtDlpLines.SAVED -> runCatching {
@@ -178,12 +181,12 @@ internal fun parseLine(line: String): DownloadEvent? {
     }
 }
 
+/** [text] as the arguments a shell would make of it: split at spaces, outside quotes. */
+fun splitArguments(text: String): List<String> =
+    Regex(""""([^"]*)"|'([^']*)'|(\S+)""").findAll(text).map { match -> match.groupValues.drop(1).firstOrNull(String::isNotEmpty).orEmpty() }.toList()
+
 /** Why yt-dlp failed: the errors it named, or the last of what it wrote. */
 private fun failureOf(errors: String): String {
     val named = errors.lines().filter { it.startsWith("ERROR:") }.map { it.removePrefix("ERROR:").trim() }
     return named.joinToString("\n").ifBlank { errors.trim().takeLast(500) }
 }
-
-private fun JSONObject.stringOrNull(name: String): String? = optString(name).takeIf { has(name) && !isNull(name) && it.isNotBlank() }
-
-private fun JSONArray.lastThumbnail(): String? = optJSONObject(length() - 1)?.stringOrNull("url")

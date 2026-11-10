@@ -1,14 +1,21 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application>
+        <!-- Downloads run by WorkManager, in its own service - a data sync. -->
         <service
-            android:name="com.lhacenmed.sona.feature.download.DownloadService"
-            android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
+
+        <!-- Cancel, from a download's notification. -->
+        <receiver
+            android:name=".work.DownloadActionReceiver"
+            android:exported="false" />
 
         <!--
             "Quick download" in the share sheet, beside Sona's own entry, which opens the download screen to choose how:
