@@ -35,8 +35,8 @@ import com.lhacenmed.sona.feature.debug.RowPage
 import com.lhacenmed.sona.feature.debug.TableRow
 import com.lhacenmed.sona.feature.debug.cellText
 import com.lhacenmed.sona.feature.debug.rememberLoaded
-import com.lhacenmed.sona.feature.settings.component.SettingsList
-import com.lhacenmed.sona.feature.settings.component.SettingsNavigationItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsList
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsNavigationItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

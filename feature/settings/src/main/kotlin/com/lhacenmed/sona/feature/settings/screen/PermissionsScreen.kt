@@ -15,9 +15,9 @@ import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
-import com.lhacenmed.sona.feature.settings.component.SettingsActionItem
-import com.lhacenmed.sona.feature.settings.component.SettingsList
-import com.lhacenmed.sona.feature.settings.component.SettingsSection
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsActionItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsList
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSection
 
 /**
  * Every permission Sona uses on this device, what it is for, and whether it is granted - one row each,

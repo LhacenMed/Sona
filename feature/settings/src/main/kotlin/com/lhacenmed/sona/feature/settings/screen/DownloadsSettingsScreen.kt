@@ -12,12 +12,12 @@ import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.download.DownloadScreen
 import com.lhacenmed.sona.feature.settings.R
-import com.lhacenmed.sona.feature.settings.component.SettingsActionItem
-import com.lhacenmed.sona.feature.settings.component.SettingsDownload
-import com.lhacenmed.sona.feature.settings.component.SettingsDownloadItem
-import com.lhacenmed.sona.feature.settings.component.SettingsList
-import com.lhacenmed.sona.feature.settings.component.SettingsNavigationItem
-import com.lhacenmed.sona.feature.settings.component.SettingsSection
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsActionItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsDownload
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsDownloadItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsList
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsNavigationItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSection
 
 /**
  * Downloading from links: the downloader it needs - Python, FFmpeg and yt-dlp, downloaded here once and removed here - and

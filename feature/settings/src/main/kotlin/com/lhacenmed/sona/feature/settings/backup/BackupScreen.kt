@@ -39,14 +39,14 @@ import com.lhacenmed.sona.feature.backup.work.BackupFailure
 import com.lhacenmed.sona.feature.backup.work.BackupRun
 import com.lhacenmed.sona.feature.backup.work.backupProgressSummary
 import com.lhacenmed.sona.feature.settings.R
-import com.lhacenmed.sona.feature.settings.component.SettingsActionItem
-import com.lhacenmed.sona.feature.settings.component.SettingsChoiceItem
-import com.lhacenmed.sona.feature.settings.component.SettingsList
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsActionItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsChoiceItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsList
 import com.lhacenmed.sona.feature.settings.component.SettingsLoad
-import com.lhacenmed.sona.feature.settings.component.SettingsNote
-import com.lhacenmed.sona.feature.settings.component.SettingsSection
-import com.lhacenmed.sona.feature.settings.component.SettingsSectionDivider
-import com.lhacenmed.sona.feature.settings.component.SettingsSwitchItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsNote
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSection
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSectionDivider
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSwitchItem
 
 /**
  * Backing the library up, and restoring it: a backup now or on a schedule, optionally encrypted, kept in Sona's

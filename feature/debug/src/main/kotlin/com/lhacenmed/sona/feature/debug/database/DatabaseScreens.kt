@@ -46,9 +46,9 @@ import com.lhacenmed.sona.feature.debug.Message
 import com.lhacenmed.sona.feature.debug.PageBar
 import com.lhacenmed.sona.feature.debug.TableRow
 import com.lhacenmed.sona.feature.debug.rememberLoaded
-import com.lhacenmed.sona.feature.settings.component.SettingsList
-import com.lhacenmed.sona.feature.settings.component.SettingsNavigationItem
-import com.lhacenmed.sona.feature.settings.component.SettingsSection
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsList
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsNavigationItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSection
 import kotlinx.coroutines.launch
 
 /** Every database, each with its SQL console and its tables. */

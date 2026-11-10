@@ -5,7 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.res.stringResource
 import com.lhacenmed.sona.core.navigation.Screen
-import com.lhacenmed.sona.feature.settings.component.LocalSettingsArrival
+import com.lhacenmed.sona.core.designsystem.component.settings.LocalSettingsArrival
 import com.lhacenmed.sona.feature.settings.screen.PlaybackScreen
 
 /**

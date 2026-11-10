@@ -8,8 +8,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
-import com.lhacenmed.sona.feature.settings.component.SettingsInfoItem
-import com.lhacenmed.sona.feature.settings.component.SettingsLazyList
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsInfoItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsLazyList
 import com.lhacenmed.sona.feature.settings.component.settingsLoad
 
 /** Every library the app is built with, its version and its licenses. */

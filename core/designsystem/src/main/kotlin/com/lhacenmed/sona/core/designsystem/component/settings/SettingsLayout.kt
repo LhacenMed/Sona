@@ -1,9 +1,10 @@
-package com.lhacenmed.sona.feature.settings.component
+package com.lhacenmed.sona.core.designsystem.component.settings
 
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -40,8 +41,9 @@ import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.screen.MaxArrivalWaitMillis
 import com.lhacenmed.sona.core.designsystem.component.screen.highlightArrival
 import com.lhacenmed.sona.core.designsystem.component.section.ColumnSection
+import com.lhacenmed.sona.core.designsystem.motion.RubberBandOverscroll
 import com.lhacenmed.sona.core.designsystem.motion.rememberRubberBandOverscroll
-import com.lhacenmed.sona.core.navigation.LocalScreenEntered
+import com.lhacenmed.sona.core.designsystem.component.screen.LocalScreenEntered
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -77,13 +79,12 @@ val LocalSettingsArrival = staticCompositionLocalOf<String?> { null }
  * pressed so the eye lands on it. Touches are kept from the screen until it arrives, so a stray one
  * cannot stop it short. Once only: a screen recreated after it arrived stays where it is.
  *
- * Given [onPrivateFolderRevealed], pulling down past the list's top reveals and can open the Private
- * Folder - see [PrivateFolderOverscrollReveal]. Left null everywhere but the Settings home screen, which
- * is the one place that hidden entry point exists.
+ * Given [overscrollReveal], pulling down past the list's top shows what it draws there, following the
+ * list's own stretch - the Settings home's hidden way into the Private Folder.
  */
 @Composable
 fun SettingsList(
-    onPrivateFolderRevealed: (() -> Unit)? = null,
+    overscrollReveal: (@Composable BoxScope.(RubberBandOverscroll) -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scrollState = rememberScrollState()
@@ -104,9 +105,7 @@ fun SettingsList(
                 CompositionLocalProvider(LocalSettingsScrollTarget provides target) { content() }
             }
         }
-        if (onPrivateFolderRevealed != null) {
-            PrivateFolderOverscrollReveal(overscroll = overscroll, onRevealed = onPrivateFolderRevealed)
-        }
+        overscrollReveal?.invoke(this, overscroll)
     }
 
     if (target == null) return

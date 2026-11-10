@@ -13,13 +13,13 @@ import com.lhacenmed.sona.core.model.FastScrollTouchArea
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
-import com.lhacenmed.sona.feature.settings.component.SettingsActionItem
-import com.lhacenmed.sona.feature.settings.component.SettingsChoiceItem
-import com.lhacenmed.sona.feature.settings.component.SettingsList
-import com.lhacenmed.sona.feature.settings.component.SettingsNavigationItem
-import com.lhacenmed.sona.feature.settings.component.SettingsSection
-import com.lhacenmed.sona.feature.settings.component.SettingsSectionDivider
-import com.lhacenmed.sona.feature.settings.component.SettingsSwitchItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsActionItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsChoiceItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsList
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsNavigationItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSection
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSectionDivider
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSwitchItem
 import com.lhacenmed.sona.feature.library.tabs.LibraryTabsScreen
 
 /** What the app shows, what it remembers, and what it does when the user reaches for it. */

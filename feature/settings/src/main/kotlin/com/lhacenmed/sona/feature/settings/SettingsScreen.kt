@@ -1,5 +1,7 @@
 package com.lhacenmed.sona.feature.settings
 
+import com.lhacenmed.sona.feature.settings.component.PrivateFolderOverscrollReveal
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
@@ -20,10 +22,10 @@ import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
-import com.lhacenmed.sona.feature.settings.component.SettingsList
-import com.lhacenmed.sona.feature.settings.component.SettingsNavigationItem
-import com.lhacenmed.sona.feature.settings.component.SettingsSection
-import com.lhacenmed.sona.feature.settings.component.SettingsSectionDivider
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsList
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsNavigationItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSection
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSectionDivider
 import com.lhacenmed.sona.feature.settings.search.SettingsRecentSearches
 import com.lhacenmed.sona.feature.settings.search.SettingsSearchResults
 import com.lhacenmed.sona.feature.vault.rememberSettingsPrivateFolderEntry
@@ -65,7 +67,9 @@ data object SettingsScreen : Screen {
             )
             val query = searchQuery
             when {
-                query == null -> SettingsList(onPrivateFolderRevealed = openPrivateFolder) {
+                query == null -> SettingsList(
+                    overscrollReveal = openPrivateFolder?.let { open -> { overscroll -> PrivateFolderOverscrollReveal(overscroll, onRevealed = open) } },
+                ) {
                     SettingsGroup.entries.forEachIndexed { index, group ->
                         if (index > 0) SettingsSectionDivider()
                         SettingsSection(stringResource(group.titleRes)) {

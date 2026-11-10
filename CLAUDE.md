@@ -18,7 +18,7 @@ The app uses Material 3 Expressive. Before writing a control, look in `core/desi
 | Selecting rows | `SelectionState` with `selectAllAction` and `toTopBarSelection`, `SonaListRow` or `Modifier.selectableRow`, `rememberDragSelection` | a checkbox or a delete button per row |
 | Where a browser is | `SonaPathBar` | a title showing the path |
 | A list of rows | `SonaListRow`, in `section` where they are grouped | a hand-made `Row` |
-| A settings-style row | `feature/settings/.../component/SettingsItems.kt` | a hand-made `ListItem` |
+| A settings-style row | `core/designsystem/.../component/settings/SettingsItems.kt`, in a `SettingsList` | a hand-made `ListItem` |
 | A list's end clear of the mini player | `LocalBottomContentPadding` | a fixed padding |
 | A screen's scrolling list or column | `FastScroller` around it, with `sectionAt` where it is sorted | a bare `LazyColumn` or `verticalScroll` |
 

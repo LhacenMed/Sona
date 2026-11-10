@@ -12,12 +12,12 @@ import com.lhacenmed.sona.core.datastore.VideoSettings
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
-import com.lhacenmed.sona.feature.settings.component.SettingsChoiceItem
-import com.lhacenmed.sona.feature.settings.component.SettingsList
-import com.lhacenmed.sona.feature.settings.component.SettingsNavigationItem
-import com.lhacenmed.sona.feature.settings.component.SettingsSection
-import com.lhacenmed.sona.feature.settings.component.SettingsSectionDivider
-import com.lhacenmed.sona.feature.settings.component.SettingsSwitchItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsChoiceItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsList
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsNavigationItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSection
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSectionDivider
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSwitchItem
 import com.lhacenmed.sona.feature.settings.manage.ExcludedFoldersScreen
 
 /** How the video player shows a video and answers the hand - PLAYit's Video settings. */

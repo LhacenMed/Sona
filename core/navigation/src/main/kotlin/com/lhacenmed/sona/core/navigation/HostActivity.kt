@@ -18,6 +18,7 @@ import androidx.core.content.IntentCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.common.network.NetworkMonitor
 import com.lhacenmed.sona.core.designsystem.SonaActivity
+import com.lhacenmed.sona.core.designsystem.component.screen.LocalScreenEntered
 import com.lhacenmed.sona.core.designsystem.component.NetworkStatusHost
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.WindowOverlayHost

@@ -7,10 +7,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
-import com.lhacenmed.sona.feature.settings.component.SettingsList
-import com.lhacenmed.sona.feature.settings.component.SettingsSection
-import com.lhacenmed.sona.feature.settings.component.SettingsSliderItem
-import com.lhacenmed.sona.feature.settings.component.SettingsSwitchItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsList
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSection
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSliderItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSwitchItem
 
 /** How sung words and lines move: ArchiveTune's `LyricsAnimationSettings`. */
 data object LyricsAnimationScreen : Screen {

@@ -12,7 +12,7 @@ import com.lhacenmed.sona.core.designsystem.component.section.rememberSectionLis
 import com.lhacenmed.sona.core.designsystem.component.section.section
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
-import com.lhacenmed.sona.feature.settings.component.SettingsLazyList
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsLazyList
 import com.lhacenmed.sona.feature.settings.component.settingsLoad
 import com.lhacenmed.sona.feature.update.ui.ReleaseNotes
 import java.text.SimpleDateFormat

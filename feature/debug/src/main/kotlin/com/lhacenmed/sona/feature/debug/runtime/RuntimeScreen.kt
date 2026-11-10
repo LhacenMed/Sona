@@ -28,11 +28,11 @@ import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.debug.DebugViewModel
 import com.lhacenmed.sona.feature.debug.Message
 import com.lhacenmed.sona.feature.scanner.scanSignatureOf
-import com.lhacenmed.sona.feature.settings.component.SettingsActionItem
-import com.lhacenmed.sona.feature.settings.component.SettingsInfoItem
-import com.lhacenmed.sona.feature.settings.component.SettingsList
-import com.lhacenmed.sona.feature.settings.component.SettingsSection
-import com.lhacenmed.sona.feature.settings.component.SettingsSectionDivider
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsActionItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsInfoItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsList
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSection
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSectionDivider
 import kotlinx.coroutines.launch
 
 /** What the app is doing and how it stands, followed live, with what can be asked of it from here. */

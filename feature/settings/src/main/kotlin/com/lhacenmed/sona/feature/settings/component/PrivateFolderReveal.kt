@@ -21,8 +21,8 @@ import com.lhacenmed.sona.core.designsystem.motion.RubberBandOverscroll
 private val RevealThreshold = 130.dp
 
 /**
- * The hidden "Private Folder" entry pulled down from above the Settings list - see `SettingsList`'s
- * `onPrivateFolderRevealed`: an [OverscrollTrigger] past the list's top. Nothing shows while the list is
+ * The hidden "Private Folder" entry pulled down from above the Settings list - the Settings home's
+ * `SettingsList` `overscrollReveal`: an [OverscrollTrigger] past the list's top. Nothing shows while the list is
  * merely stretched - only once the pull is past [RevealThreshold] does the entry slide down into view, so
  * letting go opens it, and slide back away if the pull falls short again.
  *

@@ -17,14 +17,14 @@ import com.lhacenmed.sona.feature.library.quickplay.QuickPlaySourcePickerScreen
 import com.lhacenmed.sona.feature.library.quickplay.quickPlaySourceKind
 import com.lhacenmed.sona.feature.library.uncounted.UncountedCollectionsScreen
 import com.lhacenmed.sona.feature.settings.R
-import com.lhacenmed.sona.feature.settings.component.SettingsChoiceItem
-import com.lhacenmed.sona.feature.settings.component.SettingsList
-import com.lhacenmed.sona.feature.settings.component.SettingsNavigationItem
-import com.lhacenmed.sona.feature.settings.component.SettingsNote
-import com.lhacenmed.sona.feature.settings.component.SettingsSection
-import com.lhacenmed.sona.feature.settings.component.SettingsSectionDivider
-import com.lhacenmed.sona.feature.settings.component.SettingsSliderItem
-import com.lhacenmed.sona.feature.settings.component.SettingsSwitchItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsChoiceItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsList
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsNavigationItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsNote
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSection
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSectionDivider
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSliderItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSwitchItem
 
 /**
  * How playback behaves: its controls, the queue, shuffle and quick play, how tracks join onto each other,

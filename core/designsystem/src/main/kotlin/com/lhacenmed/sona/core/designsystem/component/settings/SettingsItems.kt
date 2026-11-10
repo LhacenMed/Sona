@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
 
-package com.lhacenmed.sona.feature.settings.component
+package com.lhacenmed.sona.core.designsystem.component.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box

@@ -14,10 +14,10 @@ import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.SettingsCategory
 import com.lhacenmed.sona.feature.settings.SettingsRowScreen
-import com.lhacenmed.sona.feature.settings.component.SettingsList
-import com.lhacenmed.sona.feature.settings.component.SettingsNavigationItem
-import com.lhacenmed.sona.feature.settings.component.SettingsRecentSearchItem
-import com.lhacenmed.sona.feature.settings.component.SettingsSection
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsList
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsNavigationItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsRecentSearchItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSection
 
 /** Something a settings search can find, as it is listed: [title] where it is - its [location] - and opened at [destination]. */
 private class SettingsSearchResult(

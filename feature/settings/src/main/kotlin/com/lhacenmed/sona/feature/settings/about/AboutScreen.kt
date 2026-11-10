@@ -16,16 +16,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
-import com.lhacenmed.sona.feature.settings.component.SettingsAvatar
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsAvatar
 import com.lhacenmed.sona.feature.settings.component.SettingsHeader
-import com.lhacenmed.sona.feature.settings.component.SettingsLeadingIcon
-import com.lhacenmed.sona.feature.settings.component.SettingsLinkItem
-import com.lhacenmed.sona.feature.settings.component.SettingsList
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsLeadingIcon
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsLinkItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsList
 import com.lhacenmed.sona.feature.settings.component.SettingsLoad
 import com.lhacenmed.sona.feature.settings.component.SettingsLoadStatus
-import com.lhacenmed.sona.feature.settings.component.SettingsNavigationItem
-import com.lhacenmed.sona.feature.settings.component.SettingsSection
-import com.lhacenmed.sona.feature.settings.component.SettingsSectionDivider
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsNavigationItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSection
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSectionDivider
 import com.lhacenmed.sona.feature.update.github.GitHub
 import com.lhacenmed.sona.feature.update.installedBuild
 

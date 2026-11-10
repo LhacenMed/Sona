@@ -19,8 +19,8 @@ import com.lhacenmed.sona.feature.debug.logs.LogsScreen
 import com.lhacenmed.sona.feature.debug.mediastore.MediaStoreScreen
 import com.lhacenmed.sona.feature.debug.preferences.PreferencesScreen
 import com.lhacenmed.sona.feature.debug.runtime.RuntimeScreen
-import com.lhacenmed.sona.feature.settings.component.SettingsList
-import com.lhacenmed.sona.feature.settings.component.SettingsNavigationItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsList
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsNavigationItem
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn

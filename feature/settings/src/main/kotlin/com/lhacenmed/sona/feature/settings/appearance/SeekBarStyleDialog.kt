@@ -27,7 +27,7 @@ import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.core.designsystem.theme.roundedShape
 import com.lhacenmed.sona.feature.player.StyledPlaybackSlider
 import com.lhacenmed.sona.feature.settings.R
-import com.lhacenmed.sona.feature.settings.component.settingsDefaultLabel
+import com.lhacenmed.sona.core.designsystem.component.settings.settingsDefaultLabel
 
 /**
  * The seek bar styles side by side, each a live slider to try before choosing, the current one outlined.

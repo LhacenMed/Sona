@@ -7,9 +7,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
-import com.lhacenmed.sona.feature.settings.component.SettingsAvatar
-import com.lhacenmed.sona.feature.settings.component.SettingsLazyList
-import com.lhacenmed.sona.feature.settings.component.SettingsLinkItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsAvatar
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsLazyList
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsLinkItem
 import com.lhacenmed.sona.feature.settings.component.settingsLoad
 import com.lhacenmed.sona.feature.update.github.Commit
 import java.text.SimpleDateFormat
