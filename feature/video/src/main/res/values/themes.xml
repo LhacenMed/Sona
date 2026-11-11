@@ -1,6 +1,7 @@
 <resources>
-    <!-- Black from the first frame, whatever the app's own theme: the picture is all that is meant to show. -->
-    <style name="Theme.Sona.Video" parent="android:Theme.Material.NoActionBar">
+    <!-- Black from the first frame, whatever the app's own theme: the picture is all that is meant to show. AppCompat's,
+         as every Sona activity is an AppCompat one - see SonaActivity. -->
+    <style name="Theme.Sona.Video" parent="Theme.AppCompat.NoActionBar">
         <item name="android:windowBackground">@android:color/black</item>
     </style>
 </resources>

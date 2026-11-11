@@ -1,0 +1,11 @@
+<resources>
+    <!-- See-through, so Quick download's sheet lies over the app the link was shared from: the platform's
+         Theme.Translucent.NoTitleBar, on AppCompat's, as every Sona activity is an AppCompat one - see SonaActivity. -->
+    <style name="Theme.Sona.Translucent" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:colorBackgroundCacheHint">@null</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation</item>
+    </style>
+</resources>
