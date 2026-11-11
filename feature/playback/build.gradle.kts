@@ -28,8 +28,8 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.media3.common)
-    // Found by media3 at runtime, behind the device's own decoders - see PlaybackService.
-    runtimeOnly(libs.jellyfin.media3.ffmpeg.decoder)
+    // The decoders behind the device's own hardware ones - see sonaRenderersFactory.
+    implementation(libs.nextlib.media3ext)
 
     implementation(libs.androidx.core.ktx)
 

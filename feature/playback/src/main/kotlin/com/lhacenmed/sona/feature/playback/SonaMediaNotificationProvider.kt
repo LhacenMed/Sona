@@ -23,10 +23,6 @@ import com.lhacenmed.sona.core.common.notification.SonaNotificationId
  * Sona's mark rather than media3's generic glyph. And it replaces the notification's delete intent
  * so that swiping the notification away arrives at [PlaybackService] as an ordinary command,
  * carrying the original intent along so media3's own dismissal still runs afterwards.
- *
- * Deviation from the source: ArchiveTune also overrides `getNotificationChannelInfo()`. That member
- * does not exist on `MediaNotification.Provider` in media3 1.9.1 (it arrives later), so the override
- * is dropped - the delegate still creates the channel, so behaviour is unchanged.
  */
 @UnstableApi
 class SonaMediaNotificationProvider(
@@ -74,6 +70,8 @@ class SonaMediaNotificationProvider(
 
         return mediaNotification
     }
+
+    override fun getNotificationChannelInfo(): MediaNotification.Provider.NotificationChannelInfo = delegate.notificationChannelInfo
 
     override fun handleCustomCommand(
         session: MediaSession,

@@ -14,10 +14,10 @@ composeBom = "2026.09.00"
 material3 = "1.5.0-alpha27"
 hilt = "2.60.1"
 room = "2.7.1"
-media3 = "1.9.1"
-# Jellyfin's prebuilt FFmpeg audio decoder for media3 - AC-3, E-AC-3, DTS, TrueHD and the rest a device
-# cannot decode itself - versioned after the media3 release it is built against.
-media3Ffmpeg = "1.9.0+1"
+media3 = "1.11.1"
+# NextLib's prebuilt FFmpeg decoders for media3 - dav1d for AV1, FFmpeg's own for VP9, H.264 and HEVC, and the
+# AC-3, E-AC-3, DTS, TrueHD and the rest a device cannot decode - versioned after the media3 release it is built against.
+nextlib = "1.11.1-0.18.0"
 coroutines = "1.9.0"
 datastore = "1.1.7"
 coil = "3.5.0"
@@ -75,7 +75,7 @@ androidx-media3-session = { group = "androidx.media3", name = "media3-session", 
 androidx-media3-common = { group = "androidx.media3", name = "media3-common", version.ref = "media3" }
 androidx-media3-extractor = { group = "androidx.media3", name = "media3-extractor", version.ref = "media3" }
 androidx-media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "media3" }
-jellyfin-media3-ffmpeg-decoder = { group = "org.jellyfin.media3", name = "media3-ffmpeg-decoder", version.ref = "media3Ffmpeg" }
+nextlib-media3ext = { group = "io.github.anilbeesetti", name = "nextlib-media3ext", version.ref = "nextlib" }
 
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
