@@ -1,13 +1,5 @@
 package com.lhacenmed.sona.feature.player
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
-import androidx.compose.material.icons.filled.Bedtime
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.PlayCircle
-import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -23,6 +15,7 @@ import com.lhacenmed.sona.core.designsystem.component.sheet.SonaOptionRow
 import com.lhacenmed.sona.core.designsystem.component.sheet.SonaOptionsSheetHeader
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.R as PlaybackR
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * The open lyrics' overflow menu: first what the player puts away while its lyrics are open - the favourite,
@@ -76,7 +69,7 @@ internal fun LyricsMenuSheet(
                     label = stringResource(
                         if (isFavorite) PlaybackR.string.playback_action_remove_favorite else PlaybackR.string.playback_action_add_favorite,
                     ),
-                    icon = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                    icon = if (isFavorite) SonaIcons.Favorite else SonaIcons.FavoriteBorder,
                     onClick = {
                         onToggleFavorite()
                         onDismissRequest()
@@ -85,7 +78,7 @@ internal fun LyricsMenuSheet(
             }
             SonaOptionRow(
                 label = stringResource(R.string.player_queue),
-                icon = Icons.AutoMirrored.Filled.QueueMusic,
+                icon = SonaIcons.QueueMusic,
                 onClick = {
                     onOpenQueue()
                     onDismissRequest()
@@ -93,7 +86,7 @@ internal fun LyricsMenuSheet(
             )
             SonaOptionRow(
                 label = stringResource(R.string.player_sleep_timer),
-                icon = Icons.Filled.Bedtime,
+                icon = SonaIcons.Bedtime,
                 onClick = {
                     onSleepTimerClick()
                     onDismissRequest()
@@ -102,7 +95,7 @@ internal fun LyricsMenuSheet(
             if (onEditLyrics != null) {
                 SonaOptionRow(
                     label = stringResource(R.string.player_edit),
-                    icon = Icons.Filled.Edit,
+                    icon = SonaIcons.Edit,
                     onClick = {
                         onEditLyrics()
                         onDismissRequest()
@@ -111,13 +104,13 @@ internal fun LyricsMenuSheet(
             }
             SonaOptionRow(
                 label = stringResource(R.string.player_lyrics_sync_offset),
-                icon = Icons.Filled.Speed,
+                icon = SonaIcons.Speed,
                 detail = formatLyricsSyncOffset(lyricsSyncOffset),
                 onClick = { isSettingSyncOffset = true },
             )
             SonaOptionRow(
                 label = stringResource(R.string.player_show_lyrics_player_controls),
-                icon = Icons.Filled.PlayCircle,
+                icon = SonaIcons.PlayCircle,
                 trailingContent = { Switch(checked = showPlayerControls, onCheckedChange = onShowPlayerControlsChange) },
                 onClick = { onShowPlayerControlsChange(!showPlayerControls) },
             )

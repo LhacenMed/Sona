@@ -14,8 +14,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -55,6 +53,7 @@ import com.lhacenmed.sona.core.model.DownloadFailure
 import com.lhacenmed.sona.core.model.DownloadStatus
 import com.lhacenmed.sona.core.model.DownloaderPreferences
 import kotlinx.coroutines.launch
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** Downloads listed under one heading - [actions] beside it. */
 internal class DownloadGroup(val key: String, val title: String, val downloads: List<Download>, val actions: List<TopBarAction> = emptyList())
@@ -79,7 +78,7 @@ internal fun rememberDownloadListState(): DownloadListState {
 internal fun DownloadListState.topBarSelection(listed: List<Download>): TopBarSelection? = selection.toTopBarSelection(
     actions = listOf(
         selection.selectAllAction(listed.map(Download::id)),
-        TopBarAction(stringResource(R.string.download_delete), Icons.Filled.Delete) { isDeleting = true },
+        TopBarAction(stringResource(R.string.download_delete), SonaIcons.Delete) { isDeleting = true },
     ),
     onMoreOptions = { isChoosingSelectionOptions = true },
 )

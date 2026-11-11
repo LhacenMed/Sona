@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,6 +34,7 @@ import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.tageditor.lyricseditor.DiscardChangesDialog
 import com.lhacenmed.sona.feature.tageditor.lyricseditor.LyricsEditorScreen
 import java.io.File
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * Editing the track [trackId]'s tags - AutomaTag's editor, in Sona's design.
@@ -100,7 +99,7 @@ data class TagEditorScreen(val trackId: Long, val isInAutoTagRun: Boolean = fals
             listOf(
                 ExtendedFloatingActionButtonContent(
                     label = if (isInAutoTagRun) "Done" else "Save",
-                    icon = Icons.Filled.Check,
+                    icon = SonaIcons.Check,
                     // A run's draft reaches no file here, so there is nothing to ask Android first.
                     onClick = { if (isInAutoTagRun) viewModel.save() else requestSave() },
                     isPrimary = true,

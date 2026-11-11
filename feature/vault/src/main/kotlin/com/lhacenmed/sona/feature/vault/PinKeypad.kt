@@ -12,10 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Backspace
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.IconButtonDefaults
@@ -27,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.component.SonaIconButton
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** How many digits a PIN can have. */
 internal val PinLengths = 4..8
@@ -113,7 +110,7 @@ private fun NumericKeypad(
         Row(horizontalArrangement = Arrangement.spacedBy(KeySpacing)) {
             SonaIconButton(
                 onClick = onBackspace,
-                icon = Icons.AutoMirrored.Filled.Backspace,
+                icon = SonaIcons.Backspace,
                 contentDescription = "Backspace",
                 modifier = Modifier.size(KeySize),
                 enabled = enabled,
@@ -126,7 +123,7 @@ private fun NumericKeypad(
                     // The system's own check, so it answers whatever the keypad's lockout says.
                     SonaIconButton(
                         onClick = onBiometrics,
-                        icon = Icons.Filled.Fingerprint,
+                        icon = SonaIcons.Fingerprint,
                         contentDescription = "Use fingerprint or face",
                         modifier = Modifier.size(KeySize),
                     )
@@ -134,7 +131,7 @@ private fun NumericKeypad(
             } else {
                 SonaIconButton(
                     onClick = onDone,
-                    icon = Icons.Filled.Check,
+                    icon = SonaIcons.Check,
                     contentDescription = "Done",
                     modifier = Modifier.size(KeySize),
                     enabled = enabled && isDoneEnabled,

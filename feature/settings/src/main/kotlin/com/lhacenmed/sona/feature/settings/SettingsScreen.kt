@@ -4,9 +4,6 @@ import com.lhacenmed.sona.feature.settings.component.PrivateFolderOverscrollReve
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +26,7 @@ import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSectionDi
 import com.lhacenmed.sona.feature.settings.search.SettingsRecentSearches
 import com.lhacenmed.sona.feature.settings.search.SettingsSearchResults
 import com.lhacenmed.sona.feature.vault.rememberSettingsPrivateFolderEntry
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * Settings home: every category, grouped - and, from its bar, a search of every setting there is.
@@ -56,7 +54,7 @@ data object SettingsScreen : Screen {
             SonaTopAppBar(
                 title = stringResource(R.string.settings_title),
                 onNavigateBack = navigator::back,
-                actions = listOf(TopBarAction(label = "Search", icon = Icons.Filled.Search) { searchQuery = "" }),
+                actions = listOf(TopBarAction(label = "Search", icon = SonaIcons.Search) { searchQuery = "" }),
                 search = searchQuery?.let { query ->
                     TopBarSearch(
                         query = query,
@@ -90,7 +88,7 @@ data object SettingsScreen : Screen {
                         SettingsNavigationItem(
                             title = debugTools.screen.title(LocalContext.current).orEmpty(),
                             summary = debugTools.summary,
-                            icon = Icons.Filled.BugReport,
+                            icon = SonaIcons.BugReport,
                             onClick = { navigator.go(debugTools.screen) },
                         )
                     }

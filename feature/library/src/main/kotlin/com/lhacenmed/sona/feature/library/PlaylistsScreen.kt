@@ -6,10 +6,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.DriveFileRenameOutline
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.derivedStateOf
@@ -128,9 +124,9 @@ data object PlaylistsScreen : Screen {
                     title = "Playlists",
                     onNavigateBack = navigator::back,
                     actions = listOf(
-                        TopBarAction(label = "Search", icon = Icons.Filled.Search) { searchQuery = "" },
+                        TopBarAction(label = "Search", icon = SonaIcons.Search) { searchQuery = "" },
                         sortAction { isSortSheetOpen = true },
-                        TopBarAction(label = "New playlist", icon = Icons.Filled.Add) { isCreatingPlaylist = true },
+                        TopBarAction(label = "New playlist", icon = SonaIcons.Add) { isCreatingPlaylist = true },
                     ),
                     search = searchQuery?.let { current ->
                         TopBarSearch(
@@ -148,7 +144,7 @@ data object PlaylistsScreen : Screen {
                         actions = buildList {
                             selectedPlaylists.singleOrNull()?.let { playlist ->
                                 add(
-                                    TopBarAction(label = "Rename", icon = Icons.Filled.DriveFileRenameOutline) {
+                                    TopBarAction(label = "Rename", icon = SonaIcons.DriveFileRenameOutline) {
                                         renamingPlaylist = playlist
                                     },
                                 )
@@ -181,7 +177,7 @@ data object PlaylistsScreen : Screen {
                     modifier = Modifier.fillMaxSize(),
                     // Only while not searching: a search that matches nothing is not a missing playlist.
                     emptyAction = if (searchQuery == null) {
-                        EmptyStateAction(label = "Create playlist", icon = Icons.Filled.Add) { isCreatingPlaylist = true }
+                        EmptyStateAction(label = "Create playlist", icon = SonaIcons.Add) { isCreatingPlaylist = true }
                     } else {
                         null
                     },

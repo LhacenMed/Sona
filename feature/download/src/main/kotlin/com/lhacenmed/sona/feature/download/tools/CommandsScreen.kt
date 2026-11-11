@@ -13,13 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.DeleteForever
-import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.FileUpload
-import androidx.compose.material.icons.filled.ShortText
-import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemShapes
@@ -81,6 +74,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * Saved yt-dlp arguments - YTDLnis's command templates: each named, picked in a download's options to be given after
@@ -105,7 +99,7 @@ data object CommandsScreen : Screen {
         val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(viewModel::import) }
 
         SonaExtendedFloatingActionButtons(
-            listOf(ExtendedFloatingActionButtonContent(label = stringResource(R.string.download_commands_add), icon = Icons.Filled.Add, onClick = { isAdding = true }, isPrimary = true)),
+            listOf(ExtendedFloatingActionButtonContent(label = stringResource(R.string.download_commands_add), icon = SonaIcons.Add, onClick = { isAdding = true }, isPrimary = true)),
         )
 
         Column(modifier = Modifier.fillMaxSize()) {
@@ -113,15 +107,15 @@ data object CommandsScreen : Screen {
                 title = stringResource(R.string.download_commands_title),
                 onNavigateBack = navigator::back,
                 actions = listOf(
-                    TopBarAction(stringResource(R.string.download_shortcuts_title), Icons.Filled.ShortText) { navigator.go(ShortcutsScreen) },
-                    TopBarAction(stringResource(R.string.download_commands_export), Icons.Filled.FileUpload) { exporter.launch(CommandsFileName) },
-                    TopBarAction(stringResource(R.string.download_commands_import), Icons.Filled.FileDownload) { importer.launch(arrayOf(CommandsFileType, "text/plain", "application/octet-stream")) },
-                    TopBarAction(stringResource(R.string.download_terminal_title), Icons.Filled.Terminal) { navigator.go(TerminalScreen) },
+                    TopBarAction(stringResource(R.string.download_shortcuts_title), SonaIcons.ShortText) { navigator.go(ShortcutsScreen) },
+                    TopBarAction(stringResource(R.string.download_commands_export), SonaIcons.FileUpload) { exporter.launch(CommandsFileName) },
+                    TopBarAction(stringResource(R.string.download_commands_import), SonaIcons.FileDownload) { importer.launch(arrayOf(CommandsFileType, "text/plain", "application/octet-stream")) },
+                    TopBarAction(stringResource(R.string.download_terminal_title), SonaIcons.Terminal) { navigator.go(TerminalScreen) },
                 ),
                 selection = selection.toTopBarSelection(
                     actions = listOf(
                         selection.selectAllAction(commands.map(DownloadCommand::id)),
-                        TopBarAction(stringResource(R.string.download_delete), Icons.Filled.DeleteForever) { isDeleting = true },
+                        TopBarAction(stringResource(R.string.download_delete), SonaIcons.Delete) { isDeleting = true },
                     ),
                     onMoreOptions = null,
                 ),
@@ -146,7 +140,7 @@ data object CommandsScreen : Screen {
                             selectionKey = command.id,
                             onClick = { editing = command },
                             onOpenOptions = null,
-                            cover = { Icon(Icons.Filled.Terminal, contentDescription = null) },
+                            cover = { Icon(SonaIcons.Terminal, contentDescription = null) },
                         )
                     }
                 }

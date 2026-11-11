@@ -8,16 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ContentCut
-import androidx.compose.material.icons.filled.FastForward
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.FormatListNumbered
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Terminal
-import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.filled.VideoFile
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ListItemShapes
@@ -55,6 +45,7 @@ import com.lhacenmed.sona.core.model.ClipRange
 import com.lhacenmed.sona.core.model.DownloadKind
 import com.lhacenmed.sona.core.model.VideoFormat
 import java.util.Calendar
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** Which of the sheet's dialogs is open. */
 private enum class OptionsDialog { VIDEO_FORMAT, EXACT_FORMAT, CLIP, COMMAND, START_AT }
@@ -87,7 +78,7 @@ internal fun DownloadOptionsSheet(viewModel: DownloadViewModel, info: MediaInfo,
                         SonaValueRow(
                             label = stringResource(R.string.download_option_clip),
                             shapes = shapes,
-                            icon = Icons.Filled.ContentCut,
+                            icon = SonaIcons.ContentCut,
                             value = options.clip?.let { "${formatPlaybackTime(it.startSeconds * 1000)} – ${formatPlaybackTime(it.endSeconds * 1000)}" }
                                 ?: stringResource(R.string.download_option_whole),
                             onClick = { dialog = OptionsDialog.CLIP },
@@ -97,7 +88,7 @@ internal fun DownloadOptionsSheet(viewModel: DownloadViewModel, info: MediaInfo,
                         val chapters = info.chapterCount
                         SwitchRow(
                             label = stringResource(R.string.download_option_split_chapters),
-                            icon = Icons.Filled.FormatListNumbered,
+                            icon = SonaIcons.FormatListNumbered,
                             shapes = shapes,
                             checked = options.splitChapters && chapters > 0,
                             value = if (chapters > 0) pluralStringResource(R.plurals.download_chapters, chapters, chapters) else stringResource(R.string.download_no_chapters),
@@ -108,7 +99,7 @@ internal fun DownloadOptionsSheet(viewModel: DownloadViewModel, info: MediaInfo,
                         SonaValueRow(
                             label = stringResource(R.string.download_option_start_at),
                             shapes = shapes,
-                            icon = Icons.Filled.Schedule,
+                            icon = SonaIcons.Schedule,
                             value = startAt?.let { DateFormat.getTimeFormat(context).format(it) } ?: stringResource(R.string.download_option_now),
                             onClick = { dialog = OptionsDialog.START_AT },
                         )
@@ -122,7 +113,7 @@ internal fun DownloadOptionsSheet(viewModel: DownloadViewModel, info: MediaInfo,
                     { shapes ->
                         SwitchRow(
                             label = stringResource(R.string.download_cover_art),
-                            icon = Icons.Filled.Image,
+                            icon = SonaIcons.Image,
                             shapes = shapes,
                             checked = choices.savesCover,
                         ) { saves -> viewModel.onSheetChoicesChange(forEveryDownload = true) { it.copy(savesCover = saves) } }
@@ -131,7 +122,7 @@ internal fun DownloadOptionsSheet(viewModel: DownloadViewModel, info: MediaInfo,
                         SonaValueRow(
                             label = stringResource(R.string.download_save_to),
                             shapes = shapes,
-                            icon = Icons.Filled.Folder,
+                            icon = SonaIcons.Folder,
                             value = preferences.folderFor(choices.kind),
                             onClick = pickFolder,
                         )
@@ -140,7 +131,7 @@ internal fun DownloadOptionsSheet(viewModel: DownloadViewModel, info: MediaInfo,
                         SonaValueRow(
                             label = stringResource(R.string.download_video_format),
                             shapes = shapes,
-                            icon = Icons.Filled.VideoFile,
+                            icon = SonaIcons.VideoFile,
                             value = stringResource(choices.videoFormat.labelRes),
                             onClick = { dialog = OptionsDialog.VIDEO_FORMAT },
                         )
@@ -148,7 +139,7 @@ internal fun DownloadOptionsSheet(viewModel: DownloadViewModel, info: MediaInfo,
                     { shapes ->
                         SwitchRow(
                             label = stringResource(R.string.download_skip_sponsors),
-                            icon = Icons.Filled.FastForward,
+                            icon = SonaIcons.FastForward,
                             shapes = shapes,
                             checked = choices.skipSponsors && hasDownloader,
                             value = stringResource(R.string.download_needs_downloader).takeIf { !hasDownloader },
@@ -165,7 +156,7 @@ internal fun DownloadOptionsSheet(viewModel: DownloadViewModel, info: MediaInfo,
                         SonaValueRow(
                             label = stringResource(R.string.download_option_format),
                             shapes = shapes,
-                            icon = Icons.Filled.Tune,
+                            icon = SonaIcons.Tune,
                             value = pickedFormat?.kindLabel(context) ?: stringResource(R.string.download_option_format_summary),
                             enabled = info.formats.isNotEmpty(),
                             onClick = { dialog = OptionsDialog.EXACT_FORMAT },
@@ -176,7 +167,7 @@ internal fun DownloadOptionsSheet(viewModel: DownloadViewModel, info: MediaInfo,
                         SonaValueRow(
                             label = stringResource(R.string.download_option_command),
                             shapes = shapes,
-                            icon = Icons.Filled.Terminal,
+                            icon = SonaIcons.Terminal,
                             value = commands.firstOrNull { it.arguments == options.commandArguments }?.name ?: stringResource(R.string.download_option_none),
                             onClick = { dialog = OptionsDialog.COMMAND },
                         )

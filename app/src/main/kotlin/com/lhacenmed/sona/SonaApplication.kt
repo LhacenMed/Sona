@@ -13,6 +13,7 @@ import com.lhacenmed.sona.core.datastore.SettingsLoader
 import com.lhacenmed.sona.core.datastore.UpdateSettings
 import com.lhacenmed.sona.core.designsystem.component.cover.MediaThumbnailFetcher
 import com.lhacenmed.sona.core.designsystem.effect.SonaEffects
+import com.lhacenmed.sona.core.designsystem.icon.SonaIconPack
 import com.lhacenmed.sona.feature.backup.BackupSettings
 import com.lhacenmed.sona.feature.backup.work.BackupWork
 import com.lhacenmed.sona.feature.download.work.DownloadWork
@@ -77,6 +78,8 @@ class SonaApplication : Application(), SingletonImageLoader.Factory {
         super.onCreate()
         // Before anything else can crash, so even a crash as the app starts is there to be reported next time.
         crashReports.install()
+        // Before any icon is drawn: an icon pack's drawables replace the icons they are named for.
+        SonaIconPack.install(this)
         // First, and blocking: every setting is in memory before the first activity, the playback
         // service or a media button is created, so each of them starts with the user's choices
         // already in place - the way it would start with defaults - instead of correcting itself

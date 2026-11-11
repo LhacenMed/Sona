@@ -33,12 +33,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Equalizer
-import androidx.compose.material.icons.rounded.GraphicEq
-import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -278,7 +272,7 @@ private fun EqualizerHero(
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.76f)) {
-                    Icon(imageVector = Icons.Rounded.GraphicEq, contentDescription = null, modifier = Modifier.padding(12.dp).size(28.dp))
+                    Icon(imageVector = SonaIcons.GraphicEq, contentDescription = null, modifier = Modifier.padding(12.dp).size(28.dp))
                 }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
@@ -295,7 +289,7 @@ private fun EqualizerHero(
                 Switch(checked = enabled, onCheckedChange = onEnabledChange)
             }
             FilledTonalButton(onClick = onOpenSystemEqualizer, modifier = Modifier.fillMaxWidth(), shapes = buttonPressShapes()) {
-                Icon(imageVector = Icons.Rounded.Tune, contentDescription = null)
+                Icon(imageVector = SonaIcons.Tune, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text(text = stringResource(R.string.eq_open_system_equalizer))
             }
@@ -452,7 +446,7 @@ private fun AdvancedControls(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Button(onClick = onShowSaveProfile, enabled = enabled, shapes = buttonPressShapes()) {
-                    Icon(imageVector = Icons.Rounded.Add, contentDescription = null)
+                    Icon(imageVector = SonaIcons.Add, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text(text = stringResource(R.string.eq_save_profile))
                 }
@@ -687,7 +681,7 @@ private fun ProfileRow(
         shapes = ListItemDefaults.shapes(shape = MaterialTheme.shapes.large),
         colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         leadingContent = {
-            Icon(imageVector = if (isSelected) Icons.Rounded.Check else Icons.Rounded.Equalizer, contentDescription = null)
+            Icon(imageVector = if (isSelected) SonaIcons.Check else SonaIcons.Equalizer, contentDescription = null)
         },
         trailingContent = {
             Row {
@@ -718,7 +712,7 @@ private fun EqualizerUnavailable(onOpenSystemEqualizer: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Icon(imageVector = Icons.Rounded.GraphicEq, contentDescription = null, modifier = Modifier.size(48.dp))
+            Icon(imageVector = SonaIcons.GraphicEq, contentDescription = null, modifier = Modifier.size(48.dp))
             Text(
                 text = stringResource(R.string.eq_waiting_for_audio_session),
                 style = MaterialTheme.typography.titleMedium,

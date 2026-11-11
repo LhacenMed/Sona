@@ -9,10 +9,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckBox
-import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
-import androidx.compose.material.icons.filled.IndeterminateCheckBox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -33,6 +29,7 @@ import com.lhacenmed.sona.core.designsystem.component.section.section
 import com.lhacenmed.sona.core.model.FolderNode
 import com.lhacenmed.sona.core.model.FolderPicks
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** Picking in an explorer: the files [picks] keys, [keys] what is picked, [onKeysChange] told of every change. */
 internal class ExplorerPicking(val picks: FolderPicks, val keys: Set<String>, val onKeysChange: (Set<String>) -> Unit) {
@@ -45,9 +42,9 @@ internal class ExplorerPicking(val picks: FolderPicks, val keys: Set<String>, va
     fun boxOf(files: List<Track>): ImageVector {
         val picked = files.count { picks.isPicked(it, keys) }
         return when {
-            files.isNotEmpty() && picked == files.size -> Icons.Filled.CheckBox
-            picked > 0 -> Icons.Filled.IndeterminateCheckBox
-            else -> Icons.Filled.CheckBoxOutlineBlank
+            files.isNotEmpty() && picked == files.size -> SonaIcons.CheckBox
+            picked > 0 -> SonaIcons.IndeterminateCheckBox
+            else -> SonaIcons.CheckBoxOutlineBlank
         }
     }
 }
@@ -120,7 +117,7 @@ internal fun FolderExplorerList(
                                 onClick = { navigation.open(row.folder.path) },
                                 onOpenOptions = picking?.let { { it.toggle(row.files) } },
                                 containerColor = rowColor,
-                                optionsIcon = picking?.boxOf(row.files) ?: Icons.Filled.CheckBoxOutlineBlank,
+                                optionsIcon = picking?.boxOf(row.files) ?: SonaIcons.CheckBoxOutlineBlank,
                                 optionsLabel = if (picking?.isPicked(row.files) == true) unpickLabel else pickLabel,
                                 cover = {
                                     SonaFolderCover(
@@ -141,7 +138,7 @@ internal fun FolderExplorerList(
                             val isCurrent = { preview?.trackId == file.id }
                             val isPlaying = { preview?.isPlaying == true }
                             val onPick = picking?.let { { it.toggle(listOf(file)) } }
-                            val box = picking?.boxOf(listOf(file)) ?: Icons.Filled.CheckBoxOutlineBlank
+                            val box = picking?.boxOf(listOf(file)) ?: SonaIcons.CheckBoxOutlineBlank
                             val boxLabel = if (picking?.isPicked(listOf(file)) == true) unpickLabel else pickLabel
                             // Not here yet, there is nothing to play: a press picks it, as its box does.
                             val onClick = if (isOnDevice) { { onPlay(file) } } else onPick ?: {}

@@ -3,9 +3,6 @@ package com.lhacenmed.sona.feature.library.playlist
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,6 +25,7 @@ import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.selection.SelectionOptionsHost
 import com.lhacenmed.sona.feature.library.selection.toLibraryTopBarSelection
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * The shape both of a playlist's pickers share: a bar naming what is being picked, with [tabs] beneath it - the
@@ -64,7 +62,7 @@ internal fun PlaylistTrackPicker(
     // The tracks Add worked out, waiting on the user to confirm adding them.
     var confirmingTrackIds by remember { mutableStateOf<List<Long>>(emptyList()) }
 
-    val addAction = TopBarAction(label = "Add to playlist", icon = Icons.Filled.Check) {
+    val addAction = TopBarAction(label = "Add to playlist", icon = SonaIcons.Check) {
         viewModel.resolveAddition(playlistId, selection.selectedKeys.filterIsInstance<SelectionKey>()) { trackIds ->
             if (trackIds.isEmpty()) context.toast("Already in this playlist") else confirmingTrackIds = trackIds
         }
@@ -77,7 +75,7 @@ internal fun PlaylistTrackPicker(
                     title = title,
                 drawsBackground = false,
                     onNavigateBack = navigator::back,
-                    actions = listOf(TopBarAction(label = "Search", icon = Icons.Filled.Search) { onSearchQueryChange("") }),
+                    actions = listOf(TopBarAction(label = "Search", icon = SonaIcons.Search) { onSearchQueryChange("") }),
                     search = searchQuery?.let { query ->
                         TopBarSearch(
                             query = query,

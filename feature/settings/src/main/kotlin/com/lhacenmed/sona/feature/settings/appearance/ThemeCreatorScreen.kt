@@ -20,12 +20,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.FileOpen
-import androidx.compose.material.icons.filled.RestartAlt
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -84,6 +78,7 @@ import com.lhacenmed.sona.feature.settings.appearance.palette.PalettePreview
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** The longest a theme's name may be. */
 private const val MaxThemeNameLength = 48
@@ -190,7 +185,7 @@ data object ThemeCreatorScreen : Screen {
                 title = stringResource(R.string.theme_creator_title),
                 onNavigateBack = navigator::back,
                 actions = listOf(
-                    TopBarAction(label = stringResource(R.string.reset), icon = Icons.Filled.RestartAlt) {
+                    TopBarAction(label = stringResource(R.string.reset), icon = SonaIcons.RestartAlt) {
                         val default = ThemePalettes.Default.seeds
                         primary = default.primary
                         secondary = default.secondary
@@ -198,7 +193,7 @@ data object ThemeCreatorScreen : Screen {
                         neutral = default.neutral
                         themeName = ""
                     },
-                    TopBarAction(label = stringResource(R.string.save), icon = Icons.Filled.Check, onClick = ::applyTheme),
+                    TopBarAction(label = stringResource(R.string.save), icon = SonaIcons.Check, onClick = ::applyTheme),
                 ),
             )
 
@@ -264,12 +259,12 @@ data object ThemeCreatorScreen : Screen {
             listOf(
                 ExtendedFloatingActionButtonContent(
                     label = stringResource(R.string.import_theme),
-                    icon = Icons.Filled.FileOpen,
+                    icon = SonaIcons.FileOpen,
                     onClick = { importTheme.launch(ThemeFileTypes) },
                 ),
                 ExtendedFloatingActionButtonContent(
                     label = stringResource(R.string.export_theme),
-                    icon = Icons.Filled.Share,
+                    icon = SonaIcons.Share,
                     onClick = { exportTheme.launch("${themeFileName(themeName)}.json") },
                     isPrimary = true,
                 ),
@@ -410,7 +405,7 @@ private fun SeedColorEditor(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Icon(Icons.Filled.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(SonaIcons.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
                     Text(text = stringResource(R.string.copy), style = MaterialTheme.typography.labelLarge)
                 }
             }

@@ -17,9 +17,6 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FileUpload
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -775,7 +772,7 @@ internal fun TrackListDetail(
                         actions = buildList {
                             if (collection == null) {
                                 add(
-                                    TopBarAction(label = "Export", icon = Icons.Filled.FileUpload) {
+                                    TopBarAction(label = "Export", icon = SonaIcons.FileUpload) {
                                         exportLauncher.launch("$title.m3u")
                                     },
                                 )
@@ -941,7 +938,7 @@ internal fun TrackListDetail(
                     title = "Tracks",
                     state = sectionList,
                     actions = listOfNotNull(
-                        TopBarAction(label = "Search", icon = Icons.Filled.Search, enabled = searchQuery == null) {
+                        TopBarAction(label = "Search", icon = SonaIcons.Search, enabled = searchQuery == null) {
                             sectionList.expand(TRACKS_SECTION_KEY)
                             searchQuery = ""
                         },

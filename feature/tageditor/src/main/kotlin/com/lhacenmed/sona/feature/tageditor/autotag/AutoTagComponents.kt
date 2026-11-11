@@ -16,10 +16,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
@@ -98,7 +94,7 @@ internal fun AdvancedChoices(choices: AutoTagChoices, onChange: (AutoTagChoices)
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text("Advanced", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-            Icon(if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null)
+            Icon(if (isExpanded) SonaIcons.ExpandLess else SonaIcons.ExpandMore, contentDescription = null)
         }
         val fade = SectionMotion.fade()
         AnimatedVisibility(
@@ -151,7 +147,7 @@ internal fun RunProgress(session: AutoTagSession, onStop: () -> Unit, onFinish: 
                 if (isWorking) {
                     CircularWavyProgressIndicator(modifier = Modifier.size(28.dp))
                 } else {
-                    Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(SonaIcons.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 }
             }
             Column(modifier = Modifier.weight(1f).padding(horizontal = 16.dp)) {

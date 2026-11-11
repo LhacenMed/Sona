@@ -24,8 +24,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,6 +56,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** What a gesture, or a control with nothing else to show for it, tells the user it did. */
 internal sealed interface GestureFeedback {
@@ -273,7 +272,7 @@ private fun FeedbackPill(feedback: PillFeedback) {
 
 private val PillFeedback.icon: ImageVector
     get() = when (this) {
-        is GestureFeedback.Speed -> Icons.Rounded.Speed
+        is GestureFeedback.Speed -> SonaIcons.Speed
     }
 
 @Composable

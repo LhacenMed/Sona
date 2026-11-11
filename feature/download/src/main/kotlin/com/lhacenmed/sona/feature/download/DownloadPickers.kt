@@ -5,14 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemShapes
@@ -50,6 +42,7 @@ import com.lhacenmed.sona.core.model.DownloadChoices
 import com.lhacenmed.sona.core.model.DownloadKind
 import com.lhacenmed.sona.core.model.VideoQuality
 import java.util.Locale
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** A picker's line under its title. */
 @Composable
@@ -131,7 +124,7 @@ internal fun QualitySheet(viewModel: DownloadViewModel, info: MediaInfo, onDismi
                     { shapes ->
                         SwitchRow(
                             label = stringResource(R.string.download_for_every_download),
-                            icon = Icons.Filled.Bookmark,
+                            icon = SonaIcons.Bookmark,
                             shapes = shapes,
                             checked = forEveryDownload,
                             value = stringResource(R.string.download_for_every_download_off).takeIf { !forEveryDownload },
@@ -141,7 +134,7 @@ internal fun QualitySheet(viewModel: DownloadViewModel, info: MediaInfo, onDismi
                         SonaValueRow(
                             label = stringResource(R.string.download_option_format),
                             shapes = shapes,
-                            icon = Icons.Filled.Tune,
+                            icon = SonaIcons.Tune,
                             enabled = info.formats.isNotEmpty(),
                             onClick = { isPickingFormat = true },
                         )
@@ -186,7 +179,7 @@ internal fun AudioTrackSheet(viewModel: DownloadViewModel, info: MediaInfo, onDi
                     { shapes ->
                         SwitchRow(
                             label = stringResource(R.string.download_track_always_original),
-                            icon = Icons.Filled.Verified,
+                            icon = SonaIcons.Verified,
                             shapes = shapes,
                             checked = alwaysOriginal,
                             value = stringResource(R.string.download_track_remembered),
@@ -222,7 +215,7 @@ internal fun SubtitlesSheet(viewModel: DownloadViewModel, info: MediaInfo, onDis
             label = label,
             shapes = shapes,
             value = value,
-            trailing = if (isPicked) ({ Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }) else null,
+            trailing = if (isPicked) ({ Icon(SonaIcons.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }) else null,
             onClick = { picked = if (isPicked) picked - code else picked + code },
         )
     }
@@ -246,7 +239,7 @@ internal fun SubtitlesSheet(viewModel: DownloadViewModel, info: MediaInfo, onDis
                     SonaValueRow(
                         label = stringResource(R.string.download_subtitles_add_language),
                         shapes = shapes,
-                        icon = Icons.Filled.Add,
+                        icon = SonaIcons.Add,
                         onClick = { isAddingLanguage = true },
                     )
                 }
@@ -260,7 +253,7 @@ internal fun SubtitlesSheet(viewModel: DownloadViewModel, info: MediaInfo, onDis
                 selected = asFile,
                 onSelect = { asFile = it },
                 label = { stringResource(if (it) R.string.download_subtitles_as_file else R.string.download_subtitles_in_video) },
-                icon = { if (it) Icons.Filled.Description else Icons.Filled.Movie },
+                icon = { if (it) SonaIcons.Description else SonaIcons.Video },
                 modifier = Modifier.fillMaxWidth(),
             )
             Button(

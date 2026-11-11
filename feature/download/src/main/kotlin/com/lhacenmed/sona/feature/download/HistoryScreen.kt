@@ -9,10 +9,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.DeleteSweep
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -39,6 +35,7 @@ import com.lhacenmed.sona.core.model.DownloadStatus
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import kotlinx.coroutines.launch
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * Every download that is over - Seal's download history: how many and how much, searched from the bar, narrowed to audio,
@@ -76,8 +73,8 @@ data object HistoryScreen : Screen {
                 title = "",
                 onNavigateBack = navigator::back,
                 actions = listOf(
-                    TopBarAction(stringResource(R.string.download_search), Icons.Filled.Search) { viewModel.onQueryChange("") },
-                    TopBarAction(stringResource(R.string.downloads_settings_clear_history_title), Icons.Filled.DeleteSweep, enabled = listed.isNotEmpty() && !isNarrowed) {
+                    TopBarAction(stringResource(R.string.download_search), SonaIcons.Search) { viewModel.onQueryChange("") },
+                    TopBarAction(stringResource(R.string.downloads_settings_clear_history_title), SonaIcons.DeleteSweep, enabled = listed.isNotEmpty() && !isNarrowed) {
                         isClearing = true
                     },
                 ),
@@ -147,7 +144,7 @@ private fun Filters(selected: HistoryFilter?, onSelect: (HistoryFilter) -> Unit)
                 selected = isSelected,
                 onClick = { onSelect(filter) },
                 label = { Text(stringResource(filter.labelRes)) },
-                leadingIcon = if (isSelected) ({ Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }) else null,
+                leadingIcon = if (isSelected) ({ Icon(SonaIcons.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }) else null,
             )
         }
     }

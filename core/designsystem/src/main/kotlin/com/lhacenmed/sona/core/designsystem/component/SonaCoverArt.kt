@@ -571,7 +571,7 @@ private fun ListCoverFrame(
                 .background(MaterialTheme.colorScheme.primary, CircleShape),
         ) {
             Icon(
-                imageVector = SonaIcons.Check,
+                imageVector = SonaIcons.SelectedBadge,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier.fillMaxSize(),

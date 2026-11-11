@@ -7,9 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -30,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.theme.connectedLeadingButtonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.connectedTrailingButtonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.togglePressShapes
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** A row of a [SonaRowGroup], laid out in the shapes of its place in the group. */
 typealias SonaGroupRow = @Composable (ListItemShapes) -> Unit
@@ -61,7 +59,7 @@ fun SonaValueRow(
     leading: (@Composable () -> Unit)? = icon?.let { { Icon(it, contentDescription = null) } },
     value: String? = null,
     enabled: Boolean = true,
-    trailing: (@Composable () -> Unit)? = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
+    trailing: (@Composable () -> Unit)? = { Icon(SonaIcons.KeyboardArrowRight, contentDescription = null) },
 ) {
     SegmentedListItem(
         onClick = onClick,
@@ -108,7 +106,7 @@ fun <T> SonaConnectedChoice(
                     .then(if (isCompact) Modifier else Modifier.weight(1f).heightIn(min = 48.dp))
                     .semantics { role = Role.RadioButton },
             ) {
-                (if (isSelected) Icons.Filled.Check else icon(option))?.let {
+                (if (isSelected) SonaIcons.Check else icon(option))?.let {
                     Icon(it, contentDescription = null, modifier = Modifier.size(18.dp))
                 }
                 Text(label(option), modifier = Modifier.padding(start = if (isSelected || icon(option) != null) 8.dp else 0.dp))

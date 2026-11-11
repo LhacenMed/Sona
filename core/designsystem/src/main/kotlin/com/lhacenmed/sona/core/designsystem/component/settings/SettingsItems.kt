@@ -12,13 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -48,6 +41,7 @@ import coil3.compose.AsyncImage
 import com.lhacenmed.sona.core.designsystem.component.SonaIconButton
 import com.lhacenmed.sona.core.designsystem.component.SonaSettingsRow
 import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /*
  * A row that only means something while another setting is set some way - black surfaces while the theme
@@ -174,7 +168,7 @@ fun SettingsLinkItem(
         leading = leadingContent,
         trailing = {
             Icon(
-                Icons.AutoMirrored.Filled.OpenInNew,
+                SonaIcons.OpenInNew,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -211,8 +205,8 @@ fun SettingsRecentSearchItem(
     SonaSettingsRow(
         title = query,
         onClick = onClick,
-        leading = { SettingsLeadingIcon(rememberVectorPainter(Icons.Filled.History)) },
-        trailing = { SonaIconButton(onClick = onForget, icon = Icons.Filled.Close, contentDescription = "Forget") },
+        leading = { SettingsLeadingIcon(rememberVectorPainter(SonaIcons.History)) },
+        trailing = { SonaIconButton(onClick = onForget, icon = SonaIcons.Close, contentDescription = "Forget") },
         modifier = modifier,
     )
 }
@@ -317,19 +311,19 @@ fun SettingsDownloadItem(
                 Box(modifier = Modifier.size(DownloadControlSize), contentAlignment = Alignment.Center) {
                     when (download) {
                         SettingsDownload.Available -> IconButton(shapes = iconButtonPressShapes(), onClick = onDownload) {
-                            Icon(Icons.Filled.Download, contentDescription = "Download")
+                            Icon(SonaIcons.Download, contentDescription = "Download")
                         }
                         SettingsDownload.Failed -> IconButton(shapes = iconButtonPressShapes(), onClick = onDownload) {
-                            Icon(Icons.Filled.Refresh, contentDescription = "Try again")
+                            Icon(SonaIcons.Refresh, contentDescription = "Try again")
                         }
                         is SettingsDownload.InProgress -> {
                             CircularProgressIndicator(progress = { download.progress }, modifier = Modifier.size(DownloadControlSize))
                             IconButton(shapes = iconButtonPressShapes(), onClick = onCancel) {
-                                Icon(Icons.Filled.Close, contentDescription = "Stop downloading", modifier = Modifier.size(18.dp))
+                                Icon(SonaIcons.Close, contentDescription = "Stop downloading", modifier = Modifier.size(18.dp))
                             }
                         }
                         SettingsDownload.Done -> IconButton(shapes = iconButtonPressShapes(), onClick = onRemove) {
-                            Icon(Icons.Filled.DeleteOutline, contentDescription = "Remove")
+                            Icon(SonaIcons.Delete, contentDescription = "Remove")
                         }
                     }
                 }

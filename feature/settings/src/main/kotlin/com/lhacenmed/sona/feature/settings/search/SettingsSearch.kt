@@ -1,7 +1,5 @@
 package com.lhacenmed.sona.feature.settings.search
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -18,6 +16,7 @@ import com.lhacenmed.sona.core.designsystem.component.settings.SettingsList
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsNavigationItem
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsRecentSearchItem
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSection
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** Something a settings search can find, as it is listed: [title] where it is - its [location] - and opened at [destination]. */
 private class SettingsSearchResult(
@@ -106,7 +105,7 @@ internal fun SettingsRecentSearches(
     SettingsList {
         SettingsSection(
             title = "Recent searches",
-            actions = listOf(TopBarAction(label = "Clear", icon = Icons.Filled.ClearAll, onClick = onClear)),
+            actions = listOf(TopBarAction(label = "Clear", icon = SonaIcons.ClearAll, onClick = onClear)),
         ) {
             searches.forEach { search ->
                 SettingsRecentSearchItem(query = search, onClick = { onSearch(search) }, onForget = { onForget(search) })

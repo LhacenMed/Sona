@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -29,6 +27,7 @@ import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialogOption
 import kotlin.math.roundToInt
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** How far the slider reaches either way, and the steps it moves in - fine enough to line lyrics up by ear. */
 private const val SliderLimitMs = 1000
@@ -72,7 +71,7 @@ internal fun LyricsSyncOffsetDialog(
     SonaDialog(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.player_lyrics_sync_offset),
-        icon = { Icon(Icons.Filled.Speed, contentDescription = null) },
+        icon = { Icon(SonaIcons.Speed, contentDescription = null) },
         onReset = {
             sliderOffset = 0
             typedOffset = "0"

@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
@@ -59,6 +57,7 @@ import com.lhacenmed.sona.core.designsystem.theme.LocalIsRounded
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.designsystem.theme.pressedCornerRadius
 import com.lhacenmed.sona.core.designsystem.theme.rememberPressFraction
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** The corners it rests with: the medium FAB's. */
 private val RestingCornerRadius = 20.dp
@@ -216,7 +215,7 @@ internal fun BoxScope.PrimaryButtonMenu(
             ) {
                 val isClose = checkedProgress > 0.5f
                 Icon(
-                    imageVector = if (isClose) Icons.Filled.Close else content.icon,
+                    imageVector = if (isClose) SonaIcons.Close else content.icon,
                     contentDescription = if (isClose) closeLabel else content.contentDescription,
                     modifier = Modifier.animateIcon(
                         checkedProgress = { checkedProgress },

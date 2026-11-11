@@ -17,14 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ContentPaste
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -77,6 +69,7 @@ import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 import com.lhacenmed.sona.feature.tageditor.LyricsResultCard
 import com.lhacenmed.sona.feature.tageditor.LyricsSearchStatus
 import com.lhacenmed.sona.feature.tageditor.lyrics.FoundLyrics
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** Digits that all take one width, so a time keeps its place as it is nudged. */
 private const val TabularFigures = "tnum"
@@ -160,7 +153,7 @@ internal fun LyricsLineRow(
                         }
                     },
                 ) {
-                    Icon(Icons.Outlined.Schedule, contentDescription = "Time to now")
+                    Icon(SonaIcons.Schedule, contentDescription = "Time to now")
                 }
             }
         }
@@ -173,7 +166,7 @@ private fun LineActionsMenu(actions: List<TopBarAction>) {
     var isExpanded by remember { mutableStateOf(false) }
     Box {
         IconButton(shapes = iconButtonPressShapes(), onClick = { isExpanded = true }) {
-            Icon(Icons.Filled.Add, contentDescription = "Line actions")
+            Icon(SonaIcons.Add, contentDescription = "Line actions")
         }
         DropdownMenu(expanded = isExpanded, onDismissRequest = { isExpanded = false }) {
             actions.forEach { action ->
@@ -207,7 +200,7 @@ private fun TimeControls(timeMs: Long, onSetTime: (Long) -> Unit) {
 private fun TimePartControl(part: LyricsTimePart, timeMs: Long, onSetTime: (Long) -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         IconButton(shapes = iconButtonPressShapes(), onClick = { onSetTime(timeMs + part.stepMs) }) {
-            Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "Later", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(SonaIcons.KeyboardArrowUp, contentDescription = "Later", tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         TimePartField(
             text = part.of(timeMs),
@@ -215,7 +208,7 @@ private fun TimePartControl(part: LyricsTimePart, timeMs: Long, onSetTime: (Long
             onDone = { value -> onSetTime(part.withValue(timeMs, value)) },
         )
         IconButton(shapes = iconButtonPressShapes(), onClick = { onSetTime(timeMs - part.stepMs) }) {
-            Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Earlier", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(SonaIcons.KeyboardArrowDown, contentDescription = "Earlier", tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -291,9 +284,9 @@ internal fun AddLyricsSheet(
     onDismissRequest: () -> Unit,
 ) {
     SonaBottomSheet(title = "Add lyrics from", onDismissRequest = onDismissRequest) {
-        SonaOptionRow(label = "Search lyrics", icon = Icons.Filled.Search, onClick = { onSearch(); dismiss() })
-        SonaOptionRow(label = "Paste from clipboard", icon = Icons.Filled.ContentPaste, onClick = { onPaste(); dismiss() })
-        SonaOptionRow(label = "Select lyrics file (.lrc)", icon = Icons.Filled.Description, onClick = { onPickFile(); dismiss() })
+        SonaOptionRow(label = "Search lyrics", icon = SonaIcons.Search, onClick = { onSearch(); dismiss() })
+        SonaOptionRow(label = "Paste from clipboard", icon = SonaIcons.ContentPaste, onClick = { onPaste(); dismiss() })
+        SonaOptionRow(label = "Select lyrics file (.lrc)", icon = SonaIcons.Description, onClick = { onPickFile(); dismiss() })
     }
 }
 

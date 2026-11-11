@@ -1,9 +1,5 @@
 package com.lhacenmed.sona.feature.settings.about
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.painter.Painter
@@ -28,14 +24,15 @@ import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSection
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSectionDivider
 import com.lhacenmed.sona.feature.update.github.GitHub
 import com.lhacenmed.sona.feature.update.installedBuild
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** A page of the project's on the web, as About links to it. */
 private class ProjectLink(val labelRes: Int, val url: String, val icon: @Composable () -> Painter)
 
 private val ProjectLinks = listOf(
     ProjectLink(R.string.about_link_github, GitHub.REPOSITORY_URL) { painterResource(R.drawable.ic_github) },
-    ProjectLink(R.string.about_link_releases, GitHub.RELEASES_URL) { rememberVectorPainter(Icons.Filled.NewReleases) },
-    ProjectLink(R.string.about_link_issues, GitHub.ISSUES_URL) { rememberVectorPainter(Icons.Filled.BugReport) },
+    ProjectLink(R.string.about_link_releases, GitHub.RELEASES_URL) { rememberVectorPainter(SonaIcons.NewReleases) },
+    ProjectLink(R.string.about_link_issues, GitHub.ISSUES_URL) { rememberVectorPainter(SonaIcons.BugReport) },
 )
 
 /** Someone Sona is by, or built on, as About lists them. */
@@ -89,7 +86,7 @@ data object AboutScreen : Screen {
                 SettingsNavigationItem(
                     title = stringResource(R.string.about_licenses),
                     summary = stringResource(R.string.about_licenses_summary),
-                    icon = Icons.Filled.Description,
+                    icon = SonaIcons.Description,
                     onClick = { navigator.go(LicensesScreen) },
                 )
             }

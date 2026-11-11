@@ -1,10 +1,5 @@
 package com.lhacenmed.sona.feature.library.quickplay
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.runtime.Composable
 import com.lhacenmed.sona.core.data.quickplay.QuickPlay
 import com.lhacenmed.sona.core.data.quickplay.QuickPlaySource
@@ -61,19 +56,19 @@ internal fun QuickPlayButton(
                 ),
                 FloatingActionButtonMenuChoice(
                     label = "Favorites",
-                    icon = Icons.Filled.Favorite,
+                    icon = SonaIcons.Favorite,
                     isSelected = source.parent == favorites,
                     onClick = { playFrom(favorites) },
                 ),
                 FloatingActionButtonMenuChoice(
                     label = QuickPlaySource.RecentlyPlayed.label,
-                    icon = Icons.Filled.History,
+                    icon = SonaIcons.History,
                     isSelected = source == QuickPlaySource.RecentlyPlayed,
                     onClick = { playFrom(PlaybackParent.RecentlyPlayed) },
                 ),
                 FloatingActionButtonMenuChoice(
                     label = QuickPlaySource.MostPlayed.label,
-                    icon = Icons.AutoMirrored.Filled.TrendingUp,
+                    icon = SonaIcons.TrendingUp,
                     isSelected = source == QuickPlaySource.MostPlayed,
                     onClick = { playFrom(PlaybackParent.MostPlayed) },
                 ),
@@ -89,7 +84,7 @@ internal fun QuickPlayButton(
                 },
                 FloatingActionButtonMenuChoice(
                     label = "Other",
-                    icon = Icons.Filled.MoreHoriz,
+                    icon = SonaIcons.MoreHoriz,
                     onClick = onChooseOther,
                 ),
             ),

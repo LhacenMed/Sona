@@ -12,20 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Article
-import androidx.compose.material.icons.automirrored.filled.Redo
-import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material.icons.filled.MoreTime
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.RestartAlt
-import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.filled.SyncDisabled
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -108,9 +94,9 @@ internal fun LyricsEditor(state: LyricsEditorState, confirmAction: TopBarAction,
     // Beside play and pause on the mini player: whether the list follows the line the player is on.
     ShowMiniPlayerSeekBar(
         action = if (isFollowingPlayback) {
-            TopBarAction(label = "Stop following the playing line", icon = Icons.Filled.Sync) { state.setFollowsPlayback(false) }
+            TopBarAction(label = "Stop following the playing line", icon = SonaIcons.Sync) { state.setFollowsPlayback(false) }
         } else {
-            TopBarAction(label = "Follow the playing line", icon = Icons.Filled.SyncDisabled) { state.setFollowsPlayback(true) }
+            TopBarAction(label = "Follow the playing line", icon = SonaIcons.SyncDisabled) { state.setFollowsPlayback(true) }
         },
     )
     SonaExtendedFloatingActionButtons(
@@ -179,9 +165,9 @@ internal fun LyricsEditor(state: LyricsEditorState, confirmAction: TopBarAction,
             onNavigateBack = requestLeave,
             selection = selection.toTopBarSelection(
                 actions = listOf(
-                    TopBarAction(label = "Batch edit", icon = Icons.Filled.MoreTime) { isBatchEditing = true },
+                    TopBarAction(label = "Batch edit", icon = SonaIcons.MoreTime) { isBatchEditing = true },
                     selection.selectAllAction(state.lines.map { it.id }),
-                    TopBarAction(label = "Delete", icon = Icons.Filled.Delete) {
+                    TopBarAction(label = "Delete", icon = SonaIcons.Delete) {
                         state.remove(selectedLineIds)
                         selection.clear()
                     },
@@ -190,13 +176,13 @@ internal fun LyricsEditor(state: LyricsEditorState, confirmAction: TopBarAction,
             ),
             actions = listOf(
                 // Undo and redo first, where they are reached for most; the bar folds what does not fit into its menu.
-                TopBarAction(label = "Undo", icon = Icons.AutoMirrored.Filled.Undo, enabled = state.canUndo, onClick = state::undo),
-                TopBarAction(label = "Redo", icon = Icons.AutoMirrored.Filled.Redo, enabled = state.canRedo, onClick = state::redo),
-                TopBarAction(label = "Add lyrics", icon = Icons.Filled.Add) { isAddingLyrics = true },
-                TopBarAction(label = "View/Edit lyrics plain text", icon = Icons.AutoMirrored.Filled.Article) {
+                TopBarAction(label = "Undo", icon = SonaIcons.Undo, enabled = state.canUndo, onClick = state::undo),
+                TopBarAction(label = "Redo", icon = SonaIcons.Redo, enabled = state.canRedo, onClick = state::redo),
+                TopBarAction(label = "Add lyrics", icon = SonaIcons.Add) { isAddingLyrics = true },
+                TopBarAction(label = "View/Edit lyrics plain text", icon = SonaIcons.Article) {
                     isEditingAsText = true
                 },
-                TopBarAction(label = "Delete embedded lyrics", icon = Icons.Filled.Delete, enabled = state.lines.isNotEmpty()) {
+                TopBarAction(label = "Delete embedded lyrics", icon = SonaIcons.Delete, enabled = state.lines.isNotEmpty()) {
                     isConfirmingDelete = true
                 },
             ),
@@ -230,17 +216,17 @@ internal fun LyricsEditor(state: LyricsEditorState, confirmAction: TopBarAction,
                                     canStamp = isTrackPlaying,
                                     selection = selection,
                                     actions = listOf(
-                                        TopBarAction(label = "Play from here", icon = Icons.Filled.PlayArrow) { state.playFrom(line.id) },
-                                        TopBarAction(label = "Add row above", icon = Icons.Filled.ArrowUpward) {
+                                        TopBarAction(label = "Play from here", icon = SonaIcons.Play) { state.playFrom(line.id) },
+                                        TopBarAction(label = "Add row above", icon = SonaIcons.ArrowUpward) {
                                             state.addLine(line.id, below = false)
                                         },
-                                        TopBarAction(label = "Add row below", icon = Icons.Filled.ArrowDownward) {
+                                        TopBarAction(label = "Add row below", icon = SonaIcons.ArrowDownward) {
                                             state.addLine(line.id, below = true)
                                         },
-                                        TopBarAction(label = "Reset timestamp", icon = Icons.Filled.RestartAlt, enabled = line.timeMs != 0L) {
+                                        TopBarAction(label = "Reset timestamp", icon = SonaIcons.RestartAlt, enabled = line.timeMs != 0L) {
                                             state.resetTime(line.id)
                                         },
-                                        TopBarAction(label = "Remove", icon = Icons.Filled.DeleteOutline) { state.remove(line.id) },
+                                        TopBarAction(label = "Remove", icon = SonaIcons.Delete) { state.remove(line.id) },
                                     ),
                                     onSetTime = { timeMs -> state.setTime(line.id, timeMs) },
                                     onStamp = { pressedAtUptimeMs -> state.stamp(line.id, pressedAtUptimeMs) },

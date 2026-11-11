@@ -22,11 +22,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.AddPhotoAlternate
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -63,6 +58,7 @@ import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.navigation.Screen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** A picked screenshot or recording, as small as it is shown. */
 private val ThumbnailSize = 88.dp
@@ -131,7 +127,7 @@ data class FeedbackScreen(val crash: String? = null) : Screen {
                         enabled = viewModel.attachments.size < MAX_ATTACHMENTS,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Icon(Icons.Filled.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                        Icon(SonaIcons.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
                         Text(stringResource(R.string.feedback_add_media), modifier = Modifier.padding(start = ButtonDefaults.IconSpacing))
                     }
                 }
@@ -160,7 +156,7 @@ data class FeedbackScreen(val crash: String? = null) : Screen {
                         enabled = viewModel.canSend,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                        Icon(SonaIcons.Send, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
                         Text(stringResource(R.string.feedback_send), modifier = Modifier.padding(start = ButtonDefaults.IconSpacing))
                     }
                     TextButton(
@@ -199,10 +195,10 @@ private fun AttachmentThumbnail(uri: Uri, onRemove: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         thumbnail?.let { Image(bitmap = it, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
-            ?: Icon(Icons.Filled.Movie, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            ?: Icon(SonaIcons.Video, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         SonaIconButton(
             onClick = onRemove,
-            icon = Icons.Filled.Close,
+            icon = SonaIcons.Close,
             contentDescription = stringResource(R.string.feedback_remove_media),
             colors = IconButtonDefaults.iconButtonColors(
                 // Light on dark whatever the picture under it, in either theme.

@@ -7,10 +7,6 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
@@ -30,6 +26,7 @@ import com.lhacenmed.sona.core.designsystem.component.section.ColumnSection
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.feature.tageditor.tags.CoverChoice
 import com.lhacenmed.sona.feature.tageditor.tags.TagField
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * Everything [draft] can be edited with, one section after another - the track as it will be saved, with its play
@@ -63,7 +60,7 @@ internal fun ColumnScope.TrackTagDraftSections(
     // Under the names, as a collection's Play is under its header: the song is heard while its tags are told apart.
     FilledTonalButton(onClick = onTogglePlayback, shapes = buttonPressShapes(), modifier = Modifier.padding(top = 12.dp, bottom = 8.dp)) {
         Icon(
-            imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+            imageVector = if (isPlaying) SonaIcons.Pause else SonaIcons.Play,
             contentDescription = null,
             modifier = Modifier.size(ButtonDefaults.IconSize),
         )
@@ -112,7 +109,7 @@ internal fun ColumnScope.TrackTagDraftSections(
     HorizontalDivider()
     ColumnSection(
         title = "Lyrics",
-        actions = listOf(TopBarAction(label = "Edit lyrics", icon = Icons.Filled.Edit, onClick = onEditLyrics)),
+        actions = listOf(TopBarAction(label = "Edit lyrics", icon = SonaIcons.Edit, onClick = onEditLyrics)),
     ) {
         SourceFilter(
             sources = draft.lyricsSourceNames,

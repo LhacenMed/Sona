@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -35,6 +33,7 @@ import com.lhacenmed.sona.feature.library.FolderRow
 import com.lhacenmed.sona.feature.library.GenreRow
 import com.lhacenmed.sona.feature.library.PlaylistRow
 import com.lhacenmed.sona.feature.library.selection.selectionKeyOf
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * The collections whose plays are kept out of Most played - chosen from each one's options - listed as the library
@@ -59,7 +58,7 @@ data object UncountedCollectionsScreen : Screen {
                 selection = picks.toTopBarSelection(
                     actions = listOf(
                         picks.selectAllAction(collections.mapNotNull { selectionKeyOf(it.item) }),
-                        TopBarAction(label = "Count again", icon = Icons.AutoMirrored.Filled.TrendingUp) {
+                        TopBarAction(label = "Count again", icon = SonaIcons.TrendingUp) {
                             viewModel.countAgain(pickedParents)
                             picks.clear()
                         },

@@ -6,8 +6,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -85,7 +83,7 @@ internal fun VaultItemOptions(item: VaultItem, onDismissRequest: () -> Unit) {
         ) {
             SonaOptionRow(
                 label = "Move out of Private Folder",
-                icon = Icons.Filled.LockOpen,
+                icon = SonaIcons.LockOpen,
                 onClick = {
                     action = VaultItemAction.MOVE_OUT
                     dismiss()

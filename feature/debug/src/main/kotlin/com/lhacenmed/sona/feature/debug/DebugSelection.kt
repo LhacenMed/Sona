@@ -4,9 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -24,6 +21,7 @@ import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDia
 import com.lhacenmed.sona.core.designsystem.component.selectAllAction
 import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
 import com.lhacenmed.sona.core.navigation.LocalNavigator
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * The bar of a screen whose rows can be selected and deleted, as the library's are: [title] and [actions] as usual, and
@@ -45,7 +43,7 @@ internal fun DebugSelectionBar(
         selection = selection.toTopBarSelection(
             actions = listOf(
                 selection.selectAllAction(selectableKeys),
-                TopBarAction(label = "Delete", icon = Icons.Filled.Delete, onClick = onDelete),
+                TopBarAction(label = "Delete", icon = SonaIcons.Delete, onClick = onDelete),
             ),
             onMoreOptions = null,
         ),
@@ -78,7 +76,7 @@ internal fun DebugRowIcon(icon: ImageVector, isSelected: Boolean) {
         contentAlignment = Alignment.Center,
     ) {
         Icon(
-            imageVector = if (isSelected) Icons.Filled.Check else icon,
+            imageVector = if (isSelected) SonaIcons.Check else icon,
             contentDescription = null,
             tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
         )

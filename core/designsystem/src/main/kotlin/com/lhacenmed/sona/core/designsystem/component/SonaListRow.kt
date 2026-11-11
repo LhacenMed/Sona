@@ -10,10 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DragHandle
-import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +29,7 @@ import com.lhacenmed.sona.core.designsystem.component.swipe.LocalSwipeActions
 import com.lhacenmed.sona.core.designsystem.component.swipe.SwipeActionsBox
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * What parts the facts on one line - a track's artist and album, a count and a duration: a dot, which no
@@ -123,7 +120,7 @@ fun SonaListRow(
     onLongClick: (() -> Unit)? = null,
     containerColor: Color = MaterialTheme.colorScheme.surface,
     contentColor: Color = LocalContentColor.current,
-    optionsIcon: ImageVector = Icons.Filled.MoreHoriz,
+    optionsIcon: ImageVector = SonaIcons.MoreHoriz,
     optionsLabel: String = "More options",
     subtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     supporting: (@Composable () -> Unit)? = null,
@@ -200,7 +197,7 @@ fun SonaListRow(
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.DragHandle,
+                            imageVector = SonaIcons.DragHandle,
                             contentDescription = "Reorder",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -209,7 +206,7 @@ fun SonaListRow(
                 if (isPinned) {
                     Box(modifier = Modifier.size(TrailingSlotSize), contentAlignment = Alignment.Center) {
                         Icon(
-                            imageVector = Icons.Filled.PushPin,
+                            imageVector = SonaIcons.PushPin,
                             contentDescription = "Pinned",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -251,7 +248,7 @@ fun SonaTrackRow(
     onLongClick: (() -> Unit)? = null,
     containerColor: Color = MaterialTheme.colorScheme.surface,
     contentColor: Color = LocalContentColor.current,
-    optionsIcon: ImageVector = Icons.Filled.MoreHoriz,
+    optionsIcon: ImageVector = SonaIcons.MoreHoriz,
     optionsLabel: String = "More options",
 ) {
     val current = isCurrent()
@@ -300,7 +297,7 @@ fun SonaVideoRow(
     onOpenOptions: (() -> Unit)?,
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surface,
-    optionsIcon: ImageVector = Icons.Filled.MoreHoriz,
+    optionsIcon: ImageVector = SonaIcons.MoreHoriz,
     optionsLabel: String = "More options",
 ) {
     val current = isCurrent()

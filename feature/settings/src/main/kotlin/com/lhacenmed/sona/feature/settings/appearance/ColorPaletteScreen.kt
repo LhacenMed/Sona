@@ -35,10 +35,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.FileOpen
-import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -74,6 +70,7 @@ import com.lhacenmed.sona.feature.settings.appearance.palette.PalettePreview
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** The file types a theme is imported from: ArchiveTune exports JSON, which file managers label variously. */
 internal val ThemeFileTypes = arrayOf("application/json", "text/plain", "*/*")
@@ -151,13 +148,13 @@ data object ColorPaletteScreen : Screen {
             listOf(
                 ExtendedFloatingActionButtonContent(
                     label = stringResource(R.string.custom_theme),
-                    icon = Icons.Filled.Palette,
+                    icon = SonaIcons.Palette,
                     onClick = { navigator.go(ThemeCreatorScreen) },
                     isPrimary = true,
                 ),
                 ExtendedFloatingActionButtonContent(
                     label = stringResource(R.string.import_theme),
-                    icon = Icons.Filled.FileOpen,
+                    icon = SonaIcons.FileOpen,
                     onClick = { importTheme.launch(ThemeFileTypes) },
                 ),
             ),
@@ -269,7 +266,7 @@ private fun PaletteSwatch(
                     exit = shrinkOut(shrinkTowards = Alignment.Center) + fadeOut(),
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Check,
+                        imageVector = SonaIcons.Check,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.padding(8.dp).size(16.dp),

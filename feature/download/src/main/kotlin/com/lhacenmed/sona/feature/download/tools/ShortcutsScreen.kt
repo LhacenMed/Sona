@@ -6,10 +6,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.DeleteForever
-import androidx.compose.material.icons.filled.ShortText
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -51,6 +47,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * Snippets of yt-dlp arguments - YTDLnis's template shortcuts: each a tap from being added to a command as it is written.
@@ -69,7 +66,7 @@ data object ShortcutsScreen : Screen {
         var isDeleting by remember { mutableStateOf(false) }
 
         SonaExtendedFloatingActionButtons(
-            listOf(ExtendedFloatingActionButtonContent(label = stringResource(R.string.download_shortcuts_add), icon = Icons.Filled.Add, onClick = { isAdding = true }, isPrimary = true)),
+            listOf(ExtendedFloatingActionButtonContent(label = stringResource(R.string.download_shortcuts_add), icon = SonaIcons.Add, onClick = { isAdding = true }, isPrimary = true)),
         )
 
         Column(modifier = Modifier.fillMaxSize()) {
@@ -79,7 +76,7 @@ data object ShortcutsScreen : Screen {
                 selection = selection.toTopBarSelection(
                     actions = listOf(
                         selection.selectAllAction(shortcuts.map(DownloadCommandShortcut::id)),
-                        TopBarAction(stringResource(R.string.download_delete), Icons.Filled.DeleteForever) { isDeleting = true },
+                        TopBarAction(stringResource(R.string.download_delete), SonaIcons.Delete) { isDeleting = true },
                     ),
                     onMoreOptions = null,
                 ),
@@ -105,7 +102,7 @@ data object ShortcutsScreen : Screen {
                             // A shortcut is all its text: a tap picks it, as while selecting.
                             onClick = { selection.toggle(shortcut.id) },
                             onOpenOptions = null,
-                            cover = { Icon(Icons.Filled.ShortText, contentDescription = null) },
+                            cover = { Icon(SonaIcons.ShortText, contentDescription = null) },
                         )
                     }
                 }

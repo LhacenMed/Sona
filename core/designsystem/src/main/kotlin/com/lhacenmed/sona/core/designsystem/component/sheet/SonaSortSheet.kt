@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
@@ -33,11 +31,12 @@ import com.lhacenmed.sona.core.model.sort.SortCriterion
 import com.lhacenmed.sona.core.model.sort.SortDirection
 import com.lhacenmed.sona.core.model.sort.SortOrder
 import com.lhacenmed.sona.core.model.sort.SortScope
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** The button that opens a list's [SonaSortSheet]. Every sortable screen uses this one. */
 fun sortAction(onClick: () -> Unit) = TopBarAction(
     label = "Sort",
-    icon = Icons.AutoMirrored.Filled.Sort,
+    icon = SonaIcons.Sort,
     onClick = onClick,
 )
 

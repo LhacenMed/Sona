@@ -10,9 +10,6 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.Text
@@ -47,6 +44,7 @@ import com.lhacenmed.sona.core.designsystem.component.settings.SettingsNote
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSection
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSectionDivider
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSwitchItem
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * Backing the library up, and restoring it: a backup now or on a schedule, optionally encrypted, kept in Sona's
@@ -293,8 +291,8 @@ private fun RestorableBackupItem(backup: RestorableBackup, onClick: () -> Unit, 
         supportingContent = { Text(Formatter.formatShortFileSize(context, backup.sizeBytes)) },
         trailingContent = {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (backup.onDevice != null) Icon(Icons.Filled.Smartphone, contentDescription = stringResource(R.string.restore_on_device))
-                if (backup.inDrive != null) Icon(Icons.Filled.Cloud, contentDescription = stringResource(R.string.restore_in_drive))
+                if (backup.onDevice != null) Icon(SonaIcons.Smartphone, contentDescription = stringResource(R.string.restore_on_device))
+                if (backup.inDrive != null) Icon(SonaIcons.Cloud, contentDescription = stringResource(R.string.restore_in_drive))
             }
         },
         modifier = Modifier.combinedClickable(enabled = enabled, onLongClick = onLongClick, onClick = onClick),

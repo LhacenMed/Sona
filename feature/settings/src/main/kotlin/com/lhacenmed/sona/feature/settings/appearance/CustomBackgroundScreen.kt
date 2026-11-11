@@ -19,10 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -65,6 +61,7 @@ import com.lhacenmed.sona.feature.player.background.customBackgroundColorFilter
 import com.lhacenmed.sona.feature.player.background.customBackgroundScrim
 import com.lhacenmed.sona.feature.settings.R
 import kotlin.math.roundToInt
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 private const val DefaultBlur = 0f
 private const val DefaultTone = 1f
@@ -232,7 +229,7 @@ private fun PreviewPane(
         ) {
             if (imageUri == null) {
                 Icon(
-                    imageVector = Icons.Filled.Image,
+                    imageVector = SonaIcons.Image,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(32.dp),
@@ -270,7 +267,7 @@ private fun ImageActions(
             contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Icon(if (hasImage) Icons.Filled.Edit else Icons.Filled.Image, contentDescription = null)
+            Icon(if (hasImage) SonaIcons.Edit else SonaIcons.Image, contentDescription = null)
             Spacer(Modifier.width(ButtonDefaults.IconSpacing))
             Text(stringResource(if (hasImage) R.string.custom_background_replace_image else R.string.custom_background_add_image))
         }
@@ -282,7 +279,7 @@ private fun ImageActions(
             contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Icon(Icons.Filled.Delete, contentDescription = null)
+            Icon(SonaIcons.Delete, contentDescription = null)
             Spacer(Modifier.width(ButtonDefaults.IconSpacing))
             Text(stringResource(R.string.custom_background_remove_image))
         }

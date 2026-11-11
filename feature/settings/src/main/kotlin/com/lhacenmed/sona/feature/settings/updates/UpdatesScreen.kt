@@ -7,10 +7,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -48,6 +44,7 @@ import com.lhacenmed.sona.feature.update.github.Release
 import com.lhacenmed.sona.feature.update.ui.NewUpdateSheet
 import com.lhacenmed.sona.feature.update.ui.UpdateDownloadDialog
 import com.lhacenmed.sona.feature.update.ui.startUpdate
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * Updates - ArchiveTune's `UpdateScreen`, as a settings screen: its update card - the version installed and
@@ -96,7 +93,7 @@ data object UpdatesScreen : Screen {
             val latestRelease = latest
             val newer = latestRelease?.takeIf(viewModel::isUpdate)
             SettingsHero(
-                icon = rememberVectorPainter(Icons.Filled.SystemUpdate),
+                icon = rememberVectorPainter(SonaIcons.SystemUpdate),
                 label = stringResource(R.string.updates_current_version),
                 badge = SettingsHeroBadge(
                     text = stringResource(channelLabelRes(channel)),
@@ -114,13 +111,13 @@ data object UpdatesScreen : Screen {
                     if (newer != null) {
                         SettingsHeroAction(
                             label = stringResource(R.string.updates_update_to, newer.versionName),
-                            icon = Icons.Filled.SystemUpdate,
+                            icon = SonaIcons.SystemUpdate,
                             onClick = { viewModel.reviewUpdate(newer) },
                         )
                     } else {
                         SettingsHeroAction(
                             label = stringResource(R.string.updates_check_for_update),
-                            icon = Icons.Filled.Sync,
+                            icon = SonaIcons.Sync,
                             onClick = viewModel::checkForUpdate,
                             enabled = installedBuild.isUpdatable,
                             isBusy = check == UpdateCheck.Checking,
@@ -128,7 +125,7 @@ data object UpdatesScreen : Screen {
                     },
                     SettingsHeroAction(
                         label = stringResource(R.string.updates_view_changelog),
-                        icon = Icons.Filled.History,
+                        icon = SonaIcons.History,
                         onClick = { navigator.go(ChangelogScreen) },
                     ),
                 ),

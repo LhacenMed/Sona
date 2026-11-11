@@ -18,20 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AudioFile
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.LibraryMusic
-import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.DoNotDisturbOn
-import androidx.compose.material.icons.filled.VideoFile
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
@@ -71,6 +57,7 @@ import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.feature.download.tools.CookiesScreen
 import com.lhacenmed.sona.feature.tageditor.autotag.AutoTagScreen
 import java.io.File
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * One download, opened: what it is, and what can be done with it as it stands - stopped while it waits or runs; played,
@@ -96,7 +83,7 @@ internal fun DownloadSheet(download: Download, viewModel: DownloadViewModel, onD
         },
     ) {
         when (download.status) {
-            DownloadStatus.QUEUED, DownloadStatus.RUNNING -> SonaOptionRow(label = stringResource(R.string.download_cancel), icon = Icons.Filled.Close, onClick = {
+            DownloadStatus.QUEUED, DownloadStatus.RUNNING -> SonaOptionRow(label = stringResource(R.string.download_cancel), icon = SonaIcons.Close, onClick = {
                 viewModel.onCancel(listOf(download.id))
                 dismiss()
             })
@@ -108,7 +95,7 @@ internal fun DownloadSheet(download: Download, viewModel: DownloadViewModel, onD
                     navigator.go(CookiesScreen(download.url))
                     dismiss()
                 })
-                SonaOptionRow(label = stringResource(R.string.download_copy_link), icon = Icons.Filled.ContentCopy, onClick = {
+                SonaOptionRow(label = stringResource(R.string.download_copy_link), icon = SonaIcons.ContentCopy, onClick = {
                     context.copyToClipboard(download.url, copiedLabel)
                     dismiss()
                 })
@@ -166,10 +153,10 @@ private fun SavedSheet(download: Download, viewModel: DownloadViewModel, onDismi
                         SonaValueRow(
                             label = download.url.substringAfter("://").removePrefix("www."),
                             shapes = shapes,
-                            icon = Icons.Filled.Link,
+                            icon = SonaIcons.Link,
                             value = stringResource(R.string.download_open_in_browser),
                             trailing = {
-                                SonaIconButton(onClick = { context.copyToClipboard(download.url, copiedLabel) }, icon = Icons.Filled.ContentCopy, contentDescription = stringResource(R.string.download_copy_link))
+                                SonaIconButton(onClick = { context.copyToClipboard(download.url, copiedLabel) }, icon = SonaIcons.ContentCopy, contentDescription = stringResource(R.string.download_copy_link))
                             },
                             onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(download.url))) } },
                         )
@@ -182,7 +169,7 @@ private fun SavedSheet(download: Download, viewModel: DownloadViewModel, onDismi
                                 download.sizeBytes.takeIf { it > 0 }?.let { Formatter.formatShortFileSize(context, it) },
                             ).joinToString(InfoSeparator),
                             shapes = shapes,
-                            icon = if (download.choices.kind == DownloadKind.AUDIO) Icons.Filled.AudioFile else Icons.Filled.VideoFile,
+                            icon = if (download.choices.kind == DownloadKind.AUDIO) SonaIcons.AudioFile else SonaIcons.VideoFile,
                             value = listOfNotNull(folder, savedOn).joinToString(InfoSeparator),
                             onClick = {
                                 viewModel.onPlay(download)
@@ -200,7 +187,7 @@ private fun SavedSheet(download: Download, viewModel: DownloadViewModel, onDismi
                 shapes = buttonPressShapes(),
                 modifier = Modifier.fillMaxWidth().padding(top = 16.dp).heightIn(min = 56.dp),
             ) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                Icon(SonaIcons.Play, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
                 Text(stringResource(R.string.download_play), modifier = Modifier.padding(start = ButtonDefaults.IconSpacing), style = MaterialTheme.typography.titleMedium)
             }
             Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -212,7 +199,7 @@ private fun SavedSheet(download: Download, viewModel: DownloadViewModel, onDismi
                     shapes = buttonPressShapes(),
                     modifier = Modifier.weight(1f).heightIn(min = 56.dp),
                 ) {
-                    Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                    Icon(SonaIcons.Download, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
                     Text(stringResource(R.string.download_again), modifier = Modifier.padding(start = ButtonDefaults.IconSpacing), maxLines = 1)
                 }
                 FilledTonalButton(
@@ -223,7 +210,7 @@ private fun SavedSheet(download: Download, viewModel: DownloadViewModel, onDismi
                     shapes = buttonPressShapes(),
                     modifier = Modifier.weight(1f).heightIn(min = 56.dp),
                 ) {
-                    Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                    Icon(SonaIcons.Share, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
                     Text(stringResource(R.string.download_share), modifier = Modifier.padding(start = ButtonDefaults.IconSpacing), maxLines = 1)
                 }
             }
@@ -236,8 +223,8 @@ private fun SavedSheet(download: Download, viewModel: DownloadViewModel, onDismi
 private fun Unsaved(download: Download, viewModel: DownloadViewModel, onFixed: () -> Unit, onSignIn: () -> Unit) {
     val context = LocalContext.current
     if (download.status == DownloadStatus.CANCELED) {
-        SheetMessage(Icons.Filled.DoNotDisturbOn, stringResource(R.string.download_status_canceled), stringResource(R.string.download_canceled_message))
-        FixButton(R.string.download_again, Icons.Filled.Download) {
+        SheetMessage(SonaIcons.DoNotDisturbOn, stringResource(R.string.download_status_canceled), stringResource(R.string.download_canceled_message))
+        FixButton(R.string.download_again, SonaIcons.Download) {
             viewModel.onRetry(download)
             onFixed()
         }
@@ -268,9 +255,9 @@ internal fun ErrorDetails(error: String) {
     var showsDetails by remember { mutableStateOf(false) }
     SonaOptionRow(
         label = stringResource(R.string.download_error_details),
-        icon = Icons.Filled.Code,
+        icon = SonaIcons.Code,
         onClick = { showsDetails = !showsDetails },
-        trailingContent = { Icon(if (showsDetails) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null) },
+        trailingContent = { Icon(if (showsDetails) SonaIcons.ExpandLess else SonaIcons.ExpandMore, contentDescription = null) },
     )
     if (showsDetails) {
         Column(modifier = Modifier.padding(horizontal = 24.dp)) {
@@ -278,7 +265,7 @@ internal fun ErrorDetails(error: String) {
                 Text(error, style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        SonaOptionRow(label = stringResource(R.string.download_copy_error), icon = Icons.Filled.ContentCopy, onClick = { context.copyToClipboard(error, copiedLabel) })
+        SonaOptionRow(label = stringResource(R.string.download_copy_error), icon = SonaIcons.ContentCopy, onClick = { context.copyToClipboard(error, copiedLabel) })
     }
 }
 
@@ -308,18 +295,18 @@ internal fun SelectionOptionsSheet(
     val songIds = selected.filter { it.status == DownloadStatus.DONE && it.choices.kind == DownloadKind.AUDIO }
         .flatMap(viewModel::tracksOf).filterNot { it.isVideo }.map { it.id }
     SonaBottomSheet(title = LocalContext.current.resources.getQuantityString(R.plurals.download_selected, selected.size, selected.size), onDismissRequest = onDismiss) {
-        SonaOptionRow(label = stringResource(R.string.download_again), icon = Icons.Filled.Download, onClick = {
+        SonaOptionRow(label = stringResource(R.string.download_again), icon = SonaIcons.Download, onClick = {
             viewModel.onDownloadAgain(selected)
             onDone()
             dismiss()
         })
-        SonaOptionRow(label = stringResource(R.string.download_share_links), icon = Icons.Filled.Share, onClick = {
+        SonaOptionRow(label = stringResource(R.string.download_share_links), icon = SonaIcons.Share, onClick = {
             onShareLinks()
             onDone()
             dismiss()
         })
         if (songIds.isNotEmpty()) {
-            SonaOptionRow(label = stringResource(R.string.download_auto_tag), icon = Icons.Filled.LibraryMusic, onClick = {
+            SonaOptionRow(label = stringResource(R.string.download_auto_tag), icon = SonaIcons.LibraryMusic, onClick = {
                 navigator.go(AutoTagScreen(songIds))
                 onDone()
                 dismiss()

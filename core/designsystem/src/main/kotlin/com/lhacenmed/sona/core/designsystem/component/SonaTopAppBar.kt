@@ -15,10 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -50,6 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.R
 import com.lhacenmed.sona.core.designsystem.component.screen.LocalScreenLists
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * One thing a top app bar can do. Whether it is drawn as an icon or as a row in the overflow menu is
@@ -243,7 +240,7 @@ fun SonaTopAppBar(
                     if (onNavigateBack != null) {
                         SonaIconButton(
                             onClick = onNavigateBack,
-                            icon = Icons.AutoMirrored.Filled.ArrowBack,
+                            icon = SonaIcons.ArrowBack,
                             contentDescription = stringResource(R.string.top_bar_back),
                         )
                     }
@@ -259,7 +256,7 @@ fun SonaTopAppBar(
                 navigationIcon = {
                     SonaIconButton(
                         onClick = activeContent.search.onClose,
-                        icon = Icons.AutoMirrored.Filled.ArrowBack,
+                        icon = SonaIcons.ArrowBack,
                         contentDescription = stringResource(R.string.top_bar_close_search),
                     )
                 },
@@ -282,7 +279,7 @@ fun SonaTopAppBar(
                 navigationIcon = {
                     SonaIconButton(
                         onClick = activeContent.selection.onDismiss,
-                        icon = Icons.Filled.Close,
+                        icon = SonaIcons.Close,
                         contentDescription = stringResource(R.string.top_bar_clear_selection),
                     )
                 },
@@ -368,7 +365,7 @@ private fun SelectionActions(selection: TopBarSelection) {
         selection.actions.forEach { action ->
             iconButton(icon = action.icon, label = action.label, onClick = action.onClick, enabled = action.enabled)
         }
-        selection.onMoreOptions?.let { iconButton(icon = Icons.Filled.MoreVert, label = moreOptionsLabel, onClick = it) }
+        selection.onMoreOptions?.let { iconButton(icon = SonaIcons.MoreVert, label = moreOptionsLabel, onClick = it) }
     }
 }
 
@@ -484,7 +481,7 @@ private fun BarActions(
             }
             if (overflowed.isNotEmpty()) {
                 iconButton(
-                    icon = Icons.Filled.MoreVert,
+                    icon = SonaIcons.MoreVert,
                     label = moreActionsLabel,
                     onClick = { overflowMenu.show() },
                     modifier = Modifier.dragToOpen(overflowMenu),

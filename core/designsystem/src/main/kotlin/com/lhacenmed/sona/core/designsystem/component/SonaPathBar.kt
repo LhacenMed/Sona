@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -23,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * Where a browser is: every level from the top - [levels], the open one last - each a button that opens it, pressed as
@@ -43,7 +42,7 @@ fun SonaPathBar(levels: List<String>, onOpen: (level: Int) -> Unit, modifier: Mo
             verticalAlignment = Alignment.CenterVertically,
         ) {
             levels.forEachIndexed { index, level ->
-                if (index > 0) Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (index > 0) Icon(SonaIcons.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 PathButton(level, isOpen = index == levels.lastIndex, onClick = { onOpen(index) })
             }
         }

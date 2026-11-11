@@ -1,18 +1,8 @@
 package com.lhacenmed.sona.feature.tageditor.tags
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Comment
-import androidx.compose.material.icons.filled.Album
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Lyrics
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Numbers
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Sell
-import androidx.compose.material.icons.filled.Title
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * One tag the editor reads, shows and writes: how it is labelled, drawn and typed, and the name TagLib
@@ -25,18 +15,18 @@ enum class TagField(
     val isNumeric: Boolean = false,
     val isMultiline: Boolean = false,
 ) {
-    TITLE("Title", Icons.Filled.Title, "TITLE"),
-    ARTIST("Artist", Icons.Filled.Person, "ARTIST"),
-    ALBUM("Album", Icons.Filled.Album, "ALBUM"),
-    ALBUM_ARTIST("Album artist", Icons.Filled.Group, "ALBUMARTIST"),
-    GENRE("Genre", Icons.Filled.Sell, "GENRE"),
-    YEAR("Year", Icons.Filled.CalendarMonth, "DATE", isNumeric = true),
-    TRACK_NUMBER("Track number", Icons.Filled.Numbers, "TRACKNUMBER", isNumeric = true),
-    TRACK_TOTAL("Track count", Icons.Filled.Numbers, "TRACKTOTAL", isNumeric = true),
-    DISC_NUMBER("Disc number", Icons.Filled.Numbers, "DISCNUMBER", isNumeric = true),
-    COMPOSER("Composer", Icons.Filled.MusicNote, "COMPOSER"),
-    COMMENT("Comment", Icons.AutoMirrored.Filled.Comment, "COMMENT"),
-    LYRICS("Lyrics", Icons.Filled.Lyrics, "LYRICS", isMultiline = true),
+    TITLE("Title", SonaIcons.Title, "TITLE"),
+    ARTIST("Artist", SonaIcons.Person, "ARTIST"),
+    ALBUM("Album", SonaIcons.Album, "ALBUM"),
+    ALBUM_ARTIST("Album artist", SonaIcons.Group, "ALBUMARTIST"),
+    GENRE("Genre", SonaIcons.Sell, "GENRE"),
+    YEAR("Year", SonaIcons.CalendarMonth, "DATE", isNumeric = true),
+    TRACK_NUMBER("Track number", SonaIcons.Numbers, "TRACKNUMBER", isNumeric = true),
+    TRACK_TOTAL("Track count", SonaIcons.Numbers, "TRACKTOTAL", isNumeric = true),
+    DISC_NUMBER("Disc number", SonaIcons.Numbers, "DISCNUMBER", isNumeric = true),
+    COMPOSER("Composer", SonaIcons.Song, "COMPOSER"),
+    COMMENT("Comment", SonaIcons.Comment, "COMMENT"),
+    LYRICS("Lyrics", SonaIcons.Lyrics, "LYRICS", isMultiline = true),
 }
 
 /**

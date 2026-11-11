@@ -1,14 +1,12 @@
 package com.lhacenmed.sona.core.designsystem.component
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Deselect
-import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * Which rows a screen currently has selected, in the order they were selected - Auxio's `ListViewModel`
@@ -66,9 +64,9 @@ fun rememberSelectionState(): SelectionState = remember { SelectionState() }
  */
 fun SelectionState.selectAllAction(listKeys: List<Any>): TopBarAction =
     if (listKeys.isNotEmpty() && selectedKeys.containsAll(listKeys)) {
-        TopBarAction(label = "Deselect all", icon = Icons.Filled.Deselect) { deselectAll(listKeys) }
+        TopBarAction(label = "Deselect all", icon = SonaIcons.Deselect) { deselectAll(listKeys) }
     } else {
-        TopBarAction(label = "Select all", icon = Icons.Filled.SelectAll) { selectAll(listKeys) }
+        TopBarAction(label = "Select all", icon = SonaIcons.SelectAll) { selectAll(listKeys) }
     }
 
 fun SelectionState.toTopBarSelection(actions: List<TopBarAction>, onMoreOptions: (() -> Unit)?): TopBarSelection? =

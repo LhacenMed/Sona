@@ -11,13 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.ContentPaste
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -55,6 +48,7 @@ import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.download.settings.DownloadsSettingsScreen
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * Where links become songs and videos - Seal's home: a large title saying where things stand, one field a link is pasted or
@@ -96,7 +90,7 @@ data class DownloadScreen(val link: String? = null) : Screen {
             ).joinToString(InfoSeparator)
         }
         val title = stringResource(R.string.download_title)
-        val seeAll = TopBarAction(stringResource(R.string.download_see_all), Icons.AutoMirrored.Filled.KeyboardArrowRight) { navigator.go(HistoryScreen) }
+        val seeAll = TopBarAction(stringResource(R.string.download_see_all), SonaIcons.KeyboardArrowRight) { navigator.go(HistoryScreen) }
 
         Column(modifier = Modifier.fillMaxSize()) {
             SonaTopAppBar(
@@ -104,8 +98,8 @@ data class DownloadScreen(val link: String? = null) : Screen {
                 title = "",
                 onNavigateBack = navigator::back,
                 actions = listOf(
-                    TopBarAction(stringResource(R.string.download_history), Icons.Filled.History) { navigator.go(HistoryScreen) },
-                    TopBarAction(stringResource(R.string.download_settings), Icons.Filled.Settings) { navigator.go(DownloadsSettingsScreen) },
+                    TopBarAction(stringResource(R.string.download_history), SonaIcons.History) { navigator.go(HistoryScreen) },
+                    TopBarAction(stringResource(R.string.download_settings), SonaIcons.Settings) { navigator.go(DownloadsSettingsScreen) },
                 ),
                 selection = state.topBarSelection(listed),
             )
@@ -143,7 +137,7 @@ private fun LinkField(text: String, viewModel: DownloadViewModel) {
         value = text,
         onValueChange = viewModel::onLinkEntryChange,
         placeholder = { Text(stringResource(R.string.download_link_hint)) },
-        leadingIcon = { Icon(Icons.Filled.Link, contentDescription = null) },
+        leadingIcon = { Icon(SonaIcons.Link, contentDescription = null) },
         trailingIcon = {
             Button(
                 onClick = {
@@ -154,7 +148,7 @@ private fun LinkField(text: String, viewModel: DownloadViewModel) {
                 contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                 modifier = Modifier.padding(end = 6.dp),
             ) {
-                Icon(Icons.Filled.ContentPaste, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                Icon(SonaIcons.ContentPaste, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
                 Text(stringResource(R.string.download_paste), modifier = Modifier.padding(start = ButtonDefaults.IconSpacing))
             }
         },
@@ -180,7 +174,7 @@ private fun EmptyNote() {
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Box(modifier = Modifier.size(112.dp).clip(CookieShape).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
-            Icon(Icons.Filled.Download, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(48.dp))
+            Icon(SonaIcons.Download, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(48.dp))
         }
         Text(stringResource(R.string.download_empty_title), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
         Text(stringResource(R.string.download_empty_message), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)

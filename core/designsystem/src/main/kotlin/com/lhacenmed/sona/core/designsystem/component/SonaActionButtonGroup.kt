@@ -1,8 +1,6 @@
 package com.lhacenmed.sona.core.designsystem.component
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupScope
 import androidx.compose.material3.DropdownMenuItem
@@ -14,6 +12,7 @@ import androidx.compose.ui.res.stringResource
 import com.lhacenmed.sona.core.designsystem.R
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * The buttons at the foot of every dialog and sheet - Cancel, OK, Save and the like.
@@ -37,7 +36,7 @@ fun SonaActionButtonGroup(
         overflowIndicator = { menuState ->
             SonaIconButton(
                 onClick = menuState::show,
-                icon = Icons.Filled.MoreVert,
+                icon = SonaIcons.MoreVert,
                 contentDescription = stringResource(R.string.top_bar_more_actions),
             )
         },

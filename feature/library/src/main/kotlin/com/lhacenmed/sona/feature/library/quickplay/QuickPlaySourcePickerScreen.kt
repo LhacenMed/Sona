@@ -2,8 +2,6 @@ package com.lhacenmed.sona.feature.library.quickplay
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +30,7 @@ import com.lhacenmed.sona.feature.library.filterItems
 import com.lhacenmed.sona.feature.library.searchEmptyMessage
 import com.lhacenmed.sona.feature.library.searchedFor
 import com.lhacenmed.sona.feature.library.whileNotSearched
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * Choosing which [kind] of collection quick play plays - opened from the settings once the kind is
@@ -56,7 +55,7 @@ data class QuickPlaySourcePickerScreen(val kind: QuickPlaySourceKind) : Screen {
             SonaTopAppBar(
                 title = kind.pickerTitle,
                 onNavigateBack = navigator::back,
-                actions = listOf(TopBarAction(label = "Search", icon = Icons.Filled.Search) { searchQuery = "" }),
+                actions = listOf(TopBarAction(label = "Search", icon = SonaIcons.Search) { searchQuery = "" }),
                 search = searchQuery?.let { query ->
                     TopBarSearch(
                         query = query,

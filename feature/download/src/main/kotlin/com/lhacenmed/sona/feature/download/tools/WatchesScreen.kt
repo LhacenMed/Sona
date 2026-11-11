@@ -7,11 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.DeleteForever
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Subscriptions
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -63,6 +58,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * Watched channels and playlists - YTDLnis's observed sources: each looked at twice a day, every new video on it downloaded as
@@ -82,7 +78,7 @@ data object WatchesScreen : Screen {
         var isRemoving by remember { mutableStateOf(false) }
 
         SonaExtendedFloatingActionButtons(
-            listOf(ExtendedFloatingActionButtonContent(label = stringResource(R.string.download_watches_add), icon = Icons.Filled.Add, onClick = { isAdding = true }, isPrimary = true)),
+            listOf(ExtendedFloatingActionButtonContent(label = stringResource(R.string.download_watches_add), icon = SonaIcons.Add, onClick = { isAdding = true }, isPrimary = true)),
         )
 
         Column(modifier = Modifier.fillMaxSize()) {
@@ -90,14 +86,14 @@ data object WatchesScreen : Screen {
                 title = stringResource(R.string.download_watches_title),
                 onNavigateBack = navigator::back,
                 actions = listOf(
-                    TopBarAction(stringResource(R.string.download_watches_check), Icons.Filled.Refresh, enabled = watches.isNotEmpty() && !isBusy) {
+                    TopBarAction(stringResource(R.string.download_watches_check), SonaIcons.Refresh, enabled = watches.isNotEmpty() && !isBusy) {
                         viewModel.checkNow()
                     },
                 ),
                 selection = selection.toTopBarSelection(
                     actions = listOf(
                         selection.selectAllAction(watches.map(DownloadWatch::id)),
-                        TopBarAction(stringResource(R.string.download_watches_remove), Icons.Filled.DeleteForever) { isRemoving = true },
+                        TopBarAction(stringResource(R.string.download_watches_remove), SonaIcons.Delete) { isRemoving = true },
                     ),
                     onMoreOptions = null,
                 ),
@@ -125,7 +121,7 @@ data object WatchesScreen : Screen {
                             // Its videos, opened on the download screen - to pick from as any playlist's.
                             onClick = { navigator.go(DownloadScreen(watch.url)) },
                             onOpenOptions = null,
-                            cover = { Icon(Icons.Filled.Subscriptions, contentDescription = null) },
+                            cover = { Icon(SonaIcons.Subscriptions, contentDescription = null) },
                         )
                     }
                 }

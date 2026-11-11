@@ -19,9 +19,6 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CloudDone
-import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.common.network.NetworkBanner
 import com.lhacenmed.sona.core.designsystem.R
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * [content] with the connection banner over it, where ArchiveTune shows it: centred just below the top app
@@ -80,9 +78,9 @@ private fun NetworkStatusBanner(banner: NetworkBanner, modifier: Modifier = Modi
 
     val look = when (shownBanner) {
         NetworkBanner.Hidden, NetworkBanner.Offline ->
-            NetworkBannerLook(stringResource(R.string.network_offline), Icons.Filled.CloudOff, OfflineColor)
+            NetworkBannerLook(stringResource(R.string.network_offline), SonaIcons.CloudOff, OfflineColor)
         NetworkBanner.BackOnline ->
-            NetworkBannerLook(stringResource(R.string.network_back_online), Icons.Filled.CloudDone, BackOnlineColor)
+            NetworkBannerLook(stringResource(R.string.network_back_online), SonaIcons.CloudDone, BackOnlineColor)
     }
 
     AnimatedVisibility(

@@ -23,10 +23,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -77,6 +73,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** How often the seek bar follows the track while it plays. */
 private const val PositionTickMillis = 250L
@@ -217,7 +214,7 @@ private fun PopupContent(
 
     Column(modifier = Modifier.padding(start = 20.dp, end = 12.dp, top = 12.dp, bottom = 16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            SonaIconButton(onClick = onClose, icon = Icons.Filled.Close, contentDescription = "Close", colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White))
+            SonaIconButton(onClick = onClose, icon = SonaIcons.Close, contentDescription = "Close", colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White))
         }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(end = 8.dp)) {
             cover?.let {
@@ -257,7 +254,7 @@ private fun PopupContent(
                 modifier = Modifier.size(56.dp),
             ) {
                 Icon(
-                    imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                    imageVector = if (isPlaying) SonaIcons.Pause else SonaIcons.Play,
                     contentDescription = if (isPlaying) "Pause" else "Play",
                     modifier = Modifier.size(28.dp),
                 )

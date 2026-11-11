@@ -13,10 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -68,6 +64,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * The library's whole tab experience: the top app bar, a rounded swipeable tab strip beneath it, and
@@ -257,7 +254,7 @@ fun LibraryPagerScreen(
                             // on the tab on screen, while the shell's actions are the ones that can fold into
                             // the menu.
                             actions = listOf(
-                                TopBarAction(label = "Search", icon = Icons.Filled.Search) {
+                                TopBarAction(label = "Search", icon = SonaIcons.Search) {
                                     viewModel.onSearchQueryChange("")
                                 },
                                 sortAction { sortingTab = selectedTab },
@@ -271,7 +268,7 @@ fun LibraryPagerScreen(
                                     // The secret code typed, the key to the Private Folder: it opens straight in, the
                                     // code itself left behind in the field no longer than it takes to go.
                                     actions = listOfNotNull(
-                                        TopBarAction(label = "Private Folder", icon = Icons.Filled.LockOpen) {
+                                        TopBarAction(label = "Private Folder", icon = SonaIcons.LockOpen) {
                                             viewModel.openPrivateFolder(onOpened = openPrivateFolder)
                                         }.takeIf { revealsPrivateFolder },
                                         sortTabAction,
@@ -405,7 +402,7 @@ private fun excludeFolderActions(selection: SelectionState, onExclude: (folderPa
     val folderPaths = selection.selectedKeys.filterIsInstance<SelectionKey.Folder>().map { it.folderPath }.distinct()
     if (folderPaths.isEmpty()) return emptyList()
     return listOf(
-        TopBarAction(label = "Exclude folder", icon = Icons.Filled.Block) { onExclude(folderPaths) },
+        TopBarAction(label = "Exclude folder", icon = SonaIcons.Block) { onExclude(folderPaths) },
     )
 }
 

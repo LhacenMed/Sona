@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -54,6 +52,7 @@ import com.lhacenmed.sona.core.designsystem.theme.pressedCornerRadius
 import com.lhacenmed.sona.core.designsystem.theme.rememberPressFraction
 import com.lhacenmed.sona.core.designsystem.theme.roundedShape
 import kotlinx.coroutines.launch
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** How tall a screen's primary FAB is: Material's medium FAB - see [SonaFloatingActionButtonMenu]. */
 internal val PrimaryButtonSize = 80.dp
@@ -272,7 +271,7 @@ private fun ScrollButton(target: ScrollTarget?, onClick: (ScrollTarget) -> Unit,
                     modifier = Modifier.semantics { contentDescription = scrollToPlayingLabel },
                 )
             } else {
-                Icon(imageVector = Icons.Filled.KeyboardArrowUp, contentDescription = stringResource(R.string.fab_scroll_to_top))
+                Icon(imageVector = SonaIcons.KeyboardArrowUp, contentDescription = stringResource(R.string.fab_scroll_to_top))
             }
         }
     }

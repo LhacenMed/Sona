@@ -20,9 +20,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -126,7 +123,7 @@ data class EditPlaylistScreen(val playlistId: Long) : Screen {
                 title = "Edit playlist",
                 onNavigateBack = navigator::back,
                 actions = listOf(
-                    TopBarAction(label = "Save", icon = Icons.Filled.Check, enabled = canSave) {
+                    TopBarAction(label = "Save", icon = SonaIcons.Check, enabled = canSave) {
                         isSaving = true
                         viewModel.save { succeeded ->
                             isSaving = false
@@ -292,7 +289,7 @@ private fun CoverTrackChooser(
         SonaTopAppBar(
             title = "Choose a track",
             onNavigateBack = onBack,
-            actions = listOf(TopBarAction(label = "Search", icon = Icons.Filled.Search) { searchQuery = "" }),
+            actions = listOf(TopBarAction(label = "Search", icon = SonaIcons.Search) { searchQuery = "" }),
             search = searchQuery?.let { query ->
                 TopBarSearch(query = query, onQueryChange = { searchQuery = it }, onClose = { searchQuery = null })
             },

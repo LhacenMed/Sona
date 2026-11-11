@@ -11,8 +11,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -60,6 +58,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * The Private Folder, open: its Videos and Tracks. Settings opens it on the screen it stands at - see
@@ -118,7 +117,7 @@ private fun PrivateFolderContent(viewModel: PrivateFolderViewModel) {
                 onNavigateBack = navigator::back,
                 actions = listOf(
                     sortAction { sortingVideos = pagerState.settledPage == 0 },
-                    TopBarAction(label = "Settings", icon = Icons.Filled.Settings) { navigator.go(PrivateFolderSettingsScreen) },
+                    TopBarAction(label = "Settings", icon = SonaIcons.Settings) { navigator.go(PrivateFolderSettingsScreen) },
                 ),
             )
             SonaTabRow(

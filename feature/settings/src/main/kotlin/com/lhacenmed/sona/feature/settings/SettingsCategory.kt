@@ -1,20 +1,5 @@
 package com.lhacenmed.sona.feature.settings
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ShowChart
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Backup
-import androidx.compose.material.icons.filled.Feedback
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Lyrics
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Storage
-import androidx.compose.material.icons.filled.SystemUpdate
-import androidx.compose.material.icons.filled.TouchApp
-import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.feedback.FeedbackScreen
@@ -31,6 +16,7 @@ import com.lhacenmed.sona.feature.settings.screen.PlaybackScreen
 import com.lhacenmed.sona.feature.settings.screen.StorageScreen
 import com.lhacenmed.sona.feature.settings.screen.VideoScreen
 import com.lhacenmed.sona.feature.settings.updates.UpdatesScreen
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** The bands the settings home groups its categories into. */
 enum class SettingsGroup(val titleRes: Int) {
@@ -57,49 +43,49 @@ enum class SettingsCategory(
         group = SettingsGroup.LibraryAndPlayback,
         titleRes = R.string.appearance_title,
         summaryRes = R.string.appearance_summary,
-        icon = Icons.Filled.Palette,
+        icon = SonaIcons.Palette,
         screen = AppearanceScreen,
     ),
     Playback(
         group = SettingsGroup.LibraryAndPlayback,
         titleRes = R.string.playback_title,
         summaryRes = R.string.playback_summary,
-        icon = Icons.Filled.MusicNote,
+        icon = SonaIcons.Song,
         screen = PlaybackScreen,
     ),
     Video(
         group = SettingsGroup.LibraryAndPlayback,
         titleRes = R.string.video_title,
         summaryRes = R.string.video_summary,
-        icon = Icons.Filled.VideoLibrary,
+        icon = SonaIcons.VideoLibrary,
         screen = VideoScreen,
     ),
     Lyrics(
         group = SettingsGroup.LibraryAndPlayback,
         titleRes = R.string.lyrics_title,
         summaryRes = R.string.lyrics_summary,
-        icon = Icons.Filled.Lyrics,
+        icon = SonaIcons.Lyrics,
         screen = LyricsScreen,
     ),
     Content(
         group = SettingsGroup.LibraryAndPlayback,
         titleRes = R.string.content_title,
         summaryRes = R.string.content_summary,
-        icon = Icons.Filled.Language,
+        icon = SonaIcons.Language,
         screen = ContentScreen,
     ),
     Behavior(
         group = SettingsGroup.LibraryAndPlayback,
         titleRes = R.string.behavior_title,
         summaryRes = R.string.behavior_summary,
-        icon = Icons.Filled.TouchApp,
+        icon = SonaIcons.TouchApp,
         screen = BehaviorScreen,
     ),
     Downloads(
         group = SettingsGroup.YourMusic,
         titleRes = R.string.downloads_settings_title,
         summaryRes = R.string.downloads_settings_summary,
-        icon = Icons.Filled.Download,
+        icon = SonaIcons.Download,
         // The downloads themselves; their settings are a tap away in the screen's bar.
         screen = DownloadScreen(),
     ),
@@ -107,49 +93,49 @@ enum class SettingsCategory(
         group = SettingsGroup.YourMusic,
         titleRes = R.string.listening_stats_title,
         summaryRes = R.string.listening_stats_summary,
-        icon = Icons.AutoMirrored.Filled.ShowChart,
+        icon = SonaIcons.ShowChart,
         screen = ListeningStatsScreen,
     ),
     Permissions(
         group = SettingsGroup.App,
         titleRes = R.string.permissions_title,
         summaryRes = R.string.permissions_summary,
-        icon = Icons.Filled.Security,
+        icon = SonaIcons.Security,
         screen = PermissionsScreen,
     ),
     Storage(
         group = SettingsGroup.App,
         titleRes = R.string.storage_title,
         summaryRes = R.string.storage_summary,
-        icon = Icons.Filled.Storage,
+        icon = SonaIcons.Storage,
         screen = StorageScreen,
     ),
     Backup(
         group = SettingsGroup.App,
         titleRes = R.string.backup_title,
         summaryRes = R.string.backup_summary,
-        icon = Icons.Filled.Backup,
+        icon = SonaIcons.Backup,
         screen = BackupScreen,
     ),
     Updates(
         group = SettingsGroup.App,
         titleRes = R.string.updates_title,
         summaryRes = R.string.updates_summary,
-        icon = Icons.Filled.SystemUpdate,
+        icon = SonaIcons.SystemUpdate,
         screen = UpdatesScreen,
     ),
     Feedback(
         group = SettingsGroup.App,
         titleRes = R.string.feedback_category_title,
         summaryRes = R.string.feedback_category_summary,
-        icon = Icons.Filled.Feedback,
+        icon = SonaIcons.Feedback,
         screen = FeedbackScreen(),
     ),
     About(
         group = SettingsGroup.App,
         titleRes = R.string.about_title,
         summaryRes = R.string.about_summary,
-        icon = Icons.Filled.Info,
+        icon = SonaIcons.Info,
         screen = AboutScreen,
     ),
 }

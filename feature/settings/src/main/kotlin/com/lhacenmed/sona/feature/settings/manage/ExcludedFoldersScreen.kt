@@ -6,9 +6,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.Restore
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,6 +36,7 @@ import com.lhacenmed.sona.feature.explorer.FolderPickerTab
 import java.io.File
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * "Excluded Folders" screen: the folders and files the media scanner skips - a folder's music and videos alike -
@@ -66,7 +64,7 @@ data object ExcludedFoldersScreen : Screen {
             listOf(
                 ExtendedFloatingActionButtonContent(
                     label = stringResource(R.string.excluded_folders_add),
-                    icon = Icons.Filled.Block,
+                    icon = SonaIcons.Block,
                     onClick = {
                         if (music.isEmpty() && videos.isEmpty()) context.toast(R.string.excluded_folders_none_left) else isPickingFolders = true
                     },
@@ -82,7 +80,7 @@ data object ExcludedFoldersScreen : Screen {
                 selection = picks.toTopBarSelection(
                     actions = listOf(
                         picks.selectAllAction(excludedFolders),
-                        TopBarAction(label = stringResource(R.string.excluded_folders_include), icon = Icons.Filled.Restore) {
+                        TopBarAction(label = stringResource(R.string.excluded_folders_include), icon = SonaIcons.Restore) {
                             viewModel.include(picks.selectedKeys.filterIsInstance<String>().toSet())
                             picks.clear()
                         },

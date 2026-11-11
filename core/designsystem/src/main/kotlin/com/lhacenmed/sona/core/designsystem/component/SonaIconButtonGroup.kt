@@ -2,8 +2,6 @@ package com.lhacenmed.sona.core.designsystem.component
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupScope
 import androidx.compose.material3.DropdownMenuItem
@@ -22,6 +20,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import com.lhacenmed.sona.core.designsystem.R
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * A row of [SonaIconButton]s that answer each other's presses.
@@ -63,7 +62,7 @@ fun SonaIconButtonGroup(
             overflowIndicator = { menuState ->
                 SonaIconButton(
                     onClick = menuState::show,
-                    icon = Icons.Filled.MoreVert,
+                    icon = SonaIcons.MoreVert,
                     contentDescription = stringResource(R.string.top_bar_more_actions),
                 )
             },

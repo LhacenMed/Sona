@@ -1,18 +1,5 @@
 package com.lhacenmed.sona.feature.library.options
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
-import androidx.compose.material.icons.automirrored.filled.TrendingFlat
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.AutoFixHigh
-import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.EditNote
-import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.FileUpload
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.LibraryAdd
-import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
@@ -39,23 +26,23 @@ enum class OptionsAction(val icon: ImageVector, val label: String) {
     ARTIST_DETAILS(SonaIcons.GoToArtist, "Go to artist"),
     ALBUM_DETAILS(SonaIcons.GoToAlbum, "Go to album"),
     SONG_PROPERTIES(SonaIcons.Details, "View properties"),
-    EDIT_TAGS(Icons.Filled.EditNote, "Edit info"),
-    AUTO_TAG(Icons.Filled.AutoFixHigh, "Auto-tag"),
-    STOP_COUNTING_PLAYS(Icons.AutoMirrored.Filled.TrendingFlat, "Don't count in Most played"),
-    COUNT_PLAYS(Icons.AutoMirrored.Filled.TrendingUp, "Count in Most played"),
+    EDIT_TAGS(SonaIcons.EditNote, "Edit info"),
+    AUTO_TAG(SonaIcons.AutoFixHigh, "Auto-tag"),
+    STOP_COUNTING_PLAYS(SonaIcons.TrendingFlat, "Don't count in Most played"),
+    COUNT_PLAYS(SonaIcons.TrendingUp, "Count in Most played"),
     VIEW_DETAILS(SonaIcons.Details, "View"),
-    BROWSE_FOLDER(Icons.Filled.FolderOpen, "Browse folder"),
-    ADD_TRACKS(Icons.AutoMirrored.Filled.PlaylistAdd, "Add tracks"),
-    ADD_COLLECTIONS(Icons.Filled.LibraryAdd, "Add from collections"),
+    BROWSE_FOLDER(SonaIcons.FolderOpen, "Browse folder"),
+    ADD_TRACKS(SonaIcons.PlaylistAdd, "Add tracks"),
+    ADD_COLLECTIONS(SonaIcons.LibraryAdd, "Add from collections"),
     EDIT(SonaIcons.Edit, "Edit playlist"),
-    IMPORT(Icons.Filled.FileDownload, "Import"),
-    EXPORT(Icons.Filled.FileUpload, "Export"),
+    IMPORT(SonaIcons.FileDownload, "Import"),
+    EXPORT(SonaIcons.FileUpload, "Export"),
     DELETE(SonaIcons.Delete, "Delete"),
-    REMOVE_FROM_PLAYLIST(Icons.Filled.RemoveCircleOutline, "Remove from playlist"),
-    REMOVE_FROM_RECENTLY_PLAYED(Icons.Filled.RemoveCircleOutline, "Remove from Recently played"),
-    REMOVE_FROM_MOST_PLAYED(Icons.Filled.RemoveCircleOutline, "Remove from Most played"),
-    ADD_TO_PRIVATE(Icons.Filled.Lock, "Add to Private Folder"),
+    REMOVE_FROM_PLAYLIST(SonaIcons.RemoveCircleOutline, "Remove from playlist"),
+    REMOVE_FROM_RECENTLY_PLAYED(SonaIcons.RemoveCircleOutline, "Remove from Recently played"),
+    REMOVE_FROM_MOST_PLAYED(SonaIcons.RemoveCircleOutline, "Remove from Most played"),
+    ADD_TO_PRIVATE(SonaIcons.Lock, "Add to Private Folder"),
     DELETE_FROM_DEVICE(SonaIcons.Delete, "Delete from device"),
-    EXCLUDE(Icons.Filled.Block, "Exclude folder"),
+    EXCLUDE(SonaIcons.Block, "Exclude folder"),
     SHARE(SonaIcons.Share, "Share"),
 }

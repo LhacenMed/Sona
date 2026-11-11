@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Code
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
@@ -50,6 +48,7 @@ import com.lhacenmed.sona.core.designsystem.component.settings.SettingsList
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsNavigationItem
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSection
 import kotlinx.coroutines.launch
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** Every database, each with its SQL console and its tables. */
 data object DatabasesScreen : Screen {
@@ -110,7 +109,7 @@ internal data class TableScreen(val file: String, val table: String, val isView:
                 selection = selection,
                 selectableKeys = page?.rows?.mapNotNull(TableRow::rowId).orEmpty(),
                 onDelete = { isConfirmingDelete = true },
-                actions = listOf(TopBarAction(label = "Schema", icon = Icons.Filled.Code) { isSchemaShown = true }),
+                actions = listOf(TopBarAction(label = "Schema", icon = SonaIcons.Code) { isSchemaShown = true }),
             )
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(

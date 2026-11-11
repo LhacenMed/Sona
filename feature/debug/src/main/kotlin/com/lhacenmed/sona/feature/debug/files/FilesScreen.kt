@@ -18,9 +18,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,6 +53,7 @@ import com.lhacenmed.sona.feature.debug.rememberLoaded
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** How much of a file is shown. */
 private const val MAX_SHOWN_BYTES = 256 * 1024
@@ -190,7 +188,7 @@ private fun FolderContents(
                                 },
                                 onOpenOptions = null,
                                 cover = { isSelected ->
-                                    DebugRowIcon(if (entry.file.isDirectory) Icons.Filled.Folder else Icons.Filled.Description, isSelected)
+                                    DebugRowIcon(if (entry.file.isDirectory) SonaIcons.Folder else SonaIcons.Description, isSelected)
                                 },
                             )
                         }

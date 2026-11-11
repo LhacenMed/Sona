@@ -19,15 +19,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddPhotoAlternate
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.CloudOff
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SearchOff
-import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -70,6 +61,7 @@ import com.lhacenmed.sona.feature.tageditor.lyrics.LyricsTiming
 import com.lhacenmed.sona.feature.tageditor.tags.CoverChoice
 import com.lhacenmed.sona.feature.tageditor.tags.TagField
 import com.lhacenmed.sona.feature.tageditor.tags.TrackTags
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** The best match's card keeps this height whatever it holds, so nothing under it moves as the lookup ends. */
 private val MatchCardMinHeight = 112.dp
@@ -118,7 +110,7 @@ internal fun SearchFields(
             shapes = buttonPressShapes(),
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Icon(Icons.Filled.Search, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+            Icon(SonaIcons.Search, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
             Text("Search tags and lyrics", modifier = Modifier.padding(start = ButtonDefaults.IconSpacing))
         }
     }
@@ -211,7 +203,7 @@ internal fun BestMatchCard(
                     }
                     IconButton(shapes = iconButtonPressShapes(), onClick = { isExpanded = !isExpanded }) {
                         Icon(
-                            imageVector = if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                            imageVector = if (isExpanded) SonaIcons.ExpandLess else SonaIcons.ExpandMore,
                             contentDescription = if (isExpanded) "Hide its tags" else "Show its tags",
                         )
                     }
@@ -225,10 +217,10 @@ internal fun BestMatchCard(
                 text = "The catalogues could not be reached.",
                 action = { TextButton(shapes = buttonPressShapes(), onClick = onRetry) { Text("Retry") } },
             ) {
-                Icon(Icons.Filled.CloudOff, contentDescription = null)
+                Icon(SonaIcons.CloudOff, contentDescription = null)
             }
             else -> CardMessage("No match found. Change the search, or edit the tags below.") {
-                Icon(Icons.Filled.SearchOff, contentDescription = null)
+                Icon(SonaIcons.SearchOff, contentDescription = null)
             }
         }
     }
@@ -304,7 +296,7 @@ private fun GalleryTile(onClick: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Icon(Icons.Filled.AddPhotoAlternate, contentDescription = null)
+            Icon(SonaIcons.AddPhotoAlternate, contentDescription = null)
             Text(
                 "Add from gallery",
                 style = MaterialTheme.typography.labelMedium,
@@ -364,7 +356,7 @@ internal fun LyricsResultCard(found: FoundLyrics, trackDurationMs: Long, isAppli
                     modifier = Modifier.weight(1f),
                 )
                 if (isApplied) {
-                    Icon(Icons.Filled.CheckCircle, contentDescription = "Applied", tint = MaterialTheme.colorScheme.primary)
+                    Icon(SonaIcons.CheckCircle, contentDescription = "Applied", tint = MaterialTheme.colorScheme.primary)
                 }
             }
             LyricsDuration(found = found, trackDurationMs = trackDurationMs)
@@ -397,7 +389,7 @@ private fun LyricsDuration(found: FoundLyrics, trackDurationMs: Long) {
     }
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(
-            imageVector = Icons.Filled.Timer,
+            imageVector = SonaIcons.Timer,
             contentDescription = null,
             tint = if (fits) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(16.dp),
@@ -438,7 +430,7 @@ internal fun LyricsSearchStatus(isSearching: Boolean, hasResults: Boolean) {
             if (isSearching) {
                 CircularWavyProgressIndicator(modifier = Modifier.size(20.dp))
             } else {
-                Icon(Icons.Filled.SearchOff, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(SonaIcons.SearchOff, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         Text(
@@ -479,7 +471,7 @@ internal fun MatchRow(match: CatalogueMatch, isApplying: Boolean, isApplied: Boo
         Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
             when {
                 isApplying -> CircularWavyProgressIndicator(modifier = Modifier.size(20.dp))
-                isApplied -> Icon(Icons.Filled.CheckCircle, contentDescription = "Applied", tint = MaterialTheme.colorScheme.primary)
+                isApplied -> Icon(SonaIcons.CheckCircle, contentDescription = "Applied", tint = MaterialTheme.colorScheme.primary)
             }
         }
     }

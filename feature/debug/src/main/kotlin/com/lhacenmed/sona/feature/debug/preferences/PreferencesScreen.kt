@@ -7,9 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.SelectAll
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,6 +40,7 @@ import com.lhacenmed.sona.feature.debug.Loaded
 import com.lhacenmed.sona.feature.debug.Message
 import com.lhacenmed.sona.feature.debug.rememberLoaded
 import kotlinx.coroutines.launch
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 private fun sectionKeyOf(file: PreferenceFile) = "${file.kind}:${file.name}"
 
@@ -93,7 +91,7 @@ data object PreferencesScreen : Screen {
                                     key = sectionKeyOf(file),
                                     title = "${file.kind.label}: ${file.name} (${file.values.size})",
                                     state = sections,
-                                    actions = listOf(TopBarAction(label = "Select this file", icon = Icons.Filled.SelectAll) { selection.selectAll(fileValues) }),
+                                    actions = listOf(TopBarAction(label = "Select this file", icon = SonaIcons.SelectAll) { selection.selectAll(fileValues) }),
                                     hasDividerAbove = index > 0,
                                 ) {
                                     items(fileValues, key = { "${sectionKeyOf(file)}:${it.key}" }) { item ->
@@ -104,7 +102,7 @@ data object PreferencesScreen : Screen {
                                             selectionKey = item,
                                             onClick = { editing = item },
                                             onOpenOptions = null,
-                                            cover = { isSelected -> DebugRowIcon(Icons.Filled.Tune, isSelected) },
+                                            cover = { isSelected -> DebugRowIcon(SonaIcons.Tune, isSelected) },
                                         )
                                     }
                                 }

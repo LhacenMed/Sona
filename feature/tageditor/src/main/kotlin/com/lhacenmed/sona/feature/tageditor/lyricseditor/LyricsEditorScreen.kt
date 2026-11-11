@@ -1,8 +1,6 @@
 package com.lhacenmed.sona.feature.tageditor.lyricseditor
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
@@ -15,6 +13,7 @@ import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.tageditor.rememberTrackFileSave
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * The lyrics editor on its own, opened for the track [trackId] - see [LyricsEditor]. From the lyrics sheet it starts
@@ -62,7 +61,7 @@ data class LyricsEditorScreen(val trackId: Long, val editsTagDraft: Boolean = fa
             state = editor,
             confirmAction = TopBarAction(
                 label = if (editsTagDraft) "Done" else "Save",
-                icon = Icons.Filled.Check,
+                icon = SonaIcons.Check,
                 enabled = editor.hasChanges && !viewModel.isSaving,
             ) {
                 // A draft's lyrics reach no file here, so there is nothing to ask Android first.

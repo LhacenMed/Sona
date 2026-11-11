@@ -6,10 +6,6 @@ import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Input
-import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
-import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -32,12 +28,13 @@ import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.feature.library.M3U_PICKER_MIME_TYPES
 import com.lhacenmed.sona.feature.library.PlaylistNameDialog
 import com.lhacenmed.sona.feature.library.PlaylistsViewModel
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** Where a new playlist's tracks come from - the rows of the New playlist sheet, in its order. */
 private enum class NewPlaylistSource(val icon: ImageVector, val label: String, val description: String) {
-    EMPTY(Icons.AutoMirrored.Filled.PlaylistAdd, "Empty playlist", "Add tracks to it afterwards"),
-    FOLDER(Icons.Filled.CreateNewFolder, "From a folder", "Every track in a folder you pick"),
-    FILE(Icons.AutoMirrored.Filled.Input, "From a playlist file", "The tracks an M3U file lists"),
+    EMPTY(SonaIcons.PlaylistAdd, "Empty playlist", "Add tracks to it afterwards"),
+    FOLDER(SonaIcons.CreateNewFolder, "From a folder", "Every track in a folder you pick"),
+    FILE(SonaIcons.Input, "From a playlist file", "The tracks an M3U file lists"),
 }
 
 /** What a new playlist starts from, once chosen - and so what it is named after, where anything. */

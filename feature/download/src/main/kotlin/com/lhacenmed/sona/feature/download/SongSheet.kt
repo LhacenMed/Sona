@@ -26,21 +26,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.Notes
-import androidx.compose.material.icons.filled.AddPhotoAlternate
-import androidx.compose.material.icons.filled.AudioFile
-import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.Verified
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -94,6 +79,7 @@ import com.lhacenmed.sona.feature.tageditor.lyrics.LyricsTiming
 import com.lhacenmed.sona.feature.tageditor.tags.CoverChoice
 import com.lhacenmed.sona.feature.tageditor.tags.TagField
 import kotlin.math.abs
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** A recording within this much of the video's length is the same recording - the lyrics' own margin. */
 private const val SameLengthMarginSeconds = 2L
@@ -130,7 +116,7 @@ internal fun SongSheet(song: VideoSong, onSaveAsFile: () -> Unit, onDismiss: () 
                 onClose = onDismiss,
                 action = when (page) {
                     SongPage.LYRICS -> ({
-                        SonaIconButton(onClick = { isWritingLyrics = true }, icon = Icons.Filled.Edit, contentDescription = stringResource(R.string.download_song_lyrics_write))
+                        SonaIconButton(onClick = { isWritingLyrics = true }, icon = SonaIcons.Edit, contentDescription = stringResource(R.string.download_song_lyrics_write))
                     })
                     SongPage.TAGS -> ({
                         TextButton(onClick = song::resetTags, enabled = song.song != null, shapes = buttonPressShapes()) { Text(stringResource(R.string.download_song_reset)) }
@@ -179,7 +165,7 @@ private fun PageHeader(title: String, onBack: (() -> Unit)?, onClose: () -> Unit
     Row(modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         SonaIconButton(
             onClick = onBack ?: onClose,
-            icon = Icons.AutoMirrored.Filled.ArrowBack,
+            icon = SonaIcons.ArrowBack,
             contentDescription = stringResource(if (onBack != null) R.string.download_song_back else R.string.download_song_back_to_download),
         )
         Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f).padding(start = 4.dp))
@@ -231,7 +217,7 @@ private fun ColumnScope.SongPageContent(song: VideoSong, onOpen: (SongPage) -> U
                 SonaValueRow(
                     label = stringResource(R.string.download_song_all_tags),
                     shapes = shapes,
-                    icon = Icons.Filled.Edit,
+                    icon = SonaIcons.Edit,
                     value = stringResource(R.string.download_song_all_tags_summary),
                     onClick = openTags,
                 )
@@ -285,7 +271,7 @@ private fun LengthNote(match: CatalogueMatch, videoDurationMs: Long) {
     val video = formatPlaybackTime(videoDurationMs)
     val isSame = abs(seconds * 1000 - videoDurationMs) <= SameLengthMarginSeconds * 1000
     NoteLine(
-        icon = if (isSame) Icons.Filled.Verified else Icons.Filled.Timer,
+        icon = if (isSame) SonaIcons.Verified else SonaIcons.Timer,
         text = if (isSame) stringResource(R.string.download_song_same_length, video) else stringResource(R.string.download_song_other_length, formatPlaybackTime(seconds * 1000), video),
         isGood = isSame,
         modifier = Modifier.padding(start = 12.dp, top = 8.dp),
@@ -329,7 +315,7 @@ private fun CoverChoices(song: VideoSong) {
                     .selectable(selected = false, role = Role.Button) { gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Filled.AddPhotoAlternate, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(SonaIcons.AddPhotoAlternate, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             CoverLabel(stringResource(R.string.download_song_cover_gallery), isSelected = false)
         }
@@ -356,7 +342,7 @@ private fun CoverTile(uri: String?, label: String, isSelected: Boolean, onClick:
                     modifier = Modifier.align(Alignment.TopEnd).offset(x = 6.dp, y = (-6).dp).size(24.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(16.dp))
+                    Icon(SonaIcons.Check, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(16.dp))
                 }
             }
         }
@@ -408,7 +394,7 @@ private fun LyricsSummary(song: VideoSong, onClick: () -> Unit) {
                     )
                 }
                 if (found == null && written == null && song.isSearchingLyrics) LoadingIndicator(modifier = Modifier.size(24.dp))
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(SonaIcons.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             (found?.lyrics?.text ?: written)?.let { LyricsPreview(it, lines = 3) }
             found?.let { LyricsLength(it, song.durationMs) }
@@ -464,9 +450,9 @@ private fun LyricsLength(found: FoundLyrics, videoDurationMs: Long) {
     }
     NoteLine(
         icon = when {
-            found.lyrics.timing == LyricsTiming.NONE -> Icons.AutoMirrored.Filled.Notes
-            fits || durationMs == null -> Icons.Filled.Timer
-            else -> Icons.Filled.Warning
+            found.lyrics.timing == LyricsTiming.NONE -> SonaIcons.Notes
+            fits || durationMs == null -> SonaIcons.Timer
+            else -> SonaIcons.Warning
         },
         text = text,
         isGood = fits,
@@ -502,9 +488,9 @@ private fun ColumnScope.ChangePageContent(song: VideoSong, onPick: () -> Unit, o
         value = text,
         onValueChange = { text = it },
         placeholder = { Text(stringResource(R.string.download_search_songs)) },
-        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+        leadingIcon = { Icon(SonaIcons.Search, contentDescription = null) },
         trailingIcon = {
-            if (text.isNotEmpty()) SonaIconButton(onClick = { text = "" }, icon = Icons.Filled.Close, contentDescription = stringResource(R.string.download_clear_search))
+            if (text.isNotEmpty()) SonaIconButton(onClick = { text = "" }, icon = SonaIcons.Close, contentDescription = stringResource(R.string.download_clear_search))
         },
         singleLine = true,
         shape = CircleShape,
@@ -550,7 +536,7 @@ private fun ColumnScope.ChangePageContent(song: VideoSong, onPick: () -> Unit, o
     }
     SonaRowGroup(
         listOf { shapes ->
-            SonaValueRow(label = stringResource(R.string.download_save_as_file_instead), shapes = shapes, icon = Icons.Filled.AudioFile, trailing = null, onClick = onSaveAsFile)
+            SonaValueRow(label = stringResource(R.string.download_save_as_file_instead), shapes = shapes, icon = SonaIcons.AudioFile, trailing = null, onClick = onSaveAsFile)
         },
         modifier = Modifier.padding(top = 12.dp, bottom = 16.dp),
     )
@@ -562,7 +548,7 @@ private fun SourceChip(label: String, selected: Boolean, onClick: () -> Unit) {
         selected = selected,
         onClick = onClick,
         label = { Text(label) },
-        leadingIcon = if (selected) ({ Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }) else null,
+        leadingIcon = if (selected) ({ Icon(SonaIcons.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }) else null,
     )
 }
 
@@ -617,7 +603,7 @@ private fun ColumnScope.LyricsPageContent(song: VideoSong, onPick: () -> Unit) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TimingTag(found.lyrics.timing)
                         Text(found.source, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-                        if (isPicked) Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        if (isPicked) Icon(SonaIcons.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     }
                     LyricsLength(found, song.durationMs)
                     LyricsPreview(found.lyrics.text, lines = 2)
@@ -639,8 +625,8 @@ private fun ColumnScope.LyricsPageContent(song: VideoSong, onPick: () -> Unit) {
                 SonaValueRow(
                     label = stringResource(R.string.download_song_lyrics_skip),
                     shapes = shapes,
-                    icon = Icons.Filled.Block,
-                    trailing = if (song.lyricsPick == LyricsPick.None) ({ Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }) else null,
+                    icon = SonaIcons.Block,
+                    trailing = if (song.lyricsPick == LyricsPick.None) ({ Icon(SonaIcons.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }) else null,
                     onClick = {
                         song.skipLyrics()
                         onPick()

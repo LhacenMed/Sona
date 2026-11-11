@@ -12,11 +12,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.LibraryMusic
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupScope
 import androidx.compose.material3.DropdownMenuItem
@@ -53,6 +48,7 @@ import com.lhacenmed.sona.core.designsystem.theme.pressedCornerRadius
 import com.lhacenmed.sona.core.designsystem.theme.rememberPressFraction
 import com.lhacenmed.sona.core.designsystem.theme.roundedShape
 import com.lhacenmed.sona.core.navigation.LocalNavigator
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 private const val SHORTCUT_COUNT = 3
 
@@ -98,7 +94,7 @@ fun LibraryShortcuts(
         overflowIndicator = { menuState ->
             SonaIconButton(
                 onClick = menuState::show,
-                icon = Icons.Filled.MoreVert,
+                icon = SonaIcons.MoreVert,
                 contentDescription = "More shortcuts",
             )
         },
@@ -110,21 +106,21 @@ fun LibraryShortcuts(
     ) {
         shortcutCard(
             title = "Favorites",
-            icon = Icons.Filled.Favorite,
+            icon = SonaIcons.Favorite,
             restingWidthPx = restingCardWidthPx,
             cover = favoritesCover,
             onClick = { navigator.go(PlaylistDetailScreen(viewModel.favoritesPlaylistId)) },
         )
         shortcutCard(
             title = "Playlists",
-            icon = Icons.Filled.LibraryMusic,
+            icon = SonaIcons.LibraryMusic,
             restingWidthPx = restingCardWidthPx,
             cover = playlistsCover,
             onClick = { navigator.go(PlaylistsScreen) },
         )
         shortcutCard(
             title = "Recent",
-            icon = Icons.Filled.History,
+            icon = SonaIcons.History,
             restingWidthPx = restingCardWidthPx,
             cover = recentlyPlayedCover,
             onClick = { navigator.go(RecentlyPlayedScreen) },

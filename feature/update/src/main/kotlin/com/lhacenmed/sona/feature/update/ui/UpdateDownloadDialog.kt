@@ -10,8 +10,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -46,6 +44,7 @@ import com.lhacenmed.sona.feature.update.github.ReleaseApk
 import com.lhacenmed.sona.feature.update.sizeText
 import com.lhacenmed.sona.feature.update.speedText
 import kotlin.math.roundToInt
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * Updates to [release] with [apk] - or, with none chosen, the APK for the running build: installs it when it
@@ -186,7 +185,7 @@ fun UpdateDownloadDialog(release: Release, onClose: () -> Unit) {
             val okLabel = stringResource(android.R.string.ok)
             SonaDialog(
                 onDismissRequest = onClose,
-                icon = { Icon(Icons.Filled.Error, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                icon = { Icon(SonaIcons.Error, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                 title = stringResource(R.string.update_failed_title),
                 buttons = { actionButton(label = okLabel, onClick = onClose) },
             ) {

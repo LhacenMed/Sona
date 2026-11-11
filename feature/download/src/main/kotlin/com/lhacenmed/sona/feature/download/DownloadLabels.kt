@@ -2,17 +2,6 @@ package com.lhacenmed.sona.feature.download
 
 import android.content.Context
 import android.text.format.Formatter
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Login
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.Extension
-import androidx.compose.material.icons.filled.HighQuality
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Storage
-import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.lhacenmed.sona.core.downloader.AudioTrackKind
 import com.lhacenmed.sona.core.downloader.MediaFormat
@@ -23,6 +12,7 @@ import com.lhacenmed.sona.core.model.SponsorSegment
 import com.lhacenmed.sona.core.model.VideoFormat
 import com.lhacenmed.sona.core.model.VideoQuality
 import java.util.Locale
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** The one place each of the downloader's choices is named - the download screen's and the Downloads settings' alike. */
 internal val DownloadKind.labelRes: Int
@@ -76,12 +66,12 @@ val SponsorSegment.labelRes: Int
 
 /** What the user can do about a failure - the one button its sheet offers. */
 internal enum class FailureFix(val labelRes: Int, val icon: ImageVector) {
-    TRY_AGAIN(R.string.download_fix_try_again, Icons.Filled.Refresh),
-    TRY_BEST_FORMAT(R.string.download_fix_try_again, Icons.Filled.Refresh),
-    OPEN_LINK(R.string.download_open_link, Icons.AutoMirrored.Filled.OpenInNew),
-    SIGN_IN(R.string.download_fix_sign_in, Icons.AutoMirrored.Filled.Login),
-    FREE_UP_SPACE(R.string.download_fix_free_up_space, Icons.Filled.Storage),
-    GET_DOWNLOADER(R.string.download_fix_get_downloader, Icons.Filled.Extension),
+    TRY_AGAIN(R.string.download_fix_try_again, SonaIcons.Refresh),
+    TRY_BEST_FORMAT(R.string.download_fix_try_again, SonaIcons.Refresh),
+    OPEN_LINK(R.string.download_open_link, SonaIcons.OpenInNew),
+    SIGN_IN(R.string.download_fix_sign_in, SonaIcons.Login),
+    FREE_UP_SPACE(R.string.download_fix_free_up_space, SonaIcons.Storage),
+    GET_DOWNLOADER(R.string.download_fix_get_downloader, SonaIcons.Extension),
 }
 
 /** How a failure is told: [rowRes] on its row; [titleRes] and [messageRes] in its sheet, with its [fix]. */
@@ -91,25 +81,25 @@ internal class FailurePresentation(val rowRes: Int, val titleRes: Int, val messa
 internal val DownloadFailure.presentation: FailurePresentation
     get() = when (this) {
         DownloadFailure.NO_NETWORK -> FailurePresentation(
-            R.string.download_failure_no_network, R.string.download_failure_no_network, R.string.download_failure_no_network_message, Icons.Filled.WifiOff, FailureFix.TRY_AGAIN,
+            R.string.download_failure_no_network, R.string.download_failure_no_network, R.string.download_failure_no_network_message, SonaIcons.WifiOff, FailureFix.TRY_AGAIN,
         )
         DownloadFailure.UNAVAILABLE -> FailurePresentation(
-            R.string.download_failure_unavailable_row, R.string.download_failure_unavailable, R.string.download_failure_unavailable_message, Icons.Filled.Block, FailureFix.OPEN_LINK,
+            R.string.download_failure_unavailable_row, R.string.download_failure_unavailable, R.string.download_failure_unavailable_message, SonaIcons.Block, FailureFix.OPEN_LINK,
         )
         DownloadFailure.LOGIN_REQUIRED -> FailurePresentation(
-            R.string.download_failure_login_required, R.string.download_failure_login_required, R.string.download_failure_login_required_message, Icons.Filled.Lock, FailureFix.SIGN_IN,
+            R.string.download_failure_login_required, R.string.download_failure_login_required, R.string.download_failure_login_required_message, SonaIcons.Lock, FailureFix.SIGN_IN,
         )
         DownloadFailure.FORMAT_GONE -> FailurePresentation(
-            R.string.download_failure_format_gone_row, R.string.download_failure_format_gone, R.string.download_failure_format_gone_message, Icons.Filled.HighQuality, FailureFix.TRY_BEST_FORMAT,
+            R.string.download_failure_format_gone_row, R.string.download_failure_format_gone, R.string.download_failure_format_gone_message, SonaIcons.HighQuality, FailureFix.TRY_BEST_FORMAT,
         )
         DownloadFailure.NO_SPACE -> FailurePresentation(
-            R.string.download_failure_no_space, R.string.download_failure_no_space, R.string.download_failure_no_space_message, Icons.Filled.Storage, FailureFix.FREE_UP_SPACE,
+            R.string.download_failure_no_space, R.string.download_failure_no_space, R.string.download_failure_no_space_message, SonaIcons.Storage, FailureFix.FREE_UP_SPACE,
         )
         DownloadFailure.NO_DOWNLOADER -> FailurePresentation(
-            R.string.download_failure_no_downloader, R.string.download_failure_no_downloader, R.string.download_failure_no_downloader_message, Icons.Filled.Extension, FailureFix.GET_DOWNLOADER,
+            R.string.download_failure_no_downloader, R.string.download_failure_no_downloader, R.string.download_failure_no_downloader_message, SonaIcons.Extension, FailureFix.GET_DOWNLOADER,
         )
         DownloadFailure.FAILED -> FailurePresentation(
-            R.string.download_failed, R.string.download_failure_other, R.string.download_failure_other_message, Icons.Filled.ErrorOutline, FailureFix.TRY_AGAIN,
+            R.string.download_failed, R.string.download_failure_other, R.string.download_failure_other_message, SonaIcons.ErrorOutline, FailureFix.TRY_AGAIN,
         )
     }
 

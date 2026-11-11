@@ -9,10 +9,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoFixHigh
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -45,6 +41,7 @@ import com.lhacenmed.sona.feature.explorer.FolderPickerTab
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.tageditor.TagEditorScreen
 import com.lhacenmed.sona.feature.tageditor.rememberFileChangeRequest
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * Tagging many tracks at once - the tracks [trackIds] names, or the whole library where it names none.
@@ -84,7 +81,7 @@ private fun AutoTagSetup(viewModel: AutoTagViewModel) {
         listOf(
             ExtendedFloatingActionButtonContent(
                 label = "Find tags",
-                icon = Icons.Filled.AutoFixHigh,
+                icon = SonaIcons.AutoFixHigh,
                 onClick = viewModel::start,
                 isPrimary = true,
                 isVisible = tracks.isNotEmpty() && choices.findsAnything,
@@ -149,7 +146,7 @@ private fun AutoTagReview(viewModel: AutoTagViewModel, session: AutoTagSession) 
         listOf(
             ExtendedFloatingActionButtonContent(
                 label = "Save ${tracksLabel(picked.size)}",
-                icon = Icons.Filled.Save,
+                icon = SonaIcons.Save,
                 onClick = { requestSave(picked.map { it.track }) },
                 isPrimary = true,
                 isVisible = session.phase == AutoTagPhase.REVIEWING && picked.isNotEmpty(),
@@ -189,7 +186,7 @@ private fun AutoTagReview(viewModel: AutoTagViewModel, session: AutoTagSession) 
                         state = sections,
                         hasDividerAbove = index > 0,
                         actions = listOfNotNull(
-                            TopBarAction(label = "Try again", icon = Icons.Filled.Refresh, onClick = viewModel::retryUnreachable)
+                            TopBarAction(label = "Try again", icon = SonaIcons.Refresh, onClick = viewModel::retryUnreachable)
                                 .takeIf { outcome == AutoTagOutcome.UNREACHABLE && session.phase == AutoTagPhase.REVIEWING },
                         ),
                     ) {

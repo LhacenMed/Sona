@@ -5,8 +5,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
@@ -23,6 +21,7 @@ import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.library.rememberReorderableRows
 import com.lhacenmed.sona.feature.library.reorderableRows
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * The library's tabs - which are shown, and in what order, dragged by their handles. The first shown is the one the
@@ -58,7 +57,7 @@ data object LibraryTabsScreen : Screen {
                             onClick = { viewModel.setTabVisible(tab, !isVisible) }.takeIf { canToggle },
                             leading = {
                                 Icon(
-                                    imageVector = Icons.Filled.DragHandle,
+                                    imageVector = SonaIcons.DragHandle,
                                     contentDescription = "Reorder",
                                     modifier = LocalDragHandle.current ?: Modifier,
                                 )

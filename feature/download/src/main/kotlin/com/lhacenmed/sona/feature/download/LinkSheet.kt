@@ -19,21 +19,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Extension
-import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.HighQuality
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.LibraryMusic
-import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.LinkOff
-import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.RecordVoiceOver
-import androidx.compose.material.icons.filled.Subtitles
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -96,6 +81,7 @@ import com.lhacenmed.sona.feature.tageditor.VideoSong
 import com.lhacenmed.sona.feature.tageditor.lyrics.LyricsTiming
 import com.lhacenmed.sona.feature.tageditor.tags.TagField
 import java.util.Locale
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * The link given, in a sheet over the list: what it leads to, enough to tell at a glance it is the right thing, then Audio or
@@ -250,7 +236,7 @@ private fun KindChoice(kind: DownloadKind, onSelect: (DownloadKind) -> Unit) {
         selected = kind,
         onSelect = onSelect,
         label = { stringResource(it.labelRes) },
-        icon = { if (it == DownloadKind.AUDIO) Icons.Filled.MusicNote else Icons.Filled.Movie },
+        icon = { if (it == DownloadKind.AUDIO) SonaIcons.Song else SonaIcons.Video },
         modifier = Modifier.fillMaxWidth(),
     )
 }
@@ -263,7 +249,7 @@ private fun saveAsRow(savesAsSong: Boolean, isMany: Boolean = false, onChange: (
     SonaValueRow(
         label = stringResource(R.string.download_save_as),
         shapes = shapes,
-        icon = Icons.Filled.LibraryMusic,
+        icon = SonaIcons.LibraryMusic,
         trailing = {
             SonaConnectedChoice(
                 options = listOf(true, false),
@@ -327,7 +313,7 @@ private fun qualityRow(info: MediaInfo?, choices: DownloadChoices, onClick: () -
     SonaValueRow(
         label = stringResource(R.string.download_row_quality),
         shapes = shapes,
-        icon = if (choices.kind == DownloadKind.VIDEO) Icons.Filled.HighQuality else Icons.Filled.GraphicEq,
+        icon = if (choices.kind == DownloadKind.VIDEO) SonaIcons.HighQuality else SonaIcons.GraphicEq,
         value = qualityValue(info, choices),
         enabled = info != null,
         onClick = onClick,
@@ -340,7 +326,7 @@ private fun audioTrackRow(info: MediaInfo?, choices: DownloadChoices, onClick: (
     SonaValueRow(
         label = stringResource(R.string.download_audio_track),
         shapes = shapes,
-        icon = Icons.Filled.RecordVoiceOver,
+        icon = SonaIcons.RecordVoiceOver,
         value = track?.let { listOf(languageName(it.language), stringResource(it.kind.labelRes)).joinToString(InfoSeparator) }
             ?: stringResource(R.string.download_track_original),
         enabled = track != null,
@@ -354,7 +340,7 @@ private fun subtitlesRow(info: MediaInfo?, choices: DownloadChoices, options: Do
     SonaValueRow(
         label = stringResource(R.string.download_subtitles),
         shapes = shapes,
-        icon = Icons.Filled.Subtitles,
+        icon = SonaIcons.Subtitles,
         value = when {
             info == null -> null
             !info.hasCaptions -> stringResource(R.string.download_subtitles_none)
@@ -374,7 +360,7 @@ private fun moreOptionsRow(enabled: Boolean, onClick: () -> Unit): @Composable (
     SonaValueRow(
         label = stringResource(R.string.download_more_options),
         shapes = shapes,
-        icon = Icons.Filled.Tune,
+        icon = SonaIcons.Tune,
         value = stringResource(R.string.download_more_options_summary),
         enabled = enabled,
         onClick = onClick,
@@ -406,7 +392,7 @@ private fun DownloadButton(label: String, enabled: Boolean, viewModel: DownloadV
                     enabled = enabled,
                     modifier = Modifier.width(leadingWidth).height(DownloadButtonHeight),
                 ) {
-                    Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(SplitButtonDefaults.LeadingIconSize))
+                    Icon(SonaIcons.Download, contentDescription = null, modifier = Modifier.size(SplitButtonDefaults.LeadingIconSize))
                     Text(label, modifier = Modifier.padding(start = 8.dp), style = MaterialTheme.typography.titleMedium, maxLines = 1)
                 }
             },
@@ -418,7 +404,7 @@ private fun DownloadButton(label: String, enabled: Boolean, viewModel: DownloadV
                         enabled = enabled,
                         modifier = Modifier.width(DownloadMenuButtonWidth).height(DownloadButtonHeight),
                     ) {
-                        Icon(Icons.Filled.KeyboardArrowDown, contentDescription = stringResource(R.string.download_later_or_wifi))
+                        Icon(SonaIcons.KeyboardArrowDown, contentDescription = stringResource(R.string.download_later_or_wifi))
                     }
                     DropdownMenu(expanded = isMenuOpen, onDismissRequest = { isMenuOpen = false }) {
                         DropdownMenuItem(
@@ -431,7 +417,7 @@ private fun DownloadButton(label: String, enabled: Boolean, viewModel: DownloadV
                         )
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.downloads_settings_wifi_only_title)) },
-                            trailingIcon = if (preferences.wifiOnly) ({ Icon(Icons.Filled.Check, contentDescription = null) }) else null,
+                            trailingIcon = if (preferences.wifiOnly) ({ Icon(SonaIcons.Check, contentDescription = null) }) else null,
                             onClick = { viewModel.onWifiOnlyChange(!preferences.wifiOnly) },
                         )
                     }
@@ -524,7 +510,7 @@ private fun UnreadableSheet(sheet: LinkSheet.Unreadable, viewModel: DownloadView
     val isKnown = sheet.failure != DownloadFailure.FAILED
     SonaBottomSheet(onDismissRequest = viewModel::onDismissLink, header = {}) {
         SheetMessage(
-            icon = if (isKnown) presentation.icon else Icons.Filled.LinkOff,
+            icon = if (isKnown) presentation.icon else SonaIcons.LinkOff,
             title = stringResource(if (isKnown) presentation.titleRes else R.string.download_unreadable_title),
             message = stringResource(if (isKnown) presentation.messageRes else R.string.download_unreadable_message),
         )
@@ -566,13 +552,13 @@ private fun DownloaderSheet(sheet: LinkSheet.NeedsDownloader, viewModel: Downloa
         onDismissRequest = viewModel::onDismissLink,
         header = {
             Row(modifier = Modifier.padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Link, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(SonaIcons.Link, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(host, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 8.dp))
             }
         },
     ) {
         SheetMessage(
-            icon = Icons.Filled.Extension,
+            icon = SonaIcons.Extension,
             title = stringResource(if (savesAsAudio) R.string.download_video_needs_downloader else R.string.download_get_downloader_title),
             message = if (savesAsAudio) stringResource(R.string.download_video_needs_downloader_message) else stringResource(R.string.download_get_downloader_message, host),
         )

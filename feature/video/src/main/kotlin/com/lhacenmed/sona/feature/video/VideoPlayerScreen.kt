@@ -28,11 +28,6 @@ import androidx.compose.foundation.layout.systemBarsIgnoringVisibility
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.VolumeOff
-import androidx.compose.material.icons.automirrored.rounded.VolumeUp
-import androidx.compose.material.icons.rounded.Equalizer
-import androidx.compose.material.icons.rounded.Screenshot
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -122,6 +117,7 @@ import com.lhacenmed.sona.feature.video.surface.VideoSurface
 import com.lhacenmed.sona.feature.video.surface.VideoZoomState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** The level the drag under way has reached - kept across its reports and recompositions. */
 private class DragProgress {
@@ -589,14 +585,14 @@ private fun moreActions(
     onOpenEqualizer: () -> Unit,
 ): List<VideoAction> = listOfNotNull(
     VideoAction(
-        icon = if (playback.isMuted) Icons.AutoMirrored.Rounded.VolumeOff else Icons.AutoMirrored.Rounded.VolumeUp,
+        icon = if (playback.isMuted) SonaIcons.VolumeOff else SonaIcons.VolumeUp,
         label = stringResource(if (playback.isMuted) R.string.video_unmute else R.string.video_mute),
         onClick = viewModel::onToggleMute,
     ),
     // The music's equalizer: a video plays on the same sound, so it is shaped by it just the same.
-    VideoAction(Icons.Rounded.Equalizer, stringResource(R.string.video_equalizer), onOpenEqualizer),
+    VideoAction(SonaIcons.Equalizer, stringResource(R.string.video_equalizer), onOpenEqualizer),
     // A Private Folder video is never saved out to the gallery.
-    VideoAction(Icons.Rounded.Screenshot, stringResource(R.string.video_screenshot), onScreenshot)
+    VideoAction(SonaIcons.Screenshot, stringResource(R.string.video_screenshot), onScreenshot)
         .takeUnless { playback.isPrivate },
 )
 
