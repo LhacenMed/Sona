@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name"></string>
+    <string name="quick_play_shortcut_shuffle_short"></string>
+    <string name="quick_play_shortcut_shuffle_long"></string>
+    <string name="quick_play_shortcut_play_short"></string>
+    <string name="quick_play_shortcut_play_long"></string>
+    <string name="widget_description"></string>
+    <string name="widget_nothing_playing"></string>
+    <string name="widget_mini_player_label"></string>
+    <!-- Where the widgets' track goes, in the widget picker's preview. -->
+    <string name="widget_preview_subtitle"></string>
+    <string name="widget_preview_time"></string>
+    <string name="widget_mini_player_description"></string>
+    <!-- The app's shell and the popup a file opened from another app plays in - see AppShell and TrackPopup -->
+    <string name="app_settings"></string>
+    <string name="track_popup_failed"></string>
+    <string name="track_popup_close"></string>
+    <string name="track_popup_pause"></string>
+    <string name="track_popup_play"></string>
+</resources>
