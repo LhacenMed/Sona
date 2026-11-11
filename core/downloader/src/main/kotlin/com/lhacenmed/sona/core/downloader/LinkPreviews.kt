@@ -92,7 +92,7 @@ class LinkPreviews @Inject constructor(
      * null for a link never seen before on a site that shows nothing without a request.
      */
     suspend fun known(url: String): LinkPreview? = withContext(Dispatchers.IO) {
-        synchronized(this@LinkPreviews) { kept[url] } ?: url.toHttpUrlOrNull()?.let(::youTubeVideoIdOf)?.let { LinkPreview(null, null, youTubeThumbnailOf(it)) }
+        synchronized(this@LinkPreviews) { kept[linkKeyOf(url)] } ?: url.toHttpUrlOrNull()?.let(::youTubeVideoIdOf)?.let { LinkPreview(null, null, youTubeThumbnailOf(it)) }
     }
 
     /** [url]'s title, channel and picture, as its site's oEmbed gives them - null for a site with none, or where it does not answer. */
@@ -125,9 +125,10 @@ class LinkPreviews @Inject constructor(
     fun remember(url: String, info: MediaInfo) = remember(url, LinkPreview(info.title, info.uploader, info.thumbnailUrl))
 
     private fun remember(url: String, preview: LinkPreview) {
+        val key = linkKeyOf(url)
         synchronized(this) {
-            kept.remove(url)
-            kept[url] = preview
+            kept.remove(key)
+            kept[key] = preview
             while (kept.size > KeptPreviews) kept.remove(kept.keys.first())
         }
         scope.launch(Dispatchers.IO) { save() }
@@ -147,6 +148,13 @@ class LinkPreviews @Inject constructor(
         }
     }
 }
+
+/**
+ * What [url] is kept by - a link's previews and reads alike: a YouTube video's own address, whichever of its links it is and
+ * whatever it was shared with - `youtu.be/ID?si=...` is `watch?v=ID` - and any other link as it is.
+ */
+internal fun linkKeyOf(url: String): String =
+    url.toHttpUrlOrNull()?.let(::youTubeVideoIdOf)?.let { "https://www.youtube.com/watch?v=$it" } ?: url
 
 /** The image oEmbed names for YouTube video [id], known before any request, so it loads while oEmbed runs. */
 private fun youTubeThumbnailOf(id: String) = "https://i.ytimg.com/vi/$id/hqdefault.jpg"

@@ -3,7 +3,9 @@ package com.lhacenmed.sona.core.database.dao
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Upsert
 import com.lhacenmed.sona.core.database.entity.DownloadCommandEntity
+import com.lhacenmed.sona.core.database.entity.DownloadCommandShortcutEntity
 import com.lhacenmed.sona.core.database.entity.DownloadEntity
 import com.lhacenmed.sona.core.database.entity.DownloadWatchEntity
 import kotlinx.coroutines.flow.Flow
@@ -74,14 +76,30 @@ interface DownloadDao {
     @Query("SELECT * FROM download_commands ORDER BY name COLLATE NOCASE")
     fun observeCommands(): Flow<List<DownloadCommandEntity>>
 
-    @Insert
-    suspend fun insertCommand(command: DownloadCommandEntity): Long
+    @Query("SELECT * FROM download_commands ORDER BY name COLLATE NOCASE")
+    suspend fun commands(): List<DownloadCommandEntity>
 
-    @Query("UPDATE download_commands SET name = :name, arguments = :arguments WHERE id = :id")
-    suspend fun updateCommand(id: Long, name: String, arguments: String)
+    /** Saves [command] - a new one while its id is 0. */
+    @Upsert
+    suspend fun upsertCommand(command: DownloadCommandEntity)
+
+    @Insert
+    suspend fun insertCommands(commands: List<DownloadCommandEntity>)
 
     @Query("DELETE FROM download_commands WHERE id IN (:ids)")
     suspend fun deleteCommands(ids: Collection<Long>)
+
+    @Query("SELECT * FROM download_command_shortcuts ORDER BY content COLLATE NOCASE")
+    fun observeShortcuts(): Flow<List<DownloadCommandShortcutEntity>>
+
+    @Query("SELECT * FROM download_command_shortcuts")
+    suspend fun shortcuts(): List<DownloadCommandShortcutEntity>
+
+    @Insert
+    suspend fun insertShortcuts(shortcuts: List<DownloadCommandShortcutEntity>)
+
+    @Query("DELETE FROM download_command_shortcuts WHERE id IN (:ids)")
+    suspend fun deleteShortcuts(ids: Collection<Long>)
 
     @Query("SELECT * FROM download_watches ORDER BY title COLLATE NOCASE")
     fun observeWatches(): Flow<List<DownloadWatchEntity>>

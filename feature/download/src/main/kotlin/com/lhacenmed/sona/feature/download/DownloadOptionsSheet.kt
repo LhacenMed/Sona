@@ -9,18 +9,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FormatListNumbered
-import androidx.compose.material.icons.filled.ClosedCaption
 import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.FastForward
-import androidx.compose.material.icons.filled.HighQuality
-import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.FormatListNumbered
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VideoFile
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ListItemShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -35,159 +35,170 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.designsystem.component.SonaGroupRow
+import com.lhacenmed.sona.core.designsystem.component.SonaRowGroup
+import com.lhacenmed.sona.core.designsystem.component.SonaValueRow
 import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialogOption
 import com.lhacenmed.sona.core.designsystem.component.sheet.SonaBottomSheet
-import com.lhacenmed.sona.core.designsystem.component.sheet.SonaOptionRow
 import com.lhacenmed.sona.core.designsystem.player.formatPlaybackTime
 import com.lhacenmed.sona.core.downloader.MediaFormat
 import com.lhacenmed.sona.core.downloader.MediaInfo
 import com.lhacenmed.sona.core.downloader.RuntimeState
-import com.lhacenmed.sona.core.model.AudioFormat
 import com.lhacenmed.sona.core.model.ClipRange
 import com.lhacenmed.sona.core.model.DownloadKind
 import com.lhacenmed.sona.core.model.VideoFormat
-import com.lhacenmed.sona.core.model.VideoQuality
 import java.util.Calendar
 
 /** Which of the sheet's dialogs is open. */
-private enum class OptionsDialog { QUALITY, VIDEO_FORMAT, FORMAT, PICKED_FORMAT, CLIP, COMMAND, START_AT }
+private enum class OptionsDialog { VIDEO_FORMAT, EXACT_FORMAT, CLIP, COMMAND, START_AT }
 
 /**
- * Every choice beyond Audio or Video, for [info]: the user's own, kept for every download after it and a Quick download - and
- * what this download alone asks: a format of the link's own, a part of it, a file per chapter, a time to start, a saved command
- * (offered only once one is saved). What needs the downloader says so while it is not here.
+ * Every choice the download sheet does not show, for [info]: what this download alone asks - a part of it, a file per chapter,
+ * a time to start - then the user's own, kept for every download after it, then a format of the link's own and a saved
+ * command (offered only once one is saved). What needs the downloader says so while it is not here.
  */
 @Composable
 internal fun DownloadOptionsSheet(viewModel: DownloadViewModel, info: MediaInfo, onDismiss: () -> Unit) {
     val context = LocalContext.current
-    val choices by viewModel.choices.collectAsStateWithLifecycle()
+    val choices by viewModel.sheetChoices.collectAsStateWithLifecycle()
     val options by viewModel.options.collectAsStateWithLifecycle()
     val pickedFormat by viewModel.pickedFormat.collectAsStateWithLifecycle()
     val startAt by viewModel.startAt.collectAsStateWithLifecycle()
     val commands by viewModel.commands.collectAsStateWithLifecycle()
+    val preferences by viewModel.preferences.collectAsStateWithLifecycle()
     val downloaderState by viewModel.downloaderState.collectAsStateWithLifecycle()
     val hasDownloader = downloaderState == RuntimeState.Installed
-    val needsDownloader = stringResource(R.string.download_needs_downloader)
     var dialog by remember { mutableStateOf<OptionsDialog?>(null) }
+    val pickFolder = rememberDownloadFolderPicker { folder -> viewModel.onFolderChange(choices.kind, folder) }
 
-    SonaBottomSheet(title = stringResource(R.string.download_options), onDismissRequest = onDismiss) {
-        Text(
-            text = stringResource(R.string.download_options_for, info.title),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            modifier = Modifier.padding(horizontal = 24.dp),
-        )
+    SonaBottomSheet(title = stringResource(R.string.download_more_options), onDismissRequest = onDismiss) {
+        Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
+            SectionLabel(stringResource(R.string.download_options_this_one))
+            SonaRowGroup(
+                listOf(
+                    { shapes ->
+                        SonaValueRow(
+                            label = stringResource(R.string.download_option_clip),
+                            shapes = shapes,
+                            icon = Icons.Filled.ContentCut,
+                            value = options.clip?.let { "${formatPlaybackTime(it.startSeconds * 1000)} – ${formatPlaybackTime(it.endSeconds * 1000)}" }
+                                ?: stringResource(R.string.download_option_whole),
+                            onClick = { dialog = OptionsDialog.CLIP },
+                        )
+                    },
+                    { shapes ->
+                        val chapters = info.chapterCount
+                        SwitchRow(
+                            label = stringResource(R.string.download_option_split_chapters),
+                            icon = Icons.Filled.FormatListNumbered,
+                            shapes = shapes,
+                            checked = options.splitChapters && chapters > 0,
+                            value = if (chapters > 0) pluralStringResource(R.plurals.download_chapters, chapters, chapters) else stringResource(R.string.download_no_chapters),
+                            enabled = chapters > 0,
+                        ) { viewModel.onSplitChaptersChange(it) }
+                    },
+                    { shapes ->
+                        SonaValueRow(
+                            label = stringResource(R.string.download_option_start_at),
+                            shapes = shapes,
+                            icon = Icons.Filled.Schedule,
+                            value = startAt?.let { DateFormat.getTimeFormat(context).format(it) } ?: stringResource(R.string.download_option_now),
+                            onClick = { dialog = OptionsDialog.START_AT },
+                        )
+                    },
+                ),
+            )
 
-        SectionLabel(stringResource(R.string.download_options_every))
-        SonaOptionRow(
-            label = stringResource(R.string.download_quality),
-            icon = Icons.Filled.HighQuality,
-            detail = stringResource(choices.videoQuality.labelRes),
-            onClick = { dialog = OptionsDialog.QUALITY },
-        )
-        SonaOptionRow(
-            label = stringResource(R.string.download_video_format),
-            icon = Icons.Filled.VideoFile,
-            detail = stringResource(choices.videoFormat.labelRes),
-            onClick = { dialog = OptionsDialog.VIDEO_FORMAT },
-        )
-        SonaOptionRow(
-            label = stringResource(R.string.download_format),
-            icon = Icons.Filled.MusicNote,
-            detail = stringResource(choices.audioFormat.labelRes),
-            onClick = { dialog = OptionsDialog.FORMAT },
-        )
-        SwitchOptionRow(stringResource(R.string.download_captions), Icons.Filled.ClosedCaption, checked = choices.captions) {
-            viewModel.onChoicesChange(choices.copy(captions = it))
-        }
-        SwitchOptionRow(
-            label = stringResource(R.string.download_skip_sponsors),
-            icon = Icons.Filled.FastForward,
-            checked = choices.skipSponsors && hasDownloader,
-            detail = needsDownloader.takeIf { !hasDownloader },
-            enabled = hasDownloader,
-        ) { viewModel.onChoicesChange(choices.copy(skipSponsors = it)) }
+            SectionLabel(stringResource(R.string.download_options_every))
+            SonaRowGroup(
+                listOf(
+                    { shapes ->
+                        SwitchRow(
+                            label = stringResource(R.string.download_cover_art),
+                            icon = Icons.Filled.Image,
+                            shapes = shapes,
+                            checked = choices.savesCover,
+                            value = stringResource(R.string.download_cover_art_summary),
+                        ) { saves -> viewModel.onSheetChoicesChange(forEveryDownload = true) { it.copy(savesCover = saves) } }
+                    },
+                    { shapes ->
+                        SonaValueRow(
+                            label = stringResource(R.string.download_save_to),
+                            shapes = shapes,
+                            icon = Icons.Filled.Folder,
+                            value = preferences.folderFor(choices.kind),
+                            onClick = pickFolder,
+                        )
+                    },
+                    { shapes ->
+                        SonaValueRow(
+                            label = stringResource(R.string.download_video_format),
+                            shapes = shapes,
+                            icon = Icons.Filled.VideoFile,
+                            value = stringResource(choices.videoFormat.labelRes),
+                            onClick = { dialog = OptionsDialog.VIDEO_FORMAT },
+                        )
+                    },
+                    { shapes ->
+                        SwitchRow(
+                            label = stringResource(R.string.download_skip_sponsors),
+                            icon = Icons.Filled.FastForward,
+                            shapes = shapes,
+                            checked = choices.skipSponsors && hasDownloader,
+                            value = stringResource(R.string.download_needs_downloader).takeIf { !hasDownloader },
+                            enabled = hasDownloader,
+                        ) { skips -> viewModel.onSheetChoicesChange(forEveryDownload = true) { it.copy(skipSponsors = skips) } }
+                    },
+                ),
+            )
 
-        SectionLabel(stringResource(R.string.download_options_this_one))
-        SonaOptionRow(
-            label = stringResource(R.string.download_option_format),
-            icon = Icons.Filled.Tune,
-            detail = pickedFormat?.let { it.kindLabel(context) } ?: stringResource(R.string.download_option_format_summary),
-            enabled = info.formats.isNotEmpty(),
-            onClick = { dialog = OptionsDialog.PICKED_FORMAT },
-        )
-        SonaOptionRow(
-            label = stringResource(R.string.download_option_clip),
-            icon = Icons.Filled.ContentCut,
-            detail = options.clip?.let { "${formatPlaybackTime(it.startSeconds * 1000)} – ${formatPlaybackTime(it.endSeconds * 1000)}" }
-                ?: stringResource(R.string.download_option_whole),
-            onClick = { dialog = OptionsDialog.CLIP },
-        )
-        SwitchOptionRow(stringResource(R.string.download_option_split_chapters), Icons.Filled.FormatListNumbered, checked = options.splitChapters) {
-            viewModel.onSplitChaptersChange(it)
-        }
-        SonaOptionRow(
-            label = stringResource(R.string.download_option_start_at),
-            icon = Icons.Filled.Schedule,
-            detail = startAt?.let { DateFormat.getTimeFormat(context).format(it) } ?: stringResource(R.string.download_option_now),
-            onClick = { dialog = OptionsDialog.START_AT },
-        )
-        // Offered only to who saved one: everyone else never needs to know it is there.
-        if (commands.isNotEmpty()) {
-            SonaOptionRow(
-                label = stringResource(R.string.download_option_command),
-                icon = Icons.Filled.Terminal,
-                detail = commands.firstOrNull { it.arguments == options.commandArguments }?.name ?: stringResource(R.string.download_option_none),
-                onClick = { dialog = OptionsDialog.COMMAND },
+            SectionLabel(stringResource(R.string.download_options_advanced))
+            SonaRowGroup(
+                listOfNotNull<SonaGroupRow>(
+                    { shapes ->
+                        SonaValueRow(
+                            label = stringResource(R.string.download_option_format),
+                            shapes = shapes,
+                            icon = Icons.Filled.Tune,
+                            value = pickedFormat?.kindLabel(context) ?: stringResource(R.string.download_option_format_summary),
+                            enabled = info.formats.isNotEmpty(),
+                            onClick = { dialog = OptionsDialog.EXACT_FORMAT },
+                        )
+                    },
+                    // Offered only to who saved one: everyone else never needs to know it is there.
+                    if (commands.isEmpty()) null else { shapes ->
+                        SonaValueRow(
+                            label = stringResource(R.string.download_option_command),
+                            shapes = shapes,
+                            icon = Icons.Filled.Terminal,
+                            value = commands.firstOrNull { it.arguments == options.commandArguments }?.name ?: stringResource(R.string.download_option_none),
+                            onClick = { dialog = OptionsDialog.COMMAND },
+                        )
+                    },
+                ),
             )
         }
     }
 
     val close = { dialog = null }
     when (dialog) {
-        OptionsDialog.QUALITY -> OptionDialog(
-            title = stringResource(R.string.download_quality),
-            options = VideoQuality.entries,
-            selected = choices.videoQuality,
-            label = { stringResource(it.labelRes) },
-            onSelect = { viewModel.onChoicesChange(choices.copy(videoQuality = it)) },
-            onDismiss = close,
-        )
         OptionsDialog.VIDEO_FORMAT -> OptionDialog(
             title = stringResource(R.string.download_video_format),
             options = VideoFormat.entries,
             selected = choices.videoFormat,
             label = { stringResource(it.labelRes) },
             summary = { stringResource(it.summaryRes) },
-            onSelect = { viewModel.onChoicesChange(choices.copy(videoFormat = it)) },
+            onSelect = { format -> viewModel.onSheetChoicesChange(forEveryDownload = true) { it.copy(videoFormat = format) } },
             onDismiss = close,
         )
-        OptionsDialog.FORMAT -> OptionDialog(
-            title = stringResource(R.string.download_format),
-            options = AudioFormat.entries,
-            selected = choices.audioFormat,
-            label = { stringResource(it.labelRes) },
-            onSelect = { viewModel.onChoicesChange(choices.copy(audioFormat = it)) },
-            onDismiss = close,
-        )
-        OptionsDialog.PICKED_FORMAT -> OptionDialog(
-            title = stringResource(R.string.download_option_format),
-            // The pictures, tallest first, then the sounds, richest first - picked for the kind each is.
-            options = listOf<MediaFormat?>(null) + info.formats.sortedWith(
-                compareByDescending<MediaFormat> { it.hasVideo }.thenByDescending { it.height ?: 0 }.thenByDescending { it.bitrateKbps ?: 0 },
-            ),
-            selected = pickedFormat,
-            label = { it?.kindLabel(context) ?: stringResource(R.string.download_option_automatic) },
-            onSelect = viewModel::onPickFormat,
-            onDismiss = close,
-        )
+        OptionsDialog.EXACT_FORMAT -> ExactFormatDialog(viewModel, info, onDismiss = close)
         OptionsDialog.CLIP -> ClipDialog(clip = options.clip, durationSeconds = info.durationSeconds, onConfirm = viewModel::onClipChange, onDismiss = close)
         OptionsDialog.COMMAND -> OptionDialog(
             title = stringResource(R.string.download_option_command),
@@ -198,41 +209,62 @@ internal fun DownloadOptionsSheet(viewModel: DownloadViewModel, info: MediaInfo,
             onDismiss = close,
         )
         OptionsDialog.START_AT -> StartAtDialog(onConfirm = viewModel::onStartAtChange, onDismiss = close)
+
         null -> Unit
     }
+}
+
+/** A format of [info]'s own, picked in place of what the choices would pick - the pictures tallest first, then the sounds richest first. */
+@Composable
+internal fun ExactFormatDialog(viewModel: DownloadViewModel, info: MediaInfo, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val pickedFormat by viewModel.pickedFormat.collectAsStateWithLifecycle()
+    OptionDialog(
+        title = stringResource(R.string.download_option_format),
+        options = listOf<MediaFormat?>(null) + info.formats.sortedWith(
+            compareByDescending<MediaFormat> { it.hasVideo }.thenByDescending { it.height ?: 0 }.thenByDescending { it.bitrateKbps ?: 0 },
+        ),
+        selected = pickedFormat,
+        label = { it?.kindLabel(context) ?: stringResource(R.string.download_option_automatic) },
+        onSelect = viewModel::onPickFormat,
+        onDismiss = onDismiss,
+    )
 }
 
 /** "Video · 1080p60 · avc1 · 120 MB" - which kind a picked format downloads, then what tells it from the others. */
 private fun MediaFormat.kindLabel(context: Context): String =
     context.getString(if (hasVideo) DownloadKind.VIDEO.labelRes else DownloadKind.AUDIO.labelRes) + " · " + facts(context)
 
+/** A group's heading, in the sheet's colour. */
 @Composable
-private fun SectionLabel(text: String) {
+internal fun SectionLabel(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 4.dp),
+        modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 16.dp, bottom = 8.dp),
     )
 }
 
-/** An option turned on and off - the whole row the target, as a settings switch row is. */
+/** A row of a group turned on and off - the whole row the target, as a settings switch row is. */
 @Composable
-private fun SwitchOptionRow(
+internal fun SwitchRow(
     label: String,
-    icon: ImageVector,
+    icon: ImageVector?,
+    shapes: ListItemShapes,
     checked: Boolean,
-    detail: String? = null,
+    value: String? = null,
     enabled: Boolean = true,
     onCheckedChange: (Boolean) -> Unit,
 ) {
-    SonaOptionRow(
+    SonaValueRow(
         label = label,
+        shapes = shapes,
         icon = icon,
-        detail = detail,
+        value = value,
         enabled = enabled,
         onClick = { onCheckedChange(!checked) },
-        trailingContent = { Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled) },
+        trailing = { Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled) },
     )
 }
 
@@ -242,7 +274,7 @@ private fun SwitchOptionRow(
 internal fun <T> OptionDialog(
     title: String,
     options: List<T>,
-    selected: T,
+    selected: T?,
     label: @Composable (T) -> String,
     onSelect: (T) -> Unit,
     onDismiss: () -> Unit,
@@ -308,7 +340,7 @@ private fun secondsOf(text: String): Long? {
 /** The time of day the download starts at - today, or tomorrow once that time has gone - or now again. */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun StartAtDialog(onConfirm: (Long?) -> Unit, onDismiss: () -> Unit) {
+internal fun StartAtDialog(onConfirm: (Long?) -> Unit, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val state = rememberTimePickerState(is24Hour = DateFormat.is24HourFormat(context))
     val cancelLabel = stringResource(R.string.download_cancel)

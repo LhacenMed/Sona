@@ -24,7 +24,7 @@ private val FailureWords = listOf(
 )
 
 /** What a read of the link kept to download from says once its streams no longer work: a fresh read is the whole repair - YTDLnis's. */
-private val StaleReadWords = listOf("HTTP Error 403", "HTTP Error 410", "JSONDecodeError", "unable to download video data")
+private val StaleReadWords = listOf("HTTP Error 403", "HTTP Error 410", "JSONDecodeError", "unable to download video data", "unable to download video subtitles")
 
 /** Why [error] failed a download. */
 fun failureOf(error: Throwable): DownloadFailure = when (error) {

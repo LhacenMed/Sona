@@ -1,64 +1,78 @@
 package com.lhacenmed.sona.feature.download
 
 import android.content.ClipboardManager
-import android.content.Intent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ContentPaste
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.lhacenmed.sona.core.designsystem.component.SonaEmptyState
+import com.lhacenmed.sona.core.designsystem.component.CookieShape
+import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
-import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
-import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDialog
-import com.lhacenmed.sona.core.designsystem.component.fab.ExtendedFloatingActionButtonContent
-import com.lhacenmed.sona.core.designsystem.component.fab.SonaExtendedFloatingActionButtons
-import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
-import com.lhacenmed.sona.core.designsystem.component.selectAllAction
-import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
-import com.lhacenmed.sona.core.model.Download
+import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.download.settings.DownloadsSettingsScreen
-import kotlinx.coroutines.launch
 
 /**
- * Where links become songs and videos: one pasted, typed or shared - [link] - opens in a sheet, is checked at a glance, and
- * is downloaded as audio or video with a tap. Beneath, one list: what is downloading, then what was saved, today and before -
- * played with a tap, put right where it failed, and deleted many at a time. The settings are in the bar.
+ * Where links become songs and videos - Seal's home: a large title saying where things stand, one field a link is pasted or
+ * typed into, then what is downloading now and what was saved today - played with a tap, put right where it failed. Every
+ * download before is a tap away, in the [HistoryScreen]. A link pasted, typed or shared - [link] - opens in a sheet, is
+ * checked at a glance, and is downloaded as audio or video with a tap.
  */
 data class DownloadScreen(val link: String? = null) : Screen {
 
     @Composable
     override fun Content() {
-        val context = LocalContext.current
         val navigator = LocalNavigator.current
         val viewModel: DownloadViewModel = hiltViewModel()
         val sections by viewModel.sections.collectAsStateWithLifecycle()
-        val query by viewModel.query.collectAsStateWithLifecycle()
+        val running by viewModel.running.collectAsStateWithLifecycle()
         val linkEntry by viewModel.linkEntry.collectAsStateWithLifecycle()
         val linkSheet by viewModel.linkSheet.collectAsStateWithLifecycle()
-        val scope = rememberCoroutineScope()
-        val selection = rememberSelectionState()
-        var openedId by rememberSaveable { mutableStateOf<Long?>(null) }
-        var isChoosingSelectionOptions by remember { mutableStateOf(false) }
-        var isDeleting by remember { mutableStateOf(false) }
+        val state = rememberDownloadListState()
 
         // The link this was opened with, opened once - not again as the screen comes back.
         var hasTakenLink by rememberSaveable { mutableStateOf(false) }
@@ -67,101 +81,108 @@ data class DownloadScreen(val link: String? = null) : Screen {
             hasTakenLink = true
         }
 
-        val listed = sections?.all.orEmpty()
-        val selected = listed.filter { selection.isSelected(it.id) }
-
-        SonaExtendedFloatingActionButtons(
-            listOf(
-                ExtendedFloatingActionButtonContent(
-                    label = stringResource(R.string.download_paste_link),
-                    icon = Icons.Filled.ContentPaste,
-                    onClick = {
-                        val clipboard = context.getSystemService(ClipboardManager::class.java)?.primaryClip?.getItemAt(0)?.coerceToText(context)
-                        viewModel.onPaste(clipboard?.toString())
-                    },
-                    isPrimary = true,
-                    isVisible = !selection.isActive && linkEntry == null,
-                ),
-            ),
-        )
+        val downloading = sections?.downloading.orEmpty()
+        val today = sections?.today.orEmpty()
+        val listed = downloading + today
+        val runningCount = downloading.count { it.id in running }
+        val waiting = downloading.size - runningCount
+        val summary = when {
+            downloading.isEmpty() -> stringResource(R.string.download_ready)
+            waiting == 0 -> pluralStringResource(R.plurals.download_downloading_count, runningCount, runningCount)
+            runningCount == 0 -> pluralStringResource(R.plurals.download_waiting_count, waiting, waiting)
+            else -> listOf(
+                pluralStringResource(R.plurals.download_downloading_count, runningCount, runningCount),
+                pluralStringResource(R.plurals.download_waiting_count, waiting, waiting),
+            ).joinToString(InfoSeparator)
+        }
+        val title = stringResource(R.string.download_title)
+        val seeAll = TopBarAction(stringResource(R.string.download_see_all), Icons.AutoMirrored.Filled.KeyboardArrowRight) { navigator.go(HistoryScreen) }
 
         Column(modifier = Modifier.fillMaxSize()) {
             SonaTopAppBar(
-                title = stringResource(R.string.download_title),
+                // The title is the list's own, large, over the link field.
+                title = "",
                 onNavigateBack = navigator::back,
-                actions = listOfNotNull(
-                    // Nothing to search before anything is downloaded.
-                    TopBarAction(stringResource(R.string.download_search), Icons.Filled.Search) { viewModel.onQueryChange("") }.takeIf { listed.isNotEmpty() || query != null },
+                actions = listOf(
+                    TopBarAction(stringResource(R.string.download_history), Icons.Filled.History) { navigator.go(HistoryScreen) },
                     TopBarAction(stringResource(R.string.download_settings), Icons.Filled.Settings) { navigator.go(DownloadsSettingsScreen) },
                 ),
-                search = when {
-                    linkEntry != null -> TopBarSearch(
-                        query = linkEntry.orEmpty(),
-                        onQueryChange = viewModel::onLinkEntryChange,
-                        onClose = viewModel::onLinkEntryClose,
-                        hint = stringResource(R.string.download_link_hint),
-                    )
-                    query != null -> TopBarSearch(query = query.orEmpty(), onQueryChange = viewModel::onQueryChange, onClose = { viewModel.onQueryChange(null) })
-                    else -> null
-                },
-                selection = selection.toTopBarSelection(
-                    actions = listOf(
-                        selection.selectAllAction(listed.map(Download::id)),
-                        TopBarAction(stringResource(R.string.download_delete), Icons.Filled.Delete) { isDeleting = true },
-                    ),
-                    onMoreOptions = { isChoosingSelectionOptions = true },
-                ),
+                selection = state.topBarSelection(listed),
             )
-            val shown = sections
-            when {
-                // Still being read: nothing yet, rather than an empty state for a moment.
-                shown == null -> Unit
-                shown.isEmpty && !query.isNullOrBlank() -> SonaEmptyState(
-                    title = stringResource(R.string.download_search_empty, query.orEmpty()),
-                    message = stringResource(R.string.download_search_empty_message),
-                )
-                shown.isEmpty -> SonaEmptyState(title = stringResource(R.string.download_empty_title), message = stringResource(R.string.download_empty_message))
-                else -> DownloadList(shown, viewModel, selection, onOpen = { openedId = it.id })
-            }
+            DownloadList(
+                groups = listOf(
+                    DownloadGroup("downloading", stringResource(R.string.download_section_downloading), downloading),
+                    DownloadGroup("today", stringResource(R.string.download_section_today), today, actions = listOf(seeAll)),
+                ),
+                viewModel = viewModel,
+                state = state,
+                header = {
+                    screenTitle(title, summary)
+                    item(key = "link-field") { LinkField(linkEntry, viewModel) }
+                },
+                footer = {
+                    if (sections != null && listed.isEmpty()) item(key = "empty") { EmptyNote() }
+                },
+            )
         }
 
         linkSheet?.let { LinkSheet(it, viewModel) }
+        DownloadListSheets(state, listed, viewModel)
+    }
+}
 
-        // Followed by its id as it goes, from downloading to saved.
-        listed.firstOrNull { it.id == openedId }?.let { download ->
-            DownloadSheet(download, viewModel, onDismiss = { openedId = null })
-        }
-
-        if (isChoosingSelectionOptions) {
-            SelectionOptionsSheet(
-                selected = selected,
-                viewModel = viewModel,
-                onShareLinks = {
-                    val links = selected.joinToString("\n") { it.url }
-                    context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, links), null))
+/**
+ * The one field a link is given in: typed - opened the moment it is a link - or pasted with the button inside it, which reads
+ * the clipboard without the keyboard. With no link to paste, the field takes the keyboard to have one typed.
+ */
+@Composable
+private fun LinkField(text: String, viewModel: DownloadViewModel) {
+    val context = LocalContext.current
+    val focusRequester = remember { FocusRequester() }
+    TextField(
+        value = text,
+        onValueChange = viewModel::onLinkEntryChange,
+        placeholder = { Text(stringResource(R.string.download_link_hint)) },
+        leadingIcon = { Icon(Icons.Filled.Link, contentDescription = null) },
+        trailingIcon = {
+            Button(
+                onClick = {
+                    val clipboard = context.getSystemService(ClipboardManager::class.java)?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)
+                    if (!viewModel.onPaste(clipboard?.toString())) focusRequester.requestFocus()
                 },
-                onDone = selection::clear,
-                onDismiss = { isChoosingSelectionOptions = false },
-            )
-        }
+                shapes = buttonPressShapes(),
+                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+                modifier = Modifier.padding(end = 6.dp),
+            ) {
+                Icon(Icons.Filled.ContentPaste, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                Text(stringResource(R.string.download_paste), modifier = Modifier.padding(start = ButtonDefaults.IconSpacing))
+            }
+        },
+        singleLine = true,
+        shape = CircleShape,
+        colors = TextFieldDefaults.colors(
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp).focusRequester(focusRequester),
+    )
+}
 
-        if (isDeleting) {
-            val ids = selected.map(Download::id)
-            SonaConfirmationDialog(
-                title = context.resources.getQuantityString(R.plurals.download_delete_title, ids.size, ids.size),
-                message = stringResource(R.string.download_delete_message),
-                confirmLabel = stringResource(R.string.download_delete),
-                successMessage = context.resources.getQuantityString(R.plurals.download_deleted_count, ids.size, ids.size),
-                failureMessage = stringResource(R.string.download_delete_failed),
-                onDismiss = { isDeleting = false },
-                operation = { onFinished ->
-                    scope.launch {
-                        val isDeleted = viewModel.onDelete(ids)
-                        selection.clear()
-                        onFinished(isDeleted)
-                    }
-                },
-            )
+/** Under the field while nothing is downloading or saved today: what the screen is for, and the two ways a link comes in. */
+@Composable
+private fun EmptyNote() {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 48.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Box(modifier = Modifier.size(112.dp).clip(CookieShape).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+            Icon(Icons.Filled.Download, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(48.dp))
         }
+        Text(stringResource(R.string.download_empty_title), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
+        Text(stringResource(R.string.download_empty_message), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
     }
 }

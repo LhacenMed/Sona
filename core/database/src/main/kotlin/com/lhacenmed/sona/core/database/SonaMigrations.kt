@@ -546,3 +546,45 @@ val MIGRATION_30_31 = object : Migration(30, 31) {
         db.execSQL("ALTER TABLE `downloads` ADD COLUMN `videoFormat` TEXT NOT NULL DEFAULT 'QUALITY'")
     }
 }
+
+/** Each download's sound language and captions, as picked for it. */
+val MIGRATION_31_32 = object : Migration(31, 32) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `downloads` ADD COLUMN `audioLanguage` TEXT")
+        db.execSQL("ALTER TABLE `downloads` ADD COLUMN `subtitlesAsFile` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `downloads` ADD COLUMN `subtitleLanguages` TEXT")
+    }
+}
+
+/** Whether each download's sound is saved as a song, and the song picked for it. */
+val MIGRATION_32_33 = object : Migration(32, 33) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `downloads` ADD COLUMN `savesAsSong` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `downloads` ADD COLUMN `song` TEXT")
+    }
+}
+
+/**
+ * Whether each download's sound is saved with a cover; when and for which links each saved command is given by itself, and
+ * whether it is picked to begin with; and the snippets commands are written with.
+ */
+val MIGRATION_33_34 = object : Migration(33, 34) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `downloads` ADD COLUMN `embedsCover` INTEGER NOT NULL DEFAULT 1")
+        listOf("addsToAudio", "addsToVideo", "addsToReading", "isPreferred").forEach { column ->
+            db.execSQL("ALTER TABLE `download_commands` ADD COLUMN `$column` INTEGER NOT NULL DEFAULT 0")
+        }
+        db.execSQL("ALTER TABLE `download_commands` ADD COLUMN `urlPatterns` TEXT NOT NULL DEFAULT ''")
+        db.execSQL("CREATE TABLE IF NOT EXISTS `download_command_shortcuts` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `content` TEXT NOT NULL)")
+    }
+}
+
+/**
+ * Whether each download's cover is kept as a picture beside it too - a sound's is always in its file now, so the column before
+ * it, `embedsCover`, is no longer read.
+ */
+val MIGRATION_34_35 = object : Migration(34, 35) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `downloads` ADD COLUMN `savesCover` INTEGER NOT NULL DEFAULT 0")
+    }
+}

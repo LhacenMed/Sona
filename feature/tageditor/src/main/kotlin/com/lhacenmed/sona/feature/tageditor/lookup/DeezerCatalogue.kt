@@ -47,6 +47,7 @@ internal object DeezerCatalogue : Catalogue {
             coverUrl = cover,
             thumbnailUrl = CoverSizes.thumbnailOf(cover),
             catalogue = name,
+            durationSeconds = optLong("duration").takeIf { it > 0 },
             trackId = string("id"),
             albumId = album?.string("id").orEmpty(),
         )

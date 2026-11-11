@@ -16,8 +16,10 @@ data class CatalogueMatch(
     val coverUrl: String = "",
     /** The same cover, small - what a card or a row draws. */
     val thumbnailUrl: String = "",
-    /** The [Catalogue.name] it came from. */
+    /** The [Catalogue.name] it came from - blank for a song the user named. */
     val catalogue: String,
+    /** How long the recording is, where the catalogue says - what tells one version of a song from another. */
+    val durationSeconds: Long? = null,
     internal val trackId: String = "",
     internal val albumId: String = "",
 ) {

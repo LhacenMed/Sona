@@ -2,14 +2,24 @@ package com.lhacenmed.sona.feature.download
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Environment
 import android.provider.Settings
+import android.text.format.DateFormat
+import android.text.format.DateUtils
+import android.text.format.Formatter
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.ContentCopy
@@ -17,10 +27,14 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.DoNotDisturbOn
+import androidx.compose.material.icons.filled.VideoFile
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -30,13 +44,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverArt
+import com.lhacenmed.sona.core.designsystem.component.SonaIconButton
+import com.lhacenmed.sona.core.designsystem.component.SonaRowGroup
+import com.lhacenmed.sona.core.designsystem.component.SonaValueRow
 import com.lhacenmed.sona.core.designsystem.component.copyToClipboard
 import com.lhacenmed.sona.core.designsystem.component.sheet.SonaBottomSheet
 import com.lhacenmed.sona.core.designsystem.component.sheet.SonaOptionRow
@@ -49,6 +70,7 @@ import com.lhacenmed.sona.core.model.DownloadStatus
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.feature.download.tools.CookiesScreen
 import com.lhacenmed.sona.feature.tageditor.autotag.AutoTagScreen
+import java.io.File
 
 /**
  * One download, opened: what it is, and what can be done with it as it stands - stopped while it waits or runs; played,
@@ -59,14 +81,9 @@ import com.lhacenmed.sona.feature.tageditor.autotag.AutoTagScreen
 internal fun DownloadSheet(download: Download, viewModel: DownloadViewModel, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val navigator = LocalNavigator.current
-    val songIds = if (download.status == DownloadStatus.DONE && download.choices.kind == DownloadKind.AUDIO) {
-        viewModel.tracksOf(download).filterNot { it.isVideo }.map { it.id }
-    } else {
-        emptyList()
-    }
     val copiedLabel = stringResource(R.string.download_link_copied)
-    fun shareLink() = context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, download.url), null))
 
+    if (download.status == DownloadStatus.DONE) return SavedSheet(download, viewModel, onDismiss)
     SonaBottomSheet(
         onDismissRequest = onDismiss,
         header = {
@@ -84,26 +101,7 @@ internal fun DownloadSheet(download: Download, viewModel: DownloadViewModel, onD
                 dismiss()
             })
 
-            DownloadStatus.DONE -> {
-                SonaOptionRow(label = stringResource(R.string.download_play), icon = Icons.Filled.PlayArrow, onClick = {
-                    viewModel.onPlay(download)
-                    dismiss()
-                })
-                if (songIds.isNotEmpty()) {
-                    SonaOptionRow(label = stringResource(R.string.download_auto_tag), icon = Icons.Filled.LibraryMusic, onClick = {
-                        navigator.go(AutoTagScreen(songIds))
-                        dismiss()
-                    })
-                }
-                SonaOptionRow(label = stringResource(R.string.download_again), icon = Icons.Filled.Download, onClick = {
-                    viewModel.onDownloadAgain(listOf(download))
-                    dismiss()
-                })
-                SonaOptionRow(label = stringResource(R.string.download_share_link), icon = Icons.Filled.Share, onClick = {
-                    shareLink()
-                    dismiss()
-                })
-            }
+            DownloadStatus.DONE -> Unit
 
             DownloadStatus.FAILED, DownloadStatus.CANCELED -> {
                 Unsaved(download, viewModel, onFixed = { dismiss() }, onSignIn = {
@@ -114,6 +112,120 @@ internal fun DownloadSheet(download: Download, viewModel: DownloadViewModel, onD
                     context.copyToClipboard(download.url, copiedLabel)
                     dismiss()
                 })
+            }
+        }
+    }
+}
+
+/**
+ * A saved download: its picture, title and who published it where; the link it came from - opened or copied - and the file it
+ * saved - what, how big, where and when; then Play, Download again and Share. Deleting is the list's, from a selection.
+ */
+@Composable
+private fun SavedSheet(download: Download, viewModel: DownloadViewModel, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val copiedLabel = stringResource(R.string.download_link_copied)
+    val path = download.savedPaths.firstOrNull()
+    val finishedAt = download.finishedAt ?: download.createdAt
+    val savedOn = if (DateUtils.isToday(finishedAt)) {
+        stringResource(R.string.download_saved_today_at, DateFormat.getTimeFormat(context).format(finishedAt))
+    } else {
+        DateUtils.formatDateTime(context, finishedAt, DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_TIME)
+    }
+    val folder = path?.let { File(it).parent?.removePrefix(Environment.getExternalStorageDirectory().path)?.trimStart('/') }
+    SonaBottomSheet(
+        onDismissRequest = onDismiss,
+        header = {
+            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                AsyncImage(
+                    model = download.thumbnailUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                )
+                Text(
+                    download.title ?: hostOf(download.url),
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 16.dp),
+                )
+                Text(
+                    listOfNotNull(download.uploader, download.site).joinToString(InfoSeparator),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 2.dp),
+                )
+            }
+        },
+    ) {
+        Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp)) {
+            SonaRowGroup(
+                listOf(
+                    { shapes ->
+                        SonaValueRow(
+                            label = download.url.substringAfter("://").removePrefix("www."),
+                            shapes = shapes,
+                            icon = Icons.Filled.Link,
+                            value = stringResource(R.string.download_open_in_browser),
+                            trailing = {
+                                SonaIconButton(onClick = { context.copyToClipboard(download.url, copiedLabel) }, icon = Icons.Filled.ContentCopy, contentDescription = stringResource(R.string.download_copy_link))
+                            },
+                            onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(download.url))) } },
+                        )
+                    },
+                    { shapes ->
+                        SonaValueRow(
+                            label = listOfNotNull(
+                                stringResource(download.choices.kind.labelRes),
+                                path?.let { File(it).extension.uppercase() }?.takeIf { it.isNotEmpty() },
+                                download.sizeBytes.takeIf { it > 0 }?.let { Formatter.formatShortFileSize(context, it) },
+                            ).joinToString(InfoSeparator),
+                            shapes = shapes,
+                            icon = if (download.choices.kind == DownloadKind.AUDIO) Icons.Filled.AudioFile else Icons.Filled.VideoFile,
+                            value = listOfNotNull(folder, savedOn).joinToString(InfoSeparator),
+                            onClick = {
+                                viewModel.onPlay(download)
+                                dismiss()
+                            },
+                        )
+                    },
+                ),
+            )
+            Button(
+                onClick = {
+                    viewModel.onPlay(download)
+                    dismiss()
+                },
+                shapes = buttonPressShapes(),
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp).heightIn(min = 56.dp),
+            ) {
+                Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                Text(stringResource(R.string.download_play), modifier = Modifier.padding(start = ButtonDefaults.IconSpacing), style = MaterialTheme.typography.titleMedium)
+            }
+            Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilledTonalButton(
+                    onClick = {
+                        viewModel.onDownloadAgain(listOf(download))
+                        dismiss()
+                    },
+                    shapes = buttonPressShapes(),
+                    modifier = Modifier.weight(1f).heightIn(min = 56.dp),
+                ) {
+                    Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                    Text(stringResource(R.string.download_again), modifier = Modifier.padding(start = ButtonDefaults.IconSpacing), maxLines = 1)
+                }
+                FilledTonalButton(
+                    onClick = {
+                        context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, download.url), null))
+                        dismiss()
+                    },
+                    shapes = buttonPressShapes(),
+                    modifier = Modifier.weight(1f).heightIn(min = 56.dp),
+                ) {
+                    Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                    Text(stringResource(R.string.download_share), modifier = Modifier.padding(start = ButtonDefaults.IconSpacing), maxLines = 1)
+                }
             }
         }
     }

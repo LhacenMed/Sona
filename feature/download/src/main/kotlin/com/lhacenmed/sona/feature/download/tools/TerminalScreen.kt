@@ -39,6 +39,7 @@ import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.downloader.YtDlp
 import com.lhacenmed.sona.core.downloader.splitArguments
+import com.lhacenmed.sona.core.model.DownloadKind
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.download.R
 import com.lhacenmed.sona.feature.download.downloadFolderOf
@@ -127,7 +128,8 @@ internal class TerminalViewModel @Inject constructor(
         job = viewModelScope.launch {
             _isRunning.value = true
             try {
-                ytDlp.runTyped(splitArguments(arguments), downloadFolderOf(settings.preferences.value), ::append)
+                // In the videos' folder: what yt-dlp downloads untold is a video.
+                ytDlp.runTyped(splitArguments(arguments), downloadFolderOf(settings.preferences.value, DownloadKind.VIDEO), ::append)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

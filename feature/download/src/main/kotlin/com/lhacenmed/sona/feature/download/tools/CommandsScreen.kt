@@ -1,7 +1,12 @@
 package com.lhacenmed.sona.feature.download.tools
 
+import android.content.Context
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,10 +16,15 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.ShortText
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItemShapes
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,10 +42,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.database.dao.DownloadDao
 import com.lhacenmed.sona.core.database.entity.DownloadCommandEntity
+import com.lhacenmed.sona.core.database.entity.DownloadCommandShortcutEntity
 import com.lhacenmed.sona.core.database.entity.toDomain
+import com.lhacenmed.sona.core.database.entity.toEntity
+import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.SonaEmptyState
+import com.lhacenmed.sona.core.designsystem.component.SonaGroupRow
 import com.lhacenmed.sona.core.designsystem.component.SonaListRow
+import com.lhacenmed.sona.core.designsystem.component.SonaRowGroup
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.actionButton
@@ -47,21 +62,31 @@ import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.component.selectAllAction
 import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
+import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.model.DownloadCommand
+import com.lhacenmed.sona.core.model.DownloadCommandShortcut
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.download.R
+import com.lhacenmed.sona.feature.download.SwitchRow
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 
 /**
  * Saved yt-dlp arguments - YTDLnis's command templates: each named, picked in a download's options to be given after
- * everything else. Added from the button, edited by a tap, deleted many at a time from a selection.
+ * everything else - or given by itself to every audio download, every video download and every link read, for the links it
+ * is for; one preferred, picked for every download to begin with. Added from the button, edited by a tap, deleted many at a
+ * time from a selection; written with shortcuts, and carried between devices as a file.
  */
 data object CommandsScreen : Screen {
 
@@ -71,10 +96,13 @@ data object CommandsScreen : Screen {
         val navigator = LocalNavigator.current
         val viewModel: CommandsViewModel = hiltViewModel()
         val commands by viewModel.commands.collectAsStateWithLifecycle()
+        val shortcuts by viewModel.shortcuts.collectAsStateWithLifecycle()
         val selection = rememberSelectionState()
         var editing by remember { mutableStateOf<DownloadCommand?>(null) }
         var isAdding by rememberSaveable { mutableStateOf(false) }
         var isDeleting by remember { mutableStateOf(false) }
+        val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(CommandsFileType)) { uri -> uri?.let(viewModel::export) }
+        val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(viewModel::import) }
 
         SonaExtendedFloatingActionButtons(
             listOf(ExtendedFloatingActionButtonContent(label = stringResource(R.string.download_commands_add), icon = Icons.Filled.Add, onClick = { isAdding = true }, isPrimary = true)),
@@ -84,7 +112,12 @@ data object CommandsScreen : Screen {
             SonaTopAppBar(
                 title = stringResource(R.string.download_commands_title),
                 onNavigateBack = navigator::back,
-                actions = listOf(TopBarAction(stringResource(R.string.download_terminal_title), Icons.Filled.Terminal) { navigator.go(TerminalScreen) }),
+                actions = listOf(
+                    TopBarAction(stringResource(R.string.download_shortcuts_title), Icons.Filled.ShortText) { navigator.go(ShortcutsScreen) },
+                    TopBarAction(stringResource(R.string.download_commands_export), Icons.Filled.FileUpload) { exporter.launch(CommandsFileName) },
+                    TopBarAction(stringResource(R.string.download_commands_import), Icons.Filled.FileDownload) { importer.launch(arrayOf(CommandsFileType, "text/plain", "application/octet-stream")) },
+                    TopBarAction(stringResource(R.string.download_terminal_title), Icons.Filled.Terminal) { navigator.go(TerminalScreen) },
+                ),
                 selection = selection.toTopBarSelection(
                     actions = listOf(
                         selection.selectAllAction(commands.map(DownloadCommand::id)),
@@ -108,7 +141,7 @@ data object CommandsScreen : Screen {
                     items(commands, key = DownloadCommand::id) { command ->
                         SonaListRow(
                             title = command.name,
-                            subtitle = command.arguments,
+                            subtitle = (listOf(command.arguments) + command.uses(context)).joinToString(InfoSeparator),
                             selection = selection,
                             selectionKey = command.id,
                             onClick = { editing = command },
@@ -123,7 +156,8 @@ data object CommandsScreen : Screen {
         if (isAdding || editing != null) {
             CommandDialog(
                 command = editing,
-                onSave = { name, arguments -> viewModel.save(editing?.id, name, arguments) },
+                shortcuts = shortcuts,
+                onSave = viewModel::save,
                 onDismiss = {
                     isAdding = false
                     editing = null
@@ -150,12 +184,27 @@ data object CommandsScreen : Screen {
     }
 }
 
-/** A command's name and arguments, written - a new one's while [command] is null. */
+/** What a saved file of commands is - and is called, to begin with. */
+private const val CommandsFileType = "application/json"
+private const val CommandsFileName = "sona-commands.json"
+
+/** When a command is given by itself, as its row tells: "Audio", "Video", "Reading links", "Preferred". */
+private fun DownloadCommand.uses(context: Context): List<String> = listOfNotNull(
+    context.getString(R.string.download_commands_uses_audio).takeIf { addsToAudio },
+    context.getString(R.string.download_commands_uses_video).takeIf { addsToVideo },
+    context.getString(R.string.download_commands_uses_reading).takeIf { addsToReading },
+    context.getString(R.string.download_commands_uses_preferred).takeIf { isPreferred },
+)
+
+/**
+ * A command written - a new one while [command] is null: its name and arguments, [shortcuts] a tap from being added to
+ * them; when it is given by itself; and the links it is for, one pattern a line.
+ */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun CommandDialog(command: DownloadCommand?, onSave: (String, String) -> Unit, onDismiss: () -> Unit) {
-    var name by remember { mutableStateOf(command?.name.orEmpty()) }
-    var arguments by remember { mutableStateOf(command?.arguments.orEmpty()) }
+private fun CommandDialog(command: DownloadCommand?, shortcuts: List<DownloadCommandShortcut>, onSave: (DownloadCommand) -> Unit, onDismiss: () -> Unit) {
+    var edited by remember { mutableStateOf(command ?: DownloadCommand(id = 0, name = "", arguments = "")) }
+    var patterns by remember { mutableStateOf(edited.urlPatterns.joinToString("\n")) }
     val cancelLabel = stringResource(R.string.download_cancel)
     val saveLabel = stringResource(R.string.download_save)
     SonaDialog(
@@ -163,39 +212,136 @@ private fun CommandDialog(command: DownloadCommand?, onSave: (String, String) ->
         title = stringResource(if (command == null) R.string.download_commands_add else R.string.download_commands_edit),
         buttons = {
             actionButton(label = cancelLabel, onClick = onDismiss)
-            actionButton(label = saveLabel, enabled = name.isNotBlank() && arguments.isNotBlank(), onClick = {
-                onSave(name.trim(), arguments.trim())
+            actionButton(label = saveLabel, enabled = edited.name.isNotBlank() && edited.arguments.isNotBlank(), onClick = {
+                onSave(edited.copy(name = edited.name.trim(), arguments = edited.arguments.trim(), urlPatterns = patterns.lines().map(String::trim).filter(String::isNotEmpty)))
                 onDismiss()
             })
         },
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(stringResource(R.string.download_commands_name)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(
-                value = arguments,
-                onValueChange = { arguments = it },
+                value = edited.name,
+                onValueChange = { edited = edited.copy(name = it) },
+                label = { Text(stringResource(R.string.download_commands_name)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = edited.arguments,
+                onValueChange = { edited = edited.copy(arguments = it) },
                 label = { Text(stringResource(R.string.download_commands_arguments)) },
                 placeholder = { Text("--embed-subs --sub-langs all") },
                 minLines = 3,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (shortcuts.isNotEmpty()) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    shortcuts.forEach { shortcut ->
+                        SuggestionChip(
+                            onClick = { edited = edited.copy(arguments = listOf(edited.arguments.trimEnd(), shortcut.content).filter(String::isNotEmpty).joinToString(" ")) },
+                            label = { Text(shortcut.content) },
+                        )
+                    }
+                }
+            }
+            SonaRowGroup(
+                listOf<SonaGroupRow>(
+                    { shapes -> UseRow(R.string.download_commands_adds_audio, shapes, edited.addsToAudio) { edited = edited.copy(addsToAudio = it) } },
+                    { shapes -> UseRow(R.string.download_commands_adds_video, shapes, edited.addsToVideo) { edited = edited.copy(addsToVideo = it) } },
+                    { shapes -> UseRow(R.string.download_commands_adds_reading, shapes, edited.addsToReading) { edited = edited.copy(addsToReading = it) } },
+                    { shapes -> UseRow(R.string.download_commands_preferred, shapes, edited.isPreferred) { edited = edited.copy(isPreferred = it) } },
+                ),
+            )
+            OutlinedTextField(
+                value = patterns,
+                onValueChange = { patterns = it },
+                label = { Text(stringResource(R.string.download_commands_patterns)) },
+                placeholder = { Text("youtube\\.com\nsoundcloud\\.com") },
+                supportingText = { Text(stringResource(R.string.download_commands_patterns_summary)) },
+                minLines = 2,
                 modifier = Modifier.fillMaxWidth(),
             )
         }
     }
 }
 
+@Composable
+private fun UseRow(label: Int, shapes: ListItemShapes, checked: Boolean, onCheckedChange: (Boolean) -> Unit) =
+    SwitchRow(label = stringResource(label), icon = null, shapes = shapes, checked = checked, onCheckedChange = onCheckedChange)
+
 @HiltViewModel
-internal class CommandsViewModel @Inject constructor(private val dao: DownloadDao) : ViewModel() {
+internal class CommandsViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val dao: DownloadDao,
+) : ViewModel() {
     val commands: StateFlow<List<DownloadCommand>> = dao.observeCommands().map { rows -> rows.map(DownloadCommandEntity::toDomain) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** Saves a command as [name] with [arguments] - [id]'s, or a new one while it is null. */
-    fun save(id: Long?, name: String, arguments: String) {
-        viewModelScope.launch {
-            if (id == null) dao.insertCommand(DownloadCommandEntity(name = name, arguments = arguments)) else dao.updateCommand(id, name, arguments)
-        }
+    val shortcuts: StateFlow<List<DownloadCommandShortcut>> = dao.observeShortcuts().map { rows -> rows.map(DownloadCommandShortcutEntity::toDomain) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Saves [command] - a new one while its id is 0. */
+    fun save(command: DownloadCommand) {
+        viewModelScope.launch { dao.upsertCommand(command.toEntity()) }
     }
 
     fun delete(ids: Collection<Long>) {
         viewModelScope.launch { dao.deleteCommands(ids) }
+    }
+
+    /** Writes every command and shortcut into the file at [uri], as [import] reads them back. */
+    fun export(uri: Uri) {
+        viewModelScope.launch {
+            val written = runCatching {
+                val file = JSONObject()
+                    .put("commands", JSONArray(dao.commands().map { it.toDomain().toJson() }))
+                    .put("shortcuts", JSONArray(dao.shortcuts().map { it.content }))
+                withContext(Dispatchers.IO) { context.contentResolver.openOutputStream(uri)?.use { it.write(file.toString(2).toByteArray()) } }
+            }.isSuccess
+            context.toast(if (written) R.string.download_commands_exported else R.string.download_commands_file_failed)
+        }
+    }
+
+    /** Adds the commands and shortcuts the file at [uri] holds - as [export] writes them - beside those already saved. */
+    fun import(uri: Uri) {
+        viewModelScope.launch {
+            val file = runCatching {
+                JSONObject(withContext(Dispatchers.IO) { context.contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() }.orEmpty() })
+            }.getOrNull()
+            if (file == null) {
+                context.toast(R.string.download_commands_file_failed)
+                return@launch
+            }
+            val commands = file.optJSONArray("commands")?.let { array -> List(array.length()) { array.optJSONObject(it)?.toCommand() } }.orEmpty().filterNotNull()
+            val shortcuts = file.optJSONArray("shortcuts")?.let { array -> List(array.length()) { array.optString(it) } }.orEmpty().filter(String::isNotBlank)
+            dao.insertCommands(commands.map { it.toEntity() })
+            dao.insertShortcuts(shortcuts.map { DownloadCommandShortcutEntity(content = it) })
+            context.toast(context.resources.getQuantityString(R.plurals.download_commands_imported, commands.size, commands.size))
+        }
+    }
+
+    private fun DownloadCommand.toJson() = JSONObject()
+        .put("name", name)
+        .put("arguments", arguments)
+        .put("addsToAudio", addsToAudio)
+        .put("addsToVideo", addsToVideo)
+        .put("addsToReading", addsToReading)
+        .put("isPreferred", isPreferred)
+        .put("urlPatterns", JSONArray(urlPatterns))
+
+    private fun JSONObject.toCommand(): DownloadCommand? {
+        val name = optString("name").takeIf(String::isNotBlank) ?: return null
+        val arguments = optString("arguments").takeIf(String::isNotBlank) ?: return null
+        val patterns = optJSONArray("urlPatterns")
+        return DownloadCommand(
+            id = 0,
+            name = name,
+            arguments = arguments,
+            addsToAudio = optBoolean("addsToAudio"),
+            addsToVideo = optBoolean("addsToVideo"),
+            addsToReading = optBoolean("addsToReading"),
+            isPreferred = optBoolean("isPreferred"),
+            urlPatterns = patterns?.let { array -> List(array.length()) { array.optString(it) } }.orEmpty().filter(String::isNotBlank),
+        )
     }
 }

@@ -2,6 +2,7 @@ package com.lhacenmed.sona.feature.download
 
 import android.content.Context
 import android.net.Uri
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.LibraryRepository
@@ -33,7 +34,10 @@ import com.lhacenmed.sona.core.model.DownloadOptions
 import com.lhacenmed.sona.core.model.DownloadStatus
 import com.lhacenmed.sona.core.model.DownloaderPreferences
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.model.preferredFor
 import com.lhacenmed.sona.feature.playback.PlaybackController
+import com.lhacenmed.sona.feature.tageditor.SongTagging
+import com.lhacenmed.sona.feature.tageditor.VideoSong
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.Calendar
@@ -67,10 +71,23 @@ sealed interface LinkSheet {
     data class NeedsDownloader(val url: String, val info: MediaInfo?, val kind: DownloadKind, val savesAsAudio: Boolean = false) : LinkSheet
 }
 
-/** Every download, as the list sections it: what is still to download, then what was finished today, then before. */
+/** Every download, as the lists section it: what is still to download, then what was finished today, then before. */
 data class DownloadSections(val downloading: List<Download>, val today: List<Download>, val earlier: List<Download>) {
-    val isEmpty: Boolean get() = downloading.isEmpty() && today.isEmpty() && earlier.isEmpty()
-    val all: List<Download> get() = downloading + today + earlier
+    /** What is over - the history. */
+    val finished: List<Download> get() = today + earlier
+}
+
+/** What the history is narrowed to: one kind, or what failed. */
+enum class HistoryFilter(@StringRes val labelRes: Int) {
+    AUDIO(R.string.download_kind_audio),
+    VIDEO(R.string.download_kind_video),
+    FAILED(R.string.download_filter_failed);
+
+    fun matches(download: Download): Boolean = when (this) {
+        AUDIO -> download.choices.kind == DownloadKind.AUDIO
+        VIDEO -> download.choices.kind == DownloadKind.VIDEO
+        FAILED -> download.status == DownloadStatus.FAILED
+    }
 }
 
 @HiltViewModel
@@ -96,12 +113,17 @@ class DownloadViewModel @Inject constructor(
     /** What the downloads are searched for - null while they are not. */
     val query: StateFlow<String?> = _query.asStateFlow()
 
+    private val _filter = MutableStateFlow<HistoryFilter?>(null)
+
+    /** What the history is narrowed to - null for every download. */
+    val filter: StateFlow<HistoryFilter?> = _filter.asStateFlow()
+
     private val downloads = queue.downloads.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    /** Every download as the list shows it - null until it has been read, so an empty list is never shown for a moment. */
-    val sections: StateFlow<DownloadSections?> = combine(downloads, _query) { all, query ->
+    /** Every download as the lists show it - null until it has been read, so an empty list is never shown for a moment. */
+    val sections: StateFlow<DownloadSections?> = combine(downloads, _query, _filter) { all, query, filter ->
         all ?: return@combine null
-        val matching = if (query.isNullOrBlank()) all else all.filter { it.matches(query.trim()) }
+        val matching = all.filter { (query.isNullOrBlank() || it.matches(query.trim())) && (filter == null || filter.matches(it)) }
         val startOfToday = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0)
             set(Calendar.MINUTE, 0)
@@ -115,6 +137,11 @@ class DownloadViewModel @Inject constructor(
 
     /** How the user downloads - the last kind used, and every change kept, for the next download and a Quick download alike. */
     val choices: StateFlow<DownloadChoices> = settings.choices.stateIn(viewModelScope)
+
+    private val _sheetChoices = MutableStateFlow(settings.choices.value)
+
+    /** How the link open in the sheet is to download: the user's own [choices], as changed for it alone. */
+    val sheetChoices: StateFlow<DownloadChoices> = _sheetChoices.asStateFlow()
 
     private val _options = MutableStateFlow(DownloadOptions())
 
@@ -131,23 +158,34 @@ class DownloadViewModel @Inject constructor(
     /** When the next download is to start - null for as soon as it can. */
     val startAt: StateFlow<Long?> = _startAt.asStateFlow()
 
+    /** The saved commands - kept at hand from the start, as the one preferred is what every link opens with. */
     val commands: StateFlow<List<DownloadCommand>> = dao.observeCommands().map { rows -> rows.map(DownloadCommandEntity::toDomain) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val downloaderState: StateFlow<RuntimeState> = downloader.state
 
-    private val _linkEntry = MutableStateFlow<String?>(null)
+    private val _linkEntry = MutableStateFlow("")
 
-    /** The link being typed in the bar - null while none is. */
-    val linkEntry: StateFlow<String?> = _linkEntry.asStateFlow()
+    /** The link being typed in the link field - emptied as it opens. */
+    val linkEntry: StateFlow<String> = _linkEntry.asStateFlow()
 
     private val _linkSheet = MutableStateFlow<LinkSheet?>(null)
     val linkSheet: StateFlow<LinkSheet?> = _linkSheet.asStateFlow()
 
+    private val _song = MutableStateFlow<VideoSong?>(null)
+
+    /** The song the link open in the sheet is to be saved as, where its sound is saved as a song - found as soon as it is read. */
+    val song: StateFlow<VideoSong?> = _song.asStateFlow()
+
     private var link: String? = null
     private var readJob: Job? = null
 
+    /** The link whose song was looked for - looked for once, whatever the sheet's choices and its read go through. */
+    private var songLookedFor: String? = null
+
     init {
+        // A link is pasted from here: what reading it would wait on first is done now.
+        resolver.warmUp(settings.preferences.value)
         // The downloader got for the link waiting on it: the download it was got for goes on by itself.
         viewModelScope.launch {
             downloader.state.filter { it == RuntimeState.Installed }.collect {
@@ -161,11 +199,13 @@ class DownloadViewModel @Inject constructor(
     /** A link pasted, shared or typed: read, and shown in the sheet. */
     fun open(url: String) {
         link = url
-        _linkEntry.value = null
+        _linkEntry.value = ""
         resetOptions()
         readJob?.cancel()
         resolver.cached(url)?.let {
             _linkSheet.value = LinkSheet.Found(it.info)
+            findSongWhereWanted()
+            readJob = viewModelScope.launch { completeShown(url) }
             return
         }
         _linkSheet.value = LinkSheet.Reading(preview = null)
@@ -195,22 +235,45 @@ class DownloadViewModel @Inject constructor(
             } catch (e: Exception) {
                 LinkSheet.Unreadable(url, failureOf(e), e.message)
             }
+            findSongWhereWanted()
+            completeShown(url)
         }
     }
 
-    /** What the clipboard holds, pasted: its link opened - or, with none, the bar ready to have one typed. */
-    fun onPaste(clipboard: String?) {
-        linkIn(clipboard)?.let(::open) ?: run { _linkEntry.value = "" }
+    /**
+     * The video shown, completed as its download would be - what the app's own read of it leaves to its watch page, its chapters
+     * and its Most replayed graph - and shown so, nothing else of it changing. The download then has nothing left to read.
+     */
+    private suspend fun completeShown(url: String) {
+        val shown = (_linkSheet.value as? LinkSheet.Found)?.info?.takeUnless { it.isPlaylist } ?: return
+        val full = try {
+            resolver.resolveForDownload(url, settings.preferences.value).info
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            return
+        }
+        if (link == url && full.chaptersJson != shown.chaptersJson) _linkSheet.value = LinkSheet.Found(shown.copy(chaptersJson = full.chaptersJson))
     }
 
-    /** The link as typed in the bar - opened as soon as it is one. */
+    /** Looks for the song the video found is, once - where its sound is to be saved as a song. */
+    private fun findSongWhereWanted() {
+        val info = (_linkSheet.value as? LinkSheet.Found)?.info?.takeUnless { it.isPlaylist } ?: return
+        val choices = _sheetChoices.value
+        if (choices.kind != DownloadKind.AUDIO || !choices.savesAsSong || songLookedFor == link) return
+        songLookedFor = link
+        _song.value?.close()
+        // YouTube Music names the song itself; any other video is read by its title and channel.
+        _song.value = SongTagging.songFor(info.track ?: info.title, info.artist ?: info.uploader, info.durationSeconds, info.thumbnailUrl, viewModelScope)
+    }
+
+    /** What the clipboard holds, pasted: its link opened. Whether it held one - with none, one is typed instead. */
+    fun onPaste(clipboard: String?): Boolean = linkIn(clipboard)?.also(::open) != null
+
+    /** The link as typed in the link field - opened as soon as it is one. */
     fun onLinkEntryChange(text: String) {
         _linkEntry.value = text
         linkIn(text)?.let(::open)
-    }
-
-    fun onLinkEntryClose() {
-        _linkEntry.value = null
     }
 
     fun onDismissLink() {
@@ -221,20 +284,23 @@ class DownloadViewModel @Inject constructor(
     }
 
     /**
-     * Downloads the link - or the playlist's [entries] picked - as [kind], kept as the kind to start from next time. Where it
-     * needs the downloader and the downloader is not here, the sheet offers it instead.
+     * Downloads the link - or the playlist's [entries] picked - as the sheet's choices say, as [kind]: kept as the kind to start
+     * from next time. Where it needs the downloader and the downloader is not here, the sheet offers it instead.
      */
-    fun onDownload(kind: DownloadKind, entries: List<PlaylistEntry>? = null) {
+    fun onDownload(kind: DownloadKind = _sheetChoices.value.kind, entries: List<PlaylistEntry>? = null) {
         val url = link ?: return
         val info = (_linkSheet.value as? LinkSheet.Found)?.info ?: (_linkSheet.value as? LinkSheet.NeedsDownloader)?.info
-        val chosen = choices.value.copy(kind = kind)
-        if (chosen != choices.value) viewModelScope.launch { settings.setChoices(chosen) }
+        val chosen = _sheetChoices.value.copy(kind = kind)
+        if (kind != choices.value.kind) remember { it.copy(kind = kind) }
         if (downloader.state.value != RuntimeState.Installed && !(info != null && savesWithoutDownloader(info, chosen))) {
             val savesAsAudio = info != null && kind == DownloadKind.VIDEO && savesWithoutDownloader(info, chosen.copy(kind = DownloadKind.AUDIO))
             _linkSheet.value = LinkSheet.NeedsDownloader(url, info, kind, savesAsAudio)
             return
         }
-        val options = _options.value.copy(formatId = _pickedFormat.value?.takeIf { it.hasVideo == (kind == DownloadKind.VIDEO) }?.selector)
+        val options = _options.value.copy(
+            formatId = _pickedFormat.value?.takeIf { it.hasVideo == (kind == DownloadKind.VIDEO) }?.selector,
+            song = _song.value?.takeIf { kind == DownloadKind.AUDIO && chosen.savesAsSong }?.plan,
+        )
         val requests = entries?.map { DownloadRequest(it.url, it.title, it.thumbnailUrl, it.uploader, chosen, options.copy(formatId = null)) }
             ?: listOf(DownloadRequest(url, info?.title, info?.thumbnailUrl, info?.uploader, chosen, options))
         queue.add(requests, _startAt.value)
@@ -258,8 +324,44 @@ class DownloadViewModel @Inject constructor(
 
     fun onGetDownloader() = downloader.download()
 
-    fun onChoicesChange(choices: DownloadChoices) {
-        viewModelScope.launch { settings.setChoices(choices) }
+    /** The sheet's choices as [change] makes them - for this download alone, or, [forEveryDownload], kept as the user's own too. */
+    fun onSheetChoicesChange(forEveryDownload: Boolean = false, change: (DownloadChoices) -> DownloadChoices) {
+        _sheetChoices.value = change(_sheetChoices.value)
+        if (forEveryDownload) remember(change)
+        findSongWhereWanted()
+    }
+
+    /**
+     * The sound in [language] for this download - null for the one recorded. [alwaysOriginal] keeps the one recorded as what
+     * every download takes; else this language, where a video has it.
+     */
+    fun onAudioTrackChange(language: String?, alwaysOriginal: Boolean) {
+        _sheetChoices.value = _sheetChoices.value.copy(audioLanguage = language)
+        remember { it.copy(audioLanguage = if (alwaysOriginal) null else language) }
+    }
+
+    /**
+     * The captions [codes] picked for this download - none while empty - saved as files beside it where [asFile]. Whether to
+     * take captions, and how, is kept for every download.
+     */
+    fun onSubtitlesChange(codes: List<String>, asFile: Boolean) {
+        _options.value = _options.value.copy(subtitleLanguages = codes)
+        onSheetChoicesChange(forEveryDownload = true) { it.copy(captions = codes.isNotEmpty(), subtitlesAsFile = asFile) }
+    }
+
+    /** [kind] saved in the folder of Download [name] says - this download, and every one after it. */
+    fun onFolderChange(kind: DownloadKind, name: String) {
+        viewModelScope.launch { settings.updatePreferences { it.withFolder(kind, name) } }
+    }
+
+    /** Downloads waiting for Wi-Fi, or any network that is not metered - this one, and every one after it. */
+    fun onWifiOnlyChange(wifiOnly: Boolean) {
+        viewModelScope.launch { settings.updatePreferences { it.copy(wifiOnly = wifiOnly) } }
+    }
+
+    /** Keeps the user's own choices as [change] makes them. */
+    private fun remember(change: (DownloadChoices) -> DownloadChoices) {
+        viewModelScope.launch { settings.setChoices(change(settings.choices.value)) }
     }
 
     fun onPickFormat(format: MediaFormat?) {
@@ -283,7 +385,11 @@ class DownloadViewModel @Inject constructor(
     }
 
     private fun resetOptions() {
-        _options.value = DownloadOptions()
+        _song.value?.close()
+        songLookedFor = null
+        _song.value = null
+        _sheetChoices.value = settings.choices.value
+        _options.value = DownloadOptions(commandArguments = link?.let { commands.value.preferredFor(it)?.arguments })
         _pickedFormat.value = null
         _startAt.value = null
     }
@@ -291,6 +397,14 @@ class DownloadViewModel @Inject constructor(
     fun onQueryChange(query: String?) {
         _query.value = query
     }
+
+    /** The history narrowed to [filter] - or, picked again, widened back to every download. */
+    fun onFilterChange(filter: HistoryFilter) {
+        _filter.value = filter.takeUnless { it == _filter.value }
+    }
+
+    /** Takes everything over off the history - their files stay where they were saved. */
+    suspend fun onClearHistory() = queue.clearHistory()
 
     fun onCancel(ids: Collection<Long>) = queue.cancel(ids)
 

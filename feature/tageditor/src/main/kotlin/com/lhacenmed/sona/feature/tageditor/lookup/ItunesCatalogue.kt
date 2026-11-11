@@ -42,6 +42,7 @@ internal object ItunesCatalogue : Catalogue {
             coverUrl = CoverSizes.fullOf(artwork),
             thumbnailUrl = CoverSizes.thumbnailOf(artwork),
             catalogue = name,
+            durationSeconds = optLong("trackTimeMillis").takeIf { it > 0 }?.div(1000),
         )
     }
 }

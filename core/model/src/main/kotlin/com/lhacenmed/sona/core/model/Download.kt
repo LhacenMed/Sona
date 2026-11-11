@@ -52,10 +52,24 @@ data class DownloadChoices(
     val videoQuality: VideoQuality = VideoQuality.P1080,
     val videoFormat: VideoFormat = VideoFormat.QUALITY,
     val audioFormat: AudioFormat = AudioFormat.ORIGINAL,
-    /** A video's captions in the device's language and English, saved beside it, where it has any. */
+    /** A video's captions - in the device's language and English, unless [DownloadOptions.subtitleLanguages] picks others. */
     val captions: Boolean = true,
     /** The parts [DownloaderPreferences.sponsorSegments] names cut out, as SponsorBlock's community marks them. */
     val skipSponsors: Boolean = false,
+    /**
+     * The language of the sound kept, as its site names it - "es" - where a video has its sound in more than one: dubbed, or
+     * described. The one it was recorded in while null, or where it has none in this language.
+     */
+    val audioLanguage: String? = null,
+    /** Captions saved as files beside the video, rather than as tracks in it. */
+    val subtitlesAsFile: Boolean = false,
+    /** Sound saved as the song it is - found in the music catalogues, and tagged, covered and given lyrics as that song. */
+    val savesAsSong: Boolean = true,
+    /**
+     * The cover kept as a picture of its own too, beside the file - the one in it: a sound always has its cover in its file, its
+     * song's where it is saved as one, else the video's picture; a video is its own picture.
+     */
+    val savesCover: Boolean = false,
 )
 
 /** A stretch of a video downloaded alone, from [startSeconds] to [endSeconds]. */
@@ -70,18 +84,36 @@ data class DownloadOptions(
     val splitChapters: Boolean = false,
     /** A saved command's yt-dlp arguments, given after everything else - see [DownloadCommand]. */
     val commandArguments: String? = null,
+    /**
+     * The captions picked from the video's own, by their codes as its read names them - none while empty. Null leaves it to the
+     * captions [DownloadChoices.captions] would take.
+     */
+    val subtitleLanguages: List<String>? = null,
+    /**
+     * The song picked for a sound [DownloadChoices.savesAsSong] - its tags, cover and lyrics, as the tag editor keeps them. Null
+     * leaves it to the song the file's own names surely are.
+     */
+    val song: String? = null,
 )
 
 /** How every file is named, yt-dlp's way: its title, cut to fit, and its id. */
 const val DEFAULT_FILE_NAME_TEMPLATE = "%(title).150B [%(id)s].%(ext)s"
+
+/**
+ * The folder downloads are saved in until another is picked - as every folder is kept: its path on the device's own storage,
+ * or, on another - a memory card - its whole path.
+ */
+const val DEFAULT_DOWNLOAD_FOLDER = "Download/Sona"
 
 /** How downloading works, whatever is downloaded - the Downloads settings. */
 data class DownloaderPreferences(
     val downloadsAtOnce: Int = 2,
     /** Downloads wait for Wi-Fi, or any network that is not metered. */
     val wifiOnly: Boolean = false,
-    /** The folder of the device's Download that files are saved in. */
-    val folderName: String = "Sona",
+    /** The folder sound is saved in - "Music", "Download/Sona" - see [DEFAULT_DOWNLOAD_FOLDER]. */
+    val audioFolder: String = DEFAULT_DOWNLOAD_FOLDER,
+    /** The folder videos are saved in. */
+    val videoFolder: String = DEFAULT_DOWNLOAD_FOLDER,
     val fileNameTemplate: String = DEFAULT_FILE_NAME_TEMPLATE,
     val sponsorSegments: Set<SponsorSegment> = setOf(
         SponsorSegment.SPONSOR,
@@ -97,7 +129,16 @@ data class DownloaderPreferences(
     val usesCookies: Boolean = false,
     /** What was downloaded once is not downloaded again, by its id at its site. */
     val usesArchive: Boolean = false,
-)
+) {
+    /** The folder [kind] is saved in. */
+    fun folderFor(kind: DownloadKind): String = if (kind == DownloadKind.AUDIO) audioFolder else videoFolder
+
+    /** These preferences, [kind] saved in [folder] - see [DEFAULT_DOWNLOAD_FOLDER] - the default where it names none. */
+    fun withFolder(kind: DownloadKind, folder: String): DownloaderPreferences {
+        val path = folder.trim().trimEnd('/').ifEmpty { DEFAULT_DOWNLOAD_FOLDER }
+        return if (kind == DownloadKind.AUDIO) copy(audioFolder = path) else copy(videoFolder = path)
+    }
+}
 
 /** Where a download stands. */
 enum class DownloadStatus {
@@ -149,8 +190,34 @@ data class Download(
     val startAt: Long?,
 )
 
-/** A saved set of yt-dlp arguments, given to a download that picks it - YTDLnis's command templates. */
-data class DownloadCommand(val id: Long, val name: String, val arguments: String)
+/**
+ * A saved set of yt-dlp arguments - YTDLnis's command templates: given to a download that picks it, and by itself - beside the
+ * one picked - to every download of the kinds it [addsToAudio] and [addsToVideo], and to every read of a link with yt-dlp it
+ * [addsToReading]. One [isPreferred] is picked for every download to begin with. Each is only for the links its
+ * [urlPatterns] match - every link while it has none.
+ */
+data class DownloadCommand(
+    val id: Long,
+    val name: String,
+    val arguments: String,
+    val addsToAudio: Boolean = false,
+    val addsToVideo: Boolean = false,
+    val addsToReading: Boolean = false,
+    val isPreferred: Boolean = false,
+    val urlPatterns: List<String> = emptyList(),
+) {
+    /** Whether it is for [url]. */
+    fun isFor(url: String): Boolean = urlPatterns.isEmpty() || urlPatterns.any { runCatching { Regex(it).containsMatchIn(url) }.getOrDefault(false) }
+
+    /** Whether a download of [url] as [kind] is given it by itself. */
+    fun addsTo(kind: DownloadKind, url: String): Boolean = (if (kind == DownloadKind.AUDIO) addsToAudio else addsToVideo) && isFor(url)
+}
+
+/** The command a download of [url] is given to begin with: the first preferred one that is for it. */
+fun List<DownloadCommand>.preferredFor(url: String): DownloadCommand? = firstOrNull { it.isPreferred && it.isFor(url) }
+
+/** A snippet of yt-dlp arguments, inserted while a command is written - YTDLnis's template shortcuts. */
+data class DownloadCommandShortcut(val id: Long, val content: String)
 
 /** A channel or playlist whose new videos are downloaded as they appear - YTDLnis's observed sources. */
 data class DownloadWatch(

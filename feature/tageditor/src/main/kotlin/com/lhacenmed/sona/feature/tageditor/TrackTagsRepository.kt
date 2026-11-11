@@ -87,7 +87,7 @@ class TrackTagsRepository @Inject constructor(
             when (choice) {
                 CoverChoice.Own -> null
                 is CoverChoice.Web -> checkNotNull(Http.bytes(choice.url)) { "The cover could not be downloaded" }
-                is CoverChoice.Device -> deviceCover(Uri.parse(choice.uri))
+                is CoverChoice.Device -> scaledCoverOf(context, Uri.parse(choice.uri))
             }
         }
 
@@ -162,30 +162,30 @@ class TrackTagsRepository @Inject constructor(
         if (tracks.any { it.isManuallyScanned }) mediaScanner.rescan() else mediaScanner.refresh()
     }
 
-    /** The picture at [uri] as a JPEG no larger than [DeviceCoverMaxSidePx] - a photo is many times what a cover needs. */
-    private fun deviceCover(uri: Uri): ByteArray {
-        val resolver = context.contentResolver
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        resolver.openInputStream(uri).use { BitmapFactory.decodeStream(it, null, bounds) }
-        var sampleSize = 1
-        while (maxOf(bounds.outWidth, bounds.outHeight) / (sampleSize * 2) >= DeviceCoverMaxSidePx) sampleSize *= 2
-        val sampled = resolver.openInputStream(uri).use {
-            BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sampleSize })
-        } ?: error("The picture could not be read")
-        val scale = DeviceCoverMaxSidePx.toFloat() / maxOf(sampled.width, sampled.height)
-        val cover = if (scale < 1f) {
-            Bitmap.createScaledBitmap(sampled, (sampled.width * scale).toInt(), (sampled.height * scale).toInt(), true)
-        } else {
-            sampled
-        }
-        return ByteArrayOutputStream().use { output ->
-            cover.compress(Bitmap.CompressFormat.JPEG, DeviceCoverJpegQuality, output)
-            output.toByteArray()
-        }
-    }
-
     /** Has Android read the file again, so MediaStore - which the library follows - carries its new tags. */
     private suspend fun scanFile(path: String) = suspendCancellableCoroutine { continuation ->
         MediaScannerConnection.scanFile(context, arrayOf(path), null) { _, _ -> continuation.resume(Unit) }
+    }
+}
+
+/** The picture at [uri] as a JPEG no larger than [DeviceCoverMaxSidePx] - a photo is many times what a cover needs. */
+internal fun scaledCoverOf(context: Context, uri: Uri): ByteArray {
+    val resolver = context.contentResolver
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    resolver.openInputStream(uri).use { BitmapFactory.decodeStream(it, null, bounds) }
+    var sampleSize = 1
+    while (maxOf(bounds.outWidth, bounds.outHeight) / (sampleSize * 2) >= DeviceCoverMaxSidePx) sampleSize *= 2
+    val sampled = resolver.openInputStream(uri).use {
+        BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sampleSize })
+    } ?: error("The picture could not be read")
+    val scale = DeviceCoverMaxSidePx.toFloat() / maxOf(sampled.width, sampled.height)
+    val cover = if (scale < 1f) {
+        Bitmap.createScaledBitmap(sampled, (sampled.width * scale).toInt(), (sampled.height * scale).toInt(), true)
+    } else {
+        sampled
+    }
+    return ByteArrayOutputStream().use { output ->
+        cover.compress(Bitmap.CompressFormat.JPEG, DeviceCoverJpegQuality, output)
+        output.toByteArray()
     }
 }

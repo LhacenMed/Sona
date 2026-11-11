@@ -19,10 +19,12 @@ import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDia
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.core.downloader.RuntimeState
 import com.lhacenmed.sona.core.model.DEFAULT_FILE_NAME_TEMPLATE
+import com.lhacenmed.sona.core.model.DownloadKind
 import com.lhacenmed.sona.core.model.SponsorSegment
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.download.labelRes
+import com.lhacenmed.sona.feature.download.rememberDownloadFolderPicker
 import com.lhacenmed.sona.feature.download.tools.CommandsScreen
 import com.lhacenmed.sona.feature.download.tools.CookiesScreen
 import com.lhacenmed.sona.feature.download.tools.TerminalScreen
@@ -100,12 +102,13 @@ data object DownloadsSettingsScreen : Screen {
                 )
             }
             SettingsSection(stringResource(R.string.downloads_settings_files_section)) {
-                TextSettingRow(
-                    title = stringResource(R.string.downloads_settings_folder_title),
-                    value = preferences.folderName,
-                    summary = stringResource(R.string.downloads_settings_folder_summary, preferences.folderName),
-                    onChange = { name -> viewModel.updatePreferences { it.copy(folderName = name.trim('/', ' ').ifEmpty { "Sona" }) } },
-                )
+                listOf(
+                    DownloadKind.AUDIO to R.string.downloads_settings_audio_folder_title,
+                    DownloadKind.VIDEO to R.string.downloads_settings_video_folder_title,
+                ).forEach { (kind, title) ->
+                    val pickFolder = rememberDownloadFolderPicker { folder -> viewModel.updatePreferences { it.withFolder(kind, folder) } }
+                    SonaSettingsRow(title = stringResource(title), summary = preferences.folderFor(kind), onClick = pickFolder)
+                }
                 TextSettingRow(
                     title = stringResource(R.string.downloads_settings_file_names_title),
                     value = preferences.fileNameTemplate,

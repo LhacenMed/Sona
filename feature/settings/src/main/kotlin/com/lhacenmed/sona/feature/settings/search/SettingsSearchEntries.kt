@@ -223,7 +223,8 @@ internal val SettingsSearchEntries: List<SettingsSearchEntry> = with(SettingsCat
         settingsRow(DownloadR.string.downloads_settings_wifi_only_title, DownloadR.string.downloads_settings_wifi_only_summary),
     ) + section(
         DownloadR.string.downloads_settings_files_section,
-        settingsRow(DownloadR.string.downloads_settings_folder_title),
+        settingsRow(DownloadR.string.downloads_settings_audio_folder_title),
+        settingsRow(DownloadR.string.downloads_settings_video_folder_title),
         settingsRow(DownloadR.string.downloads_settings_file_names_title),
         settingsRow(DownloadR.string.downloads_settings_segments_title),
         settingsRow(DownloadR.string.downloads_settings_archive_title, DownloadR.string.downloads_settings_archive_summary),

@@ -22,10 +22,20 @@ private val VIDEO_FORMAT = stringPreferencesKey("download_video_format")
 private val AUDIO_FORMAT = stringPreferencesKey("download_audio_format")
 private val CAPTIONS = booleanPreferencesKey("download_captions")
 private val SKIP_SPONSORS = booleanPreferencesKey("download_skip_sponsors")
+private val AUDIO_LANGUAGE = stringPreferencesKey("download_audio_language")
+private val SUBTITLES_AS_FILE = booleanPreferencesKey("download_subtitles_as_file")
+private val SAVES_AS_SONG = booleanPreferencesKey("download_saves_as_song")
+private val SAVES_COVER = booleanPreferencesKey("download_saves_cover")
 
 private val DOWNLOADS_AT_ONCE = intPreferencesKey("download_at_once")
 private val WIFI_ONLY = booleanPreferencesKey("download_wifi_only")
+/** The one folder of Download both kinds were saved in before each had its own: what each starts from. */
 private val FOLDER_NAME = stringPreferencesKey("download_folder_name")
+/** The folder of Download each kind was saved in before any folder could be picked: what each starts from. */
+private val AUDIO_FOLDER_NAME = stringPreferencesKey("download_audio_folder")
+private val VIDEO_FOLDER_NAME = stringPreferencesKey("download_video_folder")
+private val AUDIO_FOLDER = stringPreferencesKey("download_audio_path")
+private val VIDEO_FOLDER = stringPreferencesKey("download_video_path")
 private val FILE_NAME_TEMPLATE = stringPreferencesKey("download_file_name_template")
 private val SPONSOR_SEGMENTS = stringSetPreferencesKey("download_sponsor_segments")
 private val PROXY = stringPreferencesKey("download_proxy")
@@ -53,6 +63,10 @@ class DownloadSettings @Inject constructor(
             audioFormat = preferences.enum(AUDIO_FORMAT, defaults.audioFormat),
             captions = preferences[CAPTIONS] ?: defaults.captions,
             skipSponsors = preferences[SKIP_SPONSORS] ?: defaults.skipSponsors,
+            audioLanguage = preferences[AUDIO_LANGUAGE] ?: defaults.audioLanguage,
+            subtitlesAsFile = preferences[SUBTITLES_AS_FILE] ?: defaults.subtitlesAsFile,
+            savesAsSong = preferences[SAVES_AS_SONG] ?: defaults.savesAsSong,
+            savesCover = preferences[SAVES_COVER] ?: defaults.savesCover,
         )
     }
 
@@ -61,7 +75,8 @@ class DownloadSettings @Inject constructor(
         DownloaderPreferences(
             downloadsAtOnce = preferences[DOWNLOADS_AT_ONCE] ?: defaults.downloadsAtOnce,
             wifiOnly = preferences[WIFI_ONLY] ?: defaults.wifiOnly,
-            folderName = preferences[FOLDER_NAME] ?: defaults.folderName,
+            audioFolder = preferences[AUDIO_FOLDER] ?: (preferences[AUDIO_FOLDER_NAME] ?: preferences[FOLDER_NAME])?.let(::inDownload) ?: defaults.audioFolder,
+            videoFolder = preferences[VIDEO_FOLDER] ?: (preferences[VIDEO_FOLDER_NAME] ?: preferences[FOLDER_NAME])?.let(::inDownload) ?: defaults.videoFolder,
             fileNameTemplate = preferences[FILE_NAME_TEMPLATE] ?: defaults.fileNameTemplate,
             sponsorSegments = preferences[SPONSOR_SEGMENTS]
                 ?.mapNotNull { id -> SponsorSegment.entries.firstOrNull { it.id == id } }?.toSet()
@@ -81,6 +96,10 @@ class DownloadSettings @Inject constructor(
             it[AUDIO_FORMAT] = choices.audioFormat.name
             it[CAPTIONS] = choices.captions
             it[SKIP_SPONSORS] = choices.skipSponsors
+            choices.audioLanguage?.let { language -> it[AUDIO_LANGUAGE] = language } ?: it.remove(AUDIO_LANGUAGE)
+            it[SUBTITLES_AS_FILE] = choices.subtitlesAsFile
+            it[SAVES_AS_SONG] = choices.savesAsSong
+            it[SAVES_COVER] = choices.savesCover
         }
     }
 
@@ -92,7 +111,8 @@ class DownloadSettings @Inject constructor(
     private fun MutablePreferences.write(preferences: DownloaderPreferences) {
         this[DOWNLOADS_AT_ONCE] = preferences.downloadsAtOnce
         this[WIFI_ONLY] = preferences.wifiOnly
-        this[FOLDER_NAME] = preferences.folderName
+        this[AUDIO_FOLDER] = preferences.audioFolder
+        this[VIDEO_FOLDER] = preferences.videoFolder
         this[FILE_NAME_TEMPLATE] = preferences.fileNameTemplate
         this[SPONSOR_SEGMENTS] = preferences.sponsorSegments.map { it.id }.toSet()
         this[PROXY] = preferences.proxy
@@ -101,3 +121,6 @@ class DownloadSettings @Inject constructor(
         this[USES_ARCHIVE] = preferences.usesArchive
     }
 }
+
+/** A folder named within Download, as folders were before any could be picked, as every folder is kept now. */
+private fun inDownload(name: String): String = "Download/" + name.trim('/', ' ')

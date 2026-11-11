@@ -53,7 +53,11 @@ class DirectTransfer @Inject constructor() {
                     AudioFormat.M4A -> setOf("m4a")
                     else -> return null
                 }
-                val candidates = info.formats.filter { !it.hasVideo && it.hasAudio && it.directUrl != null && it.extension in containers }
+                // In the language asked for, where the video has more than one sound - else the one recorded.
+                val language = info.audioLanguageFor(choices.audioLanguage)
+                val candidates = info.formats.filter {
+                    !it.hasVideo && it.hasAudio && it.directUrl != null && it.extension in containers && (language == null || it.audioTrack?.language == language)
+                }
                 options.formatId?.let { id -> candidates.firstOrNull { it.id == id } } ?: candidates.maxByOrNull { it.bitrateKbps ?: 0 }
             }
 
@@ -70,8 +74,17 @@ class DirectTransfer @Inject constructor() {
         }
     }
 
-    /** Downloads [format] of [info] into [outputDir] by way of [partFile], tagging it, and says the file saved to [onEvent]. */
-    suspend fun download(info: MediaInfo, format: MediaFormat, partFile: File, outputDir: File, onEvent: (DownloadEvent) -> Unit) = withContext(Dispatchers.IO) {
+    /**
+     * Downloads [format] of [info] into [outputDir] by way of [partFile], tagging it - a song with its cover - and says the file
+     * saved to [onEvent].
+     */
+    suspend fun download(
+        info: MediaInfo,
+        format: MediaFormat,
+        partFile: File,
+        outputDir: File,
+        onEvent: (DownloadEvent) -> Unit,
+    ) = withContext(Dispatchers.IO) {
         val url = checkNotNull(format.directUrl)
         val total = fetch(url, format.headers, partFile, onEvent)
         outputDir.mkdirs()

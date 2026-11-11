@@ -20,7 +20,8 @@ class DownloadedExtras(
  * Sona's copy of the chapters, read as tags are rather than out of each format's own chapter list. Each tag holds what
  * yt-dlp gave, as it gave it.
  *
- * The library reads them back into its index - see the scanner's `VideoExtras` - so the file is all there is to keep.
+ * The library reads them back into its index - see the scanner's `VideoExtras` - and the player reads a Private Folder video's
+ * from its file itself, so the file is all there is to keep, wherever it is moved.
  */
 object EmbeddedExtras {
     private const val HEATMAP = "HEATMAP"

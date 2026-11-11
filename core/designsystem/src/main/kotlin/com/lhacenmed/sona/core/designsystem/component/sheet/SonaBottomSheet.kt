@@ -93,8 +93,19 @@ fun SonaColumnBottomSheet(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.(SonaBottomSheetScope) -> Unit,
 ) {
+    SonaColumnBottomSheet(onDismissRequest = onDismissRequest, modifier = modifier, header = { SheetTitle(title) }, content = content)
+}
+
+/** The same sheet, with [header] standing in for the plain title - as [SonaBottomSheet]'s does. */
+@Composable
+fun SonaColumnBottomSheet(
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+    header: @Composable () -> Unit,
+    content: @Composable ColumnScope.(SonaBottomSheetScope) -> Unit,
+) {
     SheetFrame(onDismissRequest, modifier) { sheetScope ->
-        SheetTitle(title)
+        header()
         content(sheetScope)
     }
 }

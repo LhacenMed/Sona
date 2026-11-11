@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.lhacenmed.sona.core.downloader.AudioTrackKind
 import com.lhacenmed.sona.core.downloader.MediaFormat
 import com.lhacenmed.sona.core.model.AudioFormat
 import com.lhacenmed.sona.core.model.DownloadFailure
@@ -21,6 +22,7 @@ import com.lhacenmed.sona.core.model.DownloadKind
 import com.lhacenmed.sona.core.model.SponsorSegment
 import com.lhacenmed.sona.core.model.VideoFormat
 import com.lhacenmed.sona.core.model.VideoQuality
+import java.util.Locale
 
 /** The one place each of the downloader's choices is named - the download screen's and the Downloads settings' alike. */
 internal val DownloadKind.labelRes: Int
@@ -110,6 +112,31 @@ internal val DownloadFailure.presentation: FailurePresentation
             R.string.download_failed, R.string.download_failure_other, R.string.download_failure_other_message, Icons.Filled.ErrorOutline, FailureFix.TRY_AGAIN,
         )
     }
+
+internal val AudioTrackKind.labelRes: Int
+    get() = when (this) {
+        AudioTrackKind.ORIGINAL -> R.string.download_track_original
+        AudioTrackKind.DUBBED -> R.string.download_track_dubbed
+        AudioTrackKind.DESCRIPTIVE -> R.string.download_track_descriptive
+    }
+
+/** What a sound is, told under its language in the audio track picker. */
+internal val AudioTrackKind.summaryRes: Int
+    get() = if (this == AudioTrackKind.ORIGINAL) R.string.download_track_original_summary else labelRes
+
+/** A language as the user reads it, in their own - "Spanish (Mexico)" - from a site's code, "es-MX"; a described sound's, "en-desc", as its language's. */
+internal fun languageName(code: String): String {
+    val locale = Locale.forLanguageTag(code.removeSuffix("-desc"))
+    return locale.getDisplayName(Locale.getDefault()).takeIf { it.isNotBlank() && it != code }
+        ?.replaceFirstChar { it.titlecase(Locale.getDefault()) } ?: code
+}
+
+/** The languages captions can be translated into, as their codes: the device's and English first, then the rest by name. */
+internal fun translatableLanguages(): List<String> {
+    val first = listOf(Locale.getDefault().language, "en").distinct()
+    val rest = Locale.getISOLanguages().filter { it !in first && languageName(it) != it }.sortedBy(::languageName)
+    return first + rest
+}
 
 /** "1080p60 · avc1 · 120 MB", "M4A · 128 kbps · 4 MB" - what tells one format from another. */
 internal fun MediaFormat.facts(context: Context): String = listOfNotNull(

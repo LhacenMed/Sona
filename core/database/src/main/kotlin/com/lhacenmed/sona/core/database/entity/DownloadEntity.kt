@@ -44,6 +44,15 @@ data class DownloadEntity(
     @ColumnInfo(defaultValue = "0") val sizeBytes: Long = 0,
     val finishedAt: Long? = null,
     val startAt: Long? = null,
+    val audioLanguage: String? = null,
+    @ColumnInfo(defaultValue = "0") val subtitlesAsFile: Boolean = false,
+    /** The captions picked, one code a line - none while empty, left to the choices while null. */
+    val subtitleLanguages: String? = null,
+    @ColumnInfo(defaultValue = "0") val savesAsSong: Boolean = false,
+    val song: String? = null,
+    /** No longer read: a sound always has its cover in its file now. Kept, as users' databases have it. */
+    @ColumnInfo(defaultValue = "1") val embedsCover: Boolean = true,
+    @ColumnInfo(defaultValue = "0") val savesCover: Boolean = false,
 )
 
 fun DownloadEntity.toDomain() = Download(
@@ -57,12 +66,18 @@ fun DownloadEntity.toDomain() = Download(
         videoFormat = enumOr(videoFormat, VideoFormat.QUALITY),
         captions = captions,
         skipSponsors = skipSponsors,
+        audioLanguage = audioLanguage,
+        subtitlesAsFile = subtitlesAsFile,
+        savesAsSong = savesAsSong,
+        savesCover = savesCover,
     ),
     options = DownloadOptions(
         formatId = formatId,
         clip = if (clipStart != null && clipEnd != null) ClipRange(clipStart, clipEnd) else null,
         splitChapters = splitChapters,
         commandArguments = commandArguments,
+        subtitleLanguages = subtitleLanguages?.lines()?.filter(String::isNotEmpty),
+        song = song,
     ),
     // One running as the app was last stopped never finished: it is taken up again.
     status = enumOr(status, DownloadStatus.QUEUED).let { if (it == DownloadStatus.RUNNING) DownloadStatus.QUEUED else it },
@@ -109,6 +124,12 @@ fun queuedDownload(
     thumbnailUrl = thumbnailUrl,
     uploader = uploader,
     startAt = startAt,
+    audioLanguage = choices.audioLanguage,
+    subtitlesAsFile = choices.subtitlesAsFile,
+    subtitleLanguages = options.subtitleLanguages?.joinToString("\n"),
+    savesAsSong = choices.savesAsSong,
+    song = options.song,
+    savesCover = choices.savesCover,
 )
 
 private inline fun <reified T : Enum<T>> enumOr(name: String, default: T): T = enumValues<T>().firstOrNull { it.name == name } ?: default

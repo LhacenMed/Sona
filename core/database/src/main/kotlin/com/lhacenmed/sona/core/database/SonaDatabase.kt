@@ -33,6 +33,7 @@ import com.lhacenmed.sona.core.database.entity.AlbumEntity
 import com.lhacenmed.sona.core.database.entity.ArrangementEntity
 import com.lhacenmed.sona.core.database.entity.ArtistEntity
 import com.lhacenmed.sona.core.database.entity.DownloadCommandEntity
+import com.lhacenmed.sona.core.database.entity.DownloadCommandShortcutEntity
 import com.lhacenmed.sona.core.database.entity.DownloadEntity
 import com.lhacenmed.sona.core.database.entity.DownloadWatchEntity
 import com.lhacenmed.sona.core.database.entity.FavoriteCollectionEntity
@@ -76,9 +77,10 @@ import com.lhacenmed.sona.core.database.entity.VideoSubtitleEntity
         VideoChapterEntity::class,
         VideoExtraReadEntity::class,
         DownloadCommandEntity::class,
+        DownloadCommandShortcutEntity::class,
         DownloadWatchEntity::class,
     ],
-    version = 31,
+    version = 35,
     exportSchema = true,
 )
 @TypeConverters(CoverArtUrisConverter::class, ArtistIdsConverter::class)

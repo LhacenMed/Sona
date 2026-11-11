@@ -2,6 +2,7 @@ package com.lhacenmed.sona.core.downloader
 
 import android.content.Context
 import com.lhacenmed.sona.core.model.DownloadChoices
+import com.lhacenmed.sona.core.model.DownloadKind
 import com.lhacenmed.sona.core.model.DownloadOptions
 import com.lhacenmed.sona.core.model.DownloaderPreferences
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -51,9 +52,13 @@ class YtDlp @Inject constructor(
     @ApplicationContext private val context: Context,
     private val runtime: DownloaderRuntime,
 ) {
-    /** [url], read into yt-dlp's info JSON - one video with its formats, or a playlist with its videos. */
-    internal suspend fun infoJson(url: String, preferences: DownloaderPreferences): JSONObject =
-        JSONObject(run(listOf("-J", "--flat-playlist", "--no-playlist") + preferences.networkArguments(runtime) + url))
+    /**
+     * [url], read into yt-dlp's info JSON - one video with its formats and every caption it has, or a playlist with its
+     * videos - given [extraArguments] beside its own. YouTube's translated captions are listed only where yt-dlp is told it
+     * may write them.
+     */
+    internal suspend fun infoJson(url: String, preferences: DownloaderPreferences, extraArguments: List<String>): JSONObject =
+        JSONObject(run(listOf("-J", "--flat-playlist", "--no-playlist", "--write-auto-subs") + preferences.networkArguments(runtime) + extraArguments + url))
 
     /** Downloads [source] with [choices], [options] and [preferences] into [outputDir], saying what it does to [onEvent] as it goes. */
     suspend fun download(
@@ -66,9 +71,21 @@ class YtDlp @Inject constructor(
     ) {
         val tempDir = File(context.cacheDir, "downloads").apply { mkdirs() }
         val target = source.infoJson?.let { listOf("--load-info-json", it.path) } ?: listOf(source.url)
-        val arguments = choices.toArguments(options, preferences, Locale.getDefault().language, decodesAv1InHardware(choices.videoQuality.height)) +
+        val read = source.infoJson?.let { JSONObject(it.readText()) }
+        val wantsCaptions = choices.kind == DownloadKind.VIDEO && choices.captions
+        // The translations picked are made first, and listed in the read yt-dlp is handed as files of their own.
+        val picked = options.subtitleLanguages?.takeIf { wantsCaptions }?.let { CaptionTranslation.make(read, it, File(tempDir, "captions")) }
+        val hasTranslations = read != null && picked != null && picked != options.subtitleLanguages
+        if (hasTranslations) source.infoJson?.writeText(read.toString())
+        val captionLanguages = when {
+            !wantsCaptions -> null
+            picked != null -> exactCaptionLanguages(picked)
+            else -> captionLanguagesOf(read, Locale.getDefault().language)
+        }
+        val arguments = choices.toArguments(options, preferences, captionLanguages, decodesAv1InHardware(choices.videoQuality.height)) +
             preferences.networkArguments(runtime) +
             downloadArguments(outputDir.path, tempDir.path, preferences.fileNameTemplate, options.splitChapters) +
+            (if (hasTranslations) listOf("--enable-file-urls") else emptyList()) +
             options.commandArguments?.let(::splitArguments).orEmpty() +
             target
         run(arguments, onLine = { line -> parseLine(line)?.let(onEvent) })

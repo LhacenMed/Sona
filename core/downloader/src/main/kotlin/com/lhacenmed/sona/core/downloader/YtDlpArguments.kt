@@ -18,13 +18,14 @@ private const val SquareCover = "ThumbnailsConvertor+ffmpeg_o:-c:v mjpeg -vf cro
 
 /**
  * What yt-dlp is told to download with these choices, [options] and [preferences] - the one place each becomes yt-dlp's, so a
- * choice added is a line added here. [captionLanguage] is the device's language, whose captions are kept with English's.
- * [decodesAv1InHardware] is whether the device decodes AV1 in hardware at the quality chosen, which a video's format asks.
+ * choice added is a line added here. [captionLanguages] is which of a video's captions are embedded - see
+ * [captionLanguagesOf] - null for none. [decodesAv1InHardware] is whether the device decodes AV1 in hardware at the quality
+ * chosen, which a video's format asks.
  */
 internal fun DownloadChoices.toArguments(
     options: DownloadOptions,
     preferences: DownloaderPreferences,
-    captionLanguage: String,
+    captionLanguages: String?,
     decodesAv1InHardware: Boolean,
 ): List<String> = buildList {
     when (kind) {
@@ -33,17 +34,19 @@ internal fun DownloadChoices.toArguments(
             if (formatId != null) {
                 addAll(listOf("-f", formatId))
             } else {
-                addAll(listOf("-f", "bv*+ba/b", "-S", videoSorter(decodesAv1InHardware)))
+                addAll(listOf("-f", inLanguage("bv*+ba", "bv*+ba/b"), "-S", videoSorter(decodesAv1InHardware)))
             }
             addAll(listOf("--merge-output-format", "mp4"))
-            // In the video itself, as tracks of its own, which every player reads.
-            if (captions) {
-                addAll(listOf("--write-subs", "--write-auto-subs", "--sub-langs", "$captionLanguage.*,en.*,-live_chat", "--convert-subs", "srt", "--embed-subs"))
+            captionLanguages?.let { languages ->
+                addAll(listOf("--write-subs", "--write-auto-subs", "--sub-langs", languages, "--convert-subs", "srt"))
+                // In the video itself, as tracks of its own, which every player reads - and then only there: yt-dlp keeps the
+                // files it embedded beside the video where it is told to write them, unless told otherwise.
+                if (!subtitlesAsFile) addAll(listOf("--embed-subs", "--compat-options", "no-keep-subs"))
             }
         }
 
         DownloadKind.AUDIO -> {
-            addAll(listOf("-f", options.formatId ?: "ba/b", "-x", "--audio-quality", "0"))
+            addAll(listOf("-f", options.formatId ?: inLanguage("ba", "ba/b"), "-x", "--audio-quality", "0"))
             audioFormat.extension?.let { addAll(listOf("--audio-format", it)) }
             addAll(listOf("--embed-thumbnail", "--convert-thumbnails", "jpg", "--ppa", SquareCover))
             // A song's own title and artist where the site knows them - YouTube Music's - the video's and its channel's otherwise.
@@ -57,6 +60,13 @@ internal fun DownloadChoices.toArguments(
     options.clip?.let { addAll(listOf("--download-sections", "*${it.startSeconds}-${it.endSeconds}", "--force-keyframes-at-cuts")) }
     if (options.splitChapters) add("--split-chapters")
 }
+
+/**
+ * [selector], its sound in [DownloadChoices.audioLanguage] where the video has its sound in it, else [otherwise] - which takes,
+ * as yt-dlp ranks sounds by their `language_preference`, the one recorded.
+ */
+private fun DownloadChoices.inLanguage(selector: String, otherwise: String): String =
+    audioLanguage?.let { "$selector[language=$it]/$otherwise" } ?: otherwise
 
 /**
  * How yt-dlp ranks a video's formats - Seal's sorter: the codec its [VideoFormat] prefers, then no taller than the quality
