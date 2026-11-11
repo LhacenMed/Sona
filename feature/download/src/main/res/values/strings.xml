@@ -389,7 +389,6 @@
     </plurals>
     <string name="download_no_chapters">No chapters</string>
     <string name="download_cover_art">Save cover art</string>
-    <string name="download_cover_art_summary">Also keep the cover as a picture beside the file</string>
     <string name="download_save_to">Save to</string>
     <string name="download_folder_not_on_device">Pick a folder on this phone\'s storage</string>
     <string name="download_folder_access_title">Allow access to all files?</string>

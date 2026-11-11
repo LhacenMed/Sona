@@ -125,7 +125,6 @@ internal fun DownloadOptionsSheet(viewModel: DownloadViewModel, info: MediaInfo,
                             icon = Icons.Filled.Image,
                             shapes = shapes,
                             checked = choices.savesCover,
-                            value = stringResource(R.string.download_cover_art_summary),
                         ) { saves -> viewModel.onSheetChoicesChange(forEveryDownload = true) { it.copy(savesCover = saves) } }
                     },
                     { shapes ->
