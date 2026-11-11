@@ -197,6 +197,11 @@ class VideoPlayerViewModel @Inject constructor(
         video?.seekTo(positionMs)
     }
 
+    /** Where a scrub lets go: the keyframe its preview showed - see [VideoPlayback.seekNear]. */
+    fun onScrubSeek(positionMs: Long) {
+        video?.seekNear(positionMs)
+    }
+
     /** Seeks [deltaMs] on from where the video is now - back for a negative one - within the video. */
     fun onSeekBy(deltaMs: Long) {
         val video = video ?: return

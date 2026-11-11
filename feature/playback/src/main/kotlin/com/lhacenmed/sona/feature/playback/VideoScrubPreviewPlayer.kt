@@ -17,8 +17,11 @@ import androidx.media3.exoplayer.ScrubbingModeParameters
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
-/** A scrub lands on a keyframe within this share of the video: a pixel of the seek bar already covers more. */
-private const val ScrubTolerance = 0.005
+/**
+ * A scrub lands on a keyframe within this share of the video - its preview, and the video once it lets go: a pixel of the seek
+ * bar already covers more.
+ */
+internal const val ScrubTolerance = 0.005
 
 /** How much of the file it holds: enough for a frame or two, whatever the bitrate. */
 private const val PreviewBufferBytes = 8 * 1024 * 1024

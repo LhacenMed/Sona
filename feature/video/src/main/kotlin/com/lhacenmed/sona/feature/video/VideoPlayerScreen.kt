@@ -169,7 +169,7 @@ internal fun VideoPlayerScreen(
     val zoom = remember { VideoZoomState() }
     val feedback = remember(scope) { GestureFeedbackState(scope) }
     val scrub = remember(viewModel) {
-        VideoScrubState(viewModel::onSeek, onSnappedToOrigin = { haptics.performHapticFeedback(HapticFeedbackType.LongPress) })
+        VideoScrubState(viewModel::onScrubSeek, onSnappedToOrigin = { haptics.performHapticFeedback(HapticFeedbackType.LongPress) })
     }
     val brightness = rememberWindowBrightness()
     val volume = rememberDeviceMusicVolumeController()

@@ -17,6 +17,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.util.Util
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.session.MediaSession
 import com.lhacenmed.sona.core.datastore.ImageSettings
@@ -465,6 +466,19 @@ class VideoPlayback @Inject constructor(
 
     fun seekTo(positionMs: Long) {
         if (isOpen) player.seekTo(positionMs)
+    }
+
+    /**
+     * Seeks to the keyframe within [ScrubTolerance] of the video around [positionMs] - the frame a scrub's preview showed there -
+     * so the picture is there at once, not after every frame from the keyframe before to the exact moment is decoded.
+     */
+    fun seekNear(positionMs: Long) {
+        if (!isOpen) return
+        val toleranceUs = (Util.msToUs(player.duration.coerceAtLeast(0L)) * ScrubTolerance).toLong()
+        // Taken by the seek alone: the player reads each in the order given.
+        player.setSeekParameters(SeekParameters(toleranceUs, toleranceUs))
+        player.seekTo(positionMs)
+        player.setSeekParameters(SeekParameters.EXACT)
     }
 
     /** Shows on [view] the frames a scrub reaches, starting at [positionMs], leaving the video itself to play on. */
