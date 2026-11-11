@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- What a song, a collection or a selection offers - see OptionsAction -->
+    <string name="options_play"></string>
+    <string name="options_shuffle"></string>
+    <string name="options_play_next"></string>
+    <string name="options_queue_add"></string>
+    <string name="options_playlist_add"></string>
+    <string name="options_artist_details"></string>
+    <string name="options_album_details"></string>
+    <string name="options_song_properties"></string>
+    <string name="options_edit_tags"></string>
+    <string name="options_auto_tag"></string>
+    <string name="options_stop_counting_plays"></string>
+    <string name="options_count_plays"></string>
+    <string name="options_view_details"></string>
+    <string name="options_browse_folder"></string>
+    <string name="options_add_tracks"></string>
+    <string name="options_add_collections"></string>
+    <string name="options_edit"></string>
+    <string name="options_import"></string>
+    <string name="options_export"></string>
+    <string name="options_delete"></string>
+    <string name="options_remove_from_playlist"></string>
+    <string name="options_remove_from_recently_played"></string>
+    <string name="options_remove_from_most_played"></string>
+    <string name="options_add_to_private"></string>
+    <string name="options_delete_from_device"></string>
+    <string name="options_exclude"></string>
+    <string name="options_share"></string>
+    <!-- Counts of what a list holds - see LibraryItemRows -->
+    <string name="library_no_tracks"></string>
+    <string name="library_no_albums"></string>
+    <string name="library_no_artists"></string>
+    <plurals name="library_tracks">
+    </plurals>
+    <plurals name="library_albums">
+    </plurals>
+    <plurals name="library_artists">
+    </plurals>
+    <plurals name="library_videos">
+    </plurals>
+    <!-- An options sheet - see OptionsSheet and OptionsActions -->
+    <string name="options_type_track"></string>
+    <string name="options_type_video"></string>
+    <string name="options_type_album"></string>
+    <string name="options_type_artist"></string>
+    <string name="options_type_genre"></string>
+    <string name="options_type_playlist"></string>
+    <string name="options_type_folder"></string>
+    <string name="options_type_selection"></string>
+    <string name="options_played_next"></string>
+    <string name="options_queued"></string>
+    <string name="options_plays_uncounted"></string>
+    <string name="options_plays_counted"></string>
+    <string name="options_added_to_playlist"></string>
+    <string name="options_playlist_imported"></string>
+    <string name="options_playlist_import_failed"></string>
+    <string name="options_share_failed"></string>
+    <string name="options_share_too_many"></string>
+    <string name="library_new_playlist"></string>
+    <string name="library_create"></string>
+    <string name="removal_from_playlist"></string>
+    <string name="removal_from_recently_played"></string>
+    <string name="removal_from_most_played"></string>
+    <plurals name="options_tracks_not_shared">
+    </plurals>
+    <!-- A track's properties - see TrackPropertiesDialog -->
+    <string name="properties_title"></string>
+    <string name="properties_name"></string>
+    <string name="properties_album"></string>
+    <string name="properties_artist"></string>
+    <string name="properties_genre"></string>
+    <string name="properties_date"></string>
+    <string name="properties_track"></string>
+    <string name="properties_disc"></string>
+    <string name="properties_path"></string>
+    <string name="properties_size"></string>
+    <string name="properties_duration"></string>
+    <string name="properties_format"></string>
+    <string name="properties_bit_rate"></string>
+    <string name="properties_sample_rate"></string>
+    <string name="properties_kbps"></string>
+    <string name="properties_hz"></string>
+    <!-- What an operation asks first, and how it went - see LibraryOperationDialogs -->
+    <string name="exclude_folder_title"></string>
+    <string name="exclude_folder_message"></string>
+    <string name="exclude_folders_message"></string>
+    <string name="exclude_confirm"></string>
+    <string name="exclude_folder_done"></string>
+    <string name="exclude_folder_failed"></string>
+    <string name="exclude_folders_failed"></string>
+    <string name="delete_playlist_title"></string>
+    <string name="delete_playlist_message"></string>
+    <string name="delete_confirm"></string>
+    <string name="delete_playlist_done"></string>
+    <string name="delete_playlist_failed"></string>
+    <string name="delete_playlists_failed"></string>
+    <string name="remove_track_title"></string>
+    <string name="remove_confirm"></string>
+    <string name="remove_track_done"></string>
+    <string name="remove_track_failed"></string>
+    <string name="remove_tracks_failed"></string>
+    <string name="delete_track_title"></string>
+    <string name="delete_track_message"></string>
+    <string name="delete_tracks_message"></string>
+    <string name="delete_needs_all_files"></string>
+    <string name="delete_track_done"></string>
+    <string name="delete_track_failed"></string>
+    <string name="delete_tracks_failed"></string>
+    <string name="private_add_title"></string>
+    <string name="private_add_some_title"></string>
+    <string name="private_add_message"></string>
+    <string name="private_add_some_message"></string>
+    <string name="private_add_needs_all_files"></string>
+    <string name="private_add_confirm"></string>
+    <string name="private_add_done"></string>
+    <string name="private_add_failed"></string>
+    <plurals name="exclude_folders_title">
+    </plurals>
+    <plurals name="exclude_folders_done">
+    </plurals>
+    <plurals name="delete_playlists_title">
+    </plurals>
+    <plurals name="delete_playlists_done">
+    </plurals>
+    <plurals name="remove_tracks_title">
+    </plurals>
+    <plurals name="remove_tracks_done">
+    </plurals>
+    <plurals name="delete_tracks_title">
+    </plurals>
+    <plurals name="delete_tracks_done">
+    </plurals>
+    <plurals name="delete_tracks_left_out">
+    </plurals>
+    <!-- The library's lists and detail screens - see LibraryComponents -->
+    <string name="library_permission_title"></string>
+    <string name="library_permission_message"></string>
+    <string name="library_scanning_title"></string>
+    <string name="library_scanning_message"></string>
+    <string name="library_empty_message"></string>
+    <string name="library_search_empty_message"></string>
+    <string name="library_play"></string>
+    <string name="library_shuffle"></string>
+    <string name="library_search"></string>
+    <string name="library_no_date"></string>
+    <string name="library_tracks_title"></string>
+    <string name="library_no_tracks_found"></string>
+    <string name="library_disc"></string>
+    <string name="library_no_disc"></string>
+    <!-- Playlists - see PlaylistsScreen, PlaylistDetailScreen and EditPlaylistScreen -->
+    <string name="playlists_title"></string>
+    <string name="playlists_rename"></string>
+    <string name="playlists_rename_title"></string>
+    <string name="playlists_empty_title"></string>
+    <string name="playlists_none_found"></string>
+    <string name="playlists_empty_message"></string>
+    <string name="playlists_create"></string>
+    <string name="playlist_empty_message"></string>
+    <string name="listening_history"></string>
+    <string name="recently_played_empty"></string>
+    <string name="most_played_empty"></string>
+    <string name="edit_playlist_save_failed"></string>
+    <string name="edit_playlist_save"></string>
+    <string name="edit_playlist_name"></string>
+    <string name="edit_playlist_name_fixed"></string>
+    <string name="edit_playlist_cover"></string>
+    <string name="edit_playlist_cover_stacked"></string>
+    <string name="edit_playlist_cover_stacked_summary"></string>
+    <string name="edit_playlist_cover_first"></string>
+    <string name="edit_playlist_cover_last"></string>
+    <string name="edit_playlist_cover_track"></string>
+    <string name="edit_playlist_cover_track_summary"></string>
+    <string name="edit_playlist_cover_image"></string>
+    <string name="edit_playlist_cover_image_summary"></string>
+    <string name="edit_playlist_cover_image_chosen"></string>
+    <string name="edit_playlist_no_tracks"></string>
+    <string name="edit_playlist_choose_track"></string>
+    <!-- The library's kinds, as tabs, sections and pickers name them -->
+    <string name="library_artists_title"></string>
+    <string name="library_albums_title"></string>
+    <string name="library_genres_title"></string>
+    <string name="library_folders_title"></string>
+    <string name="library_videos_title"></string>
+    <string name="library_music_title"></string>
+    <string name="detail_appears_on"></string>
+    <string name="library_no_albums_found"></string>
+    <string name="library_no_artists_found"></string>
+    <string name="library_no_genres_found"></string>
+    <string name="library_no_folders_found"></string>
+    <string name="library_no_videos_found"></string>
+    <string name="album_empty"></string>
+    <string name="artist_empty"></string>
+    <string name="genre_empty"></string>
+    <string name="folder_empty_tracks"></string>
+    <string name="folder_empty_videos"></string>
+    <string name="library_private_folder"></string>
+    <string name="shortcuts_more"></string>
+    <string name="library_tabs_title"></string>
+    <string name="library_tabs_opened_at_launch"></string>
+    <string name="videos_permission_title"></string>
+    <string name="videos_permission_message"></string>
+    <string name="videos_permission_allow"></string>
+    <string name="uncounted_title"></string>
+    <string name="uncounted_count_again"></string>
+    <string name="uncounted_empty_title"></string>
+    <string name="uncounted_empty_message"></string>
+    <!-- Where a sort applies - see SortSheet -->
+    <string name="sort_this_album"></string>
+    <string name="sort_all_albums"></string>
+    <string name="sort_this_artist"></string>
+    <string name="sort_all_artists"></string>
+    <string name="sort_this_genre"></string>
+    <string name="sort_all_genres"></string>
+    <string name="sort_this_folder"></string>
+    <string name="sort_all_folders"></string>
+    <string name="sort_this_playlist"></string>
+    <string name="sort_all_playlists"></string>
+    <!-- Adding to a playlist - see PlaylistTrackPicker, NewPlaylistFlow and AddCollectionsScreen -->
+    <string name="add_collections_no_other_playlists"></string>
+    <string name="new_playlist_empty"></string>
+    <string name="new_playlist_empty_summary"></string>
+    <string name="new_playlist_folder"></string>
+    <string name="new_playlist_folder_summary"></string>
+    <string name="new_playlist_file"></string>
+    <string name="new_playlist_file_summary"></string>
+    <string name="track_picker_already_added"></string>
+    <string name="track_picker_the_playlist"></string>
+    <string name="track_picker_add_title"></string>
+    <string name="track_picker_add_message"></string>
+    <string name="track_picker_add_some_message"></string>
+    <string name="track_picker_add"></string>
+    <string name="track_picker_added"></string>
+    <string name="track_picker_add_failed"></string>
+    <string name="track_picker_add_some_failed"></string>
+    <string name="playlist_name_taken"></string>
+    <plurals name="track_picker_add_some_title">
+    </plurals>
+    <plurals name="track_picker_added_some">
+    </plurals>
+    <!-- Quick play - see QuickPlayButton and QuickPlaySourcePickerScreen -->
+    <string name="quick_play_shuffle_all"></string>
+    <string name="quick_play_play_all"></string>
+    <string name="quick_play_shuffle"></string>
+    <string name="quick_play_play"></string>
+    <string name="quick_play_other"></string>
+    <string name="quick_play_all_tracks"></string>
+    <string name="quick_play_choose_playlist"></string>
+    <string name="quick_play_choose_artist"></string>
+    <string name="quick_play_choose_album"></string>
+    <string name="quick_play_choose_genre"></string>
+    <string name="quick_play_choose_folder"></string>
+    <!-- Choosing a track for a cover - see EditPlaylistScreen -->
+    <string name="edit_playlist_in_playlist"></string>
+    <string name="edit_playlist_all_tracks"></string>
+</resources>
