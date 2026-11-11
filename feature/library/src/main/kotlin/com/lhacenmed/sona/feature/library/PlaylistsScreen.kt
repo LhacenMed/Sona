@@ -122,7 +122,7 @@ data object PlaylistsScreen : Screen {
         }
         val selectedPlaylists = visiblePlaylists.itemsOrEmpty.filter { SelectionKey.Playlist(it.id) in selection.selectedKeys }
 
-        SelectionOptionsHost(selection) { openSelectionOptions ->
+        SelectionOptionsHost(selection) { openSelectionOptions, _ ->
             Column(modifier = Modifier.fillMaxSize()) {
                 SonaTopAppBar(
                     title = "Playlists",

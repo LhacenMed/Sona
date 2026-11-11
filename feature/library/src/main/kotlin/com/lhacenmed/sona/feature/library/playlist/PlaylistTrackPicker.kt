@@ -70,7 +70,7 @@ internal fun PlaylistTrackPicker(
         }
     }
 
-    SelectionOptionsHost(selection) { openSelectionOptions ->
+    SelectionOptionsHost(selection) { openSelectionOptions, _ ->
         Column(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.topBarBackground()) {
                 SonaTopAppBar(

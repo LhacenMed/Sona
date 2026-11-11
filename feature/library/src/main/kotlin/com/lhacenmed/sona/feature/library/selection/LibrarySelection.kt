@@ -5,16 +5,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSelection
 import com.lhacenmed.sona.core.designsystem.component.selectAllAction
 import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
 import com.lhacenmed.sona.core.navigation.NavigateAwayEffect
-import com.lhacenmed.sona.feature.library.options.OptionsActionsViewModel
+import com.lhacenmed.sona.feature.library.options.OptionsAction
+import com.lhacenmed.sona.feature.library.options.OptionsFollowUps
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
+import com.lhacenmed.sona.feature.library.options.rememberOptionsActions
 
 /**
  * The bar every library list shows while it has rows selected - Auxio's selection toolbar.
@@ -33,26 +34,32 @@ internal fun SelectionState.toLibraryTopBarSelection(
 
 /**
  * What every selectable list shares beyond its rows and its bar: the options sheet its more options
- * button opens, and dropping the selection the moment the screen navigates elsewhere - Auxio's
- * `onExploreNavigate`. [content] is handed what opens the sheet.
+ * button opens, deleting the selection from the device straight from the bar, and dropping the selection the
+ * moment the screen navigates elsewhere - Auxio's `onExploreNavigate`. [content] is handed what opens the
+ * sheet, and what deletes.
  *
  * The sheet holds the tracks the selection stands for, in the order their rows were selected, and
  * any of its actions done ends the selection, as every one of Auxio's selection actions does - one that
- * asks first, once confirmed. Dismissing the sheet, or what it asks, leaves the selection as it was.
+ * asks first, once confirmed. Deleting is the sheet's own Delete from device, asked and done the same way.
+ * Dismissing the sheet, or what it asks, leaves the selection as it was.
  */
 @Composable
 internal fun SelectionOptionsHost(
     selection: SelectionState,
-    content: @Composable (openOptions: () -> Unit) -> Unit,
+    content: @Composable (openOptions: () -> Unit, deleteFromDevice: () -> Unit) -> Unit,
 ) {
-    val actionsViewModel: OptionsActionsViewModel = hiltViewModel()
+    val actions = rememberOptionsActions()
     var target by remember { mutableStateOf<OptionsTarget.ForSelection?>(null) }
 
     NavigateAwayEffect { selection.clear() }
 
-    content {
-        actionsViewModel.resolveSelection(selection.selectedKeys.filterIsInstance<SelectionKey>()) { target = it }
-    }
+    fun resolved(onResolved: (OptionsTarget.ForSelection) -> Unit) =
+        actions.viewModel.resolveSelection(selection.selectedKeys.filterIsInstance<SelectionKey>(), onResolved)
+
+    content(
+        { resolved { target = it } },
+        { resolved { actions.perform(it, OptionsAction.DELETE_FROM_DEVICE) } },
+    )
 
     target?.let {
         OptionsSheet(
@@ -61,4 +68,5 @@ internal fun SelectionOptionsHost(
             onActionDone = { selection.clear() },
         )
     }
+    OptionsFollowUps(actions = actions, onActionDone = { selection.clear() })
 }

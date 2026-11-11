@@ -764,7 +764,7 @@ internal fun TrackListDetail(
         }
     }
 
-    SelectionOptionsHost(selection) { openSelectionOptions ->
+    SelectionOptionsHost(selection) { openSelectionOptions, _ ->
         Box(modifier = modifier) {
             DetailScaffold(
                 state = headerState,

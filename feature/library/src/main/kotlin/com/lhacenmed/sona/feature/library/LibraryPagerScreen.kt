@@ -55,6 +55,7 @@ import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.feature.library.operation.ExcludeFoldersDialog
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.selection.SelectionOptionsHost
+import com.lhacenmed.sona.feature.library.options.OptionsAction
 import com.lhacenmed.sona.feature.library.selection.toLibraryTopBarSelection
 import com.lhacenmed.sona.feature.library.quickplay.QuickPlayButton
 import com.lhacenmed.sona.feature.library.sort.SortSheet
@@ -233,7 +234,7 @@ fun LibraryPagerScreen(
 
         // One selection for every tab, as Auxio's is: rows picked on one tab stay picked on the next,
         // so albums, artists and single tracks can be gathered into a single set of tracks.
-        SelectionOptionsHost(selection) { openSelectionOptions ->
+        SelectionOptionsHost(selection) { openSelectionOptions, deleteSelection ->
             // Painted here rather than left to whatever hosts the screen: the bar and every row are
             // `surface`, while a Scaffold fills with `background` - the same colour on most devices, but
             // not on all, where the shortcuts and the tab strip would sit on a band of a different shade.
@@ -282,7 +283,10 @@ fun LibraryPagerScreen(
                             },
                             selection = selection.toLibraryTopBarSelection(
                                 listKeys = { viewModel.selectableKeys(selectedTab) },
-                                actions = excludeFolderActions(selection) { excludingFolders = it },
+                                // Next to Select all, as the sheet's Delete from device - asked first, the same way.
+                                actions = listOf(
+                                    TopBarAction(label = OptionsAction.DELETE_FROM_DEVICE.label, icon = OptionsAction.DELETE_FROM_DEVICE.icon, onClick = deleteSelection),
+                                ) + excludeFolderActions(selection) { excludingFolders = it },
                                 onMoreOptions = openSelectionOptions,
                             ),
                         )
