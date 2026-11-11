@@ -195,7 +195,12 @@ private fun OptionsTarget.collectionActions(hasPrivateFolder: Boolean): List<Opt
 
     is OptionsTarget.ForSelection ->
         listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, AUTO_TAG, SHARE) +
-            listOfNotNull(ADD_TO_PRIVATE.takeIf { hasPrivateFolder }, DELETE_FROM_DEVICE)
+            // Playlists' tracks' files are the library's, as a single playlist's are: nothing here moves or deletes them.
+            if (keys.any { it is SelectionKey.Playlist }) {
+                emptyList()
+            } else {
+                listOfNotNull(ADD_TO_PRIVATE.takeIf { hasPrivateFolder }, DELETE_FROM_DEVICE)
+            }
 }
 
 /**

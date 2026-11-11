@@ -8,7 +8,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
@@ -43,6 +42,7 @@ import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.library.operation.DeletePlaylistsDialog
+import com.lhacenmed.sona.feature.library.options.OptionsAction
 import com.lhacenmed.sona.feature.library.options.OptionsFollowUps
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsSwipe
@@ -155,7 +155,8 @@ data object PlaylistsScreen : Screen {
                             }
                             if (selectedPlaylists.isNotEmpty()) {
                                 add(
-                                    TopBarAction(label = "Delete", icon = Icons.Filled.Delete) {
+                                    // The playlist's own Delete, as its options sheet draws it.
+                                    TopBarAction(label = OptionsAction.DELETE.label, icon = OptionsAction.DELETE.icon) {
                                         confirmingDelete = selectedPlaylists
                                     },
                                 )

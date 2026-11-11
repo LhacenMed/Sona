@@ -234,7 +234,7 @@ fun LibraryPagerScreen(
 
         // One selection for every tab, as Auxio's is: rows picked on one tab stay picked on the next,
         // so albums, artists and single tracks can be gathered into a single set of tracks.
-        SelectionOptionsHost(selection) { openSelectionOptions, deleteSelection ->
+        SelectionOptionsHost(selection, barActions = listOf(OptionsAction.DELETE_FROM_DEVICE)) { openSelectionOptions, optionsBarActions ->
             // Painted here rather than left to whatever hosts the screen: the bar and every row are
             // `surface`, while a Scaffold fills with `background` - the same colour on most devices, but
             // not on all, where the shortcuts and the tab strip would sit on a band of a different shade.
@@ -283,10 +283,8 @@ fun LibraryPagerScreen(
                             },
                             selection = selection.toLibraryTopBarSelection(
                                 listKeys = { viewModel.selectableKeys(selectedTab) },
-                                // Next to Select all, as the sheet's Delete from device - asked first, the same way.
-                                actions = listOf(
-                                    TopBarAction(label = OptionsAction.DELETE_FROM_DEVICE.label, icon = OptionsAction.DELETE_FROM_DEVICE.icon, onClick = deleteSelection),
-                                ) + excludeFolderActions(selection) { excludingFolders = it },
+                                // Delete from device next to Select all, out of the sheet - see SelectionOptionsHost.
+                                actions = optionsBarActions + excludeFolderActions(selection) { excludingFolders = it },
                                 onMoreOptions = openSelectionOptions,
                             ),
                         )

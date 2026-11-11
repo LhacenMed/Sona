@@ -34,19 +34,20 @@ internal fun SelectionState.toLibraryTopBarSelection(
 
 /**
  * What every selectable list shares beyond its rows and its bar: the options sheet its more options
- * button opens, deleting the selection from the device straight from the bar, and dropping the selection the
- * moment the screen navigates elsewhere - Auxio's `onExploreNavigate`. [content] is handed what opens the
- * sheet, and what deletes.
+ * button opens, and dropping the selection the moment the screen navigates elsewhere - Auxio's
+ * `onExploreNavigate`. [content] is handed what opens the sheet, and [barActions] as the bar's own buttons.
  *
  * The sheet holds the tracks the selection stands for, in the order their rows were selected, and
  * any of its actions done ends the selection, as every one of Auxio's selection actions does - one that
- * asks first, once confirmed. Deleting is the sheet's own Delete from device, asked and done the same way.
- * Dismissing the sheet, or what it asks, leaves the selection as it was.
+ * asks first, once confirmed. [barActions] are the sheet's own, brought up to the bar - asked and done the same
+ * way - and so left out of the sheet: each is offered once. Dismissing the sheet, or what it asks, leaves the
+ * selection as it was.
  */
 @Composable
 internal fun SelectionOptionsHost(
     selection: SelectionState,
-    content: @Composable (openOptions: () -> Unit, deleteFromDevice: () -> Unit) -> Unit,
+    barActions: List<OptionsAction> = emptyList(),
+    content: @Composable (openOptions: () -> Unit, barActions: List<TopBarAction>) -> Unit,
 ) {
     val actions = rememberOptionsActions()
     var target by remember { mutableStateOf<OptionsTarget.ForSelection?>(null) }
@@ -58,7 +59,9 @@ internal fun SelectionOptionsHost(
 
     content(
         { resolved { target = it } },
-        { resolved { actions.perform(it, OptionsAction.DELETE_FROM_DEVICE) } },
+        barActions.map { action ->
+            TopBarAction(label = action.label, icon = action.icon) { resolved { actions.perform(it, action) } }
+        },
     )
 
     target?.let {
@@ -66,6 +69,7 @@ internal fun SelectionOptionsHost(
             target = it,
             onDismissRequest = { target = null },
             onActionDone = { selection.clear() },
+            hiddenActions = barActions.toSet(),
         )
     }
     OptionsFollowUps(actions = actions, onActionDone = { selection.clear() })

@@ -30,6 +30,8 @@ import com.lhacenmed.sona.feature.library.favorite.favoriteItems
  * a dialog or a file picker takes the sheet out of sight without dismissing it, so the follow-up still
  * has somewhere to report to; the sheet is dismissed once that ends. Any other action slides it away.
  *
+ * [hiddenActions] are left out, offered elsewhere already - a selection's, on its bar.
+ *
  * [onActionDone] hears of an action once it has been done - at once for most, and for one with a follow-up once
  * that is confirmed - how a selection's sheet ends the selection, as Auxio's does for every one of its actions,
  * while a follow-up dismissed leaves every row picked.
@@ -40,6 +42,7 @@ fun OptionsSheet(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
     onActionDone: () -> Unit = {},
+    hiddenActions: Set<OptionsAction> = emptySet(),
 ) {
     val actions = rememberOptionsActions()
     val disabledActions = target.disabledActions()
@@ -68,7 +71,7 @@ fun OptionsSheet(
                 )
             },
         ) {
-            target.actions(hasPrivateFolder, uncountedParents).forEach { action ->
+            (target.actions(hasPrivateFolder, uncountedParents) - hiddenActions).forEach { action ->
                 SonaOptionRow(
                     label = action.label,
                     icon = action.icon,
