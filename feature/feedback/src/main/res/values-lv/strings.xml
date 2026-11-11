@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feedback_title"></string>
+    <string name="feedback_intro"></string>
+    <string name="feedback_message_hint"></string>
+    <string name="feedback_add_media"></string>
+    <string name="feedback_remove_media"></string>
+    <string name="feedback_include_diagnostics"></string>
+    <string name="feedback_include_diagnostics_summary"></string>
+    <string name="feedback_send"></string>
+    <string name="feedback_send_with"></string>
+    <string name="feedback_no_email_app"></string>
+    <string name="feedback_post_on_github"></string>
+    <string name="feedback_github_note"></string>
+    <string name="feedback_crash_title"></string>
+    <string name="feedback_crash_message"></string>
+    <string name="feedback_crash_not_now"></string>
+    <string name="feedback_crash_report"></string>
+    <string name="feedback_crash_message_prefill"></string>
+</resources>
