@@ -156,8 +156,9 @@ internal fun VideoPlayerScreen(
     val showsTotalDuration by viewModel.showsTotalDuration.collectAsStateWithLifecycle()
     val subtitles by viewModel.subtitles.state.collectAsStateWithLifecycle()
     val subtitleStyle by viewModel.subtitleStyle.collectAsStateWithLifecycle()
-    val replayHeights by viewModel.replayHeights.collectAsStateWithLifecycle()
-    val chapters by viewModel.chapters.collectAsStateWithLifecycle()
+    // This opening's own, as the rest of what shows: kept as they last were while the screen leaves.
+    val replayHeights = playback.replayHeights
+    val chapters = playback.chapters
     val current = playback.current
     val windowSize = LocalWindowInfo.current.containerSize
     val isLandscape = windowSize.width > windowSize.height
@@ -169,7 +170,7 @@ internal fun VideoPlayerScreen(
     val zoom = remember { VideoZoomState() }
     val feedback = remember(scope) { GestureFeedbackState(scope) }
     val scrub = remember(viewModel) {
-        VideoScrubState(viewModel::onScrubSeek, onSnappedToOrigin = { haptics.performHapticFeedback(HapticFeedbackType.LongPress) })
+        VideoScrubState(viewModel::onScrubSeek, onSnapped = { haptics.performHapticFeedback(HapticFeedbackType.LongPress) })
     }
     val brightness = rememberWindowBrightness()
     val volume = rememberDeviceMusicVolumeController()
@@ -236,7 +237,7 @@ internal fun VideoPlayerScreen(
     // A panel has no room in the floating window: it is closed as the player floats.
     LaunchedEffect(isFloating) { if (isFloating) panel = null }
 
-    val position = rememberVideoPosition(viewModel::currentPositionMs, viewModel::bufferedPositionMs, isFollowing = !session.isLocked && !isFloating)
+    val position = rememberVideoPosition(viewModel::currentPositionMs, isFollowing = !session.isLocked && !isFloating)
     val isLoaderShown by produceState(false, playback.isBuffering) {
         if (playback.isBuffering) delay(VideoPlayerTokens.LoaderDelayMs)
         value = playback.isBuffering

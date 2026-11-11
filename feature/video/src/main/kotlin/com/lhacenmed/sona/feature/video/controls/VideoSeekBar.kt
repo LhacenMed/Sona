@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.lerp
 import com.lhacenmed.sona.core.designsystem.player.PlayerElapsedTime
@@ -37,10 +38,10 @@ import com.lhacenmed.sona.feature.video.scrub.VideoScrubState
 /**
  * Material's slider, for its dragging, touch target and accessibility, drawn as the player's design draws it: a line cut at
  * each of the video's [chapters], and an upright thumb the line is cleared around. The line is filled as far as the video has
- * played and as far ahead as it is read; under a scrub the thumb swells and moves alone - the video playing on where it was,
- * the line filled to the thumb in white - every chapter thickens, the one the thumb is over the most, and the video's Most
- * replayed graph - its [replayHeights] - rises over the line, where it has one. The thumb snaps back to where a scrub began -
- * see [VideoScrubState.dragTo].
+ * played; under a scrub the thumb swells and moves alone - the video playing on where it was, the line filled to the thumb in
+ * white - every chapter thickens, the one the thumb is over the most, and the video's Most replayed graph - its
+ * [replayHeights] - rises over the line, where it has one. Brought back to where the video is, the thumb snaps to it and
+ * shrinks back, following the video, until pulled away or moved on after a rest - see [VideoScrubState.dragTo].
  *
  * Everything that moves is read as it is drawn, so a scrub draws this again and composes nothing beyond the slider's own value.
  */
@@ -63,6 +64,11 @@ internal fun VideoSeekBar(
         animationSpec = tween(VideoPlayerTokens.SeekMotionMs),
         label = "scrubProgress",
     )
+    val snapProgress = animateFloatAsState(
+        targetValue = if (scrub.isSnapped) 1f else 0f,
+        animationSpec = tween(VideoPlayerTokens.SeekMotionMs),
+        label = "snapProgress",
+    )
     val heatmapReveal = animateFloatAsState(
         targetValue = if (scrub.isActive && replayHeights != null) 1f else 0f,
         animationSpec = tween(VideoPlayerTokens.HeatmapRevealMs, easing = FastOutSlowInEasing),
@@ -76,6 +82,7 @@ internal fun VideoSeekBar(
             val msPerPx = durationMs / scrub.trackBounds.width.coerceAtLeast(1f)
             scrub.dragTo(
                 positionMs = (fraction * durationMs).toLong(),
+                playingMs = position.positionMs,
                 snapRadiusMs = (with(density) { VideoPlayerTokens.ScrubSnapRadius.toPx() } * msPerPx).toLong(),
                 releaseRadiusMs = (with(density) { VideoPlayerTokens.ScrubSnapReleaseRadius.toPx() } * msPerPx).toLong(),
             )
@@ -85,7 +92,7 @@ internal fun VideoSeekBar(
         interactionSource = interactionSource,
         thumb = {
             Canvas(Modifier.size(VideoPlayerTokens.ScrubThumbSize)) {
-                val thumb = lerp(VideoPlayerTokens.ThumbSize, VideoPlayerTokens.ScrubThumbSize, scrubProgress.value).toSize()
+                val thumb = thumbSizeOf(scrubProgress.value, snapProgress.value).toSize()
                 drawRoundRect(
                     color = VideoPlayerTokens.Accent,
                     topLeft = Offset((size.width - thumb.width) / 2f, (size.height - thumb.height) / 2f),
@@ -111,10 +118,9 @@ internal fun VideoSeekBar(
                 drawSeekLine(
                     chapterStarts = chapterStarts,
                     played = fractionOf(playedMs, durationMs),
-                    buffered = fractionOf(position.bufferedMs, durationMs),
                     scrubbed = thumb.takeIf { scrub.isActive },
                     thumb = thumb,
-                    thumbWidth = lerp(VideoPlayerTokens.ThumbSize.width, VideoPlayerTokens.ScrubThumbSize.width, progress).toPx(),
+                    thumbWidth = thumbSizeOf(progress, snapProgress.value).width.toPx(),
                     heightOf = { chapter -> if (chapter == raisedChapter) raisedHeight else chapterHeight },
                 )
                 val reveal = heatmapReveal.value
@@ -164,6 +170,10 @@ internal fun VideoTimes(
     PlayerTimes(scrub.shownPositionMs(position.positionMs), durationMs, showsTotalDuration, onToggle, VideoPlayerTokens.ContentColor, modifier)
 }
 
+/** The thumb, swollen as far as a scrub has [scrubbed] in - and back as far as it has [snapped] to where the video is. */
+private fun thumbSizeOf(scrubbed: Float, snapped: Float): DpSize =
+    lerp(lerp(VideoPlayerTokens.ThumbSize, VideoPlayerTokens.ScrubThumbSize, scrubbed), VideoPlayerTokens.ThumbSize, snapped)
+
 internal fun fractionOf(positionMs: Long, durationMs: Long): Float =
     if (durationMs > 0L) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
 
@@ -173,14 +183,13 @@ internal fun chapterStartsOf(chapters: List<VideoChapter>, durationMs: Long): Li
 
 /**
  * The seek line, every place along it a fraction of it from 0 to 1: a piece for each chapter starting at [chapterStarts] - the
- * whole line, for none - parted by a gap, and cleared around the [thumb], [thumbWidth] wide, where there is one. Each piece,
- * [heightOf] its chapter tall, is filled as far as the video is read - [buffered] - and a scrub has [scrubbed] to, then as far
- * as it has [played]: from the right where text runs that way.
+ * whole line, for none - parted by a gap, and cleared around the [thumb], [thumbWidth] wide, where there is one: from every
+ * piece it reaches, a chapter's end and the next one's start alike. Each piece, [heightOf] its chapter tall, is filled as far as
+ * a scrub has [scrubbed] to, then as far as the video has [played]: from the right where text runs that way.
  */
 internal fun DrawScope.drawSeekLine(
     chapterStarts: List<Float>,
     played: Float,
-    buffered: Float,
     scrubbed: Float?,
     thumb: Float?,
     thumbWidth: Float,
@@ -194,20 +203,21 @@ internal fun DrawScope.drawSeekLine(
     starts.forEachIndexed { chapter, start ->
         val from = start * width + if (chapter == 0) 0f else gap / 2f
         val to = starts.getOrElse(chapter + 1) { 1f } * width - if (chapter == starts.lastIndex) 0f else gap / 2f
-        val pieces = if (thumbX != null && thumbX > from + 1f && thumbX < to - 1f) {
-            listOf(from to thumbX - clearance, thumbX + clearance to to)
-        } else {
+        // What is left of the chapter either side of the thumb's clearance - the whole of it where the thumb is not over it.
+        val pieces = if (thumbX == null) {
             listOf(from to to)
+        } else {
+            listOf(from to minOf(to, thumbX - clearance), maxOf(from, thumbX + clearance) to to)
         }
         for ((pieceFrom, pieceTo) in pieces) {
             if (pieceTo - pieceFrom < 1f) continue
-            drawSeekPiece(pieceFrom, pieceTo, heightOf(chapter), played * width, buffered * width, scrubbed?.times(width))
+            drawSeekPiece(pieceFrom, pieceTo, heightOf(chapter), played * width, scrubbed?.times(width))
         }
     }
 }
 
 /** One piece of the seek line, from [from] to [to] - pixels from where the line starts - filled to each place given. */
-private fun DrawScope.drawSeekPiece(from: Float, to: Float, height: Float, playedX: Float, bufferedX: Float, scrubbedX: Float?) {
+private fun DrawScope.drawSeekPiece(from: Float, to: Float, height: Float, playedX: Float, scrubbedX: Float?) {
     val isRtl = layoutDirection == LayoutDirection.Rtl
     val top = (size.height - height) / 2f
     fun left(start: Float, end: Float) = if (isRtl) size.width - end else start
@@ -220,7 +230,6 @@ private fun DrawScope.drawSeekPiece(from: Float, to: Float, height: Float, playe
     }
     clipPath(shape) {
         fill(to, VideoPlayerTokens.SegmentColor)
-        fill(bufferedX, VideoPlayerTokens.BufferedColor)
         scrubbedX?.let { fill(it, VideoPlayerTokens.ScrubbedColor) }
         fill(playedX, VideoPlayerTokens.Accent)
     }

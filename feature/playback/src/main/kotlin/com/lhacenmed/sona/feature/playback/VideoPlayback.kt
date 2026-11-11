@@ -11,6 +11,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.TrackSelectionOverride
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.text.Cue
 import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.UnstableApi
@@ -26,11 +27,14 @@ import com.lhacenmed.sona.core.datastore.VideoSettings
 import com.lhacenmed.sona.core.database.dao.OnlineHeatmapDao
 import com.lhacenmed.sona.core.database.dao.VideoChapterDao
 import com.lhacenmed.sona.core.database.entity.toDomain
+import com.lhacenmed.sona.core.downloader.DownloadedExtras
+import com.lhacenmed.sona.core.downloader.EmbeddedExtras
 import com.lhacenmed.sona.core.model.ReplayHeatmap
 import com.lhacenmed.sona.core.model.VideoChapter
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.roundToInt
@@ -49,11 +53,13 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val FilesHolder = "video"
 
@@ -127,6 +133,14 @@ data class VideoPlaybackState(
     /** The file's own audio and subtitle tracks the device can play. */
     val audioTracks: List<MediaTrack> = emptyList(),
     val subtitleTracks: List<MediaTrack> = emptyList(),
+    /** [current]'s chapters, as its site marks them - none for one downloaded without, or not downloaded at all. */
+    val chapters: List<VideoChapter> = emptyList(),
+    /**
+     * The heights of [current]'s Most replayed graph, from 0 to 1 along it - null with none to show. The site's own where it
+     * was downloaded with one - YouTube's, from everyone's watching - and this device's otherwise, as it grows - see
+     * [ReplayHeatmap.heights].
+     */
+    val replayHeights: FloatArray? = null,
 )
 
 /**
@@ -172,27 +186,34 @@ class VideoPlayback @Inject constructor(
         .map { state -> state.current?.let { VideoKey(if (state.isPrivate) PlaybackSpace.Private else PlaybackSpace.Library, it.id) } }
         .distinctUntilChanged()
 
-    /**
-     * The heights of the Most replayed graph of the video playing, from 0 to 1 along it - null with none to show, or nothing
-     * playing. The site's own where it was downloaded with one - YouTube's, from everyone's watching - and this device's
-     * otherwise, as it grows - see [ReplayHeatmap.heights].
-     */
+    /** The watched video's [VideoPlaybackState.replayHeights], as they are kept and as they grow. */
     @kotlin.OptIn(ExperimentalCoroutinesApi::class)
-    val replayHeights: Flow<FloatArray?> = watchedVideo
+    private val watchedReplayHeights: Flow<FloatArray?> = watchedVideo
         .flatMapLatest { video ->
             if (video == null) return@flatMapLatest flowOf(null)
-            // Only the library's videos were downloaded where a site could give them one.
-            val online = if (video.space == PlaybackSpace.Library) onlineHeatmaps.observe(video.id) else flowOf(null)
-            combine(online, replayHeatmaps.observe(video)) { site, own -> site?.heightsAlong() ?: own?.heights() }
+            val site = if (video.space == PlaybackSpace.Library) onlineHeatmaps.observe(video.id).map { it?.heightsAlong() } else fileExtrasOf(video).map { it?.heatmap }
+            combine(site, replayHeatmaps.observe(video)) { siteHeights, own -> siteHeights ?: own?.heights() }
         }
 
-    /** The playing video's chapters, as its site marks them - none for one downloaded without, or not downloaded at all. */
+    /** The watched video's [VideoPlaybackState.chapters], as they are kept. */
     @kotlin.OptIn(ExperimentalCoroutinesApi::class)
-    val chapters: Flow<List<VideoChapter>> = watchedVideo
+    private val watchedChapters: Flow<List<VideoChapter>> = watchedVideo
         .flatMapLatest { video ->
-            // Only the library's videos were downloaded where a site could give them chapters.
-            if (video?.space == PlaybackSpace.Library) videoChapters.observe(video.id).map { rows -> rows.map { it.toDomain() } } else flowOf(emptyList())
+            when (video?.space) {
+                null -> flowOf(emptyList())
+                PlaybackSpace.Library -> videoChapters.observe(video.id).map { rows -> rows.map { it.toDomain() } }
+                else -> fileExtrasOf(video).map { it?.chapters.orEmpty() }
+            }
         }
+
+    /**
+     * What [video]'s file carries of its site - see [EmbeddedExtras] - read from the file itself: the library's index holds
+     * the library's videos alone, and a video moved out of it keeps all it was downloaded with.
+     */
+    private fun fileExtrasOf(video: VideoKey): Flow<DownloadedExtras?> = flow {
+        val path = _state.value.current?.takeIf { it.id == video.id }?.path
+        emit(path?.let { withContext(Dispatchers.IO) { EmbeddedExtras.read(File(it)) } })
+    }
 
     private val screenRequests = Channel<VideoScreenRequest>(Channel.CONFLATED)
 
@@ -262,7 +283,7 @@ class VideoPlayback @Inject constructor(
         }
 
         override fun onCues(cueGroup: CueGroup) {
-            _subtitleCues.value = cueGroup.cues
+            _subtitleCues.value = if (isPlayingMp4Subtitles()) cueGroup.cues.map(Cue::withoutContainerPlacement) else cueGroup.cues
         }
 
         /** A file gone or unreadable gives way to the next one; with none, the screen says so. */
@@ -307,6 +328,12 @@ class VideoPlayback @Inject constructor(
     }
 
     init {
+        // Part of the state, so a screen keeps them with the rest of what it shows as it leaves.
+        scope.launch {
+            combine(watchedChapters, watchedReplayHeights, ::Pair).collect { (chapters, replayHeights) ->
+                _state.update { it.copy(chapters = chapters, replayHeights = replayHeights) }
+            }
+        }
         // Changed while a video plays, from its queue or the settings, each takes hold at once.
         scope.launch {
             videoSettings.repeatMode.flow.collect { if (isOpen) applyRepeatMode() }
@@ -544,9 +571,6 @@ class VideoPlayback @Inject constructor(
     /** The player's position at this moment, for whatever follows it closer than [state] could. */
     fun currentPositionMs(): Long = if (isOpen) player.currentPosition else 0L
 
-    /** How far ahead the player has read the video, at this moment. */
-    fun bufferedPositionMs(): Long = if (isOpen) player.bufferedPosition else 0L
-
     /** The language a file's audio is played in from now on, wherever it has a track in it. */
     fun setPreferredAudioLanguage(language: String) {
         if (!isOpen) return
@@ -554,6 +578,16 @@ class VideoPlayback @Inject constructor(
     }
 
     fun selectAudioTrack(track: MediaTrack) = selectTrack(C.TRACK_TYPE_AUDIO, track)
+
+    /**
+     * Whether the subtitle track playing is an MP4's own - tx3g, what a downloaded video's captions are embedded as - read, as
+     * Media3 reads tracks, into its cues as the file is read, the format it had kept as the track's codec.
+     */
+    private fun isPlayingMp4Subtitles(): Boolean = player.currentTracks.groups.any { group ->
+        group.type == C.TRACK_TYPE_TEXT && (0 until group.length).any { index ->
+            group.isTrackSelected(index) && group.getTrackFormat(index).let { MimeTypes.APPLICATION_TX3G in listOf(it.sampleMimeType, it.codecs) }
+        }
+    }
 
     /** Plays the subtitle [track] of the video - none at all while null. */
     fun selectSubtitleTrack(track: MediaTrack?) {
@@ -711,3 +745,10 @@ class VideoPlayback @Inject constructor(
  */
 internal fun <T> videosFrom(all: List<T>, startIndex: Int, isVideo: (T) -> Boolean): Pair<List<T>, Int> =
     all.filter(isVideo) to all.take(startIndex.coerceAtLeast(0)).count(isVideo)
+
+/**
+ * The line without the height an MP4's subtitle track puts every line at - its container's default, low over the controls
+ * rather than placed by anyone - so it stands where the screen places lines with no place of their own.
+ */
+@OptIn(UnstableApi::class)
+private fun Cue.withoutContainerPlacement(): Cue = buildUpon().setLine(Cue.DIMEN_UNSET, Cue.TYPE_UNSET).setLineAnchor(Cue.TYPE_UNSET).build()

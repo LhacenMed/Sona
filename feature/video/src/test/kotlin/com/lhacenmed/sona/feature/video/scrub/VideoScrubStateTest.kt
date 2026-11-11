@@ -10,9 +10,13 @@ class VideoScrubStateTest {
     private var nowMs = 0L
     private val sought = mutableListOf<Long>()
     private var snaps = 0
-    private val scrub = VideoScrubState(onSeek = { sought += it }, onSnappedToOrigin = { snaps++ }, now = { nowMs })
+    private val scrub = VideoScrubState(onSeek = { sought += it }, onSnapped = { snaps++ }, now = { nowMs })
 
-    private fun drag(positionMs: Long) = scrub.dragTo(positionMs, snapRadiusMs = 100L, releaseRadiusMs = 200L)
+    /** Drags to [positionMs] [afterMs] after the last move, the video at [playingMs]. */
+    private fun drag(positionMs: Long, playingMs: Long = 1_000L, afterMs: Long = 10L) {
+        nowMs += afterMs
+        scrub.dragTo(positionMs, playingMs, snapRadiusMs = 100L, releaseRadiusMs = 200L)
+    }
 
     @Test
     fun `the video is moved once, as the scrub lets go, however often it moved`() {
@@ -40,7 +44,7 @@ class VideoScrubStateTest {
     }
 
     @Test
-    fun `the thumb moves freely as it first leaves where it began`() {
+    fun `the thumb moves freely as it first leaves where the video is`() {
         scrub.begin(fromMs = 1_000L)
         drag(1_050L)
 
@@ -49,51 +53,113 @@ class VideoScrubStateTest {
     }
 
     @Test
-    fun `coming back near where it began snaps there, once`() {
+    fun `brought back near where the video is, it snaps there however slowly it comes, once`() {
         scrub.begin(fromMs = 1_000L)
         drag(2_000L)
-        drag(1_090L)
-        drag(1_050L)
+        drag(1_300L, afterMs = 200L)
+        drag(1_150L, afterMs = 200L)
+        drag(1_090L, afterMs = 200L)
+        drag(1_050L, afterMs = 200L)
 
+        assertTrue(scrub.isSnapped)
         assertEquals(1_000L, scrub.targetMs)
         assertEquals(1, snaps)
     }
 
     @Test
-    fun `it holds until pulled out past the release radius, and can snap again`() {
+    fun `moved on after resting snapped, it lets go and moves freely until it has left and come back`() {
         scrub.begin(fromMs = 1_000L)
         drag(2_000L)
         drag(1_050L)
-        drag(1_150L)
-        assertEquals(1_000L, scrub.targetMs)
+        nowMs += 400L
+        drag(1_060L, afterMs = 0L)
+        assertTrue(scrub.isSnapped)
 
-        drag(1_250L)
-        assertEquals(1_250L, scrub.targetMs)
+        drag(1_090L)
+        assertFalse(scrub.isSnapped)
+        assertEquals(1_090L, scrub.targetMs)
+        drag(1_010L)
+        assertEquals(1_010L, scrub.targetMs)
 
-        drag(1_080L)
-        assertEquals(1_000L, scrub.targetMs)
+        drag(1_300L)
+        drag(1_050L)
+        assertTrue(scrub.isSnapped)
         assertEquals(2, snaps)
     }
 
     @Test
-    fun `letting go snapped where it began leaves the video playing on`() {
+    fun `snapped, it holds while moving on without a rest, and through a resting finger's tremor`() {
         scrub.begin(fromMs = 1_000L)
         drag(2_000L)
+        drag(1_080L)
+        drag(1_050L, afterMs = 100L)
+        drag(1_020L, afterMs = 100L)
+        drag(1_070L, afterMs = 100L)
+        assertTrue(scrub.isSnapped)
+
+        drag(1_080L, afterMs = 400L)
+        assertTrue(scrub.isSnapped)
+    }
+
+    @Test
+    fun `a fast swipe landing just past where the video is snaps there too`() {
+        scrub.begin(fromMs = 1_000L)
+        drag(2_000L)
+        drag(1_500L)
+        drag(850L)
+
+        assertTrue(scrub.isSnapped)
+        assertEquals(1, snaps)
+    }
+
+    @Test
+    fun `a swipe going on far beyond where the video is does not snap`() {
+        scrub.begin(fromMs = 1_000L)
+        drag(2_000L)
+        drag(1_500L)
+        drag(500L)
+
+        assertFalse(scrub.isSnapped)
+        assertEquals(0, snaps)
+    }
+
+    @Test
+    fun `snapped, it follows the video until pulled out past the release radius`() {
+        scrub.begin(fromMs = 1_000L)
+        drag(2_000L)
+        drag(1_500L)
+        drag(1_050L)
+
+        drag(1_150L, playingMs = 1_100L)
+        assertEquals(1_100L, scrub.targetMs)
+        assertEquals(1_120L, scrub.shownPositionMs(playerMs = 1_120L))
+
+        drag(1_400L, playingMs = 1_100L)
+        assertFalse(scrub.isSnapped)
+        assertEquals(1_400L, scrub.targetMs)
+    }
+
+    @Test
+    fun `letting go snapped releases to cancel, the video playing on`() {
+        scrub.begin(fromMs = 1_000L)
+        drag(2_000L)
+        drag(1_500L)
         drag(1_050L)
         scrub.end()
 
         assertEquals(emptyList<Long>(), sought)
+        assertFalse(scrub.isSnapped)
         assertEquals(1_700L, scrub.shownPositionMs(playerMs = 1_700L))
     }
 
     @Test
-    fun `a new scrub has to leave its own beginning before it can snap`() {
+    fun `a new scrub has to leave where the video is before it can snap`() {
         scrub.begin(fromMs = 1_000L)
         drag(2_000L)
         scrub.end()
 
         scrub.begin(fromMs = 2_000L)
-        drag(2_050L)
+        drag(2_050L, playingMs = 2_000L)
 
         assertEquals(2_050L, scrub.targetMs)
         assertEquals(0, snaps)

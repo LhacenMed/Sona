@@ -128,7 +128,7 @@ internal object VideoPlayerTokens {
     val ResumePromptHeight = 36.dp
     val ResumePromptGap = 8.dp
 
-    /** How near where a scrub began the thumb has to come to snap back there, and how far it is pulled to come away again. */
+    /** How near where the video is the thumb has to come to snap to it, and how far it is pulled to come away again. */
     val ScrubSnapRadius = 12.dp
     val ScrubSnapReleaseRadius = 20.dp
 
@@ -138,7 +138,8 @@ internal object VideoPlayerTokens {
     /**
      * The seek line: cut at each chapter by [ChapterGap], and cleared [ThumbClearance] either side of the upright thumb. Under a
      * scrub every chapter thickens from [SeekTrackHeight] to [ScrubTrackHeight], the one the thumb is over to
-     * [ScrubChapterHeight], and the thumb swells from [ThumbSize] to [ScrubThumbSize].
+     * [ScrubChapterHeight], and the thumb swells from [ThumbSize] to [ScrubThumbSize] - back to [ThumbSize] while snapped to
+     * where the video is.
      */
     val SeekTrackHeight = 4.dp
     val ScrubTrackHeight = 6.dp
@@ -148,9 +149,8 @@ internal object VideoPlayerTokens {
     val ThumbSize = DpSize(4.dp, 20.dp)
     val ScrubThumbSize = DpSize(6.dp, 28.dp)
 
-    /** The seek line's ground, as much of the video as is read ahead, and as far as a scrub has reached. */
+    /** The seek line's ground, and as far as a scrub has reached. */
     val SegmentColor = Color.White.copy(alpha = 0.22f)
-    val BufferedColor = Color.White.copy(alpha = 0.18f)
     val ScrubbedColor = Color.White.copy(alpha = 0.62f)
 
     /** Under a scrub: the picture dimmed by [ScrubDim], and the top bar faded to [ScrubbingTopBarAlpha]. */

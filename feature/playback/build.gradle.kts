@@ -24,6 +24,9 @@ dependencies {
     implementation(project(":core:data"))
     implementation(project(":core:datastore"))
     implementation(project(":core:vault"))
+    // What a downloaded video carries in its file - its Most replayed graph and its chapters - read from a Private Folder
+    // video's file itself. See EmbeddedExtras.
+    implementation(project(":core:downloader"))
 
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.session)
