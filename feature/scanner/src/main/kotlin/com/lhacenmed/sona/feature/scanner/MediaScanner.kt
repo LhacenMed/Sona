@@ -339,8 +339,8 @@ class MediaScanner @Inject constructor(
         // already stored exactly this, it opens no transaction at all.
         _progress.value = ScanProgress(ScanStep.SAVING)
         stats += libraryWriter.sync(tracks + videos + manualVideos, albums, artists, genres)
-        // Once the videos are tracks: what their files carry is kept by track.
-        videoExtras.index(videos + manualVideos)
+        // Once the videos are tracks: what their files carry is kept by the track each is saved as.
+        videoExtras.index()
         return stats
     }
 

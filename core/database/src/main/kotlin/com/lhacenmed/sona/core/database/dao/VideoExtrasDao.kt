@@ -8,9 +8,19 @@ import com.lhacenmed.sona.core.database.entity.OnlineHeatmapEntity
 import com.lhacenmed.sona.core.database.entity.VideoChapterEntity
 import com.lhacenmed.sona.core.database.entity.VideoExtraReadEntity
 
+/** A video the library holds: the track it is kept as, and where its file is. */
+data class LibraryVideo(val id: Long, val path: String)
+
 /** What the library keeps of what each video's file carries of its site - written as each file is read, see `VideoExtras`. */
 @Dao
 interface VideoExtrasDao {
+
+    /**
+     * Every video the library holds, by the track it is kept as - which, for a file moved or copied, is the track it was kept
+     * as before, not the one the scan found it as.
+     */
+    @Query("SELECT id, path FROM tracks WHERE isVideo = 1")
+    suspend fun videos(): List<LibraryVideo>
 
     /** Every video read, by its track, with how its file stood. */
     @Query("SELECT * FROM video_extra_reads")
