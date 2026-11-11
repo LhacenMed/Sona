@@ -274,11 +274,16 @@ dependencies {
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 }
 
-/** Every language a module's strings.xml is translated into, by its resource folder's qualifier - `values-pt-rBR` is pt-rBR. */
+/**
+ * Every language a module's strings.xml is translated into, by its resource folder's qualifier - `values-pt-rBR` is
+ * pt-rBR. A file with no string in it yet - a language just started on Weblate - does not count: the picker would offer
+ * a language that shows English.
+ */
 fun translatedLocales(): List<String> =
     rootDir.listFiles().orEmpty().flatMap { module -> module.walkTopDown().maxDepth(2).filter { it.name == "src" }.toList() }
         .flatMap { src -> src.resolve("main/res").listFiles().orEmpty().toList() }
-        .filter { it.name.startsWith("values-") && it.resolve("strings.xml").isFile }
+        .filter { it.name.startsWith("values-") }
+        .filter { dir -> dir.resolve("strings.xml").let { it.isFile && Regex("<(string|plurals)\\b").containsMatchIn(it.readText()) } }
         .map { it.name.removePrefix("values-") }
         .distinct()
         .sorted()
