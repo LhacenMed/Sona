@@ -6,6 +6,42 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.8.1] - 2026-11-11
+
+### Added
+
+- YouTube links read at once by the app itself, with yt-dlp used only where it is needed.
+- Download photos and videos from X, TikTok, Instagram, Reddit, Threads, Bluesky, Facebook, LinkedIn, Pinterest and Telegram posts, and from a direct link to a file.
+- A link shows its picture, title and channel before it is downloaded, as audio, as video or with its options.
+- Download options: the format, a clip of the video, a file per chapter, a saved yt-dlp command, and a later start.
+- Watch a channel or playlist, and have every new video on it downloaded.
+- Downloads settings: how many at once, Wi-Fi only, the folder, file names, a proxy, a speed limit and cookies from signing in.
+- A yt-dlp terminal, and saved yt-dlp commands.
+- Decode with FFmpeg behind the device's hardware decoders.
+- Choose between a video format for sharing and one for quality.
+- Delete a selection from the device from the top bar.
+- Snap the scrub to where the video is.
+- Redesign downloads and save songs with tags, cover and lyrics.
+- Choose the app's language in Settings, under Appearance.
+
+### Changed
+
+- Move the settings rows into the design system.
+- Downloads run in the background, and can be cancelled from their notification.
+- Downloads open from Settings instead of the library's top bar.
+- Drop the cover picture option's summary.
+- Icons are drawn in one style throughout the app.
+- Most played and Recently played draw the same cover in the list and on their own screen.
+
+### Fixed
+
+- Let a scrub go on the frame its preview showed.
+- Index video extras by the track each video is saved as.
+- Selecting playlists no longer offers to delete their songs from the device.
+- Delete appears once while selecting in the library, on the top bar.
+- The Backup screen tells that Google Drive is disconnected in its own words again.
+- Quick download no longer crashes when a link is shared to it.
+
 ## [1.8.0] - 2026-11-09
 
 ### Added
