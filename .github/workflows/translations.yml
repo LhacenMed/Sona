@@ -1,0 +1,71 @@
+name: Translations
+
+# Brings the translations made on Codeberg Translate (Weblate) into the
+# repository, for review: Weblate's copy of the repository is fetched, read-only
+# and without credentials, and when it holds commits dev does not, they are put
+# on the translations branch with a pull request into dev. Nothing on Weblate's
+# side can write to this repository.
+#
+# Weblate commits what translators save once it is a day old (or when a
+# maintainer commits it from the project's Repository maintenance page), so a
+# daily run sees all of it. Merge the pull request with a merge commit, not a
+# squash: Weblate then recognises its own commits on dev and drops them from its
+# copy, rather than meeting them again as conflicts.
+on:
+  schedule:
+    - cron: '23 4 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: translations
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  WEBLATE_REPOSITORY: https://translate.codeberg.org/git/sona/app/
+  BRANCH: translations
+
+jobs:
+  sync:
+    name: Pull translations
+    if: github.repository == 'LhacenMed/Sona'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Fetch Weblate's copy
+        run: git fetch --no-tags "$WEBLATE_REPOSITORY" "+dev:refs/weblate/dev"
+
+      - name: Update the translations branch
+        id: branch
+        run: |
+          new="$(git rev-list --count --no-merges HEAD..refs/weblate/dev)"
+          echo "commits=$new" >> "$GITHUB_OUTPUT"
+          if [[ "$new" == 0 ]]; then
+            echo "Nothing translated that dev does not have."
+            exit 0
+          fi
+          # Weblate rebases its commits onto dev as dev moves, so the branch is
+          # replaced rather than added to.
+          git push --force origin "refs/weblate/dev:refs/heads/$BRANCH"
+
+      - name: Open the pull request
+        if: steps.branch.outputs.commits != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ -n "$(gh pr list --head "$BRANCH" --base dev --state open --json number --jq '.[].number')" ]]; then
+            echo "The pull request is open already; its branch is updated."
+            exit 0
+          fi
+          gh pr create --base dev --head "$BRANCH" \
+            --title "chore(l10n): translations from Codeberg Translate" \
+            --body "Translations made on [Codeberg Translate](https://translate.codeberg.org/projects/sona/). Merge with a merge commit, not a squash, so Weblate recognises its commits on dev." \
+            || echo "::warning title=No pull request::Could not open one - allow GitHub Actions to create pull requests in the repository's Actions settings, or open it from https://github.com/${GITHUB_REPOSITORY}/compare/dev...${BRANCH}"

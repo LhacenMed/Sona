@@ -1,11 +1,12 @@
 # Translating Sona
 
-Sona is translated on [Weblate](https://hosted.weblate.org), in the browser: no account on GitHub, no build, nothing to
-install. Weblate commits each translation back to this repository, and the next release ships it.
+Sona is translated on [Codeberg Translate](https://translate.codeberg.org/projects/sona/), a Weblate server, in the
+browser: no account on GitHub, no build, nothing to install. The translations come back to this repository as a pull
+request, and the release after it is merged ships them.
 
 ## For translators
 
-1. Open Sona's project on Weblate and sign in.
+1. Open [Sona's project](https://translate.codeberg.org/projects/sona/) and sign in with a Codeberg account.
 2. Pick your language, or start it if it isn't there yet.
 3. Translate the strings of any component: each is one part of the app, such as Settings or Downloads.
 
@@ -26,22 +27,26 @@ translations is in a release.
 
 ## Setting up the Weblate project
 
-Done once, by a maintainer, on [Hosted Weblate](https://hosted.weblate.org) - free for open-source projects.
+Done once, by a maintainer, on Codeberg Translate.
 
-1. Create the project, pointed at this repository's `dev` branch, with push access for Weblate's bot so it opens pull
-   requests with the translations.
-2. Add the **Component discovery** add-on, which makes a component of every module with strings - including those added
-   later - from this one pattern:
+1. The project's main component, `app`, reads this repository's `dev` branch over HTTPS, with no push URL: Weblate has no
+   way to write to the repository.
+2. The **Component discovery** add-on on it makes a component of every other module with strings - including those
+   added later - from one pattern:
 
    | Field | Value |
    | --- | --- |
-   | Regular expression to match translation files | `(?P<component>[^/]+(/[^/]+)?)/src/main/res/values-(?P<language>[^/]+)/strings\.xml` |
+   | Regular expression to match translation files | `(?P<component>(core\|feature)/[^/]+)/src/main/res/values/strings\.xml` |
    | File format | Android String Resource |
    | Customize the component name | `{{ component }}` |
    | Define the monolingual base filename | `{{ component }}/src/main/res/values/strings.xml` |
    | Define the base file for new translations | `{{ component }}/src/main/res/values/strings.xml` |
+   | Define the file mask | `{{ component }}/src/main/res/values-*/strings.xml` |
 
-3. Add a link to the project in the README, with its translation status badge.
+3. The [Translations workflow](../.github/workflows/translations.yml) fetches Weblate's read-only copy of the repository
+   daily, puts what it has that `dev` does not on the `translations` branch, and opens a pull request into `dev`. Merge it
+   with a merge commit, not a squash, so Weblate recognises its commits once it next pulls `dev`. To bring translations in
+   sooner, commit them from the project's Repository maintenance page and run the workflow by hand.
 
 ## For developers
 

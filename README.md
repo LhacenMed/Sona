@@ -9,6 +9,7 @@
 [![Latest release](https://img.shields.io/github/v/release/LhacenMed/Sona?label=release)](https://github.com/LhacenMed/Sona/releases/latest)
 [![License: GPL-3.0](https://img.shields.io/github/license/LhacenMed/Sona)](LICENSE)
 [![Android 8.0+](https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=white)](#requirements)
+[![Translation status](https://translate.codeberg.org/widget/sona/svg-badge.svg)](https://translate.codeberg.org/engage/sona/)
 
 </div>
 
