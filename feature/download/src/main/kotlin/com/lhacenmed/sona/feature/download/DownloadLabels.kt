@@ -19,6 +19,7 @@ import com.lhacenmed.sona.core.model.AudioFormat
 import com.lhacenmed.sona.core.model.DownloadFailure
 import com.lhacenmed.sona.core.model.DownloadKind
 import com.lhacenmed.sona.core.model.SponsorSegment
+import com.lhacenmed.sona.core.model.VideoFormat
 import com.lhacenmed.sona.core.model.VideoQuality
 
 /** The one place each of the downloader's choices is named - the download screen's and the Downloads settings' alike. */
@@ -37,6 +38,18 @@ internal val VideoQuality.labelRes: Int
         VideoQuality.P720 -> R.string.download_quality_720
         VideoQuality.P480 -> R.string.download_quality_480
         VideoQuality.P360 -> R.string.download_quality_360
+    }
+
+internal val VideoFormat.labelRes: Int
+    get() = when (this) {
+        VideoFormat.LEGACY -> R.string.download_video_format_legacy
+        VideoFormat.QUALITY -> R.string.download_video_format_quality
+    }
+
+internal val VideoFormat.summaryRes: Int
+    get() = when (this) {
+        VideoFormat.LEGACY -> R.string.download_video_format_legacy_summary
+        VideoFormat.QUALITY -> R.string.download_video_format_quality_summary
     }
 
 internal val AudioFormat.labelRes: Int

@@ -14,6 +14,15 @@ enum class VideoQuality(val height: Int?) {
     P360(360),
 }
 
+/** Which of a video's codecs is preferred - Seal's preferred video format. */
+enum class VideoFormat {
+    /** H.264 in MP4, which every app plays - for sharing. */
+    LEGACY,
+
+    /** AV1, VP9 or H.265, smaller at the same quality - for watching in an app that plays them. */
+    QUALITY,
+}
+
 /** What a download's sound is kept as - as it was published while [ORIGINAL], otherwise converted. */
 enum class AudioFormat(val extension: String?) {
     ORIGINAL(null),
@@ -41,6 +50,7 @@ enum class SponsorSegment(val id: String) {
 data class DownloadChoices(
     val kind: DownloadKind = DownloadKind.VIDEO,
     val videoQuality: VideoQuality = VideoQuality.P1080,
+    val videoFormat: VideoFormat = VideoFormat.QUALITY,
     val audioFormat: AudioFormat = AudioFormat.ORIGINAL,
     /** A video's captions in the device's language and English, saved beside it, where it has any. */
     val captions: Boolean = true,

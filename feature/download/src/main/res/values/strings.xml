@@ -77,6 +77,11 @@
     <string name="download_quality_720">720p</string>
     <string name="download_quality_480">480p</string>
     <string name="download_quality_360">360p</string>
+    <string name="download_video_format">Video format</string>
+    <string name="download_video_format_legacy">Legacy</string>
+    <string name="download_video_format_legacy_summary">Prefer MP4(H.264) formats for sharing to other apps</string>
+    <string name="download_video_format_quality">Quality</string>
+    <string name="download_video_format_quality_summary">Prefer AV1, VP9 or H.265 formats for watching in compatible apps</string>
     <string name="download_format">Audio format</string>
     <string name="download_format_original">As published</string>
     <string name="download_format_m4a">M4A</string>

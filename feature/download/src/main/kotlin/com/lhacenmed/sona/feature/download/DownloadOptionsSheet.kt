@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.VideoFile
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
@@ -50,11 +51,12 @@ import com.lhacenmed.sona.core.downloader.RuntimeState
 import com.lhacenmed.sona.core.model.AudioFormat
 import com.lhacenmed.sona.core.model.ClipRange
 import com.lhacenmed.sona.core.model.DownloadKind
+import com.lhacenmed.sona.core.model.VideoFormat
 import com.lhacenmed.sona.core.model.VideoQuality
 import java.util.Calendar
 
 /** Which of the sheet's dialogs is open. */
-private enum class OptionsDialog { QUALITY, FORMAT, PICKED_FORMAT, CLIP, COMMAND, START_AT }
+private enum class OptionsDialog { QUALITY, VIDEO_FORMAT, FORMAT, PICKED_FORMAT, CLIP, COMMAND, START_AT }
 
 /**
  * Every choice beyond Audio or Video, for [info]: the user's own, kept for every download after it and a Quick download - and
@@ -89,6 +91,12 @@ internal fun DownloadOptionsSheet(viewModel: DownloadViewModel, info: MediaInfo,
             icon = Icons.Filled.HighQuality,
             detail = stringResource(choices.videoQuality.labelRes),
             onClick = { dialog = OptionsDialog.QUALITY },
+        )
+        SonaOptionRow(
+            label = stringResource(R.string.download_video_format),
+            icon = Icons.Filled.VideoFile,
+            detail = stringResource(choices.videoFormat.labelRes),
+            onClick = { dialog = OptionsDialog.VIDEO_FORMAT },
         )
         SonaOptionRow(
             label = stringResource(R.string.download_format),
@@ -150,6 +158,15 @@ internal fun DownloadOptionsSheet(viewModel: DownloadViewModel, info: MediaInfo,
             selected = choices.videoQuality,
             label = { stringResource(it.labelRes) },
             onSelect = { viewModel.onChoicesChange(choices.copy(videoQuality = it)) },
+            onDismiss = close,
+        )
+        OptionsDialog.VIDEO_FORMAT -> OptionDialog(
+            title = stringResource(R.string.download_video_format),
+            options = VideoFormat.entries,
+            selected = choices.videoFormat,
+            label = { stringResource(it.labelRes) },
+            summary = { stringResource(it.summaryRes) },
+            onSelect = { viewModel.onChoicesChange(choices.copy(videoFormat = it)) },
             onDismiss = close,
         )
         OptionsDialog.FORMAT -> OptionDialog(
@@ -219,7 +236,7 @@ private fun SwitchOptionRow(
     )
 }
 
-/** One of [options], picked - the dialog closing with the pick. */
+/** One of [options], picked - each over its [summary] where it has one - the dialog closing with the pick. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun <T> OptionDialog(
@@ -229,6 +246,7 @@ internal fun <T> OptionDialog(
     label: @Composable (T) -> String,
     onSelect: (T) -> Unit,
     onDismiss: () -> Unit,
+    summary: @Composable (T) -> String? = { null },
 ) {
     val cancelLabel = stringResource(R.string.download_cancel)
     SonaDialog(
@@ -241,6 +259,7 @@ internal fun <T> OptionDialog(
             options.forEach { option ->
                 SonaDialogOption(
                     label = label(option),
+                    summary = summary(option),
                     selected = option == selected,
                     onClick = {
                         onSelect(option)

@@ -66,7 +66,7 @@ class YtDlp @Inject constructor(
     ) {
         val tempDir = File(context.cacheDir, "downloads").apply { mkdirs() }
         val target = source.infoJson?.let { listOf("--load-info-json", it.path) } ?: listOf(source.url)
-        val arguments = choices.toArguments(options, preferences, Locale.getDefault().language) +
+        val arguments = choices.toArguments(options, preferences, Locale.getDefault().language, decodesAv1InHardware(choices.videoQuality.height)) +
             preferences.networkArguments(runtime) +
             downloadArguments(outputDir.path, tempDir.path, preferences.fileNameTemplate, options.splitChapters) +
             options.commandArguments?.let(::splitArguments).orEmpty() +

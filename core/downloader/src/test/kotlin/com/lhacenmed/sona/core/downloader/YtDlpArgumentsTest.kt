@@ -8,6 +8,7 @@ import com.lhacenmed.sona.core.model.DownloadKind
 import com.lhacenmed.sona.core.model.DownloadOptions
 import com.lhacenmed.sona.core.model.DownloaderPreferences
 import com.lhacenmed.sona.core.model.SponsorSegment
+import com.lhacenmed.sona.core.model.VideoFormat
 import com.lhacenmed.sona.core.model.VideoQuality
 import java.io.File
 import org.junit.Assert.assertEquals
@@ -20,13 +21,28 @@ class YtDlpArgumentsTest {
 
     private fun List<String>.valueOf(option: String): String? = getOrNull(indexOf(option) + 1)?.takeIf { option in this }
 
-    private fun DownloadChoices.arguments(language: String = "en", options: DownloadOptions = DownloadOptions(), preferences: DownloaderPreferences = DownloaderPreferences()) =
-        toArguments(options, preferences, language)
+    private fun DownloadChoices.arguments(
+        language: String = "en",
+        options: DownloadOptions = DownloadOptions(),
+        preferences: DownloaderPreferences = DownloaderPreferences(),
+        decodesAv1InHardware: Boolean = false,
+    ) = toArguments(options, preferences, language, decodesAv1InHardware)
+
+    @Test
+    fun `a video's format prefers H264 for sharing, or AV1 where decoded in hardware and VP9 otherwise for quality`() {
+        val legacy = DownloadChoices(kind = DownloadKind.VIDEO, videoFormat = VideoFormat.LEGACY).arguments()
+        assertEquals("proto,vcodec:h264,ext,res:1080", legacy.valueOf("-S"))
+
+        val quality = DownloadChoices(kind = DownloadKind.VIDEO, videoFormat = VideoFormat.QUALITY)
+        assertEquals("vcodec:vp9.2,res:1080", quality.arguments().valueOf("-S"))
+        assertEquals("vcodec:av01,res:1080", quality.arguments(decodesAv1InHardware = true).valueOf("-S"))
+        assertEquals("bv*+ba/b", quality.arguments().valueOf("-f"))
+    }
 
     @Test
     fun `a video is kept at its quality, as mp4, with its captions and chapters`() {
         val arguments = DownloadChoices(kind = DownloadKind.VIDEO, videoQuality = VideoQuality.P720, captions = true).arguments("fr")
-        assertEquals("res:720", arguments.valueOf("-S"))
+        assertEquals("vcodec:vp9.2,res:720", arguments.valueOf("-S"))
         assertEquals("mp4", arguments.valueOf("--merge-output-format"))
         assertEquals("fr.*,en.*,-live_chat", arguments.valueOf("--sub-langs"))
         assertEquals("srt", arguments.valueOf("--convert-subs"))
@@ -38,7 +54,7 @@ class YtDlpArgumentsTest {
     @Test
     fun `the best video has no limit, and no captions unless asked`() {
         val arguments = DownloadChoices(kind = DownloadKind.VIDEO, videoQuality = VideoQuality.BEST, captions = false).arguments()
-        assertNull(arguments.valueOf("-S"))
+        assertEquals("vcodec:vp9.2", arguments.valueOf("-S"))
         assertFalse("--write-subs" in arguments)
     }
 

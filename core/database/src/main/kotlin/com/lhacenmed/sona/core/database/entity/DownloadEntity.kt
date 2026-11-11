@@ -11,6 +11,7 @@ import com.lhacenmed.sona.core.model.DownloadFailure
 import com.lhacenmed.sona.core.model.DownloadKind
 import com.lhacenmed.sona.core.model.DownloadOptions
 import com.lhacenmed.sona.core.model.DownloadStatus
+import com.lhacenmed.sona.core.model.VideoFormat
 import com.lhacenmed.sona.core.model.VideoQuality
 
 /** One download asked for - queued, running, or over - with the choices it was asked with. See `Download`. */
@@ -22,6 +23,7 @@ data class DownloadEntity(
     val kind: String,
     val videoQuality: String,
     val audioFormat: String,
+    @ColumnInfo(defaultValue = "'QUALITY'") val videoFormat: String = VideoFormat.QUALITY.name,
     val captions: Boolean,
     val skipSponsors: Boolean,
     val status: String,
@@ -52,6 +54,7 @@ fun DownloadEntity.toDomain() = Download(
         kind = enumOr(kind, DownloadKind.VIDEO),
         videoQuality = enumOr(videoQuality, VideoQuality.P1080),
         audioFormat = enumOr(audioFormat, AudioFormat.ORIGINAL),
+        videoFormat = enumOr(videoFormat, VideoFormat.QUALITY),
         captions = captions,
         skipSponsors = skipSponsors,
     ),
@@ -92,6 +95,7 @@ fun queuedDownload(
     kind = choices.kind.name,
     videoQuality = choices.videoQuality.name,
     audioFormat = choices.audioFormat.name,
+    videoFormat = choices.videoFormat.name,
     captions = choices.captions,
     skipSponsors = choices.skipSponsors,
     status = DownloadStatus.QUEUED.name,

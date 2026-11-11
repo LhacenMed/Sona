@@ -4,6 +4,7 @@ import com.lhacenmed.sona.core.model.DownloadChoices
 import com.lhacenmed.sona.core.model.DownloadKind
 import com.lhacenmed.sona.core.model.DownloadOptions
 import com.lhacenmed.sona.core.model.DownloaderPreferences
+import com.lhacenmed.sona.core.model.VideoFormat
 
 /** How yt-dlp is asked to say what it does - one line each, Sona's own, apart from everything else it writes. */
 internal object YtDlpLines {
@@ -18,16 +19,21 @@ private const val SquareCover = "ThumbnailsConvertor+ffmpeg_o:-c:v mjpeg -vf cro
 /**
  * What yt-dlp is told to download with these choices, [options] and [preferences] - the one place each becomes yt-dlp's, so a
  * choice added is a line added here. [captionLanguage] is the device's language, whose captions are kept with English's.
+ * [decodesAv1InHardware] is whether the device decodes AV1 in hardware at the quality chosen, which a video's format asks.
  */
-internal fun DownloadChoices.toArguments(options: DownloadOptions, preferences: DownloaderPreferences, captionLanguage: String): List<String> = buildList {
+internal fun DownloadChoices.toArguments(
+    options: DownloadOptions,
+    preferences: DownloaderPreferences,
+    captionLanguage: String,
+    decodesAv1InHardware: Boolean,
+): List<String> = buildList {
     when (kind) {
         DownloadKind.VIDEO -> {
             val formatId = options.formatId
             if (formatId != null) {
                 addAll(listOf("-f", formatId))
             } else {
-                addAll(listOf("-f", "bv*+ba/b"))
-                videoQuality.height?.let { addAll(listOf("-S", "res:$it")) }
+                addAll(listOf("-f", "bv*+ba/b", "-S", videoSorter(decodesAv1InHardware)))
             }
             addAll(listOf("--merge-output-format", "mp4"))
             // In the video itself, as tracks of its own, which every player reads.
@@ -50,6 +56,18 @@ internal fun DownloadChoices.toArguments(options: DownloadOptions, preferences: 
     }
     options.clip?.let { addAll(listOf("--download-sections", "*${it.startSeconds}-${it.endSeconds}", "--force-keyframes-at-cuts")) }
     if (options.splitChapters) add("--split-chapters")
+}
+
+/**
+ * How yt-dlp ranks a video's formats - Seal's sorter: the codec its [VideoFormat] prefers, then no taller than the quality
+ * chosen. Quality prefers AV1 only where the device decodes it in hardware, and VP9 otherwise.
+ */
+private fun DownloadChoices.videoSorter(decodesAv1InHardware: Boolean): String {
+    val format = when (videoFormat) {
+        VideoFormat.LEGACY -> "proto,vcodec:h264,ext"
+        VideoFormat.QUALITY -> if (decodesAv1InHardware) "vcodec:av01" else "vcodec:vp9.2"
+    }
+    return listOfNotNull(format, videoQuality.height?.let { "res:$it" }).joinToString(",")
 }
 
 /** What every request yt-dlp makes is told: through the proxy, at the rate, signed in and remembering what it downloaded. */

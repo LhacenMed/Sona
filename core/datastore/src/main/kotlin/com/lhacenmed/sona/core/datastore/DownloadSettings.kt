@@ -18,6 +18,7 @@ import kotlinx.coroutines.CoroutineScope
 
 private val KIND = stringPreferencesKey("download_kind")
 private val VIDEO_QUALITY = stringPreferencesKey("download_video_quality")
+private val VIDEO_FORMAT = stringPreferencesKey("download_video_format")
 private val AUDIO_FORMAT = stringPreferencesKey("download_audio_format")
 private val CAPTIONS = booleanPreferencesKey("download_captions")
 private val SKIP_SPONSORS = booleanPreferencesKey("download_skip_sponsors")
@@ -48,6 +49,7 @@ class DownloadSettings @Inject constructor(
         DownloadChoices(
             kind = preferences.enum(KIND, defaults.kind),
             videoQuality = preferences.enum(VIDEO_QUALITY, defaults.videoQuality),
+            videoFormat = preferences.enum(VIDEO_FORMAT, defaults.videoFormat),
             audioFormat = preferences.enum(AUDIO_FORMAT, defaults.audioFormat),
             captions = preferences[CAPTIONS] ?: defaults.captions,
             skipSponsors = preferences[SKIP_SPONSORS] ?: defaults.skipSponsors,
@@ -75,6 +77,7 @@ class DownloadSettings @Inject constructor(
         dataStore.edit {
             it[KIND] = choices.kind.name
             it[VIDEO_QUALITY] = choices.videoQuality.name
+            it[VIDEO_FORMAT] = choices.videoFormat.name
             it[AUDIO_FORMAT] = choices.audioFormat.name
             it[CAPTIONS] = choices.captions
             it[SKIP_SPONSORS] = choices.skipSponsors

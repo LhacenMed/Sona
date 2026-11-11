@@ -539,3 +539,10 @@ object SeedBuiltInPlaylists : RoomDatabase.Callback() {
         )
     }
 }
+
+/** The video format a download was asked in - Quality for every one queued or done before, as each was downloaded. */
+val MIGRATION_30_31 = object : Migration(30, 31) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `downloads` ADD COLUMN `videoFormat` TEXT NOT NULL DEFAULT 'QUALITY'")
+    }
+}

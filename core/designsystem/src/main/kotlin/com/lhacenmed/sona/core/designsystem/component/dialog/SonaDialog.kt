@@ -118,15 +118,16 @@ private fun Modifier.dialogSize(): Modifier = layout { measurable, constraints -
 }
 
 /**
- * One choice in a dialog's list of them - a radio button and its label, the whole row the target, its press
- * reaching the dialog's edges as a list row's does while what it holds stays in line with the rest. The rows
- * go in a column marked `selectableGroup`, so they are read out as one set.
+ * One choice in a dialog's list of them - a radio button and its label, over its [summary] where it says what the
+ * label cannot - the whole row the target, its press reaching the dialog's edges as a list row's does while what it
+ * holds stays in line with the rest. The rows go in a column marked `selectableGroup`, so they are read out as one set.
  */
 @Composable
 fun SonaDialogOption(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
+    summary: String? = null,
 ) {
     Row(
         modifier = Modifier
@@ -136,7 +137,14 @@ fun SonaDialogOption(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RadioButton(selected = selected, onClick = null)
-        Text(text = label, modifier = Modifier.padding(start = 16.dp))
+        if (summary == null) {
+            Text(text = label, modifier = Modifier.padding(start = 16.dp))
+        } else {
+            Column(modifier = Modifier.padding(start = 16.dp)) {
+                Text(text = label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                Text(text = summary, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
     }
 }
 
