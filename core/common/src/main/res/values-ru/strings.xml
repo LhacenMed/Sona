@@ -1,18 +1,3 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Notification channels, as Android's app notification settings list them -->
-    <string name="notification_channel_playback"></string>
-    <string name="notification_channel_playback_description"></string>
-    <string name="notification_channel_update_alerts"></string>
-    <string name="notification_channel_update_alerts_description"></string>
-    <string name="notification_channel_update_download"></string>
-    <string name="notification_channel_update_download_description"></string>
-    <string name="notification_channel_library_scan"></string>
-    <string name="notification_channel_library_scan_description"></string>
-    <string name="notification_channel_auto_tag"></string>
-    <string name="notification_channel_auto_tag_description"></string>
-    <string name="notification_channel_backup"></string>
-    <string name="notification_channel_backup_description"></string>
-    <string name="notification_channel_downloads"></string>
-    <string name="notification_channel_downloads_description"></string>
-</resources>
+    </resources>
