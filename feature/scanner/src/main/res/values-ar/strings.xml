@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The rescan notification -->
+    <string name="scan_notification_title"></string>
+    <string name="scan_step_reading_media_store"></string>
+    <string name="scan_step_searching_storage"></string>
+    <string name="scan_step_reading_tags"></string>
+    <string name="scan_step_saving"></string>
+    <!-- How a rescan ended -->
+    <string name="scan_done"></string>
+    <string name="scan_failed"></string>
+</resources>
