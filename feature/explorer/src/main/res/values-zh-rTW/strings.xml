@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="explorer_all_folders"></string>
+    <string name="explorer_internal_storage"></string>
+    <string name="explorer_section_folders"></string>
+    <string name="explorer_section_music"></string>
+    <string name="explorer_section_videos"></string>
+    <string name="explorer_pick"></string>
+    <string name="explorer_unpick"></string>
+    <string name="explorer_select_all"></string>
+    <string name="explorer_deselect_all"></string>
+    <string name="explorer_empty_title"></string>
+    <string name="explorer_empty_message"></string>
+    <plurals name="explorer_files">
+    </plurals>
+</resources>
