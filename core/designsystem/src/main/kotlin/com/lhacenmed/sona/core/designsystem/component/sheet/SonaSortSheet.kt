@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.core.designsystem.component.sheet
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,10 +18,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.R
 import com.lhacenmed.sona.core.designsystem.component.SonaActionButtonGroup
 import com.lhacenmed.sona.core.designsystem.component.SonaChoiceRow
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
@@ -34,18 +37,22 @@ import com.lhacenmed.sona.core.model.sort.SortScope
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** The button that opens a list's [SonaSortSheet]. Every sortable screen uses this one. */
+@Composable
 fun sortAction(onClick: () -> Unit) = TopBarAction(
-    label = "Sort",
+    label = stringResource(R.string.sort_action),
     icon = SonaIcons.Sort,
     onClick = onClick,
 )
 
 /** What "this one" and "all of them" are called for a list there are many of - "This album", "All albums". */
-class SortScopeLabels(private val thisList: String, private val allLists: String) {
-    fun of(scope: SortScope): String = when (scope) {
-        SortScope.THIS_LIST -> thisList
-        SortScope.ALL_LISTS -> allLists
-    }
+class SortScopeLabels(@StringRes private val thisList: Int, @StringRes private val allLists: Int) {
+    @Composable
+    fun of(scope: SortScope): String = stringResource(
+        when (scope) {
+            SortScope.THIS_LIST -> thisList
+            SortScope.ALL_LISTS -> allLists
+        },
+    )
 }
 
 /**
@@ -82,8 +89,11 @@ fun SonaSortSheet(
     var scope by remember { mutableStateOf(defaultScope) }
     val isCustom = criterion == SortCriterion.CUSTOM
     val chosenOrder = SortOrder(criterion, if (isCustom) newTracksDirection else direction)
+    // Read here rather than inside the group: a group builds its items outside composition.
+    val cancelLabel = stringResource(R.string.confirmation_dialog_cancel)
+    val okLabel = stringResource(R.string.dialog_ok)
 
-    SonaBottomSheet(title = "Sort by", onDismissRequest = onDismiss) {
+    SonaBottomSheet(title = stringResource(R.string.sort_by), onDismissRequest = onDismiss) {
         Column(modifier = Modifier.selectableGroup()) {
             criteria.forEach { option ->
                 SonaChoiceRow(
@@ -95,7 +105,7 @@ fun SonaSortSheet(
         }
 
         Text(
-            text = if (isCustom) "New tracks" else "Direction",
+            text = stringResource(if (isCustom) R.string.sort_new_tracks else R.string.sort_direction),
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 8.dp),
@@ -126,7 +136,7 @@ fun SonaSortSheet(
 
         scopeLabels?.let { labels ->
             Text(
-                text = "Apply to",
+                text = stringResource(R.string.sort_apply_to),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 8.dp),
@@ -163,9 +173,9 @@ fun SonaSortSheet(
             horizontalArrangement = Arrangement.End,
         ) {
             SonaActionButtonGroup {
-                actionButton(label = "Cancel", onClick = { dismiss() })
+                actionButton(label = cancelLabel, onClick = { dismiss() })
                 actionButton(
-                    label = "OK",
+                    label = okLabel,
                     onClick = {
                         onApply(chosenOrder, scope)
                         dismiss()
@@ -179,28 +189,37 @@ fun SonaSortSheet(
     }
 }
 
-private fun SortCriterion.label(): String = when (this) {
-    SortCriterion.CUSTOM -> "Custom"
-    SortCriterion.NAME -> "Name"
-    SortCriterion.ARTIST -> "Artist"
-    SortCriterion.ALBUM -> "Album"
-    SortCriterion.YEAR -> "Year"
-    SortCriterion.DURATION -> "Duration"
-    SortCriterion.TRACK_NUMBER -> "Track number"
-    SortCriterion.TRACK_COUNT -> "Track count"
-    SortCriterion.ALBUM_COUNT -> "Album count"
-    SortCriterion.DATE -> "Date"
-    SortCriterion.DATE_ADDED -> "Date added"
-    SortCriterion.PLAY_COUNT -> "Play count"
-}
+@Composable
+private fun SortCriterion.label(): String = stringResource(
+    when (this) {
+        SortCriterion.CUSTOM -> R.string.sort_custom
+        SortCriterion.NAME -> R.string.sort_name
+        SortCriterion.ARTIST -> R.string.sort_artist
+        SortCriterion.ALBUM -> R.string.sort_album
+        SortCriterion.YEAR -> R.string.sort_year
+        SortCriterion.DURATION -> R.string.sort_duration
+        SortCriterion.TRACK_NUMBER -> R.string.sort_track_number
+        SortCriterion.TRACK_COUNT -> R.string.sort_track_count
+        SortCriterion.ALBUM_COUNT -> R.string.sort_album_count
+        SortCriterion.DATE -> R.string.sort_date
+        SortCriterion.DATE_ADDED -> R.string.sort_date_added
+        SortCriterion.PLAY_COUNT -> R.string.sort_play_count
+    },
+)
 
-private fun SortDirection.label(): String = when (this) {
-    SortDirection.ASCENDING -> "Ascending"
-    SortDirection.DESCENDING -> "Descending"
-}
+@Composable
+private fun SortDirection.label(): String = stringResource(
+    when (this) {
+        SortDirection.ASCENDING -> R.string.sort_ascending
+        SortDirection.DESCENDING -> R.string.sort_descending
+    },
+)
 
 /** Where a custom order going this way puts the tracks added to it - see [SortOrder]. */
-private fun SortDirection.newTracksLabel(): String = when (this) {
-    SortDirection.ASCENDING -> "At the bottom"
-    SortDirection.DESCENDING -> "At the top"
-}
+@Composable
+private fun SortDirection.newTracksLabel(): String = stringResource(
+    when (this) {
+        SortDirection.ASCENDING -> R.string.sort_new_tracks_bottom
+        SortDirection.DESCENDING -> R.string.sort_new_tracks_top
+    },
+)

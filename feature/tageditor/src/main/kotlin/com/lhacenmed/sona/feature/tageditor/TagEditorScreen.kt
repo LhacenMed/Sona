@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -31,6 +32,7 @@ import com.lhacenmed.sona.core.designsystem.component.section.ColumnSection
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.tageditor.R
 import com.lhacenmed.sona.feature.tageditor.lyricseditor.DiscardChangesDialog
 import com.lhacenmed.sona.feature.tageditor.lyricseditor.LyricsEditorScreen
 import java.io.File
@@ -74,7 +76,7 @@ data class TagEditorScreen(val trackId: Long, val isInAutoTagRun: Boolean = fals
             outcome = viewModel.saveOutcome,
             save = viewModel::save,
             onSaved = {
-                if (!isInAutoTagRun) context.toast("Tags saved")
+                if (!isInAutoTagRun) context.toast(context.getString(R.string.tag_editor_saved))
                 // Closed outright: going back would ask whether to leave the changes just saved.
                 navigator.close()
             },
@@ -98,7 +100,7 @@ data class TagEditorScreen(val trackId: Long, val isInAutoTagRun: Boolean = fals
         SonaExtendedFloatingActionButtons(
             listOf(
                 ExtendedFloatingActionButtonContent(
-                    label = if (isInAutoTagRun) "Done" else "Save",
+                    label = stringResource(if (isInAutoTagRun) R.string.tag_editor_done else R.string.tag_editor_save),
                     icon = SonaIcons.Check,
                     // A run's draft reaches no file here, so there is nothing to ask Android first.
                     onClick = { if (isInAutoTagRun) viewModel.save() else requestSave() },
@@ -120,7 +122,7 @@ data class TagEditorScreen(val trackId: Long, val isInAutoTagRun: Boolean = fals
         }
 
         Column(modifier = Modifier.fillMaxSize()) {
-            SonaTopAppBar(title = "Edit info", onNavigateBack = navigator::back)
+            SonaTopAppBar(title = stringResource(R.string.tag_editor_title), onNavigateBack = navigator::back)
             if (draft == null) return@Column
 
             val track = draft.track
@@ -141,11 +143,11 @@ data class TagEditorScreen(val trackId: Long, val isInAutoTagRun: Boolean = fals
                     )
 
                     HorizontalDivider()
-                    ColumnSection(title = "File") {
-                        FileFact(label = "Duration", value = formatDuration(track.durationMs))
-                        FileFact(label = "Format", value = File(track.path).extension.uppercase())
-                        draft.file?.bitrateKbps?.let { FileFact(label = "Bitrate", value = "$it kbps") }
-                        FileFact(label = "Path", value = track.path)
+                    ColumnSection(title = stringResource(R.string.tag_editor_file)) {
+                        FileFact(label = stringResource(R.string.tag_editor_duration), value = formatDuration(track.durationMs))
+                        FileFact(label = stringResource(R.string.tag_editor_format), value = File(track.path).extension.uppercase())
+                        draft.file?.bitrateKbps?.let { FileFact(label = stringResource(R.string.tag_editor_bitrate), value = stringResource(R.string.tag_editor_kbps, it)) }
+                        FileFact(label = stringResource(R.string.tag_editor_path), value = track.path)
                     }
                 }
             }

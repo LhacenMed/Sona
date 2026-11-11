@@ -10,6 +10,7 @@ import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.UnknownNames
 import com.lhacenmed.sona.feature.playback.PlaybackController
+import com.lhacenmed.sona.feature.tageditor.R
 import com.lhacenmed.sona.feature.tageditor.autotag.AutoTagger
 import com.lhacenmed.sona.feature.tageditor.lookup.TrackQueries
 import com.lhacenmed.sona.feature.tageditor.tags.CoverChoice
@@ -145,7 +146,7 @@ class TagEditorViewModel @AssistedInject constructor(
         }
         isSaving = true
         viewModelScope.launch {
-            val outcome = saveOutcomeOf("The tags could not be saved") {
+            val outcome = saveOutcomeOf(R.string.tag_editor_save_failed) {
                 trackTagsRepository.save(draft.track, draft.tags, preparedCover?.await())
             }
             // A cover that could not be had is fetched afresh, so saving again tries it again.

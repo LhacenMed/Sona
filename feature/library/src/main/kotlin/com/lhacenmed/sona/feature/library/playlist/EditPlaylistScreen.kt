@@ -33,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -52,6 +53,7 @@ import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
 import com.lhacenmed.sona.core.designsystem.component.section.ColumnSection
 import com.lhacenmed.sona.core.designsystem.component.section.rememberSectionListState
 import com.lhacenmed.sona.core.designsystem.component.section.section
+import com.lhacenmed.sona.core.designsystem.component.title
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.model.PlaylistCover
@@ -59,8 +61,10 @@ import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.library.LibraryListContent
-import com.lhacenmed.sona.feature.library.PLAYLIST_NAME_TAKEN_MESSAGE
+import com.lhacenmed.sona.feature.library.R
 import com.lhacenmed.sona.feature.library.isPlaylistNameTaken
+import com.lhacenmed.sona.feature.library.options.OptionsAction
+import com.lhacenmed.sona.feature.library.options.label
 import com.lhacenmed.sona.feature.library.searchEmptyMessage
 import com.lhacenmed.sona.feature.library.searchedFor
 
@@ -120,14 +124,14 @@ data class EditPlaylistScreen(val playlistId: Long) : Screen {
 
         Column(modifier = Modifier.fillMaxSize()) {
             SonaTopAppBar(
-                title = "Edit playlist",
+                title = OptionsAction.EDIT.label,
                 onNavigateBack = navigator::back,
                 actions = listOf(
-                    TopBarAction(label = "Save", icon = SonaIcons.Check, enabled = canSave) {
+                    TopBarAction(label = stringResource(R.string.edit_playlist_save), icon = SonaIcons.Check, enabled = canSave) {
                         isSaving = true
                         viewModel.save { succeeded ->
                             isSaving = false
-                            if (succeeded) navigator.close() else context.toast("Could not save playlist")
+                            if (succeeded) navigator.close() else context.toast(context.getString(R.string.edit_playlist_save_failed))
                         }
                     },
                 ),
@@ -152,42 +156,42 @@ data class EditPlaylistScreen(val playlistId: Long) : Screen {
                         modifier = Modifier.padding(16.dp),
                     )
                     OutlinedTextField(
-                        value = viewModel.name,
+                        value = if (isRenamable) viewModel.name else saved?.title.orEmpty(),
                         onValueChange = viewModel::rename,
-                        label = { Text("Name") },
+                        label = { Text(stringResource(R.string.edit_playlist_name)) },
                         singleLine = true,
                         enabled = isRenamable,
                         isError = isNameTaken,
                         supportingText = when {
-                            !isRenamable -> ({ Text("Favorites keeps its name") })
-                            isNameTaken -> ({ Text(PLAYLIST_NAME_TAKEN_MESSAGE) })
+                            !isRenamable -> ({ Text(stringResource(R.string.edit_playlist_name_fixed, saved?.title.orEmpty())) })
+                            isNameTaken -> ({ Text(stringResource(R.string.playlist_name_taken)) })
                             else -> null
                         },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp),
                     )
-                    ColumnSection(title = "Cover") {
+                    ColumnSection(title = stringResource(R.string.edit_playlist_cover)) {
                         Column(modifier = Modifier.selectableGroup()) {
                             CoverOptionRow(
-                                label = "Stacked covers",
-                                description = "The covers of its tracks",
+                                label = stringResource(R.string.edit_playlist_cover_stacked),
+                                description = stringResource(R.string.edit_playlist_cover_stacked_summary),
                                 coverArtUris = stackedCoverArtUris,
                                 seed = playlistId.hashCode(),
                                 selected = viewModel.cover == PlaylistCover.Stacked,
                                 onClick = { viewModel.selectCover(PlaylistCover.Stacked) },
                             )
                             CoverOptionRow(
-                                label = "First track",
-                                description = playlistTracks.firstOrNull()?.title ?: NO_TRACKS_DESCRIPTION,
+                                label = stringResource(R.string.edit_playlist_cover_first),
+                                description = playlistTracks.firstOrNull()?.title ?: stringResource(R.string.edit_playlist_no_tracks),
                                 coverArtUris = coverArtUrisOf(PlaylistCover.FirstTrack),
                                 seed = playlistId.hashCode(),
                                 selected = viewModel.cover == PlaylistCover.FirstTrack,
                                 onClick = { viewModel.selectCover(PlaylistCover.FirstTrack) },
                             )
                             CoverOptionRow(
-                                label = "Last track",
-                                description = playlistTracks.lastOrNull()?.title ?: NO_TRACKS_DESCRIPTION,
+                                label = stringResource(R.string.edit_playlist_cover_last),
+                                description = playlistTracks.lastOrNull()?.title ?: stringResource(R.string.edit_playlist_no_tracks),
                                 coverArtUris = coverArtUrisOf(PlaylistCover.LastTrack),
                                 seed = playlistId.hashCode(),
                                 selected = viewModel.cover == PlaylistCover.LastTrack,
@@ -197,8 +201,8 @@ data class EditPlaylistScreen(val playlistId: Long) : Screen {
                             // the track or image chosen before is simply selected again.
                             val isTrackSelected = viewModel.cover is PlaylistCover.OfTrack
                             CoverOptionRow(
-                                label = "A track",
-                                description = chosenTrack?.title ?: "Choose from the library",
+                                label = stringResource(R.string.edit_playlist_cover_track),
+                                description = chosenTrack?.title ?: stringResource(R.string.edit_playlist_cover_track_summary),
                                 coverArtUris = chosenTrack?.coverArtUri?.let(::listOf).orEmpty(),
                                 seed = playlistId.hashCode(),
                                 selected = isTrackSelected,
@@ -213,8 +217,8 @@ data class EditPlaylistScreen(val playlistId: Long) : Screen {
                             val chosenImageUri = viewModel.chosenImageUri
                             val isImageSelected = viewModel.cover is PlaylistCover.Image
                             CoverOptionRow(
-                                label = "An image",
-                                description = if (chosenImageUri == null) "Choose from your photos" else "From your photos",
+                                label = stringResource(R.string.edit_playlist_cover_image),
+                                description = stringResource(if (chosenImageUri == null) R.string.edit_playlist_cover_image_summary else R.string.edit_playlist_cover_image_chosen),
                                 coverArtUris = chosenImageUri?.let(::listOf).orEmpty(),
                                 seed = playlistId.hashCode(),
                                 selected = isImageSelected,
@@ -234,7 +238,6 @@ data class EditPlaylistScreen(val playlistId: Long) : Screen {
     }
 }
 
-private const val NO_TRACKS_DESCRIPTION = "No tracks yet"
 
 /** One cover the playlist can take: a preview of it, what it is, and whether it is the one chosen. */
 @Composable
@@ -287,9 +290,9 @@ private fun CoverTrackChooser(
 
     Column(modifier = Modifier.fillMaxSize()) {
         SonaTopAppBar(
-            title = "Choose a track",
+            title = stringResource(R.string.edit_playlist_choose_track),
             onNavigateBack = onBack,
-            actions = listOf(TopBarAction(label = "Search", icon = SonaIcons.Search) { searchQuery = "" }),
+            actions = listOf(TopBarAction(label = stringResource(R.string.library_search), icon = SonaIcons.Search) { searchQuery = "" }),
             search = searchQuery?.let { query ->
                 TopBarSearch(query = query, onQueryChange = { searchQuery = it }, onClose = { searchQuery = null })
             },
@@ -300,13 +303,16 @@ private fun CoverTrackChooser(
             // Reached from a playlist, so the library has already loaded and been permitted.
             hasPermission = true,
             isScanning = false,
-            emptyTitle = "No tracks found",
+            emptyTitle = stringResource(R.string.library_no_tracks_found),
             emptyMessage = searchEmptyMessage(searchQuery),
             loadingIcon = SonaIcons.Song,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth(),
         ) { visibleLibraryTracks ->
+            // Read here, for the list's builder, which runs outside composition.
+            val inPlaylistTitle = stringResource(R.string.edit_playlist_in_playlist)
+            val allTracksTitle = stringResource(R.string.edit_playlist_all_tracks)
             FastScroller(listState = listState, modifier = Modifier.fillMaxSize()) { overscrollEffect ->
                 LazyColumn(
                     state = listState,
@@ -321,12 +327,12 @@ private fun CoverTrackChooser(
                     }
                     // Sectioned only while the playlist has tracks to show: the library alone needs no heading.
                     if (visiblePlaylistTracks.isNotEmpty()) {
-                        section(key = "playlist", title = "In this playlist", state = sections) {
+                        section(key = "playlist", title = inPlaylistTitle, state = sections) {
                             items(items = visiblePlaylistTracks, key = { "playlist-${it.id}" }) { track ->
                                 CoverTrackRow(track = track, onClick = { onTrackChosen(track) })
                             }
                         }
-                        section(key = "library", title = "All tracks", state = sections, hasDividerAbove = true, content = libraryRows)
+                        section(key = "library", title = allTracksTitle, state = sections, hasDividerAbove = true, content = libraryRows)
                     } else {
                         libraryRows()
                     }

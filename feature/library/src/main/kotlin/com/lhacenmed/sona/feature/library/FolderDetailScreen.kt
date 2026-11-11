@@ -2,6 +2,7 @@ package com.lhacenmed.sona.feature.library
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.itemsOrEmpty
@@ -9,6 +10,7 @@ import com.lhacenmed.sona.core.designsystem.component.CoverArtDefaults
 import com.lhacenmed.sona.core.designsystem.component.SonaFolderCover
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.library.R
 import com.lhacenmed.sona.feature.library.options.FolderOptionsContext
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
 
@@ -27,7 +29,7 @@ data class FolderDetailScreen(val folderPath: String, val isVideo: Boolean) : Sc
         TrackListDetail(
             title = viewModel.folderName,
             header = DetailHeaderContent(
-                type = "Folder",
+                type = stringResource(R.string.options_type_folder),
                 subhead = folderPath,
                 info = trackCountAndDuration(tracks.itemsOrEmpty),
                 cover = {
@@ -41,7 +43,7 @@ data class FolderDetailScreen(val folderPath: String, val isVideo: Boolean) : Sc
             ),
             onBack = navigator::back,
             viewModel = viewModel,
-            emptyMessage = if (isVideo) "This folder has no videos." else "This folder has no tracks.",
+            emptyMessage = stringResource(if (isVideo) R.string.folder_empty_videos else R.string.folder_empty_tracks),
             collection = folder?.let { OptionsTarget.ForFolder(it, FolderOptionsContext.FROM_DETAIL) },
         )
     }

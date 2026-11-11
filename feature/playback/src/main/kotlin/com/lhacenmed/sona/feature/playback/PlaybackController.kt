@@ -239,13 +239,13 @@ class PlaybackController @Inject constructor(
      */
     fun playPrivateTracks(tracks: List<Track>, startIndex: Int) {
         if (tracks.getOrNull(startIndex)?.isVideo == true) {
-            watch(tracks, startIndex, shuffled = null, startPositionMs = 0L, VideoPlayerOpening.FULL_SCREEN, ::vaultMediaItem)
+            watch(tracks, startIndex, shuffled = null, startPositionMs = 0L, VideoPlayerOpening.FULL_SCREEN) { vaultMediaItem(context, it) }
             return
         }
         val mediaController = controller ?: return
         videoPlayback.close()
         persistQueueState(mediaController)
-        startQueue(mediaController, tracks.map(::vaultMediaItem), startIndex, startPositionMs = 0L, shuffled = null)
+        startQueue(mediaController, tracks.map { vaultMediaItem(context, it) }, startIndex, startPositionMs = 0L, shuffled = null)
     }
 
     private fun watch(
@@ -289,7 +289,7 @@ class PlaybackController @Inject constructor(
         val queue = List(mediaController.mediaItemCount, mediaController::getMediaItemAt).mapNotNull { item ->
             val track = handedOverVideos[item.mediaId] ?: item.idInSpace?.takeUnless { item.isVaultItem }?.let(repository.tracksById.value::get)
             // Made anew: what comes back through the session need not carry its file's address.
-            track?.takeIf { it.isVideo }?.let { VideoQueueItem(it, if (item.isVaultItem) vaultMediaItem(it) else it.toMediaItem(item.playbackParent)) }
+            track?.takeIf { it.isVideo }?.let { VideoQueueItem(it, if (item.isVaultItem) vaultMediaItem(context, it) else it.toMediaItem(item.playbackParent)) }
         }
         val index = queue.indexOfFirst { it.mediaItem.mediaId == current.mediaId }
         if (index < 0) return
@@ -489,7 +489,7 @@ class PlaybackController @Inject constructor(
         val mediaController = controller ?: return
         // A Private Folder item is its own file, which only this side knows of: put back as it is, in place.
         if (mediaController.currentMediaItem?.isVaultItem == true) {
-            mediaController.addMediaItem(mediaItemIndex.coerceIn(0, mediaController.mediaItemCount), vaultMediaItem(track))
+            mediaController.addMediaItem(mediaItemIndex.coerceIn(0, mediaController.mediaItemCount), vaultMediaItem(context, track))
             return
         }
         val args = Bundle().apply {

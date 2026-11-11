@@ -22,6 +22,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -50,6 +51,7 @@ import com.lhacenmed.sona.core.vault.VaultState
 import com.lhacenmed.sona.core.vault.data.VaultItem
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.playback.PlaybackSpace
+import com.lhacenmed.sona.feature.vault.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
@@ -90,17 +92,18 @@ data object PrivateFolderScreen : Screen {
         if (isOpen) {
             PrivateFolderContent(viewModel)
         } else {
-            SonaTopAppBar(title = "Private Folder", onNavigateBack = navigator::back)
+            SonaTopAppBar(title = stringResource(R.string.vault_title), onNavigateBack = navigator::back)
         }
     }
 }
 
-private val tabTitles = listOf("Videos", "Tracks")
+/** The Private Folder's tabs, in order: its videos, then its tracks. */
+private const val TabCount = 2
 
 @Composable
 private fun PrivateFolderContent(viewModel: PrivateFolderViewModel) {
     val navigator = LocalNavigator.current
-    val pagerState = rememberPagerState(pageCount = { tabTitles.size })
+    val pagerState = rememberPagerState(pageCount = { TabCount })
     val scope = rememberCoroutineScope()
     val playingItemId by viewModel.playingItemId.collectAsStateWithLifecycle()
     val resumePositionsMs = viewModel.resumePositionsMs.collectAsStateWithLifecycle()
@@ -112,16 +115,16 @@ private fun PrivateFolderContent(viewModel: PrivateFolderViewModel) {
         // The bar and the tabs are one section, lifting as one once the list leaves its top - as the library's do.
         Column(modifier = Modifier.topBarBackground()) {
             SonaTopAppBar(
-                title = "Private Folder",
+                title = stringResource(R.string.vault_title),
                 drawsBackground = false,
                 onNavigateBack = navigator::back,
                 actions = listOf(
                     sortAction { sortingVideos = pagerState.settledPage == 0 },
-                    TopBarAction(label = "Settings", icon = SonaIcons.Settings) { navigator.go(PrivateFolderSettingsScreen) },
+                    TopBarAction(label = stringResource(R.string.vault_settings), icon = SonaIcons.Settings) { navigator.go(PrivateFolderSettingsScreen) },
                 ),
             )
             SonaTabRow(
-                tabTitles = tabTitles,
+                tabTitles = listOf(stringResource(R.string.vault_videos), stringResource(R.string.vault_tracks)),
                 selectedPosition = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
                 onTabClick = { page -> scope.launch { pagerState.animateScrollToPage(page) } },
                 modifier = Modifier.padding(horizontal = SonaComponentStyle.ContentHorizontalPadding, vertical = 8.dp),
@@ -178,9 +181,9 @@ private fun VaultItemList(
     if (items.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(if (isVideo) "No private videos" else "No private tracks", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(if (isVideo) R.string.vault_no_videos else R.string.vault_no_tracks), style = MaterialTheme.typography.titleMedium)
                 Text(
-                    text = "Choose \"Add to Private Folder\" from a ${if (isVideo) "video" else "track"}'s options in your library.",
+                    text = stringResource(if (isVideo) R.string.vault_add_videos_hint else R.string.vault_add_tracks_hint),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,

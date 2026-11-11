@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -55,6 +56,7 @@ import com.lhacenmed.sona.core.designsystem.theme.LocalCoverStyle
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
+import com.lhacenmed.sona.feature.tageditor.R
 import com.lhacenmed.sona.feature.tageditor.lookup.CatalogueMatch
 import com.lhacenmed.sona.feature.tageditor.lyrics.FoundLyrics
 import com.lhacenmed.sona.feature.tageditor.lyrics.LyricsTiming
@@ -62,6 +64,7 @@ import com.lhacenmed.sona.feature.tageditor.tags.CoverChoice
 import com.lhacenmed.sona.feature.tageditor.tags.TagField
 import com.lhacenmed.sona.feature.tageditor.tags.TrackTags
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.feature.tageditor.tags.label
 
 /** The best match's card keeps this height whatever it holds, so nothing under it moves as the lookup ends. */
 private val MatchCardMinHeight = 112.dp
@@ -90,7 +93,7 @@ internal fun SearchFields(
         OutlinedTextField(
             value = artist,
             onValueChange = onArtistChange,
-            label = { Text("Artist") },
+            label = { Text(stringResource(R.string.tag_field_artist)) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
             modifier = Modifier.fillMaxWidth(),
@@ -98,7 +101,7 @@ internal fun SearchFields(
         OutlinedTextField(
             value = title,
             onValueChange = onTitleChange,
-            label = { Text("Title") },
+            label = { Text(stringResource(R.string.tag_field_title)) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { onSearch() }),
@@ -111,7 +114,7 @@ internal fun SearchFields(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Icon(SonaIcons.Search, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
-            Text("Search tags and lyrics", modifier = Modifier.padding(start = ButtonDefaults.IconSpacing))
+            Text(stringResource(R.string.tag_editor_search_button), modifier = Modifier.padding(start = ButtonDefaults.IconSpacing))
         }
     }
 }
@@ -132,7 +135,7 @@ internal fun SourceFilter(
         horizontalArrangement = Arrangement.spacedBy(SonaComponentStyle.ItemSpacing),
     ) {
         item(key = "all") {
-            FilterChip(selected = selected == null, onClick = { onSelect(null) }, label = { Text("All") })
+            FilterChip(selected = selected == null, onClick = { onSelect(null) }, label = { Text(stringResource(R.string.tag_editor_all)) })
         }
         items(sources, key = { it }) { source ->
             val count = counts?.get(source)
@@ -196,7 +199,7 @@ internal fun BestMatchCard(
                             )
                         }
                         Text(
-                            if (isApplied) "Applied" else "From ${best.catalogue} · press to apply",
+                            if (isApplied) stringResource(R.string.tag_editor_applied) else stringResource(R.string.tag_editor_apply_from, best.catalogue),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary,
                         )
@@ -204,22 +207,22 @@ internal fun BestMatchCard(
                     IconButton(shapes = iconButtonPressShapes(), onClick = { isExpanded = !isExpanded }) {
                         Icon(
                             imageVector = if (isExpanded) SonaIcons.ExpandLess else SonaIcons.ExpandMore,
-                            contentDescription = if (isExpanded) "Hide its tags" else "Show its tags",
+                            contentDescription = stringResource(if (isExpanded) R.string.tag_editor_hide_tags else R.string.tag_editor_show_tags),
                         )
                     }
                 }
                 if (isExpanded) MatchFields(best.tags)
             }
-            lookup == MatchLookup.Searching -> CardMessage("Looking up tags…") {
+            lookup == MatchLookup.Searching -> CardMessage(stringResource(R.string.tag_editor_looking_up)) {
                 CircularWavyProgressIndicator(modifier = Modifier.size(32.dp))
             }
             lookup == MatchLookup.Unreachable -> CardMessage(
-                text = "The catalogues could not be reached.",
-                action = { TextButton(shapes = buttonPressShapes(), onClick = onRetry) { Text("Retry") } },
+                text = stringResource(R.string.tag_editor_unreachable),
+                action = { TextButton(shapes = buttonPressShapes(), onClick = onRetry) { Text(stringResource(R.string.tag_editor_retry)) } },
             ) {
                 Icon(SonaIcons.CloudOff, contentDescription = null)
             }
-            else -> CardMessage("No match found. Change the search, or edit the tags below.") {
+            else -> CardMessage(stringResource(R.string.tag_editor_no_match)) {
                 Icon(SonaIcons.SearchOff, contentDescription = null)
             }
         }
@@ -268,12 +271,12 @@ internal fun CoverChoices(
     ) {
         item(key = "gallery") { GalleryTile(onClick = onPickFromGallery) }
         item(key = "own") {
-            CoverChoice(uri = ownCoverUri, label = "Current", isSelected = selected == CoverChoice.Own) { onSelect(CoverChoice.Own) }
+            CoverChoice(uri = ownCoverUri, label = stringResource(R.string.tag_editor_cover_current), isSelected = selected == CoverChoice.Own) { onSelect(CoverChoice.Own) }
         }
         if (deviceCoverUri != null) {
             item(key = "device") {
                 val choice = CoverChoice.Device(deviceCoverUri)
-                CoverChoice(uri = deviceCoverUri, label = "From gallery", isSelected = selected == choice) { onSelect(choice) }
+                CoverChoice(uri = deviceCoverUri, label = stringResource(R.string.tag_editor_cover_gallery), isSelected = selected == choice) { onSelect(choice) }
             }
         }
         items(matchCovers, key = { it.coverUrl }) { match ->
@@ -298,7 +301,7 @@ private fun GalleryTile(onClick: () -> Unit) {
         ) {
             Icon(SonaIcons.AddPhotoAlternate, contentDescription = null)
             Text(
-                "Add from gallery",
+                stringResource(R.string.tag_editor_cover_add),
                 style = MaterialTheme.typography.labelMedium,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -356,7 +359,7 @@ internal fun LyricsResultCard(found: FoundLyrics, trackDurationMs: Long, isAppli
                     modifier = Modifier.weight(1f),
                 )
                 if (isApplied) {
-                    Icon(SonaIcons.CheckCircle, contentDescription = "Applied", tint = MaterialTheme.colorScheme.primary)
+                    Icon(SonaIcons.CheckCircle, contentDescription = stringResource(R.string.tag_editor_applied), tint = MaterialTheme.colorScheme.primary)
                 }
             }
             LyricsDuration(found = found, trackDurationMs = trackDurationMs)
@@ -381,11 +384,11 @@ private fun LyricsDuration(found: FoundLyrics, trackDurationMs: Long) {
     val difference = found.durationDifferenceMs(trackDurationMs)
     val fits = found.fits(trackDurationMs)
     val text = when {
-        durationMs == null -> "Length not given"
+        durationMs == null -> stringResource(R.string.tag_editor_length_unknown)
         trackDurationMs <= 0 || difference == null -> formatDuration(durationMs)
-        fits -> "${formatDuration(durationMs)} · Same length"
-        difference > 0 -> "${formatDuration(durationMs)} · ${formatGap(difference)} longer"
-        else -> "${formatDuration(durationMs)} · ${formatGap(-difference)} shorter"
+        fits -> stringResource(R.string.tag_editor_length_same, formatDuration(durationMs))
+        difference > 0 -> stringResource(R.string.tag_editor_length_longer, formatDuration(durationMs), formatGap(difference))
+        else -> stringResource(R.string.tag_editor_length_shorter, formatDuration(durationMs), formatGap(-difference))
     }
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(
@@ -412,9 +415,10 @@ internal fun formatDuration(durationMs: Long): String {
 }
 
 /** A gap between two lengths: "27s", or "1:05" from a minute on. */
+@Composable
 private fun formatGap(gapMs: Long): String {
     val seconds = (gapMs + 500) / 1000
-    return if (seconds < 60) "${seconds}s" else formatDuration(gapMs)
+    return if (seconds < 60) stringResource(R.string.tag_editor_seconds, seconds) else formatDuration(gapMs)
 }
 
 /** The line under the lyrics while sources are still answering, or when none had any - so the list never just ends. */
@@ -434,7 +438,7 @@ internal fun LyricsSearchStatus(isSearching: Boolean, hasResults: Boolean) {
             }
         }
         Text(
-            if (isSearching) "Looking for lyrics…" else "No lyrics found",
+            stringResource(if (isSearching) R.string.tag_editor_looking_for_lyrics else R.string.tag_editor_no_lyrics),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -471,7 +475,7 @@ internal fun MatchRow(match: CatalogueMatch, isApplying: Boolean, isApplied: Boo
         Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
             when {
                 isApplying -> CircularWavyProgressIndicator(modifier = Modifier.size(20.dp))
-                isApplied -> Icon(SonaIcons.CheckCircle, contentDescription = "Applied", tint = MaterialTheme.colorScheme.primary)
+                isApplied -> Icon(SonaIcons.CheckCircle, contentDescription = stringResource(R.string.tag_editor_applied), tint = MaterialTheme.colorScheme.primary)
             }
         }
     }
@@ -523,8 +527,8 @@ private fun MatchField(icon: ImageVector, value: String, label: String) {
 }
 
 private val LyricsTiming.label: String
-    get() = when (this) {
-        LyricsTiming.WORD -> "Word-synced"
-        LyricsTiming.LINE -> "Synced"
-        LyricsTiming.NONE -> "Plain"
+    @Composable get() = when (this) {
+        LyricsTiming.WORD -> stringResource(R.string.lyrics_timing_word)
+        LyricsTiming.LINE -> stringResource(R.string.lyrics_timing_line)
+        LyricsTiming.NONE -> stringResource(R.string.lyrics_timing_none)
     }

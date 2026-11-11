@@ -38,6 +38,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -85,8 +86,10 @@ import com.lhacenmed.sona.core.designsystem.component.rememberDetailHeaderState
 import com.lhacenmed.sona.core.designsystem.theme.LocalIsRounded
 import com.lhacenmed.sona.core.designsystem.theme.SquareShape
 import com.lhacenmed.sona.core.navigation.LocalNavigator
+import com.lhacenmed.sona.feature.library.R
 import com.lhacenmed.sona.feature.library.operation.RemoveFromListDialog
 import com.lhacenmed.sona.feature.library.favorite.favoriteItemsOf
+import com.lhacenmed.sona.feature.library.options.OptionsAction
 import com.lhacenmed.sona.feature.library.options.OptionsFollowUps
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsSwipe
@@ -95,6 +98,7 @@ import com.lhacenmed.sona.feature.library.options.RemovableTrackList
 import com.lhacenmed.sona.feature.library.options.TrackOptionsContext
 import com.lhacenmed.sona.feature.library.options.actions
 import com.lhacenmed.sona.feature.library.options.disabledActions
+import com.lhacenmed.sona.feature.library.options.label
 import com.lhacenmed.sona.feature.library.options.rememberOptionsActions
 import com.lhacenmed.sona.feature.library.options.rememberOptionsSwipeActions
 import com.lhacenmed.sona.feature.library.selection.MovingTracks
@@ -577,14 +581,15 @@ private fun LoadingListPlaceholder(
  * flash a "grant permission" message even when permission was already granted: the real reason was
  * simply that the scan hadn't populated the database yet.
  */
+@Composable
 internal fun emptyLibraryStateContent(
     hasPermission: Boolean,
     isScanning: Boolean,
     emptyTitle: String,
     emptyMessage: String,
 ): Pair<String, String> = when {
-    !hasPermission -> "Permission needed" to "Sona needs access to your audio files to show your library."
-    isScanning -> "Scanning your library…" to "This only takes a moment."
+    !hasPermission -> stringResource(R.string.library_permission_title) to stringResource(R.string.library_permission_message)
+    isScanning -> stringResource(R.string.library_scanning_title) to stringResource(R.string.library_scanning_message)
     else -> emptyTitle to emptyMessage
 }
 
@@ -600,6 +605,7 @@ internal class DetailHeaderContent(
 )
 
 /** "12 tracks • 3 videos • 45:12" - a list's count, as [mediaCountLabel] words it, and how long it all plays for. */
+@Composable
 internal fun trackCountAndDuration(tracks: List<Track>): String =
     listOf(mediaCountLabel(tracks), formatDuration(tracks.sumOf { it.durationMs })).joinToString(InfoSeparator)
 
@@ -723,13 +729,23 @@ internal fun TrackListDetail(
         )
     }
 
-    val collapse = remember(headerState, hasTracks) {
+    // Read here, for what is built outside composition: the bar's remembered actions, and the list's rows.
+    val playLabel = stringResource(R.string.library_play)
+    val shuffleLabel = stringResource(R.string.library_shuffle)
+    val sectionTitles = sections.map { stringResource(it.titleRes) }
+    val tracksTitle = stringResource(R.string.library_tracks_title)
+    val searchLabel = stringResource(R.string.library_search)
+    val sortButton = sort?.let { sortAction { isSortSheetOpen = true } }
+    val noDiscTitle = stringResource(R.string.library_no_disc)
+    val resources = LocalContext.current.resources
+
+    val collapse = remember(headerState, hasTracks, playLabel, shuffleLabel) {
         TopBarCollapse(
             progress = { headerState.collapse },
-            play = TopBarAction(label = "Play", icon = SonaIcons.Play, enabled = hasTracks) {
+            play = TopBarAction(label = playLabel, icon = SonaIcons.Play, enabled = hasTracks) {
                 viewModel.onPlayAll(shuffled = false)
             },
-            shuffle = TopBarAction(label = "Shuffle", icon = SonaIcons.Shuffle, enabled = hasTracks) {
+            shuffle = TopBarAction(label = shuffleLabel, icon = SonaIcons.Shuffle, enabled = hasTracks) {
                 viewModel.onPlayAll(shuffled = true)
             },
         )
@@ -772,7 +788,7 @@ internal fun TrackListDetail(
                         actions = buildList {
                             if (collection == null) {
                                 add(
-                                    TopBarAction(label = "Export", icon = SonaIcons.FileUpload) {
+                                    TopBarAction(label = OptionsAction.EXPORT.label, icon = OptionsAction.EXPORT.icon) {
                                         exportLauncher.launch("$title.m3u")
                                     },
                                 )
@@ -820,8 +836,8 @@ internal fun TrackListDetail(
                         info = header.info,
                         onPlay = { viewModel.onPlayAll(shuffled = false) },
                         onShuffle = { viewModel.onPlayAll(shuffled = true) },
-                        playLabel = "Play",
-                        shuffleLabel = "Shuffle",
+                        playLabel = stringResource(R.string.library_play),
+                        shuffleLabel = stringResource(R.string.library_shuffle),
                         isPlayable = hasTracks,
                         favorite = favoriteItems?.let { items ->
                             val isFavorite = favorites.containsAll(items)
@@ -847,8 +863,8 @@ internal fun TrackListDetail(
                 if (searchQuery == null) {
                     sections.forEachIndexed { index, section ->
                         section(
-                            key = "detail-${section.title}",
-                            title = section.title,
+                            key = "detail-${section.titleRes}",
+                            title = sectionTitles[index],
                             state = sectionList,
                             hasDividerAbove = index > 0,
                         ) {
@@ -865,7 +881,7 @@ internal fun TrackListDetail(
                                             onClick = { navigator.go(AlbumDetailScreen(album.id)) },
                                             onOpenOptions = { optionsTarget = OptionsTarget.ForAlbum(album) },
                                             // Every album here is the artist's, so it is told apart by when it came out.
-                                            subtitle = album.year?.toString() ?: "No date",
+                                            subtitle = album.year?.toString() ?: stringResource(R.string.library_no_date),
                                         )
                                     }
                                 }
@@ -935,14 +951,14 @@ internal fun TrackListDetail(
                 // content has no sort to offer.
                 section(
                     key = TRACKS_SECTION_KEY,
-                    title = "Tracks",
+                    title = tracksTitle,
                     state = sectionList,
                     actions = listOfNotNull(
-                        TopBarAction(label = "Search", icon = SonaIcons.Search, enabled = searchQuery == null) {
+                        TopBarAction(label = searchLabel, icon = SonaIcons.Search, enabled = searchQuery == null) {
                             sectionList.expand(TRACKS_SECTION_KEY)
                             searchQuery = ""
                         },
-                        sort?.let { sortAction { isSortSheetOpen = true } },
+                        sortButton,
                     ),
                     hasDividerAbove = searchQuery == null && sections.isNotEmpty(),
                 ) {
@@ -950,14 +966,14 @@ internal fun TrackListDetail(
                     when {
                         visibleTracks is LibraryContent.Loading -> Unit
                         rows.isEmpty() -> item(key = "empty-tracks") {
-                            SonaEmptyState(title = "No tracks found", message = emptyMessage)
+                            SonaEmptyState(title = stringResource(R.string.library_no_tracks_found), message = emptyMessage)
                         }
                         reorderableRows != null -> reorderableRows(reorderableRows, { track -> track.id }, movingRows, trackRow)
                         // Auxio's discs: the sorted tracks grouped by disc, each disc where its first track fell.
                         discs != null -> discs.entries.forEachIndexed { index, (disc, discTracks) ->
                             section(
                                 key = discSectionKey(disc),
-                                title = disc?.let { "Disc $it" } ?: "No disc",
+                                title = disc?.let { resources.getString(R.string.library_disc, it) } ?: noDiscTitle,
                                 state = sectionList,
                                 hasDividerAbove = index > 0,
                             ) {
@@ -1032,5 +1048,6 @@ internal fun <T> LibraryContent<T>.searchedFor(query: String?, texts: (T) -> Lis
 internal fun <T> ((T) -> String?).whileNotSearched(query: String?): ((T) -> String?)? = takeIf { query.isNullOrBlank() }
 
 /** What an empty list says - the library being empty, or the search matching nothing. */
+@Composable
 internal fun searchEmptyMessage(query: String?): String =
-    if (query.isNullOrBlank()) "Add some music to your device to see it here." else "Nothing matched \"$query\"."
+    if (query.isNullOrBlank()) stringResource(R.string.library_empty_message) else stringResource(R.string.library_search_empty_message, query)

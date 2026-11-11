@@ -1,7 +1,10 @@
 package com.lhacenmed.sona.feature.library.options
 
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import com.lhacenmed.sona.core.common.format.formatDuration
 import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
+import com.lhacenmed.sona.core.designsystem.component.title
 import com.lhacenmed.sona.core.designsystem.component.videoFacts
 import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
@@ -11,6 +14,8 @@ import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.playbackParent
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.library.R
+import com.lhacenmed.sona.feature.library.countLabel
 import com.lhacenmed.sona.feature.library.itemCountLabel
 import com.lhacenmed.sona.feature.library.mediaCountLabel
 import com.lhacenmed.sona.feature.library.options.OptionsAction.ADD_COLLECTIONS
@@ -37,7 +42,6 @@ import com.lhacenmed.sona.feature.library.options.OptionsAction.SONG_PROPERTIES
 import com.lhacenmed.sona.feature.library.options.OptionsAction.STOP_COUNTING_PLAYS
 import com.lhacenmed.sona.feature.library.options.OptionsAction.VIEW_DETAILS
 import com.lhacenmed.sona.feature.library.options.OptionsAction.BROWSE_FOLDER
-import com.lhacenmed.sona.feature.library.pluralCount
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.trackCountLabel
 
@@ -235,28 +239,33 @@ fun OptionsTarget.disabledActions(): Set<OptionsAction> = when (this) {
 }
 
 /** What kind of thing the sheet is showing options for - Auxio's `lbl_song`/`lbl_album`/etc, over the name. */
-fun OptionsTarget.typeLabel(): String = when (this) {
-    is OptionsTarget.ForTrack -> if (track.isVideo) "Video" else "Track"
-    is OptionsTarget.ForAlbum -> "Album"
-    is OptionsTarget.ForArtist -> "Artist"
-    is OptionsTarget.ForGenre -> "Genre"
-    is OptionsTarget.ForPlaylist -> "Playlist"
-    is OptionsTarget.ForFolder -> "Folder"
-    is OptionsTarget.ForSelection -> "Selection"
-}
+@Composable
+fun OptionsTarget.typeLabel(): String = stringResource(
+    when (this) {
+        is OptionsTarget.ForTrack -> if (track.isVideo) R.string.options_type_video else R.string.options_type_track
+        is OptionsTarget.ForAlbum -> R.string.options_type_album
+        is OptionsTarget.ForArtist -> R.string.options_type_artist
+        is OptionsTarget.ForGenre -> R.string.options_type_genre
+        is OptionsTarget.ForPlaylist -> R.string.options_type_playlist
+        is OptionsTarget.ForFolder -> R.string.options_type_folder
+        is OptionsTarget.ForSelection -> R.string.options_type_selection
+    },
+)
 
 /** The sheet's headline - Auxio's `menuName`. */
+@Composable
 fun OptionsTarget.name(): String = when (this) {
     is OptionsTarget.ForTrack -> track.title
     is OptionsTarget.ForAlbum -> album.title
     is OptionsTarget.ForArtist -> artist.name
     is OptionsTarget.ForGenre -> genre.name
-    is OptionsTarget.ForPlaylist -> playlist.name
+    is OptionsTarget.ForPlaylist -> playlist.title
     is OptionsTarget.ForFolder -> folder.name
     is OptionsTarget.ForSelection -> mediaCountLabel(tracks)
 }
 
 /** The line under the name - Auxio's `menuInfo`. */
+@Composable
 fun OptionsTarget.infoLine(): String = when (this) {
     is OptionsTarget.ForTrack -> if (track.isVideo) track.videoFacts() else track.artist
     is OptionsTarget.ForAlbum -> album.artistName
@@ -270,7 +279,11 @@ fun OptionsTarget.infoLine(): String = when (this) {
 }
 
 /** A count of albums, or Auxio's `def_album_count` for one that holds none. */
-private fun albumCountLabel(count: Int): String = if (count == 0) "No albums" else pluralCount(count, "album")
+@Composable
+private fun albumCountLabel(count: Int): String =
+    if (count == 0) stringResource(R.string.library_no_albums) else countLabel(R.plurals.library_albums, count)
 
 /** A count of artists, or Auxio's `def_artist_count` for one that holds none. */
-private fun artistCountLabel(count: Int): String = if (count == 0) "No artists" else pluralCount(count, "artist")
+@Composable
+private fun artistCountLabel(count: Int): String =
+    if (count == 0) stringResource(R.string.library_no_artists) else countLabel(R.plurals.library_artists, count)

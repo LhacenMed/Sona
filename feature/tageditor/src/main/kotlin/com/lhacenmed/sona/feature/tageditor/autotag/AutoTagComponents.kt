@@ -32,6 +32,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
@@ -44,6 +46,7 @@ import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.model.Folder
+import com.lhacenmed.sona.feature.tageditor.R
 import com.lhacenmed.sona.feature.tageditor.uriOr
 import com.lhacenmed.sona.feature.tageditor.tags.TagField
 
@@ -56,7 +59,11 @@ internal fun TracksRow(trackCount: Int, folders: List<Pair<Folder, Int>>, leftOu
     val kept = folders.count { (folder, _) -> folder.path !in leftOut }
     SonaListRow(
         title = tracksLabel(trackCount),
-        subtitle = if (kept == folders.size) "All ${foldersLabel(folders.size)}" else "$kept of ${foldersLabel(folders.size)}",
+        subtitle = if (kept == folders.size) {
+            pluralStringResource(R.plurals.autotag_all_folders, folders.size, folders.size)
+        } else {
+            pluralStringResource(R.plurals.autotag_some_folders, folders.size, kept, folders.size)
+        },
         selection = null,
         selectionKey = null,
         onClick = onClick,
@@ -72,9 +79,9 @@ internal fun FindChoices(choices: AutoTagChoices, onChange: (AutoTagChoices) -> 
         modifier = Modifier.padding(horizontal = ContentPadding, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(SonaComponentStyle.ItemSpacing),
     ) {
-        FilterChip(selected = choices.findsTags, onClick = { onChange(choices.copy(findsTags = !choices.findsTags)) }, label = { Text("Tags") })
-        FilterChip(selected = choices.findsCover, onClick = { onChange(choices.copy(findsCover = !choices.findsCover)) }, label = { Text("Cover") })
-        FilterChip(selected = choices.findsLyrics, onClick = { onChange(choices.copy(findsLyrics = !choices.findsLyrics)) }, label = { Text("Lyrics") })
+        FilterChip(selected = choices.findsTags, onClick = { onChange(choices.copy(findsTags = !choices.findsTags)) }, label = { Text(stringResource(R.string.autotag_find_choice_tags)) })
+        FilterChip(selected = choices.findsCover, onClick = { onChange(choices.copy(findsCover = !choices.findsCover)) }, label = { Text(stringResource(R.string.autotag_find_choice_cover)) })
+        FilterChip(selected = choices.findsLyrics, onClick = { onChange(choices.copy(findsLyrics = !choices.findsLyrics)) }, label = { Text(stringResource(R.string.autotag_find_choice_lyrics)) })
     }
 }
 
@@ -93,7 +100,7 @@ internal fun AdvancedChoices(choices: AutoTagChoices, onChange: (AutoTagChoices)
                 .padding(horizontal = ContentPadding, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Advanced", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.autotag_advanced), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
             Icon(if (isExpanded) SonaIcons.ExpandLess else SonaIcons.ExpandMore, contentDescription = null)
         }
         val fade = SectionMotion.fade()
@@ -104,18 +111,18 @@ internal fun AdvancedChoices(choices: AutoTagChoices, onChange: (AutoTagChoices)
         ) {
             Column {
                 Text(
-                    "Where a track already has a value",
+                    stringResource(R.string.autotag_existing_values),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = ContentPadding),
                 )
                 SonaChoiceRow(
-                    label = "Replace it with the match's",
+                    label = stringResource(R.string.autotag_replace),
                     selected = !choices.fillsBlanksOnly,
                     onClick = { onChange(choices.copy(fillsBlanksOnly = false)) },
                 )
                 SonaChoiceRow(
-                    label = "Keep it, and fill only what is blank",
+                    label = stringResource(R.string.autotag_keep),
                     selected = choices.fillsBlanksOnly,
                     onClick = { onChange(choices.copy(fillsBlanksOnly = true)) },
                 )
@@ -153,9 +160,9 @@ internal fun RunProgress(session: AutoTagSession, onStop: () -> Unit, onFinish: 
             Column(modifier = Modifier.weight(1f).padding(horizontal = 16.dp)) {
                 Text(
                     text = when (phase) {
-                        AutoTagPhase.MATCHING -> "Looking up tracks"
-                        AutoTagPhase.SAVING -> "Saving tags"
-                        AutoTagPhase.REVIEWING -> "Ready to review"
+                        AutoTagPhase.MATCHING -> stringResource(R.string.autotag_phase_matching)
+                        AutoTagPhase.SAVING -> stringResource(R.string.autotag_phase_saving)
+                        AutoTagPhase.REVIEWING -> stringResource(R.string.autotag_phase_reviewing)
                     },
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
@@ -163,8 +170,8 @@ internal fun RunProgress(session: AutoTagSession, onStop: () -> Unit, onFinish: 
                 )
                 Text(
                     text = when (phase) {
-                        AutoTagPhase.REVIEWING -> "${session.pickedItems.size} of ${tracksLabel(session.changedTrackIds.size)} with changes picked"
-                        else -> "${session.done} of ${tracksLabel(session.total)}"
+                        AutoTagPhase.REVIEWING -> pluralStringResource(R.plurals.autotag_review_progress, session.changedTrackIds.size, session.pickedItems.size, session.changedTrackIds.size)
+                        else -> pluralStringResource(R.plurals.autotag_progress, session.total, session.done, session.total)
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -178,7 +185,7 @@ internal fun RunProgress(session: AutoTagSession, onStop: () -> Unit, onFinish: 
                 enabled = phase != AutoTagPhase.SAVING,
                 shapes = buttonPressShapes(),
             ) {
-                Text(if (phase == AutoTagPhase.REVIEWING) "Finish" else "Stop")
+                Text(stringResource(if (phase == AutoTagPhase.REVIEWING) R.string.autotag_finish else R.string.autotag_stop))
             }
         }
         val fade = SectionMotion.fade()
@@ -214,7 +221,7 @@ internal fun AutoTagRow(item: AutoTagItem, picks: SelectionState, onOpen: () -> 
         onClick = { if (item.hasChanges) picks.toggle(trackId) else onOpen() },
         onOpenOptions = onOpen,
         optionsIcon = SonaIcons.Edit,
-        optionsLabel = "Edit info",
+        optionsLabel = stringResource(R.string.autotag_edit_info),
         cover = { isSelected ->
             SonaCoverArt(
                 coverArtUri = draft?.cover?.uriOr(item.track.coverArtUri) ?: item.track.coverArtUri,
@@ -225,5 +232,3 @@ internal fun AutoTagRow(item: AutoTagItem, picks: SelectionState, onOpen: () -> 
     )
 }
 
-/** "1 folder", "18 folders". */
-private fun foldersLabel(count: Int): String = if (count == 1) "1 folder" else "$count folders"

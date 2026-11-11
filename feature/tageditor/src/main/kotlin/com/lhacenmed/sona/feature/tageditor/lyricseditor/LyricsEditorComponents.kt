@@ -50,6 +50,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -57,6 +58,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.R as DesignR
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.actionButton
@@ -68,6 +70,7 @@ import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 import com.lhacenmed.sona.feature.tageditor.LyricsResultCard
 import com.lhacenmed.sona.feature.tageditor.LyricsSearchStatus
+import com.lhacenmed.sona.feature.tageditor.R
 import com.lhacenmed.sona.feature.tageditor.lyrics.FoundLyrics
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
@@ -131,7 +134,7 @@ internal fun LyricsLineRow(
         ) {
             TimeControls(timeMs = line.timeMs, onSetTime = onSetTime)
             Text(
-                text = line.text.ifEmpty { "Tap to write this line" },
+                text = line.text.ifEmpty { stringResource(R.string.lyrics_editor_write_line) },
                 style = MaterialTheme.typography.bodyLarge,
                 color = if (line.text.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant else Color.Unspecified,
                 modifier = Modifier
@@ -153,7 +156,7 @@ internal fun LyricsLineRow(
                         }
                     },
                 ) {
-                    Icon(SonaIcons.Schedule, contentDescription = "Time to now")
+                    Icon(SonaIcons.Schedule, contentDescription = stringResource(R.string.lyrics_editor_time_to_now))
                 }
             }
         }
@@ -166,7 +169,7 @@ private fun LineActionsMenu(actions: List<TopBarAction>) {
     var isExpanded by remember { mutableStateOf(false) }
     Box {
         IconButton(shapes = iconButtonPressShapes(), onClick = { isExpanded = true }) {
-            Icon(SonaIcons.Add, contentDescription = "Line actions")
+            Icon(SonaIcons.Add, contentDescription = stringResource(R.string.lyrics_editor_line_actions))
         }
         DropdownMenu(expanded = isExpanded, onDismissRequest = { isExpanded = false }) {
             actions.forEach { action ->
@@ -200,7 +203,7 @@ private fun TimeControls(timeMs: Long, onSetTime: (Long) -> Unit) {
 private fun TimePartControl(part: LyricsTimePart, timeMs: Long, onSetTime: (Long) -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         IconButton(shapes = iconButtonPressShapes(), onClick = { onSetTime(timeMs + part.stepMs) }) {
-            Icon(SonaIcons.KeyboardArrowUp, contentDescription = "Later", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(SonaIcons.KeyboardArrowUp, contentDescription = stringResource(R.string.lyrics_editor_later), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         TimePartField(
             text = part.of(timeMs),
@@ -208,7 +211,7 @@ private fun TimePartControl(part: LyricsTimePart, timeMs: Long, onSetTime: (Long
             onDone = { value -> onSetTime(part.withValue(timeMs, value)) },
         )
         IconButton(shapes = iconButtonPressShapes(), onClick = { onSetTime(timeMs - part.stepMs) }) {
-            Icon(SonaIcons.KeyboardArrowDown, contentDescription = "Earlier", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(SonaIcons.KeyboardArrowDown, contentDescription = stringResource(R.string.lyrics_editor_earlier), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -283,10 +286,10 @@ internal fun AddLyricsSheet(
     onPickFile: () -> Unit,
     onDismissRequest: () -> Unit,
 ) {
-    SonaBottomSheet(title = "Add lyrics from", onDismissRequest = onDismissRequest) {
-        SonaOptionRow(label = "Search lyrics", icon = SonaIcons.Search, onClick = { onSearch(); dismiss() })
-        SonaOptionRow(label = "Paste from clipboard", icon = SonaIcons.ContentPaste, onClick = { onPaste(); dismiss() })
-        SonaOptionRow(label = "Select lyrics file (.lrc)", icon = SonaIcons.Description, onClick = { onPickFile(); dismiss() })
+    SonaBottomSheet(title = stringResource(R.string.lyrics_editor_add_from), onDismissRequest = onDismissRequest) {
+        SonaOptionRow(label = stringResource(R.string.lyrics_editor_search), icon = SonaIcons.Search, onClick = { onSearch(); dismiss() })
+        SonaOptionRow(label = stringResource(R.string.lyrics_editor_paste), icon = SonaIcons.ContentPaste, onClick = { onPaste(); dismiss() })
+        SonaOptionRow(label = stringResource(R.string.lyrics_editor_pick_file), icon = SonaIcons.Description, onClick = { onPickFile(); dismiss() })
     }
 }
 
@@ -302,7 +305,7 @@ internal fun FoundLyricsSheet(
     onPick: (FoundLyrics) -> Unit,
     onDismissRequest: () -> Unit,
 ) {
-    SonaBottomSheet(title = "Lyrics found", onDismissRequest = onDismissRequest) {
+    SonaBottomSheet(title = stringResource(R.string.lyrics_editor_found), onDismissRequest = onDismissRequest) {
         found.forEach { lyrics ->
             LyricsResultCard(
                 found = lyrics,
@@ -323,12 +326,15 @@ internal fun FoundLyricsSheet(
 internal fun LyricsLineTextDialog(initialText: String, onDismiss: () -> Unit, onDone: (String) -> Unit) {
     var text by rememberSaveable { mutableStateOf(initialText) }
     val focusRequester = remember { FocusRequester() }
+    // Read here rather than inside the buttons: they are built outside composition.
+    val lineButton0 = stringResource(DesignR.string.confirmation_dialog_cancel)
+    val lineButton1 = stringResource(R.string.lyrics_editor_done)
     SonaDialog(
         onDismissRequest = onDismiss,
-        title = "Line",
+        title = stringResource(R.string.lyrics_editor_line),
         buttons = {
-            actionButton(label = "Cancel", onClick = onDismiss)
-            actionButton(label = "Done", onClick = { onDone(text) })
+            actionButton(label = lineButton0, onClick = onDismiss)
+            actionButton(label = lineButton1, onClick = { onDone(text) })
         },
     ) {
         OutlinedTextField(
@@ -345,12 +351,15 @@ internal fun LyricsLineTextDialog(initialText: String, onDismiss: () -> Unit, on
 @Composable
 internal fun LyricsTextDialog(initialText: String, onDismiss: () -> Unit, onDone: (String) -> Unit) {
     var text by rememberSaveable { mutableStateOf(initialText) }
+    // Read here rather than inside the buttons: they are built outside composition.
+    val lyricsAsTextButton0 = stringResource(DesignR.string.confirmation_dialog_cancel)
+    val lyricsAsTextButton1 = stringResource(R.string.lyrics_editor_done)
     SonaDialog(
         onDismissRequest = onDismiss,
-        title = "Lyrics as text",
+        title = stringResource(R.string.lyrics_editor_text_title),
         buttons = {
-            actionButton(label = "Cancel", onClick = onDismiss)
-            actionButton(label = "Done", onClick = { onDone(text) })
+            actionButton(label = lyricsAsTextButton0, onClick = onDismiss)
+            actionButton(label = lyricsAsTextButton1, onClick = { onDone(text) })
         },
     ) {
         OutlinedTextField(
@@ -373,15 +382,18 @@ private val LyricsTextMaxHeight = 360.dp
 internal fun BatchEditDialog(onDismiss: () -> Unit, onAdjust: (deltaMs: Long) -> Unit) {
     var isEarlier by rememberSaveable { mutableStateOf(false) }
     var offsetMs by rememberSaveable { mutableLongStateOf(0L) }
+    // Read here rather than inside the buttons: they are built outside composition.
+    val batchEditButton0 = stringResource(DesignR.string.confirmation_dialog_cancel)
+    val batchEditButton1 = stringResource(R.string.lyrics_editor_adjust)
     SonaDialog(
         onDismissRequest = onDismiss,
-        title = "Batch edit",
+        title = stringResource(R.string.lyrics_editor_batch_edit),
         buttons = {
-            actionButton(label = "Cancel", onClick = onDismiss)
-            actionButton(label = "Adjust", onClick = { onAdjust(if (isEarlier) -offsetMs else offsetMs) }, enabled = offsetMs > 0L)
+            actionButton(label = batchEditButton0, onClick = onDismiss)
+            actionButton(label = batchEditButton1, onClick = { onAdjust(if (isEarlier) -offsetMs else offsetMs) }, enabled = offsetMs > 0L)
         },
     ) {
-        Text("Offset the timestamps of the selected lines.", style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.lyrics_editor_offset_message), style = MaterialTheme.typography.bodyMedium)
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
@@ -398,29 +410,35 @@ internal fun BatchEditDialog(onDismiss: () -> Unit, onAdjust: (deltaMs: Long) ->
 /** Asked before every line is taken out - which, saved, takes the lyrics out of the file. */
 @Composable
 internal fun DeleteLyricsDialog(onDismiss: () -> Unit, onDelete: () -> Unit) {
+    // Read here rather than inside the buttons: they are built outside composition.
+    val deleteEmbeddedLyricsButton0 = stringResource(DesignR.string.confirmation_dialog_cancel)
+    val deleteEmbeddedLyricsButton1 = stringResource(R.string.lyrics_editor_delete)
     SonaDialog(
         onDismissRequest = onDismiss,
-        title = "Delete embedded lyrics?",
+        title = stringResource(R.string.lyrics_editor_delete_title),
         buttons = {
-            actionButton(label = "Cancel", onClick = onDismiss)
-            actionButton(label = "Delete", onClick = onDelete)
+            actionButton(label = deleteEmbeddedLyricsButton0, onClick = onDismiss)
+            actionButton(label = deleteEmbeddedLyricsButton1, onClick = onDelete)
         },
     ) {
-        Text("Every line is taken out. Once saved, the file holds no lyrics.", style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.lyrics_editor_delete_message), style = MaterialTheme.typography.bodyMedium)
     }
 }
 
 /** Asked before leaving an editor with changes not kept, which leaving would lose - the lyrics editor's and the tag editor's. */
 @Composable
 internal fun DiscardChangesDialog(onKeepEditing: () -> Unit, onDiscard: () -> Unit) {
+    // Read here rather than inside the buttons: they are built outside composition.
+    val discardChangesButton0 = stringResource(R.string.lyrics_editor_keep_editing)
+    val discardChangesButton1 = stringResource(R.string.lyrics_editor_discard)
     SonaDialog(
         onDismissRequest = onKeepEditing,
-        title = "Discard changes?",
+        title = stringResource(R.string.lyrics_editor_discard_title),
         buttons = {
-            actionButton(label = "Keep editing", onClick = onKeepEditing)
-            actionButton(label = "Discard", onClick = onDiscard)
+            actionButton(label = discardChangesButton0, onClick = onKeepEditing)
+            actionButton(label = discardChangesButton1, onClick = onDiscard)
         },
     ) {
-        Text("Changes that have not been kept will be lost.", style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.lyrics_editor_discard_message), style = MaterialTheme.typography.bodyMedium)
     }
 }

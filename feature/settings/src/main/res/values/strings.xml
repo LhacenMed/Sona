@@ -55,6 +55,9 @@
     <string name="feedback_category_summary">Report a bug or suggest an idea</string>
 
     <!-- Appearance -->
+    <string name="appearance_language_section">Language</string>
+    <string name="language_title">App language</string>
+    <string name="language_system">System language</string>
     <string name="appearance_theme_section">Theme</string>
     <string name="theme_title">Theme</string>
     <string name="theme_system">System</string>
@@ -209,8 +212,6 @@
     <string name="quick_play_source_title">Plays from</string>
     <string name="quick_play_source_collection">%1$s: %2$s</string>
     <string name="quick_play_source_all_tracks">All tracks</string>
-    <string name="quick_play_source_recently_played">Recently played</string>
-    <string name="quick_play_source_most_played">Most played</string>
     <string name="quick_play_source_playlist">Playlist</string>
     <string name="quick_play_source_artist">Artist</string>
     <string name="quick_play_source_album">Album</string>
@@ -294,8 +295,6 @@
     <string name="hide_collaborators_summary">Only show artists that are directly credited on an album</string>
     <string name="content_sorting_section">Sorting</string>
     <string name="sort_new_tracks_title">New tracks in a custom order</string>
-    <string name="sort_new_tracks_bottom">At the bottom</string>
-    <string name="sort_new_tracks_top">At the top</string>
     <string name="sort_default_scope_title">Apply a sort to</string>
     <string name="sort_default_scope_this_list">This list only</string>
     <string name="sort_default_scope_all_lists">Every list of its kind</string>
@@ -324,7 +323,6 @@
 
     <!-- Behavior -->
     <string name="behavior_display_section">Display</string>
-    <string name="library_tabs_title">Library tabs</string>
     <string name="library_tabs_summary">Change visibility and order of library tabs</string>
     <string name="playback_bar_action_title">Playback bar button</string>
     <string name="playback_bar_action_skip_next">Skip to next</string>
@@ -405,7 +403,7 @@
     <string name="backup_done_files_left">Backup saved. Some music and videos didn\'t upload, and will with the next backup</string>
     <string name="backup_done_drive_full">Backup saved, but Google Drive is full: some music and videos didn\'t upload</string>
     <string name="backup_failed">Could not back up</string>
-    <string name="backup_failed_drive_access">Google Drive is disconnected. Connect it again</string>
+    <string name="backup_screen_drive_access_lost">Google Drive is disconnected. Connect it again</string>
     <string name="backup_stopped">Backup stopped</string>
     <string name="backup_paused">Paused. Tap to resume</string>
     <string name="backup_paused_toast">Backup paused</string>
@@ -610,4 +608,13 @@
     <string name="video_zoom_pan_summary">Pinch to zoom the video, and drag two fingers to pan it while enlarged</string>
     <string name="downloads_settings_title">Downloads</string>
     <string name="downloads_settings_summary">Save songs and videos from links</string>
+    <!-- Searching the settings - see SettingsSearch -->
+    <string name="settings_search">Search</string>
+    <string name="settings_search_none_found">No settings found</string>
+    <string name="settings_search_no_match">Nothing matched \"%1$s\".</string>
+    <string name="settings_search_title">Search settings</string>
+    <string name="settings_search_message">Find any setting by its name, by what it does, or by where it is.</string>
+    <string name="settings_recent_searches">Recent searches</string>
+    <string name="settings_recent_searches_clear">Clear</string>
+    <string name="settings_private_folder">Private Folder</string>
 </resources>

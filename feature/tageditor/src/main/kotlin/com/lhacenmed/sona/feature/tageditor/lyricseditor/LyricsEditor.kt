@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -47,6 +48,7 @@ import com.lhacenmed.sona.core.designsystem.component.fab.ExtendedFloatingAction
 import com.lhacenmed.sona.core.designsystem.component.fab.SonaExtendedFloatingActionButtons
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.feature.tageditor.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -94,9 +96,9 @@ internal fun LyricsEditor(state: LyricsEditorState, confirmAction: TopBarAction,
     // Beside play and pause on the mini player: whether the list follows the line the player is on.
     ShowMiniPlayerSeekBar(
         action = if (isFollowingPlayback) {
-            TopBarAction(label = "Stop following the playing line", icon = SonaIcons.Sync) { state.setFollowsPlayback(false) }
+            TopBarAction(label = stringResource(R.string.lyrics_editor_stop_following), icon = SonaIcons.Sync) { state.setFollowsPlayback(false) }
         } else {
-            TopBarAction(label = "Follow the playing line", icon = SonaIcons.SyncDisabled) { state.setFollowsPlayback(true) }
+            TopBarAction(label = stringResource(R.string.lyrics_editor_follow), icon = SonaIcons.SyncDisabled) { state.setFollowsPlayback(true) }
         },
     )
     SonaExtendedFloatingActionButtons(
@@ -150,24 +152,24 @@ internal fun LyricsEditor(state: LyricsEditorState, confirmAction: TopBarAction,
 
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
-        scope.launch { if (!state.replaceLinesFromFile(context.contentResolver, uri)) context.toast("No lyrics in that file") }
+        scope.launch { if (!state.replaceLinesFromFile(context.contentResolver, uri)) context.toast(context.getString(R.string.lyrics_editor_no_lyrics_in_file)) }
     }
     val paste = {
         val clip = context.getSystemService(ClipboardManager::class.java)?.primaryClip
         val text = clip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString()
-        if (text == null || !state.replaceLines(text)) context.toast("No lyrics in the clipboard")
+        if (text == null || !state.replaceLines(text)) context.toast(context.getString(R.string.lyrics_editor_no_lyrics_in_clipboard))
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
         SonaTopAppBar(
-            title = "Lyrics editor",
+            title = stringResource(R.string.lyrics_editor_title),
             subtitle = state.track.title,
             onNavigateBack = requestLeave,
             selection = selection.toTopBarSelection(
                 actions = listOf(
-                    TopBarAction(label = "Batch edit", icon = SonaIcons.MoreTime) { isBatchEditing = true },
+                    TopBarAction(label = stringResource(R.string.lyrics_editor_batch_edit), icon = SonaIcons.MoreTime) { isBatchEditing = true },
                     selection.selectAllAction(state.lines.map { it.id }),
-                    TopBarAction(label = "Delete", icon = SonaIcons.Delete) {
+                    TopBarAction(label = stringResource(R.string.lyrics_editor_delete), icon = SonaIcons.Delete) {
                         state.remove(selectedLineIds)
                         selection.clear()
                     },
@@ -176,13 +178,13 @@ internal fun LyricsEditor(state: LyricsEditorState, confirmAction: TopBarAction,
             ),
             actions = listOf(
                 // Undo and redo first, where they are reached for most; the bar folds what does not fit into its menu.
-                TopBarAction(label = "Undo", icon = SonaIcons.Undo, enabled = state.canUndo, onClick = state::undo),
-                TopBarAction(label = "Redo", icon = SonaIcons.Redo, enabled = state.canRedo, onClick = state::redo),
-                TopBarAction(label = "Add lyrics", icon = SonaIcons.Add) { isAddingLyrics = true },
-                TopBarAction(label = "View/Edit lyrics plain text", icon = SonaIcons.Article) {
+                TopBarAction(label = stringResource(R.string.lyrics_editor_undo), icon = SonaIcons.Undo, enabled = state.canUndo, onClick = state::undo),
+                TopBarAction(label = stringResource(R.string.lyrics_editor_redo), icon = SonaIcons.Redo, enabled = state.canRedo, onClick = state::redo),
+                TopBarAction(label = stringResource(R.string.lyrics_editor_add_lyrics), icon = SonaIcons.Add) { isAddingLyrics = true },
+                TopBarAction(label = stringResource(R.string.lyrics_editor_as_text), icon = SonaIcons.Article) {
                     isEditingAsText = true
                 },
-                TopBarAction(label = "Delete embedded lyrics", icon = SonaIcons.Delete, enabled = state.lines.isNotEmpty()) {
+                TopBarAction(label = stringResource(R.string.lyrics_editor_delete_embedded), icon = SonaIcons.Delete, enabled = state.lines.isNotEmpty()) {
                     isConfirmingDelete = true
                 },
             ),
@@ -216,17 +218,17 @@ internal fun LyricsEditor(state: LyricsEditorState, confirmAction: TopBarAction,
                                     canStamp = isTrackPlaying,
                                     selection = selection,
                                     actions = listOf(
-                                        TopBarAction(label = "Play from here", icon = SonaIcons.Play) { state.playFrom(line.id) },
-                                        TopBarAction(label = "Add row above", icon = SonaIcons.ArrowUpward) {
+                                        TopBarAction(label = stringResource(R.string.lyrics_editor_play_from_here), icon = SonaIcons.Play) { state.playFrom(line.id) },
+                                        TopBarAction(label = stringResource(R.string.lyrics_editor_add_above), icon = SonaIcons.ArrowUpward) {
                                             state.addLine(line.id, below = false)
                                         },
-                                        TopBarAction(label = "Add row below", icon = SonaIcons.ArrowDownward) {
+                                        TopBarAction(label = stringResource(R.string.lyrics_editor_add_below), icon = SonaIcons.ArrowDownward) {
                                             state.addLine(line.id, below = true)
                                         },
-                                        TopBarAction(label = "Reset timestamp", icon = SonaIcons.RestartAlt, enabled = line.timeMs != 0L) {
+                                        TopBarAction(label = stringResource(R.string.lyrics_editor_reset_time), icon = SonaIcons.RestartAlt, enabled = line.timeMs != 0L) {
                                             state.resetTime(line.id)
                                         },
-                                        TopBarAction(label = "Remove", icon = SonaIcons.Delete) { state.remove(line.id) },
+                                        TopBarAction(label = stringResource(R.string.lyrics_editor_remove), icon = SonaIcons.Delete) { state.remove(line.id) },
                                     ),
                                     onSetTime = { timeMs -> state.setTime(line.id, timeMs) },
                                     onStamp = { pressedAtUptimeMs -> state.stamp(line.id, pressedAtUptimeMs) },
@@ -324,9 +326,9 @@ private fun NoLyrics() {
         verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("No lyrics yet", style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+        Text(stringResource(R.string.lyrics_editor_empty_title), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
         Text(
-            "Add them with the plus above: from the web, the clipboard or a lyrics file.",
+            stringResource(R.string.lyrics_editor_empty_message),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,

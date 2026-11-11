@@ -46,11 +46,13 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import com.lhacenmed.sona.R
 import com.lhacenmed.sona.core.common.cover.drawDefaultCover
 import com.lhacenmed.sona.core.datastore.PlayerSliderStyle
 import com.lhacenmed.sona.core.datastore.PlayerStyleSettings
@@ -164,7 +166,7 @@ internal fun TrackPopup(viewModel: TrackPopupViewModel, onClose: () -> Unit) {
                 Box(Modifier.matchParentSize().background(CoverScrim))
                 PopupContent(
                     title = state.title,
-                    subtitle = if (state.hasFailed) "Can't play this file" else state.artist,
+                    subtitle = if (state.hasFailed) stringResource(R.string.track_popup_failed) else state.artist,
                     cover = cover,
                     isPlaying = state.isPlaying,
                     canPlay = !state.hasFailed,
@@ -214,7 +216,7 @@ private fun PopupContent(
 
     Column(modifier = Modifier.padding(start = 20.dp, end = 12.dp, top = 12.dp, bottom = 16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            SonaIconButton(onClick = onClose, icon = SonaIcons.Close, contentDescription = "Close", colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White))
+            SonaIconButton(onClick = onClose, icon = SonaIcons.Close, contentDescription = stringResource(R.string.track_popup_close), colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White))
         }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(end = 8.dp)) {
             cover?.let {
@@ -255,7 +257,7 @@ private fun PopupContent(
             ) {
                 Icon(
                     imageVector = if (isPlaying) SonaIcons.Pause else SonaIcons.Play,
-                    contentDescription = if (isPlaying) "Pause" else "Play",
+                    contentDescription = stringResource(if (isPlaying) R.string.track_popup_pause else R.string.track_popup_play),
                     modifier = Modifier.size(28.dp),
                 )
             }

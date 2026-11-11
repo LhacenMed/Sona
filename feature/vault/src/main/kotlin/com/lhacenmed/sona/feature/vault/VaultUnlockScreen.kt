@@ -12,6 +12,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
@@ -19,6 +20,7 @@ import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.core.vault.VaultAccessResult
 import com.lhacenmed.sona.core.vault.VaultState
+import com.lhacenmed.sona.feature.vault.R
 import kotlinx.coroutines.delay
 
 /** Opening the locked Private Folder: its PIN, or - forgotten - its security question and a new PIN. */
@@ -32,19 +34,19 @@ internal data object VaultUnlockScreen : Screen {
         val viewModel: VaultAccessViewModel = hiltViewModel()
         val vault by viewModel.state.collectAsStateWithLifecycle()
 
-        VaultStepScaffold(title = "Private Folder") {
+        VaultStepScaffold(title = stringResource(R.string.vault_title)) {
             val current = vault as? VaultState.Created ?: return@VaultStepScaffold
             val open = {
                 navigator.go(PrivateFolderScreen)
                 viewModel.flow.finish()
             }
-            val checkBiometrics = rememberBiometricCheck(title = "Unlock Private Folder", cancelLabel = "Use PIN") {
+            val checkBiometrics = rememberBiometricCheck(title = stringResource(R.string.vault_unlock_title), cancelLabel = stringResource(R.string.vault_use_pin)) {
                 viewModel.unlockWithBiometrics(onUnlocked = open)
             }.takeIf { current.unlocksWithBiometrics }
             // Asked for as the screen opens, the PIN beneath it for whoever would rather type.
             LaunchedEffect(Unit) { checkBiometrics?.invoke() }
             PinEntry(
-                title = "Enter your PIN",
+                title = stringResource(R.string.vault_enter_pin),
                 vault = current,
                 onGranted = open,
                 onBiometrics = checkBiometrics,
@@ -53,7 +55,7 @@ internal data object VaultUnlockScreen : Screen {
                 onClick = { navigator.go(VaultRecoveryScreen) },
                 shapes = buttonPressShapes(),
                 modifier = Modifier.align(Alignment.CenterHorizontally),
-            ) { Text("Forgot PIN?") }
+            ) { Text(stringResource(R.string.vault_forgot_pin_button)) }
         }
     }
 }
@@ -75,6 +77,7 @@ internal fun PinEntry(
     var isChecking by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val lockoutMessage = rememberLockoutMessage(vault.lockedUntilEpochMs)
+    val wrongPin = stringResource(R.string.vault_wrong_pin)
 
     PinPad(
         title = title,
@@ -93,7 +96,7 @@ internal fun PinEntry(
                     viewModel.unlock(pin) { result ->
                         isChecking = false
                         pin = ""
-                        error = if (result == VaultAccessResult.WrongSecret) "Wrong PIN" else null
+                        error = if (result == VaultAccessResult.WrongSecret) wrongPin else null
                         if (result == VaultAccessResult.Granted) onGranted()
                     }
                 }
@@ -111,7 +114,7 @@ internal fun PinEntry(
 @Composable
 internal fun rememberLockoutMessage(lockedUntilEpochMs: Long): String? {
     val seconds = rememberSecondsUntil(lockedUntilEpochMs)
-    return if (seconds > 0) "Too many tries - wait ${seconds}s" else null
+    return if (seconds > 0) stringResource(R.string.vault_locked_out, seconds) else null
 }
 
 /** Whole seconds left until [epochMs], ticking down to 0 - 0 straight away for a time already past. */

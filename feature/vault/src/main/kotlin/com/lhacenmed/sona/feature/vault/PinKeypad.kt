@@ -20,10 +20,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.component.SonaIconButton
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.feature.vault.R
 
 /** How many digits a PIN can have. */
 internal val PinLengths = 4..8
@@ -111,7 +113,7 @@ private fun NumericKeypad(
             SonaIconButton(
                 onClick = onBackspace,
                 icon = SonaIcons.Backspace,
-                contentDescription = "Backspace",
+                contentDescription = stringResource(R.string.vault_backspace),
                 modifier = Modifier.size(KeySize),
                 enabled = enabled,
             )
@@ -124,7 +126,7 @@ private fun NumericKeypad(
                     SonaIconButton(
                         onClick = onBiometrics,
                         icon = SonaIcons.Fingerprint,
-                        contentDescription = "Use fingerprint or face",
+                        contentDescription = stringResource(R.string.vault_use_biometrics),
                         modifier = Modifier.size(KeySize),
                     )
                 }
@@ -132,7 +134,7 @@ private fun NumericKeypad(
                 SonaIconButton(
                     onClick = onDone,
                     icon = SonaIcons.Check,
-                    contentDescription = "Done",
+                    contentDescription = stringResource(R.string.vault_done),
                     modifier = Modifier.size(KeySize),
                     enabled = enabled && isDoneEnabled,
                     colors = IconButtonDefaults.filledIconButtonColors(),

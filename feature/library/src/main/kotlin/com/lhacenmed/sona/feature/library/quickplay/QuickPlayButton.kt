@@ -1,14 +1,22 @@
 package com.lhacenmed.sona.feature.library.quickplay
 
+import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import com.lhacenmed.sona.core.data.quickplay.QuickPlay
 import com.lhacenmed.sona.core.data.quickplay.QuickPlaySource
 import com.lhacenmed.sona.core.datastore.QuickPlayMode
 import com.lhacenmed.sona.core.designsystem.component.fab.FloatingActionButtonMenuChoice
 import com.lhacenmed.sona.core.designsystem.component.fab.FloatingActionButtonMenuContent
 import com.lhacenmed.sona.core.designsystem.component.fab.SonaFloatingActionButtonMenu
+import com.lhacenmed.sona.core.designsystem.component.icon
+import com.lhacenmed.sona.core.designsystem.component.titleRes
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.core.model.BuiltInList
 import com.lhacenmed.sona.core.model.PlaybackParent
+import com.lhacenmed.sona.core.model.builtInList
+import com.lhacenmed.sona.feature.library.R
 
 /**
  * The library's quick play button - Auxio's home shuffle FAB, which plays [quickPlay]'s source as its mode
@@ -32,6 +40,8 @@ internal fun QuickPlayButton(
     onChooseOther: () -> Unit,
 ) {
     val favorites = PlaybackParent.Playlist(favoritesPlaylistId)
+    // Read through the context: the menu is built outside composition.
+    val context = LocalContext.current
     SonaFloatingActionButtonMenu {
         val current = quickPlay() ?: return@SonaFloatingActionButtonMenu null
         val source = current.source
@@ -41,34 +51,42 @@ internal fun QuickPlayButton(
                 QuickPlayMode.SHUFFLE -> SonaIcons.Shuffle
                 QuickPlayMode.PLAY -> SonaIcons.Play
             },
-            contentDescription = when (source) {
-                QuickPlaySource.AllTracks -> "${current.mode.verb} all"
-                else -> "${current.mode.verb} ${source.label}"
+            contentDescription = when (current.mode) {
+                QuickPlayMode.SHUFFLE -> if (source == QuickPlaySource.AllTracks) {
+                    context.getString(R.string.quick_play_shuffle_all)
+                } else {
+                    context.getString(R.string.quick_play_shuffle, source.label(context))
+                }
+                QuickPlayMode.PLAY -> if (source == QuickPlaySource.AllTracks) {
+                    context.getString(R.string.quick_play_play_all)
+                } else {
+                    context.getString(R.string.quick_play_play, source.label(context))
+                }
             },
             visible = visible(),
             onClick = { onPlay(current) },
             choices = listOfNotNull(
                 FloatingActionButtonMenuChoice(
-                    label = QuickPlaySource.AllTracks.label,
+                    label = QuickPlaySource.AllTracks.label(context),
                     icon = SonaIcons.Song,
                     isSelected = source == QuickPlaySource.AllTracks,
                     onClick = { playFrom(null) },
                 ),
                 FloatingActionButtonMenuChoice(
-                    label = "Favorites",
-                    icon = SonaIcons.Favorite,
+                    label = context.getString(BuiltInList.FAVORITES.titleRes),
+                    icon = BuiltInList.FAVORITES.icon,
                     isSelected = source.parent == favorites,
                     onClick = { playFrom(favorites) },
                 ),
                 FloatingActionButtonMenuChoice(
-                    label = QuickPlaySource.RecentlyPlayed.label,
-                    icon = SonaIcons.History,
+                    label = QuickPlaySource.RecentlyPlayed.label(context),
+                    icon = BuiltInList.RECENTLY_PLAYED.icon,
                     isSelected = source == QuickPlaySource.RecentlyPlayed,
                     onClick = { playFrom(PlaybackParent.RecentlyPlayed) },
                 ),
                 FloatingActionButtonMenuChoice(
-                    label = QuickPlaySource.MostPlayed.label,
-                    icon = SonaIcons.TrendingUp,
+                    label = QuickPlaySource.MostPlayed.label(context),
+                    icon = BuiltInList.MOST_PLAYED.icon,
                     isSelected = source == QuickPlaySource.MostPlayed,
                     onClick = { playFrom(PlaybackParent.MostPlayed) },
                 ),
@@ -83,7 +101,7 @@ internal fun QuickPlayButton(
                     null
                 },
                 FloatingActionButtonMenuChoice(
-                    label = "Other",
+                    label = context.getString(R.string.quick_play_other),
                     icon = SonaIcons.MoreHoriz,
                     onClick = onChooseOther,
                 ),
@@ -92,16 +110,9 @@ internal fun QuickPlayButton(
     }
 }
 
-private val QuickPlayMode.verb: String
-    get() = when (this) {
-        QuickPlayMode.SHUFFLE -> "Shuffle"
-        QuickPlayMode.PLAY -> "Play"
-    }
-
-private val QuickPlaySource.label: String
-    get() = when (this) {
-        QuickPlaySource.AllTracks -> "All tracks"
-        QuickPlaySource.RecentlyPlayed -> "Recently played"
-        QuickPlaySource.MostPlayed -> "Most played"
-        is QuickPlaySource.Collection -> name
-    }
+private fun QuickPlaySource.label(context: Context): String = when (this) {
+    QuickPlaySource.AllTracks -> context.getString(R.string.quick_play_all_tracks)
+    QuickPlaySource.RecentlyPlayed -> context.getString(BuiltInList.RECENTLY_PLAYED.titleRes)
+    QuickPlaySource.MostPlayed -> context.getString(BuiltInList.MOST_PLAYED.titleRes)
+    is QuickPlaySource.Collection -> parent.builtInList?.let { context.getString(it.titleRes) } ?: name
+}

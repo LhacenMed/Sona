@@ -2,12 +2,15 @@ package com.lhacenmed.sona.feature.player
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
+import com.lhacenmed.sona.core.designsystem.component.shortTitle
 import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
+import com.lhacenmed.sona.core.model.BuiltInList
 import com.lhacenmed.sona.core.model.Folder
 import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
+import com.lhacenmed.sona.core.model.builtInList
 
 /** What the playing queue was built from, as the player's header names it. */
 internal sealed interface PlayingFrom {
@@ -20,9 +23,8 @@ internal sealed interface PlayingFrom {
     /** Every video - the Videos tab, or a search of it. */
     data object Videos : PlayingFrom
 
-    data object RecentlyPlayed : PlayingFrom
-
-    data object MostPlayed : PlayingFrom
+    /** One of the app's own lists - Favorites, or a listening history. */
+    data class BuiltIn(val list: BuiltInList) : PlayingFrom
 }
 
 internal enum class CollectionKind { ALBUM, ARTIST, GENRE, PLAYLIST, FOLDER }
@@ -41,13 +43,13 @@ internal fun playingFromOf(
 ): PlayingFrom? =
     when (parent) {
         null -> PlayingFrom.AllTracks
-        PlaybackParent.RecentlyPlayed -> PlayingFrom.RecentlyPlayed
-        PlaybackParent.MostPlayed -> PlayingFrom.MostPlayed
+        PlaybackParent.RecentlyPlayed -> PlayingFrom.BuiltIn(BuiltInList.RECENTLY_PLAYED)
+        PlaybackParent.MostPlayed -> PlayingFrom.BuiltIn(BuiltInList.MOST_PLAYED)
         PlaybackParent.Videos -> PlayingFrom.Videos
         is PlaybackParent.Album -> albums.firstOrNull { it.id == parent.albumId }?.title?.named(CollectionKind.ALBUM)
         is PlaybackParent.Artist -> artists.firstOrNull { it.id == parent.artistId }?.name?.named(CollectionKind.ARTIST)
         is PlaybackParent.Genre -> genres.firstOrNull { it.id == parent.genreId }?.name?.named(CollectionKind.GENRE)
-        is PlaybackParent.Playlist ->
+        is PlaybackParent.Playlist -> parent.builtInList?.let(PlayingFrom::BuiltIn) ?:
             playlists.firstOrNull { it.id == parent.playlistId }?.name?.named(CollectionKind.PLAYLIST)
         is PlaybackParent.Folder ->
             folders.firstOrNull { it.path == parent.folderPath }?.name?.named(CollectionKind.FOLDER)
@@ -62,8 +64,7 @@ internal fun PlayingFrom.title(): String =
         is PlayingFrom.Collection -> name
         PlayingFrom.AllTracks -> stringResource(R.string.player_playing_from_all_tracks)
         PlayingFrom.Videos -> stringResource(R.string.player_playing_from_videos)
-        PlayingFrom.RecentlyPlayed -> stringResource(R.string.player_playing_from_recently_played)
-        PlayingFrom.MostPlayed -> stringResource(R.string.player_playing_from_most_played)
+        is PlayingFrom.BuiltIn -> list.shortTitle
     }
 
 /**

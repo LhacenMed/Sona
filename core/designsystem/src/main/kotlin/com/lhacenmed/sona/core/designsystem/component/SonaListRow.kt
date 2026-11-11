@@ -22,9 +22,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.common.format.formatFileSize
+import com.lhacenmed.sona.core.designsystem.R
 import com.lhacenmed.sona.core.designsystem.component.swipe.LocalSwipeActions
 import com.lhacenmed.sona.core.designsystem.component.swipe.SwipeActionsBox
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
@@ -121,7 +123,7 @@ fun SonaListRow(
     containerColor: Color = MaterialTheme.colorScheme.surface,
     contentColor: Color = LocalContentColor.current,
     optionsIcon: ImageVector = SonaIcons.MoreHoriz,
-    optionsLabel: String = "More options",
+    optionsLabel: String = stringResource(R.string.list_row_more_options),
     subtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     supporting: (@Composable () -> Unit)? = null,
     cover: @Composable (isSelected: Boolean) -> Unit,
@@ -198,7 +200,7 @@ fun SonaListRow(
                     ) {
                         Icon(
                             imageVector = SonaIcons.DragHandle,
-                            contentDescription = "Reorder",
+                            contentDescription = stringResource(R.string.list_row_reorder),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -207,7 +209,7 @@ fun SonaListRow(
                     Box(modifier = Modifier.size(TrailingSlotSize), contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = SonaIcons.PushPin,
-                            contentDescription = "Pinned",
+                            contentDescription = stringResource(R.string.list_row_pinned),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -249,7 +251,7 @@ fun SonaTrackRow(
     containerColor: Color = MaterialTheme.colorScheme.surface,
     contentColor: Color = LocalContentColor.current,
     optionsIcon: ImageVector = SonaIcons.MoreHoriz,
-    optionsLabel: String = "More options",
+    optionsLabel: String = stringResource(R.string.list_row_more_options),
 ) {
     val current = isCurrent()
     SonaListRow(
@@ -298,7 +300,7 @@ fun SonaVideoRow(
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surface,
     optionsIcon: ImageVector = SonaIcons.MoreHoriz,
-    optionsLabel: String = "More options",
+    optionsLabel: String = stringResource(R.string.list_row_more_options),
 ) {
     val current = isCurrent()
     SonaListRow(

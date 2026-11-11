@@ -1,6 +1,7 @@
 package com.lhacenmed.sona.feature.settings.search
 
 import com.lhacenmed.sona.feature.download.R as DownloadR
+import com.lhacenmed.sona.feature.library.R as LibraryR
 import com.lhacenmed.sona.feature.settings.R
 import java.io.File
 import org.junit.Assert.assertEquals
@@ -30,8 +31,9 @@ class SettingsSearchEntriesTest {
             .filter { it.isFile && it.extension == "kt" && it.relativeTo(SettingsScreensSources).path.substringBefore(File.separatorChar) !in NotScreens } +
             FeatureSettingsSources.asSequence().flatMap { it.walkTopDown().filter { file -> file.isFile && file.extension == "kt" } }
         val titles = screenFiles.flatMap { file -> SettingsRow.findAll(file.readText()).map { it.groupValues[1] } }.toSet()
-        // The settings' own strings, and those of the screens features keep of their own - the Downloads settings.
-        val namesById = (R.string::class.java.fields + DownloadR.string::class.java.fields).associate { it.getInt(null) to it.name }
+        // The settings' own strings, those of the screens features keep of their own - the Downloads settings - and the
+        // library's, whose names a settings row may share.
+        val namesById = (R.string::class.java.fields + DownloadR.string::class.java.fields + LibraryR.string::class.java.fields).associate { it.getInt(null) to it.name }
         val searchable = SettingsSearchEntries.mapTo(HashSet()) { namesById.getValue(it.titleRes) }
 
         assertEquals(emptySet<String>(), titles - searchable - Unsearched)

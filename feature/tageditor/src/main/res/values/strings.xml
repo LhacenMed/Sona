@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- A tag, as the editor names it - see TagField -->
+    <string name="tag_field_title">Title</string>
+    <string name="tag_field_artist">Artist</string>
+    <string name="tag_field_album">Album</string>
+    <string name="tag_field_album_artist">Album artist</string>
+    <string name="tag_field_genre">Genre</string>
+    <string name="tag_field_year">Year</string>
+    <string name="tag_field_track_number">Track number</string>
+    <string name="tag_field_track_count">Track count</string>
+    <string name="tag_field_disc_number">Disc number</string>
+    <string name="tag_field_composer">Composer</string>
+    <string name="tag_field_comment">Comment</string>
+    <string name="tag_field_lyrics">Lyrics</string>
+    <!-- The tag editor - see TagEditorScreen, TagEditorComponents and TrackTagDraftSections -->
+    <string name="tag_editor_title">Edit info</string>
+    <string name="tag_editor_saved">Tags saved</string>
+    <string name="tag_editor_save_failed">The tags could not be saved</string>
+    <string name="tag_editor_done">Done</string>
+    <string name="tag_editor_save">Save</string>
+    <string name="tag_editor_file">File</string>
+    <string name="tag_editor_duration">Duration</string>
+    <string name="tag_editor_format">Format</string>
+    <string name="tag_editor_bitrate">Bitrate</string>
+    <string name="tag_editor_path">Path</string>
+    <string name="tag_editor_kbps">%1$d kbps</string>
+    <string name="tag_editor_search_button">Search tags and lyrics</string>
+    <string name="tag_editor_all">All</string>
+    <string name="tag_editor_applied">Applied</string>
+    <string name="tag_editor_apply_from">From %1$s · press to apply</string>
+    <string name="tag_editor_hide_tags">Hide its tags</string>
+    <string name="tag_editor_show_tags">Show its tags</string>
+    <string name="tag_editor_looking_up">Looking up tags…</string>
+    <string name="tag_editor_unreachable">The catalogues could not be reached.</string>
+    <string name="tag_editor_retry">Retry</string>
+    <string name="tag_editor_no_match">No match found. Change the search, or edit the tags below.</string>
+    <string name="tag_editor_cover_current">Current</string>
+    <string name="tag_editor_cover_gallery">From gallery</string>
+    <string name="tag_editor_cover_add">Add from gallery</string>
+    <string name="tag_editor_length_unknown">Length not given</string>
+    <string name="tag_editor_length_same">%1$s · Same length</string>
+    <string name="tag_editor_length_longer">%1$s · %2$s longer</string>
+    <string name="tag_editor_length_shorter">%1$s · %2$s shorter</string>
+    <string name="tag_editor_seconds">%1$ds</string>
+    <string name="tag_editor_looking_for_lyrics">Looking for lyrics…</string>
+    <string name="tag_editor_no_lyrics">No lyrics found</string>
+    <string name="lyrics_timing_word">Word-synced</string>
+    <string name="lyrics_timing_line">Synced</string>
+    <string name="lyrics_timing_none">Plain</string>
+    <string name="tag_editor_pause">Pause</string>
+    <string name="tag_editor_play">Play</string>
+    <string name="tag_editor_search">Search</string>
+    <string name="tag_editor_best_match">Best match</string>
+    <string name="tag_editor_tags">Tags</string>
+    <string name="tag_editor_covers">Covers</string>
+    <string name="tag_editor_lyrics">Lyrics</string>
+    <string name="tag_editor_edit_lyrics">Edit lyrics</string>
+    <string name="tag_editor_other_matches">Other matches</string>
+    <!-- The lyrics editor - see LyricsEditor and LyricsEditorComponents -->
+    <string name="lyrics_editor_title">Lyrics editor</string>
+    <string name="lyrics_editor_saved">Lyrics saved</string>
+    <string name="lyrics_editor_save_failed">The lyrics could not be saved</string>
+    <string name="lyrics_editor_stop_following">Stop following the playing line</string>
+    <string name="lyrics_editor_follow">Follow the playing line</string>
+    <string name="lyrics_editor_no_lyrics_in_file">No lyrics in that file</string>
+    <string name="lyrics_editor_no_lyrics_in_clipboard">No lyrics in the clipboard</string>
+    <string name="lyrics_editor_batch_edit">Batch edit</string>
+    <string name="lyrics_editor_delete">Delete</string>
+    <string name="lyrics_editor_undo">Undo</string>
+    <string name="lyrics_editor_redo">Redo</string>
+    <string name="lyrics_editor_add_lyrics">Add lyrics</string>
+    <string name="lyrics_editor_as_text">View/Edit lyrics plain text</string>
+    <string name="lyrics_editor_delete_embedded">Delete embedded lyrics</string>
+    <string name="lyrics_editor_play_from_here">Play from here</string>
+    <string name="lyrics_editor_add_above">Add row above</string>
+    <string name="lyrics_editor_add_below">Add row below</string>
+    <string name="lyrics_editor_reset_time">Reset timestamp</string>
+    <string name="lyrics_editor_remove">Remove</string>
+    <string name="lyrics_editor_empty_title">No lyrics yet</string>
+    <string name="lyrics_editor_empty_message">Add them with the plus above: from the web, the clipboard or a lyrics file.</string>
+    <string name="lyrics_editor_write_line">Tap to write this line</string>
+    <string name="lyrics_editor_time_to_now">Time to now</string>
+    <string name="lyrics_editor_line_actions">Line actions</string>
+    <string name="lyrics_editor_later">Later</string>
+    <string name="lyrics_editor_earlier">Earlier</string>
+    <string name="lyrics_editor_add_from">Add lyrics from</string>
+    <string name="lyrics_editor_search">Search lyrics</string>
+    <string name="lyrics_editor_paste">Paste from clipboard</string>
+    <string name="lyrics_editor_pick_file">Select lyrics file (.lrc)</string>
+    <string name="lyrics_editor_found">Lyrics found</string>
+    <string name="lyrics_editor_line">Line</string>
+    <string name="lyrics_editor_done">Done</string>
+    <string name="lyrics_editor_text_title">Lyrics as text</string>
+    <string name="lyrics_editor_adjust">Adjust</string>
+    <string name="lyrics_editor_offset_message">Offset the timestamps of the selected lines.</string>
+    <string name="lyrics_editor_delete_title">Delete embedded lyrics?</string>
+    <string name="lyrics_editor_delete_message">Every line is taken out. Once saved, the file holds no lyrics.</string>
+    <string name="lyrics_editor_discard_title">Discard changes?</string>
+    <string name="lyrics_editor_keep_editing">Keep editing</string>
+    <string name="lyrics_editor_discard">Discard</string>
+    <string name="lyrics_editor_discard_message">Changes that have not been kept will be lost.</string>
+    <!-- Auto-tag - see AutoTagScreen, AutoTagComponents, AutoTagger and AutoTagService -->
+    <string name="autotag_title">Auto-tag</string>
+    <string name="autotag_find_tags">Find tags</string>
+    <string name="autotag_tracks_section">Tracks</string>
+    <string name="autotag_find_section">Find</string>
+    <string name="autotag_find_message">The best match is picked for every track. Nothing is written until you have looked over what was found and saved it.</string>
+    <string name="autotag_pick_title">Tracks to tag</string>
+    <string name="autotag_pick_tab">Tracks</string>
+    <string name="autotag_try_again">Try again</string>
+    <string name="autotag_finish_title">Finish without saving?</string>
+    <string name="autotag_keep_reviewing">Keep reviewing</string>
+    <string name="autotag_finish">Finish</string>
+    <string name="autotag_stop">Stop</string>
+    <string name="autotag_find_choice_tags">Tags</string>
+    <string name="autotag_find_choice_cover">Cover</string>
+    <string name="autotag_find_choice_lyrics">Lyrics</string>
+    <string name="autotag_advanced">Advanced</string>
+    <string name="autotag_existing_values">Where a track already has a value</string>
+    <string name="autotag_replace">Replace it with the match\'s</string>
+    <string name="autotag_keep">Keep it, and fill only what is blank</string>
+    <string name="autotag_phase_matching">Looking up tracks</string>
+    <string name="autotag_phase_saving">Saving tags</string>
+    <string name="autotag_phase_reviewing">Ready to review</string>
+    <string name="autotag_edit_info">Edit info</string>
+    <string name="autotag_notification_title">Auto-tagging</string>
+    <string name="autotag_save_failed">The tags could not be saved</string>
+    <string name="autotag_not_saved">Not saved: %1$s</string>
+    <string name="autotag_unreachable">The catalogues could not be reached</string>
+    <string name="autotag_no_match">No match found</string>
+    <string name="autotag_nothing_to_change">Nothing to change</string>
+    <string name="autotag_cover">Cover</string>
+    <string name="autotag_outcome_ready">Ready to save</string>
+    <string name="autotag_outcome_unsure">Needs a look</string>
+    <string name="autotag_outcome_not_found">No match</string>
+    <string name="autotag_outcome_unreachable">Not looked up</string>
+    <string name="autotag_outcome_up_to_date">Already up to date</string>
+    <string name="autotag_outcome_count">%1$s · %2$d</string>
+    <plurals name="autotag_tracks">
+        <item quantity="one">%d track</item>
+        <item quantity="other">%d tracks</item>
+    </plurals>
+    <plurals name="autotag_all_folders">
+        <item quantity="one">All %d folder</item>
+        <item quantity="other">All %d folders</item>
+    </plurals>
+    <plurals name="autotag_some_folders">
+        <item quantity="one">%1$d of %2$d folder</item>
+        <item quantity="other">%1$d of %2$d folders</item>
+    </plurals>
+    <plurals name="autotag_tag_tracks">
+        <item quantity="one">Tag %d track</item>
+        <item quantity="other">Tag %d tracks</item>
+    </plurals>
+    <plurals name="autotag_save_tracks">
+        <item quantity="one">Save %d track</item>
+        <item quantity="other">Save %d tracks</item>
+    </plurals>
+    <plurals name="autotag_finish_message">
+        <item quantity="one">%d track picked to be saved will keep its tags as it is.</item>
+        <item quantity="other">%d tracks picked to be saved will keep their tags as they are.</item>
+    </plurals>
+    <plurals name="autotag_review_progress">
+        <item quantity="one">%1$d of %2$d track with changes picked</item>
+        <item quantity="other">%1$d of %2$d tracks with changes picked</item>
+    </plurals>
+    <plurals name="autotag_progress">
+        <item quantity="one">%1$d of %2$d track</item>
+        <item quantity="other">%1$d of %2$d tracks</item>
+    </plurals>
+    <plurals name="autotag_saved">
+        <item quantity="one">Saved %d track</item>
+        <item quantity="other">Saved %d tracks</item>
+    </plurals>
+    <plurals name="autotag_failed">
+        <item quantity="one">%d track could not be saved</item>
+        <item quantity="other">%d tracks could not be saved</item>
+    </plurals>
+    <plurals name="autotag_saving_progress">
+        <item quantity="one">Saving %1$d of %2$d track</item>
+        <item quantity="other">Saving %1$d of %2$d tracks</item>
+    </plurals>
+    <plurals name="autotag_looking_up_progress">
+        <item quantity="one">Looking up %1$d of %2$d track</item>
+        <item quantity="other">Looking up %1$d of %2$d tracks</item>
+    </plurals>
+    <!-- Why a file could not take its tags - see TagFile -->
+    <string name="tag_file_no_tags">This file\'s format holds no tags</string>
+    <string name="tag_file_write_failed">The tags could not be written into this file</string>
+    <string name="tag_file_no_cover">This file\'s format cannot hold a cover</string>
+</resources>

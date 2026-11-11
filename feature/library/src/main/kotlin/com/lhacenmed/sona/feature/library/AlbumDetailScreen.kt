@@ -2,6 +2,7 @@ package com.lhacenmed.sona.feature.library
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.itemsOrEmpty
@@ -10,6 +11,7 @@ import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.designsystem.component.SonaAlbumCover
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.library.R
 import com.lhacenmed.sona.feature.library.options.AlbumOptionsContext
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
 import com.lhacenmed.sona.feature.library.options.TrackOptionsContext
@@ -26,12 +28,12 @@ data class AlbumDetailScreen(val albumId: Long) : Screen {
         val tracks by viewModel.tracks.collectAsStateWithLifecycle()
 
         TrackListDetail(
-            title = album?.title ?: "Album",
+            title = album?.title ?: stringResource(R.string.options_type_album),
             header = DetailHeaderContent(
-                type = "Album",
+                type = stringResource(R.string.options_type_album),
                 subhead = album?.artistName,
                 info = listOf(
-                    album?.year?.toString() ?: "No date",
+                    album?.year?.toString() ?: stringResource(R.string.library_no_date),
                     trackCountAndDuration(tracks.itemsOrEmpty),
                 ).joinToString(InfoSeparator),
                 cover = {
@@ -44,7 +46,7 @@ data class AlbumDetailScreen(val albumId: Long) : Screen {
             ),
             onBack = navigator::back,
             viewModel = viewModel,
-            emptyMessage = "This album has no tracks.",
+            emptyMessage = stringResource(R.string.album_empty),
             collection = album?.let { OptionsTarget.ForAlbum(it, AlbumOptionsContext.FROM_DETAIL) },
             trackOptionsContext = TrackOptionsContext.FROM_ALBUM,
             groupsByDisc = true,

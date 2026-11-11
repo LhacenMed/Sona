@@ -423,4 +423,6 @@
         <item quantity="one">%1$d shortcut will be deleted.</item>
         <item quantity="other">%1$d shortcuts will be deleted.</item>
     </plurals>
+    <!-- Watching a channel - see WatchesScreen -->
+    <string name="download_watch_not_found">Not a channel or a playlist</string>
 </resources>

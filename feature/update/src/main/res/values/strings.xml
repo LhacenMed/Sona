@@ -32,4 +32,7 @@
     <string name="update_notification_title">New update available</string>
     <string name="update_notification_text">Version %1$s is available</string>
     <string name="update_notification_download">Download</string>
+    <!-- Downloading an update - see ApkDownloader and ApkVariant -->
+    <string name="update_download_failed">Download failed: %1$s</string>
+    <string name="update_variant_universal">Universal</string>
 </resources>

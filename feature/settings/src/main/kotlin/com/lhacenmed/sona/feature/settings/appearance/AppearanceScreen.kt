@@ -10,6 +10,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
@@ -48,7 +49,7 @@ private val playerBackgroundOptions = PlayerBackgroundStyle.entries.filter {
     it != PlayerBackgroundStyle.BLUR || Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 }
 
-/** How the app looks: its theme and colours, its typeface, the player, and how it moves. */
+/** How the app looks: its language, its theme and colours, its typeface, the player, and how it moves. */
 data object AppearanceScreen : Screen {
     override val titleRes: Int get() = R.string.appearance_title
 
@@ -75,7 +76,19 @@ data object AppearanceScreen : Screen {
         }
         val pickFont = { customFontPicker.launch(CustomFontLoader.supportedMimeTypes) }
 
+        val languages = remember(context) { appLanguages(context) }
+        val pickedLanguage = remember { pickedAppLanguage() }
+
         SettingsList {
+            SettingsSection(stringResource(R.string.appearance_language_section)) {
+                SettingsChoiceItem(
+                    title = stringResource(R.string.language_title),
+                    options = listOf(stringResource(R.string.language_system)) + languages.map { it.nativeName() },
+                    // The system's while none is picked, or the one picked is no longer among them.
+                    selectedIndex = languages.indexOfFirst { it.toLanguageTag() == pickedLanguage?.toLanguageTag() } + 1,
+                    onSelect = { index -> pickAppLanguage(languages.getOrNull(index - 1)) },
+                )
+            }
             SettingsSection(stringResource(R.string.appearance_theme_section)) {
                 SettingsChoiceItem(
                     title = stringResource(R.string.theme_title),

@@ -3,6 +3,7 @@ package com.lhacenmed.sona.feature.settings.search
 import androidx.annotation.StringRes
 import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.library.R as LibraryR
 import com.lhacenmed.sona.feature.settings.R
 import com.lhacenmed.sona.feature.download.R as DownloadR
 import com.lhacenmed.sona.feature.settings.SettingsCategory
@@ -43,6 +44,9 @@ private fun SettingsCategory.section(@StringRes sectionRes: Int, vararg rows: Se
  */
 internal val SettingsSearchEntries: List<SettingsSearchEntry> = with(SettingsCategory.Appearance) {
     section(
+        R.string.appearance_language_section,
+        row(R.string.language_title),
+    ) + section(
         R.string.appearance_theme_section,
         row(R.string.theme_title),
         row(R.string.black_theme_title, R.string.black_theme_summary),
@@ -193,7 +197,7 @@ internal val SettingsSearchEntries: List<SettingsSearchEntry> = with(SettingsCat
 } + with(SettingsCategory.Behavior) {
     section(
         R.string.behavior_display_section,
-        row(R.string.library_tabs_title, R.string.library_tabs_summary),
+        row(LibraryR.string.library_tabs_title, R.string.library_tabs_summary),
         row(R.string.playback_bar_action_title),
         row(R.string.fast_scroll_touch_area_title),
         row(R.string.pull_to_refresh_title, R.string.pull_to_refresh_summary),

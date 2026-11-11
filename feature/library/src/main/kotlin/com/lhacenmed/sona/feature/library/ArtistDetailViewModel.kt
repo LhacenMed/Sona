@@ -9,6 +9,7 @@ import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.sort.SortableList
+import com.lhacenmed.sona.feature.library.R
 import com.lhacenmed.sona.feature.library.sort.SortControl
 import com.lhacenmed.sona.feature.library.sort.control
 import com.lhacenmed.sona.feature.playback.PlaybackController
@@ -57,8 +58,8 @@ class ArtistDetailViewModel @AssistedInject constructor(
             .sortedWith(ArtistAlbumOrder)
             .partition { artistId in it.artistIds }
         listOfNotNull(
-            own.takeIf { it.isNotEmpty() }?.let { DetailSection.Albums("Albums", it) },
-            appearances.takeIf { it.isNotEmpty() }?.let { DetailSection.Albums("Appears on", it) },
+            own.takeIf { it.isNotEmpty() }?.let { DetailSection.Albums(R.string.library_albums_title, it) },
+            appearances.takeIf { it.isNotEmpty() }?.let { DetailSection.Albums(R.string.detail_appears_on, it) },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 

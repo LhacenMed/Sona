@@ -6,6 +6,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
+import com.lhacenmed.sona.core.designsystem.R
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
@@ -62,11 +64,12 @@ fun rememberSelectionState(): SelectionState = remember { SelectionState() }
  * gathered elsewhere survives it, and once every one of them is selected it deselects them instead - the one Select
  * all every selectable list offers.
  */
+@Composable
 fun SelectionState.selectAllAction(listKeys: List<Any>): TopBarAction =
     if (listKeys.isNotEmpty() && selectedKeys.containsAll(listKeys)) {
-        TopBarAction(label = "Deselect all", icon = SonaIcons.Deselect) { deselectAll(listKeys) }
+        TopBarAction(label = stringResource(R.string.top_bar_deselect_all), icon = SonaIcons.Deselect) { deselectAll(listKeys) }
     } else {
-        TopBarAction(label = "Select all", icon = SonaIcons.SelectAll) { selectAll(listKeys) }
+        TopBarAction(label = stringResource(R.string.top_bar_select_all), icon = SonaIcons.SelectAll) { selectAll(listKeys) }
     }
 
 fun SelectionState.toTopBarSelection(actions: List<TopBarAction>, onMoreOptions: (() -> Unit)?): TopBarSelection? =

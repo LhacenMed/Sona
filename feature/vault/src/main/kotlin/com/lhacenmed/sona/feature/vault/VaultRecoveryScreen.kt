@@ -15,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -24,6 +25,7 @@ import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.core.vault.VaultAccessResult
 import com.lhacenmed.sona.core.vault.VaultState
+import com.lhacenmed.sona.feature.vault.R
 
 /**
  * A forgotten PIN's first step: the security question answered, before a new PIN is chosen - the folder
@@ -41,7 +43,7 @@ internal data object VaultRecoveryScreen : Screen {
         var isChecking by remember { mutableStateOf(false) }
         var error by remember { mutableStateOf<String?>(null) }
 
-        VaultStepScaffold(title = PinPurpose.RESET.title) {
+        VaultStepScaffold(title = stringResource(PinPurpose.RESET.titleRes)) {
             val current = vault as? VaultState.Created ?: return@VaultStepScaffold
             val lockoutMessage = rememberLockoutMessage(current.lockedUntilEpochMs)
             Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -50,7 +52,7 @@ internal data object VaultRecoveryScreen : Screen {
                 OutlinedTextField(
                     value = answer,
                     onValueChange = { answer = it },
-                    label = { Text("Answer") },
+                    label = { Text(stringResource(R.string.vault_answer)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -61,15 +63,19 @@ internal data object VaultRecoveryScreen : Screen {
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Spacer(Modifier.height(16.dp))
+                // Read here rather than inside the group: it builds its buttons outside composition.
+                val backLabel = stringResource(R.string.vault_back_to_pin)
+                val continueLabel = stringResource(R.string.vault_continue)
+                val wrongAnswer = stringResource(R.string.vault_wrong_answer)
                 SonaActionButtonGroup {
-                    actionButton(label = "Back to PIN", onClick = navigator::back)
+                    actionButton(label = backLabel, onClick = navigator::back)
                     actionButton(
-                        label = "Continue",
+                        label = continueLabel,
                         onClick = {
                             isChecking = true
                             viewModel.verifySecurityAnswer(answer) { result ->
                                 isChecking = false
-                                error = if (result == VaultAccessResult.WrongSecret) "That's not the answer" else null
+                                error = if (result == VaultAccessResult.WrongSecret) wrongAnswer else null
                                 if (result == VaultAccessResult.Granted) {
                                     viewModel.flow.verifiedAnswer = answer
                                     navigator.go(VaultChoosePinScreen(PinPurpose.RESET))

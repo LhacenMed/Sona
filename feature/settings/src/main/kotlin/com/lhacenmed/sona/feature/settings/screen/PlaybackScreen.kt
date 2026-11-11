@@ -8,7 +8,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.quickplay.QuickPlaySource
 import com.lhacenmed.sona.core.datastore.QuickPlayMode
+import com.lhacenmed.sona.core.designsystem.component.title
+import com.lhacenmed.sona.core.model.BuiltInList
 import com.lhacenmed.sona.core.model.PlaybackParent
+import com.lhacenmed.sona.core.model.builtInList
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.equalizer.EqualizerScreen
@@ -293,10 +296,10 @@ private fun QuickPlayMode.label(): String =
 private fun QuickPlaySource.label(): String =
     when (this) {
         QuickPlaySource.AllTracks -> stringResource(R.string.quick_play_source_all_tracks)
-        QuickPlaySource.RecentlyPlayed -> stringResource(R.string.quick_play_source_recently_played)
-        QuickPlaySource.MostPlayed -> stringResource(R.string.quick_play_source_most_played)
+        QuickPlaySource.RecentlyPlayed -> BuiltInList.RECENTLY_PLAYED.title
+        QuickPlaySource.MostPlayed -> BuiltInList.MOST_PLAYED.title
         is QuickPlaySource.Collection ->
-            stringResource(R.string.quick_play_source_collection, parent.quickPlaySourceKind?.label().orEmpty(), name)
+            stringResource(R.string.quick_play_source_collection, parent.quickPlaySourceKind?.label().orEmpty(), parent.builtInList?.title ?: name)
     }
 
 @Composable

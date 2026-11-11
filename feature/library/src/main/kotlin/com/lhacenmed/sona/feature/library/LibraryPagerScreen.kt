@@ -48,7 +48,9 @@ import com.lhacenmed.sona.core.designsystem.component.topBarBackground
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.component.screen.PlayingRowReveal
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
+import com.lhacenmed.sona.feature.library.R
 import com.lhacenmed.sona.feature.library.operation.ExcludeFoldersDialog
+import com.lhacenmed.sona.feature.library.options.label
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.selection.SelectionOptionsHost
 import com.lhacenmed.sona.feature.library.options.OptionsAction
@@ -110,7 +112,7 @@ fun LibraryPagerScreen(
     // change rare enough that starting over is the simplest correct behaviour - while a reorder keeps everything as it is.
     key(visibleTabs.toSet()) {
         val pagerState = rememberPagerState(pageCount = { visibleTabs.size })
-        val tabTitles = remember(visibleTabs) { visibleTabs.map { it.label } }
+        val tabTitles = visibleTabs.map { it.label }
         val selection = rememberSelectionState()
         val scope = rememberCoroutineScope()
 
@@ -254,7 +256,7 @@ fun LibraryPagerScreen(
                             // on the tab on screen, while the shell's actions are the ones that can fold into
                             // the menu.
                             actions = listOf(
-                                TopBarAction(label = "Search", icon = SonaIcons.Search) {
+                                TopBarAction(label = stringResource(R.string.library_search), icon = SonaIcons.Search) {
                                     viewModel.onSearchQueryChange("")
                                 },
                                 sortAction { sortingTab = selectedTab },
@@ -268,7 +270,7 @@ fun LibraryPagerScreen(
                                     // The secret code typed, the key to the Private Folder: it opens straight in, the
                                     // code itself left behind in the field no longer than it takes to go.
                                     actions = listOfNotNull(
-                                        TopBarAction(label = "Private Folder", icon = SonaIcons.LockOpen) {
+                                        TopBarAction(label = stringResource(R.string.library_private_folder), icon = SonaIcons.LockOpen) {
                                             viewModel.openPrivateFolder(onOpened = openPrivateFolder)
                                         }.takeIf { revealsPrivateFolder },
                                         sortTabAction,
@@ -397,12 +399,13 @@ fun LibraryPagerScreen(
  * the library's own bar adds to every list's. It asks [onExclude] to confirm excluding the selected
  * folders alone.
  */
+@Composable
 private fun excludeFolderActions(selection: SelectionState, onExclude: (folderPaths: List<String>) -> Unit): List<TopBarAction> {
     // A path selected in both of the Folders tab's sections is still one folder to exclude.
     val folderPaths = selection.selectedKeys.filterIsInstance<SelectionKey.Folder>().map { it.folderPath }.distinct()
     if (folderPaths.isEmpty()) return emptyList()
     return listOf(
-        TopBarAction(label = "Exclude folder", icon = SonaIcons.Block) { onExclude(folderPaths) },
+        TopBarAction(label = OptionsAction.EXCLUDE.label, icon = OptionsAction.EXCLUDE.icon) { onExclude(folderPaths) },
     )
 }
 

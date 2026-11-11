@@ -2,6 +2,7 @@ package com.lhacenmed.sona.feature.library
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.itemsOrEmpty
@@ -10,6 +11,7 @@ import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.designsystem.component.SonaGenreCover
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.library.R
 import com.lhacenmed.sona.feature.library.options.GenreOptionsContext
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
 
@@ -25,12 +27,12 @@ data class GenreDetailScreen(val genreId: Long) : Screen {
         val tracks by viewModel.tracks.collectAsStateWithLifecycle()
 
         TrackListDetail(
-            title = genre?.name ?: "Genre",
+            title = genre?.name ?: stringResource(R.string.options_type_genre),
             header = DetailHeaderContent(
-                type = "Genre",
+                type = stringResource(R.string.options_type_genre),
                 subhead = null,
                 info = listOf(
-                    pluralCount(genre?.artistCount ?: 0, "artist"),
+                    countLabel(R.plurals.library_artists, genre?.artistCount ?: 0),
                     trackCountLabel(tracks.itemsOrEmpty.size),
                 ).joinToString(InfoSeparator),
                 cover = {
@@ -44,7 +46,7 @@ data class GenreDetailScreen(val genreId: Long) : Screen {
             ),
             onBack = navigator::back,
             viewModel = viewModel,
-            emptyMessage = "This genre has no tracks.",
+            emptyMessage = stringResource(R.string.genre_empty),
             collection = genre?.let { OptionsTarget.ForGenre(it, GenreOptionsContext.FROM_DETAIL) },
         )
     }

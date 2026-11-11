@@ -7,4 +7,6 @@
     <string name="playback_action_repeat_one">Repeat current song</string>
     <string name="playback_action_repeat_all">Repeat queue</string>
     <string name="playback_action_repeat_one_stop">Stop after current song</string>
+    <!-- A Private Folder file, as the notification and the lock screen show it - see VaultMediaItemMapping -->
+    <string name="vault_display_title">Private Folder</string>
 </resources>

@@ -7,9 +7,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.feature.library.R
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
 
@@ -34,7 +36,7 @@ fun TracksScreen(
         selection = selection,
         hasPermission = hasPermission,
         isScanning = isScanning,
-        emptyTitle = "No tracks found",
+        emptyTitle = stringResource(R.string.library_no_tracks_found),
         emptyMessage = searchEmptyMessage(searchQuery),
         key = { it.id },
         modifier = modifier,

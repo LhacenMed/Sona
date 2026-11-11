@@ -8,8 +8,10 @@ import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.designsystem.R as DesignR
 import com.lhacenmed.sona.core.designsystem.component.SonaSettingsRow
 import com.lhacenmed.sona.core.designsystem.component.SonaSettingsValue
 import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
@@ -17,6 +19,7 @@ import com.lhacenmed.sona.core.designsystem.component.section.ColumnSection
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.core.vault.VaultState
+import com.lhacenmed.sona.feature.vault.R
 
 /**
  * How the Private Folder is found and opened - WhatsApp's chat lock settings, for it: hidden from Settings, its secret
@@ -32,10 +35,10 @@ internal data object PrivateFolderSettingsScreen : Screen {
         val viewModel: VaultAccessViewModel = hiltViewModel()
         val vault by viewModel.state.collectAsStateWithLifecycle()
 
-        VaultStepScaffold(title = "Private Folder settings", needsOpenVault = true) {
+        VaultStepScaffold(title = stringResource(R.string.vault_settings_title), needsOpenVault = true) {
             val current = vault as? VaultState.Created ?: return@VaultStepScaffold
             // Turned on only once the fingerprint or face is given, so it is known to work before it is relied on.
-            val enableBiometrics = rememberBiometricCheck(title = "Unlock with biometrics", cancelLabel = "Cancel") {
+            val enableBiometrics = rememberBiometricCheck(title = stringResource(R.string.vault_biometrics_title), cancelLabel = stringResource(DesignR.string.confirmation_dialog_cancel)) {
                 viewModel.setUnlocksWithBiometrics(true)
             }
             // Hidden, the secret code is the one way left in: with none yet, hiding starts by choosing it, and saving it
@@ -51,27 +54,27 @@ internal data object PrivateFolderSettingsScreen : Screen {
             val scrollState = rememberScrollState()
             FastScroller(scrollState, Modifier.fillMaxSize()) { overscrollEffect ->
                 Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState, overscrollEffect = overscrollEffect)) {
-                    ColumnSection(title = "Privacy") {
+                    ColumnSection(title = stringResource(R.string.vault_privacy)) {
                         SonaSettingsRow(
-                            title = "Hide Private Folder",
-                            summary = "It won't show in Settings. To open it, type your secret code into the library's search.",
+                            title = stringResource(R.string.vault_hide_title),
+                            summary = stringResource(R.string.vault_hide_summary),
                             onClick = { setHidden(!current.isHidden) },
                             trailing = { Switch(checked = current.isHidden, onCheckedChange = setHidden) },
                         )
                         SonaSettingsRow(
-                            title = "Secret code",
-                            summary = "Open the Private Folder by typing a code of your own into the library's search.",
+                            title = stringResource(R.string.vault_secret_code),
+                            summary = stringResource(R.string.vault_secret_code_summary),
                             onClick = { navigator.go(VaultSecretCodeScreen()) },
-                            trailing = { SonaSettingsValue(if (current.hasSecretCode) "On" else "Off") },
+                            trailing = { SonaSettingsValue(stringResource(if (current.hasSecretCode) R.string.vault_on else R.string.vault_off)) },
                         )
                     }
-                    ColumnSection(title = "Unlocking") {
+                    ColumnSection(title = stringResource(R.string.vault_unlocking)) {
                         SonaSettingsRow(
-                            title = "Unlock with biometrics",
+                            title = stringResource(R.string.vault_biometrics_title),
                             summary = if (canUseBiometrics) {
-                                "Open it with your fingerprint or face, your PIN still there for when they don't work."
+                                stringResource(R.string.vault_biometrics_summary)
                             } else {
-                                "No fingerprint or face is set up on this device."
+                                stringResource(R.string.vault_biometrics_unavailable)
                             },
                             enabled = canUseBiometrics,
                             onClick = { setUnlocksWithBiometrics(!current.unlocksWithBiometrics) },
@@ -80,8 +83,8 @@ internal data object PrivateFolderSettingsScreen : Screen {
                             },
                         )
                         SonaSettingsRow(
-                            title = "Change PIN",
-                            summary = "Choose a new PIN, after the one you have now.",
+                            title = stringResource(PinPurpose.CHANGE.titleRes),
+                            summary = stringResource(R.string.vault_change_pin_summary),
                             onClick = { navigator.go(VaultChangePinScreen) },
                         )
                     }

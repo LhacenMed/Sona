@@ -1,8 +1,10 @@
 package com.lhacenmed.sona.feature.tageditor.autotag
 
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import com.lhacenmed.sona.core.model.UnknownNames
 import com.lhacenmed.sona.feature.tageditor.MatchLookup
+import com.lhacenmed.sona.feature.tageditor.R
 import com.lhacenmed.sona.feature.tageditor.TrackTagDraft
 import com.lhacenmed.sona.feature.tageditor.lookup.TrackMatcher
 import com.lhacenmed.sona.feature.tageditor.lookup.TrackQueries
@@ -25,19 +27,19 @@ data class AutoTagChoices(
 }
 
 /** What a run made of one track - the group its review lists it under, in this order. */
-enum class AutoTagOutcome(val title: String) {
+enum class AutoTagOutcome(@StringRes val titleRes: Int) {
     /** Matched convincingly: picked to be saved from the start. */
-    READY("Ready to save"),
+    READY(R.string.autotag_outcome_ready),
 
     /** Matched, but not convincingly enough to save unasked. */
-    UNSURE("Needs a look"),
-    NOT_FOUND("No match"),
+    UNSURE(R.string.autotag_outcome_unsure),
+    NOT_FOUND(R.string.autotag_outcome_not_found),
 
     /** No catalogue could be reached - the one outcome worth trying again. */
-    UNREACHABLE("Not looked up"),
+    UNREACHABLE(R.string.autotag_outcome_unreachable),
 
     /** Matched, and the file already holds all of it. */
-    UP_TO_DATE("Already up to date"),
+    UP_TO_DATE(R.string.autotag_outcome_up_to_date),
 }
 
 /**

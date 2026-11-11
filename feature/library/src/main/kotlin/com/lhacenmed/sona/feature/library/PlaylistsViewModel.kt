@@ -8,6 +8,8 @@ import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.data.sort.LibrarySortOrders
 import com.lhacenmed.sona.core.database.dao.MostPlayedCount
+import com.lhacenmed.sona.core.designsystem.component.coverSeed
+import com.lhacenmed.sona.core.model.BuiltInList
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.PlaylistCover
 import com.lhacenmed.sona.core.model.Track
@@ -149,7 +151,7 @@ class PlaylistsViewModel @Inject constructor(
         return when {
             topPlaylist != null -> topPlaylist.shortcutCover()
             mostPlayedCoverArtUris.isEmpty() -> null
-            else -> ShortcutCover.Playlist(coverArtUris = mostPlayedCoverArtUris, seed = MOST_PLAYED_TITLE.hashCode())
+            else -> ShortcutCover.Playlist(coverArtUris = mostPlayedCoverArtUris, seed = BuiltInList.MOST_PLAYED.coverSeed)
         }
     }
 

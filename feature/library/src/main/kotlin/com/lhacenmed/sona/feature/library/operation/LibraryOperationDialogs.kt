@@ -13,6 +13,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.data.contentUri
@@ -20,10 +22,10 @@ import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDia
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.library.R
 import com.lhacenmed.sona.feature.library.options.OptionsActionsViewModel
 import com.lhacenmed.sona.feature.library.options.RemovableTrackList
 import com.lhacenmed.sona.feature.library.mediaCountLabel
-import com.lhacenmed.sona.feature.library.pluralCount
 
 /*
  * The confirmed operations more than one place in the library offers, each written once so its wording
@@ -46,15 +48,11 @@ internal fun ExcludeFoldersDialog(
     val actionsViewModel: OptionsActionsViewModel = hiltViewModel()
     val isSingle = folderPaths.size == 1
     SonaConfirmationDialog(
-        title = if (isSingle) "Exclude folder" else "Exclude ${folderPaths.size} folders",
-        message = if (isSingle) {
-            "Its music and videos leave your library. The files themselves are not deleted."
-        } else {
-            "Their music and videos leave your library. The files themselves are not deleted."
-        },
-        confirmLabel = "Exclude",
-        successMessage = if (isSingle) "Folder excluded" else "${folderPaths.size} folders excluded",
-        failureMessage = if (isSingle) "Could not exclude folder" else "Could not exclude folders",
+        title = if (isSingle) stringResource(R.string.exclude_folder_title) else pluralStringResource(R.plurals.exclude_folders_title, folderPaths.size, folderPaths.size),
+        message = stringResource(if (isSingle) R.string.exclude_folder_message else R.string.exclude_folders_message),
+        confirmLabel = stringResource(R.string.exclude_confirm),
+        successMessage = if (isSingle) stringResource(R.string.exclude_folder_done) else pluralStringResource(R.plurals.exclude_folders_done, folderPaths.size, folderPaths.size),
+        failureMessage = stringResource(if (isSingle) R.string.exclude_folder_failed else R.string.exclude_folders_failed),
         onDismiss = onDismiss,
         operation = { onFinished ->
             onConfirmed()
@@ -77,11 +75,11 @@ internal fun DeletePlaylistsDialog(
     val actionsViewModel: OptionsActionsViewModel = hiltViewModel()
     val isSingle = playlists.size == 1
     SonaConfirmationDialog(
-        title = if (isSingle) "Delete playlist" else "Delete ${playlists.size} playlists",
-        message = "The tracks themselves are not deleted.",
-        confirmLabel = "Delete",
-        successMessage = if (isSingle) "Playlist deleted" else "${playlists.size} playlists deleted",
-        failureMessage = if (isSingle) "Could not delete playlist" else "Could not delete playlists",
+        title = if (isSingle) stringResource(R.string.delete_playlist_title) else pluralStringResource(R.plurals.delete_playlists_title, playlists.size, playlists.size),
+        message = stringResource(R.string.delete_playlist_message),
+        confirmLabel = stringResource(R.string.delete_confirm),
+        successMessage = if (isSingle) stringResource(R.string.delete_playlist_done) else pluralStringResource(R.plurals.delete_playlists_done, playlists.size, playlists.size),
+        failureMessage = stringResource(if (isSingle) R.string.delete_playlist_failed else R.string.delete_playlists_failed),
         onDismiss = onDismiss,
         operation = { onFinished ->
             onConfirmed()
@@ -108,11 +106,11 @@ internal fun RemoveFromListDialog(
     val actionsViewModel: OptionsActionsViewModel = hiltViewModel()
     val isSingle = trackIds.size == 1
     SonaConfirmationDialog(
-        title = if (isSingle) "Remove track" else "Remove ${trackIds.size} tracks",
+        title = if (isSingle) stringResource(R.string.remove_track_title) else pluralStringResource(R.plurals.remove_tracks_title, trackIds.size, trackIds.size),
         message = list.removalMessage,
-        confirmLabel = "Remove",
-        successMessage = if (isSingle) "Track removed" else "${trackIds.size} tracks removed",
-        failureMessage = if (isSingle) "Could not remove track" else "Could not remove tracks",
+        confirmLabel = stringResource(R.string.remove_confirm),
+        successMessage = if (isSingle) stringResource(R.string.remove_track_done) else pluralStringResource(R.plurals.remove_tracks_done, trackIds.size, trackIds.size),
+        failureMessage = stringResource(if (isSingle) R.string.remove_track_failed else R.string.remove_tracks_failed),
         onDismiss = onDismiss,
         operation = { onFinished ->
             onConfirmed()
@@ -144,15 +142,12 @@ internal fun DeleteFromDeviceDialog(
     val deleteFromDevice = rememberDeviceDeletion(tracks, onDeleted)
     val isSingle = tracks.size == 1
     SonaConfirmationDialog(
-        title = if (isSingle) "Delete track" else "Delete ${tracks.size} tracks",
-        message = buildString {
-            append(if (isSingle) "Its file is deleted" else "Their files are deleted")
-            append(" from this device. This cannot be undone.")
-            if (needsAllFilesAccess(LocalContext.current)) {
-                append("\n\nNext, allow Sona to manage all files, and it deletes without Android asking each time.")
-            }
-        },
-        confirmLabel = "Delete",
+        title = if (isSingle) stringResource(R.string.delete_track_title) else pluralStringResource(R.plurals.delete_tracks_title, tracks.size, tracks.size),
+        message = listOfNotNull(
+            stringResource(if (isSingle) R.string.delete_track_message else R.string.delete_tracks_message),
+            stringResource(R.string.delete_needs_all_files).takeIf { needsAllFilesAccess(LocalContext.current) },
+        ).joinToString("\n\n"),
+        confirmLabel = stringResource(R.string.delete_confirm),
         successMessage = deletionOutcome(tracks.size, succeeded = true),
         failureMessage = deletionOutcome(tracks.size, succeeded = false),
         onDismiss = onDismiss,
@@ -181,17 +176,14 @@ internal fun AddToPrivateDialog(
     val deleteOriginals = rememberDeviceDeletion(tracks, onDeleted = onMoved)
     val isSingle = tracks.size == 1
     SonaConfirmationDialog(
-        title = if (isSingle) "Add to Private Folder" else "Add ${mediaCountLabel(tracks)} to Private Folder",
-        message = buildString {
-            append(if (isSingle) "It leaves" else "They leave")
-            append(" your library for the Private Folder, which only you can open.")
-            if (needsAllFilesAccess(LocalContext.current)) {
-                append("\n\nNext, allow Sona to manage all files, and it moves without Android asking each time.")
-            }
-        },
-        confirmLabel = "Add",
-        successMessage = "Added to Private Folder",
-        failureMessage = "Could not add to Private Folder",
+        title = if (isSingle) stringResource(R.string.private_add_title) else stringResource(R.string.private_add_some_title, mediaCountLabel(tracks)),
+        message = listOfNotNull(
+            stringResource(if (isSingle) R.string.private_add_message else R.string.private_add_some_message),
+            stringResource(R.string.private_add_needs_all_files).takeIf { needsAllFilesAccess(LocalContext.current) },
+        ).joinToString("\n\n"),
+        confirmLabel = stringResource(R.string.private_add_confirm),
+        successMessage = stringResource(R.string.private_add_done),
+        failureMessage = stringResource(R.string.private_add_failed),
         onDismiss = onDismiss,
         operation = { onFinished ->
             onConfirmed()
@@ -246,7 +238,7 @@ private fun rememberDeviceDeletion(
     val requestSystemDeletion: (onFinished: (succeeded: Boolean) -> Unit) -> Unit = { onFinished ->
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && indexedTracks.isNotEmpty()) {
             val leftOutCount = tracks.size - indexedTracks.size
-            if (leftOutCount > 0) context.toast("${pluralCount(leftOutCount, "track")} cannot be deleted")
+            if (leftOutCount > 0) context.toast(context.resources.getQuantityString(R.plurals.delete_tracks_left_out, leftOutCount, leftOutCount))
             pendingDeletion = onFinished
             val request = MediaStore.createDeleteRequest(context.contentResolver, indexedTracks.map { it.contentUri })
             systemRequestLauncher.launch(IntentSenderRequest.Builder(request.intentSender).build())
@@ -294,9 +286,10 @@ private fun rememberDeviceDeletion(
 private fun needsAllFilesAccess(context: Context): Boolean =
     Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !AppPermission.FILE_CHANGES.isGranted(context)
 
+@Composable
 private fun deletionOutcome(count: Int, succeeded: Boolean): String = when {
-    succeeded && count == 1 -> "Track deleted"
-    succeeded -> "$count tracks deleted"
-    count == 1 -> "Could not delete track"
-    else -> "Could not delete tracks"
+    succeeded && count == 1 -> stringResource(R.string.delete_track_done)
+    succeeded -> pluralStringResource(R.plurals.delete_tracks_done, count, count)
+    count == 1 -> stringResource(R.string.delete_track_failed)
+    else -> stringResource(R.string.delete_tracks_failed)
 }

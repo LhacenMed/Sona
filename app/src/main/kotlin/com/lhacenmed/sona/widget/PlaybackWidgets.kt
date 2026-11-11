@@ -37,7 +37,6 @@ import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.playback.PlaybackSpace
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
-import com.lhacenmed.sona.feature.playback.VAULT_DISPLAY_TITLE
 import com.lhacenmed.sona.feature.playback.labelRes
 import com.lhacenmed.sona.feature.player.InactiveToggleAlpha
 import com.lhacenmed.sona.feature.player.transportIconRes
@@ -260,7 +259,7 @@ class PlaybackWidgets @Inject constructor(
         setImageViewBitmap(R.id.widget_cover, artwork.covers.getValue(kind))
 
         val title = when {
-            content.isPrivate -> VAULT_DISPLAY_TITLE
+            content.isPrivate -> context.getString(PlaybackR.string.vault_display_title)
             track != null -> track.title
             else -> context.getString(R.string.widget_nothing_playing)
         }

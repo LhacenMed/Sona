@@ -14,12 +14,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.common.format.formatDuration
 import com.lhacenmed.sona.core.common.format.formatFileSize
+import com.lhacenmed.sona.core.designsystem.R as DesignR
 import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.library.R
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -39,24 +42,26 @@ internal fun TrackPropertiesDialog(track: Track, onDismiss: () -> Unit) {
     LaunchedEffect(track.path) { fileProperties = readFileProperties(track.path) }
     val properties = fileProperties ?: return
 
+    // Read here rather than inside the buttons: they are built outside composition.
+    val okLabel = stringResource(DesignR.string.dialog_ok)
     SonaDialog(
         onDismissRequest = onDismiss,
-        title = "Track properties",
-        buttons = { actionButton(label = "OK", onClick = onDismiss) },
+        title = stringResource(R.string.properties_title),
+        buttons = { actionButton(label = okLabel, onClick = onDismiss) },
     ) {
-        PropertyRow("Name", track.title)
-        PropertyRow("Album", track.album)
-        PropertyRow("Artist", track.artist)
-        track.genre?.let { PropertyRow("Genre", it) }
-        track.year?.let { PropertyRow("Date", it.toString()) }
-        track.trackNumber?.let { PropertyRow("Track", it.toString()) }
-        track.discNumber?.let { PropertyRow("Disc", it.toString()) }
-        PropertyRow("Path", track.path)
-        properties.sizeBytes?.let { PropertyRow("Size", formatFileSize(it)) }
-        PropertyRow("Duration", formatDuration(track.durationMs))
-        properties.format?.let { PropertyRow("Format", it) }
-        properties.bitrateKbps?.let { PropertyRow("Bit rate", "$it kbps") }
-        properties.sampleRateHz?.let { PropertyRow("Sample rate", "$it Hz") }
+        PropertyRow(stringResource(R.string.properties_name), track.title)
+        PropertyRow(stringResource(R.string.properties_album), track.album)
+        PropertyRow(stringResource(R.string.properties_artist), track.artist)
+        track.genre?.let { PropertyRow(stringResource(R.string.properties_genre), it) }
+        track.year?.let { PropertyRow(stringResource(R.string.properties_date), it.toString()) }
+        track.trackNumber?.let { PropertyRow(stringResource(R.string.properties_track), it.toString()) }
+        track.discNumber?.let { PropertyRow(stringResource(R.string.properties_disc), it.toString()) }
+        PropertyRow(stringResource(R.string.properties_path), track.path)
+        properties.sizeBytes?.let { PropertyRow(stringResource(R.string.properties_size), formatFileSize(it)) }
+        PropertyRow(stringResource(R.string.properties_duration), formatDuration(track.durationMs))
+        properties.format?.let { PropertyRow(stringResource(R.string.properties_format), it) }
+        properties.bitrateKbps?.let { PropertyRow(stringResource(R.string.properties_bit_rate), stringResource(R.string.properties_kbps, it)) }
+        properties.sampleRateHz?.let { PropertyRow(stringResource(R.string.properties_sample_rate), stringResource(R.string.properties_hz, it)) }
     }
 }
 

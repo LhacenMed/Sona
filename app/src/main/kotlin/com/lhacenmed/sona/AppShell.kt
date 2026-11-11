@@ -6,6 +6,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.lhacenmed.sona.R
 import com.lhacenmed.sona.core.datastore.LibraryTab
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.WindowOverlayHost
@@ -29,9 +31,10 @@ fun AppShell(playerOverlay: PlayerOverlay, playingTab: LibraryTab?, tabRequest: 
     // The library owns the top bar rather than this Scaffold, because the bar has to become a
     // context bar when a tab has a selection - and only the library knows which tab that is. These
     // are the actions the shell itself contributes.
-    val libraryActions = remember(navigator) {
+    val settingsLabel = stringResource(R.string.app_settings)
+    val libraryActions = remember(navigator, settingsLabel) {
         listOf(
-            TopBarAction(label = "Settings", icon = SonaIcons.Settings) { navigator.go(SettingsScreen) },
+            TopBarAction(label = settingsLabel, icon = SonaIcons.Settings) { navigator.go(SettingsScreen) },
         )
     }
 

@@ -7,15 +7,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.model.Folder
 import com.lhacenmed.sona.core.navigation.LocalNavigator
+import com.lhacenmed.sona.feature.library.R
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
 
-/** Every folder holding music or videos, each kind in a section of its own - see [folderHeading]. */
+/** Every folder holding music or videos, each kind in a section of its own: its music's, or its videos'. */
 @Composable
 fun FoldersScreen(
     viewModel: LibraryViewModel,
@@ -32,12 +34,14 @@ fun FoldersScreen(
     val navigator = LocalNavigator.current
     var optionsTarget by remember { mutableStateOf<OptionsTarget.ForFolder?>(null) }
 
+    val musicHeading = stringResource(R.string.library_music_title)
+    val videosHeading = stringResource(R.string.library_videos_title)
     LibraryList(
         content = folders,
         selection = selection,
         hasPermission = hasPermission,
         isScanning = isScanning,
-        emptyTitle = "No folders found",
+        emptyTitle = stringResource(R.string.library_no_folders_found),
         emptyMessage = searchEmptyMessage(searchQuery),
         key = { it.rowKey },
         loadingIcon = SonaIcons.Folder,
@@ -47,7 +51,7 @@ fun FoldersScreen(
         modifier = modifier,
         listState = listState,
         onRefresh = rememberLibraryRefresh(viewModel),
-        headingOf = ::folderHeading,
+        headingOf = { folder -> if (folder.isVideo) videosHeading else musicHeading },
     ) { folder ->
         FolderRow(
             folder = folder,
@@ -64,5 +68,3 @@ fun FoldersScreen(
     }
 }
 
-/** The section a folder is listed in: its music's, or its videos'. */
-private fun folderHeading(folder: Folder): String = if (folder.isVideo) "Videos" else "Music"

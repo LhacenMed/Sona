@@ -78,6 +78,7 @@ import com.lhacenmed.sona.feature.tageditor.lyrics.FoundLyrics
 import com.lhacenmed.sona.feature.tageditor.lyrics.LyricsTiming
 import com.lhacenmed.sona.feature.tageditor.tags.CoverChoice
 import com.lhacenmed.sona.feature.tageditor.tags.TagField
+import com.lhacenmed.sona.feature.tageditor.tags.label
 import kotlin.math.abs
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 

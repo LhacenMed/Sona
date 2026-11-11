@@ -21,6 +21,10 @@ The app uses Material 3 Expressive. Before writing a control, look in `core/desi
 | A settings-style row | `core/designsystem/.../component/settings/SettingsItems.kt`, in a `SettingsList` | a hand-made `ListItem` |
 | A list's end clear of the mini player | `LocalBottomContentPadding` | a fixed padding |
 | A screen's scrolling list or column | `FastScroller` around it, with `sectionAt` where it is sorted | a bare `LazyColumn` or `verticalScroll` |
+| An icon | `SonaIcons` by meaning, a new one added there; the players' `PlayerIcons` | `Icons.Filled.X` in a screen |
+| An action a sheet also offers | `OptionsAction`'s own label and icon; on a selection's bar, `SelectionOptionsHost`'s `barActions` | a hand-made `TopBarAction` copy |
+| Text the user reads | a string resource in the module's `strings.xml`, `<plurals>` for counts - see `docs/TRANSLATING.md` | a string literal |
+| One of the app's own lists - Favorites, Recently played, Most played | `BuiltInList`, named, drawn and seeded by its `title`, `icon` and `coverSeed`; a playlist named by `Playlist.title` | its name in a string, or a playlist's stored `name` shown |
 
 `./gradlew checkExpressiveComponents` enforces the button and dialog rows, and every build runs it. Fix what it
 reports by using the component above.

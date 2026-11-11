@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.feature.library.playlist
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -12,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -23,9 +25,12 @@ import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.library.LibraryList
+import com.lhacenmed.sona.feature.library.R
 import com.lhacenmed.sona.feature.library.TrackRow
+import com.lhacenmed.sona.feature.library.options.OptionsAction
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
+import com.lhacenmed.sona.feature.library.options.label
 import com.lhacenmed.sona.feature.library.searchEmptyMessage
 import com.lhacenmed.sona.feature.library.searchedFor
 import com.lhacenmed.sona.feature.library.whileNotSearched
@@ -33,9 +38,9 @@ import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import kotlinx.coroutines.launch
 
 /** What a playlist can take one by one, as the library's own tabs list them. */
-private enum class MediaTab(val label: String) {
-    TRACKS("Tracks"),
-    VIDEOS("Videos"),
+private enum class MediaTab(@StringRes val labelRes: Int) {
+    TRACKS(R.string.library_tracks_title),
+    VIDEOS(R.string.library_videos_title),
 }
 
 /**
@@ -64,7 +69,7 @@ data class AddTracksScreen(val playlistId: Long) : Screen {
         val visibleVideos = videos.searchedFor(searchQuery) { listOf(it.title, it.artist, it.album) }
 
         PlaylistTrackPicker(
-            title = "Add tracks",
+            title = OptionsAction.ADD_TRACKS.label,
             playlistId = playlistId,
             selection = selection,
             searchQuery = searchQuery,
@@ -75,7 +80,7 @@ data class AddTracksScreen(val playlistId: Long) : Screen {
             },
             tabs = {
                 SonaTabRow(
-                    tabTitles = MediaTab.entries.map { it.label },
+                    tabTitles = MediaTab.entries.map { stringResource(it.labelRes) },
                     selectedPosition = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
                     onTabClick = { page -> scope.launch { pagerState.animateScrollToPage(page) } },
                     modifier = Modifier.padding(horizontal = SonaComponentStyle.ContentHorizontalPadding, vertical = 8.dp),
@@ -98,7 +103,7 @@ data class AddTracksScreen(val playlistId: Long) : Screen {
                     // Reached from a playlist, so the library has already loaded and been permitted.
                     hasPermission = true,
                     isScanning = false,
-                    emptyTitle = if (isVideos) "No videos found" else "No tracks found",
+                    emptyTitle = stringResource(if (isVideos) R.string.library_no_videos_found else R.string.library_no_tracks_found),
                     emptyMessage = searchEmptyMessage(searchQuery),
                     key = { it.id },
                     loadingIcon = if (isVideos) SonaIcons.Video else SonaIcons.Song,

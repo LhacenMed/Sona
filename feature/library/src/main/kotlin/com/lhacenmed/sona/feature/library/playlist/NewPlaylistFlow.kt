@@ -5,6 +5,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -19,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.common.storage.documentPathOrNull
@@ -29,12 +31,13 @@ import com.lhacenmed.sona.feature.library.M3U_PICKER_MIME_TYPES
 import com.lhacenmed.sona.feature.library.PlaylistNameDialog
 import com.lhacenmed.sona.feature.library.PlaylistsViewModel
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.feature.library.R
 
 /** Where a new playlist's tracks come from - the rows of the New playlist sheet, in its order. */
-private enum class NewPlaylistSource(val icon: ImageVector, val label: String, val description: String) {
-    EMPTY(SonaIcons.PlaylistAdd, "Empty playlist", "Add tracks to it afterwards"),
-    FOLDER(SonaIcons.CreateNewFolder, "From a folder", "Every track in a folder you pick"),
-    FILE(SonaIcons.Input, "From a playlist file", "The tracks an M3U file lists"),
+private enum class NewPlaylistSource(val icon: ImageVector, @StringRes val labelRes: Int, @StringRes val descriptionRes: Int) {
+    EMPTY(SonaIcons.PlaylistAdd, R.string.new_playlist_empty, R.string.new_playlist_empty_summary),
+    FOLDER(SonaIcons.CreateNewFolder, R.string.new_playlist_folder, R.string.new_playlist_folder_summary),
+    FILE(SonaIcons.Input, R.string.new_playlist_file, R.string.new_playlist_file_summary),
 }
 
 /** What a new playlist starts from, once chosen - and so what it is named after, where anything. */
@@ -104,8 +107,8 @@ internal fun NewPlaylistFlow(onFinished: () -> Unit) {
         }
 
         else -> PlaylistNameDialog(
-            dialogTitle = "New playlist",
-            confirmLabel = "Create",
+            dialogTitle = stringResource(R.string.library_new_playlist),
+            confirmLabel = stringResource(R.string.library_create),
             initialName = chosen.suggestedName,
             takenNames = playlists.itemsOrEmpty.map { it.name },
             onDismiss = onFinished,
@@ -116,7 +119,7 @@ internal fun NewPlaylistFlow(onFinished: () -> Unit) {
                     is NewPlaylistDraft.FromFile -> viewModel.importIntoNewPlaylist(
                         name = name,
                         openStream = { context.contentResolver.openInputStream(chosen.uri) },
-                    ) { succeeded -> context.toast(if (succeeded) "Playlist imported" else "Could not import playlist") }
+                    ) { succeeded -> context.toast(context.getString(if (succeeded) R.string.options_playlist_imported else R.string.options_playlist_import_failed)) }
                 }
                 onFinished()
             },
@@ -127,11 +130,11 @@ internal fun NewPlaylistFlow(onFinished: () -> Unit) {
 /** The sheet asking what a new playlist starts from - a row for each [NewPlaylistSource]. */
 @Composable
 private fun NewPlaylistSheet(onDismissRequest: () -> Unit, onSourceChosen: (NewPlaylistSource) -> Unit) {
-    SonaBottomSheet(title = "New playlist", onDismissRequest = onDismissRequest) {
+    SonaBottomSheet(title = stringResource(R.string.library_new_playlist), onDismissRequest = onDismissRequest) {
         NewPlaylistSource.entries.forEach { source ->
             ListItem(
-                headlineContent = { Text(source.label) },
-                supportingContent = { Text(source.description) },
+                headlineContent = { Text(stringResource(source.labelRes)) },
+                supportingContent = { Text(stringResource(source.descriptionRes)) },
                 leadingContent = { Icon(source.icon, contentDescription = null) },
                 // The sheet already paints its own background; a row painting its own would seam
                 // against it instead of reading as one surface.

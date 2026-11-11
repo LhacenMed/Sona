@@ -2,6 +2,7 @@ package com.lhacenmed.sona.feature.update
 
 import android.content.Context
 import android.os.SystemClock
+import com.lhacenmed.sona.feature.update.R
 import com.lhacenmed.sona.feature.update.github.ReleaseApk
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -87,7 +88,7 @@ object ApkDownloader {
             apk.delete(); throw e
         } catch (e: Exception) {
             apk.delete()
-            emit(UpdateState.Error("Download failed: ${e.message}")); return@flow
+            emit(UpdateState.Error(ctx.getString(R.string.update_download_failed, e.message.orEmpty()))); return@flow
         }
 
         val isIntact = received == published.sizeBytes &&

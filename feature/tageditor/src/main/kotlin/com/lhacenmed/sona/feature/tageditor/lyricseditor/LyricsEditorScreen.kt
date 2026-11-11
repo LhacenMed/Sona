@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleStartEffect
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
@@ -12,6 +13,7 @@ import com.lhacenmed.sona.core.designsystem.component.WindowBusyOverlay
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.tageditor.R
 import com.lhacenmed.sona.feature.tageditor.rememberTrackFileSave
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
@@ -45,7 +47,7 @@ data class LyricsEditorScreen(val trackId: Long, val editsTagDraft: Boolean = fa
             outcome = viewModel.saveOutcome,
             save = viewModel::save,
             onSaved = {
-                if (!editsTagDraft) context.toast("Lyrics saved")
+                if (!editsTagDraft) context.toast(context.getString(R.string.lyrics_editor_saved))
                 // Closed outright: going back would ask whether to leave the changes just saved.
                 navigator.close()
             },
@@ -54,13 +56,13 @@ data class LyricsEditorScreen(val trackId: Long, val editsTagDraft: Boolean = fa
 
         if (editor == null) {
             // A moment's read of the file: the bar is already where it will be.
-            SonaTopAppBar(title = "Lyrics editor", onNavigateBack = navigator::back)
+            SonaTopAppBar(title = stringResource(R.string.lyrics_editor_title), onNavigateBack = navigator::back)
             return
         }
         LyricsEditor(
             state = editor,
             confirmAction = TopBarAction(
-                label = if (editsTagDraft) "Done" else "Save",
+                label = stringResource(if (editsTagDraft) R.string.lyrics_editor_done else R.string.tag_editor_save),
                 icon = SonaIcons.Check,
                 enabled = editor.hasChanges && !viewModel.isSaving,
             ) {

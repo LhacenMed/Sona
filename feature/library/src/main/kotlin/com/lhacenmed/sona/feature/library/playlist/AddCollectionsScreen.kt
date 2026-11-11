@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.feature.library.playlist
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -12,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -41,7 +43,10 @@ import com.lhacenmed.sona.feature.library.LibraryList
 import com.lhacenmed.sona.feature.library.LibraryPlayback
 import com.lhacenmed.sona.feature.library.PlaylistDetailScreen
 import com.lhacenmed.sona.feature.library.PlaylistRow
+import com.lhacenmed.sona.feature.library.R
 import com.lhacenmed.sona.feature.library.filterItems
+import com.lhacenmed.sona.feature.library.options.OptionsAction
+import com.lhacenmed.sona.feature.library.options.label
 import com.lhacenmed.sona.feature.library.rowKey
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
@@ -52,12 +57,12 @@ import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import kotlinx.coroutines.launch
 
 /** The kinds of collection a playlist can take tracks from, in the library's own tab order. */
-private enum class CollectionTab(val label: String) {
-    ARTISTS("Artists"),
-    ALBUMS("Albums"),
-    GENRES("Genres"),
-    FOLDERS("Folders"),
-    PLAYLISTS("Playlists"),
+private enum class CollectionTab(@StringRes val labelRes: Int) {
+    ARTISTS(R.string.library_artists_title),
+    ALBUMS(R.string.library_albums_title),
+    GENRES(R.string.library_genres_title),
+    FOLDERS(R.string.library_folders_title),
+    PLAYLISTS(R.string.playlists_title),
 }
 
 /** Every tab's rows as they stand on screen - narrowed by the search, and without the playlist being added to. */
@@ -125,7 +130,7 @@ data class AddCollectionsScreen(val playlistId: Long) : Screen {
         )
 
         PlaylistTrackPicker(
-            title = "Add from collections",
+            title = OptionsAction.ADD_COLLECTIONS.label,
             playlistId = playlistId,
             selection = selection,
             searchQuery = searchQuery,
@@ -133,7 +138,7 @@ data class AddCollectionsScreen(val playlistId: Long) : Screen {
             visibleKeys = { visible.selectableKeys(CollectionTab.entries[pagerState.currentPage]) },
             tabs = {
                 SonaTabRow(
-                    tabTitles = CollectionTab.entries.map { it.label },
+                    tabTitles = CollectionTab.entries.map { stringResource(it.labelRes) },
                     selectedPosition = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
                     onTabClick = { page -> scope.launch { pagerState.animateScrollToPage(page) } },
                     modifier = Modifier.padding(horizontal = SonaComponentStyle.ContentHorizontalPadding, vertical = 8.dp),
@@ -176,7 +181,7 @@ private fun CollectionPage(
 ) {
     val navigator = LocalNavigator.current
     when (tab) {
-        CollectionTab.ARTISTS -> PickerList(visible.artists, selection, "No artists found", emptyMessage, key = { it.id }, visible.artistSections, isCurrent = { playback().marks(it) }, isPlaying = { playback().isPlaying }) { artist ->
+        CollectionTab.ARTISTS -> PickerList(visible.artists, selection, stringResource(R.string.library_no_artists_found), emptyMessage, key = { it.id }, visible.artistSections, isCurrent = { playback().marks(it) }, isPlaying = { playback().isPlaying }) { artist ->
             ArtistRow(
                 artist = artist,
                 selection = selection,
@@ -187,7 +192,7 @@ private fun CollectionPage(
             )
         }
 
-        CollectionTab.ALBUMS -> PickerList(visible.albums, selection, "No albums found", emptyMessage, key = { it.id }, visible.albumSections, isCurrent = { playback().marks(it) }, isPlaying = { playback().isPlaying }) { album ->
+        CollectionTab.ALBUMS -> PickerList(visible.albums, selection, stringResource(R.string.library_no_albums_found), emptyMessage, key = { it.id }, visible.albumSections, isCurrent = { playback().marks(it) }, isPlaying = { playback().isPlaying }) { album ->
             AlbumRow(
                 album = album,
                 selection = selection,
@@ -198,7 +203,7 @@ private fun CollectionPage(
             )
         }
 
-        CollectionTab.GENRES -> PickerList(visible.genres, selection, "No genres found", emptyMessage, key = { it.id }, visible.genreSections, isCurrent = { playback().marks(it) }, isPlaying = { playback().isPlaying }) { genre ->
+        CollectionTab.GENRES -> PickerList(visible.genres, selection, stringResource(R.string.library_no_genres_found), emptyMessage, key = { it.id }, visible.genreSections, isCurrent = { playback().marks(it) }, isPlaying = { playback().isPlaying }) { genre ->
             GenreRow(
                 genre = genre,
                 selection = selection,
@@ -209,7 +214,7 @@ private fun CollectionPage(
             )
         }
 
-        CollectionTab.FOLDERS -> PickerList(visible.folders, selection, "No folders found", emptyMessage, key = { it.rowKey }, visible.folderSections, isCurrent = { playback().marks(it) }, isPlaying = { playback().isPlaying }) { folder ->
+        CollectionTab.FOLDERS -> PickerList(visible.folders, selection, stringResource(R.string.library_no_folders_found), emptyMessage, key = { it.rowKey }, visible.folderSections, isCurrent = { playback().marks(it) }, isPlaying = { playback().isPlaying }) { folder ->
             FolderRow(
                 folder = folder,
                 selection = selection,
@@ -220,7 +225,7 @@ private fun CollectionPage(
             )
         }
 
-        CollectionTab.PLAYLISTS -> PickerList(visible.playlists, selection, "No other playlists", emptyMessage, key = { it.id }, isCurrent = { playback().marks(it) }, isPlaying = { playback().isPlaying }) { playlist ->
+        CollectionTab.PLAYLISTS -> PickerList(visible.playlists, selection, stringResource(R.string.add_collections_no_other_playlists), emptyMessage, key = { it.id }, isCurrent = { playback().marks(it) }, isPlaying = { playback().isPlaying }) { playlist ->
             PlaylistRow(
                 playlist = playlist,
                 selection = selection,

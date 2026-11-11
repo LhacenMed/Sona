@@ -15,6 +15,7 @@ import com.lhacenmed.sona.feature.library.options.OptionsAction
 import com.lhacenmed.sona.feature.library.options.OptionsFollowUps
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
+import com.lhacenmed.sona.feature.library.options.label
 import com.lhacenmed.sona.feature.library.options.rememberOptionsActions
 
 /**
@@ -23,6 +24,7 @@ import com.lhacenmed.sona.feature.library.options.rememberOptionsActions
  * [selectAllAction] over [listKeys], this list's own rows, comes first. The list's own [actions]
  * follow, then the more options button, which [onMoreOptions] answers with the selection's options sheet.
  */
+@Composable
 internal fun SelectionState.toLibraryTopBarSelection(
     listKeys: () -> List<SelectionKey>,
     actions: List<TopBarAction>,

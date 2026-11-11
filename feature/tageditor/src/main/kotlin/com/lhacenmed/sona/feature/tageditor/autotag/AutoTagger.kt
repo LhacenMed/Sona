@@ -1,13 +1,16 @@
 package com.lhacenmed.sona.feature.tageditor.autotag
 
 import android.content.Context
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.res.pluralStringResource
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.tageditor.R
 import com.lhacenmed.sona.feature.tageditor.TrackEdit
 import com.lhacenmed.sona.feature.tageditor.TrackTagDraft
 import com.lhacenmed.sona.feature.tageditor.TrackTagsRepository
@@ -110,7 +113,7 @@ class AutoTagger @Inject constructor(
                         session.items.remove(item)
                         session.picks.deselectAll(listOf(item.track.id))
                     } else {
-                        item.saveFailure = failure.message ?: "The tags could not be saved"
+                        item.saveFailure = failure.message ?: context.getString(R.string.autotag_save_failed)
                         failures++
                     }
                     session.done++
@@ -125,8 +128,8 @@ class AutoTagger @Inject constructor(
             val saved = picked.size - failures
             context.toast(
                 listOfNotNull(
-                    "Saved ${tracksLabel(saved)}".takeIf { saved > 0 },
-                    "${tracksLabel(failures)} could not be saved".takeIf { failures > 0 },
+                    context.resources.getQuantityString(R.plurals.autotag_saved, saved, saved).takeIf { saved > 0 },
+                    context.resources.getQuantityString(R.plurals.autotag_failed, failures, failures).takeIf { failures > 0 },
                 ).joinToString(" · "),
             )
             if (session.items.isEmpty()) discard()
@@ -180,4 +183,5 @@ class AutoTagger @Inject constructor(
 }
 
 /** "1 track", "12 tracks". */
-internal fun tracksLabel(count: Int): String = if (count == 1) "1 track" else "$count tracks"
+@Composable
+internal fun tracksLabel(count: Int): String = pluralStringResource(R.plurals.autotag_tracks, count, count)

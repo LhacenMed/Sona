@@ -11,6 +11,7 @@ import com.lhacenmed.sona.core.common.notification.SonaNotificationChannel
 import com.lhacenmed.sona.core.common.notification.SonaNotificationId
 import com.lhacenmed.sona.core.common.notification.SonaNotifications
 import com.lhacenmed.sona.core.common.notification.startForegroundCompat
+import com.lhacenmed.sona.feature.tageditor.R
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -68,12 +69,12 @@ class AutoTagService : Service() {
 
     private fun progressNotification(progress: AutoTagProgress?): Notification {
         val text = when (progress?.phase) {
-            AutoTagPhase.SAVING -> "Saving ${progress.done} of ${tracksLabel(progress.total)}"
-            null -> "Looking up tracks"
-            else -> "Looking up ${progress.done} of ${tracksLabel(progress.total)}"
+            AutoTagPhase.SAVING -> resources.getQuantityString(R.plurals.autotag_saving_progress, progress.total, progress.done, progress.total)
+            null -> getString(R.string.autotag_phase_matching)
+            else -> resources.getQuantityString(R.plurals.autotag_looking_up_progress, progress.total, progress.done, progress.total)
         }
         return SonaNotifications.builder(this, SonaNotificationChannel.AUTO_TAG)
-            .setContentTitle("Auto-tagging")
+            .setContentTitle(getString(R.string.autotag_notification_title))
             .setContentText(text)
             .setOngoing(true)
             .setOnlyAlertOnce(true)

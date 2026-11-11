@@ -1,6 +1,9 @@
 package com.lhacenmed.sona.feature.update
 
 import android.os.Build
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import com.lhacenmed.sona.feature.update.R
 import java.util.zip.ZipFile
 
 /**
@@ -18,7 +21,11 @@ enum class ApkVariant(val abi: String?) {
     val assetSuffix: String get() = "-${abi ?: "universal"}.apk"
 
     /** "Universal", or the processor as Android names it. */
-    val label: String get() = abi ?: "Universal"
+    /** What it is, the same in every language - for a report its reader is to read, not a screen. */
+    val id: String get() = abi ?: "universal"
+
+    val label: String
+        @Composable get() = abi ?: stringResource(R.string.update_variant_universal)
 
     /** Whether this device can run it: the universal APK anywhere, a processor's own where it is one of the device's. */
     val isSupported: Boolean get() = abi == null || abi in Build.SUPPORTED_ABIS

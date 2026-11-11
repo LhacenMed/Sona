@@ -2,15 +2,20 @@ package com.lhacenmed.sona.feature.library
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.common.cover.rankedCoverArtUris
 import com.lhacenmed.sona.core.designsystem.component.CoverArtDefaults
 import com.lhacenmed.sona.core.designsystem.component.SonaPlaylistCover
+import com.lhacenmed.sona.core.designsystem.component.coverSeed
+import com.lhacenmed.sona.core.designsystem.component.title
+import com.lhacenmed.sona.core.model.BuiltInList
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.library.R
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
 import com.lhacenmed.sona.feature.library.options.PlaylistOptionsContext
 import com.lhacenmed.sona.feature.library.options.RemovableTrackList
@@ -34,9 +39,9 @@ data class PlaylistDetailScreen(val playlistId: Long) : Screen {
         val tracks by viewModel.tracks.collectAsStateWithLifecycle()
 
         TrackListDetail(
-            title = playlist?.name ?: "Playlist",
+            title = playlist?.title ?: stringResource(R.string.options_type_playlist),
             header = DetailHeaderContent(
-                type = "Playlist",
+                type = stringResource(R.string.options_type_playlist),
                 subhead = null,
                 info = trackCountAndDuration(tracks.itemsOrEmpty),
                 cover = {
@@ -50,7 +55,7 @@ data class PlaylistDetailScreen(val playlistId: Long) : Screen {
             ),
             onBack = navigator::back,
             viewModel = viewModel,
-            emptyMessage = "This playlist has no tracks yet.",
+            emptyMessage = stringResource(R.string.playlist_empty_message),
             collection = playlist?.let { OptionsTarget.ForPlaylist(it, PlaylistOptionsContext.FROM_DETAIL) },
         )
     }
@@ -66,11 +71,11 @@ data object RecentlyPlayedScreen : Screen {
         val tracks by viewModel.tracks.collectAsStateWithLifecycle()
 
         TrackListDetail(
-            title = "Recently played",
-            header = listeningHistoryHeader(tracks.itemsOrEmpty, seed = "recent"),
+            title = BuiltInList.RECENTLY_PLAYED.title,
+            header = listeningHistoryHeader(tracks.itemsOrEmpty, BuiltInList.RECENTLY_PLAYED),
             onBack = navigator::back,
             viewModel = viewModel,
-            emptyMessage = "Nothing has been played yet.",
+            emptyMessage = stringResource(R.string.recently_played_empty),
             collection = null,
             removableList = RemovableTrackList.RecentlyPlayed,
         )
@@ -87,11 +92,11 @@ data object MostPlayedScreen : Screen {
         val tracks by viewModel.tracks.collectAsStateWithLifecycle()
 
         TrackListDetail(
-            title = "Most played",
-            header = listeningHistoryHeader(tracks.itemsOrEmpty, seed = "mostPlayed"),
+            title = BuiltInList.MOST_PLAYED.title,
+            header = listeningHistoryHeader(tracks.itemsOrEmpty, BuiltInList.MOST_PLAYED),
             onBack = navigator::back,
             viewModel = viewModel,
-            emptyMessage = "Nothing has been played right through yet.",
+            emptyMessage = stringResource(R.string.most_played_empty),
             collection = null,
             removableList = RemovableTrackList.MostPlayed,
         )
@@ -102,14 +107,15 @@ data object MostPlayedScreen : Screen {
  * Recent's and Most played's header: no collection of the library's own, so named for what they are,
  * with a cover stacked from the tracks they hold - as the playlists tab draws their rows.
  */
-private fun listeningHistoryHeader(tracks: List<Track>, seed: String) = DetailHeaderContent(
-    type = "Listening history",
+@Composable
+private fun listeningHistoryHeader(tracks: List<Track>, list: BuiltInList) = DetailHeaderContent(
+    type = stringResource(R.string.listening_history),
     subhead = null,
     info = trackCountAndDuration(tracks),
     cover = {
         SonaPlaylistCover(
             coverArtUris = rankedCoverArtUris(tracks.map { it.coverArtUri }),
-            seed = seed.hashCode(),
+            seed = list.coverSeed,
             size = CoverArtDefaults.DetailHeaderSize,
             cornerRadius = CoverArtDefaults.DetailHeaderCornerRadius,
         )

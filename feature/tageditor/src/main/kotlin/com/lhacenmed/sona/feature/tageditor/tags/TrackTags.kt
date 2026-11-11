@@ -1,32 +1,36 @@
 package com.lhacenmed.sona.feature.tageditor.tags
 
+import androidx.annotation.StringRes
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.feature.tageditor.R
 
 /**
  * One tag the editor reads, shows and writes: how it is labelled, drawn and typed, and the name TagLib
  * gives it in every format alike. The order here is the order the fields are laid out in.
  */
 enum class TagField(
-    val label: String,
+    @StringRes val labelRes: Int,
     val icon: ImageVector,
     internal val key: String,
     val isNumeric: Boolean = false,
     val isMultiline: Boolean = false,
 ) {
-    TITLE("Title", SonaIcons.Title, "TITLE"),
-    ARTIST("Artist", SonaIcons.Person, "ARTIST"),
-    ALBUM("Album", SonaIcons.Album, "ALBUM"),
-    ALBUM_ARTIST("Album artist", SonaIcons.Group, "ALBUMARTIST"),
-    GENRE("Genre", SonaIcons.Sell, "GENRE"),
-    YEAR("Year", SonaIcons.CalendarMonth, "DATE", isNumeric = true),
-    TRACK_NUMBER("Track number", SonaIcons.Numbers, "TRACKNUMBER", isNumeric = true),
-    TRACK_TOTAL("Track count", SonaIcons.Numbers, "TRACKTOTAL", isNumeric = true),
-    DISC_NUMBER("Disc number", SonaIcons.Numbers, "DISCNUMBER", isNumeric = true),
-    COMPOSER("Composer", SonaIcons.Song, "COMPOSER"),
-    COMMENT("Comment", SonaIcons.Comment, "COMMENT"),
-    LYRICS("Lyrics", SonaIcons.Lyrics, "LYRICS", isMultiline = true),
+    TITLE(R.string.tag_field_title, SonaIcons.Title, "TITLE"),
+    ARTIST(R.string.tag_field_artist, SonaIcons.Person, "ARTIST"),
+    ALBUM(R.string.tag_field_album, SonaIcons.Album, "ALBUM"),
+    ALBUM_ARTIST(R.string.tag_field_album_artist, SonaIcons.Group, "ALBUMARTIST"),
+    GENRE(R.string.tag_field_genre, SonaIcons.Sell, "GENRE"),
+    YEAR(R.string.tag_field_year, SonaIcons.CalendarMonth, "DATE", isNumeric = true),
+    TRACK_NUMBER(R.string.tag_field_track_number, SonaIcons.Numbers, "TRACKNUMBER", isNumeric = true),
+    TRACK_TOTAL(R.string.tag_field_track_count, SonaIcons.Numbers, "TRACKTOTAL", isNumeric = true),
+    DISC_NUMBER(R.string.tag_field_disc_number, SonaIcons.Numbers, "DISCNUMBER", isNumeric = true),
+    COMPOSER(R.string.tag_field_composer, SonaIcons.Song, "COMPOSER"),
+    COMMENT(R.string.tag_field_comment, SonaIcons.Comment, "COMMENT"),
+    LYRICS(R.string.tag_field_lyrics, SonaIcons.Lyrics, "LYRICS", isMultiline = true),
 }
 
 /**
@@ -51,3 +55,7 @@ data class TrackTags(private val values: Map<TagField, String> = emptyMap()) {
     /** The fields that carry something, in [TagField]'s order. */
     val filledFields: List<TagField> get() = TagField.entries.filter { it in values }
 }
+
+/** What [this] tag is called, wherever it is edited or shown. */
+val TagField.label: String
+    @Composable get() = stringResource(labelRes)

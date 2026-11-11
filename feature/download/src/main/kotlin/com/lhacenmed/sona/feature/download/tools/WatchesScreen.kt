@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.feature.download.tools
 
+import android.content.Context
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -50,6 +51,7 @@ import com.lhacenmed.sona.feature.download.R
 import com.lhacenmed.sona.feature.download.WatchChecker
 import com.lhacenmed.sona.feature.download.linkIn
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -179,7 +181,10 @@ private fun AddWatchDialog(onAdd: (String) -> Unit, onDismiss: () -> Unit) {
 }
 
 @HiltViewModel
-internal class WatchesViewModel @Inject constructor(private val checker: WatchChecker) : ViewModel() {
+internal class WatchesViewModel @Inject constructor(
+    private val checker: WatchChecker,
+    @ApplicationContext private val context: Context,
+) : ViewModel() {
     val watches: StateFlow<List<DownloadWatch>> = checker.watches.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _isBusy = MutableStateFlow(false)
@@ -196,7 +201,7 @@ internal class WatchesViewModel @Inject constructor(private val checker: WatchCh
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                e.message ?: "Not a channel or a playlist"
+                e.message ?: context.getString(R.string.download_watch_not_found)
             },
         )
     }

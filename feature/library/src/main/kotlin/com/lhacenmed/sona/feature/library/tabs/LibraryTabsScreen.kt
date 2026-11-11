@@ -10,8 +10,10 @@ import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.designsystem.R as DesignR
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.LocalDragHandle
 import com.lhacenmed.sona.core.designsystem.component.SonaSettingsRow
@@ -19,6 +21,7 @@ import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.library.R
 import com.lhacenmed.sona.feature.library.rememberReorderableRows
 import com.lhacenmed.sona.feature.library.reorderableRows
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
@@ -40,7 +43,7 @@ data object LibraryTabsScreen : Screen {
         val rows = rememberReorderableRows(tabs, key = { it.tab.name }, listState, onReorder = viewModel::arrange)
 
         Column(modifier = Modifier.fillMaxSize()) {
-            SonaTopAppBar(title = "Library tabs", onNavigateBack = navigator::back)
+            SonaTopAppBar(title = stringResource(R.string.library_tabs_title), onNavigateBack = navigator::back)
             FastScroller(listState, Modifier.fillMaxSize()) { overscrollEffect ->
                 LazyColumn(
                     state = listState,
@@ -53,12 +56,12 @@ data object LibraryTabsScreen : Screen {
                         val canToggle = !(isVisible && visibleCount <= 1)
                         SonaSettingsRow(
                             title = tab.label,
-                            summary = "Opened at launch".takeIf { tab == openedAtLaunch },
+                            summary = stringResource(R.string.library_tabs_opened_at_launch).takeIf { tab == openedAtLaunch },
                             onClick = { viewModel.setTabVisible(tab, !isVisible) }.takeIf { canToggle },
                             leading = {
                                 Icon(
                                     imageVector = SonaIcons.DragHandle,
-                                    contentDescription = "Reorder",
+                                    contentDescription = stringResource(DesignR.string.list_row_reorder),
                                     modifier = LocalDragHandle.current ?: Modifier,
                                 )
                             },

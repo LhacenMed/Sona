@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.feature.settings
 
+import com.lhacenmed.sona.feature.settings.R
 import com.lhacenmed.sona.feature.settings.component.PrivateFolderOverscrollReveal
 
 import androidx.compose.foundation.layout.Column
@@ -54,7 +55,7 @@ data object SettingsScreen : Screen {
             SonaTopAppBar(
                 title = stringResource(R.string.settings_title),
                 onNavigateBack = navigator::back,
-                actions = listOf(TopBarAction(label = "Search", icon = SonaIcons.Search) { searchQuery = "" }),
+                actions = listOf(TopBarAction(label = stringResource(R.string.settings_search), icon = SonaIcons.Search) { searchQuery = "" }),
                 search = searchQuery?.let { query ->
                     TopBarSearch(
                         query = query,

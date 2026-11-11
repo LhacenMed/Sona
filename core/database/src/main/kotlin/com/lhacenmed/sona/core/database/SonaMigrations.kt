@@ -3,9 +3,7 @@ package com.lhacenmed.sona.core.database
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-
-/** The id Favorites is seeded with. Fixed, so the heart always knows where to write. */
-const val FAVORITES_PLAYLIST_ID = 1L
+import com.lhacenmed.sona.core.model.FAVORITES_PLAYLIST_ID
 
 private const val FAVORITES_PLAYLIST_NAME = "Favorites"
 

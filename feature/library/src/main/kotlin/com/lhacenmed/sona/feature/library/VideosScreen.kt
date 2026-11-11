@@ -11,6 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.EmptyStateAction
@@ -19,6 +20,7 @@ import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.model.PlaybackParent
+import com.lhacenmed.sona.feature.library.R
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
 
@@ -60,10 +62,10 @@ fun VideosScreen(
 
     if (!canReadVideos) {
         SonaEmptyState(
-            title = "Allow access to videos",
-            message = "Sona plays the videos on your device.",
+            title = stringResource(R.string.videos_permission_title),
+            message = stringResource(R.string.videos_permission_message),
             modifier = modifier,
-            action = EmptyStateAction(label = "Allow", icon = SonaIcons.Video) { permissionLauncher.launch(runtimePermission) },
+            action = EmptyStateAction(label = stringResource(R.string.videos_permission_allow), icon = SonaIcons.Video) { permissionLauncher.launch(runtimePermission) },
         )
         return
     }
@@ -81,7 +83,7 @@ fun VideosScreen(
         selection = selection,
         hasPermission = true,
         isScanning = isScanning,
-        emptyTitle = "No videos found",
+        emptyTitle = stringResource(R.string.library_no_videos_found),
         emptyMessage = searchEmptyMessage(searchQuery),
         key = { it.id },
         loadingIcon = SonaIcons.Video,

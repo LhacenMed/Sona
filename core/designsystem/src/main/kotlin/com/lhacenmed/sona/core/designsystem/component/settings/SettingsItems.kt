@@ -36,8 +36,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.lhacenmed.sona.core.designsystem.R
 import com.lhacenmed.sona.core.designsystem.component.SonaIconButton
 import com.lhacenmed.sona.core.designsystem.component.SonaSettingsRow
 import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
@@ -206,7 +208,7 @@ fun SettingsRecentSearchItem(
         title = query,
         onClick = onClick,
         leading = { SettingsLeadingIcon(rememberVectorPainter(SonaIcons.History)) },
-        trailing = { SonaIconButton(onClick = onForget, icon = SonaIcons.Close, contentDescription = "Forget") },
+        trailing = { SonaIconButton(onClick = onForget, icon = SonaIcons.Close, contentDescription = stringResource(R.string.settings_recent_search_forget)) },
         modifier = modifier,
     )
 }
@@ -311,19 +313,19 @@ fun SettingsDownloadItem(
                 Box(modifier = Modifier.size(DownloadControlSize), contentAlignment = Alignment.Center) {
                     when (download) {
                         SettingsDownload.Available -> IconButton(shapes = iconButtonPressShapes(), onClick = onDownload) {
-                            Icon(SonaIcons.Download, contentDescription = "Download")
+                            Icon(SonaIcons.Download, contentDescription = stringResource(R.string.settings_download))
                         }
                         SettingsDownload.Failed -> IconButton(shapes = iconButtonPressShapes(), onClick = onDownload) {
-                            Icon(SonaIcons.Refresh, contentDescription = "Try again")
+                            Icon(SonaIcons.Refresh, contentDescription = stringResource(R.string.settings_download_retry))
                         }
                         is SettingsDownload.InProgress -> {
                             CircularProgressIndicator(progress = { download.progress }, modifier = Modifier.size(DownloadControlSize))
                             IconButton(shapes = iconButtonPressShapes(), onClick = onCancel) {
-                                Icon(SonaIcons.Close, contentDescription = "Stop downloading", modifier = Modifier.size(18.dp))
+                                Icon(SonaIcons.Close, contentDescription = stringResource(R.string.settings_download_stop), modifier = Modifier.size(18.dp))
                             }
                         }
                         SettingsDownload.Done -> IconButton(shapes = iconButtonPressShapes(), onClick = onRemove) {
-                            Icon(SonaIcons.Delete, contentDescription = "Remove")
+                            Icon(SonaIcons.Delete, contentDescription = stringResource(R.string.settings_download_remove))
                         }
                     }
                 }

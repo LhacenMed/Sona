@@ -8,6 +8,7 @@ Thanks for helping. This document covers how to report problems, propose changes
   - [Contents](#contents)
   - [Reporting a bug](#reporting-a-bug)
   - [Requesting a feature](#requesting-a-feature)
+  - [Translating](#translating)
   - [Setting up](#setting-up)
   - [Branches](#branches)
   - [Making a change](#making-a-change)
@@ -38,6 +39,11 @@ A bug that can be reproduced gets fixed. One that cannot usually stays open unti
 Open a [feature request](https://github.com/LhacenMed/Sona/issues/new?template=feature_request.yml). Describe the **problem** you want solved before the solution you have in mind; there is often more than one way to solve it.
 
 Sona is an offline player for local files. Requests for streaming, accounts, cloud sync or online services are out of scope.
+
+## Translating
+
+Sona is translated on Weblate, in the browser - no build or GitHub account needed. [docs/TRANSLATING.md](docs/TRANSLATING.md)
+says how, and how the app's strings and languages fit together.
 
 ## Setting up
 

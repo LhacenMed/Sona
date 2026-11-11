@@ -7,11 +7,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.core.vault.VaultAccessResult
+import com.lhacenmed.sona.feature.vault.R
 
 /**
  * Choosing a 4-8 digit PIN, for [purpose] - the one step vault creation, "forgot PIN" recovery and changing
@@ -26,9 +28,9 @@ internal data class VaultChoosePinScreen(val purpose: PinPurpose) : Screen {
         val viewModel: VaultAccessViewModel = hiltViewModel()
         var pin by remember { mutableStateOf("") }
 
-        VaultStepScaffold(title = purpose.title, needsOpenVault = purpose == PinPurpose.CHANGE) {
+        VaultStepScaffold(title = stringResource(purpose.titleRes), needsOpenVault = purpose == PinPurpose.CHANGE) {
             PinPad(
-                title = "Choose a PIN (${PinLengths.first}-${PinLengths.last} digits)",
+                title = stringResource(R.string.vault_choose_pin, PinLengths.first, PinLengths.last),
                 dotCount = maxOf(pin.length, PinLengths.first),
                 filledDots = pin.length,
                 message = null,
@@ -60,7 +62,7 @@ internal data class VaultConfirmPinScreen(val purpose: PinPurpose) : Screen {
         var confirmPin by remember { mutableStateOf("") }
         var mismatch by remember { mutableStateOf(false) }
 
-        VaultStepScaffold(title = purpose.title, needsOpenVault = purpose == PinPurpose.CHANGE) {
+        VaultStepScaffold(title = stringResource(purpose.titleRes), needsOpenVault = purpose == PinPurpose.CHANGE) {
             val pin = flow.chosenPin
             if (pin == null) {
                 // Restored without the PIN it confirms, which only memory held.
@@ -75,16 +77,16 @@ internal data class VaultConfirmPinScreen(val purpose: PinPurpose) : Screen {
                         flow.finish()
                     }
                     PinPurpose.CHANGE -> viewModel.changePin(pin) {
-                        context.toast("PIN changed")
+                        context.toast(context.getString(R.string.vault_pin_changed))
                         flow.finish()
                     }
                 }
             }
             PinPad(
-                title = "Confirm your PIN",
+                title = stringResource(R.string.vault_confirm_pin),
                 dotCount = pin.length,
                 filledDots = confirmPin.length,
-                message = if (mismatch) "PINs don't match" else null,
+                message = if (mismatch) stringResource(R.string.vault_pins_differ) else null,
                 onDigit = { digit ->
                     if (confirmPin.length < pin.length) {
                         confirmPin += digit

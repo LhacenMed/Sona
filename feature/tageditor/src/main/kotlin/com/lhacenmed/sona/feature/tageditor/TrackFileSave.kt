@@ -8,6 +8,7 @@ import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -23,14 +24,14 @@ import kotlinx.coroutines.CancellationException
 sealed interface SaveOutcome {
     data object Saved : SaveOutcome
     data class NeedsConsent(val request: IntentSender) : SaveOutcome
-    data class Failed(val message: String) : SaveOutcome
+    data class Failed(val reason: String?, @StringRes val fallback: Int) : SaveOutcome
 }
 
 /**
  * Runs [write] - a save into a track's file - and tells how it went: where Android has not let Sona change the
  * file yet, it asks the user, once for that file; any other failure says why, or [failureMessage] where it does not.
  */
-internal suspend fun saveOutcomeOf(failureMessage: String, write: suspend () -> Unit): SaveOutcome =
+internal suspend fun saveOutcomeOf(@StringRes failureMessage: Int, write: suspend () -> Unit): SaveOutcome =
     try {
         write()
         SaveOutcome.Saved
@@ -40,7 +41,7 @@ internal suspend fun saveOutcomeOf(failureMessage: String, write: suspend () -> 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && e is RecoverableSecurityException) {
             SaveOutcome.NeedsConsent(e.userAction.actionIntent.intentSender)
         } else {
-            SaveOutcome.Failed(e.message ?: failureMessage)
+            SaveOutcome.Failed(e.message, failureMessage)
         }
     }
 
@@ -73,7 +74,7 @@ internal fun rememberTrackFileSave(
             null -> return@LaunchedEffect
             SaveOutcome.Saved -> latestOnSaved()
             is SaveOutcome.NeedsConsent -> consentLauncher.launch(IntentSenderRequest.Builder(outcome.request).build())
-            is SaveOutcome.Failed -> context.toast(outcome.message)
+            is SaveOutcome.Failed -> context.toast(outcome.reason ?: context.getString(outcome.fallback))
         }
         latestOnOutcomeHandled()
     }

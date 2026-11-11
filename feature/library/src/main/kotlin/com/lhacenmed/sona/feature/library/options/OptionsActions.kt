@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.contentUri
@@ -34,6 +35,7 @@ import com.lhacenmed.sona.feature.library.M3U_PICKER_MIME_TYPES
 import com.lhacenmed.sona.feature.library.PlaylistDetailScreen
 import com.lhacenmed.sona.feature.library.PlaylistNameDialog
 import com.lhacenmed.sona.feature.library.PlaylistPickerDialog
+import com.lhacenmed.sona.feature.library.R
 import com.lhacenmed.sona.feature.library.operation.AddToPrivateDialog
 import com.lhacenmed.sona.feature.library.operation.DeleteFromDeviceDialog
 import com.lhacenmed.sona.feature.library.operation.DeletePlaylistsDialog
@@ -42,7 +44,6 @@ import com.lhacenmed.sona.feature.library.operation.RemoveFromListDialog
 import com.lhacenmed.sona.feature.library.playlist.AddCollectionsScreen
 import com.lhacenmed.sona.feature.library.playlist.AddTracksScreen
 import com.lhacenmed.sona.feature.library.playlist.EditPlaylistScreen
-import com.lhacenmed.sona.feature.library.pluralCount
 import com.lhacenmed.sona.feature.tageditor.TagEditorScreen
 import com.lhacenmed.sona.feature.tageditor.autotag.AutoTagScreen
 
@@ -92,11 +93,11 @@ internal class OptionsActions(
             OptionsAction.SHUFFLE -> viewModel.shuffle(target)
             OptionsAction.PLAY_NEXT -> {
                 viewModel.playNext(target)
-                context.toast("Track will play next")
+                context.toast(context.getString(R.string.options_played_next))
             }
             OptionsAction.QUEUE_ADD -> {
                 viewModel.addToQueue(target)
-                context.toast("Added to queue")
+                context.toast(context.getString(R.string.options_queued))
             }
             OptionsAction.PLAYLIST_ADD -> followUp = FollowUp.PlaylistPicker(target)
             // A track or album credited to several artists asks which of them to go to.
@@ -115,11 +116,11 @@ internal class OptionsActions(
             }
             OptionsAction.STOP_COUNTING_PLAYS -> {
                 viewModel.setPlaysCounted(target, counted = false)
-                context.toast("Plays from here won't count in Most played")
+                context.toast(context.getString(R.string.options_plays_uncounted))
             }
             OptionsAction.COUNT_PLAYS -> {
                 viewModel.setPlaysCounted(target, counted = true)
-                context.toast("Plays from here count in Most played")
+                context.toast(context.getString(R.string.options_plays_counted))
             }
             OptionsAction.VIEW_DETAILS -> navigator.go(detailScreenOf(target))
             OptionsAction.BROWSE_FOLDER -> navigator.go(FolderExplorerScreen((target as OptionsTarget.ForFolder).folder.path))
@@ -202,29 +203,29 @@ internal fun OptionsFollowUps(
             var isNamingNewPlaylist by remember { mutableStateOf(false) }
             LaunchedEffect(target) { fullPlaylistIds = viewModel.playlistIdsHoldingAll(target) }
             PlaylistPickerDialog(
-                title = "Add to playlist",
+                title = stringResource(R.string.options_playlist_add),
                 playlists = playlists.itemsOrEmpty,
                 fullPlaylistIds = fullPlaylistIds,
                 onDismiss = finish,
                 onPlaylistSelected = { playlist ->
                     onActionDone()
                     viewModel.addToPlaylist(target, playlist.id)
-                    context.toast("Added to playlist")
+                    context.toast(context.getString(R.string.options_added_to_playlist))
                     finish()
                 },
                 onNewPlaylistSelected = { isNamingNewPlaylist = true },
             )
             if (isNamingNewPlaylist) {
                 PlaylistNameDialog(
-                    dialogTitle = "New playlist",
-                    confirmLabel = "Create",
+                    dialogTitle = stringResource(R.string.library_new_playlist),
+                    confirmLabel = stringResource(R.string.library_create),
                     initialName = "",
                     takenNames = playlists.itemsOrEmpty.map { it.name },
                     onDismiss = { isNamingNewPlaylist = false },
                     onConfirm = { name ->
                         onActionDone()
                         viewModel.createPlaylistAndAddTo(target, name)
-                        context.toast("Added to playlist")
+                        context.toast(context.getString(R.string.options_added_to_playlist))
                         finish()
                     },
                 )
@@ -304,7 +305,7 @@ internal fun OptionsFollowUps(
                         playlistId = followUp.target.playlist.id,
                         openStream = { context.contentResolver.openInputStream(uri) },
                     ) { succeeded ->
-                        context.toast(if (succeeded) "Playlist imported" else "Could not import playlist")
+                        context.toast(context.getString(if (succeeded) R.string.options_playlist_imported else R.string.options_playlist_import_failed))
                     }
                 }
             }
@@ -319,7 +320,8 @@ internal fun OptionsFollowUps(
                     viewModel.exportTracks(followUp.target) { context.contentResolver.openOutputStream(uri) }
                 }
             }
-            LaunchedEffect(followUp) { launcher.launch("${followUp.target.name()}.m3u") }
+            val fileName = "${followUp.target.name()}.m3u"
+            LaunchedEffect(followUp) { launcher.launch(fileName) }
         }
     }
 }
@@ -384,15 +386,15 @@ private fun Context.shareTracks(tracks: List<Track>) {
     val shared = tracks.filterNot(Track::isManuallyScanned)
     val streams = shared.map(Track::contentUri)
     if (streams.isEmpty()) {
-        toast("Unable to share this")
+        toast(getString(R.string.options_share_failed))
         return
     }
     if (streams.shareIntentCostBytes() > SHARE_INTENT_BUDGET_BYTES) {
-        toast("Too many tracks to share at once")
+        toast(getString(R.string.options_share_too_many))
         return
     }
     val leftOutCount = tracks.size - streams.size
-    if (leftOutCount > 0) toast("${pluralCount(leftOutCount, "track")} cannot be shared")
+    if (leftOutCount > 0) toast(resources.getQuantityString(R.plurals.options_tracks_not_shared, leftOutCount, leftOutCount))
 
     val intent = if (streams.size == 1) {
         Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_STREAM, streams.single())

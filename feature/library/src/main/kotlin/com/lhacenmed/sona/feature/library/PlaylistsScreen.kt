@@ -14,12 +14,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.EmptyStateAction
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.data.search.matchesSearch
+import com.lhacenmed.sona.core.designsystem.component.coverSeed
 import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.screen.PlayingRow
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
@@ -32,17 +34,21 @@ import com.lhacenmed.sona.core.designsystem.component.sheet.sortAction
 import com.lhacenmed.sona.core.designsystem.component.swipe.LocalSwipeActions
 import com.lhacenmed.sona.core.designsystem.component.rememberDragSelection
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
+import com.lhacenmed.sona.core.designsystem.component.title
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.core.model.BuiltInList
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.library.R
 import com.lhacenmed.sona.feature.library.operation.DeletePlaylistsDialog
 import com.lhacenmed.sona.feature.library.options.OptionsAction
 import com.lhacenmed.sona.feature.library.options.OptionsFollowUps
 import com.lhacenmed.sona.feature.library.options.OptionsSheet
 import com.lhacenmed.sona.feature.library.options.OptionsSwipe
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
+import com.lhacenmed.sona.feature.library.options.label
 import com.lhacenmed.sona.feature.library.options.rememberOptionsActions
 import com.lhacenmed.sona.feature.library.options.rememberOptionsSwipeActions
 import com.lhacenmed.sona.feature.library.playlist.NewPlaylistFlow
@@ -53,7 +59,6 @@ import com.lhacenmed.sona.feature.library.selection.toLibraryTopBarSelection
 import com.lhacenmed.sona.feature.library.sort.SortSheet
 
 /** Most played's title, which is also what a search matches it on. */
-internal const val MOST_PLAYED_TITLE = "Most played"
 
 /** A row of the list: Most played pinned first, then the playlists. */
 private sealed interface PlaylistsRow {
@@ -108,7 +113,7 @@ data object PlaylistsScreen : Screen {
         // Most played is a row here rather than a playlist, so it is matched on its own title -
         // otherwise typing "most" would hide the very row it names.
         val visiblePlaylists = playlists.filterItems { !it.isBuiltIn }.searchedFor(searchQuery) { listOf(it.name) }
-        val showsMostPlayed = mostPlayedCount.trackCount > 0 && matchesSearch(searchQuery, MOST_PLAYED_TITLE)
+        val showsMostPlayed = mostPlayedCount.trackCount > 0 && matchesSearch(searchQuery, BuiltInList.MOST_PLAYED.title)
         val rows: LibraryContent<PlaylistsRow> = when (visiblePlaylists) {
             is LibraryContent.Loading -> LibraryContent.Loading
             is LibraryContent.Ready -> LibraryContent.Ready(
@@ -121,12 +126,12 @@ data object PlaylistsScreen : Screen {
         SelectionOptionsHost(selection) { openSelectionOptions, _ ->
             Column(modifier = Modifier.fillMaxSize()) {
                 SonaTopAppBar(
-                    title = "Playlists",
+                    title = stringResource(R.string.playlists_title),
                     onNavigateBack = navigator::back,
                     actions = listOf(
-                        TopBarAction(label = "Search", icon = SonaIcons.Search) { searchQuery = "" },
+                        TopBarAction(label = stringResource(R.string.library_search), icon = SonaIcons.Search) { searchQuery = "" },
                         sortAction { isSortSheetOpen = true },
-                        TopBarAction(label = "New playlist", icon = SonaIcons.Add) { isCreatingPlaylist = true },
+                        TopBarAction(label = stringResource(R.string.library_new_playlist), icon = SonaIcons.Add) { isCreatingPlaylist = true },
                     ),
                     search = searchQuery?.let { current ->
                         TopBarSearch(
@@ -144,7 +149,7 @@ data object PlaylistsScreen : Screen {
                         actions = buildList {
                             selectedPlaylists.singleOrNull()?.let { playlist ->
                                 add(
-                                    TopBarAction(label = "Rename", icon = SonaIcons.DriveFileRenameOutline) {
+                                    TopBarAction(label = stringResource(R.string.playlists_rename), icon = SonaIcons.DriveFileRenameOutline) {
                                         renamingPlaylist = playlist
                                     },
                                 )
@@ -167,9 +172,9 @@ data object PlaylistsScreen : Screen {
                     // permission nor the scanning explanation can apply to this list being empty.
                     hasPermission = true,
                     isScanning = false,
-                    emptyTitle = if (searchQuery == null) "No playlists yet" else "No playlists found",
+                    emptyTitle = stringResource(if (searchQuery == null) R.string.playlists_empty_title else R.string.playlists_none_found),
                     emptyMessage = if (searchQuery == null) {
-                        "Create one to start collecting tracks."
+                        stringResource(R.string.playlists_empty_message)
                     } else {
                         searchEmptyMessage(searchQuery)
                     },
@@ -177,7 +182,7 @@ data object PlaylistsScreen : Screen {
                     modifier = Modifier.fillMaxSize(),
                     // Only while not searching: a search that matches nothing is not a missing playlist.
                     emptyAction = if (searchQuery == null) {
-                        EmptyStateAction(label = "Create playlist", icon = SonaIcons.Add) { isCreatingPlaylist = true }
+                        EmptyStateAction(label = stringResource(R.string.playlists_create), icon = SonaIcons.Add) { isCreatingPlaylist = true }
                     } else {
                         null
                     },
@@ -237,7 +242,8 @@ data object PlaylistsScreen : Screen {
                                     ) {
                                         when (row) {
                                             PlaylistsRow.MostPlayed -> TrackCollectionRow(
-                                                title = MOST_PLAYED_TITLE,
+                                                title = BuiltInList.MOST_PLAYED.title,
+                                                seed = BuiltInList.MOST_PLAYED.coverSeed,
                                                 trackCount = mostPlayedCount.trackCount,
                                                 videoCount = mostPlayedCount.videoCount,
                                                 coverArtUris = mostPlayedCoverArtUris,
@@ -270,8 +276,8 @@ data object PlaylistsScreen : Screen {
 
         renamingPlaylist?.let { playlist ->
             PlaylistNameDialog(
-                dialogTitle = "Rename playlist",
-                confirmLabel = "Rename",
+                dialogTitle = stringResource(R.string.playlists_rename_title),
+                confirmLabel = stringResource(R.string.playlists_rename),
                 initialName = playlist.name,
                 // Its own name is not "taken" by anything else, so renaming without changing it
                 // is allowed rather than reported as a clash.

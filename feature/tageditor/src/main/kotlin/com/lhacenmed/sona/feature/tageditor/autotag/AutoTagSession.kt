@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.feature.tageditor.autotag
 
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -7,11 +8,14 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.tageditor.R
 import com.lhacenmed.sona.feature.tageditor.TrackTagDraft
 import com.lhacenmed.sona.feature.tageditor.tags.CoverChoice
 import com.lhacenmed.sona.feature.tageditor.tags.TagField
+import com.lhacenmed.sona.feature.tageditor.tags.label
 
 /** What a run is doing: looking its tracks up, waiting on the user to review them, or saving those picked. */
 enum class AutoTagPhase { MATCHING, REVIEWING, SAVING }
@@ -33,18 +37,18 @@ class AutoTagItem(val track: Track) {
 
     /** What saving would change, by name - "Album, Year, Cover, Lyrics" - or why there is nothing to. */
     val summary: String
-        get() {
+        @Composable get() {
             val draft = draft
-            saveFailure?.let { return "Not saved: $it" }
+            saveFailure?.let { return stringResource(R.string.autotag_not_saved, it) }
             if (draft == null || !draft.hasChanges) {
                 return when (outcome) {
-                    AutoTagOutcome.UNREACHABLE -> "The catalogues could not be reached"
-                    AutoTagOutcome.NOT_FOUND -> "No match found"
-                    else -> "Nothing to change"
+                    AutoTagOutcome.UNREACHABLE -> stringResource(R.string.autotag_unreachable)
+                    AutoTagOutcome.NOT_FOUND -> stringResource(R.string.autotag_no_match)
+                    else -> stringResource(R.string.autotag_nothing_to_change)
                 }
             }
             val changed = TagField.entries.filter { draft.tags[it] != draft.original[it] }.map { it.label } +
-                listOfNotNull("Cover".takeIf { draft.cover != CoverChoice.Own })
+                listOfNotNull(stringResource(R.string.autotag_cover).takeIf { draft.cover != CoverChoice.Own })
             return changed.joinToString(", ")
         }
 }

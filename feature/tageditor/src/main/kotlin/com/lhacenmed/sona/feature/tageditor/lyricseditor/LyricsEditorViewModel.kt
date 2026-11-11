@@ -10,6 +10,7 @@ import com.lhacenmed.sona.core.datastore.LyricsSettings
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.tageditor.OpenTagDrafts
+import com.lhacenmed.sona.feature.tageditor.R
 import com.lhacenmed.sona.feature.tageditor.SaveOutcome
 import com.lhacenmed.sona.feature.tageditor.TrackTagsRepository
 import com.lhacenmed.sona.feature.tageditor.saveOutcomeOf
@@ -91,7 +92,7 @@ class LyricsEditorViewModel @AssistedInject constructor(
         }
         isSaving = true
         viewModelScope.launch {
-            saveOutcome = saveOutcomeOf("The lyrics could not be saved") {
+            saveOutcome = saveOutcomeOf(R.string.lyrics_editor_save_failed) {
                 trackTagsRepository.saveLyrics(editor.track, editor.lyrics)
             }
             isSaving = false

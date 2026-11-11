@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.feature.library
 
+import androidx.annotation.PluralsRes
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -20,6 +21,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
@@ -34,6 +37,7 @@ import com.lhacenmed.sona.core.designsystem.component.SonaListRow
 import com.lhacenmed.sona.core.designsystem.component.SonaTrackRow
 import com.lhacenmed.sona.core.designsystem.component.SonaVideoRow
 import com.lhacenmed.sona.core.designsystem.component.SonaPlaylistCover
+import com.lhacenmed.sona.core.designsystem.component.title
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
@@ -41,6 +45,7 @@ import com.lhacenmed.sona.core.model.Folder
 import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.library.R
 import com.lhacenmed.sona.feature.library.selection.selectionKeyOf
 
 /*
@@ -159,8 +164,8 @@ internal fun ArtistRow(
     val current = isCurrent()
     SonaListRow(
         title = artist.name,
-        subtitle = pluralCount(artist.albumCount, "album") + InfoSeparator +
-            pluralCount(artist.trackCount, "track"),
+        subtitle = countLabel(R.plurals.library_albums, artist.albumCount) + InfoSeparator +
+            countLabel(R.plurals.library_tracks, artist.trackCount),
         selection = selection,
         selectionKey = selectionKeyOf(artist),
         onClick = onClick,
@@ -192,8 +197,8 @@ internal fun GenreRow(
     val current = isCurrent()
     SonaListRow(
         title = genre.name,
-        subtitle = pluralCount(genre.artistCount, "artist") + InfoSeparator +
-            pluralCount(genre.trackCount, "track"),
+        subtitle = countLabel(R.plurals.library_artists, genre.artistCount) + InfoSeparator +
+            countLabel(R.plurals.library_tracks, genre.trackCount),
         selection = selection,
         selectionKey = selectionKeyOf(genre),
         onClick = onClick,
@@ -224,7 +229,7 @@ internal fun PlaylistRow(
 ) {
     val current = isCurrent()
     SonaListRow(
-        title = playlist.name,
+        title = playlist.title,
         subtitle = mediaCountLabel(playlist.trackCount, playlist.videoCount),
         selection = selection,
         selectionKey = selectionKeyOf(playlist),
@@ -285,6 +290,7 @@ internal fun FolderRow(
 @Composable
 internal fun TrackCollectionRow(
     title: String,
+    seed: Int,
     trackCount: Int,
     videoCount: Int,
     coverArtUris: List<String>,
@@ -308,7 +314,7 @@ internal fun TrackCollectionRow(
     ) { isSelected ->
         SonaPlaylistCover(
             coverArtUris = coverArtUris,
-            seed = title.hashCode(),
+            seed = seed,
             isCurrent = current,
             isPlaying = isPlaying(),
             isSelected = isSelected,
@@ -328,29 +334,35 @@ internal fun TrackCollectionRow(
  *
  * The overflow button stays through a selection: the row keeps one shape whatever state it is in.
  */
-/** "1 track", "12 tracks": Auxio's count plurals. */
-internal fun pluralCount(count: Int, noun: String): String = if (count == 1) "$count $noun" else "$count ${noun}s"
+/** "1 track", "12 tracks" - a count of [noun], Auxio's count plurals, as the language counts. */
+@Composable
+internal fun countLabel(@PluralsRes noun: Int, count: Int): String = pluralStringResource(noun, count, count)
 
 /** A count of tracks, or Auxio's `def_song_count` for a list that holds none yet. */
-internal fun trackCountLabel(count: Int): String = if (count == 0) "No tracks" else pluralCount(count, "track")
+@Composable
+internal fun trackCountLabel(count: Int): String =
+    if (count == 0) stringResource(R.string.library_no_tracks) else countLabel(R.plurals.library_tracks, count)
 
 /**
  * How many tracks a list holds, [videoCount] of [trackCount] being videos: "12 tracks", "3 videos" or
  * "12 tracks • 3 videos" - or [trackCountLabel]'s "No tracks", for one that holds none yet.
  */
+@Composable
 internal fun mediaCountLabel(trackCount: Int, videoCount: Int): String {
     val musicCount = trackCount - videoCount
     return when {
         videoCount == 0 -> trackCountLabel(trackCount)
-        musicCount == 0 -> pluralCount(videoCount, "video")
-        else -> pluralCount(musicCount, "track") + InfoSeparator + pluralCount(videoCount, "video")
+        musicCount == 0 -> countLabel(R.plurals.library_videos, videoCount)
+        else -> countLabel(R.plurals.library_tracks, musicCount) + InfoSeparator + countLabel(R.plurals.library_videos, videoCount)
     }
 }
 
 /** [mediaCountLabel] of [tracks]. */
+@Composable
 internal fun mediaCountLabel(tracks: List<Track>): String = mediaCountLabel(tracks.size, tracks.count { it.isVideo })
 
 /** A folder's count: of its tracks, or - for one of the Videos tab - of its videos. */
+@Composable
 internal fun Folder.itemCountLabel(): String = mediaCountLabel(trackCount, videoCount = if (isVideo) trackCount else 0)
 
 /** A folder row's key: one path can hold music and videos alike, and is then listed once for each. */

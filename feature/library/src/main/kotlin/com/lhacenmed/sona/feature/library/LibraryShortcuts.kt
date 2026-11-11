@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
@@ -43,12 +44,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverBackdrop
 import com.lhacenmed.sona.core.designsystem.component.SonaIconButton
 import com.lhacenmed.sona.core.designsystem.component.SonaPlaylistCoverBackdrop
+import com.lhacenmed.sona.core.designsystem.component.icon
+import com.lhacenmed.sona.core.designsystem.component.shortTitle
+import com.lhacenmed.sona.core.designsystem.component.title
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.designsystem.theme.pressedCornerRadius
 import com.lhacenmed.sona.core.designsystem.theme.rememberPressFraction
 import com.lhacenmed.sona.core.designsystem.theme.roundedShape
+import com.lhacenmed.sona.core.model.BuiltInList
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.feature.library.R
 
 private const val SHORTCUT_COUNT = 3
 
@@ -88,6 +94,9 @@ fun LibraryShortcuts(
     val spacingPx = with(LocalDensity.current) { SonaComponentStyle.ItemSpacing.roundToPx() }
     val restingCardWidthPx = (rowWidthPx - spacingPx * (SHORTCUT_COUNT - 1)) / SHORTCUT_COUNT
 
+    val favoritesTitle = BuiltInList.FAVORITES.title
+    val playlistsTitle = stringResource(R.string.playlists_title)
+    val recentTitle = BuiltInList.RECENTLY_PLAYED.shortTitle
     ButtonGroup(
         // Never reached: three equal cards always fit the row. Required by the group all the same,
         // and a row that did run out of room should fold into a menu rather than drop cards.
@@ -95,7 +104,7 @@ fun LibraryShortcuts(
             SonaIconButton(
                 onClick = menuState::show,
                 icon = SonaIcons.MoreVert,
-                contentDescription = "More shortcuts",
+                contentDescription = stringResource(R.string.shortcuts_more),
             )
         },
         modifier = modifier
@@ -105,22 +114,22 @@ fun LibraryShortcuts(
         horizontalArrangement = Arrangement.spacedBy(SonaComponentStyle.ItemSpacing),
     ) {
         shortcutCard(
-            title = "Favorites",
-            icon = SonaIcons.Favorite,
+            title = favoritesTitle,
+            icon = BuiltInList.FAVORITES.icon,
             restingWidthPx = restingCardWidthPx,
             cover = favoritesCover,
             onClick = { navigator.go(PlaylistDetailScreen(viewModel.favoritesPlaylistId)) },
         )
         shortcutCard(
-            title = "Playlists",
+            title = playlistsTitle,
             icon = SonaIcons.LibraryMusic,
             restingWidthPx = restingCardWidthPx,
             cover = playlistsCover,
             onClick = { navigator.go(PlaylistsScreen) },
         )
         shortcutCard(
-            title = "Recent",
-            icon = SonaIcons.History,
+            title = recentTitle,
+            icon = BuiltInList.RECENTLY_PLAYED.icon,
             restingWidthPx = restingCardWidthPx,
             cover = recentlyPlayedCover,
             onClick = { navigator.go(RecentlyPlayedScreen) },

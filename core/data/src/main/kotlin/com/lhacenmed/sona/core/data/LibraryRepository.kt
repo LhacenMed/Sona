@@ -16,7 +16,6 @@ import com.lhacenmed.sona.core.database.dao.AlbumDao
 import com.lhacenmed.sona.core.database.dao.ArrangementDao
 import com.lhacenmed.sona.core.database.dao.ArtistDao
 import com.lhacenmed.sona.core.database.dao.FavoriteCollectionDao
-import com.lhacenmed.sona.core.database.FAVORITES_PLAYLIST_ID
 import com.lhacenmed.sona.core.database.dao.GenreDao
 import com.lhacenmed.sona.core.database.dao.MostPlayedCount
 import com.lhacenmed.sona.core.database.dao.PlayStatsDao
@@ -34,6 +33,7 @@ import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.model.Album
 import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.CollectionStats
+import com.lhacenmed.sona.core.model.FAVORITES_PLAYLIST_ID
 import com.lhacenmed.sona.core.model.Folder
 import com.lhacenmed.sona.core.model.FolderView
 import com.lhacenmed.sona.core.model.Genre

@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -30,6 +31,7 @@ import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.vault.VaultRepository
 import com.lhacenmed.sona.core.vault.data.VaultItem
 import com.lhacenmed.sona.feature.playback.PlaybackController
+import com.lhacenmed.sona.feature.vault.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
@@ -75,14 +77,14 @@ internal fun VaultItemOptions(item: VaultItem, onDismissRequest: () -> Unit) {
             header = {
                 SonaOptionsSheetHeader(
                     cover = { SonaCoverArt(coverArtUri = viewModel.coverOf(item), contentDescription = null) },
-                    type = if (item.isVideo) "Video" else "Track",
+                    type = stringResource(if (item.isVideo) R.string.vault_type_video else R.string.vault_type_track),
                     name = item.title,
                     info = item.subtitle,
                 )
             },
         ) {
             SonaOptionRow(
-                label = "Move out of Private Folder",
+                label = stringResource(R.string.vault_move_out),
                 icon = SonaIcons.LockOpen,
                 onClick = {
                     action = VaultItemAction.MOVE_OUT
@@ -90,7 +92,7 @@ internal fun VaultItemOptions(item: VaultItem, onDismissRequest: () -> Unit) {
                 },
             )
             SonaOptionRow(
-                label = "Delete permanently",
+                label = stringResource(R.string.vault_delete_permanently),
                 icon = SonaIcons.Delete,
                 onClick = {
                     action = VaultItemAction.DELETE
@@ -102,11 +104,11 @@ internal fun VaultItemOptions(item: VaultItem, onDismissRequest: () -> Unit) {
     when (action) {
         VaultItemAction.MOVE_OUT -> MoveOutDialog(item = item, viewModel = viewModel, onDismiss = onDismissRequest)
         VaultItemAction.DELETE -> SonaConfirmationDialog(
-            title = "Delete permanently",
-            message = "Its file is deleted from this device. This cannot be undone.",
-            confirmLabel = "Delete",
-            successMessage = "Deleted",
-            failureMessage = "Could not delete",
+            title = stringResource(R.string.vault_delete_permanently),
+            message = stringResource(R.string.vault_delete_message),
+            confirmLabel = stringResource(R.string.vault_delete),
+            successMessage = stringResource(R.string.vault_deleted),
+            failureMessage = stringResource(R.string.vault_delete_failed),
             onDismiss = onDismissRequest,
             operation = { onFinished -> viewModel.delete(item, onFinished) },
         )
@@ -128,11 +130,11 @@ private fun MoveOutDialog(item: VaultItem, viewModel: VaultItemOptionsViewModel,
         if (granted) viewModel.moveOut(item, onFinished) else onFinished(false)
     }
     SonaConfirmationDialog(
-        title = "Move out of Private Folder",
-        message = "It goes back to your library, in ${if (item.isVideo) "Movies" else "Music"}/Sona.",
-        confirmLabel = "Move out",
-        successMessage = "Moved out of Private Folder",
-        failureMessage = "Could not move out of Private Folder",
+        title = stringResource(R.string.vault_move_out),
+        message = stringResource(R.string.vault_move_out_message, if (item.isVideo) "Movies/Sona" else "Music/Sona"),
+        confirmLabel = stringResource(R.string.vault_move_out_confirm),
+        successMessage = stringResource(R.string.vault_moved_out),
+        failureMessage = stringResource(R.string.vault_move_out_failed),
         onDismiss = onDismiss,
         operation = { onFinished ->
             if (context.needsStoragePermission()) {

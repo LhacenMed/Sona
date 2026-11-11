@@ -11,4 +11,10 @@
     <string name="widget_preview_subtitle">Turn on the music</string>
     <string name="widget_preview_time">0:00</string>
     <string name="widget_mini_player_description">The track playing, and play and skip, in a single row</string>
+    <!-- The app's shell and the popup a file opened from another app plays in - see AppShell and TrackPopup -->
+    <string name="app_settings">Settings</string>
+    <string name="track_popup_failed">Can\'t play this file</string>
+    <string name="track_popup_close">Close</string>
+    <string name="track_popup_pause">Pause</string>
+    <string name="track_popup_play">Play</string>
 </resources>

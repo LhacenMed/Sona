@@ -5,11 +5,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import com.lhacenmed.sona.core.data.search.SearchIndex
 import com.lhacenmed.sona.core.designsystem.component.SonaEmptyState
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.settings.R
 import com.lhacenmed.sona.feature.settings.SettingsCategory
 import com.lhacenmed.sona.feature.settings.SettingsRowScreen
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsList
@@ -72,7 +74,7 @@ internal fun SettingsSearchResults(query: String, onResultOpened: () -> Unit) {
     val index = remember(results) { SearchIndex(results) { listOf(it.title) + listOfNotNull(it.summary) + it.location } }
     val found = remember(index, query) { index.search(query).items }
     if (found.isEmpty()) {
-        SonaEmptyState(title = "No settings found", message = "Nothing matched \"$query\".")
+        SonaEmptyState(title = stringResource(R.string.settings_search_none_found), message = stringResource(R.string.settings_search_no_match, query))
         return
     }
     SettingsList {
@@ -99,13 +101,13 @@ internal fun SettingsRecentSearches(
     onClear: () -> Unit,
 ) {
     if (searches.isEmpty()) {
-        SonaEmptyState(title = "Search settings", message = "Find any setting by its name, by what it does, or by where it is.")
+        SonaEmptyState(title = stringResource(R.string.settings_search_title), message = stringResource(R.string.settings_search_message))
         return
     }
     SettingsList {
         SettingsSection(
-            title = "Recent searches",
-            actions = listOf(TopBarAction(label = "Clear", icon = SonaIcons.ClearAll, onClick = onClear)),
+            title = stringResource(R.string.settings_recent_searches),
+            actions = listOf(TopBarAction(label = stringResource(R.string.settings_recent_searches_clear), icon = SonaIcons.ClearAll, onClick = onClear)),
         ) {
             searches.forEach { search ->
                 SettingsRecentSearchItem(query = search, onClick = { onSearch(search) }, onForget = { onForget(search) })

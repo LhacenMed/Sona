@@ -11,6 +11,7 @@ import com.lhacenmed.sona.core.model.Playlist
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.playbackParent
 import com.lhacenmed.sona.core.model.sort.SortableList
+import com.lhacenmed.sona.feature.library.R
 import com.lhacenmed.sona.feature.library.sort.SortControl
 import com.lhacenmed.sona.feature.library.sort.control
 import com.lhacenmed.sona.feature.playback.PlaybackController
@@ -73,7 +74,7 @@ class PlaylistDetailViewModel @AssistedInject constructor(
                     favorited(artists.itemsOrEmpty, { it.id }, { (it as? PlaybackParent.Artist)?.artistId })
                         .takeIf { it.isNotEmpty() }?.let(DetailSection::Artists),
                     favorited(albums.itemsOrEmpty, { it.id }, { (it as? PlaybackParent.Album)?.albumId })
-                        .takeIf { it.isNotEmpty() }?.let { DetailSection.Albums("Albums", it) },
+                        .takeIf { it.isNotEmpty() }?.let { DetailSection.Albums(R.string.library_albums_title, it) },
                     favorited(genres.itemsOrEmpty, { it.id }, { (it as? PlaybackParent.Genre)?.genreId })
                         .takeIf { it.isNotEmpty() }?.let(DetailSection::Genres),
                     favorited(folders.itemsOrEmpty + videoFolders.itemsOrEmpty, { it.playbackParent }, { it as? PlaybackParent.Folder })

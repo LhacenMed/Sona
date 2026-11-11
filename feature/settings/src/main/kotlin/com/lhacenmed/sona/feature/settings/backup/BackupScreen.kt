@@ -331,7 +331,7 @@ private fun RunOutcomeToast(run: BackupRun?, @StringRes successRes: Int, @String
                 BackupRun.Stopped -> context.toast(R.string.backup_stopped)
                 BackupRun.Paused -> context.toast(R.string.backup_paused_toast)
                 is BackupRun.Failed -> when (run.reason) {
-                    BackupFailure.DRIVE_ACCESS_LOST -> context.toast(R.string.backup_failed_drive_access)
+                    BackupFailure.DRIVE_ACCESS_LOST -> context.toast(R.string.backup_screen_drive_access_lost)
                     null -> context.toast(listOfNotNull(context.getString(failureRes), run.detail).joinToString(": "))
                 }
                 else -> Unit

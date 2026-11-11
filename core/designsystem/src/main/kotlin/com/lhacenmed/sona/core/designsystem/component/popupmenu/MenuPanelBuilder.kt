@@ -21,6 +21,7 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.view.children
+import com.lhacenmed.sona.core.designsystem.R
 
 /**
  * Output of [MenuPanelBuilder.createPanel]. Carries enough view references for
@@ -298,7 +299,7 @@ internal class MenuPanelBuilder(
             })
 
             addView(TextView(ctx).apply {
-                text = "Back"
+                text = ctx.getString(R.string.top_bar_back)
                 textSize = style.textSize
                 typeface = style.textTypeface
                 setTextColor(style.contentColor)

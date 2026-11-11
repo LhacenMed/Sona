@@ -36,7 +36,8 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
+    // The base of SonaActivity, which every activity of the app is - so exposed to every module that has one.
+    api(libs.androidx.appcompat)
     implementation(libs.coil.compose)
     implementation(libs.kotlinx.coroutines.android)
 

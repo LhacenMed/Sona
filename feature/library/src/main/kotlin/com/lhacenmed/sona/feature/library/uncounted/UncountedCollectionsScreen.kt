@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
@@ -32,6 +33,7 @@ import com.lhacenmed.sona.feature.library.ArtistRow
 import com.lhacenmed.sona.feature.library.FolderRow
 import com.lhacenmed.sona.feature.library.GenreRow
 import com.lhacenmed.sona.feature.library.PlaylistRow
+import com.lhacenmed.sona.feature.library.R
 import com.lhacenmed.sona.feature.library.selection.selectionKeyOf
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
@@ -53,12 +55,12 @@ data object UncountedCollectionsScreen : Screen {
 
         Column(modifier = Modifier.fillMaxSize()) {
             SonaTopAppBar(
-                title = "Not counted in Most played",
+                title = stringResource(R.string.uncounted_title),
                 onNavigateBack = navigator::back,
                 selection = picks.toTopBarSelection(
                     actions = listOf(
                         picks.selectAllAction(collections.mapNotNull { selectionKeyOf(it.item) }),
-                        TopBarAction(label = "Count again", icon = SonaIcons.TrendingUp) {
+                        TopBarAction(label = stringResource(R.string.uncounted_count_again), icon = SonaIcons.TrendingUp) {
                             viewModel.countAgain(pickedParents)
                             picks.clear()
                         },
@@ -68,9 +70,8 @@ data object UncountedCollectionsScreen : Screen {
             )
             if (collections.isEmpty()) {
                 SonaEmptyState(
-                    title = "Every collection counts",
-                    message = "Choose Don't count in Most played from a playlist's, album's, artist's, genre's or folder's options " +
-                        "to keep plays from it out of Most played. Played from anywhere else, its tracks still count.",
+                    title = stringResource(R.string.uncounted_empty_title),
+                    message = stringResource(R.string.uncounted_empty_message),
                 )
                 return@Column
             }

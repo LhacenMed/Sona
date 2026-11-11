@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -24,6 +25,7 @@ import com.lhacenmed.sona.core.designsystem.component.SonaCoverImage
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.section.ColumnSection
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
+import com.lhacenmed.sona.feature.tageditor.R
 import com.lhacenmed.sona.feature.tageditor.tags.CoverChoice
 import com.lhacenmed.sona.feature.tageditor.tags.TagField
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
@@ -64,10 +66,10 @@ internal fun ColumnScope.TrackTagDraftSections(
             contentDescription = null,
             modifier = Modifier.size(ButtonDefaults.IconSize),
         )
-        Text(if (isPlaying) "Pause" else "Play", modifier = Modifier.padding(start = ButtonDefaults.IconSpacing))
+        Text(stringResource(if (isPlaying) R.string.tag_editor_pause else R.string.tag_editor_play), modifier = Modifier.padding(start = ButtonDefaults.IconSpacing))
     }
 
-    ColumnSection(title = "Search") {
+    ColumnSection(title = stringResource(R.string.tag_editor_search)) {
         SearchFields(
             artist = draft.queryArtist,
             title = draft.queryTitle,
@@ -78,7 +80,7 @@ internal fun ColumnScope.TrackTagDraftSections(
     }
 
     HorizontalDivider()
-    ColumnSection(title = "Best match") {
+    ColumnSection(title = stringResource(R.string.tag_editor_best_match)) {
         SourceFilter(sources = draft.catalogueNames, selected = draft.catalogueFilter, onSelect = draft::filterCatalogue)
         BestMatchCard(
             lookup = draft.matchLookup,
@@ -90,12 +92,12 @@ internal fun ColumnScope.TrackTagDraftSections(
     }
 
     HorizontalDivider()
-    ColumnSection(title = "Tags") {
+    ColumnSection(title = stringResource(R.string.tag_editor_tags)) {
         TagFields(tags = tags, onChange = draft::setField)
     }
 
     HorizontalDivider()
-    ColumnSection(title = "Covers") {
+    ColumnSection(title = stringResource(R.string.tag_editor_covers)) {
         CoverChoices(
             ownCoverUri = track.coverArtUri,
             deviceCoverUri = draft.deviceCoverUri,
@@ -108,8 +110,8 @@ internal fun ColumnScope.TrackTagDraftSections(
 
     HorizontalDivider()
     ColumnSection(
-        title = "Lyrics",
-        actions = listOf(TopBarAction(label = "Edit lyrics", icon = SonaIcons.Edit, onClick = onEditLyrics)),
+        title = stringResource(R.string.tag_editor_lyrics),
+        actions = listOf(TopBarAction(label = stringResource(R.string.tag_editor_edit_lyrics), icon = SonaIcons.Edit, onClick = onEditLyrics)),
     ) {
         SourceFilter(
             sources = draft.lyricsSourceNames,
@@ -131,7 +133,7 @@ internal fun ColumnScope.TrackTagDraftSections(
     val others = draft.matches.drop(1)
     if (others.isNotEmpty()) {
         HorizontalDivider()
-        ColumnSection(title = "Other matches") {
+        ColumnSection(title = stringResource(R.string.tag_editor_other_matches)) {
             others.forEach { match ->
                 MatchRow(
                     match = match,

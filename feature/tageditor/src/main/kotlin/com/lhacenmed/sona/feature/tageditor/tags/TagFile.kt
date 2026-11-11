@@ -8,6 +8,7 @@ import com.kyant.taglib.Picture
 import com.kyant.taglib.PropertyMap
 import com.kyant.taglib.TagLib
 import com.lhacenmed.sona.core.common.format.repairedTagText
+import com.lhacenmed.sona.feature.tageditor.R
 import java.io.File
 
 /** What the editor reads of a file: its [tags], and its [bitrateKbps] where it can be told. */
@@ -61,11 +62,11 @@ internal object TagFile {
     fun write(context: Context, uri: Uri, path: String, tags: TrackTags, cover: ByteArray?) {
         val layout = layoutOf(context, uri, path)
         if (!layout.needsCopy) {
-            open(context, uri, "rw").use { writeTags(it, tags, cover) }
+            open(context, uri, "rw").use { writeTags(context, it, tags, cover) }
             return
         }
         withCopy(context, uri, layout) { copy ->
-            ParcelFileDescriptor.open(copy, ParcelFileDescriptor.MODE_READ_WRITE).use { writeTags(it, tags, cover) }
+            ParcelFileDescriptor.open(copy, ParcelFileDescriptor.MODE_READ_WRITE).use { writeTags(context, it, tags, cover) }
             writeBack(context, uri, copy)
         }
     }
@@ -78,19 +79,19 @@ internal object TagFile {
 
     private fun holdsCover(file: ParcelFileDescriptor): Boolean = TagLib.getPictures(file.dup().detachFd()).isNotEmpty()
 
-    private fun writeTags(file: ParcelFileDescriptor, tags: TrackTags, cover: ByteArray?) {
+    private fun writeTags(context: Context, file: ParcelFileDescriptor, tags: TrackTags, cover: ByteArray?) {
         val properties = checkNotNull(TagLib.getMetadata(file.dup().detachFd(), readPictures = false)) {
-            "This file's format holds no tags"
+            context.getString(R.string.tag_file_no_tags)
         }.propertyMap
         val held = tagsOf(properties)
         val changed = TagField.entries.filter { tags[it] != held[it] }
         if (changed.isNotEmpty()) {
             changed.forEach { properties.write(it, tags) }
-            check(TagLib.savePropertyMap(file.dup().detachFd(), properties)) { "The tags could not be written into this file" }
+            check(TagLib.savePropertyMap(file.dup().detachFd(), properties)) { context.getString(R.string.tag_file_write_failed) }
         }
         if (cover != null) {
             val picture = Picture(data = cover, description = "", pictureType = "Front Cover", mimeType = imageMimeTypeOf(cover))
-            check(TagLib.savePictures(file.dup().detachFd(), arrayOf(picture))) { "This file's format cannot hold a cover" }
+            check(TagLib.savePictures(file.dup().detachFd(), arrayOf(picture))) { context.getString(R.string.tag_file_no_cover) }
         }
     }
 

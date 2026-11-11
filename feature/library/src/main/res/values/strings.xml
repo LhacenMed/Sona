@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- What a song, a collection or a selection offers - see OptionsAction -->
+    <string name="options_play">Play</string>
+    <string name="options_shuffle">Shuffle</string>
+    <string name="options_play_next">Play next</string>
+    <string name="options_queue_add">Add to queue</string>
+    <string name="options_playlist_add">Add to playlist</string>
+    <string name="options_artist_details">Go to artist</string>
+    <string name="options_album_details">Go to album</string>
+    <string name="options_song_properties">View properties</string>
+    <string name="options_edit_tags">Edit info</string>
+    <string name="options_auto_tag">Auto-tag</string>
+    <string name="options_stop_counting_plays">Don\'t count in Most played</string>
+    <string name="options_count_plays">Count in Most played</string>
+    <string name="options_view_details">View</string>
+    <string name="options_browse_folder">Browse folder</string>
+    <string name="options_add_tracks">Add tracks</string>
+    <string name="options_add_collections">Add from collections</string>
+    <string name="options_edit">Edit playlist</string>
+    <string name="options_import">Import</string>
+    <string name="options_export">Export</string>
+    <string name="options_delete">Delete</string>
+    <string name="options_remove_from_playlist">Remove from playlist</string>
+    <string name="options_remove_from_recently_played">Remove from Recently played</string>
+    <string name="options_remove_from_most_played">Remove from Most played</string>
+    <string name="options_add_to_private">Add to Private Folder</string>
+    <string name="options_delete_from_device">Delete from device</string>
+    <string name="options_exclude">Exclude folder</string>
+    <string name="options_share">Share</string>
+    <!-- Counts of what a list holds - see LibraryItemRows -->
+    <string name="library_no_tracks">No tracks</string>
+    <string name="library_no_albums">No albums</string>
+    <string name="library_no_artists">No artists</string>
+    <plurals name="library_tracks">
+        <item quantity="one">%d track</item>
+        <item quantity="other">%d tracks</item>
+    </plurals>
+    <plurals name="library_albums">
+        <item quantity="one">%d album</item>
+        <item quantity="other">%d albums</item>
+    </plurals>
+    <plurals name="library_artists">
+        <item quantity="one">%d artist</item>
+        <item quantity="other">%d artists</item>
+    </plurals>
+    <plurals name="library_videos">
+        <item quantity="one">%d video</item>
+        <item quantity="other">%d videos</item>
+    </plurals>
+    <!-- An options sheet - see OptionsSheet and OptionsActions -->
+    <string name="options_type_track">Track</string>
+    <string name="options_type_video">Video</string>
+    <string name="options_type_album">Album</string>
+    <string name="options_type_artist">Artist</string>
+    <string name="options_type_genre">Genre</string>
+    <string name="options_type_playlist">Playlist</string>
+    <string name="options_type_folder">Folder</string>
+    <string name="options_type_selection">Selection</string>
+    <string name="options_played_next">Track will play next</string>
+    <string name="options_queued">Added to queue</string>
+    <string name="options_plays_uncounted">Plays from here won\'t count in Most played</string>
+    <string name="options_plays_counted">Plays from here count in Most played</string>
+    <string name="options_added_to_playlist">Added to playlist</string>
+    <string name="options_playlist_imported">Playlist imported</string>
+    <string name="options_playlist_import_failed">Could not import playlist</string>
+    <string name="options_share_failed">Unable to share this</string>
+    <string name="options_share_too_many">Too many tracks to share at once</string>
+    <string name="library_new_playlist">New playlist</string>
+    <string name="library_create">Create</string>
+    <string name="removal_from_playlist">From %1$s. The files themselves are not deleted.</string>
+    <string name="removal_from_recently_played">From Recently played, until they play again. The files themselves are not deleted.</string>
+    <string name="removal_from_most_played">Their play counts start again from zero. The files themselves are not deleted.</string>
+    <plurals name="options_tracks_not_shared">
+        <item quantity="one">%d track cannot be shared</item>
+        <item quantity="other">%d tracks cannot be shared</item>
+    </plurals>
+    <!-- A track's properties - see TrackPropertiesDialog -->
+    <string name="properties_title">Track properties</string>
+    <string name="properties_name">Name</string>
+    <string name="properties_album">Album</string>
+    <string name="properties_artist">Artist</string>
+    <string name="properties_genre">Genre</string>
+    <string name="properties_date">Date</string>
+    <string name="properties_track">Track</string>
+    <string name="properties_disc">Disc</string>
+    <string name="properties_path">Path</string>
+    <string name="properties_size">Size</string>
+    <string name="properties_duration">Duration</string>
+    <string name="properties_format">Format</string>
+    <string name="properties_bit_rate">Bit rate</string>
+    <string name="properties_sample_rate">Sample rate</string>
+    <string name="properties_kbps">%1$d kbps</string>
+    <string name="properties_hz">%1$d Hz</string>
+    <!-- What an operation asks first, and how it went - see LibraryOperationDialogs -->
+    <string name="exclude_folder_title">Exclude folder</string>
+    <string name="exclude_folder_message">Its music and videos leave your library. The files themselves are not deleted.</string>
+    <string name="exclude_folders_message">Their music and videos leave your library. The files themselves are not deleted.</string>
+    <string name="exclude_confirm">Exclude</string>
+    <string name="exclude_folder_done">Folder excluded</string>
+    <string name="exclude_folder_failed">Could not exclude folder</string>
+    <string name="exclude_folders_failed">Could not exclude folders</string>
+    <string name="delete_playlist_title">Delete playlist</string>
+    <string name="delete_playlist_message">The tracks themselves are not deleted.</string>
+    <string name="delete_confirm">Delete</string>
+    <string name="delete_playlist_done">Playlist deleted</string>
+    <string name="delete_playlist_failed">Could not delete playlist</string>
+    <string name="delete_playlists_failed">Could not delete playlists</string>
+    <string name="remove_track_title">Remove track</string>
+    <string name="remove_confirm">Remove</string>
+    <string name="remove_track_done">Track removed</string>
+    <string name="remove_track_failed">Could not remove track</string>
+    <string name="remove_tracks_failed">Could not remove tracks</string>
+    <string name="delete_track_title">Delete track</string>
+    <string name="delete_track_message">Its file is deleted from this device. This cannot be undone.</string>
+    <string name="delete_tracks_message">Their files are deleted from this device. This cannot be undone.</string>
+    <string name="delete_needs_all_files">Next, allow Sona to manage all files, and it deletes without Android asking each time.</string>
+    <string name="delete_track_done">Track deleted</string>
+    <string name="delete_track_failed">Could not delete track</string>
+    <string name="delete_tracks_failed">Could not delete tracks</string>
+    <string name="private_add_title">Add to Private Folder</string>
+    <string name="private_add_some_title">Add %1$s to Private Folder</string>
+    <string name="private_add_message">It leaves your library for the Private Folder, which only you can open.</string>
+    <string name="private_add_some_message">They leave your library for the Private Folder, which only you can open.</string>
+    <string name="private_add_needs_all_files">Next, allow Sona to manage all files, and it moves without Android asking each time.</string>
+    <string name="private_add_confirm">Add</string>
+    <string name="private_add_done">Added to Private Folder</string>
+    <string name="private_add_failed">Could not add to Private Folder</string>
+    <plurals name="exclude_folders_title">
+        <item quantity="one">Exclude %d folder</item>
+        <item quantity="other">Exclude %d folders</item>
+    </plurals>
+    <plurals name="exclude_folders_done">
+        <item quantity="one">%d folder excluded</item>
+        <item quantity="other">%d folders excluded</item>
+    </plurals>
+    <plurals name="delete_playlists_title">
+        <item quantity="one">Delete %d playlist</item>
+        <item quantity="other">Delete %d playlists</item>
+    </plurals>
+    <plurals name="delete_playlists_done">
+        <item quantity="one">%d playlist deleted</item>
+        <item quantity="other">%d playlists deleted</item>
+    </plurals>
+    <plurals name="remove_tracks_title">
+        <item quantity="one">Remove %d track</item>
+        <item quantity="other">Remove %d tracks</item>
+    </plurals>
+    <plurals name="remove_tracks_done">
+        <item quantity="one">%d track removed</item>
+        <item quantity="other">%d tracks removed</item>
+    </plurals>
+    <plurals name="delete_tracks_title">
+        <item quantity="one">Delete %d track</item>
+        <item quantity="other">Delete %d tracks</item>
+    </plurals>
+    <plurals name="delete_tracks_done">
+        <item quantity="one">%d track deleted</item>
+        <item quantity="other">%d tracks deleted</item>
+    </plurals>
+    <plurals name="delete_tracks_left_out">
+        <item quantity="one">%d track cannot be deleted</item>
+        <item quantity="other">%d tracks cannot be deleted</item>
+    </plurals>
+    <!-- The library's lists and detail screens - see LibraryComponents -->
+    <string name="library_permission_title">Permission needed</string>
+    <string name="library_permission_message">Sona needs access to your audio files to show your library.</string>
+    <string name="library_scanning_title">Scanning your library…</string>
+    <string name="library_scanning_message">This only takes a moment.</string>
+    <string name="library_empty_message">Add some music to your device to see it here.</string>
+    <string name="library_search_empty_message">Nothing matched \"%1$s\".</string>
+    <string name="library_play">Play</string>
+    <string name="library_shuffle">Shuffle</string>
+    <string name="library_search">Search</string>
+    <string name="library_no_date">No date</string>
+    <string name="library_tracks_title">Tracks</string>
+    <string name="library_no_tracks_found">No tracks found</string>
+    <string name="library_disc">Disc %1$d</string>
+    <string name="library_no_disc">No disc</string>
+    <!-- Playlists - see PlaylistsScreen, PlaylistDetailScreen and EditPlaylistScreen -->
+    <string name="playlists_title">Playlists</string>
+    <string name="playlists_rename">Rename</string>
+    <string name="playlists_rename_title">Rename playlist</string>
+    <string name="playlists_empty_title">No playlists yet</string>
+    <string name="playlists_none_found">No playlists found</string>
+    <string name="playlists_empty_message">Create one to start collecting tracks.</string>
+    <string name="playlists_create">Create playlist</string>
+    <string name="playlist_empty_message">This playlist has no tracks yet.</string>
+    <string name="listening_history">Listening history</string>
+    <string name="recently_played_empty">Nothing has been played yet.</string>
+    <string name="most_played_empty">Nothing has been played right through yet.</string>
+    <string name="edit_playlist_save_failed">Could not save playlist</string>
+    <string name="edit_playlist_save">Save</string>
+    <string name="edit_playlist_name">Name</string>
+    <string name="edit_playlist_name_fixed">%1$s keeps its name</string>
+    <string name="edit_playlist_cover">Cover</string>
+    <string name="edit_playlist_cover_stacked">Stacked covers</string>
+    <string name="edit_playlist_cover_stacked_summary">The covers of its tracks</string>
+    <string name="edit_playlist_cover_first">First track</string>
+    <string name="edit_playlist_cover_last">Last track</string>
+    <string name="edit_playlist_cover_track">A track</string>
+    <string name="edit_playlist_cover_track_summary">Choose from the library</string>
+    <string name="edit_playlist_cover_image">An image</string>
+    <string name="edit_playlist_cover_image_summary">Choose from your photos</string>
+    <string name="edit_playlist_cover_image_chosen">From your photos</string>
+    <string name="edit_playlist_no_tracks">No tracks yet</string>
+    <string name="edit_playlist_choose_track">Choose a track</string>
+    <!-- The library's kinds, as tabs, sections and pickers name them -->
+    <string name="library_artists_title">Artists</string>
+    <string name="library_albums_title">Albums</string>
+    <string name="library_genres_title">Genres</string>
+    <string name="library_folders_title">Folders</string>
+    <string name="library_videos_title">Videos</string>
+    <string name="library_music_title">Music</string>
+    <string name="detail_appears_on">Appears on</string>
+    <string name="library_no_albums_found">No albums found</string>
+    <string name="library_no_artists_found">No artists found</string>
+    <string name="library_no_genres_found">No genres found</string>
+    <string name="library_no_folders_found">No folders found</string>
+    <string name="library_no_videos_found">No videos found</string>
+    <string name="album_empty">This album has no tracks.</string>
+    <string name="artist_empty">This artist has no tracks.</string>
+    <string name="genre_empty">This genre has no tracks.</string>
+    <string name="folder_empty_tracks">This folder has no tracks.</string>
+    <string name="folder_empty_videos">This folder has no videos.</string>
+    <string name="library_private_folder">Private Folder</string>
+    <string name="shortcuts_more">More shortcuts</string>
+    <string name="library_tabs_title">Library tabs</string>
+    <string name="library_tabs_opened_at_launch">Opened at launch</string>
+    <string name="videos_permission_title">Allow access to videos</string>
+    <string name="videos_permission_message">Sona plays the videos on your device.</string>
+    <string name="videos_permission_allow">Allow</string>
+    <string name="uncounted_title">Not counted in Most played</string>
+    <string name="uncounted_count_again">Count again</string>
+    <string name="uncounted_empty_title">Every collection counts</string>
+    <string name="uncounted_empty_message">Choose Don\'t count in Most played from a playlist\'s, album\'s, artist\'s, genre\'s or folder\'s options to keep plays from it out of Most played. Played from anywhere else, its tracks still count.</string>
+    <!-- Where a sort applies - see SortSheet -->
+    <string name="sort_this_album">This album</string>
+    <string name="sort_all_albums">All albums</string>
+    <string name="sort_this_artist">This artist</string>
+    <string name="sort_all_artists">All artists</string>
+    <string name="sort_this_genre">This genre</string>
+    <string name="sort_all_genres">All genres</string>
+    <string name="sort_this_folder">This folder</string>
+    <string name="sort_all_folders">All folders</string>
+    <string name="sort_this_playlist">This playlist</string>
+    <string name="sort_all_playlists">All playlists</string>
+    <!-- Adding to a playlist - see PlaylistTrackPicker, NewPlaylistFlow and AddCollectionsScreen -->
+    <string name="add_collections_no_other_playlists">No other playlists</string>
+    <string name="new_playlist_empty">Empty playlist</string>
+    <string name="new_playlist_empty_summary">Add tracks to it afterwards</string>
+    <string name="new_playlist_folder">From a folder</string>
+    <string name="new_playlist_folder_summary">Every track in a folder you pick</string>
+    <string name="new_playlist_file">From a playlist file</string>
+    <string name="new_playlist_file_summary">The tracks an M3U file lists</string>
+    <string name="track_picker_already_added">Already in this playlist</string>
+    <string name="track_picker_the_playlist">the playlist</string>
+    <string name="track_picker_add_title">Add track</string>
+    <string name="track_picker_add_message">It goes at the end of %1$s.</string>
+    <string name="track_picker_add_some_message">They go at the end of %1$s.</string>
+    <string name="track_picker_add">Add</string>
+    <string name="track_picker_added">Track added</string>
+    <string name="track_picker_add_failed">Could not add track</string>
+    <string name="track_picker_add_some_failed">Could not add tracks</string>
+    <string name="playlist_name_taken">A playlist with that name already exists</string>
+    <plurals name="track_picker_add_some_title">
+        <item quantity="one">Add %d track</item>
+        <item quantity="other">Add %d tracks</item>
+    </plurals>
+    <plurals name="track_picker_added_some">
+        <item quantity="one">%d track added</item>
+        <item quantity="other">%d tracks added</item>
+    </plurals>
+    <!-- Quick play - see QuickPlayButton and QuickPlaySourcePickerScreen -->
+    <string name="quick_play_shuffle_all">Shuffle all</string>
+    <string name="quick_play_play_all">Play all</string>
+    <string name="quick_play_shuffle">Shuffle %1$s</string>
+    <string name="quick_play_play">Play %1$s</string>
+    <string name="quick_play_other">Other</string>
+    <string name="quick_play_all_tracks">All tracks</string>
+    <string name="quick_play_choose_playlist">Choose a playlist</string>
+    <string name="quick_play_choose_artist">Choose an artist</string>
+    <string name="quick_play_choose_album">Choose an album</string>
+    <string name="quick_play_choose_genre">Choose a genre</string>
+    <string name="quick_play_choose_folder">Choose a folder</string>
+    <!-- Choosing a track for a cover - see EditPlaylistScreen -->
+    <string name="edit_playlist_in_playlist">In this playlist</string>
+    <string name="edit_playlist_all_tracks">All tracks</string>
+</resources>

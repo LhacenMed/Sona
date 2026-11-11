@@ -9,6 +9,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.LibraryContent
@@ -26,6 +27,7 @@ import com.lhacenmed.sona.feature.library.FolderRow
 import com.lhacenmed.sona.feature.library.GenreRow
 import com.lhacenmed.sona.feature.library.LibraryList
 import com.lhacenmed.sona.feature.library.PlaylistRow
+import com.lhacenmed.sona.feature.library.R
 import com.lhacenmed.sona.feature.library.filterItems
 import com.lhacenmed.sona.feature.library.searchEmptyMessage
 import com.lhacenmed.sona.feature.library.searchedFor
@@ -55,7 +57,7 @@ data class QuickPlaySourcePickerScreen(val kind: QuickPlaySourceKind) : Screen {
             SonaTopAppBar(
                 title = kind.pickerTitle,
                 onNavigateBack = navigator::back,
-                actions = listOf(TopBarAction(label = "Search", icon = SonaIcons.Search) { searchQuery = "" }),
+                actions = listOf(TopBarAction(label = stringResource(R.string.library_search), icon = SonaIcons.Search) { searchQuery = "" }),
                 search = searchQuery?.let { query ->
                     TopBarSearch(
                         query = query,
@@ -69,7 +71,7 @@ data class QuickPlaySourcePickerScreen(val kind: QuickPlaySourceKind) : Screen {
                     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
                     PickerList(
                         content = playlists.filterItems { it.trackCount > 0 }.searchedFor(searchQuery) { listOf(it.name) },
-                        emptyTitle = "No playlists found",
+                        emptyTitle = stringResource(R.string.playlists_none_found),
                         searchQuery = searchQuery,
                         loadingIcon = kind.icon,
                         key = { it.id },
@@ -91,7 +93,7 @@ data class QuickPlaySourcePickerScreen(val kind: QuickPlaySourceKind) : Screen {
                     val sections by viewModel.artistSections.collectAsStateWithLifecycle()
                     PickerList(
                         content = artists.filterItems { it.trackCount > 0 }.searchedFor(searchQuery) { listOf(it.name) },
-                        emptyTitle = "No artists found",
+                        emptyTitle = stringResource(R.string.library_no_artists_found),
                         searchQuery = searchQuery,
                         loadingIcon = kind.icon,
                         key = { it.id },
@@ -114,7 +116,7 @@ data class QuickPlaySourcePickerScreen(val kind: QuickPlaySourceKind) : Screen {
                     val sections by viewModel.albumSections.collectAsStateWithLifecycle()
                     PickerList(
                         content = albums.searchedFor(searchQuery) { listOf(it.title, it.artistName) },
-                        emptyTitle = "No albums found",
+                        emptyTitle = stringResource(R.string.library_no_albums_found),
                         searchQuery = searchQuery,
                         loadingIcon = kind.icon,
                         key = { it.id },
@@ -137,7 +139,7 @@ data class QuickPlaySourcePickerScreen(val kind: QuickPlaySourceKind) : Screen {
                     val sections by viewModel.genreSections.collectAsStateWithLifecycle()
                     PickerList(
                         content = genres.searchedFor(searchQuery) { listOf(it.name) },
-                        emptyTitle = "No genres found",
+                        emptyTitle = stringResource(R.string.library_no_genres_found),
                         searchQuery = searchQuery,
                         loadingIcon = kind.icon,
                         key = { it.id },
@@ -160,7 +162,7 @@ data class QuickPlaySourcePickerScreen(val kind: QuickPlaySourceKind) : Screen {
                     val sections by viewModel.folderSections.collectAsStateWithLifecycle()
                     PickerList(
                         content = folders.searchedFor(searchQuery) { listOf(it.name) },
-                        emptyTitle = "No folders found",
+                        emptyTitle = stringResource(R.string.library_no_folders_found),
                         searchQuery = searchQuery,
                         loadingIcon = kind.icon,
                         key = { it.path },
@@ -183,13 +185,15 @@ data class QuickPlaySourcePickerScreen(val kind: QuickPlaySourceKind) : Screen {
 }
 
 private val QuickPlaySourceKind.pickerTitle: String
-    get() = when (this) {
-        QuickPlaySourceKind.PLAYLIST -> "Choose a playlist"
-        QuickPlaySourceKind.ARTIST -> "Choose an artist"
-        QuickPlaySourceKind.ALBUM -> "Choose an album"
-        QuickPlaySourceKind.GENRE -> "Choose a genre"
-        QuickPlaySourceKind.FOLDER -> "Choose a folder"
-    }
+    @Composable get() = stringResource(
+        when (this) {
+            QuickPlaySourceKind.PLAYLIST -> R.string.quick_play_choose_playlist
+            QuickPlaySourceKind.ARTIST -> R.string.quick_play_choose_artist
+            QuickPlaySourceKind.ALBUM -> R.string.quick_play_choose_album
+            QuickPlaySourceKind.GENRE -> R.string.quick_play_choose_genre
+            QuickPlaySourceKind.FOLDER -> R.string.quick_play_choose_folder
+        },
+    )
 
 /**
  * A picker's list, reached from the settings - so the library has already loaded and been permitted.

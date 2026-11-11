@@ -7,8 +7,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
+import com.lhacenmed.sona.core.designsystem.R as DesignR
 import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
+import com.lhacenmed.sona.feature.library.R
 
 /**
  * Asks for a playlist's name, whether it is being created or renamed.
@@ -22,7 +25,6 @@ import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 internal fun isPlaylistNameTaken(name: String, takenNames: List<String>): Boolean =
     takenNames.any { it.equals(name.trim(), ignoreCase = true) }
 
-internal const val PLAYLIST_NAME_TAKEN_MESSAGE = "A playlist with that name already exists"
 
 @Composable
 internal fun PlaylistNameDialog(
@@ -36,13 +38,15 @@ internal fun PlaylistNameDialog(
     var name by remember { mutableStateOf(initialName) }
     val trimmed = name.trim()
     val isTaken = isPlaylistNameTaken(trimmed, takenNames)
-    val error = if (isTaken) PLAYLIST_NAME_TAKEN_MESSAGE else null
+    val error = if (isTaken) stringResource(R.string.playlist_name_taken) else null
+    // Read here rather than inside the buttons: they are built outside composition.
+    val cancelLabel = stringResource(DesignR.string.confirmation_dialog_cancel)
 
     SonaDialog(
         onDismissRequest = onDismiss,
         title = dialogTitle,
         buttons = {
-            actionButton(label = "Cancel", onClick = onDismiss)
+            actionButton(label = cancelLabel, onClick = onDismiss)
             actionButton(
                 label = confirmLabel,
                 onClick = { onConfirm(trimmed) },

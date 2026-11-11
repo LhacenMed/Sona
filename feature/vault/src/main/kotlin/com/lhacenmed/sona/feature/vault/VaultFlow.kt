@@ -1,6 +1,7 @@
 package com.lhacenmed.sona.feature.vault
 
 import androidx.activity.compose.LocalActivity
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,15 +16,16 @@ import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.core.vault.VaultState
+import com.lhacenmed.sona.feature.vault.R
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.first
 
 /** What a PIN is being chosen for - which names its steps, and decides where confirming it leads. */
-internal enum class PinPurpose(val title: String) {
-    CREATE("Create Private Folder"),
-    RESET("Forgot PIN"),
-    CHANGE("Change PIN"),
+internal enum class PinPurpose(@StringRes val titleRes: Int) {
+    CREATE(R.string.vault_create),
+    RESET(R.string.vault_forgot_pin),
+    CHANGE(R.string.vault_change_pin),
 }
 
 /**

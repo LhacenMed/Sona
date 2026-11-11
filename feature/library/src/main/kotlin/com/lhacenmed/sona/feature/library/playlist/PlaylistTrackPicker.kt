@@ -10,6 +10,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.data.itemsOrEmpty
@@ -22,6 +24,9 @@ import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDia
 import com.lhacenmed.sona.core.designsystem.component.selectAllAction
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.navigation.LocalNavigator
+import com.lhacenmed.sona.feature.library.R
+import com.lhacenmed.sona.feature.library.options.OptionsAction
+import com.lhacenmed.sona.feature.library.options.label
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.selection.SelectionOptionsHost
 import com.lhacenmed.sona.feature.library.selection.toLibraryTopBarSelection
@@ -62,9 +67,9 @@ internal fun PlaylistTrackPicker(
     // The tracks Add worked out, waiting on the user to confirm adding them.
     var confirmingTrackIds by remember { mutableStateOf<List<Long>>(emptyList()) }
 
-    val addAction = TopBarAction(label = "Add to playlist", icon = SonaIcons.Check) {
+    val addAction = TopBarAction(label = OptionsAction.PLAYLIST_ADD.label, icon = SonaIcons.Check) {
         viewModel.resolveAddition(playlistId, selection.selectedKeys.filterIsInstance<SelectionKey>()) { trackIds ->
-            if (trackIds.isEmpty()) context.toast("Already in this playlist") else confirmingTrackIds = trackIds
+            if (trackIds.isEmpty()) context.toast(context.getString(R.string.track_picker_already_added)) else confirmingTrackIds = trackIds
         }
     }
 
@@ -75,7 +80,7 @@ internal fun PlaylistTrackPicker(
                     title = title,
                 drawsBackground = false,
                     onNavigateBack = navigator::back,
-                    actions = listOf(TopBarAction(label = "Search", icon = SonaIcons.Search) { onSearchQueryChange("") }),
+                    actions = listOf(TopBarAction(label = stringResource(R.string.library_search), icon = SonaIcons.Search) { onSearchQueryChange("") }),
                     search = searchQuery?.let { query ->
                         TopBarSearch(
                             query = query,
@@ -109,13 +114,13 @@ internal fun PlaylistTrackPicker(
     if (confirmingTrackIds.isNotEmpty()) {
         val trackIds = confirmingTrackIds
         val isSingle = trackIds.size == 1
-        val playlistName = playlists.itemsOrEmpty.find { it.id == playlistId }?.name ?: "the playlist"
+        val playlistName = playlists.itemsOrEmpty.find { it.id == playlistId }?.name ?: stringResource(R.string.track_picker_the_playlist)
         SonaConfirmationDialog(
-            title = if (isSingle) "Add track" else "Add ${trackIds.size} tracks",
-            message = if (isSingle) "It goes at the end of $playlistName." else "They go at the end of $playlistName.",
-            confirmLabel = "Add",
-            successMessage = if (isSingle) "Track added" else "${trackIds.size} tracks added",
-            failureMessage = if (isSingle) "Could not add track" else "Could not add tracks",
+            title = if (isSingle) stringResource(R.string.track_picker_add_title) else pluralStringResource(R.plurals.track_picker_add_some_title, trackIds.size, trackIds.size),
+            message = stringResource(if (isSingle) R.string.track_picker_add_message else R.string.track_picker_add_some_message, playlistName),
+            confirmLabel = stringResource(R.string.track_picker_add),
+            successMessage = if (isSingle) stringResource(R.string.track_picker_added) else pluralStringResource(R.plurals.track_picker_added_some, trackIds.size, trackIds.size),
+            failureMessage = stringResource(if (isSingle) R.string.track_picker_add_failed else R.string.track_picker_add_some_failed),
             onDismiss = { confirmingTrackIds = emptyList() },
             operation = { onFinished ->
                 viewModel.addToPlaylist(playlistId, trackIds) { succeeded ->

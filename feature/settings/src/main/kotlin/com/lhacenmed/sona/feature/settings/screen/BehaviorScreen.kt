@@ -12,6 +12,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.model.FastScrollTouchArea
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.library.R as LibraryR
 import com.lhacenmed.sona.feature.settings.R
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsActionItem
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsChoiceItem
@@ -40,7 +41,7 @@ data object BehaviorScreen : Screen {
         SettingsList {
             SettingsSection(stringResource(R.string.behavior_display_section)) {
                 SettingsNavigationItem(
-                    title = stringResource(R.string.library_tabs_title),
+                    title = stringResource(LibraryR.string.library_tabs_title),
                     summary = stringResource(R.string.library_tabs_summary),
                     onClick = { navigator.go(LibraryTabsScreen) },
                 )

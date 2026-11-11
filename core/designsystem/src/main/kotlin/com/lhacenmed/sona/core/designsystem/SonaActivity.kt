@@ -7,6 +7,7 @@ import android.view.ViewTreeObserver
 import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
@@ -16,7 +17,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.compositionContext
 import androidx.compose.ui.platform.createLifecycleAwareWindowRecomposer
-import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.lhacenmed.sona.core.designsystem.effect.ApplyRefreshRate
 import com.lhacenmed.sona.core.designsystem.effect.ProvideSonaHaptics
@@ -56,8 +56,11 @@ const val MaxFirstFrameHoldMillis = 1_200L
  * check it one by one. And the content set with [setSonaContent] asks the display for its fastest mode
  * when that is forced, gives its haptics only while they are on, rubber-bands every list at its ends, and
  * keeps each finger with the drag that claimed it until it lifts - see [holdClaimedFingers].
+ *
+ * An AppCompat activity, so it reads in the language picked in Settings on every Android version - see
+ * `AppCompatDelegate.setApplicationLocales`.
  */
-abstract class SonaActivity : FragmentActivity() {
+abstract class SonaActivity : AppCompatActivity() {
 
     private var hasStartedActivity = false
 

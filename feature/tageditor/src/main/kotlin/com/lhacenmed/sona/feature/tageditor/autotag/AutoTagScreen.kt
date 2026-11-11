@@ -18,6 +18,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -39,6 +42,7 @@ import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.feature.explorer.FolderPickerSheet
 import com.lhacenmed.sona.feature.explorer.FolderPickerTab
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.tageditor.R
 import com.lhacenmed.sona.feature.tageditor.TagEditorScreen
 import com.lhacenmed.sona.feature.tageditor.rememberFileChangeRequest
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
@@ -80,7 +84,7 @@ private fun AutoTagSetup(viewModel: AutoTagViewModel) {
     SonaExtendedFloatingActionButtons(
         listOf(
             ExtendedFloatingActionButtonContent(
-                label = "Find tags",
+                label = stringResource(R.string.autotag_find_tags),
                 icon = SonaIcons.AutoFixHigh,
                 onClick = viewModel::start,
                 isPrimary = true,
@@ -90,7 +94,7 @@ private fun AutoTagSetup(viewModel: AutoTagViewModel) {
     )
 
     Column(modifier = Modifier.fillMaxSize()) {
-        SonaTopAppBar(title = "Auto-tag", onNavigateBack = navigator::back)
+        SonaTopAppBar(title = stringResource(R.string.autotag_title), onNavigateBack = navigator::back)
         FastScroller(scrollState, Modifier.fillMaxSize()) { overscrollEffect ->
             Column(
                 modifier = Modifier
@@ -98,7 +102,7 @@ private fun AutoTagSetup(viewModel: AutoTagViewModel) {
                     .verticalScroll(scrollState, overscrollEffect = overscrollEffect)
                     .padding(bottom = LocalBottomContentPadding.current),
             ) {
-                ColumnSection(title = "Tracks") {
+                ColumnSection(title = stringResource(R.string.autotag_tracks_section)) {
                     TracksRow(
                         trackCount = tracks.size,
                         folders = folders,
@@ -107,12 +111,12 @@ private fun AutoTagSetup(viewModel: AutoTagViewModel) {
                     )
                 }
                 HorizontalDivider()
-                ColumnSection(title = "Find") {
+                ColumnSection(title = stringResource(R.string.autotag_find_section)) {
                     FindChoices(choices = choices, onChange = { viewModel.choices = it })
                     AdvancedChoices(choices = choices, onChange = { viewModel.choices = it })
                 }
                 Text(
-                    "The best match is picked for every track. Nothing is written until you have looked over what was found and saved it.",
+                    stringResource(R.string.autotag_find_message),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = SonaComponentStyle.ContentHorizontalPadding, vertical = 16.dp),
@@ -122,11 +126,12 @@ private fun AutoTagSetup(viewModel: AutoTagViewModel) {
     }
 
     if (isChoosingFolders) {
+        val resources = LocalContext.current.resources
         FolderPickerSheet(
-            title = "Tracks to tag",
-            tabs = listOf(FolderPickerTab("Tracks", viewModel.coverableTracks.value)),
+            title = stringResource(R.string.autotag_pick_title),
+            tabs = listOf(FolderPickerTab(stringResource(R.string.autotag_pick_tab), viewModel.coverableTracks.value)),
             initiallyPicked = viewModel.picked,
-            confirmLabel = { count -> "Tag ${tracksLabel(count)}" },
+            confirmLabel = { count -> resources.getQuantityString(R.plurals.autotag_tag_tracks, count, count) },
             onConfirm = viewModel::keep,
             onDismissRequest = { isChoosingFolders = false },
         )
@@ -145,7 +150,7 @@ private fun AutoTagReview(viewModel: AutoTagViewModel, session: AutoTagSession) 
     SonaExtendedFloatingActionButtons(
         listOf(
             ExtendedFloatingActionButtonContent(
-                label = "Save ${tracksLabel(picked.size)}",
+                label = pluralStringResource(R.plurals.autotag_save_tracks, picked.size, picked.size),
                 icon = SonaIcons.Save,
                 onClick = { requestSave(picked.map { it.track }) },
                 isPrimary = true,
@@ -159,7 +164,7 @@ private fun AutoTagReview(viewModel: AutoTagViewModel, session: AutoTagSession) 
         // bar, shortcuts and tabs the same way - so the rows scrolling under the progress never read as part of it.
         Column(modifier = Modifier.topBarBackground()) {
             SonaTopAppBar(
-                title = "Auto-tag",
+                title = stringResource(R.string.autotag_title),
                 drawsBackground = false,
                 onNavigateBack = navigator::back,
                 // Not the selection bar a list's own selection takes: back would drop every pick the run made.
@@ -171,6 +176,9 @@ private fun AutoTagReview(viewModel: AutoTagViewModel, session: AutoTagSession) 
                 onFinish = { if (picked.isEmpty()) viewModel.discard() else isConfirmingFinish = true },
             )
         }
+        // Read here, for the list's builder, which runs outside composition.
+        val resources = LocalContext.current.resources
+        val tryAgainLabel = stringResource(R.string.autotag_try_again)
         FastScroller(listState, Modifier.fillMaxSize()) { overscrollEffect ->
             LazyColumn(
                 state = listState,
@@ -182,11 +190,11 @@ private fun AutoTagReview(viewModel: AutoTagViewModel, session: AutoTagSession) 
                 groups.forEachIndexed { index, (outcome, items) ->
                     section(
                         key = outcome.name,
-                        title = "${outcome.title} · ${items.size}",
+                        title = resources.getString(R.string.autotag_outcome_count, resources.getString(outcome.titleRes), items.size),
                         state = sections,
                         hasDividerAbove = index > 0,
                         actions = listOfNotNull(
-                            TopBarAction(label = "Try again", icon = SonaIcons.Refresh, onClick = viewModel::retryUnreachable)
+                            TopBarAction(label = tryAgainLabel, icon = SonaIcons.Refresh, onClick = viewModel::retryUnreachable)
                                 .takeIf { outcome == AutoTagOutcome.UNREACHABLE && session.phase == AutoTagPhase.REVIEWING },
                         ),
                     ) {
@@ -200,16 +208,19 @@ private fun AutoTagReview(viewModel: AutoTagViewModel, session: AutoTagSession) 
     }
 
     if (isConfirmingFinish) {
+        // Read here rather than inside the buttons: they are built outside composition.
+        val finishWithoutSavingButton0 = stringResource(R.string.autotag_keep_reviewing)
+        val finishWithoutSavingButton1 = stringResource(R.string.autotag_finish)
         SonaDialog(
             onDismissRequest = { isConfirmingFinish = false },
-            title = "Finish without saving?",
+            title = stringResource(R.string.autotag_finish_title),
             buttons = {
-                actionButton(label = "Keep reviewing", onClick = { isConfirmingFinish = false })
-                actionButton(label = "Finish", onClick = viewModel::discard)
+                actionButton(label = finishWithoutSavingButton0, onClick = { isConfirmingFinish = false })
+                actionButton(label = finishWithoutSavingButton1, onClick = viewModel::discard)
             },
         ) {
             Text(
-                "${tracksLabel(picked.size)} picked to be saved will keep their tags as they are.",
+                pluralStringResource(R.plurals.autotag_finish_message, picked.size, picked.size),
                 style = MaterialTheme.typography.bodyMedium,
             )
         }

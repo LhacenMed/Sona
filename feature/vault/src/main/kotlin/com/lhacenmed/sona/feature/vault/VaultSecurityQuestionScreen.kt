@@ -18,11 +18,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.vault.R
 
 /**
  * Creating the Private Folder's last step: a security question and answer to get back in with if the PIN
@@ -41,7 +43,7 @@ internal data object VaultSecurityQuestionScreen : Screen {
         var answer by remember { mutableStateOf("") }
         var isCreating by remember { mutableStateOf(false) }
 
-        VaultStepScaffold(title = PinPurpose.CREATE.title) {
+        VaultStepScaffold(title = stringResource(PinPurpose.CREATE.titleRes)) {
             val pin = flow.chosenPin
             if (pin == null) {
                 // Restored without the PIN it creates the folder with, which only memory held.
@@ -49,9 +51,9 @@ internal data object VaultSecurityQuestionScreen : Screen {
                 return@VaultStepScaffold
             }
             Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Set a security question", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.vault_set_question), style = MaterialTheme.typography.titleMedium)
                 Text(
-                    "Answering it lets you set a new PIN if you forget this one.",
+                    stringResource(R.string.vault_question_message),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -59,7 +61,7 @@ internal data object VaultSecurityQuestionScreen : Screen {
                 OutlinedTextField(
                     value = question,
                     onValueChange = { question = it },
-                    label = { Text("Question") },
+                    label = { Text(stringResource(R.string.vault_question)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -67,7 +69,7 @@ internal data object VaultSecurityQuestionScreen : Screen {
                 OutlinedTextField(
                     value = answer,
                     onValueChange = { answer = it },
-                    label = { Text("Answer") },
+                    label = { Text(stringResource(R.string.vault_answer)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -82,7 +84,7 @@ internal data object VaultSecurityQuestionScreen : Screen {
                     },
                     shapes = buttonPressShapes(),
                     enabled = !isCreating && question.isNotBlank() && answer.isNotBlank(),
-                ) { Text("Create Private Folder") }
+                ) { Text(stringResource(PinPurpose.CREATE.titleRes)) }
             }
         }
     }

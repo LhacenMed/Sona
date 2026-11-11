@@ -161,10 +161,12 @@ android {
         resValues = true // required for resValue() in build types (AGP 8+)
     }
 
-    // Sona is written in English only, so the libraries' translations of their own few strings into some
-    // eighty languages are left out with it - the whole app reads in one language, and ~0.7 MB lighter.
+    // The languages Sona is in: English, and every one a module has strings.xml translated into - as Weblate commits
+    // them, see docs/TRANSLATING.md. The libraries' own translations into others are left out, so the whole app reads in
+    // one language. The list Android shows - in the language picker and the system's own - is generated from these.
     androidResources {
-        localeFilters += "en"
+        localeFilters += listOf("en") + translatedLocales()
+        generateLocaleConfig = true
     }
 
     packaging {
@@ -271,3 +273,13 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 }
+
+/** Every language a module's strings.xml is translated into, by its resource folder's qualifier - `values-pt-rBR` is pt-rBR. */
+fun translatedLocales(): List<String> =
+    rootDir.listFiles().orEmpty().flatMap { module -> module.walkTopDown().maxDepth(2).filter { it.name == "src" }.toList() }
+        .flatMap { src -> src.resolve("main/res").listFiles().orEmpty().toList() }
+        .filter { it.name.startsWith("values-") && it.resolve("strings.xml").isFile }
+        .map { it.name.removePrefix("values-") }
+        .distinct()
+        .sorted()
+

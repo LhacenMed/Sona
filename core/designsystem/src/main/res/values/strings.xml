@@ -6,8 +6,11 @@
     <string name="top_bar_back">Back</string>
     <string name="top_bar_close_search">Close search</string>
     <string name="top_bar_search_hint">Search</string>
+    <string name="top_bar_select_all">Select all</string>
+    <string name="top_bar_deselect_all">Deselect all</string>
     <string name="confirmation_dialog_cancel">Cancel</string>
     <string name="dialog_reset">Reset</string>
+    <string name="dialog_ok">OK</string>
     <string name="settings_dialog_save">Save</string>
     <string name="settings_row_default">Default</string>
     <string name="fab_menu_open">Show choices</string>
@@ -87,6 +90,41 @@
     <string name="palette_candy">Candy</string>
     <string name="palette_rainbow">Rainbow</string>
 
+    <!-- A list's rows - see SonaListRow -->
+    <string name="list_row_more_options">More options</string>
+    <string name="list_row_reorder">Reorder</string>
+    <string name="list_row_pinned">Pinned</string>
+
+    <!-- A settings row's download, and a recent search - see SettingsItems -->
+    <string name="settings_download">Download</string>
+    <string name="settings_download_retry">Try again</string>
+    <string name="settings_download_stop">Stop downloading</string>
+    <string name="settings_download_remove">Remove</string>
+    <string name="settings_recent_search_forget">Forget</string>
+
+    <!-- Every list's sort sheet - see SonaSortSheet -->
+    <string name="sort_action">Sort</string>
+    <string name="sort_by">Sort by</string>
+    <string name="sort_direction">Direction</string>
+    <string name="sort_new_tracks">New tracks</string>
+    <string name="sort_apply_to">Apply to</string>
+    <string name="sort_custom">Custom</string>
+    <string name="sort_name">Name</string>
+    <string name="sort_artist">Artist</string>
+    <string name="sort_album">Album</string>
+    <string name="sort_year">Year</string>
+    <string name="sort_duration">Duration</string>
+    <string name="sort_track_number">Track number</string>
+    <string name="sort_track_count">Track count</string>
+    <string name="sort_album_count">Album count</string>
+    <string name="sort_date">Date</string>
+    <string name="sort_date_added">Date added</string>
+    <string name="sort_play_count">Play count</string>
+    <string name="sort_ascending">Ascending</string>
+    <string name="sort_descending">Descending</string>
+    <string name="sort_new_tracks_bottom">At the bottom</string>
+    <string name="sort_new_tracks_top">At the top</string>
+
     <!-- A section's heading -->
     <string name="section_collapse">Collapse section</string>
     <string name="section_expand">Expand section</string>
@@ -100,4 +138,9 @@
     <string name="player_control_next">Next</string>
     <string name="player_control_show_duration">Show the whole length</string>
     <string name="player_control_show_remaining">Show the time left</string>
+    <!-- The app's own lists - see BuiltInLists -->
+    <string name="built_in_favorites">Favorites</string>
+    <string name="built_in_recently_played">Recently played</string>
+    <string name="built_in_recently_played_short">Recent</string>
+    <string name="built_in_most_played">Most played</string>
 </resources>

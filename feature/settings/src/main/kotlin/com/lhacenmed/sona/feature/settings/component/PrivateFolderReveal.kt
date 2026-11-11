@@ -9,12 +9,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.component.overscroll.ArmedTriggerReveal
 import com.lhacenmed.sona.core.designsystem.component.overscroll.OverscrollEdge
 import com.lhacenmed.sona.core.designsystem.component.overscroll.OverscrollTrigger
 import com.lhacenmed.sona.core.designsystem.motion.RubberBandOverscroll
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.feature.settings.R
 
 /** How far past the list's top a pull must go before letting go opens the Private Folder. */
 private val RevealThreshold = 130.dp
@@ -38,7 +40,7 @@ internal fun BoxScope.PrivateFolderOverscrollReveal(overscroll: RubberBandOversc
         ArmedTriggerReveal(reveal) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(SonaIcons.Lock, contentDescription = null)
-                Text("Private Folder", modifier = Modifier.padding(start = 8.dp), style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.settings_private_folder), modifier = Modifier.padding(start = 8.dp), style = MaterialTheme.typography.labelLarge)
             }
         }
     }

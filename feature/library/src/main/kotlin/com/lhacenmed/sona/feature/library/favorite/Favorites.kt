@@ -1,6 +1,6 @@
 package com.lhacenmed.sona.feature.library.favorite
 
-import com.lhacenmed.sona.core.database.FAVORITES_PLAYLIST_ID
+import com.lhacenmed.sona.core.model.FAVORITES_PLAYLIST_ID
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.playbackParent
 import com.lhacenmed.sona.feature.library.options.OptionsTarget

@@ -36,7 +36,7 @@ internal class Diagnostics(val version: String, val device: String, val log: Str
         fun of(context: Context, log: String): Diagnostics {
             val build = context.installedBuild()
             return Diagnostics(
-                version = listOfNotNull(build.versionName, build.variant?.label).joinToString(" "),
+                version = listOfNotNull(build.versionName, build.variant?.id).joinToString(" "),
                 device = "${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
                 log = log,
             )

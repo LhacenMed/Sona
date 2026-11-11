@@ -9,6 +9,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.datastore.CoverMode
+import com.lhacenmed.sona.core.designsystem.R as DesignR
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDialog
 import com.lhacenmed.sona.core.model.FolderView
 import com.lhacenmed.sona.core.model.sort.SortDirection
@@ -105,8 +106,8 @@ data object ContentScreen : Screen {
                     title = stringResource(R.string.sort_new_tracks_title),
                     // In SortDirection's order, so an option's index is its direction.
                     options = listOf(
-                        stringResource(R.string.sort_new_tracks_bottom),
-                        stringResource(R.string.sort_new_tracks_top),
+                        stringResource(DesignR.string.sort_new_tracks_bottom),
+                        stringResource(DesignR.string.sort_new_tracks_top),
                     ),
                     selectedIndex = newTracksDirection.ordinal,
                     onSelect = { viewModel.setNewTracksDirection(SortDirection.entries[it]) },
