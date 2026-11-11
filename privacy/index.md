@@ -4,7 +4,7 @@ title: Privacy Policy
 
 # Privacy Policy
 
-_Last updated: 2026-10-30_
+Last updated: 2026-10-30
 
 Sona does not collect, sell or share personal data. It has no accounts of its own, no analytics, no advertising and no crash reporting. This document lists everything the app stores, and every time it uses the network.
 
