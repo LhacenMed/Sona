@@ -1,35 +1,3 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- The new-update sheet -->
-    <string name="update_new_available"></string>
-    <string name="update_notes_unavailable"></string>
-    <string name="update_action"></string>
-    <string name="update_variant"></string>
-    <string name="update_variant_recommended"></string>
-    <string name="update_variant_unsupported"></string>
-    <!-- The download and install dialogs -->
-    <string name="update_download_title"></string>
-    <string name="update_download_title_artifact"></string>
-    <string name="update_download_progress"></string>
-    <string name="update_download_size"></string>
-    <string name="update_download_speed"></string>
-    <string name="update_downloaded"></string>
-    <string name="update_install"></string>
-    <string name="update_failed_title"></string>
-    <string name="update_no_apk"></string>
-    <string name="update_offline"></string>
-    <string name="update_download_damaged"></string>
-    <string name="update_download_invalid"></string>
-    <!-- The download notification -->
-    <string name="update_connecting"></string>
-    <string name="update_stop"></string>
-    <string name="update_notif_title"></string>
-    <string name="update_notif_ready"></string>
-    <!-- The new-update notification -->
-    <string name="update_notification_title"></string>
-    <string name="update_notification_text"></string>
-    <string name="update_notification_download"></string>
-    <!-- Downloading an update - see ApkDownloader and ApkVariant -->
-    <string name="update_download_failed"></string>
-    <string name="update_variant_universal"></string>
-</resources>
+    </resources>
