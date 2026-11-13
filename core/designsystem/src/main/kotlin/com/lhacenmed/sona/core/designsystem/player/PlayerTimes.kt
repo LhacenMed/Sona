@@ -7,14 +7,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -103,6 +106,20 @@ fun PlayerEndTime(
             )
             .padding(PressMargin),
     )
+}
+
+/**
+ * As wide as a time of a [durationMs]-long track ever gets - [isEndTime], with the end's "−" - for a time that stands
+ * beside other controls to keep them where they are as it counts: its figures are all one width, and none has more of
+ * them than the length itself.
+ */
+@Composable
+fun playbackTimeWidth(durationMs: Long, isEndTime: Boolean): Dp {
+    val measurer = rememberTextMeasurer()
+    val style = playerTimeStyle()
+    val widest = (if (isEndTime) Minus else "") + formatPlaybackTime(durationMs)
+    val widthPx = remember(measurer, widest, style) { measurer.measure(widest, style, maxLines = 1).size.width }
+    return with(LocalDensity.current) { widthPx.toDp() }
 }
 
 /** How far a press on the end time shows round its text. */

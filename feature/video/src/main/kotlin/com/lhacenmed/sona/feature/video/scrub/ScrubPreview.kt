@@ -191,6 +191,7 @@ internal fun ScrubPill(scrub: VideoScrubState, isVisible: Boolean, durationMs: L
                 drawSeekLine(
                     chapterStarts = chapterStarts,
                     played = fractionOf(scrub.targetMs, durationMs),
+                    downloaded = null,
                     scrubbed = null,
                     thumb = null,
                     thumbWidth = 0f,

@@ -46,6 +46,8 @@ import com.lhacenmed.sona.feature.playback.R as PlaybackR
 /** What the user chose in this player, as long as it is open - stored too where a setting says to keep it. */
 data class VideoSession(
     val orientation: VideoOrientation,
+    /** The way the rotation button first held the screen, since it last turned with the device - see [VideoOrientation.next]. */
+    val firstHeldOrientation: VideoOrientation? = null,
     val aspect: VideoAspect,
     /** The controls locked away, so nothing on the screen is pressed by accident. */
     val isLocked: Boolean = false,
@@ -298,10 +300,15 @@ class VideoPlayerViewModel @Inject constructor(
         context.toast(aspect.labelRes)
     }
 
-    /** Moves on to the next way of standing, for as long as this player is open - and says which, as a toast. */
-    fun onCycleOrientation() {
-        val orientation = _session.value.orientation.next()
-        _session.update { it.copy(orientation = orientation) }
+    /**
+     * Moves the rotation button on, for as long as this player is open - from turning, to held the way the screen stands
+     * now, [isLandscape] or not, to held the other way, and back to turning - and says which, as a toast.
+     */
+    fun onCycleOrientation(isLandscape: Boolean) {
+        val session = _session.value
+        val orientation = session.orientation.next(isLandscape, session.firstHeldOrientation)
+        val firstHeld = if (session.orientation == VideoOrientation.AUTO) orientation else session.firstHeldOrientation
+        _session.update { it.copy(orientation = orientation, firstHeldOrientation = firstHeld) }
         context.toast(orientation.labelRes)
     }
 

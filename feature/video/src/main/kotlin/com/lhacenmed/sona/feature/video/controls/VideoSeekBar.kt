@@ -8,6 +8,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Slider
 import androidx.compose.runtime.Composable
@@ -30,6 +31,7 @@ import androidx.compose.ui.unit.lerp
 import com.lhacenmed.sona.core.designsystem.player.PlayerElapsedTime
 import com.lhacenmed.sona.core.designsystem.player.PlayerEndTime
 import com.lhacenmed.sona.core.designsystem.player.PlayerTimes
+import com.lhacenmed.sona.core.designsystem.player.playbackTimeWidth
 import com.lhacenmed.sona.core.model.VideoChapter
 import com.lhacenmed.sona.core.model.indexAt
 import com.lhacenmed.sona.feature.video.VideoPlayerTokens
@@ -53,6 +55,7 @@ internal fun VideoSeekBar(
     scrub: VideoScrubState,
     replayHeights: FloatArray?,
     chapters: List<VideoChapter>,
+    downloadedFraction: Float?,
     modifier: Modifier = Modifier,
 ) {
     val shownMs = scrub.shownPositionMs(position.positionMs)
@@ -118,6 +121,7 @@ internal fun VideoSeekBar(
                 drawSeekLine(
                     chapterStarts = chapterStarts,
                     played = fractionOf(playedMs, durationMs),
+                    downloaded = downloadedFraction,
                     scrubbed = thumb.takeIf { scrub.isActive },
                     thumb = thumb,
                     thumbWidth = thumbSizeOf(progress, snapProgress.value).width.toPx(),
@@ -140,8 +144,12 @@ internal fun VideoSeekBar(
 
 /** How far the video is - or a scrub has reached, as the bar stands. */
 @Composable
-internal fun VideoElapsedTime(position: VideoPosition, scrub: VideoScrubState, modifier: Modifier = Modifier) {
-    PlayerElapsedTime(scrub.shownPositionMs(position.positionMs), VideoPlayerTokens.ContentColor, modifier)
+internal fun VideoElapsedTime(position: VideoPosition, durationMs: Long, scrub: VideoScrubState, modifier: Modifier = Modifier) {
+    PlayerElapsedTime(
+        positionMs = scrub.shownPositionMs(position.positionMs),
+        color = VideoPlayerTokens.ContentColor,
+        modifier = modifier.width(playbackTimeWidth(durationMs, isEndTime = false)),
+    )
 }
 
 /** The time at the seek bar's end, from where the bar stands - see [PlayerEndTime]. */
@@ -154,7 +162,14 @@ internal fun VideoEndTime(
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    PlayerEndTime(scrub.shownPositionMs(position.positionMs), durationMs, showsTotalDuration, onToggle, VideoPlayerTokens.ContentColor, modifier)
+    PlayerEndTime(
+        positionMs = scrub.shownPositionMs(position.positionMs),
+        durationMs = durationMs,
+        showsTotalDuration = showsTotalDuration,
+        onToggle = onToggle,
+        color = VideoPlayerTokens.ContentColor,
+        modifier = modifier.width(playbackTimeWidth(durationMs, isEndTime = true)),
+    )
 }
 
 /** Both times, beneath the seek bar - see [PlayerTimes]. */
@@ -185,11 +200,13 @@ internal fun chapterStartsOf(chapters: List<VideoChapter>, durationMs: Long): Li
  * The seek line, every place along it a fraction of it from 0 to 1: a piece for each chapter starting at [chapterStarts] - the
  * whole line, for none - parted by a gap, and cleared around the [thumb], [thumbWidth] wide, where there is one: from every
  * piece it reaches, a chapter's end and the next one's start alike. Each piece, [heightOf] its chapter tall, is filled as far as
- * a scrub has [scrubbed] to, then as far as the video has [played]: from the right where text runs that way.
+ * the video is [downloaded], where it plays as it downloads, then as far as a scrub has [scrubbed] to, then as far as it has
+ * [played]: from the right where text runs that way.
  */
 internal fun DrawScope.drawSeekLine(
     chapterStarts: List<Float>,
     played: Float,
+    downloaded: Float?,
     scrubbed: Float?,
     thumb: Float?,
     thumbWidth: Float,
@@ -211,13 +228,13 @@ internal fun DrawScope.drawSeekLine(
         }
         for ((pieceFrom, pieceTo) in pieces) {
             if (pieceTo - pieceFrom < 1f) continue
-            drawSeekPiece(pieceFrom, pieceTo, heightOf(chapter), played * width, scrubbed?.times(width))
+            drawSeekPiece(pieceFrom, pieceTo, heightOf(chapter), played * width, downloaded?.times(width), scrubbed?.times(width))
         }
     }
 }
 
 /** One piece of the seek line, from [from] to [to] - pixels from where the line starts - filled to each place given. */
-private fun DrawScope.drawSeekPiece(from: Float, to: Float, height: Float, playedX: Float, scrubbedX: Float?) {
+private fun DrawScope.drawSeekPiece(from: Float, to: Float, height: Float, playedX: Float, downloadedX: Float?, scrubbedX: Float?) {
     val isRtl = layoutDirection == LayoutDirection.Rtl
     val top = (size.height - height) / 2f
     fun left(start: Float, end: Float) = if (isRtl) size.width - end else start
@@ -230,6 +247,7 @@ private fun DrawScope.drawSeekPiece(from: Float, to: Float, height: Float, playe
     }
     clipPath(shape) {
         fill(to, VideoPlayerTokens.SegmentColor)
+        downloadedX?.let { fill(it, VideoPlayerTokens.DownloadedColor) }
         scrubbedX?.let { fill(it, VideoPlayerTokens.ScrubbedColor) }
         fill(playedX, VideoPlayerTokens.Accent)
     }

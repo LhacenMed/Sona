@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -110,10 +109,10 @@ internal fun VideoControlsLayout(
                             .height(VideoPlayerTokens.BarButtonSize),
                     ) {
                         slots.leadingActions()
-                        // Wider only for the hours of a long film, rather than cutting them off.
-                        slots.elapsedTime(Modifier.widthIn(min = VideoPlayerTokens.ElapsedTimeWidth))
-                        slots.seekBar(Modifier.weight(1f).padding(horizontal = VideoPlayerTokens.SeekTimeGap))
-                        slots.endTime(Modifier.widthIn(min = VideoPlayerTokens.RemainingTimeWidth))
+                        // Each time as wide as the video's length makes it, so the seek bar never moves as they count.
+                        slots.elapsedTime(Modifier.padding(start = VideoPlayerTokens.TimeButtonGap))
+                        slots.seekBar(Modifier.weight(1f).padding(horizontal = VideoPlayerTokens.TimeSeekBarGap))
+                        slots.endTime(Modifier.padding(end = VideoPlayerTokens.TimeButtonGap))
                         slots.trailingActions()
                     }
                 } else {

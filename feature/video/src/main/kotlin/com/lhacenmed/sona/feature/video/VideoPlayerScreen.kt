@@ -155,6 +155,7 @@ internal fun VideoPlayerScreen(
     // This opening's own, as the rest of what shows: kept as they last were while the screen leaves.
     val replayHeights = playback.replayHeights
     val chapters = playback.chapters
+    val downloadedFraction = playback.downloadedFraction
     val current = playback.current
     val windowSize = LocalWindowInfo.current.containerSize
     val isLandscape = windowSize.width > windowSize.height
@@ -383,13 +384,14 @@ internal fun VideoPlayerScreen(
                     scrub = scrub,
                     replayHeights = replayHeights,
                     chapters = chapters,
+                    downloadedFraction = downloadedFraction,
                     viewModel = viewModel,
                     onClose = onClose,
                     onLock = {
                         viewModel.onLockedChange(true)
                         controls.show()
                     },
-                    onCycleOrientation = viewModel::onCycleOrientation,
+                    onCycleOrientation = { viewModel.onCycleOrientation(isLandscape) },
                     onCycleAspect = viewModel::onCycleAspect,
                     onFloat = onFloat,
                     onOpenPanel = { panel = it },
@@ -470,6 +472,7 @@ private fun PlayerControls(
     scrub: VideoScrubState,
     replayHeights: FloatArray?,
     chapters: List<VideoChapter>,
+    downloadedFraction: Float?,
     viewModel: VideoPlayerViewModel,
     onClose: () -> Unit,
     onLock: () -> Unit,
@@ -530,9 +533,9 @@ private fun PlayerControls(
                         modifier = modifier,
                     )
                 },
-                seekBar = { modifier -> VideoSeekBar(position, durationMs, scrub, replayHeights, chapters, modifier) },
+                seekBar = { modifier -> VideoSeekBar(position, durationMs, scrub, replayHeights, chapters, downloadedFraction, modifier) },
                 times = { modifier -> VideoTimes(position, durationMs, scrub, showsTotalDuration, viewModel::onToggleEndTime, modifier) },
-                elapsedTime = { modifier -> VideoElapsedTime(position, scrub, modifier) },
+                elapsedTime = { modifier -> VideoElapsedTime(position, durationMs, scrub, modifier) },
                 endTime = { modifier -> VideoEndTime(position, durationMs, scrub, showsTotalDuration, viewModel::onToggleEndTime, modifier) },
                 leadingActions = { VideoBarButton(VideoAction(PlayerIcons.LockOpen, stringResource(R.string.video_lock), onLock)) },
                 trailingActions = {

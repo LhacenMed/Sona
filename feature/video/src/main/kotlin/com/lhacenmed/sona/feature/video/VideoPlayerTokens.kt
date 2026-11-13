@@ -99,10 +99,6 @@ internal object VideoPlayerTokens {
     val ControlsMargin = 8.dp
     val ControlsTextMargin = ControlsMargin + (BarButtonSize - BarIconSize) / 2
 
-    val SeekTimeGap = 12.dp
-    val ElapsedTimeWidth = 40.dp
-    val RemainingTimeWidth = 56.dp
-
     /** How far beneath the safe area's top a pill of feedback stands, clear of the top bar. */
     val PillTopMargin = 68.dp
 
@@ -149,8 +145,20 @@ internal object VideoPlayerTokens {
     val ThumbSize = DpSize(4.dp, 20.dp)
     val ScrubThumbSize = DpSize(6.dp, 28.dp)
 
+    /**
+     * The room the landscape foot keeps either side of each time, as it is seen: to the glyph of the button beside it, inset
+     * within its touch target, and to the end of the seek line, inset within the slider by half its thumb - [TimeButtonGap]
+     * and [TimeSeekBarGap] between their bounds.
+     */
+    val SeekTimeGap = 15.dp
+    val TimeButtonGap = SeekTimeGap - (BarButtonSize - BarIconSize) / 2
+    val TimeSeekBarGap = SeekTimeGap - ScrubThumbSize.width / 2
+
     /** The seek line's ground, and as far as a scrub has reached. */
     val SegmentColor = Color.White.copy(alpha = 0.22f)
+
+    /** How much of a video playing as it downloads is downloaded, along the seek line. */
+    val DownloadedColor = Color.White.copy(alpha = 0.42f)
     val ScrubbedColor = Color.White.copy(alpha = 0.62f)
 
     /** Under a scrub: the picture dimmed by [ScrubDim], and the top bar faded to [ScrubbingTopBarAlpha]. */
