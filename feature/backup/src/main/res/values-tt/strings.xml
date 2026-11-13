@@ -1,30 +1,3 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="backup_notification_title"></string>
-    <string name="restore_notification_title"></string>
-    <string name="backup_notification_pause"></string>
-    <string name="backup_notification_resume"></string>
-    <string name="backup_notification_stop"></string>
-    <string name="backup_notification_retry"></string>
-    <string name="backup_failed_title"></string>
-    <string name="restore_failed_title"></string>
-    <string name="backup_failed_drive_access"></string>
-    <string name="backup_paused_title"></string>
-    <string name="backup_paused_text"></string>
-    <string name="backup_step_checking_files"></string>
-    <string name="backup_step_reading_library"></string>
-    <string name="backup_step_checking_last_backup"></string>
-    <string name="backup_step_uploading_files"></string>
-    <string name="backup_step_saving_on_device"></string>
-    <string name="backup_step_saving_to_drive"></string>
-    <string name="backup_step_cleaning_drive"></string>
-    <string name="restore_step_reading_backup"></string>
-    <string name="restore_step_finding_files"></string>
-    <string name="restore_step_restoring_library"></string>
-    <string name="restore_step_downloading_files"></string>
-    <string name="restore_step_adding_files"></string>
-    <!-- Text slots only (%s): a number and a size fill one alike, so the text can never fail a backup over a type. -->
-    <string name="backup_progress_count"></string>
-    <string name="backup_progress_transfer"></string>
-    <string name="backup_progress_percent"></string>
-</resources>
+    </resources>
