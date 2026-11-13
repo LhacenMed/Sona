@@ -732,7 +732,6 @@ internal fun TrackListDetail(
     // Read here, for what is built outside composition: the bar's remembered actions, and the list's rows.
     val playLabel = stringResource(R.string.library_play)
     val shuffleLabel = stringResource(R.string.library_shuffle)
-    val sectionTitles = sections.map { stringResource(it.titleRes) }
     val tracksTitle = stringResource(R.string.library_tracks_title)
     val searchLabel = stringResource(R.string.library_search)
     val sortButton = sort?.let { sortAction { isSortSheetOpen = true } }
@@ -864,7 +863,9 @@ internal fun TrackListDetail(
                     sections.forEachIndexed { index, section ->
                         section(
                             key = "detail-${section.titleRes}",
-                            title = sectionTitles[index],
+                            // Read as the rows are built, from the section itself: they are built again as [sections] changes,
+                            // ahead of the composition that would bring anything worked out from it up to date.
+                            title = resources.getString(section.titleRes),
                             state = sectionList,
                             hasDividerAbove = index > 0,
                         ) {
