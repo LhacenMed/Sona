@@ -7,6 +7,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import com.lhacenmed.sona.feature.tageditor.lookup.CatalogueMatch
 import com.lhacenmed.sona.feature.tageditor.lookup.TrackMatcher
 import com.lhacenmed.sona.feature.tageditor.lookup.TrackQueries
@@ -20,6 +21,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -108,6 +110,15 @@ class VideoSong internal constructor(
                 readings.firstOrNull()?.let { findLyrics(lyricsQuery(it.title, it.artist, album = null)) }
             }
         }
+    }
+
+    /**
+     * The song as it stands once it is no longer being looked for - the best found unasked, or the one picked - null where none
+     * surely is: what is looked for in the library before it downloads. See `LibraryCopies`.
+     */
+    suspend fun awaitFound(): SongSummary? {
+        snapshotFlow { isFinding }.first { !it }
+        return song?.takeIf { isChosen }?.let { SongSummary(it.title, it.artist, it.tags[TagField.ALBUM], it.coverUrl.ifBlank { null }) }
     }
 
     /** Searches the catalogues for the song [text] names - "Artist - Title", or a title alone - the song picked left as it is. */

@@ -125,7 +125,8 @@ internal fun mediaInfoOf(json: JSONObject): MediaInfo {
             ?: entries?.optJSONObject(0)?.optJSONArray("thumbnails")?.lastUrl(),
         site = json.stringOrNull("extractor_key"),
         formats = json.optJSONArray("formats")?.objects()?.mapNotNull(::formatOf).orEmpty(),
-        entries = entries?.objects()?.mapNotNull(::entryOf),
+        // Each once: a channel's main page lists its tabs, every one by the channel's own id.
+        entries = entries?.objects()?.mapNotNull(::entryOf)?.distinctBy { it.id },
         track = json.stringOrNull("track"),
         artist = json.stringOrNull("artist") ?: json.stringOrNull("creator"),
         year = json.stringOrNull("release_year") ?: json.stringOrNull("upload_date")?.take(4),

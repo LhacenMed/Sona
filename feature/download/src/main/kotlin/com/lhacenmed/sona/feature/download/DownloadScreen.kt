@@ -45,6 +45,7 @@ import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
+import com.lhacenmed.sona.core.model.DownloadStatus
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.download.settings.DownloadsSettingsScreen
@@ -79,16 +80,13 @@ data class DownloadScreen(val link: String? = null) : Screen {
         val today = sections?.today.orEmpty()
         val listed = downloading + today
         val runningCount = downloading.count { it.id in running }
-        val waiting = downloading.size - runningCount
-        val summary = when {
-            downloading.isEmpty() -> stringResource(R.string.download_ready)
-            waiting == 0 -> pluralStringResource(R.plurals.download_downloading_count, runningCount, runningCount)
-            runningCount == 0 -> pluralStringResource(R.plurals.download_waiting_count, waiting, waiting)
-            else -> listOf(
-                pluralStringResource(R.plurals.download_downloading_count, runningCount, runningCount),
-                pluralStringResource(R.plurals.download_waiting_count, waiting, waiting),
-            ).joinToString(InfoSeparator)
-        }
+        val pausedCount = downloading.count { it.status == DownloadStatus.PAUSED && it.id !in running }
+        val waiting = downloading.size - runningCount - pausedCount
+        val summary = listOfNotNull(
+            runningCount.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.download_downloading_count, it, it) },
+            pausedCount.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.download_paused_count, it, it) },
+            waiting.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.download_waiting_count, it, it) },
+        ).joinToString(InfoSeparator).ifEmpty { stringResource(R.string.download_ready) }
         val title = stringResource(R.string.download_title)
         val seeAll = TopBarAction(stringResource(R.string.download_see_all), SonaIcons.KeyboardArrowRight) { navigator.go(HistoryScreen) }
 

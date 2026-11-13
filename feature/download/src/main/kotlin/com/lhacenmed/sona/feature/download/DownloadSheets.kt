@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.feature.download
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Environment
@@ -48,19 +49,22 @@ import com.lhacenmed.sona.core.designsystem.component.copyToClipboard
 import com.lhacenmed.sona.core.designsystem.component.sheet.SonaBottomSheet
 import com.lhacenmed.sona.core.designsystem.component.sheet.SonaOptionRow
 import com.lhacenmed.sona.core.designsystem.component.sheet.SonaOptionsSheetHeader
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.model.Download
 import com.lhacenmed.sona.core.model.DownloadFailure
 import com.lhacenmed.sona.core.model.DownloadKind
 import com.lhacenmed.sona.core.model.DownloadStatus
+import com.lhacenmed.sona.core.designsystem.component.sheet.SonaBottomSheetScope
 import com.lhacenmed.sona.core.navigation.LocalNavigator
+import com.lhacenmed.sona.feature.download.tools.DownloadLogScreen
 import com.lhacenmed.sona.feature.download.tools.CookiesScreen
 import com.lhacenmed.sona.feature.tageditor.autotag.AutoTagScreen
 import java.io.File
-import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
- * One download, opened: what it is, and what can be done with it as it stands - stopped while it waits or runs; played,
+ * One download, opened: what it is, and what can be done with it as it stands - how far, paused or stopped while it waits or
+ * runs (see [ActiveDownloadContent]); played,
  * tagged, downloaded again or shared once saved; and, where it failed, why in plain words with the one fix that helps, the
  * downloader's own words a tap further.
  */
@@ -83,10 +87,7 @@ internal fun DownloadSheet(download: Download, viewModel: DownloadViewModel, onD
         },
     ) {
         when (download.status) {
-            DownloadStatus.QUEUED, DownloadStatus.RUNNING -> SonaOptionRow(label = stringResource(R.string.download_cancel), icon = SonaIcons.Close, onClick = {
-                viewModel.onCancel(listOf(download.id))
-                dismiss()
-            })
+            DownloadStatus.QUEUED, DownloadStatus.RUNNING, DownloadStatus.PAUSED -> ActiveDownloadContent(download, viewModel)
 
             DownloadStatus.DONE -> Unit
 
@@ -95,6 +96,7 @@ internal fun DownloadSheet(download: Download, viewModel: DownloadViewModel, onD
                     navigator.go(CookiesScreen(download.url))
                     dismiss()
                 })
+                ShowLogRow(download.id)
                 SonaOptionRow(label = stringResource(R.string.download_copy_link), icon = SonaIcons.ContentCopy, onClick = {
                     context.copyToClipboard(download.url, copiedLabel)
                     dismiss()
@@ -169,7 +171,11 @@ private fun SavedSheet(download: Download, viewModel: DownloadViewModel, onDismi
                                 download.sizeBytes.takeIf { it > 0 }?.let { Formatter.formatShortFileSize(context, it) },
                             ).joinToString(InfoSeparator),
                             shapes = shapes,
-                            icon = if (download.choices.kind == DownloadKind.AUDIO) SonaIcons.AudioFile else SonaIcons.VideoFile,
+                            icon = when (download.choices.kind) {
+                                DownloadKind.AUDIO -> SonaIcons.AudioFile
+                                DownloadKind.VIDEO -> SonaIcons.VideoFile
+                                DownloadKind.SUBTITLES -> SonaIcons.Description
+                            },
                             value = listOfNotNull(folder, savedOn).joinToString(InfoSeparator),
                             onClick = {
                                 viewModel.onPlay(download)
@@ -187,8 +193,8 @@ private fun SavedSheet(download: Download, viewModel: DownloadViewModel, onDismi
                 shapes = buttonPressShapes(),
                 modifier = Modifier.fillMaxWidth().padding(top = 16.dp).heightIn(min = 56.dp),
             ) {
-                Icon(SonaIcons.Play, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
-                Text(stringResource(R.string.download_play), modifier = Modifier.padding(start = ButtonDefaults.IconSpacing), style = MaterialTheme.typography.titleMedium)
+                Icon(download.choices.kind.openIcon, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                Text(stringResource(download.choices.kind.openLabelRes), modifier = Modifier.padding(start = ButtonDefaults.IconSpacing), style = MaterialTheme.typography.titleMedium)
             }
             Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilledTonalButton(
@@ -215,6 +221,8 @@ private fun SavedSheet(download: Download, viewModel: DownloadViewModel, onDismi
                 }
             }
         }
+        if (download.choices.kind == DownloadKind.SUBTITLES) download.savedPaths.forEach { CopySubtitlesRow(it) }
+        ShowLogRow(download.id)
     }
 }
 
@@ -233,18 +241,53 @@ private fun Unsaved(download: Download, viewModel: DownloadViewModel, onFixed: (
     val presentation = (download.failure ?: DownloadFailure.FAILED).presentation
     SheetMessage(presentation.icon, stringResource(presentation.titleRes), stringResource(presentation.messageRes))
     FixButton(presentation.fix.labelRes, presentation.fix.icon) {
-        when (presentation.fix) {
-            FailureFix.TRY_AGAIN -> viewModel.onRetry(download)
-            FailureFix.TRY_BEST_FORMAT -> viewModel.onRetryAtBestFormat(download)
-            FailureFix.OPEN_LINK -> runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(download.url))) }
-            FailureFix.SIGN_IN -> return@FixButton onSignIn()
-            FailureFix.FREE_UP_SPACE -> runCatching { context.startActivity(Intent(Settings.ACTION_INTERNAL_STORAGE_SETTINGS)) }
-            // It downloads by itself once the downloader is here - see DownloadQueue.
-            FailureFix.GET_DOWNLOADER -> viewModel.onGetDownloader()
-        }
+        if (presentation.fix == FailureFix.SIGN_IN) return@FixButton onSignIn()
+        applyFix(context, viewModel, download, onSignIn)
         onFixed()
     }
     download.error?.let { ErrorDetails(it) }
+}
+
+/** Does what fixes [download], failed - its row's button and its sheet's alike - [onSignIn] for one that needs the user signed in. */
+internal fun applyFix(context: Context, viewModel: DownloadViewModel, download: Download, onSignIn: () -> Unit) {
+    when ((download.failure ?: DownloadFailure.FAILED).presentation.fix) {
+        FailureFix.TRY_AGAIN -> viewModel.onRetry(download)
+        FailureFix.TRY_BEST_FORMAT -> viewModel.onRetryAtBestFormat(download)
+        FailureFix.OPEN_LINK -> runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(download.url))) }
+        FailureFix.SIGN_IN -> onSignIn()
+        FailureFix.FREE_UP_SPACE -> runCatching { context.startActivity(Intent(Settings.ACTION_INTERNAL_STORAGE_SETTINGS)) }
+        // It downloads by itself once the downloader is here - see DownloadQueue.
+        FailureFix.GET_DOWNLOADER -> viewModel.onGetDownloader()
+        FailureFix.DOWNLOAD_ANYWAY -> viewModel.onDownloadAnyway(listOf(download.id))
+    }
+}
+
+/** Copies the text of the subtitles file at [path] - one of a download's, named by its language: `Title [id].en.srt`. */
+@Composable
+private fun CopySubtitlesRow(path: String) {
+    val context = LocalContext.current
+    val copiedLabel = stringResource(R.string.download_link_copied)
+    SonaOptionRow(
+        label = stringResource(R.string.download_copy_subtitles),
+        icon = SonaIcons.ContentCopy,
+        detail = languageName(File(path).nameWithoutExtension.substringAfterLast('.').removeSuffix("-sona")),
+        onClick = { runCatching { File(path).readText() }.onSuccess { context.copyToClipboard(it, copiedLabel) } },
+    )
+}
+
+/** Opens all the download said as it ran - its log, kept with it in the history - however it ended. */
+@Composable
+internal fun SonaBottomSheetScope.ShowLogRow(downloadId: Long) {
+    val navigator = LocalNavigator.current
+    SonaOptionRow(
+        label = stringResource(R.string.download_log_show),
+        icon = SonaIcons.Terminal,
+        onClick = {
+            navigator.go(DownloadLogScreen(downloadId))
+            dismiss()
+        },
+        trailingContent = { Icon(SonaIcons.KeyboardArrowRight, contentDescription = null) },
+    )
 }
 
 /** What went wrong in the downloader's own words - folded away under its row, to be read, selected or copied. */

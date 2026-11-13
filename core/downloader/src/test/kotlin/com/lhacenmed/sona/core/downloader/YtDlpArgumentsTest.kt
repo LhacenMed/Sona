@@ -36,7 +36,20 @@ class YtDlpArgumentsTest {
         val quality = DownloadChoices(kind = DownloadKind.VIDEO, videoFormat = VideoFormat.QUALITY)
         assertEquals("vcodec:vp9.2,res:1080", quality.arguments().valueOf("-S"))
         assertEquals("vcodec:av01,res:1080", quality.arguments(decodesAv1InHardware = true).valueOf("-S"))
-        assertEquals("bv*+ba/b", quality.arguments().valueOf("-f"))
+        assertEquals("ba+bv/bv*+ba/b", quality.arguments().valueOf("-f"))
+    }
+
+    @Test
+    fun `subtitles alone are written as SubRip, the video never fetched nor anything made of it`() {
+        val arguments = DownloadChoices(kind = DownloadKind.SUBTITLES, skipSponsors = true)
+            .arguments("fr,en", options = DownloadOptions(clip = ClipRange(5, 10), splitChapters = true))
+        assertTrue("--skip-download" in arguments)
+        assertTrue("--write-subs" in arguments && "--write-auto-subs" in arguments)
+        assertEquals("fr,en", arguments.valueOf("--sub-langs"))
+        assertEquals("srt", arguments.valueOf("--convert-subs"))
+        for (option in listOf("-f", "--embed-subs", "--embed-metadata", "--sponsorblock-remove", "--download-sections", "--split-chapters")) {
+            assertFalse(option, option in arguments)
+        }
     }
 
     @Test
@@ -55,8 +68,8 @@ class YtDlpArgumentsTest {
 
     @Test
     fun `a sound asked for in another language is taken where the video has it, else the one recorded`() {
-        assertEquals("bv*+ba/b", DownloadChoices(kind = DownloadKind.VIDEO).arguments().valueOf("-f"))
-        assertEquals("bv*+ba[language=es]/bv*+ba/b", DownloadChoices(kind = DownloadKind.VIDEO, audioLanguage = "es").arguments().valueOf("-f"))
+        assertEquals("ba+bv/bv*+ba/b", DownloadChoices(kind = DownloadKind.VIDEO).arguments().valueOf("-f"))
+        assertEquals("ba[language=es]+bv/ba+bv/bv*+ba/b", DownloadChoices(kind = DownloadKind.VIDEO, audioLanguage = "es").arguments().valueOf("-f"))
         assertEquals("ba[language=es]/ba/b", DownloadChoices(kind = DownloadKind.AUDIO, audioLanguage = "es").arguments().valueOf("-f"))
     }
 
@@ -128,6 +141,18 @@ class YtDlpArgumentsTest {
     }
 
     @Test
+    fun `a log keeps yt-dlp's own words, its progress as it writes it untold, and none of Sona's lines`() {
+        assertEquals(
+            "[download] 45.3% of 10.00MiB at 1.00MiB/s ETA 00:09",
+            logLineOf("${YtDlpLines.PROGRESS} 250 1000 50.5   45.3% of   10.00MiB at    1.00MiB/s ETA 00:09"),
+        )
+        assertEquals("[youtube] abc: Downloading webpage", logLineOf("[youtube] abc: Downloading webpage"))
+        assertNull(logLineOf("${YtDlpLines.ITEM} 2 5 Song title"))
+        assertNull(logLineOf("${YtDlpLines.SAVED} {}"))
+        assertNull(logLineOf("   "))
+    }
+
+    @Test
     fun `a progress line is how far and how fast, nothing known where yt-dlp says NA`() {
         val progress = parseLine("${YtDlpLines.PROGRESS} 250 1000 50.5") as DownloadEvent.Progress
         assertEquals(0.25f, progress.fraction)
@@ -145,7 +170,8 @@ class YtDlpArgumentsTest {
 
     @Test
     fun `anything else yt-dlp writes says nothing`() {
-        assertNull(parseLine("[download] Destination: video.mp4"))
+        assertEquals(DownloadEvent.Part(File("video.f399.mp4.part"), File("video.f399.mp4")), parseLine("[download] Destination: video.f399.mp4"))
+        assertNull(parseLine("[download] Destination: video.en.vtt"))
     }
 
     @Test

@@ -14,14 +14,18 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
 import java.io.RandomAccessFile
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
+import org.json.JSONObject
 
 /** How often a direct download says how far it is. */
 private const val ReportEveryMs = 500L
@@ -62,7 +66,8 @@ class DirectTransfer @Inject constructor() {
             }
 
             DownloadKind.VIDEO -> {
-                if (choices.captions && info.hasCaptions) return null
+                // Captions are embedded by yt-dlp - and made, picked to be transcribed or translated, before it.
+                if (info.pickedCaptions(choices, options, Locale.getDefault().language, transcribes = false).isNotEmpty()) return null
                 val tallest = choices.videoQuality.height ?: Int.MAX_VALUE
                 val pictures = info.formats.filter { it.hasVideo && (it.height ?: 0) <= tallest }
                 // One file with its sound, as a post's video is served: taken only where nothing assembled would be better.
@@ -71,73 +76,102 @@ class DirectTransfer @Inject constructor() {
                 val best = whole.maxWithOrNull(compareBy<MediaFormat> { it.height ?: 0 }.thenBy { it.bitrateKbps ?: 0 }) ?: return null
                 best.takeIf { (it.height ?: 0) >= (pictures.maxOfOrNull { picture -> picture.height ?: 0 } ?: 0) }
             }
+
+            DownloadKind.SUBTITLES -> null
         }
     }
 
     /**
-     * Downloads [format] of [info] into [outputDir] by way of [partFile], tagging it - a song with its cover - and says the file
-     * saved to [onEvent].
+     * Downloads [format] of [info] into [outputDir] by way of its download's [workspace] - see [DownloadWorkspaces] - tagging
+     * it, a song with its cover, and says the file saved to [onEvent].
      */
     suspend fun download(
         info: MediaInfo,
         format: MediaFormat,
-        partFile: File,
+        workspace: File,
         outputDir: File,
         onEvent: (DownloadEvent) -> Unit,
     ) = withContext(Dispatchers.IO) {
-        val url = checkNotNull(format.directUrl)
-        val total = fetch(url, format.headers, partFile, onEvent)
+        val part = fetch(format, workspace, onEvent)
+        val total = part.length()
         outputDir.mkdirs()
         val name = "${info.title.toFileName()} [${info.id.orEmpty()}].${format.extension}"
         val file = File(outputDir, name)
-        partFile.copyTo(file, overwrite = true)
-        partFile.delete()
+        part.copyTo(file, overwrite = true)
         tag(file, info, withCover = !format.hasVideo)
         onEvent(DownloadEvent.Progress(total, total, null))
         onEvent(DownloadEvent.Saved(file, heatmapJson = null, chaptersJson = info.chaptersJson))
     }
 
-    /** Fetches [url] into [partFile], carrying on from what it holds. How long the whole is. */
-    private suspend fun fetch(url: String, headers: Map<String, String>, partFile: File, onEvent: (DownloadEvent) -> Unit): Long {
-        partFile.parentFile?.mkdirs()
-        var total: Long? = null
+    /**
+     * Fetches [format] into its part in [workspace], carrying on from the last byte the part holds - only where it is the
+     * start of this very file: the same format, the same size, and, asked with `If-Range`, unchanged on its site. Anything
+     * else is fetched again from its start, never joined onto bytes of another file. The part.
+     */
+    private suspend fun fetch(format: MediaFormat, workspace: File, onEvent: (DownloadEvent) -> Unit): File {
+        val url = checkNotNull(format.directUrl)
+        val part = File(workspace, "direct.part")
+        val recordFile = File(workspace, "direct.json")
+        var record = recordFile.takeIf(File::isFile)?.readText()?.let(PartRecord::parse)?.takeIf { it.formatId == format.id }
         var reportedAt = 0L
-        var reportedBytes = partFile.length()
-        RandomAccessFile(partFile, "rw").use { output ->
-            output.seek(output.length())
-            while (total == null || output.length() < total!!) {
+        // Whole only once the download is over: it is fetched in place.
+        onEvent(DownloadEvent.Part(part, part))
+        onEvent(DownloadEvent.Log("[direct] Downloading format ${format.id} (${format.extension}) from ${url.toHttpUrlOrNull()?.host.orEmpty()}"))
+        RandomAccessFile(part, "rw").use { output ->
+            if (record == null) output.setLength(0)
+            if (output.length() > 0) onEvent(DownloadEvent.Log("[direct] Resuming at byte ${output.length()}"))
+            var reportedBytes = output.length()
+            while (true) {
+                val total = record?.totalBytes
+                if (total != null && output.length() >= total) break
                 val offset = output.length()
-                val request = Request.Builder().url(url).apply { headers.forEach { (name, value) -> header(name, value) } }
+                val request = Request.Builder().url(url).apply { format.headers.forEach { (name, value) -> header(name, value) } }
                     .header("Range", "bytes=$offset-${offset + ChunkBytes - 1}")
+                    .apply { if (offset > 0) record?.validator?.let { header("If-Range", it) } }
                     .build()
-                client.newCall(request).execute().use { response ->
-                    if (response.code == 403 || response.code == 410) throw IOException("HTTP Error ${response.code}")
+                val isWhole = client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) throw IOException("HTTP Error ${response.code}")
-                    if (response.code == 200 && offset > 0) {
-                        // The range was not honoured: the whole is sent again, from its start.
+                    val sentTotal = response.header("Content-Range")?.substringAfter('/')?.toLongOrNull()
+                        ?: response.body?.contentLength()?.takeIf { response.code == 200 && it > 0 }
+                    if (!continuesPart(response.code, offset, total, sentTotal)) {
+                        // Not the file the part is the start of - changed, or sent whole: fetched again from its start.
+                        onEvent(DownloadEvent.Log("[direct] Not the file it began as: starting over"))
                         output.setLength(0)
+                        record = null
+                        if (response.code != 200) return@use false
                     }
-                    total = response.header("Content-Range")?.substringAfter('/')?.toLongOrNull() ?: response.body?.contentLength()?.takeIf { it > 0 }
+                    if (record == null && sentTotal != null) {
+                        record = PartRecord(format.id, sentTotal, validatorOf(response)).also { recordFile.writeText(it.toJson()) }
+                    }
+                    output.seek(output.length())
                     val body = checkNotNull(response.body).byteStream()
                     val buffer = ByteArray(64 * 1024)
+                    var received = 0L
                     while (true) {
                         currentCoroutineContext().ensureActive()
                         val read = body.read(buffer)
                         if (read < 0) break
                         output.write(buffer, 0, read)
+                        received += read
                         val now = SystemClock.elapsedRealtime()
                         if (now - reportedAt >= ReportEveryMs) {
                             val speed = if (reportedAt > 0) (output.length() - reportedBytes) * 1000 / (now - reportedAt) else null
-                            onEvent(DownloadEvent.Progress(output.length(), total, speed))
+                            onEvent(DownloadEvent.Progress(output.length(), record?.totalBytes, speed))
+                            onEvent(DownloadEvent.Log(progressLine(output.length(), record?.totalBytes, speed)))
                             reportedAt = now
                             reportedBytes = output.length()
                         }
                     }
+                    // On the disk itself, not only in the system's memory, before more is asked: what is held survives
+                    // even the device going off.
+                    output.fd.sync()
+                    // A file of no told size is over once a response is sent whole, or short of what was asked.
+                    sentTotal == null && (response.code == 200 || received < ChunkBytes)
                 }
-                if (total == null) break
+                if (isWhole) break
             }
-            return output.length()
         }
+        return part
     }
 
     /**
@@ -170,11 +204,43 @@ class DirectTransfer @Inject constructor() {
         }
     }.getOrNull()
 
+    /** What a part being fetched is the start of, to tell a file it may carry on from one it may not - see [fetch]. */
+    internal data class PartRecord(val formatId: String, val totalBytes: Long, val validator: String?) {
+        fun toJson(): String = JSONObject().put("formatId", formatId).put("totalBytes", totalBytes).put("validator", validator).toString()
+
+        companion object {
+            fun parse(text: String): PartRecord? = runCatching {
+                val json = JSONObject(text)
+                PartRecord(json.getString("formatId"), json.getLong("totalBytes"), json.optString("validator").ifEmpty { null })
+            }.getOrNull()
+        }
+    }
+
     companion object {
         /** How much of a file one request asks for. */
         const val ChunkBytes = 10L * 1024 * 1024
     }
 }
+
+/**
+ * Whether a response to a request for the bytes from [offset] carries on the part held, of [heldTotal] bytes - rather than
+ * being the whole sent again, or another file: a part is carried on only by a range of a file of its very size.
+ */
+internal fun continuesPart(code: Int, offset: Long, heldTotal: Long?, sentTotal: Long?): Boolean =
+    offset == 0L || (code == 206 && heldTotal != null && sentTotal == heldTotal)
+
+/** How far a direct download is, as yt-dlp writes its own: "[download] 45.3% of 10.00MiB at 1.00MiB/s". */
+private fun progressLine(done: Long, total: Long?, bytesPerSecond: Long?): String = buildString {
+    append("[download] ")
+    if (total != null && total > 0) append(String.format(Locale.US, "%.1f%% of %s", done * 100.0 / total, mebibytes(total))) else append(mebibytes(done))
+    bytesPerSecond?.let { append(" at ${mebibytes(it)}/s") }
+}
+
+private fun mebibytes(bytes: Long): String = String.format(Locale.US, "%.2fMiB", bytes / 1_048_576.0)
+
+/** What tells this file from a changed one on its site, as `If-Range` asks it: a strong ETag, else when it last changed. */
+private fun validatorOf(response: Response): String? =
+    response.header("ETag")?.takeUnless { it.startsWith("W/") } ?: response.header("Last-Modified")
 
 /** A title as a file can be named: without what a file system forbids, cut to fit. */
 private fun String.toFileName(): String = replace(Regex("""[\\/:*?"<>|\x00-\x1f]"""), "_").trim().take(150).ifEmpty { "download" }

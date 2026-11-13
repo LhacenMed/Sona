@@ -33,6 +33,7 @@ object SonaIcons {
     val Article: ImageVector by icon { MirroredGlyphs.Article }
     val Artist: ImageVector by icon { Glyphs.Person }
     val AudioFile: ImageVector by icon { Glyphs.AudioFile }
+    val AutoAwesome: ImageVector by icon { Glyphs.AutoAwesome }
     val AutoFixHigh: ImageVector by icon { Glyphs.AutoFixHigh }
     val Backspace: ImageVector by icon { MirroredGlyphs.Backspace }
     val Backup: ImageVector by icon { Glyphs.Backup }
@@ -172,6 +173,7 @@ object SonaIcons {
     val VolumeOff: ImageVector by icon { MirroredGlyphs.VolumeOff }
     val VolumeUp: ImageVector by icon { MirroredGlyphs.VolumeUp }
     val Warning: ImageVector by icon { Glyphs.Warning }
+    val Wifi: ImageVector by icon { Glyphs.Wifi }
     val WifiOff: ImageVector by icon { Glyphs.WifiOff }
 
     /** What stands in for a missing cover: [DefaultCover]'s glyph, the one every default cover shares. */

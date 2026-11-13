@@ -3,10 +3,13 @@ package com.lhacenmed.sona.core.common.notification
 import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.pm.ServiceInfo
+import android.graphics.drawable.Icon
 import android.os.Build
+import android.os.Bundle
 import androidx.annotation.DrawableRes
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
@@ -61,6 +64,51 @@ object SonaNotifications {
             context.getSystemService(NotificationManager::class.java).canPostPromotedNotifications()
 
     /**
+     * A task running, on [channel]: [title], what it is doing now - [text] - and [detail] beneath, with how far it is -
+     * [percent], null while it cannot tell - and [actions]. On Android 16 and later, where [canPostPromoted], a promoted live
+     * update, its percent the title, which the system shows in the status bar too; a progress bar otherwise.
+     */
+    fun progress(
+        context: Context,
+        channel: SonaNotificationChannel,
+        title: String,
+        text: String?,
+        detail: String?,
+        percent: Int?,
+        actions: List<SonaNotificationAction>,
+    ): Notification {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA && canPostPromoted(context)) {
+            val progressStyle = Notification.ProgressStyle()
+                .setProgressPoints(listOf(Notification.ProgressStyle.Point(0), Notification.ProgressStyle.Point(PROGRESS_MAX)))
+                .setProgress(percent ?: 0)
+                .setProgressIndeterminate(percent == null)
+            return platformBuilder(context, channel)
+                .setContentTitle(percent?.let { context.getString(R.string.notification_progress_percent, it) } ?: title)
+                .setContentText(text ?: title)
+                .setSubText(detail ?: title)
+                .setStyle(progressStyle)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setCategory(Notification.CATEGORY_PROGRESS)
+                // Asks for the notification to be promoted to a live update.
+                .addExtras(Bundle().apply { putBoolean("android.requestPromotedOngoing", true) })
+                .apply { actions.forEach { addAction(Notification.Action.Builder(Icon.createWithResource(context, it.iconRes), it.label, it.intent).build()) } }
+                .build()
+        }
+        return builder(context, channel)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(listOfNotNull(text, detail).joinToString("\n")))
+            .setProgress(PROGRESS_MAX, percent ?: 0, percent == null)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+            .apply { actions.forEach { addAction(it.iconRes, it.label, it.intent) } }
+            .build()
+    }
+
+    /**
      * Posts [notification] as [id], replacing whatever that id showed - unless notifications are turned
      * off for the app, or not yet allowed, when there is nothing to post to.
      */
@@ -75,6 +123,11 @@ object SonaNotifications {
         NotificationManagerCompat.from(context).cancel(id)
     }
 }
+
+/** What a notification offers: [label], drawn as [iconRes], doing [intent]. */
+class SonaNotificationAction(val label: String, @DrawableRes val iconRes: Int, val intent: PendingIntent)
+
+private const val PROGRESS_MAX = 100
 
 /**
  * Promotes this service to the foreground, showing [notification] as [id] - a data-sync service, the

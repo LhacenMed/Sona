@@ -25,19 +25,44 @@ sealed interface DownloadEvent {
     data class Item(val title: String, val index: Int?, val count: Int?) : DownloadEvent
 
     /** How far the file downloading is - each null while unknown. */
-    data class Progress(val downloadedBytes: Long?, val totalBytes: Long?, val bytesPerSecond: Long?) : DownloadEvent {
-        val fraction: Float? get() = if (downloadedBytes != null && totalBytes != null && totalBytes > 0) (downloadedBytes.toFloat() / totalBytes).coerceIn(0f, 1f) else null
+    data class Progress(
+        val downloadedBytes: Long?,
+        val totalBytes: Long?,
+        val bytesPerSecond: Long?,
+        /** How far the one file fetching now is, where the rest is the download's whole - see [WholeProgress]. */
+        val fileFraction: Float? = null,
+    ) : DownloadEvent {
+        val fraction: Float? get() = fractionOf(downloadedBytes, totalBytes)
     }
+
+    /**
+     * A file it begins to download into - one of a video's streams, or the whole - growing at [growing] until it is whole at
+     * [whole], which it may be from the first: what is played as it downloads - see [LiveDownloads].
+     */
+    data class Part(val growing: File, val whole: File) : DownloadEvent
+
+    /** A line of what the download does, in the downloader's own words - its log's, and its notification's. */
+    data class Log(val line: String) : DownloadEvent
 
     /** A file saved where it belongs, with the Most replayed graph and the chapters its site gave it, as yt-dlp gives them - see [EmbeddedExtras]. */
     data class Saved(val file: File, val heatmapJson: String?, val chaptersJson: String?) : DownloadEvent
 }
+
+/** How far [downloadedBytes] of [totalBytes] is, from 0 to 1 - null while either is unknown. */
+fun fractionOf(downloadedBytes: Long?, totalBytes: Long?): Float? =
+    if (downloadedBytes != null && totalBytes != null && totalBytes > 0) (downloadedBytes.toFloat() / totalBytes).coerceIn(0f, 1f) else null
 
 /** The downloader is not on this device: it has to be downloaded first - see [DownloaderRuntime]. */
 class DownloaderMissingException : Exception("The downloader is not downloaded")
 
 /** yt-dlp failed - with its own words why. */
 class YtDlpException(message: String) : Exception(message)
+
+/** Nothing saved: yt-dlp's download archive has it as downloaded before - see [DownloaderPreferences.usesArchive]. */
+class DownloadedBeforeException : Exception("Downloaded before: it is recorded in the download archive")
+
+/** How yt-dlp ends the line saying it let a video go, as the archive has it. */
+private const val ArchivedLine = "has already been recorded in the archive"
 
 /** What a download reads: the link itself, or [infoJson] - the link already read, so it is not read again. */
 class DownloadSource(val url: String, val infoJson: File?)
@@ -60,21 +85,31 @@ class YtDlp @Inject constructor(
     internal suspend fun infoJson(url: String, preferences: DownloaderPreferences, extraArguments: List<String>): JSONObject =
         JSONObject(run(listOf("-J", "--flat-playlist", "--no-playlist", "--write-auto-subs") + preferences.networkArguments(runtime) + extraArguments + url))
 
-    /** Downloads [source] with [choices], [options] and [preferences] into [outputDir], saying what it does to [onEvent] as it goes. */
+    /**
+     * Downloads [source] with [choices], [options] and [preferences] into [outputDir] by way of its download's [workspace] - see
+     * [DownloadWorkspaces] - saying what it does to [onEvent] as it goes. yt-dlp carries on there what it fetched before, from
+     * its last byte.
+     */
     suspend fun download(
         source: DownloadSource,
         choices: DownloadChoices,
         options: DownloadOptions,
         preferences: DownloaderPreferences,
+        workspace: File,
         outputDir: File,
         onEvent: (DownloadEvent) -> Unit,
     ) {
-        val tempDir = File(context.cacheDir, "downloads").apply { mkdirs() }
         val target = source.infoJson?.let { listOf("--load-info-json", it.path) } ?: listOf(source.url)
         val read = source.infoJson?.let { JSONObject(it.readText()) }
-        val wantsCaptions = choices.kind == DownloadKind.VIDEO && choices.captions
-        // The translations picked are made first, and listed in the read yt-dlp is handed as files of their own.
-        val picked = options.subtitleLanguages?.takeIf { wantsCaptions }?.let { CaptionTranslation.make(read, it, File(tempDir, "captions")) }
+        val subtitlesAlone = choices.kind == DownloadKind.SUBTITLES
+        val wantsCaptions = subtitlesAlone || (choices.kind == DownloadKind.VIDEO && choices.captions)
+        // The captions Sona makes - transcribed from the speech, translated - are made first, and listed in the read yt-dlp is
+        // handed as files of their own.
+        val made = File(workspace, "captions")
+        val picked = options.subtitleLanguages?.takeIf { wantsCaptions }?.let { codes ->
+            val transcribed = CaptionTranscription.make(read, codes, made, preferences) { onEvent(DownloadEvent.Log("[sona] $it")) }
+            CaptionTranslation.make(read, transcribed, made)
+        }
         val hasTranslations = read != null && picked != null && picked != options.subtitleLanguages
         if (hasTranslations) source.infoJson?.writeText(read.toString())
         val captionLanguages = when {
@@ -82,13 +117,70 @@ class YtDlp @Inject constructor(
             picked != null -> exactCaptionLanguages(picked)
             else -> captionLanguagesOf(read, Locale.getDefault().language)
         }
-        val arguments = choices.toArguments(options, preferences, captionLanguages, decodesAv1InHardware(choices.videoQuality.height)) +
-            preferences.networkArguments(runtime) +
-            downloadArguments(outputDir.path, tempDir.path, preferences.fileNameTemplate, options.splitChapters) +
-            (if (hasTranslations) listOf("--enable-file-urls") else emptyList()) +
-            options.commandArguments?.let(::splitArguments).orEmpty() +
-            target
-        run(arguments, onLine = { line -> parseLine(line)?.let(onEvent) })
+        // Captions alone are saved where Sona then finds them - yt-dlp says nothing of the files it only moves - and moves them
+        // where they belong.
+        val savesTo = if (subtitlesAlone) File(workspace, "subtitles").apply { deleteRecursively() } else outputDir
+        // What yt-dlp says of captions, for why none were saved.
+        val captionNotes = mutableListOf<String>()
+        // Whether yt-dlp let a video go as downloaded before, by the archive - and whether it saved anything at all.
+        var isInArchive = false
+        var hasSaved = false
+        suspend fun runWith(languages: String?, target: List<String>) {
+            val arguments = choices.toArguments(options, preferences, languages, decodesAv1InHardware(choices.videoQuality.height)) +
+                // The archive is of what was saved as sound or picture: captions alone are neither held back by it nor kept in it -
+                // and one asked for again anyway is downloaded, as it is recorded there already.
+                preferences.networkArguments(runtime, archives = choices.kind.isMedia && !options.downloadsAgain) +
+                downloadArguments(savesTo.path, workspace.path, preferences.fileNameTemplate, options.splitChapters) +
+                (if (hasTranslations) listOf("--enable-file-urls") else emptyList()) +
+                options.commandArguments?.let(::splitArguments).orEmpty() +
+                target
+            // Its errors among the rest, in the order it wrote them: its log is all it said.
+            val progress = WholeProgress()
+            run(arguments, mergesErrors = true, onLine = { line ->
+                progress.read(line)
+                parseLine(line)?.let(progress::of)?.let { event ->
+                    if (event is DownloadEvent.Saved) hasSaved = true
+                    onEvent(event)
+                }
+                logLineOf(line)?.let { onEvent(DownloadEvent.Log(it)) }
+                if (line.endsWith(ArchivedLine)) isInArchive = true
+                if (subtitlesAlone && line.contains("subtitle", ignoreCase = true) && (line.startsWith("WARNING") || line.startsWith("ERROR"))) captionNotes += line
+            })
+        }
+        if (!subtitlesAlone || captionLanguages != null) runWith(captionLanguages, target)
+        if (!subtitlesAlone) {
+            // Nothing saved as it was downloaded before: said so, rather than over with nothing to show.
+            if (isInArchive && !hasSaved) throw DownloadedBeforeException()
+            return
+        }
+        // None from the app's own read: yt-dlp reads the link itself - its own ways of asking the site for captions - and is asked
+        // for the same languages, else those of the speech.
+        if (source.infoJson != null && written(savesTo).isEmpty()) {
+            onEvent(DownloadEvent.Log("[sona] No subtitles from the read: yt-dlp reads the link itself"))
+            runWith(captionLanguages ?: captionLanguagesOf(null, Locale.getDefault().language), listOf(source.url))
+        }
+        val listed = read?.let { it.keysOf("subtitles") + it.keysOf("automatic_captions") }.orEmpty()
+        val why = listOf(
+            NoSubtitles,
+            "Asked for: ${captionLanguages ?: "none"}",
+            "The read lists: ${listed.take(20).joinToString(", ").ifEmpty { "none" }}${if (listed.size > 20) ", …" else ""}",
+        ) + captionNotes
+        withContext(Dispatchers.IO) { saveSubtitles(savesTo, outputDir, why.joinToString("\n"), onEvent) }
+    }
+
+    /** The files yt-dlp wrote into [folder] - those in folders the file name template names too. */
+    private fun written(folder: File): List<File> = folder.walkTopDown().filter(File::isFile).toList()
+
+    /** Moves every caption file written into [folder] to [outputDir], each said saved - failing with [why] where there is none. */
+    private fun saveSubtitles(folder: File, outputDir: File, why: String, onEvent: (DownloadEvent) -> Unit) {
+        val files = written(folder).ifEmpty { throw YtDlpException(why) }
+        outputDir.mkdirs()
+        files.forEach { file ->
+            // Copied, not renamed: the workspace and the folder chosen may be on different storage.
+            val saved = file.copyTo(File(outputDir, file.name), overwrite = true)
+            file.delete()
+            onEvent(DownloadEvent.Saved(saved, heatmapJson = null, chaptersJson = null))
+        }
     }
 
     /** Runs yt-dlp with [arguments] as typed, in [workingDir], every line it writes handed to [onLine] - the terminal's. */
@@ -120,7 +212,7 @@ class YtDlp @Inject constructor(
         val files = runtime.files() ?: throw DownloaderMissingException()
         val command = listOf(files.python.path, files.ytDlp.path) + commonArguments(files) + arguments
         val process = ProcessBuilder(command).redirectErrorStream(mergesErrors).directory(workingDir)
-            .apply { environment().putAll(environmentOf(files)) }
+            .apply { environment().putAll(environmentOf(context, files)) }
             .start()
         val output = StringBuilder()
         try {
@@ -159,23 +251,28 @@ class YtDlp @Inject constructor(
         "--remote-components", "ejs:github",
         "--cache-dir", runtime.cacheDir.path,
     )
-
-    /** Where the programs find what they load and read. */
-    private fun environmentOf(files: RuntimeFiles) = mapOf(
-        "LD_LIBRARY_PATH" to files.libraryDirs.joinToString(":") { it.path },
-        "SSL_CERT_FILE" to File(files.pythonHome, "etc/tls/cert.pem").path,
-        "OPENSSL_CONF" to files.tlsConfig.path,
-        "PYTHONHOME" to files.pythonHome.path,
-        "HOME" to files.ytDlp.parent.orEmpty(),
-        "TMPDIR" to context.cacheDir.path,
-        "PATH" to "${files.python.parent}:${System.getenv("PATH") ?: "/system/bin"}",
-    )
 }
+
+/** Where the programs the downloader brings - yt-dlp, FFmpeg - find what they load and read. */
+internal fun environmentOf(context: Context, files: RuntimeFiles) = mapOf(
+    "LD_LIBRARY_PATH" to files.libraryDirs.joinToString(":") { it.path },
+    "SSL_CERT_FILE" to File(files.pythonHome, "etc/tls/cert.pem").path,
+    "OPENSSL_CONF" to files.tlsConfig.path,
+    "PYTHONHOME" to files.pythonHome.path,
+    "HOME" to files.ytDlp.parent.orEmpty(),
+    "TMPDIR" to context.cacheDir.path,
+    "PATH" to "${files.python.parent}:${System.getenv("PATH") ?: "/system/bin"}",
+)
 
 /** What a line yt-dlp wrote says, where it is one of Sona's own - see [YtDlpLines] - or names a chapter's file. */
 internal fun parseLine(line: String): DownloadEvent? {
     line.substringAfter("[SplitChapters] ", "").substringAfter("Destination: ", "").takeIf(String::isNotEmpty)?.let {
         return DownloadEvent.Saved(File(it.trim()), heatmapJson = null, chaptersJson = null)
+    }
+    line.substringAfter("[download] Destination: ", "").takeIf(String::isNotEmpty)?.let {
+        val whole = File(it.trim())
+        // Its captions are downloaded the same way, and are no part of what plays.
+        return if (whole.extension.lowercase() in MediaExtensions) DownloadEvent.Part(File(whole.path + ".part"), whole) else null
     }
     val (tag, rest) = line.split(' ', limit = 2).let { it[0] to it.getOrElse(1) { "" } }
     return when (tag) {
@@ -197,6 +294,24 @@ internal fun parseLine(line: String): DownloadEvent? {
         else -> null
     }
 }
+
+/** What [line] reads as in a download's log: yt-dlp's own words, its progress as it writes it untold - null for Sona's own lines. */
+internal fun logLineOf(line: String): String? {
+    val (tag, rest) = line.split(' ', limit = 2).let { it[0] to it.getOrElse(1) { "" } }
+    return when (tag) {
+        YtDlpLines.PROGRESS -> rest.split(' ', limit = 4).getOrNull(3)?.trim()?.replace(Spaces, " ")?.takeIf(String::isNotEmpty)?.let { "[download] $it" }
+        YtDlpLines.ITEM, YtDlpLines.SAVED, YtDlpLines.SIZE -> null
+        else -> line.takeIf(String::isNotBlank)
+    }
+}
+
+private val Spaces = Regex(" +")
+
+/** Why a download of captions alone saved nothing: the video has none in the languages picked. */
+private const val NoSubtitles = "The video has no subtitles in the languages picked"
+
+/** What a stream of sound or picture is saved as - not a caption, a description or a picture. */
+private val MediaExtensions = setOf("mp4", "m4a", "webm", "mkv", "mov", "mp3", "opus", "ogg", "oga", "flac", "wav", "aac", "ts", "3gp", "flv")
 
 /** [text] as the arguments a shell would make of it: split at spaces, outside quotes. */
 fun splitArguments(text: String): List<String> =

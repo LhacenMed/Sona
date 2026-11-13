@@ -117,5 +117,19 @@ class RedditReaderTest {
         assertEquals(44.0, info.getDouble("duration"), 0.0)
         assertEquals("Reddit", info.getString("extractor_key"))
         assertNull(RedditReader.infoJson(video, Manifest.replace("DASH_720.mp4", "https://evil.test/a.mp4"), "https://www.reddit.com$Permalink"))
+        assertEquals(0, info.getJSONObject("subtitles").length() + info.getJSONObject("automatic_captions").length())
+    }
+
+    @Test
+    fun aTextRepresentationIsTheVideosCaptionsAndElseTheSpokenOnesAreLookedFor() {
+        val video = checkNotNull(RedditReader.parsePage(postPage(), PostId, null))
+        val captioned = Manifest.replace("</Period>", "<AdaptationSet contentType=\"text\" lang=\"en\" mimeType=\"text/vtt\"><Representation id=\"9\"><BaseURL>captions.vtt</BaseURL></Representation></AdaptationSet></Period>")
+        val listed = JSONObject(checkNotNull(RedditReader.infoJson(video, captioned, "https://www.reddit.com$Permalink") { error("looked for") }))
+        assertEquals(3, listed.getJSONArray("formats").length())
+        assertEquals("https://v.redd.it/$VideoId/captions.vtt", listed.getJSONObject("subtitles").getJSONArray("en").getJSONObject(0).getString("url"))
+
+        val spoken = "https://v.redd.it/$VideoId/wh_ben_en.vtt"
+        val found = JSONObject(checkNotNull(RedditReader.infoJson(video, Manifest, "https://www.reddit.com$Permalink") { spoken }))
+        assertEquals(spoken, found.getJSONObject("automatic_captions").getJSONArray("en").getJSONObject(0).getString("url"))
     }
 }

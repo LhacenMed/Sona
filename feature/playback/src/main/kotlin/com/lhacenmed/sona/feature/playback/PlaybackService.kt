@@ -29,12 +29,13 @@ import com.google.common.util.concurrent.SettableFuture
 import com.lhacenmed.sona.core.common.R as CommonR
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.common.entry.AppEntry
-import com.lhacenmed.sona.core.data.contentUri
 import com.lhacenmed.sona.core.data.LibraryRepository
+import com.lhacenmed.sona.core.data.contentUri
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
 import com.lhacenmed.sona.core.datastore.ImageSettings
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.datastore.ShuffleSettings
+import com.lhacenmed.sona.core.downloader.LiveDownloads
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
 import dagger.hilt.android.AndroidEntryPoint
@@ -88,6 +89,12 @@ class PlaybackService : MediaSessionService() {
 
     @Inject
     lateinit var trackFiles: TrackFiles
+
+    @Inject
+    lateinit var liveSources: LiveDownloadSources
+
+    @Inject
+    lateinit var liveDownloads: LiveDownloads
 
     @Inject
     lateinit var resumePositions: ResumePositions
@@ -165,6 +172,8 @@ class PlaybackService : MediaSessionService() {
             ) {
                 holdTrackFiles()
             }
+            // Whether there is a next - which the buttons' places follow - changes with the queue and the repeat mode.
+            if (events.containsAny(Player.EVENT_AVAILABLE_COMMANDS_CHANGED, Player.EVENT_REPEAT_MODE_CHANGED)) updateMediaButtons()
         }
     }
 
@@ -320,8 +329,13 @@ class PlaybackService : MediaSessionService() {
             .build()
         exoPlayer = ExoPlayer.Builder(this, sonaRenderersFactory(this))
             .setLoadControl(loadControl)
-            // Every file read through [trackFiles], so one changed while it plays reads on unchanged.
-            .setMediaSourceFactory(DefaultMediaSourceFactory(trackFiles.dataSourceFactory(DefaultDataSource.Factory(this))))
+            // Every file read through [trackFiles], so one changed while it plays reads on unchanged - and a download, as it
+            // downloads, through [liveSources].
+            .setMediaSourceFactory(
+                trackFiles.dataSourceFactory(liveSources.dataSourceFactory(DefaultDataSource.Factory(this))).let { files ->
+                    liveSources.mediaSourceFactory(DefaultMediaSourceFactory(files), files)
+                },
+            )
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA)
@@ -347,6 +361,7 @@ class PlaybackService : MediaSessionService() {
 
         // On the player itself, so a listen is recorded however it was started and with no screen open.
         playHistoryRecorder = PlayHistoryRecorder(exoPlayer, serviceScope, listenHistory, playbackSettings).also { it.attach() }
+        serviceScope.launch { exoPlayer.followLiveDownloads(liveDownloads) }
         resumePositionRecorder = ResumePositionRecorder(exoPlayer, resumePositions).also { it.attach() }
 
         forwardingPlayer = PlaybackForwardingPlayer(exoPlayer) { forwardingSettings }
@@ -397,13 +412,15 @@ class PlaybackService : MediaSessionService() {
      * Rebuilds the session's own buttons - repeat, shuffle and favorite - from current player state, for
      * everything that shows them: the notification, the system's media controls, a car or a watch.
      *
-     * Always in this order, and none of them asks for a place: where each goes is media3's to decide
-     * around the transport buttons - never in previous's place, and first into the one next leaves when
-     * there is nowhere to go next - so they fall into place by themselves as the queue changes.
+     * Always in this order, after the transport buttons. Where there is no next - a track repeating, or the
+     * queue's last - repeat takes the place next leaves, so shuffle and the heart still both show: media3 puts a
+     * button in next's place whenever it is asked to, next or not, so it is asked to only then.
      */
     private fun updateMediaButtons() {
+        // As the session's player has them - next hidden while a track repeats - not as the player it wraps has them.
+        val takesNextsPlace = !forwardingPlayer.availableCommands.contains(Player.COMMAND_SEEK_TO_NEXT)
         mediaSession.setMediaButtonPreferences(
-            listOf(buildRepeatCommandButton(), buildShuffleCommandButton(), buildFavoriteCommandButton()),
+            listOf(buildRepeatCommandButton(takesNextsPlace), buildShuffleCommandButton(), buildFavoriteCommandButton()),
         )
     }
 
@@ -715,7 +732,7 @@ class PlaybackService : MediaSessionService() {
      * Ported from ArchiveTune's like button: it carries no slot, and is disabled rather than hidden
      * while nothing is loaded, matching `.setEnabled(currentSong.value != null)`.
      */
-    private fun buildRepeatCommandButton(): CommandButton =
+    private fun buildRepeatCommandButton(takesNextsPlace: Boolean): CommandButton =
         CommandButton.Builder(
             when (repeatMode) {
                 RepeatMode.STOP_AFTER_CURRENT, RepeatMode.ONE -> CommandButton.ICON_REPEAT_ONE
@@ -726,6 +743,7 @@ class PlaybackService : MediaSessionService() {
             .setDisplayName(getString(repeatMode.labelRes))
             .setCustomIconResId(repeatMode.iconRes)
             .setSessionCommand(PlaybackSessionCommands.toggleRepeatModeCommand)
+            .apply { if (takesNextsPlace) setSlots(CommandButton.SLOT_FORWARD) }
             .build()
 
     private fun buildShuffleCommandButton(): CommandButton {

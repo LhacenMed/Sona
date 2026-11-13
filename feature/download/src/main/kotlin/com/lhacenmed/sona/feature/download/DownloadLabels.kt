@@ -2,9 +2,13 @@ package com.lhacenmed.sona.feature.download
 
 import android.content.Context
 import android.text.format.Formatter
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import com.lhacenmed.sona.core.downloader.AudioTrackKind
 import com.lhacenmed.sona.core.downloader.MediaFormat
+import com.lhacenmed.sona.core.downloader.TRANSCRIBED_CAPTIONS
+import com.lhacenmed.sona.core.downloader.captionLanguageOf
 import com.lhacenmed.sona.core.model.AudioFormat
 import com.lhacenmed.sona.core.model.DownloadFailure
 import com.lhacenmed.sona.core.model.DownloadKind
@@ -19,6 +23,20 @@ internal val DownloadKind.labelRes: Int
     get() = when (this) {
         DownloadKind.VIDEO -> R.string.download_kind_video
         DownloadKind.AUDIO -> R.string.download_kind_audio
+        DownloadKind.SUBTITLES -> R.string.download_kind_subtitles
+    }
+
+/** How a saved download of this kind is opened: played - or, its captions alone, opened in an app that reads them. */
+internal val DownloadKind.openLabelRes: Int get() = if (isMedia) R.string.download_play else R.string.download_open
+
+internal val DownloadKind.openIcon: ImageVector get() = if (isMedia) SonaIcons.Play else SonaIcons.FileOpen
+
+/** What stands for a kind beside its name. */
+internal val DownloadKind.icon: ImageVector
+    get() = when (this) {
+        DownloadKind.VIDEO -> SonaIcons.Video
+        DownloadKind.AUDIO -> SonaIcons.Song
+        DownloadKind.SUBTITLES -> SonaIcons.Subtitles
     }
 
 internal val VideoQuality.labelRes: Int
@@ -72,6 +90,7 @@ internal enum class FailureFix(val labelRes: Int, val icon: ImageVector) {
     SIGN_IN(R.string.download_fix_sign_in, SonaIcons.Login),
     FREE_UP_SPACE(R.string.download_fix_free_up_space, SonaIcons.Storage),
     GET_DOWNLOADER(R.string.download_fix_get_downloader, SonaIcons.Extension),
+    DOWNLOAD_ANYWAY(R.string.download_fix_download_anyway, SonaIcons.Download),
 }
 
 /** How a failure is told: [rowRes] on its row; [titleRes] and [messageRes] in its sheet, with its [fix]. */
@@ -98,6 +117,10 @@ internal val DownloadFailure.presentation: FailurePresentation
         DownloadFailure.NO_DOWNLOADER -> FailurePresentation(
             R.string.download_failure_no_downloader, R.string.download_failure_no_downloader, R.string.download_failure_no_downloader_message, SonaIcons.Extension, FailureFix.GET_DOWNLOADER,
         )
+        DownloadFailure.ALREADY_SAVED -> FailurePresentation(
+            R.string.download_failure_already_saved, R.string.download_failure_already_saved, R.string.download_failure_already_saved_message, SonaIcons.Verified,
+            FailureFix.DOWNLOAD_ANYWAY,
+        )
         DownloadFailure.FAILED -> FailurePresentation(
             R.string.download_failed, R.string.download_failure_other, R.string.download_failure_other_message, SonaIcons.ErrorOutline, FailureFix.TRY_AGAIN,
         )
@@ -114,8 +137,20 @@ internal val AudioTrackKind.labelRes: Int
 internal val AudioTrackKind.summaryRes: Int
     get() = if (this == AudioTrackKind.ORIGINAL) R.string.download_track_original_summary else labelRes
 
-/** A language as the user reads it, in their own - "Spanish (Mexico)" - from a site's code, "es-MX"; a described sound's, "en-desc", as its language's. */
-internal fun languageName(code: String): String {
+/**
+ * A language as the user reads it, in their own - "Spanish (Mexico)" - from a site's code, "es-MX"; a described sound's,
+ * "en-desc", as its language's; and one its site leaves unnamed, "und", as the language spoken.
+ */
+@Composable
+internal fun languageName(code: String): String = if (code == "und") stringResource(R.string.download_language_spoken) else displayName(code)
+
+/** A picked caption as the user reads it: its language - or, transcribed from the speech, that it is. */
+@Composable
+internal fun captionName(code: String): String =
+    if (code == TRANSCRIBED_CAPTIONS) stringResource(R.string.download_subtitles_transcribed) else languageName(captionLanguageOf(code))
+
+/** [code]'s language named in the user's own - the code itself where it has no name. */
+private fun displayName(code: String): String {
     val locale = Locale.forLanguageTag(code.removeSuffix("-desc"))
     return locale.getDisplayName(Locale.getDefault()).takeIf { it.isNotBlank() && it != code }
         ?.replaceFirstChar { it.titlecase(Locale.getDefault()) } ?: code
@@ -124,7 +159,7 @@ internal fun languageName(code: String): String {
 /** The languages captions can be translated into, as their codes: the device's and English first, then the rest by name. */
 internal fun translatableLanguages(): List<String> {
     val first = listOf(Locale.getDefault().language, "en").distinct()
-    val rest = Locale.getISOLanguages().filter { it !in first && languageName(it) != it }.sortedBy(::languageName)
+    val rest = Locale.getISOLanguages().filter { it !in first && displayName(it) != it }.sortedBy(::displayName)
     return first + rest
 }
 

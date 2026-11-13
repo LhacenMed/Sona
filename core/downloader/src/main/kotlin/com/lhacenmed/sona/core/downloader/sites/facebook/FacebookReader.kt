@@ -1,5 +1,7 @@
 package com.lhacenmed.sona.core.downloader.sites.facebook
 
+import com.lhacenmed.sona.core.downloader.objects
+import com.lhacenmed.sona.core.downloader.sites.CaptionFile
 import com.lhacenmed.sona.core.downloader.sites.HttpsUrl
 import com.lhacenmed.sona.core.downloader.sites.keyList
 import com.lhacenmed.sona.core.downloader.sites.SiteHttp
@@ -7,6 +9,7 @@ import com.lhacenmed.sona.core.downloader.sites.SiteReader
 import com.lhacenmed.sona.core.downloader.sites.VideoFormat
 import com.lhacenmed.sona.core.downloader.sites.VideoPost
 import com.lhacenmed.sona.core.downloader.sites.firstLine
+import com.lhacenmed.sona.core.downloader.sites.languageTagOf
 import com.lhacenmed.sona.core.downloader.sites.text
 import com.lhacenmed.sona.core.downloader.sites.videoInfoJson
 import com.lhacenmed.sona.core.downloader.sites.wholeNumber
@@ -92,7 +95,8 @@ internal object FacebookReader : SiteReader {
                 else -> null
             }
         } ?: return null
-        val node = results.flatMap { videoNodes(it, videoId, 0) }.firstOrNull() ?: return null
+        val nodes = results.flatMap { videoNodes(it, videoId, 0) }
+        val node = nodes.firstOrNull() ?: return null
         val fields = node.optJSONObject("videoDeliveryLegacyFields") ?: node
         val width = (node.opt("width") ?: node.opt("original_width")).wholeNumber()?.toInt()
         val height = (node.opt("height") ?: node.opt("original_height")).wholeNumber()?.toInt()
@@ -116,9 +120,20 @@ internal object FacebookReader : SiteReader {
                 webpageUrl = webpageUrl,
                 extractorKey = "Facebook",
                 formats = listOf(format),
+                captions = nodes.firstNotNullOfOrNull { captionsOf(it).ifEmpty { null } }.orEmpty(),
             ),
         )
     }.getOrNull()
+
+    /**
+     * A Video node's captions, as yt-dlp's facebook extractor reads them: `video_available_captions_locales`, each its
+     * `captions_url` by its `locale` - made by Facebook where it says how it made them, or the video is a broadcast.
+     */
+    private fun captionsOf(node: JSONObject): List<CaptionFile> = node.optJSONArray("video_available_captions_locales")?.objects().orEmpty().mapNotNull { caption ->
+        val url = caption.text("captions_url")?.takeIf { HttpsUrl.parse(it) != null } ?: return@mapNotNull null
+        val isAutomatic = caption.text("localized_creation_method") != null || node.optBoolean("is_video_broadcast")
+        CaptionFile(languageTagOf(caption.text("locale")), url, isAutomatic)
+    }
 
     /** A story's attachments: its photos counted, one id per video attachment, and how many are anything else. */
     private class StoryMedia(val photos: Int, val videos: List<String>, val others: Int, val signature: String) {

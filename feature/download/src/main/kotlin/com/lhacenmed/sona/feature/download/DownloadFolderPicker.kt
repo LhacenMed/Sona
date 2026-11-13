@@ -1,7 +1,5 @@
 package com.lhacenmed.sona.feature.download
 
-import android.net.Uri
-import android.provider.DocumentsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -15,13 +13,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.lhacenmed.sona.core.common.permission.AppPermission
+import com.lhacenmed.sona.core.common.storage.storageFolderPathOf
 import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.core.designsystem.component.toast
-import java.io.File
-
-/** Where the folder picker's files live: the device's storage, by volume - "primary" its own, a memory card by its id. */
-private const val ExternalStorageAuthority = "com.android.externalstorage.documents"
 
 /** Download: the one folder Android lets an app save every kind of file in by itself. */
 private const val DownloadFolder = "Download"
@@ -40,7 +35,7 @@ internal fun rememberDownloadFolderPicker(onPick: (String) -> Unit): () -> Unit 
     val notOnDevice = stringResource(R.string.download_folder_not_on_device)
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri ?: return@rememberLauncherForActivityResult
-        val path = folderPathOf(uri) ?: return@rememberLauncherForActivityResult context.toast(notOnDevice)
+        val path = storageFolderPathOf(uri) ?: return@rememberLauncherForActivityResult context.toast(notOnDevice)
         if (isInDownload(path) || AppPermission.FILE_CHANGES.isGranted(context)) onPick(path) else waitingOnAccess = path
     }
 
@@ -64,13 +59,6 @@ internal fun rememberDownloadFolderPicker(onPick: (String) -> Unit): () -> Unit 
         }
     }
     return { picker.launch(null) }
-}
-
-/** The folder [tree] - one the picker gave - as folders are kept; null for one not on the device's storage. */
-private fun folderPathOf(tree: Uri): String? {
-    if (tree.authority != ExternalStorageAuthority) return null
-    val (volume, inVolume) = DocumentsContract.getTreeDocumentId(tree).split(':', limit = 2).let { it[0] to it.getOrElse(1) { "" } }
-    return if (volume.equals("primary", ignoreCase = true)) inVolume.trim('/') else File("/storage/$volume", inVolume).path
 }
 
 /** Whether [path] is Download, or within it. */

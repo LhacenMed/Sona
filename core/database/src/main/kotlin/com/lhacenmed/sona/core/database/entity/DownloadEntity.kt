@@ -3,9 +3,11 @@ package com.lhacenmed.sona.core.database.entity
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 import com.lhacenmed.sona.core.model.AudioFormat
 import com.lhacenmed.sona.core.model.ClipRange
 import com.lhacenmed.sona.core.model.Download
+import com.lhacenmed.sona.core.model.DownloadBatch
 import com.lhacenmed.sona.core.model.DownloadChoices
 import com.lhacenmed.sona.core.model.DownloadFailure
 import com.lhacenmed.sona.core.model.DownloadKind
@@ -14,7 +16,8 @@ import com.lhacenmed.sona.core.model.DownloadStatus
 import com.lhacenmed.sona.core.model.VideoFormat
 import com.lhacenmed.sona.core.model.VideoQuality
 
-/** One download asked for - queued, running, or over - with the choices it was asked with. See `Download`. */
+/** One download asked for - queued, running, or over - with the choices it was asked with. See `Download`. Carried by a backup, as it is. */
+@Serializable
 @Entity(tableName = "downloads")
 data class DownloadEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -53,6 +56,10 @@ data class DownloadEntity(
     /** No longer read: a sound always has its cover in its file now. Kept, as users' databases have it. */
     @ColumnInfo(defaultValue = "1") val embedsCover: Boolean = true,
     @ColumnInfo(defaultValue = "0") val savesCover: Boolean = false,
+    /** The [DownloadBatch] it was queued in - its key and its title - null for one link alone. */
+    val batchKey: String? = null,
+    val batchTitle: String? = null,
+    @ColumnInfo(defaultValue = "0") val downloadsAgain: Boolean = false,
 )
 
 fun DownloadEntity.toDomain() = Download(
@@ -78,6 +85,7 @@ fun DownloadEntity.toDomain() = Download(
         commandArguments = commandArguments,
         subtitleLanguages = subtitleLanguages?.lines()?.filter(String::isNotEmpty),
         song = song,
+        downloadsAgain = downloadsAgain,
     ),
     // One running as the app was last stopped never finished: it is taken up again.
     status = enumOr(status, DownloadStatus.QUEUED).let { if (it == DownloadStatus.RUNNING) DownloadStatus.QUEUED else it },
@@ -92,6 +100,7 @@ fun DownloadEntity.toDomain() = Download(
     sizeBytes = sizeBytes,
     finishedAt = finishedAt,
     startAt = startAt,
+    batch = if (batchKey != null && batchTitle != null) DownloadBatch(batchKey, batchTitle) else null,
 )
 
 /** A new download of [url] with [choices] and [options], queued - to start at [startAt], or as soon as it can. */
@@ -104,6 +113,7 @@ fun queuedDownload(
     options: DownloadOptions,
     startAt: Long?,
     createdAt: Long,
+    batch: DownloadBatch?,
 ) = DownloadEntity(
     url = url,
     title = title,
@@ -130,6 +140,9 @@ fun queuedDownload(
     savesAsSong = choices.savesAsSong,
     song = options.song,
     savesCover = choices.savesCover,
+    batchKey = batch?.key,
+    batchTitle = batch?.title,
+    downloadsAgain = options.downloadsAgain,
 )
 
 private inline fun <reified T : Enum<T>> enumOr(name: String, default: T): T = enumValues<T>().firstOrNull { it.name == name } ?: default

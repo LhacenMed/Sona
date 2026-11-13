@@ -24,7 +24,8 @@ import kotlinx.coroutines.flow.update
 
 /**
  * An outside file's item, known by its address alone: no library track or Private Folder item has an id like it, so
- * nothing that keeps a track's history - see [ListenHistory], [ResumePositions] - ever finds one.
+ * nothing that keeps a track's history - see [ListenHistory], [ResumePositions] - ever finds one. A download played as it
+ * downloads is one too, but where it is left is kept - see [liveDownloadId].
  */
 internal fun outsideMediaItem(uri: Uri, title: String, isVideo: Boolean): MediaItem = MediaItem.Builder()
     .setMediaId(uri.toString())

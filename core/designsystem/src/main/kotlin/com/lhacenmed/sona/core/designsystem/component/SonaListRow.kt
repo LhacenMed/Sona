@@ -106,7 +106,8 @@ fun Modifier.selectableRow(
  * against it, taken from whatever is listing the row unless it is given one.
  *
  * [subtitleColor] marks a row whose subtitle is a warning - a download that failed - and [supporting] is
- * what stands under the subtitle, for a row with more to show as it goes: a download's progress.
+ * what stands under the subtitle, for a row with more to show as it goes: a download's progress. [trailing] is
+ * a row's one action of its own at its end, before its options button - a download's pause, play or fix.
  */
 @Composable
 fun SonaListRow(
@@ -126,6 +127,7 @@ fun SonaListRow(
     optionsLabel: String = stringResource(R.string.list_row_more_options),
     subtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     supporting: (@Composable () -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
     cover: @Composable (isSelected: Boolean) -> Unit,
 ) {
     val isSelected = selectionKey != null && selection?.isSelected(selectionKey) == true
@@ -214,6 +216,7 @@ fun SonaListRow(
                         )
                     }
                 }
+                trailing?.invoke()
                 if (onOpenOptions != null) {
                     SonaIconButton(
                         onClick = onOpenOptions,

@@ -1,7 +1,17 @@
 package com.lhacenmed.sona.core.model
 
-/** What a download keeps of what it fetches: the video with its sound, or the sound alone. */
-enum class DownloadKind { VIDEO, AUDIO }
+/** What a download keeps of what it fetches: the video with its sound, the sound alone, or the video's captions alone. */
+enum class DownloadKind {
+    VIDEO,
+    AUDIO,
+
+    /** Its captions alone, as files - saved where videos are - with nothing of its sound or picture fetched. */
+    SUBTITLES,
+    ;
+
+    /** Whether it saves sound or picture: what the library holds, and a player plays. */
+    val isMedia: Boolean get() = this != SUBTITLES
+}
 
 /** The tallest picture a video is downloaded at - the best there is while [height] is null. */
 enum class VideoQuality(val height: Int?) {
@@ -94,6 +104,8 @@ data class DownloadOptions(
      * leaves it to the song the file's own names surely are.
      */
     val song: String? = null,
+    /** Saved even where it is already in the library - asked for once told so. See `LibraryCopies`. */
+    val downloadsAgain: Boolean = false,
 )
 
 /** How every file is named, yt-dlp's way: its title, cut to fit, and its id. */
@@ -104,6 +116,15 @@ const val DEFAULT_FILE_NAME_TEMPLATE = "%(title).150B [%(id)s].%(ext)s"
  * or, on another - a memory card - its whole path.
  */
 const val DEFAULT_DOWNLOAD_FOLDER = "Download/Sona"
+
+/**
+ * A service that transcribes a video's speech into captions, by the user's own free key - [title] its name, as it names itself.
+ * Supadata reads a video by its link, the site's own transcript first; Groq hears its sound, uploaded.
+ */
+enum class TranscriptionService(val title: String) {
+    SUPADATA("Supadata"),
+    GROQ("Groq"),
+}
 
 /** How downloading works, whatever is downloaded - the Downloads settings. */
 data class DownloaderPreferences(
@@ -129,7 +150,26 @@ data class DownloaderPreferences(
     val usesCookies: Boolean = false,
     /** What was downloaded once is not downloaded again, by its id at its site. */
     val usesArchive: Boolean = false,
+    /** The user's own key to Supadata's transcript API - what transcribes a video's speech first; none while blank. */
+    val supadataKey: String = "",
+    /** The user's own key to Groq's speech-to-text API; none while blank. */
+    val groqKey: String = "",
+    /** The service a video's speech is transcribed by first - see [transcribers]. */
+    val transcriptionService: TranscriptionService = TranscriptionService.SUPADATA,
 ) {
+    /** The services a video's speech is transcribed by, in the order they are tried: the one chosen, then the other - each with its key given. */
+    val transcribers: List<TranscriptionService>
+        get() = (listOf(transcriptionService) + TranscriptionService.entries).distinct().filter { keyFor(it).isNotBlank() }
+
+    /** Whether a video's speech can be transcribed into captions: a key to either is given. */
+    val transcribes: Boolean get() = transcribers.isNotEmpty()
+
+    /** The user's key to [service] - blank while none is given. */
+    fun keyFor(service: TranscriptionService): String = when (service) {
+        TranscriptionService.SUPADATA -> supadataKey
+        TranscriptionService.GROQ -> groqKey
+    }
+
     /** The folder [kind] is saved in. */
     fun folderFor(kind: DownloadKind): String = if (kind == DownloadKind.AUDIO) audioFolder else videoFolder
 
@@ -144,6 +184,9 @@ data class DownloaderPreferences(
 enum class DownloadStatus {
     QUEUED,
     RUNNING,
+
+    /** Stopped by the user, to carry on later from its last byte. */
+    PAUSED,
     DONE,
     FAILED,
     CANCELED,
@@ -161,6 +204,9 @@ enum class DownloadFailure {
     FORMAT_GONE,
     NO_SPACE,
     NO_DOWNLOADER,
+
+    /** It is in the library already - downloaded before, or found there - and was not asked for again. */
+    ALREADY_SAVED,
     FAILED,
 }
 
@@ -188,7 +234,14 @@ data class Download(
     val finishedAt: Long?,
     /** When it is to start - null to start as soon as it can. */
     val startAt: Long?,
+    /** The playlist or watched channel it was queued from, with the rest of its videos - null for one link alone. */
+    val batch: DownloadBatch? = null,
 )
+
+/**
+ * Downloads queued together - a playlist's videos, or what is new on a watched channel - listed as one, by [key], as [title].
+ */
+data class DownloadBatch(val key: String, val title: String)
 
 /**
  * A saved set of yt-dlp arguments - YTDLnis's command templates: given to a download that picks it, and by itself - beside the
@@ -210,7 +263,11 @@ data class DownloadCommand(
     fun isFor(url: String): Boolean = urlPatterns.isEmpty() || urlPatterns.any { runCatching { Regex(it).containsMatchIn(url) }.getOrDefault(false) }
 
     /** Whether a download of [url] as [kind] is given it by itself. */
-    fun addsTo(kind: DownloadKind, url: String): Boolean = (if (kind == DownloadKind.AUDIO) addsToAudio else addsToVideo) && isFor(url)
+    fun addsTo(kind: DownloadKind, url: String): Boolean = when (kind) {
+        DownloadKind.AUDIO -> addsToAudio
+        DownloadKind.VIDEO -> addsToVideo
+        DownloadKind.SUBTITLES -> false
+    } && isFor(url)
 }
 
 /** The command a download of [url] is given to begin with: the first preferred one that is for it. */

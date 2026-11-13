@@ -15,6 +15,7 @@ fun MediaInfo.estimatedSizeBytes(choices: DownloadChoices, picked: MediaFormat? 
     val language = audioLanguageFor(choices.audioLanguage)
     val sound = formats.filter { !it.hasVideo && it.hasAudio && (language == null || it.audioTrack?.language == language) }.maxByOrNull { it.bitrateKbps ?: 0 }
     val picture = when {
+        choices.kind == DownloadKind.SUBTITLES -> return null
         picked != null -> picked
         choices.kind == DownloadKind.AUDIO -> return sound?.sizeBytes?.takeIf { choices.audioFormat == AudioFormat.ORIGINAL || choices.audioFormat == AudioFormat.M4A }
         else -> pictureFor(choices) ?: return null

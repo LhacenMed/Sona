@@ -38,7 +38,7 @@ private const val PreviewBufferBytes = 8 * 1024 * 1024
  * A device with no second decoder to give it simply shows no frames; the video being watched is none the wiser.
  */
 @OptIn(UnstableApi::class)
-internal class VideoScrubPreviewPlayer(private val context: Context, private val trackFiles: TrackFiles) {
+internal class VideoScrubPreviewPlayer(private val context: Context, private val trackFiles: TrackFiles, private val liveSources: LiveDownloadSources) {
     private val handler: Handler by lazy(LazyThreadSafetyMode.NONE) {
         Handler(HandlerThread("VideoScrubPreview").apply { start() }.looper)
     }
@@ -141,7 +141,7 @@ internal class VideoScrubPreviewPlayer(private val context: Context, private val
     private fun buildPlayer(): ExoPlayer =
         ExoPlayer.Builder(context, sonaRenderersFactory(context))
             .setLooper(handler.looper)
-            .setMediaSourceFactory(videoMediaSourceFactory(context, trackFiles))
+            .setMediaSourceFactory(videoMediaSourceFactory(context, trackFiles, liveSources))
             .setLoadControl(
                 DefaultLoadControl.Builder()
                     .setBufferDurationsMs(

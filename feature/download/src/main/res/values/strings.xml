@@ -18,6 +18,10 @@
         <item quantity="one">%1$d downloading</item>
         <item quantity="other">%1$d downloading</item>
     </plurals>
+    <plurals name="download_paused_count">
+        <item quantity="one">%d paused</item>
+        <item quantity="other">%d paused</item>
+    </plurals>
     <plurals name="download_waiting_count">
         <item quantity="one">%1$d waiting</item>
         <item quantity="other">%1$d waiting</item>
@@ -26,6 +30,7 @@
         <item quantity="one">%1$d download</item>
         <item quantity="other">%1$d downloads</item>
     </plurals>
+    <string name="download_filter_songs">Songs</string>
     <string name="download_filter_failed">Failed</string>
     <string name="download_filter_empty">Nothing here</string>
     <string name="download_filter_empty_message">Pick the filter again to see every download.</string>
@@ -44,6 +49,8 @@
     <string name="download_item_of">Item %1$d of %2$d</string>
     <string name="download_waiting">Waiting to start</string>
     <string name="download_waiting_wifi">Waiting for Wi‑Fi</string>
+    <string name="download_waiting_network">Waiting for a connection</string>
+    <string name="download_paused">Paused</string>
     <string name="download_starts_at">Starts at %1$s</string>
     <string name="download_starts_tomorrow_at">Starts tomorrow at %1$s</string>
     <string name="download_status_canceled">Cancelled</string>
@@ -58,6 +65,7 @@
     <string name="download_reading_link">Reading link…</string>
     <string name="download_kind_video">Video</string>
     <string name="download_kind_audio">Audio</string>
+    <string name="download_kind_subtitles">Subtitles</string>
     <string name="download_options">Options</string>
     <string name="download_options_changed">Options · %1$d changed</string>
     <plurals name="download_videos">
@@ -129,7 +137,67 @@
     <string name="download_option_none">None</string>
 
     <string name="download_cancel">Cancel</string>
+    <string name="download_pause">Pause</string>
+    <string name="download_resume">Resume</string>
+    <string name="download_start_now">Start now</string>
+    <string name="download_batch_channel">Watched channel</string>
+    <string name="download_batch_saved">%1$d of %2$d saved</string>
+    <plurals name="download_batch_failed">
+        <item quantity="one">%d failed</item>
+        <item quantity="other">%d failed</item>
+    </plurals>
+    <string name="download_pause_all">Pause all</string>
+    <string name="download_resume_all">Resume all</string>
+    <string name="download_cancel_all">Cancel all</string>
+    <string name="download_fix_download_anyway">Download anyway</string>
+    <string name="download_checking_library">Checking your library…</string>
+    <string name="download_copy_none">Not in your library yet</string>
+    <string name="download_once_checked">Download once checked</string>
+    <string name="download_once_read">Downloads once read…</string>
+    <string name="download_once_checked_waiting">Downloads once checked…</string>
+    <plurals name="download_copies_some">
+        <item quantity="one">%d may be in your library already</item>
+        <item quantity="other">%d may be in your library already</item>
+    </plurals>
+    <string name="download_copy_exact">You have it already: %1$s</string>
+    <string name="download_copy_similar">A song like it is in your library: %1$s</string>
+    <plurals name="download_copies_found">
+        <item quantity="one">%d is in your library already. Pick it to download it again.</item>
+        <item quantity="other">%d are in your library already. Pick those to download again.</item>
+    </plurals>
+    <plurals name="download_download_count">
+        <item quantity="one">Download %d</item>
+        <item quantity="other">Download %d</item>
+    </plurals>
+    <string name="download_failure_already_saved">Already in your library</string>
+    <string name="download_failure_already_saved_message">You have it already - downloaded before, or found among your files.</string>
+    <string name="download_play_now">Play now</string>
+    <string name="download_tile_downloaded">Downloaded</string>
+    <string name="download_tile_speed">Speed</string>
+    <string name="download_tile_format">Format</string>
+    <string name="download_tile_folder">Save to</string>
+    <string name="download_status_saved">Saved</string>
+    <string name="download_status_missing">No longer on your device</string>
+    <string name="download_size_done_of">%1$s / %2$s</string>
+    <string name="download_finishing">Finishing…</string>
+    <string name="download_finishing_song">Adding cover and lyrics…</string>
+    <plurals name="download_seconds_left">
+        <item quantity="one">%d second left</item>
+        <item quantity="other">%d seconds left</item>
+    </plurals>
+    <plurals name="download_minutes_left">
+        <item quantity="one">%d min left</item>
+        <item quantity="other">%d min left</item>
+    </plurals>
+    <string name="download_log_title">Log</string>
+    <string name="download_log_show">Show log</string>
+    <string name="download_log_empty">Nothing written yet</string>
+    <string name="download_log_empty_message">What the download does is written here as it runs.</string>
+    <string name="download_log_copy">Copy</string>
+    <string name="download_log_share">Share</string>
+    <string name="download_log_copied">Log copied</string>
     <string name="download_play">Play</string>
+    <string name="download_open">Open</string>
     <string name="download_not_in_library">Not in your library yet</string>
     <string name="download_auto_tag">Auto-tag</string>
     <string name="download_again">Download again</string>
@@ -137,6 +205,7 @@
     <string name="download_share_links">Share links</string>
     <string name="download_copy_link">Copy link</string>
     <string name="download_link_copied">Copied</string>
+    <string name="download_copy_subtitles">Copy subtitles</string>
     <string name="download_open_link">Open link</string>
     <string name="download_error_details">Error details</string>
     <string name="download_copy_error">Copy</string>
@@ -266,6 +335,12 @@
     <string name="downloads_settings_proxy_title">Proxy</string>
     <string name="downloads_settings_rate_title">Speed limit</string>
     <string name="downloads_settings_none">None</string>
+    <string name="downloads_settings_transcription_section">Transcription</string>
+    <string name="downloads_settings_transcription_service_title">Transcribe with</string>
+    <string name="downloads_settings_supadata_title">Supadata key</string>
+    <string name="downloads_settings_groq_title">Groq key</string>
+    <string name="downloads_settings_key_set">Set</string>
+    <string name="downloads_settings_transcription_summary">Free keys from supadata.ai and console.groq.com. Used only to make subtitles for videos that have none</string>
     <string name="downloads_settings_cookies_title">Cookies</string>
     <string name="downloads_settings_cookies_summary">Sign in on a site, for downloads that need an account</string>
     <string name="downloads_settings_use_cookies_title">Read sites signed in</string>
@@ -307,7 +382,13 @@
     <string name="download_subtitles_made">From the creator</string>
     <string name="download_subtitles_auto">Auto-generated</string>
     <string name="download_subtitles_auto_language">%1$s (auto)</string>
+    <string name="download_language_spoken">Language spoken</string>
     <string name="download_subtitles_translated">Translated</string>
+    <string name="download_subtitles_transcribed">Transcribed</string>
+    <string name="download_subtitles_transcribe">Transcribe the speech</string>
+    <string name="download_subtitles_transcribe_by">By %1$s</string>
+    <string name="download_subtitles_transcribe_by_else">By %1$s, else %2$s</string>
+    <string name="download_subtitles_transcribe_needs_key">Needs a free key, in Downloads settings</string>
     <string name="download_subtitles_translated_from">Translated from %1$s</string>
     <string name="download_subtitles_add_language">Add a language</string>
     <string name="download_subtitles_add">Add them</string>

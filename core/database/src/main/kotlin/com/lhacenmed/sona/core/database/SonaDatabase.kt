@@ -80,7 +80,7 @@ import com.lhacenmed.sona.core.database.entity.VideoSubtitleEntity
         DownloadCommandShortcutEntity::class,
         DownloadWatchEntity::class,
     ],
-    version = 35,
+    version = 36,
     exportSchema = true,
 )
 @TypeConverters(CoverArtUrisConverter::class, ArtistIdsConverter::class)

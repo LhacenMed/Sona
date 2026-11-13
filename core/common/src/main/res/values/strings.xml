@@ -15,4 +15,6 @@
     <string name="notification_channel_backup_description">The progress of a backup or a restore</string>
     <string name="notification_channel_downloads">Downloads</string>
     <string name="notification_channel_downloads_description">What is downloading, and what has been saved</string>
+    <!-- A running task's notification title on Android 16 and later, which the status bar shows too: "42%". -->
+    <string name="notification_progress_percent">%1$d%%</string>
 </resources>

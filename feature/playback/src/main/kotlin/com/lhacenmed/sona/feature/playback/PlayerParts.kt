@@ -16,6 +16,7 @@ import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.mediacodec.MediaCodecUtil
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.video.VideoRendererEventListener
 import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.FfmpegAudioRenderer
 import io.github.anilbeesetti.nextlib.media3ext.ffdecoder.FfmpegLibrary
@@ -80,11 +81,17 @@ private class SonaRenderersFactory(context: Context) : DefaultRenderersFactory(c
     }
 }
 
-/** How a video's file is read - through [trackFiles], knowing which frames nothing depends on, so a seek decodes only those it needs. */
+/**
+ * How a video's file is read - through [trackFiles], knowing which frames nothing depends on, so a seek decodes only those it
+ * needs - and a video downloading, as it downloads, through [liveSources].
+ */
 @OptIn(UnstableApi::class)
-internal fun videoMediaSourceFactory(context: Context, trackFiles: TrackFiles): DefaultMediaSourceFactory =
-    DefaultMediaSourceFactory(trackFiles.dataSourceFactory(DefaultDataSource.Factory(context)))
+internal fun videoMediaSourceFactory(context: Context, trackFiles: TrackFiles, liveSources: LiveDownloadSources): MediaSource.Factory {
+    val dataSourceFactory = trackFiles.dataSourceFactory(liveSources.dataSourceFactory(DefaultDataSource.Factory(context)))
+    val files = DefaultMediaSourceFactory(dataSourceFactory)
         .experimentalSetCodecsToParseWithinGopSampleDependencies(C.VIDEO_CODEC_FLAG_H264 or C.VIDEO_CODEC_FLAG_H265)
+    return liveSources.mediaSourceFactory(files, dataSourceFactory)
+}
 
 /** The queue in the order it plays - shuffle order while shuffling - the way ArchiveTune's `getQueueWindows` walks it. */
 internal fun Player.queueEntries(): List<QueueEntry> {

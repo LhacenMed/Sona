@@ -94,7 +94,7 @@ data class CookiesScreen(val site: String = DefaultSite) : Screen {
                 },
                 modifier = Modifier.weight(1f).fillMaxWidth(),
             )
-            SonaActionButtonGroup(modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)) {
+            SonaActionButtonGroup(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp)) {
                 actionButton(label = clearLabel, onClick = {
                     viewModel.clear()
                     context.toast(R.string.download_cookies_cleared)

@@ -7,9 +7,12 @@ import com.lhacenmed.sona.core.database.entity.DownloadEntity
 import com.lhacenmed.sona.core.database.entity.queuedDownload
 import com.lhacenmed.sona.core.database.entity.toDomain
 import com.lhacenmed.sona.core.datastore.DownloadSettings
+import com.lhacenmed.sona.core.downloader.DownloadWorkspaces
 import com.lhacenmed.sona.core.downloader.DownloaderRuntime
 import com.lhacenmed.sona.core.downloader.RuntimeState
+import com.lhacenmed.sona.core.downloader.fractionOf
 import com.lhacenmed.sona.core.model.Download
+import com.lhacenmed.sona.core.model.DownloadBatch
 import com.lhacenmed.sona.core.model.DownloadChoices
 import com.lhacenmed.sona.core.model.DownloadFailure
 import com.lhacenmed.sona.core.model.DownloadOptions
@@ -41,10 +44,23 @@ data class RunningDownload(
     val downloadedBytes: Long? = null,
     val totalBytes: Long? = null,
     val bytesPerSecond: Long? = null,
+    /** The last line the downloader wrote - what it is doing, in its own words. */
+    val line: String? = null,
+    /** Whether what it downloaded is being made ready - tagged, covered, given its lyrics - before it is saved. */
+    val isFinishing: Boolean = false,
 ) {
     /** How far the file downloading is, from 0 to 1 - null while unknown. */
-    val fraction: Float? get() = if (downloadedBytes != null && totalBytes != null && totalBytes > 0) (downloadedBytes.toFloat() / totalBytes).coerceIn(0f, 1f) else null
+    val fraction: Float? get() = fractionOf(downloadedBytes, totalBytes)
+
+    /** Whether all it fetches is in, and it is made ready - merged, converted, tagged - before it is saved. */
+    val isFinishingUp: Boolean get() = isFinishing || fraction == 1f
 }
+
+/** How far a download paused had got: bytes downloaded and of how many, each null where unknown - see [DownloadQueue.held]. */
+typealias HeldProgress = Pair<Long?, Long?>
+
+/** How the user stopped a running download: to carry on later from its last byte, or for good, with what it fetched. */
+internal enum class DownloadStop { PAUSE, CANCEL }
 
 /** One link to queue, with what is known of it already, and how. */
 data class DownloadRequest(
@@ -54,6 +70,8 @@ data class DownloadRequest(
     val uploader: String?,
     val choices: DownloadChoices,
     val options: DownloadOptions = DownloadOptions(),
+    /** The playlist or watched channel it is queued with - null for one link alone. */
+    val batch: DownloadBatch? = null,
 )
 
 /** The first link in [text] - what a share of a page gives, often with words around it. */
@@ -70,14 +88,11 @@ class DownloadQueue @Inject constructor(
     @ApplicationContext private val context: Context,
     private val dao: DownloadDao,
     private val settings: DownloadSettings,
+    private val workspaces: DownloadWorkspaces,
+    private val logs: DownloadLogs,
     runtime: DownloaderRuntime,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
-    init {
-        // What waited on the downloader downloads the moment it is here, wherever the user is.
-        scope.launch { runtime.state.drop(1).filter { it == RuntimeState.Installed }.collect { retryFailed(DownloadFailure.NO_DOWNLOADER) } }
-    }
-
     /** Every download, the newest first. */
     val downloads: Flow<List<Download>> = dao.observeAll().map { rows -> rows.map(DownloadEntity::toDomain) }
 
@@ -86,14 +101,32 @@ class DownloadQueue @Inject constructor(
     /** The downloads running, as they go, by id. */
     val running: StateFlow<Map<Long, RunningDownload>> = _running.asStateFlow()
 
+    private val _held = MutableStateFlow<Map<Long, HeldProgress>>(emptyMap())
+
+    /**
+     * How far each paused download had got, by id - held as it is paused, so its row shows it the moment it stops; read back
+     * from its folder for those paused before the app last stopped - see [DownloadWorkspaces.saveProgress].
+     */
+    val held: StateFlow<Map<Long, HeldProgress>> = _held.asStateFlow()
+
     /** Each running download's work, by id - what cancelling one stops. */
     private val jobs = mutableMapOf<Long, Job>()
 
-    /** The running downloads the user stopped - told apart from those stopped with the worker, which carry on next time. */
-    private val stoppedByUser = mutableSetOf<Long>()
+    /** The running downloads the user stopped, and how - told apart from those stopped with the worker, which carry on next time. */
+    private val stoppedByUser = mutableMapOf<Long, DownloadStop>()
 
     /** Told whenever there may be more to run - what the worker waits on between downloads. */
     internal val changes = Channel<Unit>(Channel.CONFLATED)
+
+    // After every property: what it launches runs on other threads at once, and must find them made.
+    init {
+        // What waited on the downloader downloads the moment it is here, wherever the user is.
+        scope.launch { runtime.state.drop(1).filter { it == RuntimeState.Installed }.collect { retryFailed(DownloadFailure.NO_DOWNLOADER) } }
+        scope.launch {
+            val saved = dao.pausedIds().mapNotNull { id -> workspaces.progressOf(id)?.let { id to it } }.toMap()
+            _held.update { saved + it }
+        }
+    }
 
     /** Queues [requests] - to start at [startAt], or as soon as they can - and has them run. */
     fun add(requests: List<DownloadRequest>, startAt: Long? = null) {
@@ -103,7 +136,7 @@ class DownloadQueue @Inject constructor(
             dao.insertAll(
                 requests.mapIndexed { index, request ->
                     // Apart by a millisecond each, so they keep the order they were asked in.
-                    queuedDownload(request.url, request.title, request.thumbnailUrl, request.uploader, request.choices, request.options, startAt, now + index)
+                    queuedDownload(request.url, request.title, request.thumbnailUrl, request.uploader, request.choices, request.options, startAt, now + index, request.batch)
                 },
             )
             changed()
@@ -117,6 +150,14 @@ class DownloadQueue @Inject constructor(
     fun retry(ids: Collection<Long>) {
         scope.launch {
             dao.requeue(ids)
+            changed()
+        }
+    }
+
+    /** Queues [ids] again, saved though they are in the library already. */
+    fun retryAnyway(ids: Collection<Long>) {
+        scope.launch {
+            dao.requeueAgain(ids)
             changed()
         }
     }
@@ -141,21 +182,46 @@ class DownloadQueue @Inject constructor(
     /** Takes everything over off the list - their files stay where they were saved. */
     suspend fun clearHistory() = dao.deleteFinished()
 
-    /** Stops [ids] - there and then for those running, before they start for those waiting. */
+    /**
+     * Stops [ids] for good, and deletes what they fetched - there and then for those running, before they start for those
+     * waiting or paused.
+     */
     fun cancel(ids: Collection<Long>) {
-        synchronized(jobs) {
-            stoppedByUser += ids.filter(jobs::containsKey)
-            ids.mapNotNull(jobs::get)
-        }.forEach(Job::cancel)
-        scope.launch { dao.cancelQueued(ids) }
+        val running = stop(ids, DownloadStop.CANCEL)
+        scope.launch {
+            dao.cancelQueued(ids)
+            workspaces.discard(ids - running)
+        }
     }
 
-    /** Whether the user stopped [id] - asked once, as it stops. */
-    internal fun wasStoppedByUser(id: Long): Boolean = synchronized(jobs) { stoppedByUser.remove(id) }
+    /** Pauses [ids], keeping what they fetched to carry on from its last byte - see [resume]. */
+    fun pause(ids: Collection<Long>) {
+        stop(ids, DownloadStop.PAUSE)
+        scope.launch { dao.pauseQueued(ids) }
+    }
+
+    /** Carries on [ids], paused, from their last byte. */
+    fun resume(ids: Collection<Long>) = retry(ids)
+
+    /** Stops those of [ids] running, as [how]. Which they were. */
+    private fun stop(ids: Collection<Long>, how: DownloadStop): Set<Long> {
+        val running = synchronized(jobs) {
+            ids.filter(jobs::containsKey).onEach { stoppedByUser[it] = how }.associateWith(jobs::getValue)
+        }
+        running.values.forEach(Job::cancel)
+        return running.keys
+    }
+
+    /** How the user stopped [id] - asked once, as it stops; null where it was stopped with the worker. */
+    internal fun stopOf(id: Long): DownloadStop? = synchronized(jobs) { stoppedByUser.remove(id) }
 
     /** Takes [ids] off the history - their files stay where they were saved. */
     fun remove(ids: Collection<Long>) {
-        scope.launch { dao.delete(ids) }
+        scope.launch {
+            dao.delete(ids)
+            workspaces.discard(ids)
+            logs.discard(ids)
+        }
     }
 
     /** Deletes [ids]' files, then takes them off the history. Whether every file went. */
@@ -163,6 +229,8 @@ class DownloadQueue @Inject constructor(
         val downloads = dao.byIds(ids).map(DownloadEntity::toDomain)
         val allDeleted = downloads.flatMap(Download::savedPaths).map(::File).all { !it.exists() || it.delete() }
         dao.delete(ids)
+        workspaces.discard(ids)
+        logs.discard(ids)
         return allDeleted
     }
 
@@ -171,6 +239,12 @@ class DownloadQueue @Inject constructor(
         changes.trySend(Unit)
         DownloadWork.start(context, settings.preferences.value)
     }
+
+    /** Holds [progress] as how far [id] had got as it was paused. */
+    internal fun hold(id: Long, progress: HeldProgress) = _held.update { it + (id to progress) }
+
+    /** Lets go of what [id] held - running again, or cancelled. */
+    internal fun release(id: Long) = _held.update { it - id }
 
     internal fun setRunning(id: Long, running: RunningDownload?) {
         _running.update { if (running == null) it - id else it + (id to running) }

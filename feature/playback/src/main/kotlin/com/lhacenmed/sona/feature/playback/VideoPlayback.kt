@@ -7,11 +7,11 @@ import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.TrackSelectionOverride
-import androidx.media3.common.MimeTypes
 import androidx.media3.common.text.Cue
 import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.UnstableApi
@@ -21,26 +21,27 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.session.MediaSession
-import com.lhacenmed.sona.core.datastore.ImageSettings
-import com.lhacenmed.sona.core.datastore.PlaybackSettings
-import com.lhacenmed.sona.core.datastore.VideoSettings
 import com.lhacenmed.sona.core.database.dao.OnlineHeatmapDao
 import com.lhacenmed.sona.core.database.dao.VideoChapterDao
 import com.lhacenmed.sona.core.database.entity.toDomain
+import com.lhacenmed.sona.core.datastore.ImageSettings
+import com.lhacenmed.sona.core.datastore.PlaybackSettings
+import com.lhacenmed.sona.core.datastore.VideoSettings
 import com.lhacenmed.sona.core.downloader.DownloadedExtras
 import com.lhacenmed.sona.core.downloader.EmbeddedExtras
-import com.lhacenmed.sona.core.model.ReplayHeatmap
-import com.lhacenmed.sona.core.model.VideoChapter
+import com.lhacenmed.sona.core.downloader.LiveDownloads
 import com.lhacenmed.sona.core.model.RepeatMode
+import com.lhacenmed.sona.core.model.ReplayHeatmap
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.model.VideoChapter
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
@@ -141,6 +142,8 @@ data class VideoPlaybackState(
      * [ReplayHeatmap.heights].
      */
     val replayHeights: FloatArray? = null,
+    /** How much of [current] is downloaded, from 0 to 1, while it plays as it downloads - null for a video whole on the device. */
+    val downloadedFraction: Float? = null,
 )
 
 /**
@@ -161,6 +164,8 @@ data class VideoPlaybackState(
 class VideoPlayback @Inject constructor(
     @ApplicationContext private val context: Context,
     private val trackFiles: TrackFiles,
+    private val liveSources: LiveDownloadSources,
+    private val liveDownloads: LiveDownloads,
     private val videoSettings: VideoSettings,
     private val playbackSettings: PlaybackSettings,
     private val listenHistory: ListenHistory,
@@ -195,6 +200,14 @@ class VideoPlayback @Inject constructor(
             combine(site, replayHeatmaps.observe(video)) { siteHeights, own -> siteHeights ?: own?.heights() }
         }
 
+    /** How much of the watched video is downloaded, while it plays as it downloads - see [LiveDownloads]. */
+    @kotlin.OptIn(ExperimentalCoroutinesApi::class)
+    private val watchedDownload: Flow<Float?> = _state
+        .map { state -> state.current?.path?.let(LiveDownloads::parse)?.first }
+        .distinctUntilChanged()
+        .flatMapLatest { id -> if (id == null) flowOf(null) else liveDownloads.downloads.map { it[id]?.downloadedFraction } }
+        .distinctUntilChanged()
+
     /** The watched video's [VideoPlaybackState.chapters], as they are kept. */
     @kotlin.OptIn(ExperimentalCoroutinesApi::class)
     private val watchedChapters: Flow<List<VideoChapter>> = watchedVideo
@@ -226,7 +239,7 @@ class VideoPlayback @Inject constructor(
     /** Built with the first video watched, and kept: it holds nothing while idle, and starts the next one sooner. */
     private val player: ExoPlayer by lazy(LazyThreadSafetyMode.NONE, ::buildPlayer)
 
-    private val scrubPreview = VideoScrubPreviewPlayer(context, trackFiles)
+    private val scrubPreview = VideoScrubPreviewPlayer(context, trackFiles, liveSources)
 
     /** Made with [player], on it. */
     private lateinit var replayHeatmapRecorder: ReplayHeatmapRecorder
@@ -334,6 +347,7 @@ class VideoPlayback @Inject constructor(
                 _state.update { it.copy(chapters = chapters, replayHeights = replayHeights) }
             }
         }
+        scope.launch { watchedDownload.collect { fraction -> _state.update { it.copy(downloadedFraction = fraction) } } }
         // Changed while a video plays, from its queue or the settings, each takes hold at once.
         scope.launch {
             videoSettings.repeatMode.flow.collect { if (isOpen) applyRepeatMode() }
@@ -702,7 +716,7 @@ class VideoPlayback @Inject constructor(
             .build()
         return ExoPlayer.Builder(context, sonaRenderersFactory(context))
             .setLoadControl(loadControl)
-            .setMediaSourceFactory(videoMediaSourceFactory(context, trackFiles))
+            .setMediaSourceFactory(videoMediaSourceFactory(context, trackFiles, liveSources))
             .setAudioAttributes(
                 AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(),
                 /* handleAudioFocus = */ true,
@@ -716,6 +730,7 @@ class VideoPlayback @Inject constructor(
                 PlayHistoryRecorder(player, scope, listenHistory, playbackSettings).attach()
                 ResumePositionRecorder(player, resumePositions).attach()
                 replayHeatmapRecorder = ReplayHeatmapRecorder(player, replayHeatmaps).also { it.attach() }
+                scope.launch { player.followLiveDownloads(liveDownloads) }
             }
     }
 

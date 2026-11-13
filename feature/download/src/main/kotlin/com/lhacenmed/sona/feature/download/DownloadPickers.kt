@@ -31,11 +31,14 @@ import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.downloader.AudioTrack
 import com.lhacenmed.sona.core.downloader.AudioTrackKind
 import com.lhacenmed.sona.core.downloader.MediaInfo
+import com.lhacenmed.sona.core.downloader.TRANSCRIBED_CAPTIONS
+import com.lhacenmed.sona.core.navigation.LocalNavigator
+import com.lhacenmed.sona.feature.download.settings.DownloadsSettingsScreen
 import com.lhacenmed.sona.core.downloader.captionLanguageOf
 import com.lhacenmed.sona.core.downloader.translatedCaptionCode
 import com.lhacenmed.sona.core.downloader.captionGroups
 import com.lhacenmed.sona.core.downloader.estimatedSizeBytes
-import com.lhacenmed.sona.core.downloader.suggestedCaptions
+import com.lhacenmed.sona.core.downloader.pickedCaptions
 import com.lhacenmed.sona.core.downloader.videoQualities
 import com.lhacenmed.sona.core.model.AudioFormat
 import com.lhacenmed.sona.core.model.DownloadChoices
@@ -197,16 +200,16 @@ internal fun AudioTrackSheet(viewModel: DownloadViewModel, info: MediaInfo, onDi
 
 /**
  * The video's captions, any picked - those made by people, those made from the speech, those translated, each group under its
- * heading - added into the video or as files beside it; Done keeps the picks.
+ * heading - added into the video or as files beside it, or, downloading them alone, just which; Done keeps the picks.
  */
 @Composable
 internal fun SubtitlesSheet(viewModel: DownloadViewModel, info: MediaInfo, onDismiss: () -> Unit) {
     val choices by viewModel.sheetChoices.collectAsStateWithLifecycle()
     val options by viewModel.options.collectAsStateWithLifecycle()
+    val preferences by viewModel.preferences.collectAsStateWithLifecycle()
+    val navigator = LocalNavigator.current
     val groups = info.captionGroups
-    var picked by remember {
-        mutableStateOf(options.subtitleLanguages ?: if (choices.captions) info.suggestedCaptions(Locale.getDefault().language) else emptyList())
-    }
+    var picked by remember { mutableStateOf(info.pickedCaptions(choices, options, Locale.getDefault().language, preferences.transcribes)) }
     var asFile by remember { mutableStateOf(choices.subtitlesAsFile) }
     var isAddingLanguage by remember { mutableStateOf(false) }
     fun pickRow(code: String, label: String, value: String? = null): SonaGroupRow = { shapes ->
@@ -247,15 +250,41 @@ internal fun SubtitlesSheet(viewModel: DownloadViewModel, info: MediaInfo, onDis
                     picked.filter { it != captionLanguageOf(it) }.map { code -> pickRow(code, languageName(captionLanguageOf(code)), translatedFrom) } + addLanguage,
                 )
             }
-            SectionLabel(stringResource(R.string.download_subtitles_add))
-            SonaConnectedChoice(
-                options = listOf(false, true),
-                selected = asFile,
-                onSelect = { asFile = it },
-                label = { stringResource(if (it) R.string.download_subtitles_as_file else R.string.download_subtitles_in_video) },
-                icon = { if (it) SonaIcons.Description else SonaIcons.Video },
-                modifier = Modifier.fillMaxWidth(),
+            // Made from its speech by the user's own keys - see CaptionTranscription - or where to give one.
+            SectionLabel(stringResource(R.string.download_subtitles_transcribed))
+            SonaRowGroup(
+                listOf(
+                    if (preferences.transcribes) {
+                        val services = preferences.transcribers.map { it.title }
+                        val by = services.getOrNull(1)?.let { stringResource(R.string.download_subtitles_transcribe_by_else, services[0], it) }
+                            ?: stringResource(R.string.download_subtitles_transcribe_by, services[0])
+                        pickRow(TRANSCRIBED_CAPTIONS, stringResource(R.string.download_subtitles_transcribe), by)
+                    } else {
+                        { shapes ->
+                            SonaValueRow(
+                                label = stringResource(R.string.download_subtitles_transcribe),
+                                shapes = shapes,
+                                value = stringResource(R.string.download_subtitles_transcribe_needs_key),
+                                onClick = {
+                                    navigator.go(DownloadsSettingsScreen)
+                                    dismiss()
+                                },
+                            )
+                        }
+                    },
+                ),
             )
+            if (choices.kind == DownloadKind.VIDEO) {
+                SectionLabel(stringResource(R.string.download_subtitles_add))
+                SonaConnectedChoice(
+                    options = listOf(false, true),
+                    selected = asFile,
+                    onSelect = { asFile = it },
+                    label = { stringResource(if (it) R.string.download_subtitles_as_file else R.string.download_subtitles_in_video) },
+                    icon = { if (it) SonaIcons.Description else SonaIcons.Video },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             Button(
                 onClick = {
                     viewModel.onSubtitlesChange(picked, asFile)

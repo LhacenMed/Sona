@@ -586,3 +586,15 @@ val MIGRATION_34_35 = object : Migration(34, 35) {
         db.execSQL("ALTER TABLE `downloads` ADD COLUMN `savesCover` INTEGER NOT NULL DEFAULT 0")
     }
 }
+
+/**
+ * The playlist or watched channel each download was queued in, to list its videos as one - and whether one already in the
+ * library is downloaded all the same.
+ */
+val MIGRATION_35_36 = object : Migration(35, 36) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `downloads` ADD COLUMN `batchKey` TEXT")
+        db.execSQL("ALTER TABLE `downloads` ADD COLUMN `batchTitle` TEXT")
+        db.execSQL("ALTER TABLE `downloads` ADD COLUMN `downloadsAgain` INTEGER NOT NULL DEFAULT 0")
+    }
+}

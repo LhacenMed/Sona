@@ -1,11 +1,13 @@
 package com.lhacenmed.sona.core.downloader.sites.reddit
 
+import com.lhacenmed.sona.core.downloader.sites.CaptionFile
 import com.lhacenmed.sona.core.downloader.sites.HttpsUrl
 import com.lhacenmed.sona.core.downloader.sites.SiteHttp
 import com.lhacenmed.sona.core.downloader.sites.SiteReader
 import com.lhacenmed.sona.core.downloader.sites.VideoFormat
 import com.lhacenmed.sona.core.downloader.sites.VideoPost
 import com.lhacenmed.sona.core.downloader.sites.firstLine
+import com.lhacenmed.sona.core.downloader.sites.languageTagOf
 import com.lhacenmed.sona.core.downloader.sites.videoInfoJson
 import com.lhacenmed.sona.core.downloader.sites.wholeNumber
 import okhttp3.HttpUrl
@@ -17,8 +19,11 @@ import org.jsoup.parser.Parser
 /** A logged-out post page runs to about a megabyte. */
 private const val MaxPageBytes = 3 * 1024 * 1024
 
-/** A video's DASH manifest is a few kilobytes. */
+/** A video's DASH manifest is a few kilobytes, as is a caption file. */
 private const val MaxManifestBytes = 256 * 1024
+
+/** The file Reddit keeps the captions it made from a video's speech in, where its manifest lists none - yt-dlp's last look. */
+private const val SpokenCaptions = "wh_ben_en.vtt"
 
 /** What a post page names of its video. */
 internal class RedditVideo(val videoId: String, val title: String?, val author: String?, val thumbnail: String?, val durationSeconds: Long?)
@@ -37,7 +42,8 @@ internal object RedditReader : SiteReader {
         val postId = RedditPostIdentity.postHop(page.url)?.postId ?: return null
         val video = parsePage(page.text, postId, identity.videoId) ?: return null
         val manifest = http.get("https://v.redd.it/${video.videoId}/DASHPlaylist.mpd", MaxManifestBytes, SiteHttp.File) ?: return null
-        return infoJson(video, manifest.text, page.url.toString())
+        val spokenCaptions = "https://v.redd.it/${video.videoId}/$SpokenCaptions"
+        return infoJson(video, manifest.text, page.url.toString()) { http.get(spokenCaptions, MaxManifestBytes, SiteHttp.File)?.let { spokenCaptions } }
     }
 
     /** The post page [identity] leads to: its redirects kept on www pages of the one post, its check answered. */
@@ -84,11 +90,15 @@ internal object RedditReader : SiteReader {
         RedditVideo(id, firstLine(post.attr("post-title")), post.attr("author").takeIf(String::isNotBlank), thumbnail, duration)
     }.getOrNull()
 
-    /** [video] and its DASH manifest as info JSON: each representation's one file, a format of its own. */
-    fun infoJson(video: RedditVideo, manifest: String, webpageUrl: String): String? {
+    /**
+     * [video] and its DASH manifest as info JSON: each representation's one file, a format of its own - or, a text one, its
+     * captions. With none listed, those [spokenCaptions] finds, in English.
+     */
+    fun infoJson(video: RedditVideo, manifest: String, webpageUrl: String, spokenCaptions: () -> String? = { null }): String? {
         val document = runCatching { Jsoup.parse(manifest, "", Parser.xmlParser()) }.getOrNull() ?: return null
         val base = HttpsUrl.parse("https://v.redd.it/${video.videoId}/") ?: return null
-        val formats = document.getAllElements().filter { it.tagName().equals("Representation", ignoreCase = true) }.map { representation ->
+        val captions = mutableListOf<CaptionFile>()
+        val formats = document.getAllElements().filter { it.tagName().equals("Representation", ignoreCase = true) }.mapNotNull { representation ->
             val set = representation.parent()
             fun attribute(name: String) = representation.attr(name).ifBlank { set?.attr(name).orEmpty() }
             val file = representation.children().firstOrNull { it.tagName().equals("BaseURL", ignoreCase = true) }?.text()?.trim() ?: return null
@@ -96,6 +106,10 @@ internal object RedditReader : SiteReader {
                 it.host == "v.redd.it" && it.pathSegments.firstOrNull() == video.videoId && !it.encodedPath.contains("..")
             } ?: return null
             val mime = attribute("mimeType")
+            if (mime.startsWith("text/") || attribute("contentType") == "text") {
+                captions += CaptionFile(languageTagOf(attribute("lang").ifBlank { null }), url.toString(), isAutomatic = false)
+                return@mapNotNull null
+            }
             val audio = mime.startsWith("audio/") || attribute("contentType") == "audio"
             if (!audio && !mime.startsWith("video/")) return null
             val name = url.pathSegments.last().substringBeforeLast('.').lowercase().replace('_', '-')
@@ -122,6 +136,7 @@ internal object RedditReader : SiteReader {
                 webpageUrl = webpageUrl,
                 extractorKey = "Reddit",
                 formats = formats,
+                captions = captions.ifEmpty { listOfNotNull(spokenCaptions()?.let { CaptionFile("en", it, isAutomatic = true, extension = "vtt") }) },
             ),
         )
     }

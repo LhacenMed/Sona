@@ -1,10 +1,8 @@
 package com.lhacenmed.sona.feature.download
 
-import android.content.Context
 import android.content.Intent
-import android.text.format.DateFormat
-import android.text.format.DateUtils
-import android.text.format.Formatter
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,8 +12,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,15 +23,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.LocalDragSelection
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
-import com.lhacenmed.sona.core.designsystem.component.SonaCoverArt
 import com.lhacenmed.sona.core.designsystem.component.SonaListRow
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSelection
@@ -48,14 +43,15 @@ import com.lhacenmed.sona.core.designsystem.component.section.rememberSectionLis
 import com.lhacenmed.sona.core.designsystem.component.section.section
 import com.lhacenmed.sona.core.designsystem.component.selectAllAction
 import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
-import com.lhacenmed.sona.core.model.Download
-import com.lhacenmed.sona.core.model.DownloadFailure
-import com.lhacenmed.sona.core.model.DownloadStatus
-import com.lhacenmed.sona.core.model.DownloaderPreferences
-import kotlinx.coroutines.launch
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.core.model.Download
+import com.lhacenmed.sona.core.model.DownloadBatch
+import com.lhacenmed.sona.core.model.DownloaderPreferences
+import com.lhacenmed.sona.core.navigation.LocalNavigator
+import com.lhacenmed.sona.feature.download.tools.CookiesScreen
+import kotlinx.coroutines.launch
 
-/** Downloads listed under one heading - [actions] beside it. */
+/** Downloads listed under one heading - [actions] beside it - each batch's as one: see [listedOf]. */
 internal class DownloadGroup(val key: String, val title: String, val downloads: List<Download>, val actions: List<TopBarAction> = emptyList())
 
 /** What a list of downloads has open over it, and which of them are selected - the one state Downloads and History share. */
@@ -63,6 +59,9 @@ internal class DownloadGroup(val key: String, val title: String, val downloads: 
 internal class DownloadListState(val selection: SelectionState) {
     /** The download opened in its sheet, followed by its id as it goes, from downloading to saved. */
     var openedId by mutableStateOf<Long?>(null)
+
+    /** The batch opened in its sheet - a playlist's or a watched channel's videos. */
+    var openedBatch by mutableStateOf<DownloadBatch?>(null)
     var isChoosingSelectionOptions by mutableStateOf(false)
     var isDeleting by mutableStateOf(false)
 }
@@ -77,7 +76,7 @@ internal fun rememberDownloadListState(): DownloadListState {
 @Composable
 internal fun DownloadListState.topBarSelection(listed: List<Download>): TopBarSelection? = selection.toTopBarSelection(
     actions = listOf(
-        selection.selectAllAction(listed.map(Download::id)),
+        selection.selectAllAction(listedOf(listOf(listed)).flatten().map(ListedDownload::key)),
         TopBarAction(stringResource(R.string.download_delete), SonaIcons.Delete) { isDeleting = true },
     ),
     onMoreOptions = { isChoosingSelectionOptions = true },
@@ -99,7 +98,8 @@ internal fun DownloadList(
     val preferences by viewModel.preferences.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val sectionState = rememberSectionListState()
-    val keys = remember(groups) { groups.flatMap { group -> group.downloads.map(Download::id) } }
+    val listed = remember(groups) { listedOf(groups.map(DownloadGroup::downloads)) }
+    val keys = remember(listed) { listed.flatten().map(ListedDownload::key) }
     val dragSelection = rememberDragSelection(state.selection, listState, keys)
 
     CompositionLocalProvider(LocalDragSelection provides dragSelection) {
@@ -112,12 +112,13 @@ internal fun DownloadList(
             ) {
                 header()
                 var isFirst = true
-                groups.filter { it.downloads.isNotEmpty() }.forEach { group ->
+                groups.zip(listed).filter { (_, rows) -> rows.isNotEmpty() }.forEach { (group, rows) ->
                     section(key = group.key, title = group.title, state = sectionState, actions = group.actions, hasDividerAbove = !isFirst) {
-                        items(group.downloads, key = Download::id) { download ->
-                            DownloadRow(download, running[download.id], preferences, state.selection, onOpen = {
-                                if (download.status == DownloadStatus.DONE) viewModel.onPlay(download) else state.openedId = download.id
-                            }, onOpenOptions = { state.openedId = download.id })
+                        items(rows, key = ListedDownload::key) { row ->
+                            when (row) {
+                                is ListedDownload.One -> DownloadRow(row.download, running[row.download.id], preferences, state.selection, viewModel, onOpen = { state.openedId = row.download.id })
+                                is ListedDownload.Batch -> BatchRow(row.batch, state.selection, viewModel, onOpen = { state.openedBatch = row.batch })
+                            }
                         }
                     }
                     isFirst = false
@@ -144,10 +145,15 @@ internal fun DownloadListSheets(state: DownloadListState, listed: List<Download>
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val selection = state.selection
-    val selected = listed.filter { selection.isSelected(it.id) }
+    val selected = selectedOf(listed, selection)
 
-    listed.firstOrNull { it.id == state.openedId }?.let { download ->
+    val all by viewModel.downloads.collectAsStateWithLifecycle()
+    // Found among every download, not only those listed: a batch's videos are opened from its sheet.
+    all.orEmpty().firstOrNull { it.id == state.openedId }?.let { download ->
         DownloadSheet(download, viewModel, onDismiss = { state.openedId = null })
+    }
+    state.openedBatch?.let { batch ->
+        BatchSheet(batch, viewModel, onOpenDownload = { state.openedId = it.id }, onDismiss = { state.openedBatch = null })
     }
 
     if (state.isChoosingSelectionOptions) {
@@ -183,67 +189,43 @@ internal fun DownloadListSheets(state: DownloadListState, listed: List<Download>
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+/**
+ * One download: what it is, who made it and what it is kept as, then where it stands - filled from behind as far as it has got
+ * - and its one button, as it stands: pause, resume, play, its fix. Tapped, it opens; its button hides while the list is being
+ * selected from.
+ */
 @Composable
-private fun DownloadRow(
+internal fun DownloadRow(
     download: Download,
     running: RunningDownload?,
     preferences: DownloaderPreferences,
     selection: SelectionState,
+    viewModel: DownloadViewModel,
     onOpen: () -> Unit,
-    onOpenOptions: () -> Unit,
 ) {
     val context = LocalContext.current
-    val isFailed = download.status == DownloadStatus.FAILED
-    SonaListRow(
-        title = running?.title ?: download.title ?: hostOf(download.url),
-        subtitle = rowSummary(context, download, running, preferences),
-        selection = selection,
-        selectionKey = download.id,
-        onClick = onOpen,
-        onOpenOptions = onOpenOptions,
-        subtitleColor = if (isFailed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-        supporting = running?.let { progress ->
-            {
-                val fraction = progress.fraction
-                val modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                // Wavy as the player's own: it moves as the download does, and waits in a wave while its size is unknown.
-                if (fraction == null) LinearWavyProgressIndicator(modifier = modifier) else LinearWavyProgressIndicator(progress = { fraction }, modifier = modifier)
-            }
-        },
-        cover = { isSelected -> SonaCoverArt(coverArtUri = download.thumbnailUrl, contentDescription = null, isSelected = isSelected) },
-    )
-}
-
-/** What a row says of where its download stands - in a few words, never the machinery. */
-private fun rowSummary(context: Context, download: Download, running: RunningDownload?, preferences: DownloaderPreferences): String {
-    fun size(bytes: Long) = Formatter.formatShortFileSize(context, bytes)
-    return when {
-        running != null -> listOfNotNull(
-            if (running.item != null && running.itemCount != null) context.getString(R.string.download_item_of, running.item, running.itemCount) else null,
-            running.fraction?.let { context.getString(R.string.download_percent, (it * 100).toInt()) },
-            running.downloadedBytes?.let { done -> running.totalBytes?.let { total -> context.getString(R.string.download_size_of, size(done), size(total)) } },
-        ).joinToString(InfoSeparator).ifEmpty { context.getString(R.string.download_starting) }
-
-        download.status == DownloadStatus.QUEUED || download.status == DownloadStatus.RUNNING -> {
-            val startAt = download.startAt
-            when {
-                startAt != null && startAt > System.currentTimeMillis() -> {
-                    val time = DateFormat.getTimeFormat(context).format(startAt)
-                    context.getString(if (DateUtils.isToday(startAt)) R.string.download_starts_at else R.string.download_starts_tomorrow_at, time)
-                }
-                preferences.wifiOnly -> context.getString(R.string.download_waiting_wifi)
-                else -> context.getString(R.string.download_waiting)
-            }
-        }
-
-        download.status == DownloadStatus.DONE -> listOfNotNull(
-            download.uploader,
-            context.getString(download.choices.kind.labelRes),
-            download.sizeBytes.takeIf { it > 0 }?.let(::size),
-        ).joinToString(InfoSeparator)
-
-        download.status == DownloadStatus.CANCELED -> listOfNotNull(download.uploader, context.getString(R.string.download_status_canceled)).joinToString(InfoSeparator)
-        else -> context.getString((download.failure ?: DownloadFailure.FAILED).presentation.rowRes)
+    val navigator = LocalNavigator.current
+    val missingFiles by viewModel.missingFiles.collectAsStateWithLifecycle()
+    val isMissing = download.id in missingFiles
+    val heldAll by viewModel.held.collectAsStateWithLifecycle()
+    val held = heldAll[download.id]
+    Box(modifier = Modifier.background(MaterialTheme.colorScheme.surface)) {
+        rowFillOf(download, running, held)?.let { RowProgressFill(it.fraction) }
+        SonaListRow(
+            title = download.song?.title ?: running?.title ?: download.title ?: hostOf(download.url),
+            subtitle = rowMeta(context, download),
+            selection = selection,
+            selectionKey = download.id,
+            onClick = onOpen,
+            onOpenOptions = null,
+            containerColor = Color.Transparent,
+            supporting = { RowStatusLine(rowStatus(context, download, running, held, preferences, isMissing)) },
+            trailing = if (selection.isActive) null else ({
+                DownloadRowButton(download, running, isMissing, viewModel, onFix = {
+                    applyFix(context, viewModel, download, onSignIn = { navigator.go(CookiesScreen(download.url)) })
+                })
+            }),
+            cover = { isSelected -> DownloadCover(download, isSelected) },
+        )
     }
 }

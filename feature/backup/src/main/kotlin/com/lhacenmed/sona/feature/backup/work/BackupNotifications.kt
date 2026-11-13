@@ -5,13 +5,12 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.graphics.drawable.Icon
 import android.os.Build
-import android.os.Bundle
 import android.text.format.Formatter
 import androidx.annotation.StringRes
 import androidx.core.app.NotificationCompat
 import androidx.work.ForegroundInfo
+import com.lhacenmed.sona.core.common.notification.SonaNotificationAction
 import com.lhacenmed.sona.core.common.notification.SonaNotificationChannel
 import com.lhacenmed.sona.core.common.notification.SonaNotificationId
 import com.lhacenmed.sona.core.common.notification.SonaNotifications
@@ -60,44 +59,16 @@ internal fun foregroundInfo(context: Context, @StringRes titleRes: Int, progress
 }
 
 private fun runningNotification(context: Context, title: String, progress: BackupProgress?, isPausable: Boolean): Notification {
-    val percent = backupProgressPercent(progress)
-    val text = backupProgressText(context, progress) ?: title
-    val detail = progress?.transfer?.let { transferText(context, it) }
     val actions = if (isPausable) listOf(BackupAction.PAUSE, BackupAction.STOP) else emptyList()
-
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA && SonaNotifications.canPostPromoted(context)) {
-        val progressStyle = Notification.ProgressStyle()
-            .setProgressPoints(listOf(Notification.ProgressStyle.Point(0), Notification.ProgressStyle.Point(PROGRESS_MAX)))
-            .setProgress(percent ?: 0)
-            .setProgressIndeterminate(percent == null)
-        return SonaNotifications.platformBuilder(context, SonaNotificationChannel.BACKUP)
-            .setContentTitle(percent?.let { context.getString(R.string.backup_progress_percent, it) } ?: title)
-            .setContentText(text)
-            .setSubText(detail ?: title)
-            .setStyle(progressStyle)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setCategory(Notification.CATEGORY_PROGRESS)
-            // Asks for the notification to be promoted to a live update.
-            .addExtras(Bundle().apply { putBoolean("android.requestPromotedOngoing", true) })
-            .apply {
-                actions.forEach { action ->
-                    addAction(Notification.Action.Builder(Icon.createWithResource(context, action.iconRes), context.getString(action.labelRes), action.intent(context)).build())
-                }
-            }
-            .build()
-    }
-    return SonaNotifications.builder(context, SonaNotificationChannel.BACKUP)
-        .setContentTitle(title)
-        .setContentText(text)
-        .setStyle(NotificationCompat.BigTextStyle().bigText(listOfNotNull(text, detail).joinToString("\n")))
-        .setProgress(PROGRESS_MAX, percent ?: 0, percent == null)
-        .setOngoing(true)
-        .setOnlyAlertOnce(true)
-        .setSilent(true)
-        .setCategory(NotificationCompat.CATEGORY_PROGRESS)
-        .apply { actions.forEach { addAction(it.iconRes, context.getString(it.labelRes), it.intent(context)) } }
-        .build()
+    return SonaNotifications.progress(
+        context,
+        SonaNotificationChannel.BACKUP,
+        title = title,
+        text = backupProgressText(context, progress) ?: title,
+        detail = progress?.transfer?.let { transferText(context, it) },
+        percent = backupProgressPercent(progress),
+        actions = actions.map { SonaNotificationAction(context.getString(it.labelRes), it.iconRes, it.intent(context)) },
+    )
 }
 
 /** Says the backup is paused, with Resume and Stop - until it is resumed, stopped, or started again. */

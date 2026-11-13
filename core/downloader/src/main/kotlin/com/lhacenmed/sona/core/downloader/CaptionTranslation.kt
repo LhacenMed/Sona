@@ -44,20 +44,17 @@ internal object CaptionTranslation {
             if (TranslatedFrom !in code) return@mapNotNull code
             val language = captionLanguageOf(code)
             val from = code.substringAfter(TranslatedFrom)
-            val made = read?.let { runCatching { translate(it, from, language, folder) }.getOrNull() } ?: return@mapNotNull null
-            val subtitles = read.optJSONObject("subtitles") ?: JSONObject().also { read.put("subtitles", it) }
-            subtitles.put(language, JSONArray().put(JSONObject().put("ext", "srt").put("url", made.toURI().toString())))
-            language
+            val lines = read?.let { runCatching { translate(it, from, language) }.getOrNull() } ?: return@mapNotNull null
+            read.listMadeCaptions(language, lines, folder)
         }
     }
 
-    /** The captions [from] names in [read], translated into [language] and written into [folder] - null where it has none. */
-    private fun translate(read: JSONObject, from: String, language: String, folder: File): File? {
+    /** The captions [from] names in [read], translated into [language] - null where it has none. */
+    private fun translate(read: JSONObject, from: String, language: String): List<CaptionLine>? {
         val formats = (read.optJSONObject("subtitles")?.optJSONArray(from) ?: read.optJSONObject("automatic_captions")?.optJSONArray(from)) ?: return null
         val url = formats.objects().firstNotNullOfOrNull { it.stringOrNull("url") } ?: return null
         val lines = linesOf(url)?.takeIf { it.isNotEmpty() } ?: return null
-        val translated = lines.chunkedByLength().flatMap { batch -> translated(batch, language) ?: return null }
-        return File(folder.apply { mkdirs() }, "${read.optString("id")}.$language.srt").apply { writeText(srtOf(translated)) }
+        return lines.chunkedByLength().flatMap { batch -> translated(batch, language) ?: return null }
     }
 
     /**
@@ -90,6 +87,19 @@ internal object CaptionTranslation {
         batches.last() += line
         batches
     }
+}
+
+/**
+ * [lines], captions Sona made in [language], written into [folder] as SubRip and listed in this read as a file of its own - so
+ * yt-dlp embeds or saves them as any other. Listed under [language], or beside the video's own in it. The code that picks them.
+ */
+internal fun JSONObject.listMadeCaptions(language: String, lines: List<CaptionLine>, folder: File): String {
+    val subtitles = optJSONObject("subtitles") ?: JSONObject().also { put("subtitles", it) }
+    val taken = subtitles.has(language) || optJSONObject("automatic_captions")?.has(language) == true
+    val code = if (taken) "$language-sona" else language
+    val file = File(folder.apply { mkdirs() }, "${optString("id")}.$code.srt").apply { writeText(srtOf(lines)) }
+    subtitles.put(code, JSONArray().put(JSONObject().put("ext", "srt").put("url", file.toURI().toString())))
+    return code
 }
 
 /** YouTube's captions as sentences: `<text start="1.5" dur="2.1">…</text>`. */

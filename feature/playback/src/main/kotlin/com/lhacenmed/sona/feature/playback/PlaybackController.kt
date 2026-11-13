@@ -15,15 +15,16 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
+import com.lhacenmed.sona.core.common.lifecycle.isAppInForeground
 import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.data.quickplay.QuickPlaySourceRepository
-import com.lhacenmed.sona.core.common.lifecycle.isAppInForeground
 import com.lhacenmed.sona.core.database.dao.QueueItemDao
 import com.lhacenmed.sona.core.database.entity.QueueItemEntity
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.datastore.QuickPlayMode
 import com.lhacenmed.sona.core.datastore.QuickPlaySettings
 import com.lhacenmed.sona.core.datastore.ShuffleSettings
+import com.lhacenmed.sona.core.downloader.LiveDownloads
 import com.lhacenmed.sona.core.model.PlaybackParent
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
@@ -256,9 +257,29 @@ class PlaybackController @Inject constructor(
         opening: VideoPlayerOpening,
         toMediaItem: (Track) -> MediaItem,
     ) {
-        controller?.pause()
         val (videos, videoIndex) = videosFrom(tracks, startIndex, Track::isVideo)
-        videoPlayback.open(videos.map { VideoQueueItem(it, toMediaItem(it)) }, videoIndex, shuffled, startPositionMs, opening)
+        openVideos(videos.map { VideoQueueItem(it, toMediaItem(it)) }, videoIndex, shuffled, startPositionMs, opening)
+    }
+
+    /**
+     * Watches [queue] from [startIndex] in the video player, the music pausing where it is - at [startPositionMs], or else
+     * where the music player is in it, playing it as audio, or else where it was left. Closed, the music player holding it
+     * goes on from where it was left: the two never disagree on where one video is.
+     */
+    private fun openVideos(
+        queue: List<VideoQueueItem>,
+        startIndex: Int,
+        shuffled: Boolean? = null,
+        startPositionMs: Long = 0L,
+        opening: VideoPlayerOpening = VideoPlayerOpening.FULL_SCREEN,
+    ) {
+        val mediaController = controller
+        fun MediaController.holds(item: MediaItem) = currentMediaItem?.mediaId == item.mediaId
+        val heardAtMs = queue.getOrNull(startIndex)?.let { start -> mediaController?.takeIf { it.holds(start.mediaItem) }?.currentPosition }
+        mediaController?.pause()
+        videoPlayback.open(queue, startIndex, shuffled, startPositionMs.takeIf { it > 0L } ?: heardAtMs ?: 0L, opening) { closedItem, closedAtMs ->
+            if (mediaController?.holds(closedItem) == true) mediaController.seekTo(closedAtMs)
+        }
     }
 
     /**
@@ -274,9 +295,24 @@ class PlaybackController @Inject constructor(
      * from the library, as every outside file plays: see [outsideMediaItem]. The music pauses where it is.
      */
     fun watchOutsideVideo(uri: Uri, title: String) {
-        controller?.pause()
         val video = VideoQueueItem(outsideVideo(uri, title), outsideMediaItem(uri, title, isVideo = true))
-        videoPlayback.open(listOf(video), startIndex = 0, opening = VideoPlayerOpening.FLOATING)
+        openVideos(listOf(video), startIndex = 0, opening = VideoPlayerOpening.FLOATING)
+    }
+
+    /**
+     * Plays download [downloadId] as it downloads, as [title] - see [LiveDownloadSources]: a video in the video player, as an
+     * outside video is watched, a sound in place of the queue, saved to come back to. Played on from the file it saves.
+     */
+    fun playDownloading(downloadId: Long, title: String, isVideo: Boolean) {
+        val uri = Uri.parse(LiveDownloads.addressOf(downloadId))
+        if (isVideo) {
+            openVideos(listOf(VideoQueueItem(outsideVideo(uri, title), outsideMediaItem(uri, title, isVideo = true))), startIndex = 0)
+            return
+        }
+        val mediaController = controller ?: return
+        videoPlayback.close()
+        persistQueueState(mediaController)
+        startQueue(mediaController, listOf(outsideMediaItem(uri, title, isVideo = false)), startIndex = 0, startPositionMs = 0L, shuffled = false)
     }
 
     /**
@@ -293,11 +329,7 @@ class PlaybackController @Inject constructor(
         }
         val index = queue.indexOfFirst { it.mediaItem.mediaId == current.mediaId }
         if (index < 0) return
-        val positionMs = mediaController.currentPosition
-        mediaController.pause()
-        videoPlayback.open(queue, index, startPositionMs = positionMs) { closedItem, closedAtMs ->
-            if (mediaController.currentMediaItem?.mediaId == closedItem.mediaId) mediaController.seekTo(closedAtMs)
-        }
+        openVideos(queue, index)
     }
 
     /**

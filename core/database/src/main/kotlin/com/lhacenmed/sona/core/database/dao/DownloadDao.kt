@@ -46,6 +46,18 @@ interface DownloadDao {
     @Query("UPDATE downloads SET status = 'QUEUED', error = NULL, failure = NULL, startAt = NULL WHERE id IN (:ids)")
     suspend fun requeue(ids: Collection<Long>)
 
+    /** Queues [ids] again, saved even where they are in the library already. */
+    @Query("UPDATE downloads SET status = 'QUEUED', error = NULL, failure = NULL, startAt = NULL, downloadsAgain = 1 WHERE id IN (:ids)")
+    suspend fun requeueAgain(ids: Collection<Long>)
+
+    /** Where a saved file now is - moved, renamed or turned into another format: [from] is [to] wherever a download saved it. */
+    @Query("UPDATE downloads SET savedPaths = REPLACE(savedPaths, :from, :to) WHERE instr(savedPaths, :from) > 0")
+    suspend fun moveSavedPath(from: String, to: String)
+
+    /** The song [id] is saved as, as it is found. */
+    @Query("UPDATE downloads SET song = :song WHERE id = :id")
+    suspend fun setSong(id: Long, song: String)
+
     @Query("UPDATE downloads SET status = 'QUEUED', error = NULL, failure = NULL WHERE status = 'FAILED' AND failure = :failure")
     suspend fun requeueFailed(failure: String)
 
@@ -53,8 +65,25 @@ interface DownloadDao {
     @Query("UPDATE downloads SET formatId = NULL WHERE id = :id")
     suspend fun clearFormat(id: Long)
 
-    @Query("UPDATE downloads SET status = 'CANCELED' WHERE id IN (:ids) AND status = 'QUEUED'")
+    @Query("UPDATE downloads SET status = 'CANCELED' WHERE id IN (:ids) AND status IN ('QUEUED', 'PAUSED')")
     suspend fun cancelQueued(ids: Collection<Long>)
+
+    @Query("UPDATE downloads SET status = 'PAUSED' WHERE id IN (:ids) AND status = 'QUEUED'")
+    suspend fun pauseQueued(ids: Collection<Long>)
+
+    @Query("SELECT id FROM downloads")
+    suspend fun ids(): List<Long>
+
+    /** Every download saved - what [ids] of the library's copies are looked for among. */
+    @Query("SELECT * FROM downloads WHERE status = 'DONE'")
+    suspend fun saved(): List<DownloadEntity>
+
+    @Query("SELECT id FROM downloads WHERE status = 'PAUSED'")
+    suspend fun pausedIds(): List<Long>
+
+    /** The downloads that may still carry on from what they fetched - whose folders are kept. */
+    @Query("SELECT id FROM downloads WHERE status IN ('QUEUED', 'RUNNING', 'PAUSED', 'FAILED')")
+    suspend fun resumableIds(): List<Long>
 
     /** What the link was found to be, as it is first read. */
     @Query(

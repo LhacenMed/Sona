@@ -42,6 +42,9 @@ private val PROXY = stringPreferencesKey("download_proxy")
 private val RATE_LIMIT = stringPreferencesKey("download_rate_limit")
 private val USES_COOKIES = booleanPreferencesKey("download_uses_cookies")
 private val USES_ARCHIVE = booleanPreferencesKey("download_uses_archive")
+private val SUPADATA_KEY = stringPreferencesKey("download_supadata_key")
+private val GROQ_KEY = stringPreferencesKey("download_groq_key")
+private val TRANSCRIPTION_SERVICE = stringPreferencesKey("download_transcription_service")
 
 /** How the user downloads - what a Quick download takes, and the download screen starts from - and how downloading works. */
 @Singleton
@@ -85,6 +88,9 @@ class DownloadSettings @Inject constructor(
             rateLimit = preferences[RATE_LIMIT] ?: defaults.rateLimit,
             usesCookies = preferences[USES_COOKIES] ?: defaults.usesCookies,
             usesArchive = preferences[USES_ARCHIVE] ?: defaults.usesArchive,
+            supadataKey = preferences[SUPADATA_KEY] ?: defaults.supadataKey,
+            groqKey = preferences[GROQ_KEY] ?: defaults.groqKey,
+            transcriptionService = preferences.enum(TRANSCRIPTION_SERVICE, defaults.transcriptionService),
         )
     }
 
@@ -119,6 +125,9 @@ class DownloadSettings @Inject constructor(
         this[RATE_LIMIT] = preferences.rateLimit
         this[USES_COOKIES] = preferences.usesCookies
         this[USES_ARCHIVE] = preferences.usesArchive
+        this[SUPADATA_KEY] = preferences.supadataKey
+        this[GROQ_KEY] = preferences.groqKey
+        this[TRANSCRIPTION_SERVICE] = preferences.transcriptionService.name
     }
 }
 

@@ -3,11 +3,13 @@ package com.lhacenmed.sona.core.database.entity
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 import com.lhacenmed.sona.core.model.DownloadCommand
 import com.lhacenmed.sona.core.model.DownloadCommandShortcut
 import com.lhacenmed.sona.core.model.DownloadWatch
 
 /** A saved set of yt-dlp arguments - see `DownloadCommand`. */
+@Serializable
 @Entity(tableName = "download_commands")
 data class DownloadCommandEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -36,6 +38,7 @@ fun DownloadCommand.toEntity() = DownloadCommandEntity(
 )
 
 /** A snippet of yt-dlp arguments - see `DownloadCommandShortcut`. */
+@Serializable
 @Entity(tableName = "download_command_shortcuts")
 data class DownloadCommandShortcutEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -45,6 +48,7 @@ data class DownloadCommandShortcutEntity(
 fun DownloadCommandShortcutEntity.toDomain() = DownloadCommandShortcut(id, content)
 
 /** A channel or playlist whose new videos are downloaded - see `DownloadWatch`. */
+@Serializable
 @Entity(tableName = "download_watches")
 data class DownloadWatchEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

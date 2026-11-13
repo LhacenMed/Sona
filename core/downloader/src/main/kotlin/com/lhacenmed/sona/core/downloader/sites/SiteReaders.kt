@@ -6,6 +6,7 @@ import com.lhacenmed.sona.core.downloader.sites.instagram.InstagramReader
 import com.lhacenmed.sona.core.downloader.sites.linkedin.LinkedInReader
 import com.lhacenmed.sona.core.downloader.sites.pinterest.PinterestReader
 import com.lhacenmed.sona.core.downloader.sites.reddit.RedditReader
+import com.lhacenmed.sona.core.downloader.sites.snapchat.SnapchatReader
 import com.lhacenmed.sona.core.downloader.sites.telegram.TelegramReader
 import com.lhacenmed.sona.core.downloader.sites.threads.ThreadsReader
 import com.lhacenmed.sona.core.downloader.sites.tiktok.TikTokReader
@@ -25,6 +26,7 @@ internal object SiteReaders {
         FacebookReader,
         LinkedInReader,
         TelegramReader,
+        SnapchatReader,
         // Last: a site's own reader knows its links better than their extension does.
         DirectMediaReader,
     )

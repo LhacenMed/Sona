@@ -1,8 +1,10 @@
 package com.lhacenmed.sona.core.downloader.sites.tiktok
 
 import com.lhacenmed.sona.core.downloader.objects
+import com.lhacenmed.sona.core.downloader.sites.CaptionFile
 import com.lhacenmed.sona.core.downloader.sites.HttpsUrl
 import com.lhacenmed.sona.core.downloader.sites.keyList
+import com.lhacenmed.sona.core.downloader.sites.languageTagOf
 import com.lhacenmed.sona.core.downloader.sites.ShortLinks
 import com.lhacenmed.sona.core.downloader.sites.SiteHttp
 import com.lhacenmed.sona.core.downloader.sites.SiteReader
@@ -121,8 +123,23 @@ internal object TikTokReader : SiteReader {
                 webpageUrl = webpageUrl,
                 extractorKey = "TikTok",
                 formats = formats,
+                captions = captionsOf(video),
             ),
         )
+    }
+
+    /**
+     * The video's captions, as yt-dlp reads them from its page: `subtitleInfos`, each in WebVTT or SubRip - made from the speech
+     * (`ASR`) or translated from those (`MT`) by TikTok, else by the creator. Its creator's own JSON captions no player reads.
+     */
+    private fun captionsOf(video: JSONObject): List<CaptionFile> = video.optJSONArray("subtitleInfos")?.objects().orEmpty().mapNotNull { info ->
+        val url = info.text("Url")?.takeIf { HttpsUrl.parse(it) != null } ?: return@mapNotNull null
+        val extension = when (info.text("Format")) {
+            "webvtt" -> "vtt"
+            "srt" -> "srt"
+            else -> return@mapNotNull null
+        }
+        CaptionFile(languageTagOf(info.text("LanguageCodeName")), url, isAutomatic = info.text("Source") in setOf("ASR", "MT"), extension)
     }
 
     private fun isVideo(raw: String): Boolean {

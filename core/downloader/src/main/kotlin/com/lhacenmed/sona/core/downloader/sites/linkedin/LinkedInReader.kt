@@ -1,6 +1,7 @@
 package com.lhacenmed.sona.core.downloader.sites.linkedin
 
 import com.lhacenmed.sona.core.downloader.objects
+import com.lhacenmed.sona.core.downloader.sites.CaptionFile
 import com.lhacenmed.sona.core.downloader.sites.HttpsUrl
 import com.lhacenmed.sona.core.downloader.sites.SiteHttp
 import com.lhacenmed.sona.core.downloader.sites.SiteReader
@@ -81,7 +82,9 @@ internal object LinkedInReader : SiteReader {
         }
         val slug = resolved.slug ?: canonical?.slug
         val webpageUrl = slug?.let { "https://www.linkedin.com/posts/$it/" } ?: "https://www.linkedin.com/feed/update/urn:li:activity:$activity/"
-        return infoJson(activity, videoObject, video.attr("data-poster-url").ifBlank { null }, formats, webpageUrl)
+        // Its captions, as yt-dlp's linkedin extractor reads them: one WebVTT file, in English.
+        val captions = listOfNotNull(video.attr("data-captions-url").takeIf { HttpsUrl.parse(it) != null }?.let { CaptionFile("en", it, isAutomatic = false, extension = "vtt") })
+        return infoJson(activity, videoObject, video.attr("data-poster-url").ifBlank { null }, formats, webpageUrl, captions)
     }
 
     /**
@@ -108,7 +111,7 @@ internal object LinkedInReader : SiteReader {
         return infoJson(canonical.activityId ?: canonical.slug ?: return null, video, null, listOf(format(url, null)), canonical.cleanUrl ?: return null)
     }
 
-    private fun infoJson(id: String, video: JSONObject, poster: String?, formats: List<VideoFormat>, webpageUrl: String): String? {
+    private fun infoJson(id: String, video: JSONObject, poster: String?, formats: List<VideoFormat>, webpageUrl: String, captions: List<CaptionFile> = emptyList()): String? {
         val author = video.opt("author") ?: video.opt("creator")
         val authorName = ((author as? JSONArray)?.optJSONObject(0) ?: author as? JSONObject)?.text("name")
         return videoInfoJson(
@@ -121,6 +124,7 @@ internal object LinkedInReader : SiteReader {
                 webpageUrl = webpageUrl,
                 extractorKey = "LinkedIn",
                 formats = formats,
+                captions = captions,
             ),
         )
     }

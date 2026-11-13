@@ -49,6 +49,17 @@ object EmbeddedExtras {
         }
     }.getOrNull()
 
+    /**
+     * Whether any of [file]'s tags holds [text] - a video's id in the link yt-dlp, Seal or YTDLnis wrote into it as they saved
+     * it ("purl", "comment"). False for a file that cannot be read.
+     */
+    fun mentions(file: File, text: String): Boolean = runCatching {
+        ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { descriptor ->
+            val properties = TagLib.getMetadata(descriptor.dup().detachFd(), readPictures = false)?.propertyMap ?: return false
+            properties.values.any { values -> values.any { it.contains(text) } }
+        }
+    }.getOrDefault(false)
+
     /** A site's Most replayed markers - spans of the video, each with how replayed it is - as heights along it, from 0 to 1. */
     private fun heightsOf(markers: JSONArray): FloatArray? {
         val values = FloatArray(markers.length()) { markers.optJSONObject(it)?.optDouble("value")?.toFloat()?.takeUnless(Float::isNaN) ?: 0f }

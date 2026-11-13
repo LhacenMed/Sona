@@ -21,6 +21,7 @@ import com.lhacenmed.sona.core.downloader.RuntimeState
 import com.lhacenmed.sona.core.model.DEFAULT_FILE_NAME_TEMPLATE
 import com.lhacenmed.sona.core.model.DownloadKind
 import com.lhacenmed.sona.core.model.SponsorSegment
+import com.lhacenmed.sona.core.model.TranscriptionService
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.download.labelRes
@@ -31,6 +32,7 @@ import com.lhacenmed.sona.feature.download.tools.TerminalScreen
 import com.lhacenmed.sona.feature.download.tools.WatchesScreen
 import com.lhacenmed.sona.feature.download.R
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsActionItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsChoiceItem
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsDownload
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsDownloadItem
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsList
@@ -160,6 +162,29 @@ data object DownloadsSettingsScreen : Screen {
                     title = stringResource(R.string.downloads_settings_use_cookies_title),
                     checked = preferences.usesCookies,
                     onCheckedChange = { checked -> viewModel.updatePreferences { it.copy(usesCookies = checked) } },
+                )
+            }
+            SettingsSection(stringResource(R.string.downloads_settings_transcription_section)) {
+                val keySet = stringResource(R.string.downloads_settings_key_set)
+                val keysSummary = stringResource(R.string.downloads_settings_transcription_summary)
+                // Tried first; the other after it, where its key is given too.
+                SettingsChoiceItem(
+                    title = stringResource(R.string.downloads_settings_transcription_service_title),
+                    options = TranscriptionService.entries.map { it.title },
+                    selectedIndex = preferences.transcriptionService.ordinal,
+                    onSelect = { index -> viewModel.updatePreferences { it.copy(transcriptionService = TranscriptionService.entries[index]) } },
+                )
+                TextSettingRow(
+                    title = stringResource(R.string.downloads_settings_supadata_title),
+                    value = preferences.supadataKey,
+                    summary = if (preferences.supadataKey.isBlank()) keysSummary else keySet,
+                    onChange = { key -> viewModel.updatePreferences { it.copy(supadataKey = key.trim()) } },
+                )
+                TextSettingRow(
+                    title = stringResource(R.string.downloads_settings_groq_title),
+                    value = preferences.groqKey,
+                    summary = if (preferences.groqKey.isBlank()) keysSummary else keySet,
+                    onChange = { key -> viewModel.updatePreferences { it.copy(groqKey = key.trim()) } },
                 )
             }
             SettingsSection(stringResource(R.string.downloads_settings_tools_section)) {

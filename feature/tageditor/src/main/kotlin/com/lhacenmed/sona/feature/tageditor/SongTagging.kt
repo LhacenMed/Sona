@@ -72,6 +72,9 @@ internal data class SongPlan(val tags: TrackTags, val cover: CoverChoice, val ly
     }
 }
 
+/** A song a download is saved as, as its row shows it: its [title], [artist] and [album], and its cover - null for the video's. */
+data class SongSummary(val title: String, val artist: String, val album: String, val coverUri: String?)
+
 /**
  * What saving a download as a song asks of the tag editor: the song a video is, found in its catalogues - every one at
  * once, ranked by how well each fits - with its cover and lyrics, as a [VideoSong] the user can change before it downloads;
@@ -114,10 +117,32 @@ object SongTagging {
         }
     }
 
+    /**
+     * The song a video [title] by [channel] surely is, as the plan [tag] saves it by - found as the download begins, so it is
+     * shown as that song while it downloads, and kept with it. Null where none surely is.
+     */
+    suspend fun planFor(title: String, channel: String?): String? = withContext(Dispatchers.IO) { planOf(title, channel)?.encoded }
+
+    /** What [plan] - see [planFor] - names: the song's title and artist, and its cover. Null for a plan it did not write. */
+    fun summaryOf(plan: String): SongSummary? = SongPlan.of(plan)?.let { song ->
+        SongSummary(
+            title = song.tags[TagField.TITLE],
+            artist = song.tags[TagField.ARTIST],
+            album = song.tags[TagField.ALBUM],
+            coverUri = when (val cover = song.cover) {
+                is CoverChoice.Web -> cover.url
+                is CoverChoice.Device -> cover.uri
+                CoverChoice.Own -> null
+            },
+        ).takeIf { it.title.isNotBlank() }
+    }
+
     /** The song a file's own [tags] - or its name - surely are, as a plan; null where none surely is. */
-    private suspend fun foundFor(tags: TrackTags, file: File): SongPlan? {
-        val title = tags[TagField.TITLE].ifBlank { file.nameWithoutExtension }
-        val readings = readingsOf(title, tags[TagField.ARTIST])
+    private suspend fun foundFor(tags: TrackTags, file: File): SongPlan? = planOf(tags[TagField.TITLE].ifBlank { file.nameWithoutExtension }, tags[TagField.ARTIST])
+
+    /** The song [title] by [artist] surely is, as a plan; null where none surely is. */
+    private suspend fun planOf(title: String, artist: String?): SongPlan? {
+        val readings = readingsOf(title, artist)
         val best = TagLookup.search(readings)?.firstOrNull()?.takeIf { match -> readings.any { TrackMatcher.score(it, match) >= TrackMatcher.Confident } }
             ?: return null
         val complete = TagLookup.complete(best)

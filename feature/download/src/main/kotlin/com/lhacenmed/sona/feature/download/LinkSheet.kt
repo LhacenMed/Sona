@@ -67,9 +67,8 @@ import com.lhacenmed.sona.core.downloader.LinkPreview
 import com.lhacenmed.sona.core.downloader.MediaInfo
 import com.lhacenmed.sona.core.downloader.PlaylistEntry
 import com.lhacenmed.sona.core.downloader.RuntimeState
-import com.lhacenmed.sona.core.downloader.captionLanguageOf
 import com.lhacenmed.sona.core.downloader.estimatedSizeBytes
-import com.lhacenmed.sona.core.downloader.suggestedCaptions
+import com.lhacenmed.sona.core.downloader.pickedCaptions
 import com.lhacenmed.sona.core.model.DownloadChoices
 import com.lhacenmed.sona.core.model.DownloadFailure
 import com.lhacenmed.sona.core.model.DownloadKind
@@ -98,6 +97,7 @@ internal fun LinkSheet(sheet: LinkSheet, viewModel: DownloadViewModel) {
             MediaSheet(info = (sheet as? LinkSheet.Found)?.info, preview = (sheet as? LinkSheet.Reading)?.preview, viewModel = viewModel)
         sheet is LinkSheet.NeedsDownloader -> DownloaderSheet(sheet, viewModel)
         sheet is LinkSheet.Unreadable -> UnreadableSheet(sheet, viewModel)
+        sheet is LinkSheet.AlreadySaved -> AlreadySavedSheet(sheet, viewModel)
     }
 }
 
@@ -115,6 +115,9 @@ private fun MediaSheet(info: MediaInfo?, preview: LinkPreview?, viewModel: Downl
     val options by viewModel.options.collectAsStateWithLifecycle()
     val pickedFormat by viewModel.pickedFormat.collectAsStateWithLifecycle()
     val song by viewModel.song.collectAsStateWithLifecycle()
+    val check by viewModel.libraryCheck.collectAsStateWithLifecycle()
+    val downloadsOnceRead by viewModel.downloadsOnceRead.collectAsStateWithLifecycle()
+    val preferences by viewModel.preferences.collectAsStateWithLifecycle()
     var picker by remember { mutableStateOf<MediaPicker?>(null) }
     val size = info?.estimatedSizeBytes(choices, pickedFormat)?.let { Formatter.formatShortFileSize(context, it) }
     SonaBottomSheet(onDismissRequest = viewModel::onDismissLink, header = { MediaHeader(info, preview) }) {
@@ -122,25 +125,33 @@ private fun MediaSheet(info: MediaInfo?, preview: LinkPreview?, viewModel: Downl
             KindChoice(choices.kind) { kind -> viewModel.onSheetChoicesChange { it.copy(kind = kind) } }
             val quality = qualityRow(info, choices) { picker = MediaPicker.QUALITY }
             val track = audioTrackRow(info, choices) { picker = MediaPicker.AUDIO_TRACK }
+            val subtitles = subtitlesRow(info, choices, options, preferences.transcribes) { picker = MediaPicker.SUBTITLES }
             SonaRowGroup(
-                if (choices.kind == DownloadKind.VIDEO) {
-                    listOf(quality, track, subtitlesRow(info, choices, options) { picker = MediaPicker.SUBTITLES })
-                } else {
-                    listOfNotNull(
+                when (choices.kind) {
+                    DownloadKind.VIDEO -> listOf(quality, track, subtitles)
+                    DownloadKind.AUDIO -> listOfNotNull(
                         saveAsRow(choices.savesAsSong) { savesAsSong -> viewModel.onSheetChoicesChange(forEveryDownload = true) { it.copy(savesAsSong = savesAsSong) } },
                         songRow(info, song) { picker = MediaPicker.SONG }.takeIf { choices.savesAsSong },
                         track,
                         quality,
                     )
+                    DownloadKind.SUBTITLES -> listOf(subtitles)
                 },
                 modifier = Modifier.padding(top = 16.dp),
             )
             SonaRowGroup(listOf(moreOptionsRow(enabled = info != null) { picker = MediaPicker.MORE_OPTIONS }), modifier = Modifier.padding(top = 12.dp))
+            if (info != null && choices.kind.isMedia) LibraryCheckLine(check, choices.kind, setOfNotNull(viewModel.openLink), Modifier.padding(top = 16.dp))
+            // Pressed while the link is read, it says so and downloads the moment it is - never a button that does nothing.
             DownloadButton(
-                label = size?.let { stringResource(R.string.download_download_size, it) } ?: stringResource(R.string.download_download),
-                enabled = info != null,
+                label = when {
+                    info == null && downloadsOnceRead -> stringResource(R.string.download_once_read)
+                    size != null -> stringResource(R.string.download_download_size, size)
+                    else -> stringResource(R.string.download_download)
+                },
+                // Captions alone, once read, only where there are some picked to save.
+                enabled = info == null || choices.kind.isMedia || info.pickedCaptions(choices, options, Locale.getDefault().language, preferences.transcribes).isNotEmpty(),
                 viewModel = viewModel,
-                onDownload = { viewModel.onDownload() },
+                onDownload = { if (info == null) viewModel.onDownloadOnceRead() else viewModel.onDownload() },
                 modifier = Modifier.padding(top = 20.dp),
             )
         }
@@ -228,15 +239,15 @@ private fun Bone(widthFraction: Float, modifier: Modifier = Modifier) {
     )
 }
 
-/** Audio or Video, joined - the one picked filled. Picking downloads nothing: Download does. */
+/** Audio, Video or Subtitles, joined - the one picked filled. Picking downloads nothing: Download does. */
 @Composable
 private fun KindChoice(kind: DownloadKind, onSelect: (DownloadKind) -> Unit) {
     SonaConnectedChoice(
-        options = listOf(DownloadKind.AUDIO, DownloadKind.VIDEO),
+        options = listOf(DownloadKind.AUDIO, DownloadKind.VIDEO, DownloadKind.SUBTITLES),
         selected = kind,
         onSelect = onSelect,
         label = { stringResource(it.labelRes) },
-        icon = { if (it == DownloadKind.AUDIO) SonaIcons.Song else SonaIcons.Video },
+        icon = { it.icon },
         modifier = Modifier.fillMaxWidth(),
     )
 }
@@ -334,23 +345,28 @@ private fun audioTrackRow(info: MediaInfo?, choices: DownloadChoices, onClick: (
     )
 }
 
-/** The subtitles row: the captions picked, and whether in the video or beside it - offered where the video has any. */
-private fun subtitlesRow(info: MediaInfo?, choices: DownloadChoices, options: DownloadOptions, onClick: () -> Unit): @Composable (ListItemShapes) -> Unit = { shapes ->
-    val picked = info?.let { options.subtitleLanguages ?: if (choices.captions) it.suggestedCaptions(Locale.getDefault().language) else emptyList() }
+/**
+ * The subtitles row: the captions picked, and whether in the video or beside it - the captions alone, just which - offered where
+ * the video has any, or its speech can be transcribed.
+ */
+private fun subtitlesRow(info: MediaInfo?, choices: DownloadChoices, options: DownloadOptions, transcribes: Boolean, onClick: () -> Unit): @Composable (ListItemShapes) -> Unit = { shapes ->
+    val picked = info?.pickedCaptions(choices, options, Locale.getDefault().language, transcribes)
+    val pickedNames = picked.orEmpty().map { captionName(it) }.joinToString(", ")
     SonaValueRow(
         label = stringResource(R.string.download_subtitles),
         shapes = shapes,
         icon = SonaIcons.Subtitles,
         value = when {
             info == null -> null
-            !info.hasCaptions -> stringResource(R.string.download_subtitles_none)
+            !info.hasCaptions && !transcribes -> stringResource(R.string.download_subtitles_none)
             picked.isNullOrEmpty() -> stringResource(R.string.download_subtitles_off)
+            choices.kind == DownloadKind.SUBTITLES -> pickedNames
             else -> stringResource(
                 if (choices.subtitlesAsFile) R.string.download_subtitles_value_as_file else R.string.download_subtitles_value_in_video,
-                picked.joinToString(", ") { languageName(captionLanguageOf(it)) },
+                pickedNames,
             )
         },
-        enabled = info?.hasCaptions == true,
+        enabled = info != null && (info.hasCaptions || transcribes),
         onClick = onClick,
     )
 }
@@ -438,6 +454,7 @@ private fun PlaylistSheet(info: MediaInfo, viewModel: DownloadViewModel) {
     val entries = info.entries.orEmpty()
     val picks = remember(entries) { SelectionState().apply { selectAll(entries.map(PlaylistEntry::id)) } }
     val isAllPicked = picks.count == entries.size
+    val check by viewModel.libraryCheck.collectAsStateWithLifecycle()
     var picker by remember { mutableStateOf<MediaPicker?>(null) }
     SonaColumnBottomSheet(onDismissRequest = viewModel::onDismissLink, header = { MediaHeader(info, preview = null) }) {
         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
@@ -447,7 +464,7 @@ private fun PlaylistSheet(info: MediaInfo, viewModel: DownloadViewModel) {
                     // Each of its songs is found by its own title and artist as it downloads, and tagged only where surely found.
                     saveAsRow(choices.savesAsSong, isMany = true) { savesAsSong -> viewModel.onSheetChoicesChange(forEveryDownload = true) { it.copy(savesAsSong = savesAsSong) } }
                         .takeIf { choices.kind == DownloadKind.AUDIO },
-                    qualityRow(info, choices) { picker = MediaPicker.QUALITY },
+                    qualityRow(info, choices) { picker = MediaPicker.QUALITY }.takeIf { choices.kind.isMedia },
                     moreOptionsRow(enabled = true) { picker = MediaPicker.MORE_OPTIONS },
                 ),
                 modifier = Modifier.padding(top = 16.dp),
@@ -478,6 +495,14 @@ private fun PlaylistSheet(info: MediaInfo, viewModel: DownloadViewModel) {
                     cover = { isSelected -> SonaCoverArt(coverArtUri = entry.thumbnailUrl, contentDescription = null, isSelected = isSelected) },
                 )
             }
+        }
+        if (choices.kind.isMedia) {
+            LibraryCheckLine(
+                check,
+                choices.kind,
+                entries.filter { picks.isSelected(it.id) }.map(PlaylistEntry::url).toSet(),
+                Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp),
+            )
         }
         DownloadButton(
             label = stringResource(R.string.download_download_picked, picks.count),
@@ -516,7 +541,7 @@ private fun UnreadableSheet(sheet: LinkSheet.Unreadable, viewModel: DownloadView
         )
         FixButton(presentation.fix.labelRes, presentation.fix.icon) {
             when (presentation.fix) {
-                FailureFix.TRY_AGAIN, FailureFix.TRY_BEST_FORMAT -> viewModel.open(sheet.url)
+                FailureFix.TRY_AGAIN, FailureFix.TRY_BEST_FORMAT, FailureFix.DOWNLOAD_ANYWAY -> viewModel.open(sheet.url)
                 FailureFix.OPEN_LINK -> runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(sheet.url))) }
                 FailureFix.SIGN_IN -> {
                     navigator.go(CookiesScreen(sheet.url))
@@ -527,7 +552,7 @@ private fun UnreadableSheet(sheet: LinkSheet.Unreadable, viewModel: DownloadView
             }
         }
         sheet.detail?.let { ErrorDetails(it) }
-        SonaActionButtonGroup(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
+        SonaActionButtonGroup(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp)) {
             actionButton(label = cancelLabel, onClick = { dismiss() })
             // The clipboard holds the link that failed: the link field, under the sheet, takes another.
             actionButton(label = pasteLabel, onClick = viewModel::onDismissLink)
@@ -579,7 +604,7 @@ private fun DownloaderSheet(sheet: LinkSheet.NeedsDownloader, viewModel: Downloa
             )
             else -> Unit
         }
-        SonaActionButtonGroup(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
+        SonaActionButtonGroup(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp)) {
             if (savesAsAudio) actionButton(label = audioLabel, onClick = { viewModel.onDownload(DownloadKind.AUDIO) })
             else actionButton(label = notNowLabel, onClick = { dismiss() })
             actionButton(label = getLabel, enabled = state !is RuntimeState.Downloading, onClick = viewModel::onGetDownloader)

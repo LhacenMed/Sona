@@ -90,7 +90,7 @@ object DownloadWork {
 /** Runs the queue to its end, in the foreground - then wakes it again for the soonest download set to start later. */
 internal class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
-    override suspend fun getForegroundInfo() = DownloadNotifications.foregroundInfo(applicationContext, emptyMap())
+    override suspend fun getForegroundInfo() = DownloadNotifications.foregroundInfo(applicationContext, first = null)
 
     @OptIn(FlowPreview::class)
     override suspend fun doWork(): Result {
@@ -98,12 +98,26 @@ internal class DownloadWorker(context: Context, params: WorkerParameters) : Coro
         setForeground(getForegroundInfo())
         coroutineScope {
             val notification = launch {
-                entryPoint.queue().running.sample(NotificationEveryMs).collect {
-                    if (it.isNotEmpty()) setForeground(DownloadNotifications.foregroundInfo(applicationContext, it))
+                var shown = emptySet<Int>()
+                var seen = emptySet<Long>()
+                try {
+                    entryPoint.queue().running.sample(NotificationEveryMs).collect { running ->
+                        val downloads = running.values.toList()
+                        // The first in the foreground service's own, every other in one of its own.
+                        downloads.firstOrNull()?.let { setForeground(DownloadNotifications.foregroundInfo(applicationContext, it)) }
+                        shown = DownloadNotifications.showOthers(applicationContext, downloads.drop(1), shown)
+                        // Running again, a download paused from its notification no longer says it is.
+                        (running.keys - seen).forEach { DownloadNotifications.cancelPaused(applicationContext, it) }
+                        seen = running.keys
+                    }
+                } finally {
+                    DownloadNotifications.showOthers(applicationContext, emptyList(), shown)
                 }
             }
-            entryPoint.runner().runQueue()
+            val waitsForNetwork = entryPoint.runner().runQueue()
             notification.cancel()
+            // Cut off by the device going offline: run again once it is back, carrying on from the last byte.
+            if (waitsForNetwork) DownloadWork.start(applicationContext, entryPoint.settings().preferences.value)
         }
         entryPoint.dao().nextStartAt(System.currentTimeMillis())?.let {
             DownloadWork.startAt(applicationContext, it, entryPoint.settings().preferences.value)

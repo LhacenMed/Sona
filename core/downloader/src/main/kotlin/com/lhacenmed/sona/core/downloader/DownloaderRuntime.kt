@@ -3,6 +3,7 @@ package com.lhacenmed.sona.core.downloader
 import android.content.Context
 import android.os.Build
 import com.lhacenmed.sona.core.common.di.ApplicationScope
+import com.lhacenmed.sona.core.common.storage.DownloaderFiles
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.io.FilterInputStream
@@ -124,10 +125,10 @@ class DownloaderRuntime @Inject constructor(
     internal val cacheDir = File(home, "cache")
 
     /** The cookies saved from signing in on sites, in the Netscape format yt-dlp reads - kept when the downloader is removed. */
-    val cookiesFile = File(context.noBackupFilesDir, "download-cookies.txt")
+    val cookiesFile = DownloaderFiles.cookies(context)
 
     /** Every video downloaded while the archive is on, by its id at its site - the user's, so kept apart from the downloader. */
-    val archiveFile = File(context.filesDir, "download-archive.txt")
+    val archiveFile = DownloaderFiles.archive(context)
 
     private val client = OkHttpClient()
 

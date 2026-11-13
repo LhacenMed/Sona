@@ -99,4 +99,15 @@ object SonaNotificationId {
     const val DOWNLOAD = 4600
     const val DOWNLOAD_RESULT = 4601
     const val UPDATE_AVAILABLE = 9999
+
+    /** The id of download [downloadId]'s own notification, while it runs beside the first - shown as [DOWNLOAD]. */
+    fun download(downloadId: Long): Int = DOWNLOADS_FROM + (downloadId % DOWNLOADS_COUNT).toInt()
+
+    /** The id of download [downloadId]'s notification once it is paused from its own. */
+    fun downloadPaused(downloadId: Long): Int = DOWNLOADS_PAUSED_FROM + (downloadId % DOWNLOADS_COUNT).toInt()
+
+    /** Where the downloads' own ids start, clear of every id above. */
+    private const val DOWNLOADS_FROM = 100_000
+    private const val DOWNLOADS_PAUSED_FROM = 200_000
+    private const val DOWNLOADS_COUNT = 100_000
 }

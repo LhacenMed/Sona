@@ -2,23 +2,16 @@ package com.lhacenmed.sona.feature.download.tools
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -34,8 +27,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.datastore.DownloadSettings
-import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
-import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.downloader.YtDlp
 import com.lhacenmed.sona.core.downloader.splitArguments
@@ -69,8 +60,6 @@ data object TerminalScreen : Screen {
         val lines by viewModel.lines.collectAsStateWithLifecycle()
         val isRunning by viewModel.isRunning.collectAsStateWithLifecycle()
         var arguments by rememberSaveable { mutableStateOf("--version") }
-        val listState = rememberLazyListState()
-        LaunchedEffect(lines.size) { if (lines.isNotEmpty()) listState.scrollToItem(lines.lastIndex) }
 
         Column(modifier = Modifier.fillMaxSize()) {
             Row(
@@ -91,20 +80,7 @@ data object TerminalScreen : Screen {
                     Text(stringResource(if (isRunning) R.string.download_terminal_stop else R.string.download_terminal_run))
                 }
             }
-            FastScroller(listState, Modifier.fillMaxSize()) { overscrollEffect ->
-                SelectionContainer {
-                    LazyColumn(
-                        state = listState,
-                        overscrollEffect = overscrollEffect,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = LocalBottomContentPadding.current),
-                    ) {
-                        itemsIndexed(lines) { _, line ->
-                            Text(line, style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace), modifier = Modifier.fillMaxWidth())
-                        }
-                    }
-                }
-            }
+            DownloaderOutput(lines, Modifier.fillMaxSize())
         }
     }
 }

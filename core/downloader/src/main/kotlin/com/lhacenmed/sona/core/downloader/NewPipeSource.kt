@@ -15,6 +15,9 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import org.schabi.newpipe.extractor.Image
+import org.schabi.newpipe.extractor.channel.ChannelInfo
+import org.schabi.newpipe.extractor.channel.tabs.ChannelTabInfo
+import org.schabi.newpipe.extractor.channel.tabs.ChannelTabs
 import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.downloader.Downloader
@@ -28,6 +31,7 @@ import org.schabi.newpipe.extractor.stream.ContentAvailability
 import org.schabi.newpipe.extractor.stream.DeliveryMethod
 import org.schabi.newpipe.extractor.stream.Stream
 import org.schabi.newpipe.extractor.stream.StreamInfo
+import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import org.schabi.newpipe.extractor.stream.StreamType
 import org.schabi.newpipe.extractor.stream.SubtitlesStream
 import org.schabi.newpipe.extractor.stream.VideoStream
@@ -69,7 +73,8 @@ internal class NewPipeSource @Inject constructor() {
     }
 
     fun accepts(url: String): Boolean = runCatching {
-        ServiceList.YouTube.streamLHFactory.acceptUrl(url) || ServiceList.YouTube.playlistLHFactory.acceptUrl(url)
+        ServiceList.YouTube.streamLHFactory.acceptUrl(url) || ServiceList.YouTube.playlistLHFactory.acceptUrl(url) ||
+            ServiceList.YouTube.channelLHFactory.acceptUrl(url)
     }.getOrDefault(false)
 
     /**
@@ -88,6 +93,7 @@ internal class NewPipeSource @Inject constructor() {
         when {
             ServiceList.YouTube.streamLHFactory.acceptUrl(url) -> network.deferringNext { videoJson(StreamInfo.getInfo(ServiceList.YouTube, url)) }
             ServiceList.YouTube.playlistLHFactory.acceptUrl(url) -> playlistJson(url)
+            ServiceList.YouTube.channelLHFactory.acceptUrl(url) -> channelJson(url)
             else -> null
         }
     }.getOrNull()
@@ -162,10 +168,26 @@ internal class NewPipeSource @Inject constructor() {
             items += more.items
             page = more.nextPage
         }
-        val entries = items.take(MaxPlaylistEntries).mapNotNull { item ->
-            val id = runCatching { ServiceList.YouTube.streamLHFactory.getId(item.url) }.getOrNull() ?: return@mapNotNull null
+        return playlistJsonOf(first.id, first.name, first.uploaderName, first.thumbnails.largest(), url, items.take(MaxPlaylistEntries))
+    }
+
+    /**
+     * A channel's newest videos, as a playlist's read: its Videos tab's first page - what a watch looks for new ones in, read in
+     * two requests rather than the channel's every video. Its main page alone lists its tabs, not its videos.
+     */
+    private fun channelJson(url: String): String {
+        val channel = ChannelInfo.getInfo(ServiceList.YouTube, url)
+        val videos = channel.tabs.first { ChannelTabs.VIDEOS in it.contentFilters }
+        val items = ChannelTabInfo.getInfo(ServiceList.YouTube, videos).relatedItems.filterIsInstance<StreamInfoItem>()
+        return playlistJsonOf(channel.id, channel.name, channel.name, channel.avatars.largest(), url, items)
+    }
+
+    /** [items], the videos of a list at [url], as yt-dlp's read of a playlist. */
+    private fun playlistJsonOf(id: String, title: String, uploader: String?, thumbnail: String?, url: String, items: List<StreamInfoItem>): String {
+        val entries = items.mapNotNull { item ->
+            val videoId = runCatching { ServiceList.YouTube.streamLHFactory.getId(item.url) }.getOrNull() ?: return@mapNotNull null
             JSONObject()
-                .put("id", id)
+                .put("id", videoId)
                 .put("url", item.url)
                 .put("title", item.name)
                 .put("uploader", item.uploaderName)
@@ -174,10 +196,10 @@ internal class NewPipeSource @Inject constructor() {
         }
         return JSONObject()
             .put("_type", "playlist")
-            .put("id", first.id)
-            .put("title", first.name)
-            .put("uploader", first.uploaderName)
-            .put("thumbnail", first.thumbnails.largest())
+            .put("id", id)
+            .put("title", title)
+            .put("uploader", uploader)
+            .put("thumbnail", thumbnail)
             .put("webpage_url", url)
             .put("extractor_key", "YoutubeTab")
             .put("entries", JSONArray(entries))

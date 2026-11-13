@@ -1,5 +1,8 @@
 package com.lhacenmed.sona.core.downloader
 
+import com.lhacenmed.sona.core.model.DownloadChoices
+import com.lhacenmed.sona.core.model.DownloadKind
+import com.lhacenmed.sona.core.model.DownloadOptions
 import org.json.JSONObject
 
 /** How yt-dlp names YouTube's captions made from the speech, in the language spoken - listed again without it, the same file. */
@@ -32,6 +35,18 @@ internal fun exactCaptionLanguages(codes: List<String>): String? =
 /** The captions this video is downloaded with unless others are picked - see [captionLanguagesOf] - what a picker starts from. */
 fun MediaInfo.suggestedCaptions(deviceLanguage: String): List<String> =
     captionsToEmbed(madeCaptions, automaticCaptions, wantedLanguages(deviceLanguage))
+
+/**
+ * The captions a download of this video takes with [choices] and [options]: those picked, else those suggested - none for a
+ * video downloaded without captions. Downloading the captions alone, they are always taken - and where it has none, its
+ * speech is transcribed, where the user [transcribes] - see [CaptionTranscription].
+ */
+fun MediaInfo.pickedCaptions(choices: DownloadChoices, options: DownloadOptions, deviceLanguage: String, transcribes: Boolean): List<String> =
+    options.subtitleLanguages ?: when {
+        choices.kind == DownloadKind.SUBTITLES -> suggestedCaptions(deviceLanguage).ifEmpty { listOfNotNull(TRANSCRIBED_CAPTIONS.takeIf { transcribes }) }
+        choices.captions -> suggestedCaptions(deviceLanguage)
+        else -> emptyList()
+    }
 
 /**
  * A video's captions as a picker lists them, each by the code that picks it - see [captionGroups] - and the one a
@@ -92,4 +107,4 @@ private fun comparable(code: String): String {
 /** The language [code] is of - "pt" of "pt-BR", "fr" of "fr-en". */
 private fun primaryOf(code: String): String = comparable(code).substringBefore('-')
 
-private fun JSONObject.keysOf(name: String): List<String> = optJSONObject(name)?.keys()?.asSequence()?.toList().orEmpty()
+internal fun JSONObject.keysOf(name: String): List<String> = optJSONObject(name)?.keys()?.asSequence()?.toList().orEmpty()

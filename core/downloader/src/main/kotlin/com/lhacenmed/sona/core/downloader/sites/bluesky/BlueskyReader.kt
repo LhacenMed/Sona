@@ -1,12 +1,14 @@
 package com.lhacenmed.sona.core.downloader.sites.bluesky
 
 import com.lhacenmed.sona.core.downloader.objects
+import com.lhacenmed.sona.core.downloader.sites.CaptionFile
 import com.lhacenmed.sona.core.downloader.sites.HttpsUrl
 import com.lhacenmed.sona.core.downloader.sites.SiteHttp
 import com.lhacenmed.sona.core.downloader.sites.SiteReader
 import com.lhacenmed.sona.core.downloader.sites.VideoFormat
 import com.lhacenmed.sona.core.downloader.sites.VideoPost
 import com.lhacenmed.sona.core.downloader.sites.firstLine
+import com.lhacenmed.sona.core.downloader.sites.languageTagOf
 import com.lhacenmed.sona.core.downloader.sites.text
 import com.lhacenmed.sona.core.downloader.sites.videoInfoJson
 import com.lhacenmed.sona.core.downloader.sites.wholeNumber
@@ -69,9 +71,9 @@ internal object BlueskyReader : SiteReader {
         return infoJson(video, server, did, identity.rkey, url)
     }
 
-    /** What a thread names of its post's own video. */
+    /** What a thread names of its post's own video - and of its captions, each blob's CID by its language. */
     class Video(val cid: String, val mimeType: String, val size: Long?, val width: Int?, val height: Int?,
-        val thumbnail: String?, val text: String?, val author: String?)
+        val thumbnail: String?, val text: String?, val author: String?, val captions: Map<String, String> = emptyMap())
 
     /** The video of the post [atUri] in its thread's JSON - null where it has none of its own. */
     fun parseThread(json: String, atUri: String): Video? {
@@ -101,8 +103,15 @@ internal object BlueskyReader : SiteReader {
             thumbnail = view.text("thumbnail")?.takeIf { HttpsUrl.parse(it)?.host == "video.bsky.app" },
             text = post.optJSONObject("record")?.text("text"),
             author = author?.text("displayName") ?: author?.text("handle"),
+            captions = captionsOf(record),
         )
     }
+
+    /** The captions uploaded with a video's [record], as yt-dlp's bluesky extractor reads them: each WebVTT blob by its language. */
+    private fun captionsOf(record: JSONObject): Map<String, String> = record.optJSONArray("captions")?.objects().orEmpty().mapNotNull { caption ->
+        val cid = caption.optJSONObject("file")?.optJSONObject("ref")?.text("\$link")?.takeIf(Cid::matches) ?: return@mapNotNull null
+        languageTagOf(caption.text("lang")) to cid
+    }.toMap()
 
     /** The DID document's own data server, where it is one of Bluesky's - null for any other. */
     fun serverOf(json: String): String? {
@@ -119,8 +128,8 @@ internal object BlueskyReader : SiteReader {
             "video/webm" -> "webm"
             else -> return null
         }
-        val blobUrl = "$server/xrpc/com.atproto.sync.getBlob".toHttpUrl().newBuilder()
-            .addQueryParameter("did", did).addQueryParameter("cid", video.cid).build().toString()
+        fun blobUrl(cid: String) = "$server/xrpc/com.atproto.sync.getBlob".toHttpUrl().newBuilder()
+            .addQueryParameter("did", did).addQueryParameter("cid", cid).build().toString()
         return videoInfoJson(
             VideoPost(
                 id = id,
@@ -131,7 +140,8 @@ internal object BlueskyReader : SiteReader {
                 webpageUrl = webpageUrl,
                 extractorKey = "Bluesky",
                 // The file as uploaded: what it is encoded in is not said.
-                formats = listOf(VideoFormat("source", blobUrl, video.width, video.height, "unknown", "unknown", extension, sizeBytes = video.size)),
+                formats = listOf(VideoFormat("source", blobUrl(video.cid), video.width, video.height, "unknown", "unknown", extension, sizeBytes = video.size)),
+                captions = video.captions.map { (language, cid) -> CaptionFile(language, blobUrl(cid), isAutomatic = false, extension = "vtt") },
             ),
         )
     }
