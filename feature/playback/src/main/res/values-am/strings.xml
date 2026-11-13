@@ -1,13 +1,3 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="playback_action_add_favorite"></string>
-    <string name="playback_action_remove_favorite"></string>
-    <string name="playback_action_shuffle_on"></string>
-    <string name="playback_action_shuffle_off"></string>
-    <string name="playback_action_repeat_off"></string>
-    <string name="playback_action_repeat_one"></string>
-    <string name="playback_action_repeat_all"></string>
-    <string name="playback_action_repeat_one_stop"></string>
-    <!-- A Private Folder file, as the notification and the lock screen show it - see VaultMediaItemMapping -->
-    <string name="vault_display_title"></string>
-</resources>
+    </resources>
