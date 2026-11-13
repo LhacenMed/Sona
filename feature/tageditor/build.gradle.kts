@@ -33,6 +33,8 @@ dependencies {
     implementation(project(":feature:playback"))
     implementation(project(":feature:scanner"))
     implementation(project(":feature:explorer"))
+    // FFmpeg, which turns a track's file into another format - see TrackFileChanges.
+    implementation(project(":core:downloader"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

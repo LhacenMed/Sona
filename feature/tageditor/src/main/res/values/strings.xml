@@ -23,7 +23,16 @@
     <string name="tag_editor_duration">Duration</string>
     <string name="tag_editor_format">Format</string>
     <string name="tag_editor_bitrate">Bitrate</string>
-    <string name="tag_editor_path">Path</string>
+    <string name="tag_editor_path">Location</string>
+    <string name="tag_editor_name">Name</string>
+    <string name="tag_editor_rename_title">Rename file</string>
+    <string name="tag_editor_rename">Rename</string>
+    <string name="tag_editor_cancel">Cancel</string>
+    <string name="tag_editor_convert_title">Convert to</string>
+    <string name="tag_editor_convert_needs_downloader">Get the downloader to convert files</string>
+    <string name="tag_editor_folder_not_on_device">Pick a folder on this device</string>
+    <string name="tag_editor_file_exists">%1$s is there already</string>
+    <string name="tag_editor_file_change_failed">Could not change the file. %1$s</string>
     <string name="tag_editor_kbps">%1$d kbps</string>
     <string name="tag_editor_search_button">Search tags and lyrics</string>
     <string name="tag_editor_all">All</string>

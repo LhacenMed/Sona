@@ -8,6 +8,7 @@ import com.lhacenmed.sona.core.database.SonaDatabase
 import com.lhacenmed.sona.core.database.dao.AddedDateDao
 import com.lhacenmed.sona.core.database.dao.AlbumDao
 import com.lhacenmed.sona.core.database.dao.ArtistDao
+import com.lhacenmed.sona.core.database.dao.DownloadDao
 import com.lhacenmed.sona.core.database.dao.FileYearDao
 import com.lhacenmed.sona.core.database.dao.GenreDao
 import com.lhacenmed.sona.core.database.dao.HeldLyricsDao
@@ -24,6 +25,7 @@ import com.lhacenmed.sona.core.model.Artist
 import com.lhacenmed.sona.core.model.Genre
 import com.lhacenmed.sona.core.model.Track
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
@@ -97,9 +99,21 @@ class LibraryWriter @Inject constructor(
     private val genreDao: GenreDao,
     private val fileYearDao: FileYearDao,
     private val heldLyricsDao: HeldLyricsDao,
+    private val downloadDao: DownloadDao,
     private val mediaFingerprints: MediaFingerprints,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
+
+    /** The moves the app is making of its own - new path to old - each taken as a move by the next [sync] that finds it made. */
+    private val expectedMoves = ConcurrentHashMap<String, String>()
+
+    /**
+     * Has the next [sync] that finds [to] - [from] moved, renamed, or turned into another format by the app - take it as [from]'s
+     * track moved there, keeping all it has: however much its file changed, which a move found by itself must not.
+     */
+    fun expectMove(from: String, to: String) {
+        expectedMoves[to] = from
+    }
 
     /** Since when each track held for [GONE_FILE_SETTLE_MS] has been gone. Scans run one at a time. */
     private val goneSince = HashMap<Long, Long>()
@@ -161,6 +175,9 @@ class LibraryWriter @Inject constructor(
                 mediaFingerprints.moved(moved.path, path)
                 addedDateDao.move(moved.path, path)
                 heldLyricsDao.move(moved.path, path)
+                // A download's file, wherever it went, is still the one it saved.
+                downloadDao.moveSavedPath(moved.path, path)
+                expectedMoves.remove(path)
             }
             trackDiff.deleted.chunked(MAX_BIND_ARGS).forEach { trackDao.deleteByIds(it) }
             // Gone with its track, so a file found at that path later is new as any.
@@ -191,10 +208,17 @@ class LibraryWriter @Inject constructor(
     /** Which of the files of [scanned] new to the library are tracks of [stored] whose files are gone - see [movedTracks]. */
     private fun movesIn(scanned: List<TrackEntity>, stored: Map<Long, TrackEntity>): Map<String, TrackFile> {
         val scannedPaths = scanned.mapTo(HashSet()) { it.path }
-        val gone = stored.values.filter { it.path !in scannedPaths && !File(it.path).exists() }
-        if (gone.isEmpty()) return emptyMap()
+        val storedByPath = stored.values.associateBy { it.path }
+        // The app's own moves first, as it made them - see [expectMove].
+        val expected = expectedMoves.mapNotNull { (to, from) ->
+            storedByPath[from]?.takeIf { to in scannedPaths && to !in storedByPath && from !in scannedPaths }?.let { to to it.toTrackFile() }
+        }.toMap()
+        val expectedIds = expected.values.mapTo(HashSet()) { it.id }
+        val gone = stored.values.filter { it.id !in expectedIds && it.path !in scannedPaths && !File(it.path).exists() }
+        if (gone.isEmpty()) return expected
         val storedPaths = stored.values.mapTo(HashSet()) { it.path }
-        return movedTracks(gone.map(TrackEntity::toTrackFile), scanned.filter { it.path !in storedPaths }.map(TrackEntity::toTrackFile))
+        val found = scanned.filter { it.path !in storedPaths && it.path !in expected }.map(TrackEntity::toTrackFile)
+        return expected + movedTracks(gone.map(TrackEntity::toTrackFile), found)
     }
 
     /**

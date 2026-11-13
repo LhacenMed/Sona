@@ -18,9 +18,13 @@ import kotlinx.coroutines.CoroutineScope
  */
 @Stable
 class TrackTagDraft(
-    val track: Track,
+    track: Track,
     scope: CoroutineScope,
 ) : SongDraft(track.durationMs, scope) {
+    /** The track - at its file's new path, or as its new format, once the editor renames, moves or converts it. */
+    var track by mutableStateOf(track)
+        internal set
+
     /** What the user has made of the draft - its tags, its cover and the match they came from - to come back to. */
     data class Edits(val tags: TrackTags, val cover: CoverChoice, val appliedMatch: CatalogueMatch?)
 

@@ -83,6 +83,31 @@ internal fun rememberTrackFileSave(
 }
 
 /**
+ * Gets Sona the access to change any file - to manage all files, or, on Android before 11, to write to storage - then calls
+ * [onGranted]: what a file renamed, moved or converted needs, which Android's request for a media file's change does not cover.
+ */
+@Composable
+fun rememberFileAccessRequest(onGranted: () -> Unit): () -> Unit {
+    val context = LocalContext.current
+    val latestOnGranted by rememberUpdatedState(onGranted)
+    val allFilesAccessLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (AppPermission.FILE_CHANGES.isGranted(context)) latestOnGranted()
+    }
+    val writePermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) latestOnGranted()
+    }
+    return {
+        val permission = AppPermission.FILE_CHANGES
+        val runtimePermission = permission.runtimePermission
+        when {
+            permission.isGranted(context) -> latestOnGranted()
+            runtimePermission != null -> writePermissionLauncher.launch(runtimePermission)
+            else -> allFilesAccessLauncher.launch(permission.settingsIntent(context))
+        }
+    }
+}
+
+/**
  * Gets whatever Android wants before Sona changes the files of the tracks it is called with, then calls [onGranted].
  * Sona writes freely where it may manage all files; elsewhere Android asks the user first, once for all of them -
  * and a file MediaStore has not indexed, which Android's request cannot name, needs that access outright.
@@ -94,21 +119,13 @@ fun rememberFileChangeRequest(onGranted: () -> Unit): (List<Track>) -> Unit {
     val consentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) latestOnGranted()
     }
-    val allFilesAccessLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        if (AppPermission.FILE_CHANGES.isGranted(context)) latestOnGranted()
-    }
-    val writePermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) latestOnGranted()
-    }
+    val requestFileAccess = rememberFileAccessRequest(onGranted)
 
     return { tracks ->
         val permission = AppPermission.FILE_CHANGES
-        val runtimePermission = permission.runtimePermission
         when {
             tracks.isEmpty() -> Unit
-            permission.isGranted(context) -> latestOnGranted()
-            runtimePermission != null -> writePermissionLauncher.launch(runtimePermission)
-            tracks.any { it.isManuallyScanned } -> allFilesAccessLauncher.launch(permission.settingsIntent(context))
+            permission.isGranted(context) || permission.runtimePermission != null || tracks.any { it.isManuallyScanned } -> requestFileAccess()
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
                 val request = MediaStore.createWriteRequest(context.contentResolver, tracks.map { it.contentUri })
                 consentLauncher.launch(IntentSenderRequest.Builder(request.intentSender).build())

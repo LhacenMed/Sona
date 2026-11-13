@@ -52,6 +52,7 @@ import com.lhacenmed.sona.core.data.lyrics.LyricsUtils
 import com.lhacenmed.sona.core.designsystem.component.CoverArtDefaults
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverImage
 import com.lhacenmed.sona.core.designsystem.component.shape
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.LocalCoverStyle
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
@@ -63,7 +64,6 @@ import com.lhacenmed.sona.feature.tageditor.lyrics.LyricsTiming
 import com.lhacenmed.sona.feature.tageditor.tags.CoverChoice
 import com.lhacenmed.sona.feature.tageditor.tags.TagField
 import com.lhacenmed.sona.feature.tageditor.tags.TrackTags
-import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.feature.tageditor.tags.label
 
 /** The best match's card keeps this height whatever it holds, so nothing under it moves as the lookup ends. */
@@ -483,10 +483,20 @@ internal fun MatchRow(match: CatalogueMatch, isApplying: Boolean, isApplied: Boo
 
 /** A line of what the file is: its format, bitrate or path. */
 @Composable
-internal fun FileFact(label: String, value: String) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = ContentPadding, vertical = 8.dp)) {
-        Text(label, style = MaterialTheme.typography.bodyLarge)
-        Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+internal fun FileFact(label: String, value: String, onClick: (() -> Unit)? = null) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = ContentPadding, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.bodyLarge)
+            Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        // A fact that can be changed says so.
+        if (onClick != null) Icon(SonaIcons.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

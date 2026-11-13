@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.feature.tageditor
 
+import androidx.annotation.StringRes
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -7,6 +8,10 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lhacenmed.sona.core.data.LibraryRepository
+import com.lhacenmed.sona.core.downloader.DownloaderRuntime
+import com.lhacenmed.sona.core.downloader.FileFormat
+import com.lhacenmed.sona.core.downloader.MediaConverter
+import com.lhacenmed.sona.core.downloader.RuntimeState
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.UnknownNames
 import com.lhacenmed.sona.feature.playback.PlaybackController
@@ -18,10 +23,13 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.File
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -40,8 +48,11 @@ import kotlinx.coroutines.launch
 class TagEditorViewModel @AssistedInject constructor(
     @Assisted private val trackId: Long,
     @Assisted val isInAutoTagRun: Boolean,
-    libraryRepository: LibraryRepository,
+    private val libraryRepository: LibraryRepository,
     private val trackTagsRepository: TrackTagsRepository,
+    private val fileChanges: TrackFileChanges,
+    private val converter: MediaConverter,
+    private val downloaderRuntime: DownloaderRuntime,
     private val playbackController: PlaybackController,
     private val autoTagger: AutoTagger,
     private val openTagDrafts: OpenTagDrafts,
@@ -76,6 +87,50 @@ class TagEditorViewModel @AssistedInject constructor(
      */
     var saveOutcome by mutableStateOf<SaveOutcome?>(null)
         private set
+
+    /** Whether the track's file is being renamed, moved or converted - see [TrackFileChanges]. */
+    var isChangingFile by mutableStateOf(false)
+        private set
+
+    /** Why the last change of the track's file failed, until the screen has said so - see [onFileChangeFailureShown]. */
+    var fileChangeFailure by mutableStateOf<FileChangeFailure?>(null)
+        private set
+
+    /** Whether files can be converted: the downloader, which brings FFmpeg, is here. */
+    val converterState: StateFlow<RuntimeState> = converter.runtimeState
+
+    /** Downloads the downloader, which converting needs - see [DownloaderRuntime]. */
+    fun onGetConverter() = downloaderRuntime.download()
+
+    fun rename(name: String) = changeFile { fileChanges.rename(it, name) }
+
+    fun moveTo(folder: File) = changeFile { fileChanges.move(it, folder) }
+
+    fun convertTo(format: FileFormat) = changeFile { fileChanges.convert(it, format) }
+
+    fun onFileChangeFailureShown() {
+        fileChangeFailure = null
+    }
+
+    /** Runs [change] on the track's file - one at a time - saying why where it fails. */
+    private fun changeFile(change: suspend (Track) -> Unit) {
+        val track = draft?.track ?: return
+        if (isChangingFile) return
+        isChangingFile = true
+        viewModelScope.launch {
+            fileChangeFailure = try {
+                change(track)
+                null
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: FileExistsException) {
+                FileChangeFailure(R.string.tag_editor_file_exists, e.file.name)
+            } catch (e: Exception) {
+                FileChangeFailure(R.string.tag_editor_file_change_failed, e.message)
+            }
+            isChangingFile = false
+        }
+    }
 
     /** Whether the draft was changed since the editor opened it. */
     val hasChanges: Boolean
@@ -126,6 +181,8 @@ class TagEditorViewModel @AssistedInject constructor(
         val draft = TrackTagDraft(track, viewModelScope)
         this.draft = draft
         releaseDraft = openTagDrafts.hold(draft)
+        // The track as the library has it now: its file renamed, moved or converted, the draft is saved into it there.
+        viewModelScope.launch { libraryRepository.tracksById.map { it[trackId] }.filterNotNull().distinctUntilChanged().collect { draft.track = it } }
         viewModelScope.launch {
             // Read before anything can be applied over them - a matter of milliseconds, as the file is local.
             draft.takeFile(trackTagsRepository.read(track))
@@ -174,3 +231,6 @@ class TagEditorViewModel @AssistedInject constructor(
         preparedCover = if (choice == CoverChoice.Own) null else viewModelScope.async { trackTagsRepository.coverBytes(choice) }
     }
 }
+
+/** Why changing a track's file failed: [messageRes], naming [detail] where it has one. */
+data class FileChangeFailure(@StringRes val messageRes: Int, val detail: String?)

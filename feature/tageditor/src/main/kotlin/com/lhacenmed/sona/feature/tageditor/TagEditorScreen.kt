@@ -28,14 +28,12 @@ import com.lhacenmed.sona.core.designsystem.component.fab.ExtendedFloatingAction
 import com.lhacenmed.sona.core.designsystem.component.fab.SonaExtendedFloatingActionButtons
 import com.lhacenmed.sona.core.designsystem.component.WindowBusyOverlay
 import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
-import com.lhacenmed.sona.core.designsystem.component.section.ColumnSection
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.tageditor.R
 import com.lhacenmed.sona.feature.tageditor.lyricseditor.DiscardChangesDialog
 import com.lhacenmed.sona.feature.tageditor.lyricseditor.LyricsEditorScreen
-import java.io.File
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
@@ -92,9 +90,15 @@ data class TagEditorScreen(val trackId: Long, val isInAutoTagRun: Boolean = fals
         // The whole window held while the file is written and the library reads it back - and back with it, so
         // the save is never left halfway, with the file changed and the lists not yet showing it. Putting the
         // keyboard away is never asking to leave - see [KeyboardAwareBackHandler].
-        WindowBusyOverlay(isBusy = viewModel.isSaving)
+        WindowBusyOverlay(isBusy = viewModel.isSaving || viewModel.isChangingFile)
         KeyboardAwareBackHandler(enabled = viewModel.hasChanges && !viewModel.isSaving) { isConfirmingDiscard = true }
-        BackHandler(enabled = viewModel.isSaving) {}
+        BackHandler(enabled = viewModel.isSaving || viewModel.isChangingFile) {}
+        viewModel.fileChangeFailure?.let { failure ->
+            LaunchedEffect(failure) {
+                context.toast(context.getString(failure.messageRes, failure.detail.orEmpty()))
+                viewModel.onFileChangeFailureShown()
+            }
+        }
 
         // The screen's button, as the lyrics editor's: growing in once there is something to keep.
         SonaExtendedFloatingActionButtons(
@@ -143,12 +147,7 @@ data class TagEditorScreen(val trackId: Long, val isInAutoTagRun: Boolean = fals
                     )
 
                     HorizontalDivider()
-                    ColumnSection(title = stringResource(R.string.tag_editor_file)) {
-                        FileFact(label = stringResource(R.string.tag_editor_duration), value = formatDuration(track.durationMs))
-                        FileFact(label = stringResource(R.string.tag_editor_format), value = File(track.path).extension.uppercase())
-                        draft.file?.bitrateKbps?.let { FileFact(label = stringResource(R.string.tag_editor_bitrate), value = stringResource(R.string.tag_editor_kbps, it)) }
-                        FileFact(label = stringResource(R.string.tag_editor_path), value = track.path)
-                    }
+                    TrackFileSection(track, draft.file?.bitrateKbps, viewModel)
                 }
             }
         }
