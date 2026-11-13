@@ -6,6 +6,34 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.8.2] - 2026-11-13
+
+### Added
+
+- Download a video's subtitles alone, as SubRip files, in any of its languages or translated.
+- Captions from TikTok, Facebook, Bluesky, LinkedIn, Reddit and Snapchat Spotlight, for subtitles alone or in the video.
+- Transcribe a video's speech into subtitles with your own free Supadata or Groq key, the service picked in Downloads settings.
+- Pause and resume downloads, each with a notification of its own, and a playlist's videos listed together.
+- Play a video or song while it is still downloading.
+- Every download keeps a log, open from its sheet however it ended, and saved subtitles can be copied from theirs.
+- Downloads already in your library are found before they are fetched again, with Download anyway to save them all the same.
+- Rename a track's file, move it to another folder, or convert it to another format from the tag editor.
+- Backups carry your download history, saved commands, watched channels, sign-in cookies and download archive.
+- Backups carry how often each moment of your videos was watched.
+- A Downloads button on the library, above quick play.
+
+### Changed
+
+- The video player's rotation button holds the screen as it stands first, then turns it.
+
+### Fixed
+
+- A library list's section titles no longer lag behind its rows as they change.
+- A video played as audio keeps track of where it is, and opens in the video player from there.
+- Where a video was left is saved as it plays, so it is not lost if the app is closed.
+- Facebook videos are downloaded with their picture, not as sound alone.
+- The video player's seek bar no longer shifts as the times count.
+
 ## [1.8.1] - 2026-11-11
 
 ### Added
