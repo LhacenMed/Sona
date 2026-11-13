@@ -40,22 +40,24 @@ import com.lhacenmed.sona.core.designsystem.component.SonaTabRow
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
+import com.lhacenmed.sona.core.designsystem.component.fab.SonaSecondaryFloatingActionButton
 import com.lhacenmed.sona.core.designsystem.component.header.collapsingHeader
 import com.lhacenmed.sona.core.designsystem.component.header.collapsingHeaderDrag
 import com.lhacenmed.sona.core.designsystem.component.header.rememberCollapsingHeaderState
-import com.lhacenmed.sona.core.designsystem.component.sheet.sortAction
-import com.lhacenmed.sona.core.designsystem.component.topBarBackground
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.component.screen.PlayingRowReveal
+import com.lhacenmed.sona.core.designsystem.component.sheet.sortAction
+import com.lhacenmed.sona.core.designsystem.component.topBarBackground
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.feature.library.R
 import com.lhacenmed.sona.feature.library.operation.ExcludeFoldersDialog
+import com.lhacenmed.sona.feature.library.options.OptionsAction
 import com.lhacenmed.sona.feature.library.options.label
+import com.lhacenmed.sona.feature.library.quickplay.QuickPlayButton
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.selection.SelectionOptionsHost
-import com.lhacenmed.sona.feature.library.options.OptionsAction
 import com.lhacenmed.sona.feature.library.selection.toLibraryTopBarSelection
-import com.lhacenmed.sona.feature.library.quickplay.QuickPlayButton
 import com.lhacenmed.sona.feature.library.sort.SortSheet
 import com.lhacenmed.sona.feature.library.tabs.label
 import com.lhacenmed.sona.feature.vault.rememberPrivateFolderOpener
@@ -66,7 +68,6 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
-import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /**
  * The library's whole tab experience: the top app bar, a rounded swipeable tab strip beneath it, and
@@ -92,6 +93,7 @@ import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 @Composable
 fun LibraryPagerScreen(
     onChooseQuickPlaySource: () -> Unit,
+    onOpenDownloads: () -> Unit,
     modifier: Modifier = Modifier,
     actions: List<TopBarAction> = emptyList(),
     playingTab: LibraryTab? = null,
@@ -368,6 +370,13 @@ fun LibraryPagerScreen(
                 // library itself rather than its search. Stepping aside for the player, a fast scroll or
                 // the list's end is the FAB stack's, as every FAB's is. Read by the stack as it draws the
                 // button - see QuickPlayButton - so this screen does not recompose for any of it.
+                // Right above quick play: the way to downloading more, on the library itself rather than its search.
+                SonaSecondaryFloatingActionButton(
+                    icon = SonaIcons.Download,
+                    contentDescription = stringResource(R.string.library_downloads),
+                    visible = { searchQuery == null },
+                    onClick = onOpenDownloads,
+                )
                 QuickPlayButton(
                     quickPlay = { quickPlay },
                     visible = { hasTracks && searchQuery == null },

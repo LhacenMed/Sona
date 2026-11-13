@@ -17,16 +17,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.animateFloatingActionButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
@@ -46,13 +50,13 @@ import com.lhacenmed.sona.core.designsystem.component.screen.LocalScreenLists
 import com.lhacenmed.sona.core.designsystem.component.screen.PlayingRow
 import com.lhacenmed.sona.core.designsystem.component.screen.ScreenLists
 import com.lhacenmed.sona.core.designsystem.component.screen.screenList
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.ExpressiveMotion
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.designsystem.theme.pressedCornerRadius
 import com.lhacenmed.sona.core.designsystem.theme.rememberPressFraction
 import com.lhacenmed.sona.core.designsystem.theme.roundedShape
 import kotlinx.coroutines.launch
-import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** How tall a screen's primary FAB is: Material's medium FAB - see [SonaFloatingActionButtonMenu]. */
 internal val PrimaryButtonSize = 80.dp
@@ -78,6 +82,18 @@ internal sealed interface ScreenButtons {
     val height: Dp
 }
 
+/**
+ * A screen's second button - see [SonaSecondaryFloatingActionButton]: as small as the scroll button and drawn as it is, right
+ * above the screen's own, while [visible].
+ */
+internal class SecondaryButton(
+    private val latest: State<SecondaryButtonContent>,
+) {
+    val content: SecondaryButtonContent get() = latest.value
+}
+
+internal class SecondaryButtonContent(val icon: ImageVector, val contentDescription: String, val visible: () -> Boolean, val onClick: () -> Unit)
+
 /** Where the scroll button takes the screen's list: back to its top, or to the row playing in it. */
 private sealed interface ScrollTarget {
     data object Top : ScrollTarget
@@ -97,6 +113,9 @@ internal class FloatingActionButtonStackState {
 
     /** The screen's own buttons, if it has any - see [ScreenButtons]. */
     var screenButtons: ScreenButtons? by mutableStateOf(null)
+
+    /** The screen's second button, if it has one - see [SonaSecondaryFloatingActionButton]. */
+    var secondaryButton: SecondaryButton? by mutableStateOf(null)
 
     /** The player the stack stands on - see [LocalPlayerSheetHeight]. */
     var playerSheet: PlayerSheetHeight by mutableStateOf(PlayerSheetHeight(current = { 0.dp }, collapsed = 0.dp))
@@ -122,7 +141,8 @@ internal class FloatingActionButtonStackState {
     val reservedHeight: Dp
         get() {
             val buttonsHeight = screenButtons?.height ?: 0.dp
-            return (if (buttonsHeight > 0.dp) buttonsHeight + StackSpacing else 0.dp) + ScrollButtonSize + StackSpacing
+            val secondaryHeight = if (secondaryButton != null) ScrollButtonSize + StackSpacing else 0.dp
+            return (if (buttonsHeight > 0.dp) buttonsHeight + StackSpacing else 0.dp) + secondaryHeight + ScrollButtonSize + StackSpacing
         }
 }
 
@@ -178,8 +198,16 @@ private fun BoxScope.FloatingActionButtons(stack: FloatingActionButtonStackState
         val screenButtons = stack.screenButtons
         // Read here, in the stack's own composition, so a change to them is drawn in the frame it happens in.
         val screenButtonsHeight = screenButtons?.height ?: 0.dp
-        val scrollButtonLift = if (screenButtonsHeight > 0.dp) screenButtonsHeight + StackSpacing else 0.dp
-        // Glides between the two places rather than jumping, as the screen's own button grows in or shrinks away.
+        val secondaryLift = if (screenButtonsHeight > 0.dp) screenButtonsHeight + StackSpacing else 0.dp
+        val secondary = stack.secondaryButton?.content
+        val isSecondaryVisible = secondary?.visible?.invoke() == true
+        val scrollButtonLift = secondaryLift + if (isSecondaryVisible) ScrollButtonSize + StackSpacing else 0.dp
+        // Glides between the places rather than jumping, as the buttons beneath it grow in or shrink away.
+        val shownSecondaryLift = animateDpAsState(
+            targetValue = secondaryLift,
+            animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+            label = "secondaryButtonLift",
+        )
         val shownScrollButtonLift = animateDpAsState(
             targetValue = scrollButtonLift,
             animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
@@ -226,6 +254,14 @@ private fun BoxScope.FloatingActionButtons(stack: FloatingActionButtonStackState
             },
             modifier = anchor.offset { IntOffset(0, -shownScrollButtonLift.value.roundToPx()) },
         )
+        if (secondary != null) {
+            SecondaryButtonFab(
+                content = secondary,
+                // Out of the way as the scroll button is: while the stack steps aside, and while the screen's own menu is open.
+                visible = isSecondaryVisible && isShown && (screenButtons as? PrimaryButton)?.expanded != true,
+                modifier = anchor.offset { IntOffset(0, -shownSecondaryLift.value.roundToPx()) },
+            )
+        }
         when (screenButtons) {
             is PrimaryButton -> screenButtons.content?.let { content ->
                 PrimaryButtonMenu(button = screenButtons, content = content, isShown = isShown, anchor = anchor)
@@ -233,6 +269,39 @@ private fun BoxScope.FloatingActionButtons(stack: FloatingActionButtonStackState
             is ExtendedButtons -> ExtendedButtonColumn(buttons = screenButtons.buttons, isShown = isShown, anchor = anchor)
             null -> Unit
         }
+    }
+}
+
+/** A screen's second button: Material's FAB, as the scroll button is - see [SonaSecondaryFloatingActionButton]. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SecondaryButtonFab(content: SecondaryButtonContent, visible: Boolean, modifier: Modifier) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressFraction by rememberPressFraction(interactionSource)
+    FloatingActionButton(
+        onClick = content.onClick,
+        modifier = modifier.animateFloatingActionButton(visible = visible, alignment = Alignment.Center),
+        shape = roundedShape(pressedCornerRadius(pressFraction, restingRadius = ScrollButtonCornerRadius)),
+        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+        interactionSource = interactionSource,
+    ) {
+        Icon(imageVector = content.icon, contentDescription = content.contentDescription)
+    }
+}
+
+/**
+ * A screen's second button - the way to a screen of its own, beside the screen's own FAB: as small as the scroll button and
+ * drawn as it is, standing right above the screen's own FAB, the scroll button rising above it, while [visible] - read where it
+ * is drawn, as the stack reads everything. Called once from a screen within a [FloatingActionButtonStack].
+ */
+@Composable
+fun SonaSecondaryFloatingActionButton(icon: ImageVector, contentDescription: String, visible: () -> Boolean, onClick: () -> Unit) {
+    val stack = checkNotNull(LocalFloatingActionButtonStack.current) { "A FAB needs a FloatingActionButtonStack" }
+    val latest = rememberUpdatedState(SecondaryButtonContent(icon, contentDescription, visible, onClick))
+    val button = remember { SecondaryButton(latest) }
+    DisposableEffect(stack, button) {
+        stack.secondaryButton = button
+        onDispose { if (stack.secondaryButton === button) stack.secondaryButton = null }
     }
 }
 

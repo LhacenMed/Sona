@@ -286,4 +286,6 @@
     <!-- Choosing a track for a cover - see EditPlaylistScreen -->
     <string name="edit_playlist_in_playlist">In this playlist</string>
     <string name="edit_playlist_all_tracks">All tracks</string>
+    <!-- The library's button to the downloads screen. -->
+    <string name="library_downloads">Downloads</string>
 </resources>
