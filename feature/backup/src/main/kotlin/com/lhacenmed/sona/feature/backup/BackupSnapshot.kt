@@ -1,5 +1,9 @@
 package com.lhacenmed.sona.feature.backup
 
+import com.lhacenmed.sona.core.database.entity.DownloadCommandEntity
+import com.lhacenmed.sona.core.database.entity.DownloadCommandShortcutEntity
+import com.lhacenmed.sona.core.database.entity.DownloadEntity
+import com.lhacenmed.sona.core.database.entity.DownloadWatchEntity
 import com.lhacenmed.sona.core.database.entity.PlaylistCoverSource
 import com.lhacenmed.sona.core.model.sort.SortableList
 import kotlinx.serialization.SerialName
@@ -30,6 +34,8 @@ data class BackupLibrary(
     val resumePositions: List<BackedUpResumePosition>,
     val media: List<BackedUpMedia>,
     val videoSubtitles: List<BackedUpVideoSubtitle> = emptyList(),
+    val replayHeatmaps: List<BackedUpReplayHeatmap> = emptyList(),
+    val downloads: BackedUpDownloads = BackedUpDownloads(),
 )
 
 /** A playlist, with [coverImage] the backup's own copy of its cover image, when it has one. */
@@ -87,6 +93,26 @@ data class BackedUpVideoSubtitle(
     val attachedFile: String?,
     val offsetMs: Long,
     val choice: String?,
+)
+
+/** How often each moment of a video was watched - see `ReplayHeatmap` - its bytes [playedMs] in Base64. */
+@Serializable
+data class BackedUpReplayHeatmap(
+    val path: String,
+    val durationMs: Long,
+    val playedMs: String,
+)
+
+/**
+ * The downloader's own, as its rows are kept: what was downloaded - the history - and the commands, their shortcuts and the
+ * channels watched the user made. A download's files are not in a backup, only what it says of them.
+ */
+@Serializable
+data class BackedUpDownloads(
+    val history: List<DownloadEntity> = emptyList(),
+    val commands: List<DownloadCommandEntity> = emptyList(),
+    val shortcuts: List<DownloadCommandShortcutEntity> = emptyList(),
+    val watches: List<DownloadWatchEntity> = emptyList(),
 )
 
 /**

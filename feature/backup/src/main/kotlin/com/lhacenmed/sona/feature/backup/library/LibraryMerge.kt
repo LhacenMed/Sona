@@ -1,5 +1,7 @@
 package com.lhacenmed.sona.feature.backup.library
 
+import com.lhacenmed.sona.core.database.entity.ReplayHeatmapEntity
+import java.util.Base64
 import com.lhacenmed.sona.core.database.entity.ArrangementEntity
 import com.lhacenmed.sona.core.database.entity.FavoriteCollectionEntity
 import com.lhacenmed.sona.core.database.entity.PlayStatsEntity
@@ -19,6 +21,7 @@ data class LocalLibrary(
     val playStats: Map<Long, PlayStatsEntity>,
     val resumePositionTrackIds: Set<Long>,
     val videoSubtitleTrackIds: Set<Long> = emptySet(),
+    val replayHeatmapTrackIds: Set<Long> = emptySet(),
 )
 
 /** What a video has no subtitle settled on yet takes from a backup, with the backup's copy of its attached file, if any. */
@@ -50,6 +53,7 @@ data class LibraryMergePlan(
     val resumePositions: List<ResumePositionEntity>,
     val playlistIds: Map<Long, Long>,
     val videoSubtitles: List<NewVideoSubtitle> = emptyList(),
+    val replayHeatmaps: List<ReplayHeatmapEntity> = emptyList(),
 )
 
 /**
@@ -61,7 +65,8 @@ data class LibraryMergePlan(
  * - a list's hand-made order is the device's where it has one, else the backup's;
  * - a play count is the higher of the two, and a last play the later - adding counts up would count the same
  *   listens twice when a backup comes back to the device it was made on;
- * - a resume position, or what was settled on for a video's subtitles, is the device's where it has one, else the backup's.
+ * - a resume position, what was settled on for a video's subtitles, or how often each moment of it was watched, is the
+ *   device's where it has one, else the backup's.
  *
  * Tracks are named in a backup by path; [trackIdOf] gives the id of the library track each now is, or null for
  * one this device does not have, which is left out.
@@ -146,6 +151,10 @@ fun planLibraryMerge(backup: BackupLibrary, local: LocalLibrary, trackIdOf: (Str
                 )
             }
         }.distinctBy { it.subtitle.trackId },
+        replayHeatmaps = backup.replayHeatmaps.mapNotNull { heatmap ->
+            trackIdOf(heatmap.path)?.takeIf { it !in local.replayHeatmapTrackIds }
+                ?.let { ReplayHeatmapEntity(it, heatmap.durationMs, Base64.getDecoder().decode(heatmap.playedMs)) }
+        }.distinctBy { it.trackId },
     )
 }
 

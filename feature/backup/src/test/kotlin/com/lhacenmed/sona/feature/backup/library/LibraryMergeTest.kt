@@ -10,6 +10,7 @@ import com.lhacenmed.sona.feature.backup.BackedUpFavoriteCollection
 import com.lhacenmed.sona.feature.backup.BackedUpPlayStats
 import com.lhacenmed.sona.feature.backup.BackedUpPlaylist
 import com.lhacenmed.sona.feature.backup.BackedUpPlaylistTrack
+import com.lhacenmed.sona.feature.backup.BackedUpReplayHeatmap
 import com.lhacenmed.sona.feature.backup.BackedUpVideoSubtitle
 import com.lhacenmed.sona.feature.backup.BackupLibrary
 import org.junit.Assert.assertEquals
@@ -137,5 +138,17 @@ class LibraryMergeTest {
         assertEquals(emptyList<NewPlaylist>(), second.newPlaylists)
         assertEquals(first.playlistIds, second.playlistIds)
         assertEquals(first.playStats, second.playStats)
+    }
+
+    @Test
+    fun `a video's watching comes back where the device has none of its own`() {
+        val backup = BackupLibrary(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList(),
+            replayHeatmaps = listOf(BackedUpReplayHeatmap("/m/a.mp3", durationMs = 9_000L, playedMs = "AQID")))
+        val heatmap = planLibraryMerge(backup, local(), trackIds::get).replayHeatmaps.single()
+        assertEquals(9_000L, heatmap.durationMs)
+        assertEquals(listOf<Byte>(1, 2, 3), heatmap.playedMs.toList())
+
+        val device = LocalLibrary(emptyList(), emptySet(), emptyMap(), emptySet(), replayHeatmapTrackIds = setOf(heatmap.trackId))
+        assertEquals(0, planLibraryMerge(backup, device, trackIds::get).replayHeatmaps.size)
     }
 }

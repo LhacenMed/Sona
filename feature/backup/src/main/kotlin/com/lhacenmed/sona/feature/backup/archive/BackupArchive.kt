@@ -27,6 +27,8 @@ object BackupEntries {
     fun cover(name: String) = "files/covers/$name"
     fun font(name: String) = "$FONTS/$name"
     fun subtitle(name: String) = "files/subtitles/$name"
+    const val DOWNLOAD_COOKIES = "files/download-cookies.txt"
+    const val DOWNLOAD_ARCHIVE = "files/download-archive.txt"
 }
 
 /** A backup made in a later format than this version reads. */

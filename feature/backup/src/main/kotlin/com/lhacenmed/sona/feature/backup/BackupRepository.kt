@@ -1,5 +1,7 @@
 package com.lhacenmed.sona.feature.backup
 
+import com.lhacenmed.sona.core.common.storage.DownloaderFiles
+import com.lhacenmed.sona.feature.backup.library.planDownloadsMerge
 import android.content.Context
 import android.net.ConnectivityManager
 import android.media.MediaScannerConnection
@@ -237,6 +239,10 @@ class BackupRepository @Inject constructor(
                     )
                 }
             },
+            replayHeatmaps = backupDao.replayHeatmaps().mapNotNull { row ->
+                pathOf[row.trackId]?.let { BackedUpReplayHeatmap(it, row.durationMs, row.playedMs.toBase64()) }
+            },
+            downloads = localDownloads(),
         )
         val settings = settingsBackup.read()
         val files = buildMap<String, () -> InputStream?> {
@@ -249,6 +255,9 @@ class BackupRepository @Inject constructor(
             CustomFontLoader.fontDirectory(context).listFiles { file -> file.isFile && file.extension == "ttf" }.orEmpty().forEach { font ->
                 put(BackupEntries.font(font.name)) { font.inputStream() }
             }
+            // The sites signed in on, and what was downloaded once - the downloader's own files of the user's.
+            DownloaderFiles.cookies(context).takeIf { it.isFile }?.let { put(BackupEntries.DOWNLOAD_COOKIES) { it.inputStream() } }
+            DownloaderFiles.archive(context).takeIf { it.isFile }?.let { put(BackupEntries.DOWNLOAD_ARCHIVE) { it.inputStream() } }
         }
 
         val key = backupSettings.key()
@@ -558,7 +567,9 @@ class BackupRepository @Inject constructor(
             playStats = backupDao.playStats().associateBy { it.trackId },
             resumePositionTrackIds = backupDao.resumePositions().mapTo(HashSet()) { it.trackId },
             videoSubtitleTrackIds = backupDao.videoSubtitles().mapTo(HashSet()) { it.trackId },
+            replayHeatmapTrackIds = backupDao.replayHeatmaps().mapTo(HashSet()) { it.trackId },
         )
+        val downloads = planDownloadsMerge(contents.library.downloads, localDownloads())
         val plan = planLibraryMerge(contents.library, local) { path -> present[path]?.let(idByPath::get) }
         // Copied in before the playlists are written, so none is ever written pointing at a cover not yet there.
         val newPlaylists = plan.newPlaylists.map { new ->
@@ -589,9 +600,22 @@ class BackupRepository @Inject constructor(
             backupDao.upsertPlayStats(plan.playStats)
             backupDao.insertResumePositions(plan.resumePositions)
             backupDao.insertVideoSubtitles(videoSubtitles)
+            backupDao.insertReplayHeatmaps(plan.replayHeatmaps)
+            backupDao.insertDownloads(downloads.history)
+            backupDao.insertDownloadCommands(downloads.commands)
+            backupDao.insertDownloadCommandShortcuts(downloads.shortcuts)
+            backupDao.insertDownloadWatches(downloads.watches)
         }
         return plan.playlistIds
     }
+
+    /** The downloader's rows this device holds - what a backup carries of them, and what a restore adds to. */
+    private suspend fun localDownloads() = BackedUpDownloads(
+        history = backupDao.downloads(),
+        commands = backupDao.downloadCommands(),
+        shortcuts = backupDao.downloadCommandShortcuts(),
+        watches = backupDao.downloadWatches(),
+    )
 
     /** Puts the backup's settings in place, with the player's background and the custom font it carries. */
     private suspend fun restoreSettingsAndFiles(contents: BackupContents, playlistIds: Map<Long, Long>) {
@@ -600,6 +624,9 @@ class BackupRepository @Inject constructor(
         val background = contents.file(BackupEntries.BACKGROUND)?.let { customBackgroundImages.import(Uri.fromFile(it).toString()) }
         playerStyleSettings.setCustomBackgroundImage(background)
         previousBackground?.takeIf { it != background }?.let { customBackgroundImages.release(it) }
+
+        contents.file(BackupEntries.DOWNLOAD_COOKIES)?.let { mergeCookies(it, DownloaderFiles.cookies(context)) }
+        contents.file(BackupEntries.DOWNLOAD_ARCHIVE)?.let { mergeLines(it, DownloaderFiles.archive(context)) { line -> line } }
 
         if (contents.fonts.isNotEmpty()) {
             val fontDirectory = CustomFontLoader.fontDirectory(context)
@@ -623,6 +650,29 @@ class BackupRepository @Inject constructor(
 
 /** The files a restore brought back - each, and where it now is - and how many did not come. */
 private class Downloads(val restored: List<Pair<MissingMedia, File>>, val failed: Int)
+
+/**
+ * The cookies [saved] holds added to those in [file] - each a site's cookie by its domain, path and name: the device's own where
+ * both have one, so a site signed in on here stays signed in as it is.
+ */
+private fun mergeCookies(saved: File, file: File) = mergeLines(saved, file) { line ->
+    line.split('\t').takeIf { it.size >= 7 }?.let { "${it[0]}\t${it[2]}\t${it[5]}" }
+}
+
+/**
+ * The lines of [saved] added to [file]'s, each one [keyOf] names - none for a comment or a blank - where [file] has none of
+ * that name; [file] made where it is not yet. Nothing of [file]'s is changed.
+ */
+private fun mergeLines(saved: File, file: File, keyOf: (String) -> String?) {
+    val own = file.takeIf { it.isFile }?.readLines().orEmpty()
+    val names = own.mapNotNullTo(HashSet()) { line -> line.takeIf(String::isNotBlank)?.let(keyOf) }
+    val added = saved.readLines().filter { line -> line.isNotBlank() && keyOf(line)?.let(names::add) == true }
+    if (added.isEmpty()) return
+    file.parentFile?.mkdirs()
+    // A file made here starts as the saved one does: its comments - a cookie file's header - with none of its lines.
+    val heading = own.ifEmpty { saved.readLines().filter { it.isNotBlank() && keyOf(it) == null } }
+    file.writeText((heading + added).joinToString("\n", postfix = "\n"))
+}
 
 private fun fileOf(uri: String): File? = Uri.parse(uri).takeIf { it.scheme == "file" }?.path?.let(::File)
 
