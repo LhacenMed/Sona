@@ -6,6 +6,12 @@ import android.content.Intent
 
 private const val EXTRA_ENTRY = "com.lhacenmed.sona.extra.APP_ENTRY"
 
+private const val EXTRA_ITEM = "com.lhacenmed.sona.extra.APP_ENTRY_ITEM"
+
+/** Where the request codes of entries opened on an item start, clear of every entry's own - its ordinal. */
+private const val ITEM_REQUESTS_FROM = 1_000
+private const val ITEM_REQUESTS_COUNT = 1_000_000
+
 private const val BACK_TO_LIBRARY = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
 
 /**
@@ -39,6 +45,15 @@ enum class AppEntry(private val flags: Int) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
+    /** What opens the app here on one of its items - [itemId], a download's - each item's its own, by its request code. */
+    fun pendingIntent(context: Context, itemId: Long): PendingIntent =
+        PendingIntent.getActivity(
+            context,
+            ITEM_REQUESTS_FROM + (itemId % ITEM_REQUESTS_COUNT).toInt(),
+            intent(context).putExtra(EXTRA_ITEM, itemId),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
     /** What opens the app here, there and then - from outside it, as a share does. */
     fun intent(context: Context): Intent {
         val launcher = checkNotNull(context.packageManager.getLaunchIntentForPackage(context.packageName))
@@ -47,6 +62,9 @@ enum class AppEntry(private val flags: Int) {
 
     companion object {
         /** The entry [intent] opens the app at - null for what is no such tap, as the launcher's icon is not. */
+        /** The item [intent] opens its entry on - null where it names none. */
+        fun itemOf(intent: Intent): Long? = intent.getLongExtra(EXTRA_ITEM, -1).takeIf { it >= 0 }
+
         fun of(intent: Intent): AppEntry? = intent.getStringExtra(EXTRA_ENTRY)?.let { name -> entries.firstOrNull { it.name == name } }
     }
 }

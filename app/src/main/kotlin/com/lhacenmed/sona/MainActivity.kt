@@ -193,7 +193,7 @@ class MainActivity : SonaActivity() {
         }
     }
 
-    /** Opens the screen [entry] names, where it names one - or the download screen on a link shared to Sona. */
+    /** Opens the screen [entry] names, where it names one - the download screen on the link shared, where one was. */
     private fun arriveAtScreenOf(intent: Intent, entry: AppEntry?) {
         val sharedLink = linkIn(intent.getStringExtra(Intent.EXTRA_TEXT))
         val screen = when (entry) {
@@ -201,9 +201,8 @@ class MainActivity : SonaActivity() {
             AppEntry.BACKUP -> BackupScreen
             AppEntry.STORAGE -> StorageScreen
             AppEntry.AUTO_TAG -> AutoTagScreen()
-            AppEntry.DOWNLOADS -> DownloadScreen(sharedLink)
-            AppEntry.NOW_PLAYING, AppEntry.AS_LEFT -> return
-            null -> if (intent.action == Intent.ACTION_SEND && sharedLink != null) DownloadScreen(sharedLink) else return
+            AppEntry.DOWNLOADS -> DownloadScreen(sharedLink, AppEntry.itemOf(intent))
+            AppEntry.NOW_PLAYING, AppEntry.AS_LEFT, null -> return
         }
         IntentNavigator(this, currentScreen = null).arriveAt(screen)
     }
