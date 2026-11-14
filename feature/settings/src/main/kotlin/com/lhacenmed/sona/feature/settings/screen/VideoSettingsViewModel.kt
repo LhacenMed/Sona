@@ -2,7 +2,9 @@ package com.lhacenmed.sona.feature.settings.screen
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lhacenmed.sona.core.datastore.CustomFont
 import com.lhacenmed.sona.core.datastore.SubtitleBackdrop
+import com.lhacenmed.sona.core.datastore.SubtitleFont
 import com.lhacenmed.sona.core.datastore.SubtitlePosition
 import com.lhacenmed.sona.core.datastore.SubtitleTextSize
 import com.lhacenmed.sona.core.datastore.VideoSettings
@@ -20,6 +22,7 @@ class VideoSettingsViewModel @Inject constructor(
 
     val keepAspect: StateFlow<Boolean> = videoSettings.keepAspect.stateIn(viewModelScope)
     val showClock: StateFlow<Boolean> = videoSettings.showClock.stateIn(viewModelScope)
+    val showProgressLine: StateFlow<Boolean> = videoSettings.showProgressLine.stateIn(viewModelScope)
     val resume: StateFlow<Boolean> = videoSettings.resume.stateIn(viewModelScope)
     val gestures: StateFlow<Boolean> = videoSettings.gestures.stateIn(viewModelScope)
     val doubleTapSeek: StateFlow<Boolean> = videoSettings.doubleTapSeek.stateIn(viewModelScope)
@@ -32,10 +35,14 @@ class VideoSettingsViewModel @Inject constructor(
     val subtitleTextSize: StateFlow<SubtitleTextSize> = videoSettings.subtitleTextSize.stateIn(viewModelScope)
     val subtitleBackdrop: StateFlow<SubtitleBackdrop> = videoSettings.subtitleBackdrop.stateIn(viewModelScope)
     val subtitlePosition: StateFlow<SubtitlePosition> = videoSettings.subtitlePosition.stateIn(viewModelScope)
+    val subtitleFont: StateFlow<SubtitleFont> = videoSettings.subtitleFont.stateIn(viewModelScope)
+    val subtitleCustomFont: StateFlow<CustomFont?> = videoSettings.subtitleCustomFont.stateIn(viewModelScope)
 
     fun setKeepAspect(enabled: Boolean) = update { setKeepAspect(enabled) }
 
     fun setShowClock(enabled: Boolean) = update { setShowClock(enabled) }
+
+    fun setShowProgressLine(enabled: Boolean) = update { setShowProgressLine(enabled) }
 
     fun setResume(enabled: Boolean) = update { setResume(enabled) }
 
@@ -61,6 +68,10 @@ class VideoSettingsViewModel @Inject constructor(
     fun setSubtitleBackdrop(backdrop: SubtitleBackdrop) = update { setSubtitleBackdrop(backdrop) }
 
     fun setSubtitlePosition(position: SubtitlePosition) = update { setSubtitlePosition(position) }
+
+    fun setSubtitleFont(font: SubtitleFont) = update { setSubtitleFont(font) }
+
+    fun setSubtitleCustomFont(font: CustomFont) = update { setSubtitleCustomFont(font) }
 
     private fun update(write: suspend VideoSettings.() -> Unit) {
         viewModelScope.launch { videoSettings.write() }

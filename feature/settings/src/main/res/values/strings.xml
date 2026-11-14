@@ -574,6 +574,8 @@
     <string name="video_keep_aspect_summary">Apply the screen ratio chosen in the player to every video</string>
     <string name="video_show_clock_title">Display battery level and time</string>
     <string name="video_show_clock_summary">Keep the time and battery level on screen while the controls are hidden</string>
+    <string name="video_show_progress_line_title">Display progress line</string>
+    <string name="video_show_progress_line_summary">Keep a thin line along the bottom showing how far the video is while the controls are hidden</string>
     <string name="video_subtitle_customization_title">Subtitle customization</string>
     <string name="video_subtitle_customization_summary">Apply these settings to every video, rather than your device\'s caption settings</string>
     <string name="video_subtitle_text_size_title">Subtitle size</string>
@@ -585,6 +587,9 @@
     <string name="video_subtitle_backdrop_shadow">Shadow</string>
     <string name="video_subtitle_backdrop_box">Box</string>
     <string name="video_subtitle_position_title">Subtitle position</string>
+    <string name="video_subtitle_font_title">Subtitle font</string>
+    <string name="video_subtitle_font_app">App font</string>
+    <string name="video_subtitle_custom_font_title">Custom subtitle font</string>
     <string name="video_subtitle_position_low">Low</string>
     <string name="video_subtitle_position_middle">Middle</string>
     <string name="video_subtitle_position_high">High</string>

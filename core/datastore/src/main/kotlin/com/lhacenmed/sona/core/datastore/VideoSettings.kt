@@ -17,6 +17,7 @@ private val ASPECT = stringPreferencesKey("aspect")
 private val KEEP_ASPECT = booleanPreferencesKey("keep_aspect")
 private val MUTED = booleanPreferencesKey("muted")
 private val SHOW_CLOCK = booleanPreferencesKey("show_clock")
+private val SHOW_PROGRESS_LINE = booleanPreferencesKey("show_progress_line")
 private val RESUME = booleanPreferencesKey("resume")
 private val GESTURES = booleanPreferencesKey("gestures")
 private val REPEAT_MODE = stringPreferencesKey("repeat_mode")
@@ -34,6 +35,9 @@ private val SUBTITLE_CUSTOMIZATION = booleanPreferencesKey("subtitle_customizati
 private val SUBTITLE_TEXT_SIZE = stringPreferencesKey("subtitle_text_size")
 private val SUBTITLE_BACKDROP = stringPreferencesKey("subtitle_backdrop")
 private val SUBTITLE_POSITION = stringPreferencesKey("subtitle_position")
+private val SUBTITLE_FONT = stringPreferencesKey("subtitle_font")
+private val SUBTITLE_FONT_URI = stringPreferencesKey("subtitle_font_uri")
+private val SUBTITLE_FONT_NAME = stringPreferencesKey("subtitle_font_name")
 
 /** How the video player behaves - PLAYit's Video settings. */
 @Singleton
@@ -76,6 +80,13 @@ class VideoSettings @Inject constructor(
 
     suspend fun setShowClock(enabled: Boolean) {
         dataStore.edit { it[SHOW_CLOCK] = enabled }
+    }
+
+    /** Whether a hairline along the foot of the screen says how far the video is while the controls are hidden. */
+    val showProgressLine: Setting<Boolean> = cache.setting { it[SHOW_PROGRESS_LINE] ?: false }
+
+    suspend fun setShowProgressLine(enabled: Boolean) {
+        dataStore.edit { it[SHOW_PROGRESS_LINE] = enabled }
     }
 
     /** Whether a video carries on from where it was left, rather than from its start. */
@@ -197,6 +208,26 @@ class VideoSettings @Inject constructor(
 
     suspend fun setSubtitlePosition(position: SubtitlePosition) {
         dataStore.edit { it[SUBTITLE_POSITION] = position.name }
+    }
+
+    val subtitleFont: Setting<SubtitleFont> = cache.setting { it.enum(SUBTITLE_FONT, SubtitleFont.Default) }
+
+    suspend fun setSubtitleFont(font: SubtitleFont) {
+        dataStore.edit { it[SUBTITLE_FONT] = font.name }
+    }
+
+    /** The font picked from the device for [SubtitleFont.CUSTOM] - null until one is. */
+    val subtitleCustomFont: Setting<CustomFont?> = cache.setting { preferences ->
+        preferences[SUBTITLE_FONT_URI]?.let { CustomFont(uri = it, name = preferences[SUBTITLE_FONT_NAME].orEmpty()) }
+    }
+
+    /** Stores [font] and makes it the subtitles' font, in one edit, so they are never set in a custom font without one. */
+    suspend fun setSubtitleCustomFont(font: CustomFont) {
+        dataStore.edit {
+            it[SUBTITLE_FONT_URI] = font.uri
+            it[SUBTITLE_FONT_NAME] = font.name
+            it[SUBTITLE_FONT] = SubtitleFont.CUSTOM.name
+        }
     }
 
     companion object {
