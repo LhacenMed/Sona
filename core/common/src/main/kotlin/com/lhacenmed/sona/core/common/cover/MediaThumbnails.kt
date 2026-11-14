@@ -1,9 +1,10 @@
 package com.lhacenmed.sona.core.common.cover
 
 import android.content.ContentResolver
-import android.content.ContentUris
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.media.MediaMetadataRetriever
 import android.media.ThumbnailUtils
 import android.net.Uri
 import android.os.Build
@@ -37,10 +38,11 @@ private val Uri.mimeType: String?
 
 /**
  * The cover of the track or video at [uri], no larger than [sizePx]: Android's own thumbnail of the file - a
- * track's embedded picture, or failing that its folder's; a video's embedded picture, or failing that a frame
- * of it - which it keeps once made, so showing it again costs a read rather than a decode. A file MediaStore
- * has not indexed has none kept, and has one made from it. Null where the file has no picture to give, and
- * for a track before Android 10, which has no thumbnail of its own.
+ * track's embedded picture, or failing that its folder's; a video's embedded picture, or failing that the frame
+ * at its middle, never its first, so often black - which it keeps once made, so showing it again costs a read rather than a decode. A file MediaStore
+ * has not indexed has none kept, and has one made from it. Before Android 10, which takes a video's opening
+ * frame, a video's is made here by the same rule - see [videoPictureOf]. Null where the file has no picture to
+ * give, and for a track before Android 10, which has no thumbnail of its own.
  *
  * Blocks, and is called off the main thread.
  */
@@ -52,21 +54,36 @@ fun mediaThumbnailOf(context: Context, uri: Uri, sizePx: Int): Bitmap? = runCatc
             val file = File(checkNotNull(uri.path))
             if (isVideo) ThumbnailUtils.createVideoThumbnail(file, size, null) else ThumbnailUtils.createAudioThumbnail(file, size, null)
         }
-        uri.scheme == ContentResolver.SCHEME_FILE ->
-            @Suppress("DEPRECATION")
-            if (isVideo) ThumbnailUtils.createVideoThumbnail(checkNotNull(uri.path), MediaStore.Video.Thumbnails.MINI_KIND) else null
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> context.contentResolver.loadThumbnail(uri, size, null)
-        isVideo ->
-            @Suppress("DEPRECATION")
-            MediaStore.Video.Thumbnails.getThumbnail(
-                context.contentResolver,
-                ContentUris.parseId(uri),
-                MediaStore.Video.Thumbnails.MINI_KIND,
-                null,
-            )
+        isVideo -> videoPictureOf(context, uri, sizePx)
         else -> null
     }
 }.getOrNull()
+
+/**
+ * The picture that stands for the video at [uri], no larger than [sizePx], chosen as Android 10 and later choose
+ * it: the picture embedded in it, or failing that the frame at its middle.
+ */
+private fun videoPictureOf(context: Context, uri: Uri, sizePx: Int): Bitmap? {
+    val retriever = MediaMetadataRetriever()
+    try {
+        if (uri.scheme == ContentResolver.SCHEME_FILE) retriever.setDataSource(checkNotNull(uri.path)) else retriever.setDataSource(context, uri)
+        retriever.embeddedPicture?.let { picture ->
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(picture, 0, picture.size, bounds)
+            val sampled = BitmapFactory.Options().apply { inSampleSize = (minOf(bounds.outWidth, bounds.outHeight) / sizePx).coerceAtLeast(1) }
+            return BitmapFactory.decodeByteArray(picture, 0, picture.size, sampled)
+        }
+        val middleUs = (retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L) * 1000 / 2
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            retriever.getScaledFrameAtTime(middleUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, sizePx, sizePx)
+        } else {
+            retriever.getFrameAtTime(middleUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+        }
+    } finally {
+        retriever.release()
+    }
+}
 
 /**
  * [this] address stamped with [version] - the file's latest change. A cover written into a file in place is
