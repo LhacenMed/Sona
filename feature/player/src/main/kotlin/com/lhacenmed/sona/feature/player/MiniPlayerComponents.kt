@@ -2,8 +2,11 @@
 
 package com.lhacenmed.sona.feature.player
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
 import android.view.HapticFeedbackConstants
-import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -40,11 +43,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,7 +54,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -226,10 +226,7 @@ internal fun SwipeableMiniPlayerBox(
                             .padding(horizontal = 16.dp),
                 ) {
                     Icon(
-                        painter =
-                            painterResource(
-                                if (offsetXAnimatable.value > 0) R.drawable.skip_previous else R.drawable.skip_next,
-                            ),
+                        imageVector = if (offsetXAnimatable.value > 0) PlayerIcons.SkipPrevious else PlayerIcons.SkipNext,
                         contentDescription = null,
                         tint =
                             MaterialTheme.colorScheme.primary.copy(
@@ -329,7 +326,7 @@ private fun MiniPlayerArtwork(
 
 @Composable
 private fun MiniPlayerTransportButton(
-    @DrawableRes iconResId: Int,
+    icon: ImageVector,
     contentDescription: String,
     onClick: () -> Unit,
     colors: MiniPlayerContentColors,
@@ -349,7 +346,7 @@ private fun MiniPlayerTransportButton(
     }
     val content: @Composable () -> Unit = {
         Icon(
-            painter = painterResource(iconResId),
+            imageVector = icon,
             contentDescription = contentDescription,
             modifier = Modifier.size(if (isPrimary) 24.dp else 20.dp),
         )
@@ -390,7 +387,7 @@ private fun MiniPlayerSeekControls(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         MiniPlayerTransportButton(
-            iconResId = playback.playPauseIconRes(),
+            icon = playback.playPauseIcon(),
             contentDescription =
                 stringResource(
                     if (playback.hasEnded || !playback.isPlaying) R.string.player_play else R.string.player_pause,
@@ -427,14 +424,14 @@ private fun MiniPlayerTransportControls(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         MiniPlayerTransportButton(
-            iconResId = R.drawable.skip_previous,
+            icon = PlayerIcons.SkipPrevious,
             contentDescription = stringResource(R.string.player_previous),
             onClick = viewModel::onSkipPrevious,
             colors = colors,
         )
 
         MiniPlayerTransportButton(
-            iconResId = playback.playPauseIconRes(),
+            icon = playback.playPauseIcon(),
             contentDescription =
                 stringResource(
                     if (playback.hasEnded || !playback.isPlaying) R.string.player_play else R.string.player_pause,
@@ -445,7 +442,7 @@ private fun MiniPlayerTransportControls(
         )
 
         MiniPlayerTransportButton(
-            iconResId = R.drawable.skip_next,
+            icon = PlayerIcons.SkipNext,
             contentDescription = stringResource(R.string.player_next),
             onClick = viewModel::onSkipNext,
             colors = colors,

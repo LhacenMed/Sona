@@ -11,7 +11,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.player.formatPlaybackTime
@@ -20,8 +19,6 @@ import com.lhacenmed.sona.core.designsystem.component.SonaTrackRow
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.VideoChapter
 import com.lhacenmed.sona.feature.playback.QueueVideo
-import com.lhacenmed.sona.feature.playback.R as PlaybackR
-import com.lhacenmed.sona.feature.playback.iconRes
 import com.lhacenmed.sona.feature.playback.labelRes
 import com.lhacenmed.sona.feature.video.R
 import com.lhacenmed.sona.feature.video.VideoPlayerTokens
@@ -65,9 +62,7 @@ internal fun ColumnScope.QueuePanel(
     PanelHeader(stringResource(R.string.video_queue), onClose)
     SonaPlaybackModeButtons(
         isShuffled = isShuffled,
-        isRepeating = repeatMode != RepeatMode.OFF,
-        shuffleIcon = painterResource(PlaybackR.drawable.shuffle),
-        repeatIcon = painterResource(repeatMode.iconRes),
+        repeatMode = repeatMode,
         shuffleLabel = stringResource(R.string.video_shuffle),
         repeatLabel = stringResource(repeatMode.labelRes),
         onShuffleClick = onToggleShuffle,

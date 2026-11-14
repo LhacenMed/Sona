@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.feature.video
 
+import com.lhacenmed.sona.core.common.R as CommonR
 import android.app.PendingIntent
 import android.app.PictureInPictureParams
 import android.app.RemoteAction
@@ -58,7 +59,7 @@ private val FloatingWindow.aspectRatio: Rational
 private fun Context.playPauseAction(isPlaying: Boolean): RemoteAction {
     val label = getString(if (isPlaying) R.string.video_pause else R.string.video_play)
     return RemoteAction(
-        Icon.createWithResource(this, if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play),
+        Icon.createWithResource(this, if (isPlaying) CommonR.drawable.icon_player_pause else CommonR.drawable.icon_player_play),
         label,
         label,
         PendingIntent.getBroadcast(this, 0, Intent(this, VideoFloatingWindowReceiver::class.java), PendingIntent.FLAG_IMMUTABLE),

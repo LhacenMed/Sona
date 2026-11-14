@@ -107,7 +107,7 @@ internal fun SettingsRecentSearches(
     SettingsList {
         SettingsSection(
             title = stringResource(R.string.settings_recent_searches),
-            actions = listOf(TopBarAction(label = stringResource(R.string.settings_recent_searches_clear), icon = SonaIcons.ClearAll, onClick = onClear)),
+            actions = listOf(TopBarAction(label = stringResource(R.string.settings_recent_searches_clear), icon = SonaIcons.DeleteSweep, onClick = onClear)),
         ) {
             searches.forEach { search ->
                 SettingsRecentSearchItem(query = search, onClick = { onSearch(search) }, onForget = { onForget(search) })

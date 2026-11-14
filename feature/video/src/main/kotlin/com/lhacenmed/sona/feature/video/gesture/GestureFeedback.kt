@@ -56,7 +56,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** What a gesture, or a control with nothing else to show for it, tells the user it did. */
 internal sealed interface GestureFeedback {
@@ -272,7 +271,7 @@ private fun FeedbackPill(feedback: PillFeedback) {
 
 private val PillFeedback.icon: ImageVector
     get() = when (this) {
-        is GestureFeedback.Speed -> SonaIcons.Speed
+        is GestureFeedback.Speed -> PlayerIcons.Speed
     }
 
 @Composable

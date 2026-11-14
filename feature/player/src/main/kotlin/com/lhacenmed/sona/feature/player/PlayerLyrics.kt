@@ -1,5 +1,8 @@
 package com.lhacenmed.sona.feature.player
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
@@ -30,14 +33,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,7 +55,6 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -346,7 +346,7 @@ private fun LyricsPillLine(
                 .padding(horizontal = 16.dp),
     ) {
         Icon(
-            painter = painterResource(R.drawable.lyrics),
+            imageVector = PlayerIcons.Lyrics,
             contentDescription = null,
             tint = color,
             modifier = Modifier.size(20.dp),

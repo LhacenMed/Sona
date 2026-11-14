@@ -122,7 +122,7 @@ internal val DownloadFailure.presentation: FailurePresentation
             FailureFix.DOWNLOAD_ANYWAY,
         )
         DownloadFailure.FAILED -> FailurePresentation(
-            R.string.download_failed, R.string.download_failure_other, R.string.download_failure_other_message, SonaIcons.ErrorOutline, FailureFix.TRY_AGAIN,
+            R.string.download_failed, R.string.download_failure_other, R.string.download_failure_other_message, SonaIcons.Error, FailureFix.TRY_AGAIN,
         )
     }
 

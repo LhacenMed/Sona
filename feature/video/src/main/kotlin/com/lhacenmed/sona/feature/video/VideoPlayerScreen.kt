@@ -117,7 +117,6 @@ import com.lhacenmed.sona.feature.video.surface.VideoSurface
 import com.lhacenmed.sona.feature.video.surface.VideoZoomState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** The level the drag under way has reached - kept across its reports and recompositions. */
 private class DragProgress {
@@ -588,14 +587,14 @@ private fun moreActions(
     onOpenEqualizer: () -> Unit,
 ): List<VideoAction> = listOfNotNull(
     VideoAction(
-        icon = if (playback.isMuted) SonaIcons.VolumeOff else SonaIcons.VolumeUp,
+        icon = if (playback.isMuted) PlayerIcons.Muted else PlayerIcons.Volume,
         label = stringResource(if (playback.isMuted) R.string.video_unmute else R.string.video_mute),
         onClick = viewModel::onToggleMute,
     ),
     // The music's equalizer: a video plays on the same sound, so it is shaped by it just the same.
-    VideoAction(SonaIcons.Equalizer, stringResource(R.string.video_equalizer), onOpenEqualizer),
+    VideoAction(PlayerIcons.Equalizer, stringResource(R.string.video_equalizer), onOpenEqualizer),
     // A Private Folder video is never saved out to the gallery.
-    VideoAction(SonaIcons.Screenshot, stringResource(R.string.video_screenshot), onScreenshot)
+    VideoAction(PlayerIcons.Screenshot, stringResource(R.string.video_screenshot), onScreenshot)
         .takeUnless { playback.isPrivate },
 )
 

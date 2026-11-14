@@ -102,7 +102,7 @@ internal fun QuickPlayButton(
                 },
                 FloatingActionButtonMenuChoice(
                     label = context.getString(R.string.quick_play_other),
-                    icon = SonaIcons.MoreHoriz,
+                    icon = SonaIcons.MoreVert,
                     onClick = onChooseOther,
                 ),
             ),

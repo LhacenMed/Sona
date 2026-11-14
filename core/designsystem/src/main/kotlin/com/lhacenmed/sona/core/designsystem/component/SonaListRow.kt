@@ -123,7 +123,7 @@ fun SonaListRow(
     onLongClick: (() -> Unit)? = null,
     containerColor: Color = MaterialTheme.colorScheme.surface,
     contentColor: Color = LocalContentColor.current,
-    optionsIcon: ImageVector = SonaIcons.MoreHoriz,
+    optionsIcon: ImageVector = SonaIcons.MoreVert,
     optionsLabel: String = stringResource(R.string.list_row_more_options),
     subtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     supporting: (@Composable () -> Unit)? = null,
@@ -253,7 +253,7 @@ fun SonaTrackRow(
     onLongClick: (() -> Unit)? = null,
     containerColor: Color = MaterialTheme.colorScheme.surface,
     contentColor: Color = LocalContentColor.current,
-    optionsIcon: ImageVector = SonaIcons.MoreHoriz,
+    optionsIcon: ImageVector = SonaIcons.MoreVert,
     optionsLabel: String = stringResource(R.string.list_row_more_options),
 ) {
     val current = isCurrent()
@@ -302,7 +302,7 @@ fun SonaVideoRow(
     onOpenOptions: (() -> Unit)?,
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surface,
-    optionsIcon: ImageVector = SonaIcons.MoreHoriz,
+    optionsIcon: ImageVector = SonaIcons.MoreVert,
     optionsLabel: String = stringResource(R.string.list_row_more_options),
 ) {
     val current = isCurrent()

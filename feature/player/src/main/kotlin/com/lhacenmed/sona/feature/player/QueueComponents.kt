@@ -1,7 +1,12 @@
 package com.lhacenmed.sona.feature.player
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.unit.sp
+import com.lhacenmed.sona.core.designsystem.component.SonaCoverArt
+import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,24 +31,19 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.lhacenmed.sona.core.designsystem.component.SonaCoverArt
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverImage
 import com.lhacenmed.sona.core.designsystem.component.SonaPlaybackModeButtons
 import com.lhacenmed.sona.core.designsystem.component.actionButton
@@ -53,9 +53,7 @@ import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.roundedShape
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
-import com.lhacenmed.sona.feature.playback.iconRes
 import com.lhacenmed.sona.feature.playback.labelRes
-import com.lhacenmed.sona.feature.playback.R as PlaybackR
 import kotlin.math.roundToInt
 
 private const val DefaultSleepTimerMinutes = 30f
@@ -150,7 +148,7 @@ internal fun CurrentSongHeader(
                         ),
                 ) {
                     Icon(
-                        painter = painterResource(favoriteIconRes(isFavorite)),
+                        imageVector = favoriteIcon(isFavorite),
                         contentDescription = stringResource(R.string.player_like),
                         modifier = Modifier.size(26.dp),
                     )
@@ -162,9 +160,7 @@ internal fun CurrentSongHeader(
 
             SonaPlaybackModeButtons(
                 isShuffled = shuffleEnabled,
-                isRepeating = repeatMode != RepeatMode.OFF,
-                shuffleIcon = painterResource(PlaybackR.drawable.shuffle),
-                repeatIcon = painterResource(repeatMode.iconRes),
+                repeatMode = repeatMode,
                 shuffleLabel = stringResource(R.string.player_shuffle_on),
                 repeatLabel = stringResource(repeatMode.labelRes),
                 onShuffleClick = {
@@ -203,7 +199,7 @@ internal fun SleepTimerDialog(
     SonaDialog(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.player_sleep_timer),
-        icon = { Icon(painterResource(R.drawable.bedtime), contentDescription = null) },
+        icon = { Icon(PlayerIcons.SleepTimer, contentDescription = null) },
         onReset = { sleepTimerValue = DefaultSleepTimerMinutes },
         buttons = {
             actionButton(label = cancelLabel, onClick = onDismiss)

@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.feature.backup.work
 
+import com.lhacenmed.sona.core.common.R as CommonR
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.Context
@@ -105,11 +106,11 @@ internal fun cancelFailedNotification(context: Context) = SonaNotifications.canc
 
 /** What a backup's notification offers - see [BackupActionReceiver]. */
 internal enum class BackupAction(@StringRes val labelRes: Int, val iconRes: Int) {
-    PAUSE(R.string.backup_notification_pause, android.R.drawable.ic_media_pause),
-    RESUME(R.string.backup_notification_resume, android.R.drawable.ic_media_play),
-    STOP(R.string.backup_notification_stop, android.R.drawable.ic_menu_close_clear_cancel),
-    RETRY(R.string.backup_notification_retry, android.R.drawable.ic_popup_sync),
-    RETRY_RESTORE(R.string.backup_notification_retry, android.R.drawable.ic_popup_sync),
+    PAUSE(R.string.backup_notification_pause, CommonR.drawable.icon_player_pause),
+    RESUME(R.string.backup_notification_resume, CommonR.drawable.icon_player_play),
+    STOP(R.string.backup_notification_stop, CommonR.drawable.icon_player_close),
+    RETRY(R.string.backup_notification_retry, CommonR.drawable.icon_player_replay),
+    RETRY_RESTORE(R.string.backup_notification_retry, CommonR.drawable.icon_player_replay),
     ;
 
     val intentAction = "com.lhacenmed.sona.backup.action.$name"

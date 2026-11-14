@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.widget
 
+import com.lhacenmed.sona.core.common.R as CommonR
 import android.appwidget.AppWidgetManager
 import android.content.ComponentCallbacks
 import android.content.ComponentName
@@ -39,7 +40,7 @@ import com.lhacenmed.sona.feature.playback.PlaybackSpace
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
 import com.lhacenmed.sona.feature.playback.labelRes
 import com.lhacenmed.sona.feature.player.InactiveToggleAlpha
-import com.lhacenmed.sona.feature.player.transportIconRes
+import com.lhacenmed.sona.feature.playback.transportIconRes
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
@@ -273,7 +274,7 @@ class PlaybackWidgets @Inject constructor(
         // The same icons and names the notification's buttons have, for the same states.
         setImageViewResource(
             R.id.widget_favorite,
-            if (content.isFavorite) PlaybackR.drawable.favorite else PlaybackR.drawable.favorite_border,
+            if (content.isFavorite) CommonR.drawable.icon_player_favorite else CommonR.drawable.icon_player_favorite_border,
         )
         setContentDescription(
             R.id.widget_favorite,
@@ -282,16 +283,16 @@ class PlaybackWidgets @Inject constructor(
             ),
         )
         // The toggles as the player draws them: one glyph each, whole while on and faint while off - see InactiveToggleAlpha.
-        setImageViewResource(R.id.widget_shuffle, PlaybackR.drawable.shuffle)
+        setImageViewResource(R.id.widget_shuffle, CommonR.drawable.icon_player_shuffle)
         setInt(R.id.widget_shuffle, "setImageAlpha", toggleAlpha(isOn = content.isShuffled))
         setContentDescription(
             R.id.widget_shuffle,
             context.getString(if (content.isShuffled) PlaybackR.string.playback_action_shuffle_off else PlaybackR.string.playback_action_shuffle_on),
         )
-        setImageViewResource(R.id.widget_repeat, content.repeatMode.transportIconRes())
+        setImageViewResource(R.id.widget_repeat, content.repeatMode.transportIconRes)
         setInt(R.id.widget_repeat, "setImageAlpha", toggleAlpha(isOn = content.repeatMode != RepeatMode.OFF))
         setContentDescription(R.id.widget_repeat, context.getString(content.repeatMode.labelRes))
-        val playPauseIcon = if (content.isPlaying) PlayerR.drawable.pause else PlayerR.drawable.play
+        val playPauseIcon = if (content.isPlaying) CommonR.drawable.icon_player_pause else CommonR.drawable.icon_player_play
         setImageViewResource(R.id.widget_play_pause_icon, playPauseIcon)
         // The mini player's, a glyph alone in the icon colour - no circle round it.
         setImageViewResource(R.id.widget_play_pause_glyph, playPauseIcon)

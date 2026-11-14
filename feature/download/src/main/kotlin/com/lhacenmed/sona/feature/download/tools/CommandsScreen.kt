@@ -108,8 +108,8 @@ data object CommandsScreen : Screen {
                 onNavigateBack = navigator::back,
                 actions = listOf(
                     TopBarAction(stringResource(R.string.download_shortcuts_title), SonaIcons.ShortText) { navigator.go(ShortcutsScreen) },
-                    TopBarAction(stringResource(R.string.download_commands_export), SonaIcons.FileUpload) { exporter.launch(CommandsFileName) },
-                    TopBarAction(stringResource(R.string.download_commands_import), SonaIcons.FileDownload) { importer.launch(arrayOf(CommandsFileType, "text/plain", "application/octet-stream")) },
+                    TopBarAction(stringResource(R.string.download_commands_export), SonaIcons.Export) { exporter.launch(CommandsFileName) },
+                    TopBarAction(stringResource(R.string.download_commands_import), SonaIcons.Import) { importer.launch(arrayOf(CommandsFileType, "text/plain", "application/octet-stream")) },
                     TopBarAction(stringResource(R.string.download_terminal_title), SonaIcons.Terminal) { navigator.go(TerminalScreen) },
                 ),
                 selection = selection.toTopBarSelection(

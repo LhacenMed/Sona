@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.feature.download.work
 
+import com.lhacenmed.sona.core.common.R as CommonR
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -104,9 +105,9 @@ private val SpeakerTag = Regex("""^\[[^]]*]\s*""")
 
 /** What a download's notification offers - see [DownloadActionReceiver]. */
 private enum class DownloadAction(@StringRes val labelRes: Int, val iconRes: Int) {
-    PAUSE(R.string.download_pause, android.R.drawable.ic_media_pause),
-    RESUME(R.string.download_resume, android.R.drawable.ic_media_play),
-    CANCEL(R.string.download_cancel, android.R.drawable.ic_menu_close_clear_cancel),
+    PAUSE(R.string.download_pause, CommonR.drawable.icon_player_pause),
+    RESUME(R.string.download_resume, CommonR.drawable.icon_player_play),
+    CANCEL(R.string.download_cancel, CommonR.drawable.icon_player_close),
     ;
 
     val intentAction = "com.lhacenmed.sona.download.action.$name"

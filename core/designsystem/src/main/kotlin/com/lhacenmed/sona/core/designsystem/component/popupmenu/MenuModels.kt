@@ -104,9 +104,9 @@ data class MenuItem(
  *                                starts at the same X. Set false to let icon-less rows use the
  *                                full horizontal space.
  * @param chevronForwardRes       Drawable resource shown on sub-menu trigger rows (trailing).
- *                                Defaults to [R.drawable.ic_chevron_forward].
+ *                                Defaults to [R.drawable.icon_keyboard_arrow_right].
  * @param chevronBackRes          Drawable resource shown on the header back-navigation row (leading).
- *                                Defaults to [R.drawable.ic_arrow_backward].
+ *                                Defaults to [R.drawable.icon_arrow_back].
  * @param spacerHeightDp          Thickness of the divider bar produced by [MenuItem.spacerAbove]
  *                                (dp). Clamped to a minimum of 1 px after density conversion.
  * @param spacerIntensity         Darkening strength of the divider, using the same
@@ -138,8 +138,8 @@ data class PopupStyle(
     val iconTextSpacingDp: Float = 20f,
     val iconSizeDp: Float = 22f,
     val iconAlign: Boolean = true,
-    val chevronForwardRes: Int = R.drawable.ic_chevron_forward,
-    val chevronBackRes: Int = R.drawable.ic_arrow_backward,
+    val chevronForwardRes: Int = R.drawable.icon_keyboard_arrow_right,
+    val chevronBackRes: Int = R.drawable.icon_arrow_back,
     // ── Divider (spacerAbove) ──────────────────────────────────────────────────────────────
     val spacerHeightDp: Float = 8f,
     val spacerIntensity: Float = 0.25f,

@@ -1,5 +1,8 @@
 package com.lhacenmed.sona.feature.player
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -13,18 +16,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -37,7 +37,6 @@ import com.lhacenmed.sona.core.designsystem.theme.LocalIsRounded
 import com.lhacenmed.sona.core.designsystem.theme.roundedShape
 import com.lhacenmed.sona.feature.player.swiper.QueueCoverPager
 import kotlinx.coroutines.delay
-import com.lhacenmed.sona.core.common.R as CommonR
 
 private const val DoubleTapSeekStepMs = 5_000L
 
@@ -96,7 +95,7 @@ internal fun Thumbnail(
                     .background(MaterialTheme.colorScheme.surfaceVariant),
             ) {
                 Icon(
-                    painter = painterResource(CommonR.drawable.ic_stat_sona),
+                    imageVector = SonaIcons.CoverPlaceholder,
                     contentDescription = stringResource(R.string.player_hidden_thumbnail),
                     tint = textBackgroundColor.copy(alpha = 0.7f),
                     modifier = Modifier.size(120.dp),

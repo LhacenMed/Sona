@@ -20,7 +20,7 @@ enum class TagField(
     val isMultiline: Boolean = false,
 ) {
     TITLE(R.string.tag_field_title, SonaIcons.Title, "TITLE"),
-    ARTIST(R.string.tag_field_artist, SonaIcons.Person, "ARTIST"),
+    ARTIST(R.string.tag_field_artist, SonaIcons.Artist, "ARTIST"),
     ALBUM(R.string.tag_field_album, SonaIcons.Album, "ALBUM"),
     ALBUM_ARTIST(R.string.tag_field_album_artist, SonaIcons.Group, "ALBUMARTIST"),
     GENRE(R.string.tag_field_genre, SonaIcons.Sell, "GENRE"),

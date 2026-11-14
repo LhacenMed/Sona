@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.feature.playback
 
+import com.lhacenmed.sona.core.common.R as CommonR
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.media3.common.Player
@@ -22,14 +23,26 @@ internal fun RepeatMode.toPlayerRepeatMode(): Int = when (this) {
 /** Whether the player should stop rather than play the current track again. */
 internal fun RepeatMode.stopsAfterCurrentTrack(): Boolean = this == RepeatMode.STOP_AFTER_CURRENT
 
-/** The icon [this] is drawn with wherever the app has no theme to draw it in - the notification and the widget. */
+/**
+ * The icon [this] is drawn with in the notification, which cannot dim a toggle that is off: on, it is drawn with the dot that
+ * says so - the players' own drawings, see `PlayerIcons`.
+ */
 @get:DrawableRes
 val RepeatMode.iconRes: Int
     get() = when (this) {
-        RepeatMode.STOP_AFTER_CURRENT -> R.drawable.repeat_one_stop
-        RepeatMode.ONE -> R.drawable.repeat_one_on
-        RepeatMode.ALL -> R.drawable.repeat_on
-        RepeatMode.OFF -> R.drawable.repeat
+        RepeatMode.STOP_AFTER_CURRENT -> CommonR.drawable.icon_player_repeat_stop
+        RepeatMode.ONE -> CommonR.drawable.icon_player_repeat_one_on
+        RepeatMode.ALL -> CommonR.drawable.icon_player_repeat_on
+        RepeatMode.OFF -> CommonR.drawable.icon_player_repeat
+    }
+
+/** The icon [this] is drawn with on a widget's transport row, which dims it while it is off - as the players draw it. */
+@get:DrawableRes
+val RepeatMode.transportIconRes: Int
+    get() = when (this) {
+        RepeatMode.OFF, RepeatMode.ALL -> CommonR.drawable.icon_player_repeat
+        RepeatMode.ONE -> CommonR.drawable.icon_player_repeat_one
+        RepeatMode.STOP_AFTER_CURRENT -> CommonR.drawable.icon_player_repeat_stop
     }
 
 /** What [this] is named by beside [iconRes]. */

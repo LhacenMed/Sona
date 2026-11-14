@@ -2,7 +2,6 @@
 
 package com.lhacenmed.sona.feature.player
 
-import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -33,20 +32,10 @@ import androidx.compose.ui.unit.sp
 import com.lhacenmed.sona.core.datastore.PlayerSliderStyle
 import com.lhacenmed.sona.core.designsystem.component.SonaMarquee
 import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
-import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
-import com.lhacenmed.sona.feature.playback.R as PlaybackR
 
-@DrawableRes
-internal fun PlaybackUiState.playPauseIconRes(): Int =
-    when {
-        hasEnded -> R.drawable.replay
-        isPlaying -> R.drawable.pause
-        else -> R.drawable.play
-    }
-
-/** The expanded player's play button glyph - the mini player's is [playPauseIconRes]. */
+/** The play button's glyph, the expanded player's and the mini player's alike. */
 internal fun PlaybackUiState.playPauseIcon(): ImageVector =
     when {
         hasEnded -> PlayerIcons.Replay
@@ -60,20 +49,6 @@ internal fun PlaybackUiState.playPauseIcon(): ImageVector =
  * is turned on.
  */
 const val InactiveToggleAlpha = PlayerSecondaryAlpha
-
-/** The repeat glyph of a transport row, with Sona's stop-after-current mode drawn as the notification draws it. */
-@DrawableRes
-fun RepeatMode.transportIconRes(): Int =
-    when (this) {
-        RepeatMode.OFF, RepeatMode.ALL -> PlaybackR.drawable.repeat
-        RepeatMode.ONE -> R.drawable.repeat_one
-        RepeatMode.STOP_AFTER_CURRENT -> PlaybackR.drawable.repeat_one_stop
-    }
-
-
-@DrawableRes
-internal fun favoriteIconRes(isFavorite: Boolean): Int =
-    if (isFavorite) PlaybackR.drawable.favorite else PlaybackR.drawable.favorite_border
 
 internal fun favoriteIcon(isFavorite: Boolean): ImageVector =
     if (isFavorite) PlayerIcons.Favorite else PlayerIcons.FavoriteBorder

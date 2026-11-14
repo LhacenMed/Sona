@@ -46,7 +46,6 @@ object SonaIcons {
     val CheckBox: ImageVector by icon { Glyphs.CheckBox }
     val CheckBoxOutlineBlank: ImageVector by icon { Glyphs.CheckBoxOutlineBlank }
     val CheckCircle: ImageVector by icon { Glyphs.CheckCircle }
-    val ClearAll: ImageVector by icon { Glyphs.ClearAll }
     val Close: ImageVector by icon { Glyphs.Close }
     val Cloud: ImageVector by icon { Glyphs.Cloud }
     val CloudDone: ImageVector by icon { Glyphs.CloudDone }
@@ -69,8 +68,8 @@ object SonaIcons {
     val Edit: ImageVector by icon { Glyphs.Edit }
     val EditNote: ImageVector by icon { Glyphs.EditNote }
     val Equalizer: ImageVector by icon { Glyphs.Equalizer }
+    val Export: ImageVector by icon { Glyphs.FileUpload }
     val Error: ImageVector by icon { Glyphs.Error }
-    val ErrorOutline: ImageVector by icon { Glyphs.ErrorOutline }
     val ExpandLess: ImageVector by icon { Glyphs.ExpandLess }
     val ExpandMore: ImageVector by icon { Glyphs.ExpandMore }
     val Extension: ImageVector by icon { Glyphs.Extension }
@@ -78,9 +77,7 @@ object SonaIcons {
     val Favorite: ImageVector by icon { Glyphs.Favorite }
     val FavoriteBorder: ImageVector by icon { Glyphs.FavoriteBorder }
     val Feedback: ImageVector by icon { Glyphs.Feedback }
-    val FileDownload: ImageVector by icon { Glyphs.FileDownload }
     val FileOpen: ImageVector by icon { Glyphs.FileOpen }
-    val FileUpload: ImageVector by icon { Glyphs.FileUpload }
     val Fingerprint: ImageVector by icon { Glyphs.Fingerprint }
     val Folder: ImageVector by icon { Glyphs.Folder }
     val FolderOpen: ImageVector by icon { Glyphs.FolderOpen }
@@ -93,6 +90,7 @@ object SonaIcons {
     val HighQuality: ImageVector by icon { Glyphs.HighQuality }
     val History: ImageVector by icon { Glyphs.History }
     val Image: ImageVector by icon { Glyphs.Image }
+    val Import: ImageVector by icon { Glyphs.FileDownload }
     val IndeterminateCheckBox: ImageVector by icon { Glyphs.IndeterminateCheckBox }
     val Info: ImageVector by icon { Glyphs.Info }
     val Input: ImageVector by icon { MirroredGlyphs.Input }
@@ -109,7 +107,6 @@ object SonaIcons {
     val Login: ImageVector by icon { MirroredGlyphs.Login }
     val Lyrics: ImageVector by icon { Glyphs.Lyrics }
     val Monitor: ImageVector by icon { Glyphs.Monitor }
-    val MoreHoriz: ImageVector by icon { Glyphs.MoreHoriz }
     val MoreTime: ImageVector by icon { Glyphs.MoreTime }
     val MoreVert: ImageVector by icon { Glyphs.MoreVert }
     val NewReleases: ImageVector by icon { Glyphs.NewReleases }
@@ -118,7 +115,6 @@ object SonaIcons {
     val OpenInNew: ImageVector by icon { MirroredGlyphs.OpenInNew }
     val Palette: ImageVector by icon { Glyphs.Palette }
     val Pause: ImageVector by icon { Glyphs.Pause }
-    val Person: ImageVector by icon { Glyphs.Person }
     val Play: ImageVector by icon { Glyphs.PlayArrow }
     val PlayCircle: ImageVector by icon { Glyphs.PlayCircle }
     val PlayNext: ImageVector by icon { Glyphs.QueuePlayNext }
@@ -135,7 +131,6 @@ object SonaIcons {
     val Restore: ImageVector by icon { Glyphs.Restore }
     val Save: ImageVector by icon { Glyphs.Save }
     val Schedule: ImageVector by icon { Glyphs.Schedule }
-    val Screenshot: ImageVector by icon { Glyphs.Screenshot }
     val Search: ImageVector by icon { Glyphs.Search }
     val SearchOff: ImageVector by icon { Glyphs.SearchOff }
     val Security: ImageVector by icon { Glyphs.Security }
@@ -170,8 +165,6 @@ object SonaIcons {
     val Video: ImageVector by icon { Glyphs.Movie }
     val VideoFile: ImageVector by icon { Glyphs.VideoFile }
     val VideoLibrary: ImageVector by icon { Glyphs.VideoLibrary }
-    val VolumeOff: ImageVector by icon { MirroredGlyphs.VolumeOff }
-    val VolumeUp: ImageVector by icon { MirroredGlyphs.VolumeUp }
     val Warning: ImageVector by icon { Glyphs.Warning }
     val Wifi: ImageVector by icon { Glyphs.Wifi }
     val WifiOff: ImageVector by icon { Glyphs.WifiOff }
