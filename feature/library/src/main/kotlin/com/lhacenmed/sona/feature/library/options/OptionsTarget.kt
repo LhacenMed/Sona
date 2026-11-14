@@ -252,6 +252,17 @@ fun OptionsTarget.typeLabel(): String = stringResource(
     },
 )
 
+/**
+ * Whether pressing the sheet's name renames it: a track or a video, by its file's name; a playlist the user made. Everything
+ * else is named by what its tracks say - an album, an artist - or by the app.
+ */
+val OptionsTarget.isRenamable: Boolean
+    get() = when (this) {
+        is OptionsTarget.ForTrack -> true
+        is OptionsTarget.ForPlaylist -> !playlist.isBuiltIn
+        else -> false
+    }
+
 /** The sheet's headline - Auxio's `menuName`. */
 @Composable
 fun OptionsTarget.name(): String = when (this) {

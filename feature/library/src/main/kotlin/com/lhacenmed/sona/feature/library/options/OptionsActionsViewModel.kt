@@ -1,5 +1,9 @@
 package com.lhacenmed.sona.feature.library.options
 
+import com.lhacenmed.sona.feature.tageditor.FileExistsException
+import com.lhacenmed.sona.feature.tageditor.TrackFileChanges
+import com.lhacenmed.sona.core.designsystem.component.toast
+import com.lhacenmed.sona.feature.library.R
 import android.content.Context
 import android.os.Build
 import androidx.lifecycle.ViewModel
@@ -65,7 +69,27 @@ class OptionsActionsViewModel @Inject constructor(
     private val mediaScanner: MediaScanner,
     private val vaultRepository: VaultRepository,
     private val playbackSettings: PlaybackSettings,
+    private val fileChanges: TrackFileChanges,
 ) : ViewModel() {
+
+    internal fun renamePlaylist(playlistId: Long, name: String) {
+        viewModelScope.launch { repository.renamePlaylist(playlistId, name) }
+    }
+
+    /** Renames [track]'s file [fileName], whole - saying why not, where a file of that name is there already or it cannot be. */
+    internal fun renameFile(track: Track, fileName: String) {
+        viewModelScope.launch {
+            try {
+                fileChanges.renameWhole(track, fileName)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: FileExistsException) {
+                context.toast(R.string.options_rename_file_exists)
+            } catch (_: Exception) {
+                context.toast(R.string.options_rename_file_failed)
+            }
+        }
+    }
 
     /** Every playlist there is to add to. */
     val playlists: StateFlow<LibraryContent<Playlist>> = repository.playlists

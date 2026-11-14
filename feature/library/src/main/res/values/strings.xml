@@ -2,6 +2,9 @@
 <resources>
     <!-- What a song, a collection or a selection offers - see OptionsAction -->
     <string name="options_play">Play</string>
+    <string name="options_rename_file_title">Rename file</string>
+    <string name="options_rename_file_exists">A file of that name is there already</string>
+    <string name="options_rename_file_failed">Couldn\'t rename the file</string>
     <string name="options_shuffle">Shuffle</string>
     <string name="options_play_next">Play next</string>
     <string name="options_queue_add">Add to queue</string>
