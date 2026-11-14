@@ -27,8 +27,6 @@ internal object SiteReaders {
         LinkedInReader,
         TelegramReader,
         SnapchatReader,
-        // Last: a site's own reader knows its links better than their extension does.
-        DirectMediaReader,
     )
 
     /** The reader of [url] - null where no site here reads it, decided from the link alone. */

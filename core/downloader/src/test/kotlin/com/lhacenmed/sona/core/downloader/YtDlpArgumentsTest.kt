@@ -102,6 +102,13 @@ class YtDlpArgumentsTest {
     }
 
     @Test
+    fun `a video carries its cover, as wide as it is`() {
+        val arguments = DownloadChoices(kind = DownloadKind.VIDEO).arguments()
+        assertTrue("--embed-thumbnail" in arguments)
+        assertNull(arguments.valueOf("--ppa"))
+    }
+
+    @Test
     fun `a format picked replaces what the quality would pick`() {
         val arguments = DownloadChoices(kind = DownloadKind.VIDEO, videoQuality = VideoQuality.P720).arguments(options = DownloadOptions(formatId = "137+ba/137"))
         assertEquals("137+ba/137", arguments.valueOf("-f"))

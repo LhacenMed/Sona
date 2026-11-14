@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.core.downloader
 
+import com.lhacenmed.sona.core.downloader.transfer.ConnectionsPerDownload
 import com.lhacenmed.sona.core.model.DownloadChoices
 import com.lhacenmed.sona.core.model.DownloadKind
 import com.lhacenmed.sona.core.model.DownloadOptions
@@ -56,7 +57,8 @@ internal fun DownloadChoices.toArguments(
         DownloadKind.AUDIO -> {
             addAll(listOf("-f", options.formatId ?: inLanguage("ba", "ba/b"), "-x", "--audio-quality", "0"))
             audioFormat.extension?.let { addAll(listOf("--audio-format", it)) }
-            addAll(listOf("--embed-thumbnail", "--convert-thumbnails", "jpg", "--ppa", SquareCover))
+            // A song's cover is cut square, as covers are; a video keeps its picture as wide as it is.
+            addAll(listOf("--ppa", SquareCover))
             // A song's own title and artist where the site knows them - YouTube Music's - the video's and its channel's otherwise.
             addAll(listOf("--parse-metadata", "%(track,title)s:%(meta_title)s", "--parse-metadata", "%(artist,uploader)s:%(meta_artist)s"))
         }
@@ -67,7 +69,12 @@ internal fun DownloadChoices.toArguments(
             captionLanguages?.let { addAll(captionArguments(it)) }
             return@buildList
         }
+
+        DownloadKind.FILE -> error("A file is downloaded as it is served - see DirectTransfer.formatFor")
     }
+    // The cover inside the file, so the file shows it wherever it goes - in the library, Android's own, a song's and a video's
+    // alike: Android reads a file's own picture before ever taking a frame of a video.
+    addAll(listOf("--embed-thumbnail", "--convert-thumbnails", "jpg"))
     addAll(listOf("--embed-metadata", "--embed-chapters", "--parse-metadata", "%(release_year,upload_date)s:%(meta_date)s"))
     if (skipSponsors && preferences.sponsorSegments.isNotEmpty()) {
         addAll(listOf("--sponsorblock-remove", preferences.sponsorSegments.joinToString(",") { it.id }))
@@ -122,8 +129,8 @@ internal fun downloadArguments(outputDir: String, tempDir: String, fileNameTempl
         listOf(
             // A link to one video in a playlist is the video: a playlist's own link is still the playlist.
             "--no-playlist",
-            // A stream in fragments - HLS, DASH - fetched eight at a time, as Seal fetches them.
-            "--concurrent-fragments", "8",
+            // A stream in fragments - HLS, DASH - fetched as many at a time as a direct download's parts.
+            "--concurrent-fragments", ConnectionsPerDownload.toString(),
             "--no-mtime",
             // Everything it does written out, as Seal and YTDLnis show it - --print alone would quiet it.
             "--no-quiet",

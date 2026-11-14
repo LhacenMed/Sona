@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.core.downloader
 
+import com.lhacenmed.sona.core.model.DownloadKind
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -26,6 +27,9 @@ data class MediaFormat(
     /** Whether it has a picture - whose height a site may not say, as a media file's own link does not. */
     val hasVideo: Boolean get() = videoCodec != null
     val hasAudio: Boolean get() = audioCodec != null
+
+    /** Whether it is sound or picture: what a player plays, the library holds, and tags are written into. */
+    val isMedia: Boolean get() = hasVideo || hasAudio
 }
 
 /** What a sound of a video is: the one recorded, one dubbed into another language, or one describing what is seen. */
@@ -68,8 +72,20 @@ data class MediaInfo(
     val madeCaptions: List<String> = emptyList(),
     /** The codes of its captions its site made - from the speech, and translated. */
     val automaticCaptions: List<String> = emptyList(),
+    /** Whether its link serves a file that is not media - an archive, a document - saved as it is: see `FileLinks`. */
+    val isFile: Boolean = false,
 ) {
     val isPlaylist: Boolean get() = entries != null
+
+    /**
+     * What it is downloaded as, [asked] for as one kind: a link is what it serves - a file as that file, whatever was asked,
+     * and nothing else as a file.
+     */
+    fun kindFor(asked: DownloadKind): DownloadKind = when {
+        isFile -> DownloadKind.FILE
+        asked == DownloadKind.FILE -> DownloadKind.VIDEO
+        else -> asked
+    }
 
     /** How many chapters it has - what one file per chapter makes of it. */
     val chapterCount: Int get() = chaptersJson?.let { JSONArray(it).length() } ?: 0
@@ -112,6 +128,9 @@ internal fun extractionOf(json: String, isComplete: Boolean): Extraction {
 /** How long before its streams' own expiry a read is let go: a download started then has time to finish. */
 private const val ExpiryMarginMs = 30 * 60 * 1000L
 
+/** What a read is marked as, in yt-dlp's `_type`, where its link serves a file that is not media - see [MediaInfo.isFile]. */
+internal const val FILE_TYPE = "file"
+
 /** [json], yt-dlp's info JSON, read into what the app shows and downloads from. */
 internal fun mediaInfoOf(json: JSONObject): MediaInfo {
     val entries = json.optJSONArray("entries")?.takeIf { json.optString("_type") == "playlist" }
@@ -133,6 +152,7 @@ internal fun mediaInfoOf(json: JSONObject): MediaInfo {
         chaptersJson = json.optJSONArray("chapters")?.takeIf { it.length() > 0 }?.toString(),
         madeCaptions = json.optJSONObject("subtitles")?.keys()?.asSequence()?.toList().orEmpty(),
         automaticCaptions = json.optJSONObject("automatic_captions")?.keys()?.asSequence()?.toList().orEmpty(),
+        isFile = json.optString("_type") == FILE_TYPE,
     )
 }
 

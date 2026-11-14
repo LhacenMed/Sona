@@ -31,6 +31,7 @@
         <item quantity="other">%1$d downloads</item>
     </plurals>
     <string name="download_filter_songs">Songs</string>
+    <string name="download_filter_files">Files</string>
     <string name="download_filter_failed">Failed</string>
     <string name="download_filter_empty">Nothing here</string>
     <string name="download_filter_empty_message">Pick the filter again to see every download.</string>
@@ -66,6 +67,7 @@
     <string name="download_kind_video">Video</string>
     <string name="download_kind_audio">Audio</string>
     <string name="download_kind_subtitles">Subtitles</string>
+    <string name="download_kind_file">File</string>
     <string name="download_options">Options</string>
     <string name="download_options_changed">Options · %1$d changed</string>
     <plurals name="download_videos">
@@ -152,9 +154,6 @@
     <string name="download_fix_download_anyway">Download anyway</string>
     <string name="download_checking_library">Checking your library…</string>
     <string name="download_copy_none">Not in your library yet</string>
-    <string name="download_once_checked">Download once checked</string>
-    <string name="download_once_read">Downloads once read…</string>
-    <string name="download_once_checked_waiting">Downloads once checked…</string>
     <plurals name="download_copies_some">
         <item quantity="one">%d may be in your library already</item>
         <item quantity="other">%d may be in your library already</item>
@@ -477,6 +476,7 @@
     <string name="download_folder_access_allow">Allow</string>
     <string name="downloads_settings_audio_folder_title">Audio folder</string>
     <string name="downloads_settings_video_folder_title">Video folder</string>
+    <string name="downloads_settings_file_folder_title">File folder</string>
     <string name="download_commands_export">Export</string>
     <string name="download_commands_import">Import</string>
     <string name="download_commands_exported">Commands exported</string>

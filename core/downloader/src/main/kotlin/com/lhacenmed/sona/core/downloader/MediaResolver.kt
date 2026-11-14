@@ -3,6 +3,7 @@ package com.lhacenmed.sona.core.downloader
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.downloader.sites.SiteHttp
 import com.lhacenmed.sona.core.downloader.sites.SiteReaders
+import com.lhacenmed.sona.core.downloader.transfer.transferClient
 import com.lhacenmed.sona.core.model.DownloaderPreferences
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -13,12 +14,16 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import okhttp3.OkHttpClient
 
 /** How long NewPipe is given a link before yt-dlp reads it instead - Nezzel's budget. */
 private const val NewPipeBudgetMs = 10_000L
 
 /** How long a site's own reader is given a post - its requests' own limit, so a reader is never cut off mid-answer. */
 private const val SiteBudgetMs = 20_000L
+
+/** How long a link no site here reads is given to say whether it serves a file - see [FileLinks]. */
+private const val FileBudgetMs = 10_000L
 
 /** How many links NewPipe could not read are remembered, so yt-dlp reads them straight away the next time. */
 private const val RememberedMisses = 16
@@ -40,6 +45,7 @@ class MediaResolver @Inject internal constructor(
     @ApplicationScope private val scope: CoroutineScope,
 ) {
     private val reading = mutableMapOf<String, Deferred<Extraction>>()
+    private val fileClient = OkHttpClient()
     /** The links the app's own readers could not read lately - yt-dlp's, straight away, the next time. */
     private val appMisses = LinkedHashSet<String>()
 
@@ -100,7 +106,8 @@ class MediaResolver @Inject internal constructor(
 
     /**
      * [url] read the fastest way there is: by NewPipe for YouTube, by its site's own reader for a post of one of [SiteReaders],
-     * each within its budget - and by yt-dlp for everything they do not read in full.
+     * each within its budget; a link of no site here, as the file it serves where it serves one - see [FileLinks] - asked
+     * through the proxy as yt-dlp would ask; and by yt-dlp for everything else.
      */
     private suspend fun read(url: String, preferences: DownloaderPreferences): Extraction {
         if (readsItself(preferences) && synchronized(appMisses) { url !in appMisses }) {
@@ -118,6 +125,9 @@ class MediaResolver @Inject internal constructor(
                     if (appMisses.size > RememberedMisses) appMisses.remove(appMisses.first())
                 }
             }
+        }
+        if (!newPipe.accepts(url) && SiteReaders.readerFor(url) == null) {
+            readWithin(FileBudgetMs) { FileLinks.read(url, preferences.transferClient(fileClient)) }?.let { return extractionOf(it, isComplete = true) }
         }
         return extractionOf(ytDlp.infoJson(url, preferences, readingArguments.forLink(url)).toString(), isComplete = true)
     }

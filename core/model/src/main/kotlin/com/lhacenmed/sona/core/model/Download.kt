@@ -1,16 +1,22 @@
 package com.lhacenmed.sona.core.model
 
-/** What a download keeps of what it fetches: the video with its sound, the sound alone, or the video's captions alone. */
+/**
+ * What a download keeps of what it fetches: the video with its sound, the sound alone, the video's captions alone - or, from a
+ * link that serves a file of any other kind, that file as it is.
+ */
 enum class DownloadKind {
     VIDEO,
     AUDIO,
 
     /** Its captions alone, as files - saved where videos are - with nothing of its sound or picture fetched. */
     SUBTITLES,
+
+    /** A file that is not media - an archive, a document, an app - saved as it is served, in the folder for files. */
+    FILE,
     ;
 
     /** Whether it saves sound or picture: what the library holds, and a player plays. */
-    val isMedia: Boolean get() = this != SUBTITLES
+    val isMedia: Boolean get() = this == VIDEO || this == AUDIO
 }
 
 /** The tallest picture a video is downloaded at - the best there is while [height] is null. */
@@ -133,8 +139,10 @@ data class DownloaderPreferences(
     val wifiOnly: Boolean = false,
     /** The folder sound is saved in - "Music", "Download/Sona" - see [DEFAULT_DOWNLOAD_FOLDER]. */
     val audioFolder: String = DEFAULT_DOWNLOAD_FOLDER,
-    /** The folder videos are saved in. */
+    /** The folder videos are saved in - and their captions, saved alone. */
     val videoFolder: String = DEFAULT_DOWNLOAD_FOLDER,
+    /** The folder files that are not media are saved in. */
+    val fileFolder: String = DEFAULT_DOWNLOAD_FOLDER,
     val fileNameTemplate: String = DEFAULT_FILE_NAME_TEMPLATE,
     val sponsorSegments: Set<SponsorSegment> = setOf(
         SponsorSegment.SPONSOR,
@@ -171,12 +179,20 @@ data class DownloaderPreferences(
     }
 
     /** The folder [kind] is saved in. */
-    fun folderFor(kind: DownloadKind): String = if (kind == DownloadKind.AUDIO) audioFolder else videoFolder
+    fun folderFor(kind: DownloadKind): String = when (kind) {
+        DownloadKind.AUDIO -> audioFolder
+        DownloadKind.VIDEO, DownloadKind.SUBTITLES -> videoFolder
+        DownloadKind.FILE -> fileFolder
+    }
 
     /** These preferences, [kind] saved in [folder] - see [DEFAULT_DOWNLOAD_FOLDER] - the default where it names none. */
     fun withFolder(kind: DownloadKind, folder: String): DownloaderPreferences {
         val path = folder.trim().trimEnd('/').ifEmpty { DEFAULT_DOWNLOAD_FOLDER }
-        return if (kind == DownloadKind.AUDIO) copy(audioFolder = path) else copy(videoFolder = path)
+        return when (kind) {
+            DownloadKind.AUDIO -> copy(audioFolder = path)
+            DownloadKind.VIDEO, DownloadKind.SUBTITLES -> copy(videoFolder = path)
+            DownloadKind.FILE -> copy(fileFolder = path)
+        }
     }
 }
 
@@ -266,7 +282,7 @@ data class DownloadCommand(
     fun addsTo(kind: DownloadKind, url: String): Boolean = when (kind) {
         DownloadKind.AUDIO -> addsToAudio
         DownloadKind.VIDEO -> addsToVideo
-        DownloadKind.SUBTITLES -> false
+        DownloadKind.SUBTITLES, DownloadKind.FILE -> false
     } && isFor(url)
 }
 
