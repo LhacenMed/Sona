@@ -65,7 +65,8 @@ object SonaNotifications {
 
     /**
      * A task running, on [channel]: [title], what it is doing now - [text] - and [detail] beneath, with how far it is -
-     * [percent], null while it cannot tell - and [actions]. On Android 16 and later, where [canPostPromoted], a promoted live
+     * [percent], null while it cannot tell - and [actions]; one of several gathered under [group], or, [isGroupSummary], what
+     * gathers them. On Android 16 and later, where [canPostPromoted], a promoted live
      * update, its percent the title, which the system shows in the status bar too; a progress bar otherwise.
      */
     fun progress(
@@ -76,8 +77,11 @@ object SonaNotifications {
         detail: String?,
         percent: Int?,
         actions: List<SonaNotificationAction>,
+        group: String? = null,
+        isGroupSummary: Boolean = false,
     ): Notification {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA && canPostPromoted(context)) {
+        // A group's summary is never a live update: Android promotes a task's own notification, not what gathers several.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA && !isGroupSummary && canPostPromoted(context)) {
             val progressStyle = Notification.ProgressStyle()
                 .setProgressPoints(listOf(Notification.ProgressStyle.Point(0), Notification.ProgressStyle.Point(PROGRESS_MAX)))
                 .setProgress(percent ?: 0)
@@ -90,6 +94,7 @@ object SonaNotifications {
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setCategory(Notification.CATEGORY_PROGRESS)
+                .setGroup(group)
                 // Asks for the notification to be promoted to a live update.
                 .addExtras(Bundle().apply { putBoolean("android.requestPromotedOngoing", true) })
                 .apply { actions.forEach { addAction(Notification.Action.Builder(Icon.createWithResource(context, it.iconRes), it.label, it.intent).build()) } }
@@ -104,6 +109,8 @@ object SonaNotifications {
             .setOnlyAlertOnce(true)
             .setSilent(true)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+            .setGroup(group)
+            .setGroupSummary(isGroupSummary)
             .apply { actions.forEach { addAction(it.iconRes, it.label, it.intent) } }
             .build()
     }

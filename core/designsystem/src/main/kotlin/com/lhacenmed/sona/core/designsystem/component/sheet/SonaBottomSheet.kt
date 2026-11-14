@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.core.designsystem.component.sheet
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.WindowInsets
@@ -171,7 +172,10 @@ internal fun SheetFrame(
     ) {
         // Its own window, with its own haptics: gated as every window's are.
         ProvideSonaHaptics {
-            content(sheetScope)
+            // Every sheet grows and shrinks to what it holds rather than jumping to it: a row added, an option switched.
+            Column(modifier = Modifier.animateContentSize()) {
+                content(sheetScope)
+            }
         }
     }
 }

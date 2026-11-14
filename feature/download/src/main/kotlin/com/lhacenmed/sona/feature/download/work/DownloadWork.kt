@@ -27,6 +27,8 @@ import dagger.hilt.components.SingletonComponent
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.coroutineScope
@@ -90,7 +92,7 @@ object DownloadWork {
 /** Runs the queue to its end, in the foreground - then wakes it again for the soonest download set to start later. */
 internal class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
-    override suspend fun getForegroundInfo() = DownloadNotifications.foregroundInfo(applicationContext, first = null)
+    override suspend fun getForegroundInfo() = DownloadNotifications.foregroundInfo(applicationContext, running = emptyList())
 
     @OptIn(FlowPreview::class)
     override suspend fun doWork(): Result {
@@ -101,17 +103,19 @@ internal class DownloadWorker(context: Context, params: WorkerParameters) : Coro
                 var shown = emptySet<Int>()
                 var seen = emptySet<Long>()
                 try {
-                    entryPoint.queue().running.sample(NotificationEveryMs).collect { running ->
-                        val downloads = running.values.toList()
-                        // The first in the foreground service's own, every other in one of its own.
-                        downloads.firstOrNull()?.let { setForeground(DownloadNotifications.foregroundInfo(applicationContext, it)) }
-                        shown = DownloadNotifications.showOthers(applicationContext, downloads.drop(1), shown)
-                        // Running again, a download paused from its notification no longer says it is.
-                        (running.keys - seen).forEach { DownloadNotifications.cancelPaused(applicationContext, it) }
-                        seen = running.keys
-                    }
+                    entryPoint.queue().running.sample(NotificationEveryMs)
+                        // Posted only as what a notification shows changes - never for a line the downloader wrote.
+                        .map { running -> running.values.map { it.copy(line = null) } }
+                        .distinctUntilChanged()
+                        .collect { running ->
+                            shown = DownloadNotifications.show(applicationContext, running, shown)
+                            // Running again, a download no longer says it is paused, was saved or failed.
+                            val ids = running.map { it.id }.toSet()
+                            (ids - seen).forEach { DownloadNotifications.cancelSettled(applicationContext, it) }
+                            seen = ids
+                        }
                 } finally {
-                    DownloadNotifications.showOthers(applicationContext, emptyList(), shown)
+                    DownloadNotifications.clear(applicationContext, shown)
                 }
             }
             val waitsForNetwork = entryPoint.runner().runQueue()

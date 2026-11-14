@@ -13,9 +13,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * How much of a track has to be listened to before the listen counts towards Most played: four fifths of it.
+ * How much of [this] has to be played before the play counts towards Most played: a video counts the moment it plays, as a
+ * view does; a track once four fifths of it have been listened to, so skipping past a song never counts it.
  */
-private const val CountedListenFraction = 0.8
+private val MediaItem.countedFraction: Double get() = if (isVideo) 0.0 else 0.8
 
 /**
  * Keeps the play statistics Recent and Most played are made of - Fossify's `PlayHistoryRecorder`, attached to
@@ -27,8 +28,8 @@ private const val CountedListenFraction = 0.8
  *
  *  - It is made recent the moment it actually starts playing - never merely by being put in the queue, as
  *    a queue restored at launch is.
- *  - It counts towards Most played once it has been listened to for [CountedListenFraction] of its length,
- *    and only once - unless it is played from a collection whose plays the user keeps out of Most played, see
+ *  - It counts towards Most played once [countedFraction] of it has been played - a video at once - and only
+ *    once - unless it is played from a collection whose plays the user keeps out of Most played, see
  *    [PlaybackSettings.uncountedParents]: the same track counts as ever played from anywhere else. What counts is time actually played: seeking skips what it passes over, a pause stops
  *    the clock without starting it over, and the playback speed is followed - so skimming to the end or
  *    skipping after the opening bars never counts, and a whole listen at any speed does.
@@ -130,16 +131,21 @@ internal class PlayHistoryRecorder(
         listenedMs + if (segmentStartMs == C.TIME_UNSET) 0L else (player.currentPosition - segmentStartMs).coerceAtLeast(0L)
 
     /**
-     * Arms the count for when the rest of [CountedListenFraction] will have been played at the current speed,
-     * or disarms it while nothing plays. It looks again as it fires rather than trusting the arithmetic, so
-     * nothing it missed can count a listen short of the mark.
+     * Arms the count for when the rest of [countedFraction] will have been played at the current speed, or
+     * disarms it while nothing plays. It looks again as it fires rather than trusting the arithmetic, so
+     * nothing it missed can count a listen short of the mark. A play that counts at once needs no length.
      */
     private fun scheduleCount() {
         countJob?.cancel()
         val listened = item ?: return
         if (isCounted || !player.isPlaying) return
-        val durationMs = player.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: return
-        val thresholdMs = (durationMs * CountedListenFraction).toLong()
+        val fraction = listened.countedFraction
+        val thresholdMs = if (fraction == 0.0) {
+            0L
+        } else {
+            val durationMs = player.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: return
+            (durationMs * fraction).toLong()
+        }
         val remainingMs = thresholdMs - listened()
         if (remainingMs <= 0L) {
             count(listened)

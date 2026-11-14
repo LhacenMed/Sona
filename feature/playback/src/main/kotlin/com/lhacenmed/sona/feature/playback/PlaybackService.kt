@@ -750,7 +750,7 @@ class PlaybackService : MediaSessionService() {
         val isShuffled = exoPlayer.shuffleModeEnabled
         return CommandButton.Builder(if (isShuffled) CommandButton.ICON_SHUFFLE_ON else CommandButton.ICON_SHUFFLE_OFF)
             .setDisplayName(getString(if (isShuffled) R.string.playback_action_shuffle_off else R.string.playback_action_shuffle_on))
-            .setCustomIconResId(if (isShuffled) CommonR.drawable.icon_player_shuffle_on else CommonR.drawable.icon_player_shuffle)
+            .setCustomIconResId(if (isShuffled) CommonR.drawable.icon_shuffle_on else CommonR.drawable.icon_shuffle)
             .setSessionCommand(PlaybackSessionCommands.toggleShuffleCommand)
             .build()
     }
@@ -769,7 +769,7 @@ class PlaybackService : MediaSessionService() {
                 ),
             )
             .setSessionCommand(PlaybackSessionCommands.toggleFavoriteCommand)
-            .setCustomIconResId(if (isFavorite) CommonR.drawable.icon_player_favorite else CommonR.drawable.icon_player_favorite_border)
+            .setCustomIconResId(if (isFavorite) CommonR.drawable.icon_favorite else CommonR.drawable.icon_favorite_border)
             .setEnabled(trackId != null)
             .build()
     }

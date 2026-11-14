@@ -20,7 +20,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.player.PlayerBarButton
 import com.lhacenmed.sona.core.designsystem.player.PlayerButtonGroup
 import com.lhacenmed.sona.core.designsystem.player.formatPlaybackTime
@@ -57,7 +57,7 @@ internal fun DefaultQueueBar(
                     .padding(horizontal = PlayerHorizontalPadding, vertical = PlayerBarEdgeGap)
                     .height(PlayerBarButtonSize),
         ) {
-            PlayerBarButton(PlayerIcons.Queue, stringResource(R.string.player_queue), colors.content, onExpandQueue)
+            PlayerBarButton(SonaIcons.QueueMusic, stringResource(R.string.player_queue), colors.content, onExpandQueue)
             Spacer(Modifier.weight(1f))
             val sleepTimerLabel = stringResource(R.string.player_sleep_timer)
             val lyricsLabel = stringResource(R.string.player_lyrics)
@@ -66,9 +66,9 @@ internal fun DefaultQueueBar(
                 if (sleepTimerEnabled) {
                     playerTextButton(formatPlaybackTime(sleepTimerTimeLeft), sleepTimerLabel, colors.content, checked = true, onClick = onSleepTimerClick)
                 } else {
-                    playerButton(PlayerIcons.SleepTimer, sleepTimerLabel, colors.content, onSleepTimerClick)
+                    playerButton(SonaIcons.Bedtime, sleepTimerLabel, colors.content, onSleepTimerClick)
                 }
-                playerButton(PlayerIcons.Lyrics, lyricsLabel, colors.content, onToggleLyrics, checked = isLyricsOpen)
+                playerButton(SonaIcons.Lyrics, lyricsLabel, colors.content, onToggleLyrics, checked = isLyricsOpen)
             }
         }
     }

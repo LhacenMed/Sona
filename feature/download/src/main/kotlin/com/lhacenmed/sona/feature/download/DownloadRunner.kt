@@ -8,6 +8,7 @@ import com.lhacenmed.sona.core.database.dao.DownloadDao
 import com.lhacenmed.sona.core.database.entity.DownloadEntity
 import com.lhacenmed.sona.core.database.entity.toDomain
 import com.lhacenmed.sona.core.datastore.DownloadSettings
+import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.downloader.DirectTransfer
 import com.lhacenmed.sona.core.downloader.DownloadEvent
 import com.lhacenmed.sona.core.downloader.DownloadSource
@@ -119,6 +120,7 @@ class DownloadRunner @Inject constructor(
         val saved = mutableListOf<DownloadEvent.Saved>()
         var pageHeatmap: String? = null
         var picture = download.thumbnailUrl
+        var kind = download.choices.kind
         val workspace = workspaces.of(download.id)
         live.forget(download.id)
         queue.release(download.id)
@@ -127,7 +129,10 @@ class DownloadRunner @Inject constructor(
         val outcome = runCatching {
             pageHeatmap = download(download, settings.preferences.value, workspace, onFound = { found ->
                 show(running.copy(title = found.title))
+                // Named as it starts, where it was queued before its link was read: queued named, it was said then.
+                if (download.title == null) context.toast(context.getString(R.string.download_queued_one, found.title))
                 picture = found.thumbnailUrl ?: picture
+                kind = found.kindFor(kind)
             }) { event ->
                 when (event) {
                     is DownloadEvent.Item -> show(running.copy(title = event.title, item = event.index, itemCount = event.count, downloadedBytes = null, totalBytes = null))
@@ -151,14 +156,14 @@ class DownloadRunner @Inject constructor(
         return withContext(NonCancellable) {
             if (outcome.isSuccess) show(running.copy(isFinishing = true))
             // A song saved as the song it is: found, tagged, covered and given its lyrics, before the library reads it.
-            if (outcome.isSuccess && download.choices.kind == DownloadKind.AUDIO && download.choices.savesAsSong) {
+            if (outcome.isSuccess && kind == DownloadKind.AUDIO && download.choices.savesAsSong) {
                 log.append("[sona] Tagging as the song it is")
                 // The song as it stands now - picked, or found as it began.
                 val song = dao.byId(download.id)?.song
                 saved.forEach { runCatching { SongTagging.tag(context, it.file, song) } }
             }
             // Its cover - the one now in each file, the song's where it was saved as one - as a picture of its own beside it.
-            val covers = if (download.choices.savesCover) saved.mapNotNull { SavedCovers.saveBeside(it.file, picture) } else emptyList()
+            val covers = if (download.choices.savesCover && kind.isMedia) saved.mapNotNull { SavedCovers.saveBeside(it.file, picture) } else emptyList()
             // Whatever was saved before it stopped is the user's: brought into the library all the same.
             if (saved.isNotEmpty()) {
                 bringIntoLibrary(saved.map { if (it.heatmapJson == null && pageHeatmap != null) it.copy(heatmapJson = pageHeatmap) else it }, covers)
@@ -202,25 +207,33 @@ class DownloadRunner @Inject constructor(
             )
             log.close()
             queue.setRunning(download.id, null)
-            if (error !is CancellationException && !waitsForNetwork) DownloadNotifications.postResult(context, running.title ?: download.url, failure)
+            if (error !is CancellationException && !waitsForNetwork) {
+                val title = running.title ?: download.url
+                DownloadNotifications.postResult(context, download.id, title, failure)
+                // Why, and only why: a title first would push the reason out of a toast's two lines - its notification names it.
+                failure?.let { context.toast(it.presentation.rowRes) }
+            }
             waitsForNetwork
         }
     }
 
     /**
-     * Downloads [download], saying what it does to [onEvent]. The Most replayed graph its page hands its player, where it has
+     * Downloads [queued], saying what it does to [onEvent]. The Most replayed graph its page hands its player, where it has
      * one - see [PlayerHotspots] - read beside the download: for what is saved with no graph of its own.
      */
     private suspend fun download(
-        download: Download,
+        queued: Download,
         preferences: DownloaderPreferences,
         workspace: File,
         onFound: (MediaInfo) -> Unit,
         onEvent: (DownloadEvent) -> Unit,
     ): String? = coroutineScope {
-        val outputDir = downloadFolderOf(preferences, download.choices.kind)
-        val extraction = resolver.resolveForDownload(download.url, preferences)
+        val extraction = resolver.resolveForDownload(queued.url, preferences)
         val info = extraction.info
+        // Downloaded as what its link serves - see MediaInfo.kindFor - and kept as that from here on.
+        val kind = info.kindFor(queued.choices.kind)
+        val download = if (kind == queued.choices.kind) queued else queued.copy(choices = queued.choices.copy(kind = kind)).also { dao.setKind(it.id, kind.name) }
+        val outputDir = downloadFolderOf(preferences, kind)
         dao.setFound(download.id, info.title, info.thumbnailUrl, info.uploader, info.site, info.durationSeconds)
         onFound(info)
         // A sound is found as the song it is first - picked, or looked for now: kept with it where it is saved as that song, so
@@ -257,7 +270,7 @@ class DownloadRunner @Inject constructor(
         // The saved commands added to its kind and for its link, as they stand when it starts, beside the one picked.
         val options = download.options.copy(commandArguments = dao.commandArgumentsFor(download.choices.kind, download.url, download.options.commandArguments))
         directTransfer.formatFor(info, download.choices, options)?.let { format ->
-            directTransfer.download(info, format, workspace, outputDir, onEvent)
+            directTransfer.download(info, format, preferences, workspace, outputDir, onEvent)
             return
         }
 

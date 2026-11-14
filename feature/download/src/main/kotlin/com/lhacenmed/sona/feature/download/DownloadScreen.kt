@@ -55,9 +55,10 @@ import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
  * Where links become songs and videos - Seal's home: a large title saying where things stand, one field a link is pasted or
  * typed into, then what is downloading now and what was saved today - played with a tap, put right where it failed. Every
  * download before is a tap away, in the [HistoryScreen]. A link pasted, typed or shared - [link] - opens in a sheet, is
- * checked at a glance, and is downloaded as audio or video with a tap.
+ * checked at a glance, and is downloaded as audio or video with a tap. Opened from a download's notification, on that download -
+ * [downloadId] - in its sheet.
  */
-data class DownloadScreen(val link: String? = null) : Screen {
+data class DownloadScreen(val link: String? = null, val downloadId: Long? = null) : Screen {
 
     @Composable
     override fun Content() {
@@ -69,12 +70,17 @@ data class DownloadScreen(val link: String? = null) : Screen {
         val linkSheet by viewModel.linkSheet.collectAsStateWithLifecycle()
         val state = rememberDownloadListState()
 
-        // The link this was opened with, opened once - not again as the screen comes back.
+        // What this was opened with - a link, a download - opened once, not again as the screen comes back.
         var hasTakenLink by rememberSaveable { mutableStateOf(false) }
-        LaunchedEffect(link) {
-            if (!hasTakenLink && link != null) viewModel.open(link)
+        LaunchedEffect(link, downloadId) {
+            if (!hasTakenLink) {
+                link?.let(viewModel::open)
+                downloadId?.let { state.openedId = it }
+            }
             hasTakenLink = true
         }
+        // A download queued from here that the library turned out to hold already opens its sheet as it stops.
+        LaunchedEffect(viewModel) { viewModel.alreadySaved.collect { state.openedId = it } }
 
         val downloading = sections?.downloading.orEmpty()
         val today = sections?.today.orEmpty()

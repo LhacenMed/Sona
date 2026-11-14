@@ -36,10 +36,15 @@ class TrackFileChanges @Inject constructor(
 ) {
     /** Renames [track]'s file [name] - its extension kept. */
     suspend fun rename(track: Track, name: String) {
-        val file = File(track.path)
-        val cleanName = name.replace(NotInAName, "_").trim()
-        require(cleanName.isNotEmpty()) { "A name is needed" }
-        relocate(track, File(file.parentFile, if (file.extension.isEmpty()) cleanName else "$cleanName.${file.extension}")) { from, to -> moveFile(from, to) }
+        val extension = File(track.path).extension
+        renameWhole(track, if (extension.isEmpty()) name.trim() else "${name.trim()}.$extension")
+    }
+
+    /** Renames [track]'s file [fileName], whole - its extension with it, as it is typed. */
+    suspend fun renameWhole(track: Track, fileName: String) {
+        val cleanName = fileName.replace(NotInAName, "_").trim()
+        require(cleanName.isNotEmpty() && !cleanName.startsWith(".")) { "A name is needed" }
+        relocate(track, File(File(track.path).parentFile, cleanName)) { from, to -> moveFile(from, to) }
     }
 
     /** Moves [track]'s file into [folder], under its own name. */

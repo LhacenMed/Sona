@@ -55,6 +55,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -63,6 +64,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -96,12 +98,13 @@ data class DownloadSections(val downloading: List<Download>, val today: List<Dow
     val finished: List<Download> get() = today + earlier
 }
 
-/** What the history is narrowed to: songs, audio files, videos, subtitles, or what failed. */
+/** What the history is narrowed to: songs, audio files, videos, subtitles, other files, or what failed. */
 enum class HistoryFilter(@StringRes val labelRes: Int) {
     SONGS(R.string.download_filter_songs),
     AUDIO(R.string.download_kind_audio),
     VIDEO(R.string.download_kind_video),
     SUBTITLES(R.string.download_kind_subtitles),
+    FILES(R.string.download_filter_files),
     FAILED(R.string.download_filter_failed);
 
     fun matches(download: Download): Boolean = when (this) {
@@ -109,6 +112,7 @@ enum class HistoryFilter(@StringRes val labelRes: Int) {
         AUDIO -> download.choices.kind == DownloadKind.AUDIO && !download.choices.savesAsSong
         VIDEO -> download.choices.kind == DownloadKind.VIDEO
         SUBTITLES -> download.choices.kind == DownloadKind.SUBTITLES
+        FILES -> download.choices.kind == DownloadKind.FILE
         FAILED -> download.status == DownloadStatus.FAILED
     }
 }
@@ -297,24 +301,10 @@ class DownloadViewModel @Inject constructor(
         if (link == url && full.chaptersJson != shown.chaptersJson) _linkSheet.value = LinkSheet.Found(shown.copy(chaptersJson = full.chaptersJson))
     }
 
-    /** [url] read as [info]: its song looked for, and the library looked through for it, at once - and downloaded, where asked for already. */
+    /** [url] read as [info]: its song looked for, and the library looked through for it, at once. */
     private fun onFound(url: String, info: MediaInfo) {
         findSong()
         startCheck(url, info)
-        if (_downloadsOnceRead.value && !info.isPlaylist) {
-            _downloadsOnceRead.value = false
-            onDownload()
-        }
-    }
-
-    private val _downloadsOnceRead = MutableStateFlow(false)
-
-    /** Whether Download was pressed while the link was still read: it downloads the moment it is - see [onDownloadOnceRead]. */
-    val downloadsOnceRead: StateFlow<Boolean> = _downloadsOnceRead.asStateFlow()
-
-    /** Download, pressed while the link is still read: done the moment it is read, as the sheet then stands. */
-    fun onDownloadOnceRead() {
-        _downloadsOnceRead.value = true
     }
 
     /**
@@ -341,7 +331,6 @@ class DownloadViewModel @Inject constructor(
 
     fun onDismissLink() {
         readJob?.cancel()
-        _downloadsOnceRead.value = false
         checkJob?.cancel()
         _check.value = null
         _linkSheet.value = null
@@ -350,12 +339,18 @@ class DownloadViewModel @Inject constructor(
     }
 
     /**
-     * Downloads the link - or the playlist's [entries] picked - as the sheet's choices say, as [kind]: kept as the kind to start
-     * from next time. Where it needs the downloader and the downloader is not here, the sheet offers it instead.
+     * Downloads the link - or the playlist's [entries] picked - as the sheet's choices say, as [requestedKind]: kept as the kind
+     * to start from next time. A link that serves a file is downloaded as that file, whatever the sheet was left at. Where it
+     * needs the downloader and the downloader is not here, the sheet offers it instead.
+     *
+     * It never waits: pressed while the link is still read, or the library still looked through, it queues what is known so far
+     * and the download itself finds the rest - its title, the song it is, a copy the library holds already, which stops it and
+     * opens its sheet: see [alreadySaved].
      */
-    fun onDownload(kind: DownloadKind = _sheetChoices.value.kind, entries: List<PlaylistEntry>? = null) {
+    fun onDownload(requestedKind: DownloadKind = _sheetChoices.value.kind, entries: List<PlaylistEntry>? = null) {
         val url = link ?: return
         val info = (_linkSheet.value as? LinkSheet.Found)?.info ?: (_linkSheet.value as? LinkSheet.NeedsDownloader)?.info
+        val kind = info?.kindFor(requestedKind) ?: requestedKind
         val chosen = _sheetChoices.value.copy(kind = kind)
         // Captions alone are a download of their own: what to start from next time stays sound or picture.
         if (kind != choices.value.kind && kind.isMedia) remember { it.copy(kind = kind) }
@@ -376,14 +371,12 @@ class DownloadViewModel @Inject constructor(
         val requests = entries?.map { DownloadRequest(it.url, it.title, it.thumbnailUrl, it.uploader, chosen, options.copy(formatId = null), batch) }
             ?: listOf(DownloadRequest(url, info?.title, info?.thumbnailUrl, info?.uploader, chosen, options))
         val startAt = _startAt.value
-        // Nothing in the library is downloaded again untold: where the check is over and found none of it, it downloads now;
-        // otherwise what it finds - as it goes on finding it - is shown at once.
-        val check = _check.value
-        if (check == null || !kind.isMedia || (check.isDone && requests.none { it.url in check.of(kind) })) {
-            queueRequests(requests, startAt)
-        } else {
-            _downloadsOnceChecked.value = false
+        // Nothing in the library is downloaded again untold: what the check has found of it by now is shown, to pick from.
+        // What it has not found yet, the download finds as it starts.
+        if (kind.isMedia && requests.any { it.url in _check.value?.of(kind).orEmpty() }) {
             _linkSheet.value = LinkSheet.AlreadySaved(requests, kind, startAt)
+        } else {
+            queueRequests(requests, startAt)
         }
     }
 
@@ -403,20 +396,18 @@ class DownloadViewModel @Inject constructor(
         if (requests.isEmpty()) onDismissLink() else queueRequests(requests, sheet.startAt)
     }
 
-    /**
-     * Downloads what [sheet] holds as soon as the check is over: at once where it finds none of it, else left for the user to pick
-     * among what it found.
-     */
-    fun onDownloadOnceChecked(sheet: LinkSheet.AlreadySaved) {
-        _downloadsOnceChecked.value = true
-        if (_check.value?.isDone == true) settleOnceChecked(sheet)
-    }
+    /** The links queued from here, each with the newest download there was before it: what [alreadySaved] watches for. */
+    private val queuedHere = MutableStateFlow<Map<String, Long>>(emptyMap())
 
-    private fun settleOnceChecked(sheet: LinkSheet.AlreadySaved) {
-        if (!_downloadsOnceChecked.value) return
-        _downloadsOnceChecked.value = false
-        val copies = _check.value?.of(sheet.kind).orEmpty()
-        if (sheet.requests.none { it.url in copies }) queueRequests(sheet.requests, sheet.startAt)
+    /**
+     * Each download queued from here that stopped as it started, the library holding it already - found by the download itself,
+     * where Download was pressed before the sheet had: its id, once, for its sheet to open on what was found and offer it again.
+     */
+    val alreadySaved: Flow<Long> = queue.downloads.mapNotNull { all ->
+        val queued = queuedHere.value
+        all.firstOrNull { it.failure == DownloadFailure.ALREADY_SAVED && it.id > (queued[it.url] ?: Long.MAX_VALUE) }
+            ?.also { found -> queuedHere.update { it - found.url } }
+            ?.id
     }
 
     /** The link open - what its sheet's check is of. */
@@ -426,11 +417,6 @@ class DownloadViewModel @Inject constructor(
 
     /** What the library holds of the link open, as it is looked for - null with no link read. See [LibraryCheck]. */
     val libraryCheck: StateFlow<LibraryCheck?> = _check.asStateFlow()
-
-    private val _downloadsOnceChecked = MutableStateFlow(false)
-
-    /** Whether what was asked downloads as soon as the check is over - see [onDownloadOnceChecked]. */
-    val downloadsOnceChecked: StateFlow<Boolean> = _downloadsOnceChecked.asStateFlow()
 
     private var checkJob: Job? = null
 
@@ -450,7 +436,6 @@ class DownloadViewModel @Inject constructor(
             }
             if (entries == null) _song.value?.awaitFound()?.let { song -> find(DownloadKind.AUDIO, listOf(copyQueryOf(url, info, DownloadKind.AUDIO, song))) }
             _check.update { it?.copy(isDone = true) }
-            (_linkSheet.value as? LinkSheet.AlreadySaved)?.let(::settleOnceChecked)
         }
     }
 
@@ -462,6 +447,8 @@ class DownloadViewModel @Inject constructor(
 
     /** Queues [requests], to start at [startAt], and says so. */
     private fun queueRequests(requests: List<DownloadRequest>, startAt: Long?) {
+        val newest = downloads.value?.maxOfOrNull { it.id } ?: 0
+        queuedHere.update { queued -> queued + requests.filterNot { it.options.downloadsAgain }.associate { it.url to newest } }
         queue.add(requests, startAt)
         context.toast(
             if (requests.size == 1) {

@@ -261,7 +261,7 @@ internal fun ThemeMode.isDark(): Boolean =
  * The font at [uri], kept readable across restarts, and the grant on [previousUri] let go - or null, with
  * the user told why, when it is not a `.ttf`. ArchiveTune's custom font picker.
  */
-private fun pickCustomFont(context: Context, uri: Uri, previousUri: String?): CustomFont? {
+internal fun pickCustomFont(context: Context, uri: Uri, previousUri: String?): CustomFont? {
     if (!CustomFontLoader.isSupportedTtf(context, uri)) {
         context.toast(R.string.custom_font_invalid)
         return null

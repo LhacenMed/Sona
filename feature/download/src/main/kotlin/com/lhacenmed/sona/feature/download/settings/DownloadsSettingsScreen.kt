@@ -107,6 +107,7 @@ data object DownloadsSettingsScreen : Screen {
                 listOf(
                     DownloadKind.AUDIO to R.string.downloads_settings_audio_folder_title,
                     DownloadKind.VIDEO to R.string.downloads_settings_video_folder_title,
+                    DownloadKind.FILE to R.string.downloads_settings_file_folder_title,
                 ).forEach { (kind, title) ->
                     val pickFolder = rememberDownloadFolderPicker { folder -> viewModel.updatePreferences { it.withFolder(kind, folder) } }
                     SonaSettingsRow(title = stringResource(title), summary = preferences.folderFor(kind), onClick = pickFolder)

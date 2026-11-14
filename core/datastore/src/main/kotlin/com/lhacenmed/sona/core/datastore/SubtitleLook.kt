@@ -35,3 +35,21 @@ enum class SubtitlePosition(val bottomDp: Int) {
         val Default = MIDDLE
     }
 }
+
+/** The typeface subtitles are set in. */
+enum class SubtitleFont {
+    /** The device's own. */
+    SYSTEM,
+
+    /** The font the app itself is set in - see `AppFont`. */
+    APP,
+
+    /** A font of their own, picked from the device. */
+    CUSTOM,
+    ;
+
+    companion object {
+        /** What it is until the user chooses otherwise. */
+        val Default = SYSTEM
+    }
+}

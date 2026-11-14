@@ -13,7 +13,12 @@ import com.lhacenmed.sona.core.datastore.VideoAspect
 import com.lhacenmed.sona.core.datastore.VideoOrientation
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.datastore.PlayerStyleSettings
+import com.lhacenmed.sona.core.datastore.SubtitleFont
+import com.lhacenmed.sona.core.datastore.ThemeSettings
 import com.lhacenmed.sona.core.datastore.VideoSettings
+import com.lhacenmed.sona.core.designsystem.theme.CustomFontLoader
+import com.lhacenmed.sona.core.designsystem.theme.appTypefaceOf
+import android.graphics.Typeface
 import com.lhacenmed.sona.core.datastore.stateIn
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.vault.VaultRepository
@@ -30,14 +35,19 @@ import com.lhacenmed.sona.feature.video.subtitle.WatchedVideo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -75,6 +85,7 @@ class VideoPlayerViewModel @Inject constructor(
     private val playbackController: PlaybackController,
     vault: VaultRepository,
     private val videoSettings: VideoSettings,
+    themeSettings: ThemeSettings,
     private val playbackSettings: PlaybackSettings,
     private val playerStyleSettings: PlayerStyleSettings,
     private val equalizer: SonaEqualizer,
@@ -125,6 +136,7 @@ class VideoPlayerViewModel @Inject constructor(
     }
 
     val showClock: StateFlow<Boolean> = videoSettings.showClock.stateIn(viewModelScope)
+    val showProgressLine: StateFlow<Boolean> = videoSettings.showProgressLine.stateIn(viewModelScope)
 
     /** Whether the seek bar's end says how long the video is rather than how much is left - every player's, see [PlayerStyleSettings.showsTotalDuration]. */
     val showsTotalDuration: StateFlow<Boolean> = playerStyleSettings.showsTotalDuration.stateIn(viewModelScope)
@@ -164,9 +176,25 @@ class VideoPlayerViewModel @Inject constructor(
     /** The lines of the file's own subtitle track - see [VideoPlayback.subtitleCues]. */
     val subtitleCues = videoPlayback.subtitleCues
 
+    /** The typeface subtitles are set in, as [SubtitleFont] says: the app's own font, or one picked for them - null for the device's. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val subtitleTypeface: Flow<Typeface?> =
+        combine(videoSettings.subtitleFont.flow, videoSettings.subtitleCustomFont.flow, themeSettings.choices.flow) { font, custom, theme ->
+            Triple(font, custom?.uri, theme.font to theme.customFont?.uri)
+        }.distinctUntilChanged().mapLatest { (font, customUri, app) ->
+            when (font) {
+                SubtitleFont.SYSTEM -> null
+                SubtitleFont.APP -> appTypefaceOf(context, app.first, app.second)
+                SubtitleFont.CUSTOM -> customUri?.let { CustomFontLoader.loadTypeface(context, it, CustomFontLoader.Use.SUBTITLES) }
+            }
+        }
+
     internal val subtitleStyle: StateFlow<SubtitleStyle> = with(videoSettings) {
-        merge(subtitleCustomization.flow, subtitleTextSize.flow, subtitleBackdrop.flow, subtitlePosition.flow)
-            .map { readSubtitleStyle() }
+        combine(
+            merge(subtitleCustomization.flow, subtitleTextSize.flow, subtitleBackdrop.flow, subtitlePosition.flow).map { readSubtitleStyle() },
+            // The device's own until the font is read, so subtitles never wait on it.
+            subtitleTypeface.onStart { emit(null) },
+        ) { style, typeface -> style.copy(typeface = typeface) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), readSubtitleStyle())
     }
 

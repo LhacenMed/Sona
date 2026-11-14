@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.core.designsystem.theme
 
+import android.content.Context
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
@@ -8,6 +9,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.core.content.res.ResourcesCompat
 import com.lhacenmed.sona.core.designsystem.R
 import com.lhacenmed.sona.core.model.AppFont
 
@@ -77,4 +79,15 @@ private fun typographyFor(fontFamily: FontFamily): Typography {
             labelSmallEmphasized = labelSmallEmphasized.inFamily(),
         )
     }
+}
+
+/**
+ * The app's [font] as a typeface, for what draws text outside Compose - a video's subtitles: [customFontUri] where it is
+ * [AppFont.CUSTOM], and null for the device's own.
+ */
+suspend fun appTypefaceOf(context: Context, font: AppFont, customFontUri: String?): android.graphics.Typeface? = when (font) {
+    AppFont.POPPINS -> ResourcesCompat.getFont(context, R.font.poppins)
+    AppFont.SYSTEM -> null
+    AppFont.INTER -> ResourcesCompat.getFont(context, R.font.inter_semibold)
+    AppFont.CUSTOM -> customFontUri?.let { CustomFontLoader.loadTypeface(context, it, CustomFontLoader.Use.APP) } ?: ResourcesCompat.getFont(context, R.font.poppins)
 }

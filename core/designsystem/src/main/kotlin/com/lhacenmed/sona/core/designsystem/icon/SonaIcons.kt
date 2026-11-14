@@ -19,9 +19,9 @@ private val Glyphs = Icons.Filled
 private val MirroredGlyphs = Icons.AutoMirrored.Filled
 
 /**
- * Every icon the app draws, by what it means - the one place each is chosen, so one meaning is drawn one way everywhere, and
- * the whole app changes style by changing [Glyphs] and [MirroredGlyphs]. An icon pack replaces any of them - see
- * [SonaIconPack]. The players draw their own set - see [PlayerIcons].
+ * Every icon the app draws, by what it means - the one place each is chosen, so one meaning is drawn one way everywhere, the
+ * players included, and the whole app changes style by changing [Glyphs] and [MirroredGlyphs]. An icon pack replaces any of
+ * them - see [SonaIconPack]. Those Android draws itself - the notifications', the widgets' - are the pack's drawables already.
  */
 object SonaIcons {
     val Add: ImageVector by icon { Glyphs.Add }
@@ -32,14 +32,24 @@ object SonaIcons {
     val ArrowUpward: ImageVector by icon { Glyphs.ArrowUpward }
     val Article: ImageVector by icon { MirroredGlyphs.Article }
     val Artist: ImageVector by icon { Glyphs.Person }
+    val AspectClassic: ImageVector by icon { Glyphs.Crop54 }
+    val AspectCrop: ImageVector by icon { Glyphs.Crop }
+    val AspectExtraWide: ImageVector by icon { Glyphs.PanoramaWideAngle }
+    val AspectFit: ImageVector by icon { Glyphs.FitScreen }
+    val AspectOriginal: ImageVector by icon { Glyphs.CropOriginal }
+    val AspectStretch: ImageVector by icon { Glyphs.ZoomOutMap }
+    val AspectWide: ImageVector by icon { Glyphs.Crop169 }
     val AudioFile: ImageVector by icon { Glyphs.AudioFile }
     val AutoAwesome: ImageVector by icon { Glyphs.AutoAwesome }
     val AutoFixHigh: ImageVector by icon { Glyphs.AutoFixHigh }
+    /** Turning with the device - and, held one way, [OrientationPortrait] and [OrientationLandscape]: the way it stands. */
+    val AutoRotate: ImageVector by icon { Glyphs.ScreenRotation }
     val Backspace: ImageVector by icon { MirroredGlyphs.Backspace }
     val Backup: ImageVector by icon { Glyphs.Backup }
     val Bedtime: ImageVector by icon { Glyphs.Bedtime }
     val Block: ImageVector by icon { Glyphs.Block }
     val Bookmark: ImageVector by icon { Glyphs.Bookmark }
+    val Brightness: ImageVector by icon { Glyphs.BrightnessMedium }
     val BugReport: ImageVector by icon { Glyphs.BugReport }
     val CalendarMonth: ImageVector by icon { Glyphs.CalendarMonth }
     val Check: ImageVector by icon { Glyphs.Check }
@@ -51,6 +61,8 @@ object SonaIcons {
     val CloudDone: ImageVector by icon { Glyphs.CloudDone }
     val CloudOff: ImageVector by icon { Glyphs.CloudOff }
     val Code: ImageVector by icon { Glyphs.Code }
+    /** Closing the player down to where it was opened from. */
+    val Collapse: ImageVector by icon { Glyphs.KeyboardArrowDown }
     val Comment: ImageVector by icon { MirroredGlyphs.Comment }
     val ContentCopy: ImageVector by icon { Glyphs.ContentCopy }
     val ContentCut: ImageVector by icon { Glyphs.ContentCut }
@@ -78,6 +90,7 @@ object SonaIcons {
     val FavoriteBorder: ImageVector by icon { Glyphs.FavoriteBorder }
     val Feedback: ImageVector by icon { Glyphs.Feedback }
     val FileOpen: ImageVector by icon { Glyphs.FileOpen }
+    val File: ImageVector by icon { Glyphs.InsertDriveFile }
     val Fingerprint: ImageVector by icon { Glyphs.Fingerprint }
     val Folder: ImageVector by icon { Glyphs.Folder }
     val FolderOpen: ImageVector by icon { Glyphs.FolderOpen }
@@ -109,13 +122,18 @@ object SonaIcons {
     val Monitor: ImageVector by icon { Glyphs.Monitor }
     val MoreTime: ImageVector by icon { Glyphs.MoreTime }
     val MoreVert: ImageVector by icon { Glyphs.MoreVert }
+    val Muted: ImageVector by icon { MirroredGlyphs.VolumeOff }
     val NewReleases: ImageVector by icon { Glyphs.NewReleases }
     val Notes: ImageVector by icon { MirroredGlyphs.Notes }
     val Numbers: ImageVector by icon { Glyphs.Numbers }
     val OpenInNew: ImageVector by icon { MirroredGlyphs.OpenInNew }
+    val OrientationLandscape: ImageVector by icon { Glyphs.StayCurrentLandscape }
+    val OrientationPortrait: ImageVector by icon { Glyphs.StayCurrentPortrait }
     val Palette: ImageVector by icon { Glyphs.Palette }
     val Pause: ImageVector by icon { Glyphs.Pause }
+    val PictureInPicture: ImageVector by icon { Glyphs.PictureInPictureAlt }
     val Play: ImageVector by icon { Glyphs.PlayArrow }
+    val PlayAsAudio: ImageVector by icon { Glyphs.Headphones }
     val PlayCircle: ImageVector by icon { Glyphs.PlayCircle }
     val PlayNext: ImageVector by icon { Glyphs.QueuePlayNext }
     val Playlist: ImageVector by icon { MirroredGlyphs.QueueMusic }
@@ -127,13 +145,21 @@ object SonaIcons {
     val Redo: ImageVector by icon { MirroredGlyphs.Redo }
     val Refresh: ImageVector by icon { Glyphs.Refresh }
     val RemoveCircleOutline: ImageVector by icon { Glyphs.RemoveCircleOutline }
+    val Repeat: ImageVector by icon { Glyphs.Repeat }
+    val RepeatOne: ImageVector by icon { Glyphs.RepeatOne }
+    /** Playing the one track, then stopping - the boxed "1" Fossify's player draws it with. */
+    val RepeatStop: ImageVector by icon { Glyphs.LooksOne }
+    val Replay: ImageVector by icon { Glyphs.Replay }
     val RestartAlt: ImageVector by icon { Glyphs.RestartAlt }
     val Restore: ImageVector by icon { Glyphs.Restore }
     val Save: ImageVector by icon { Glyphs.Save }
     val Schedule: ImageVector by icon { Glyphs.Schedule }
+    val Screenshot: ImageVector by icon { Glyphs.Screenshot }
     val Search: ImageVector by icon { Glyphs.Search }
     val SearchOff: ImageVector by icon { Glyphs.SearchOff }
     val Security: ImageVector by icon { Glyphs.Security }
+    /** Points forward; drawn mirrored for the way back. */
+    val SeekForward: ImageVector by icon { Glyphs.PlayArrow }
     val SelectAll: ImageVector by icon { Glyphs.SelectAll }
     val Sell: ImageVector by icon { Glyphs.Sell }
     val Send: ImageVector by icon { MirroredGlyphs.Send }
@@ -142,6 +168,8 @@ object SonaIcons {
     val ShortText: ImageVector by icon { Glyphs.ShortText }
     val ShowChart: ImageVector by icon { MirroredGlyphs.ShowChart }
     val Shuffle: ImageVector by icon { Glyphs.Shuffle }
+    val SkipNext: ImageVector by icon { Glyphs.SkipNext }
+    val SkipPrevious: ImageVector by icon { Glyphs.SkipPrevious }
     val Smartphone: ImageVector by icon { Glyphs.Smartphone }
     val Song: ImageVector by icon { Glyphs.MusicNote }
     val Sort: ImageVector by icon { MirroredGlyphs.Sort }
@@ -165,6 +193,7 @@ object SonaIcons {
     val Video: ImageVector by icon { Glyphs.Movie }
     val VideoFile: ImageVector by icon { Glyphs.VideoFile }
     val VideoLibrary: ImageVector by icon { Glyphs.VideoLibrary }
+    val Volume: ImageVector by icon { MirroredGlyphs.VolumeUp }
     val Warning: ImageVector by icon { Glyphs.Warning }
     val Wifi: ImageVector by icon { Glyphs.Wifi }
     val WifiOff: ImageVector by icon { Glyphs.WifiOff }

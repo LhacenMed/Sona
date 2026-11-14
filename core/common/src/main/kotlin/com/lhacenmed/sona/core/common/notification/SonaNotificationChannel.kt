@@ -97,17 +97,20 @@ object SonaNotificationId {
     const val BACKUP_PAUSED = 4501
     const val BACKUP_FAILED = 4502
     const val DOWNLOAD = 4600
-    const val DOWNLOAD_RESULT = 4601
     const val UPDATE_AVAILABLE = 9999
 
-    /** The id of download [downloadId]'s own notification, while it runs beside the first - shown as [DOWNLOAD]. */
+    /** The id of download [downloadId]'s own notification, while it runs beside others - gathered under [DOWNLOAD]. */
     fun download(downloadId: Long): Int = DOWNLOADS_FROM + (downloadId % DOWNLOADS_COUNT).toInt()
 
     /** The id of download [downloadId]'s notification once it is paused from its own. */
     fun downloadPaused(downloadId: Long): Int = DOWNLOADS_PAUSED_FROM + (downloadId % DOWNLOADS_COUNT).toInt()
 
+    /** The id of the notification saying download [downloadId] was saved, or failed - each download's its own. */
+    fun downloadResult(downloadId: Long): Int = DOWNLOADS_RESULT_FROM + (downloadId % DOWNLOADS_COUNT).toInt()
+
     /** Where the downloads' own ids start, clear of every id above. */
     private const val DOWNLOADS_FROM = 100_000
     private const val DOWNLOADS_PAUSED_FROM = 200_000
+    private const val DOWNLOADS_RESULT_FROM = 300_000
     private const val DOWNLOADS_COUNT = 100_000
 }

@@ -34,6 +34,7 @@ import com.lhacenmed.sona.feature.library.M3U_MIME_TYPE
 import com.lhacenmed.sona.feature.library.M3U_PICKER_MIME_TYPES
 import com.lhacenmed.sona.feature.library.PlaylistDetailScreen
 import com.lhacenmed.sona.feature.library.PlaylistNameDialog
+import java.io.File
 import com.lhacenmed.sona.feature.library.PlaylistPickerDialog
 import com.lhacenmed.sona.feature.library.R
 import com.lhacenmed.sona.feature.library.operation.AddToPrivateDialog
@@ -56,6 +57,7 @@ internal sealed interface FollowUp {
 
     data class PlaylistPicker(override val target: OptionsTarget) : FollowUp
     data class Properties(override val target: OptionsTarget.ForTrack) : FollowUp
+    data class Rename(override val target: OptionsTarget) : FollowUp
     data class ExcludeFolder(override val target: OptionsTarget.ForFolder) : FollowUp
     data class DeletePlaylist(override val target: OptionsTarget.ForPlaylist) : FollowUp
     data class RemoveFromList(override val target: OptionsTarget.ForTrack, val list: RemovableTrackList) : FollowUp
@@ -157,6 +159,11 @@ internal class OptionsActions(
         }
     }
 
+    /** Asks for [target]'s new name - a track's or a video's file, a playlist - where it [isRenamable]. */
+    fun rename(target: OptionsTarget) {
+        if (target.isRenamable) followUp = FollowUp.Rename(target)
+    }
+
     fun endFollowUp() {
         followUp = null
     }
@@ -193,6 +200,40 @@ internal fun OptionsFollowUps(
 
     when (val followUp = actions.followUp) {
         null -> Unit
+
+        is FollowUp.Rename -> when (val target = followUp.target) {
+            is OptionsTarget.ForPlaylist -> {
+                val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+                PlaylistNameDialog(
+                    dialogTitle = stringResource(R.string.playlists_rename_title),
+                    confirmLabel = stringResource(R.string.playlists_rename),
+                    initialName = target.playlist.name,
+                    takenNames = playlists.itemsOrEmpty.filter { it.id != target.playlist.id }.map { it.name },
+                    onDismiss = finish,
+                    onConfirm = { name ->
+                        onActionDone()
+                        viewModel.renamePlaylist(target.playlist.id, name)
+                        finish()
+                    },
+                )
+            }
+
+            // The file's whole name, its extension with it: what is typed is what it is called.
+            is OptionsTarget.ForTrack -> PlaylistNameDialog(
+                dialogTitle = stringResource(R.string.options_rename_file_title),
+                confirmLabel = stringResource(R.string.playlists_rename),
+                initialName = File(target.track.path).name,
+                takenNames = emptyList(),
+                onDismiss = finish,
+                onConfirm = { name ->
+                    onActionDone()
+                    viewModel.renameFile(target.track, name)
+                    finish()
+                },
+            )
+
+            else -> finish()
+        }
 
         is FollowUp.PlaylistPicker -> {
             val target = followUp.target

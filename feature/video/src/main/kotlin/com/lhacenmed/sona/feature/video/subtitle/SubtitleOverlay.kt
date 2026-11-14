@@ -70,6 +70,8 @@ internal data class SubtitleStyle(
     val textSize: SubtitleTextSize,
     val backdrop: SubtitleBackdrop,
     val position: SubtitlePosition,
+    /** The typeface they are set in - null for the device's own. See `SubtitleFont`. */
+    val typeface: Typeface? = null,
 )
 
 /**
@@ -223,7 +225,7 @@ private fun SubtitleView.applyStyle(style: SubtitleStyle, textScale: Float, capt
     setApplyEmbeddedFontSizes(!style.isCustomized)
     if (style.isCustomized) {
         setFixedTextSize(TypedValue.COMPLEX_UNIT_SP, style.textSize.sp * textScale)
-        setStyle(style.backdrop.captionStyle())
+        setStyle(style.backdrop.captionStyle(style.typeface))
     } else {
         setFixedTextSize(TypedValue.COMPLEX_UNIT_SP, SubtitleTextSize.Default.sp * textScale * captionScale)
         setUserDefaultStyle()
@@ -231,17 +233,18 @@ private fun SubtitleView.applyStyle(style: SubtitleStyle, textScale: Float, capt
 }
 
 @OptIn(UnstableApi::class)
-private fun SubtitleBackdrop.captionStyle(): CaptionStyleCompat {
+private fun SubtitleBackdrop.captionStyle(typeface: Typeface?): CaptionStyleCompat {
     val (background, edgeType) = when (this) {
         SubtitleBackdrop.OUTLINE -> Color.TRANSPARENT to CaptionStyleCompat.EDGE_TYPE_OUTLINE
         SubtitleBackdrop.SHADOW -> Color.TRANSPARENT to CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW
         SubtitleBackdrop.BOX -> BoxColor to CaptionStyleCompat.EDGE_TYPE_NONE
     }
-    return CaptionStyleCompat(Color.WHITE, background, Color.TRANSPARENT, edgeType, Color.BLACK, SubtitleTypeface)
+    return CaptionStyleCompat(Color.WHITE, background, Color.TRANSPARENT, edgeType, Color.BLACK, subtitleTypeface(typeface))
 }
 
-private val SubtitleTypeface: Typeface =
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) Typeface.create(Typeface.DEFAULT, SubtitleFontWeight, false) else Typeface.DEFAULT_BOLD
+/** [font] - the device's own while null - at the subtitles' weight, where the device can set one. */
+private fun subtitleTypeface(font: Typeface?): Typeface =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) Typeface.create(font ?: Typeface.DEFAULT, SubtitleFontWeight, false) else font ?: Typeface.DEFAULT_BOLD
 
 /** Behind a line in a box: black, the picture still showing through. */
 private const val BoxColor = 0xB3000000.toInt()

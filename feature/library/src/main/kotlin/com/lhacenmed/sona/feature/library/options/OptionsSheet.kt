@@ -61,6 +61,7 @@ fun OptionsSheet(
                     type = target.typeLabel(),
                     name = target.name(),
                     info = target.infoLine(),
+                    onRename = { actions.rename(target) }.takeIf { target.isRenamable },
                     favorite = favoriteItems?.let { items ->
                         val isFavorite = favorites.containsAll(items)
                         FavoriteToggle(isFavorite) {

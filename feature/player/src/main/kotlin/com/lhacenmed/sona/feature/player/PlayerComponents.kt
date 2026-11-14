@@ -31,16 +31,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lhacenmed.sona.core.datastore.PlayerSliderStyle
 import com.lhacenmed.sona.core.designsystem.component.SonaMarquee
-import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
 
 /** The play button's glyph, the expanded player's and the mini player's alike. */
 internal fun PlaybackUiState.playPauseIcon(): ImageVector =
     when {
-        hasEnded -> PlayerIcons.Replay
-        isPlaying -> PlayerIcons.Pause
-        else -> PlayerIcons.Play
+        hasEnded -> SonaIcons.Replay
+        isPlaying -> SonaIcons.Pause
+        else -> SonaIcons.Play
     }
 
 /**
@@ -51,7 +51,7 @@ internal fun PlaybackUiState.playPauseIcon(): ImageVector =
 const val InactiveToggleAlpha = PlayerSecondaryAlpha
 
 internal fun favoriteIcon(isFavorite: Boolean): ImageVector =
-    if (isFavorite) PlayerIcons.Favorite else PlayerIcons.FavoriteBorder
+    if (isFavorite) SonaIcons.Favorite else SonaIcons.FavoriteBorder
 
 @Composable
 internal fun PlayerTitleText(

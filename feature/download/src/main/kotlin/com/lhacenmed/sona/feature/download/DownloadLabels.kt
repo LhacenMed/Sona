@@ -24,9 +24,10 @@ internal val DownloadKind.labelRes: Int
         DownloadKind.VIDEO -> R.string.download_kind_video
         DownloadKind.AUDIO -> R.string.download_kind_audio
         DownloadKind.SUBTITLES -> R.string.download_kind_subtitles
+        DownloadKind.FILE -> R.string.download_kind_file
     }
 
-/** How a saved download of this kind is opened: played - or, its captions alone, opened in an app that reads them. */
+/** How a saved download of this kind is opened: played - or, its captions alone or a file, opened in an app that reads them. */
 internal val DownloadKind.openLabelRes: Int get() = if (isMedia) R.string.download_play else R.string.download_open
 
 internal val DownloadKind.openIcon: ImageVector get() = if (isMedia) SonaIcons.Play else SonaIcons.FileOpen
@@ -37,6 +38,7 @@ internal val DownloadKind.icon: ImageVector
         DownloadKind.VIDEO -> SonaIcons.Video
         DownloadKind.AUDIO -> SonaIcons.Song
         DownloadKind.SUBTITLES -> SonaIcons.Subtitles
+        DownloadKind.FILE -> SonaIcons.File
     }
 
 internal val VideoQuality.labelRes: Int

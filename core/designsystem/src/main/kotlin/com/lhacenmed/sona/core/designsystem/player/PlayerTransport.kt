@@ -22,7 +22,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import com.lhacenmed.sona.core.designsystem.R
-import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 
 /** What a [PlayerTransport] is drawn in: its glyphs, and what play and the skips stand on. */
@@ -67,7 +67,7 @@ fun PlayerTransport(
     PlayerButtonGroup(modifier = modifier, spacing = spacing) {
         leading()
         playerButton(
-            icon = PlayerIcons.SkipPrevious,
+            icon = SonaIcons.SkipPrevious,
             label = previousLabel,
             color = colors.content,
             onClick = onPrevious?.takeIf { enabled },
@@ -93,7 +93,7 @@ fun PlayerTransport(
             menuContent = { menuState -> PlayerMenuItem(playLabel, onPlayPause.takeIf { enabled }, menuState::dismiss) },
         )
         playerButton(
-            icon = PlayerIcons.SkipNext,
+            icon = SonaIcons.SkipNext,
             label = nextLabel,
             color = colors.content,
             onClick = onNext?.takeIf { enabled },

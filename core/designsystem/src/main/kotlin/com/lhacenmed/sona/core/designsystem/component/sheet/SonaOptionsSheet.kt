@@ -28,7 +28,8 @@ private const val DISABLED_OPTION_ALPHA = 0.38f
  * The header every options sheet opens with - Auxio's `menuCover`/`menuType`/`menuName`/`menuInfo`: [cover],
  * then [type], [name] and [info] beside it, and the line the header ends on, edge to edge. Given to
  * [SonaBottomSheet] as its header. What can be favorited has its [favorite] heart at the header's end,
- * centred on it - as a detail screen's header has.
+ * centred on it - as a detail screen's header has. What can be renamed is, by pressing its name - [onRename] - which
+ * answers with no ripple: the name is not a button, it is the thing itself.
  */
 @Composable
 fun SonaOptionsSheetHeader(
@@ -37,6 +38,7 @@ fun SonaOptionsSheetHeader(
     name: String,
     info: String,
     favorite: FavoriteToggle? = null,
+    onRename: (() -> Unit)? = null,
 ) {
     Column {
         Row(
@@ -62,6 +64,7 @@ fun SonaOptionsSheetHeader(
                     style = MaterialTheme.typography.titleLarge,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = if (onRename != null) Modifier.clickable(interactionSource = null, indication = null, onClick = onRename) else Modifier,
                 )
                 Text(
                     text = info,

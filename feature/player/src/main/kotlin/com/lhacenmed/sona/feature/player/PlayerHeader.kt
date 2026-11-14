@@ -28,7 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverArt
-import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.player.PlayerBarButton
 import com.lhacenmed.sona.core.model.Track
 
@@ -55,7 +55,7 @@ internal fun NowPlayingHeader(
         pluralStringResource(if (isAllVideos) R.plurals.player_video_count else R.plurals.player_song_count, queue.size, queue.size)
     val kind = playingFrom?.kindLabel()
     PlayerHeaderBar(modifier) {
-        PlayerBarButton(PlayerIcons.ChevronDown, stringResource(R.string.player_collapse), contentColor, onCollapse)
+        PlayerBarButton(SonaIcons.Collapse, stringResource(R.string.player_collapse), contentColor, onCollapse)
         PlayerHeaderTitle(
             title = playingFrom?.title() ?: stringResource(R.string.player_now_playing),
             subtitle = if (kind != null) stringResource(R.string.player_playing_from_detail, kind, count) else count,
@@ -63,7 +63,7 @@ internal fun NowPlayingHeader(
             onClick = onOpenPlayingFrom,
             modifier = Modifier.weight(1f).padding(start = 4.dp),
         )
-        PlayerBarButton(PlayerIcons.Equalizer, stringResource(R.string.player_equalizer), contentColor, onOpenEqualizer)
+        PlayerBarButton(SonaIcons.Equalizer, stringResource(R.string.player_equalizer), contentColor, onOpenEqualizer)
     }
 }
 
@@ -80,7 +80,7 @@ internal fun LyricsHeader(
     modifier: Modifier = Modifier,
 ) {
     PlayerHeaderBar(modifier) {
-        PlayerBarButton(PlayerIcons.ChevronDown, stringResource(R.string.player_close), contentColor, onClose)
+        PlayerBarButton(SonaIcons.Collapse, stringResource(R.string.player_close), contentColor, onClose)
         SonaCoverArt(
             coverArtUri = track.coverArtUri,
             contentDescription = null,
@@ -93,7 +93,7 @@ internal fun LyricsHeader(
             color = contentColor,
             modifier = Modifier.weight(1f).padding(start = 12.dp),
         )
-        PlayerBarButton(PlayerIcons.More, stringResource(R.string.player_more_options), contentColor, onMenuClick)
+        PlayerBarButton(SonaIcons.MoreVert, stringResource(R.string.player_more_options), contentColor, onMenuClick)
     }
 }
 

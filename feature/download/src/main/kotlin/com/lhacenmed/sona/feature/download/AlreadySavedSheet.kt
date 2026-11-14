@@ -61,26 +61,24 @@ internal fun LibraryCheckLine(check: LibraryCheck?, kind: DownloadKind, urls: Se
 }
 
 /**
- * What was asked, as the library is looked through for it - opened the moment Download is pressed, before the look is over: what
- * it finds, as it finds it, each picked to be downloaded again, none to begin with; then Download, of the rest and those picked -
- * or, while it still looks, Download once it is checked, which downloads at once where it finds none of it. Cancel first.
+ * What was asked that the library holds already - opened as Download is pressed, where the look through the library has found
+ * some of it: each copy found, picked to be downloaded again, none to begin with; then Download, of the rest and those picked.
+ * Cancel first.
  */
 @Composable
 internal fun AlreadySavedSheet(sheet: LinkSheet.AlreadySaved, viewModel: DownloadViewModel) {
     val context = LocalContext.current
     val check by viewModel.libraryCheck.collectAsStateWithLifecycle()
-    val downloadsOnceChecked by viewModel.downloadsOnceChecked.collectAsStateWithLifecycle()
     val picks = rememberSelectionState()
     val copies = check?.of(sheet.kind).orEmpty()
     val urls = sheet.requests.map(DownloadRequest::url).toSet()
     val found = sheet.requests.filter { it.url in copies }
-    val isDone = check?.isDone != false
     val count = sheet.requests.size - found.size + found.count { picks.isSelected(it.url) }
     val cancelLabel = stringResource(R.string.download_cancel)
-    val downloadLabel = when {
-        !isDone -> stringResource(if (downloadsOnceChecked) R.string.download_once_checked_waiting else R.string.download_once_checked)
-        sheet.requests.size == 1 -> stringResource(if (found.isEmpty()) R.string.download_download else R.string.download_fix_download_anyway)
-        else -> pluralStringResource(R.plurals.download_download_count, count, count)
+    val downloadLabel = if (sheet.requests.size == 1) {
+        stringResource(R.string.download_fix_download_anyway)
+    } else {
+        pluralStringResource(R.plurals.download_download_count, count, count)
     }
     SonaColumnBottomSheet(onDismissRequest = viewModel::onDismissLink, title = stringResource(R.string.download_failure_already_saved)) { scope ->
         LibraryCheckLine(check, sheet.kind, urls, Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
@@ -110,11 +108,11 @@ internal fun AlreadySavedSheet(sheet: LinkSheet.AlreadySaved, viewModel: Downloa
         }
         SonaActionButtonGroup(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp)) {
             actionButton(label = cancelLabel, onClick = { scope.dismiss() })
-            actionButton(label = downloadLabel, enabled = !(isDone && sheet.requests.size > 1 && count == 0), onClick = {
-                when {
-                    !isDone -> viewModel.onDownloadOnceChecked(sheet)
-                    sheet.requests.size == 1 -> viewModel.onDownloadAgain(sheet, urls)
-                    else -> viewModel.onDownloadAgain(sheet, found.map { it.url }.filter(picks::isSelected).toSet())
+            actionButton(label = downloadLabel, enabled = !(sheet.requests.size > 1 && count == 0), onClick = {
+                if (sheet.requests.size == 1) {
+                    viewModel.onDownloadAgain(sheet, urls)
+                } else {
+                    viewModel.onDownloadAgain(sheet, found.map { it.url }.filter(picks::isSelected).toSet())
                 }
             })
         }

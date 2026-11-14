@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.coerceIn
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lhacenmed.sona.core.designsystem.component.SonaIconButtonGroup
-import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.iconTogglePressShapes
@@ -78,9 +78,9 @@ object PlayerControls {
 /** The repeat control's glyph for [this] mode - every player's. */
 fun RepeatMode.transportIcon(): ImageVector =
     when (this) {
-        RepeatMode.OFF, RepeatMode.ALL -> PlayerIcons.Repeat
-        RepeatMode.ONE -> PlayerIcons.RepeatOne
-        RepeatMode.STOP_AFTER_CURRENT -> PlayerIcons.RepeatStop
+        RepeatMode.OFF, RepeatMode.ALL -> SonaIcons.Repeat
+        RepeatMode.ONE -> SonaIcons.RepeatOne
+        RepeatMode.STOP_AFTER_CURRENT -> SonaIcons.RepeatStop
     }
 
 /**

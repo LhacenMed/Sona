@@ -14,7 +14,8 @@ import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.feature.library.R
 
 /**
- * Asks for a playlist's name, whether it is being created or renamed.
+ * Asks for a playlist's name, whether it is being created or renamed - and, with no [takenNames] to keep clear of, for any
+ * other name the options ask for: a file's.
  *
  * The two rules are the reference app's: a name cannot be blank, and cannot be one already in use.
  * Both are checked as the user types and shown on the field rather than as a toast after the fact,

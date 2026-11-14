@@ -175,6 +175,7 @@ private fun SavedSheet(download: Download, viewModel: DownloadViewModel, onDismi
                                 DownloadKind.AUDIO -> SonaIcons.AudioFile
                                 DownloadKind.VIDEO -> SonaIcons.VideoFile
                                 DownloadKind.SUBTITLES -> SonaIcons.Description
+                                DownloadKind.FILE -> SonaIcons.File
                             },
                             value = listOfNotNull(folder, savedOn).joinToString(InfoSeparator),
                             onClick = {

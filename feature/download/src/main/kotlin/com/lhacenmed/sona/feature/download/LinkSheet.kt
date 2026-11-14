@@ -116,43 +116,44 @@ private fun MediaSheet(info: MediaInfo?, preview: LinkPreview?, viewModel: Downl
     val pickedFormat by viewModel.pickedFormat.collectAsStateWithLifecycle()
     val song by viewModel.song.collectAsStateWithLifecycle()
     val check by viewModel.libraryCheck.collectAsStateWithLifecycle()
-    val downloadsOnceRead by viewModel.downloadsOnceRead.collectAsStateWithLifecycle()
     val preferences by viewModel.preferences.collectAsStateWithLifecycle()
     var picker by remember { mutableStateOf<MediaPicker?>(null) }
-    val size = info?.estimatedSizeBytes(choices, pickedFormat)?.let { Formatter.formatShortFileSize(context, it) }
+    // A link that serves a file is downloaded as that file: no kind to pick, nothing of a video's to choose - its name, its size.
+    val kind = info?.kindFor(choices.kind) ?: choices.kind
+    val size = info?.estimatedSizeBytes(choices.copy(kind = kind), pickedFormat)?.let { Formatter.formatShortFileSize(context, it) }
     SonaBottomSheet(onDismissRequest = viewModel::onDismissLink, header = { MediaHeader(info, preview) }) {
         Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
-            KindChoice(choices.kind) { kind -> viewModel.onSheetChoicesChange { it.copy(kind = kind) } }
-            val quality = qualityRow(info, choices) { picker = MediaPicker.QUALITY }
-            val track = audioTrackRow(info, choices) { picker = MediaPicker.AUDIO_TRACK }
-            val subtitles = subtitlesRow(info, choices, options, preferences.transcribes) { picker = MediaPicker.SUBTITLES }
-            SonaRowGroup(
-                when (choices.kind) {
-                    DownloadKind.VIDEO -> listOf(quality, track, subtitles)
-                    DownloadKind.AUDIO -> listOfNotNull(
-                        saveAsRow(choices.savesAsSong) { savesAsSong -> viewModel.onSheetChoicesChange(forEveryDownload = true) { it.copy(savesAsSong = savesAsSong) } },
-                        songRow(info, song) { picker = MediaPicker.SONG }.takeIf { choices.savesAsSong },
-                        track,
-                        quality,
-                    )
-                    DownloadKind.SUBTITLES -> listOf(subtitles)
-                },
-                modifier = Modifier.padding(top = 16.dp),
-            )
-            SonaRowGroup(listOf(moreOptionsRow(enabled = info != null) { picker = MediaPicker.MORE_OPTIONS }), modifier = Modifier.padding(top = 12.dp))
-            if (info != null && choices.kind.isMedia) LibraryCheckLine(check, choices.kind, setOfNotNull(viewModel.openLink), Modifier.padding(top = 16.dp))
-            // Pressed while the link is read, it says so and downloads the moment it is - never a button that does nothing.
+            if (kind != DownloadKind.FILE) {
+                KindChoice(choices.kind) { picked -> viewModel.onSheetChoicesChange { it.copy(kind = picked) } }
+                val quality = qualityRow(info, choices) { picker = MediaPicker.QUALITY }
+                val track = audioTrackRow(info, choices) { picker = MediaPicker.AUDIO_TRACK }
+                val subtitles = subtitlesRow(info, choices, options, preferences.transcribes) { picker = MediaPicker.SUBTITLES }
+                SonaRowGroup(
+                    when (choices.kind) {
+                        DownloadKind.VIDEO -> listOf(quality, track, subtitles)
+                        DownloadKind.AUDIO -> listOfNotNull(
+                            saveAsRow(choices.savesAsSong) { savesAsSong -> viewModel.onSheetChoicesChange(forEveryDownload = true) { it.copy(savesAsSong = savesAsSong) } },
+                            songRow(info, song) { picker = MediaPicker.SONG }.takeIf { choices.savesAsSong },
+                            track,
+                            quality,
+                        )
+                        DownloadKind.SUBTITLES -> listOf(subtitles)
+                        // Never the sheet's own choice: a download is a file only where its link serves one - see kind.
+                        DownloadKind.FILE -> emptyList()
+                    },
+                    modifier = Modifier.padding(top = 16.dp),
+                )
+                SonaRowGroup(listOf(moreOptionsRow(enabled = info != null) { picker = MediaPicker.MORE_OPTIONS }), modifier = Modifier.padding(top = 12.dp))
+            }
+            if (info != null && kind.isMedia) LibraryCheckLine(check, kind, setOfNotNull(viewModel.openLink), Modifier.padding(top = 16.dp))
+            // Pressed while the link is read, it downloads all the same: the download reads what is left - see onDownload.
             DownloadButton(
-                label = when {
-                    info == null && downloadsOnceRead -> stringResource(R.string.download_once_read)
-                    size != null -> stringResource(R.string.download_download_size, size)
-                    else -> stringResource(R.string.download_download)
-                },
+                label = if (size != null) stringResource(R.string.download_download_size, size) else stringResource(R.string.download_download),
                 // Captions alone, once read, only where there are some picked to save.
-                enabled = info == null || choices.kind.isMedia || info.pickedCaptions(choices, options, Locale.getDefault().language, preferences.transcribes).isNotEmpty(),
+                enabled = info == null || kind != DownloadKind.SUBTITLES || info.pickedCaptions(choices, options, Locale.getDefault().language, preferences.transcribes).isNotEmpty(),
                 viewModel = viewModel,
-                onDownload = { if (info == null) viewModel.onDownloadOnceRead() else viewModel.onDownload() },
-                modifier = Modifier.padding(top = 20.dp),
+                onDownload = { viewModel.onDownload() },
+                modifier = Modifier.padding(top = if (kind == DownloadKind.FILE) 0.dp else 20.dp),
             )
         }
     }

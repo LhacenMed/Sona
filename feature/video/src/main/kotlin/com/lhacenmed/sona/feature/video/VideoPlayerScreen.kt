@@ -78,7 +78,7 @@ import com.lhacenmed.sona.feature.video.controls.VideoControlSlots
 import com.lhacenmed.sona.feature.video.controls.VideoControlsLayout
 import com.lhacenmed.sona.feature.video.controls.VideoControlsState
 import com.lhacenmed.sona.feature.video.controls.VideoElapsedTime
-import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.player.LocalPlayerCheckedColors
 import com.lhacenmed.sona.core.designsystem.player.PlayerButtonGroup
 import com.lhacenmed.sona.core.designsystem.player.PlayerCheckedColors
@@ -148,6 +148,7 @@ internal fun VideoPlayerScreen(
     val session by viewModel.session.collectAsStateWithLifecycle()
     val gestureSettings by viewModel.gestureSettings.collectAsStateWithLifecycle()
     val showClock by viewModel.showClock.collectAsStateWithLifecycle()
+    val showProgressLine by viewModel.showProgressLine.collectAsStateWithLifecycle()
     val showsTotalDuration by viewModel.showsTotalDuration.collectAsStateWithLifecycle()
     val subtitles by viewModel.subtitles.state.collectAsStateWithLifecycle()
     val subtitleStyle by viewModel.subtitleStyle.collectAsStateWithLifecycle()
@@ -350,7 +351,7 @@ internal fun VideoPlayerScreen(
                     .padding(12.dp),
             )
         }
-        if (!areControlsUp && !session.isLocked && panel == null) {
+        if (showProgressLine && !areControlsUp && !session.isLocked && panel == null) {
             AmbientProgress(position, playback.durationMs, Modifier.align(Alignment.BottomCenter))
         }
 
@@ -484,22 +485,22 @@ private fun PlayerControls(
     // Read as the position moves, but changing only as another chapter starts: the bar composes once a chapter.
     val chapterIndex by remember(chapters, position) { derivedStateOf { chapters.indexAt(position.positionMs) } }
     val topActions = listOf(
-        VideoAction(PlayerIcons.Headphones, stringResource(R.string.video_play_as_audio), viewModel::onPlayAsAudio),
+        VideoAction(SonaIcons.PlayAsAudio, stringResource(R.string.video_play_as_audio), viewModel::onPlayAsAudio),
         VideoAction(
-            icon = PlayerIcons.Captions,
+            icon = SonaIcons.Subtitles,
             label = stringResource(R.string.video_tracks),
             onClick = { onOpenPanel(VideoPanel.TRACKS) },
             checked = isShowingSubtitles,
         ),
-        VideoAction(PlayerIcons.More, stringResource(R.string.video_more), { onOpenPanel(VideoPanel.MORE) }),
+        VideoAction(SonaIcons.MoreVert, stringResource(R.string.video_more), { onOpenPanel(VideoPanel.MORE) }),
     )
     val speed = speedLabel(playback.playbackSpeed)
     val speedName = stringResource(R.string.video_speed)
     val trailingActions = listOf(
-        VideoAction(PlayerIcons.Fit, stringResource(R.string.video_aspect), onCycleAspect),
-        VideoAction(PlayerIcons.PictureInPicture, stringResource(R.string.video_floating_window), onClick = onFloat),
+        VideoAction(session.aspect.icon, stringResource(R.string.video_aspect), onCycleAspect),
+        VideoAction(SonaIcons.PictureInPicture, stringResource(R.string.video_floating_window), onClick = onFloat),
         VideoAction(session.orientation.icon, stringResource(session.orientation.labelRes), onCycleOrientation),
-        VideoAction(PlayerIcons.Queue, stringResource(R.string.video_queue), { onOpenPanel(VideoPanel.QUEUE) }),
+        VideoAction(SonaIcons.QueueMusic, stringResource(R.string.video_queue), { onOpenPanel(VideoPanel.QUEUE) }),
     )
     // Every control within it that is on - the subtitles shown, play while paused - in the player's own second accent.
     val checkedColors = remember { PlayerCheckedColors(VideoPlayerTokens.CheckedContainer, VideoPlayerTokens.OnCheckedContainer) }
@@ -536,7 +537,7 @@ private fun PlayerControls(
                 times = { modifier -> VideoTimes(position, durationMs, scrub, showsTotalDuration, viewModel::onToggleEndTime, modifier) },
                 elapsedTime = { modifier -> VideoElapsedTime(position, durationMs, scrub, modifier) },
                 endTime = { modifier -> VideoEndTime(position, durationMs, scrub, showsTotalDuration, viewModel::onToggleEndTime, modifier) },
-                leadingActions = { VideoBarButton(VideoAction(PlayerIcons.LockOpen, stringResource(R.string.video_lock), onLock)) },
+                leadingActions = { VideoBarButton(VideoAction(SonaIcons.LockOpen, stringResource(R.string.video_lock), onLock)) },
                 trailingActions = {
                     PlayerButtonGroup {
                         playerTextButton(speed, speedName, VideoPlayerTokens.ContentColor) { onOpenPanel(VideoPanel.SPEED) }
@@ -572,7 +573,7 @@ private fun LockedControls(onUnlock: () -> Unit, onHint: () -> Unit) {
                 .combinedClickable(role = Role.Button, onClick = onHint, onLongClick = onUnlock)
                 .padding(start = 14.dp, end = 18.dp),
         ) {
-            Icon(PlayerIcons.Locked, contentDescription = null, tint = VideoPlayerTokens.ContentColor, modifier = Modifier.size(18.dp))
+            Icon(SonaIcons.Lock, contentDescription = null, tint = VideoPlayerTokens.ContentColor, modifier = Modifier.size(18.dp))
             PlayerText(stringResource(R.string.video_hold_to_unlock), VideoPlayerType.Pill)
         }
     }
@@ -587,14 +588,14 @@ private fun moreActions(
     onOpenEqualizer: () -> Unit,
 ): List<VideoAction> = listOfNotNull(
     VideoAction(
-        icon = if (playback.isMuted) PlayerIcons.Muted else PlayerIcons.Volume,
+        icon = if (playback.isMuted) SonaIcons.Muted else SonaIcons.Volume,
         label = stringResource(if (playback.isMuted) R.string.video_unmute else R.string.video_mute),
         onClick = viewModel::onToggleMute,
     ),
     // The music's equalizer: a video plays on the same sound, so it is shaped by it just the same.
-    VideoAction(PlayerIcons.Equalizer, stringResource(R.string.video_equalizer), onOpenEqualizer),
+    VideoAction(SonaIcons.Equalizer, stringResource(R.string.video_equalizer), onOpenEqualizer),
     // A Private Folder video is never saved out to the gallery.
-    VideoAction(PlayerIcons.Screenshot, stringResource(R.string.video_screenshot), onScreenshot)
+    VideoAction(SonaIcons.Screenshot, stringResource(R.string.video_screenshot), onScreenshot)
         .takeUnless { playback.isPrivate },
 )
 

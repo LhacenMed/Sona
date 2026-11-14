@@ -9,10 +9,10 @@ import kotlin.reflect.KProperty
 
 /**
  * The app's icon pack: vector drawables that draw its icons, each everywhere it is drawn. A drawable named after an icon - its
- * name in snake case, after `icon_` for [SonaIcons]' and `icon_player_` for [PlayerIcons]' - in any module's resources is drawn
- * in its place: `icon_delete.xml` for [SonaIcons.Delete], `icon_player_play.xml` for [PlayerIcons.Play]. An SVG becomes one
- * through Android Studio's Vector Asset tool. A [SonaIcons] icon the pack has none for is drawn as Material draws it, so a pack
- * can be partial; every [PlayerIcons] icon is one of these drawables. See `docs/ICONS.md`.
+ * name in snake case, after `icon_` - in any module's resources is drawn in its place: `icon_delete.xml` for [SonaIcons.Delete].
+ * An SVG becomes one through Android Studio's Vector Asset tool. An icon the pack has none for is drawn as Material draws it, so
+ * a pack can be partial. Those Android draws itself - the notifications', the widgets' - are such drawables already: Material's
+ * own glyphs, exported. See `docs/ICONS.md`.
  */
 object SonaIconPack {
     private var resources: Resources? = null

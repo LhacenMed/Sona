@@ -1,17 +1,23 @@
 package com.lhacenmed.sona.feature.settings.screen
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.datastore.SubtitleBackdrop
+import com.lhacenmed.sona.core.datastore.SubtitleFont
 import com.lhacenmed.sona.core.datastore.SubtitlePosition
 import com.lhacenmed.sona.core.datastore.SubtitleTextSize
 import com.lhacenmed.sona.core.datastore.VideoSettings
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.core.designsystem.theme.CustomFontLoader
 import com.lhacenmed.sona.feature.settings.R
+import com.lhacenmed.sona.feature.settings.appearance.pickCustomFont
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsChoiceItem
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsList
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsNavigationItem
@@ -30,6 +36,7 @@ data object VideoScreen : Screen {
         val viewModel: VideoSettingsViewModel = hiltViewModel()
         val keepAspect by viewModel.keepAspect.collectAsStateWithLifecycle()
         val showClock by viewModel.showClock.collectAsStateWithLifecycle()
+        val showProgressLine by viewModel.showProgressLine.collectAsStateWithLifecycle()
         val resume by viewModel.resume.collectAsStateWithLifecycle()
         val gestures by viewModel.gestures.collectAsStateWithLifecycle()
         val doubleTapSeek by viewModel.doubleTapSeek.collectAsStateWithLifecycle()
@@ -42,6 +49,13 @@ data object VideoScreen : Screen {
         val subtitleTextSize by viewModel.subtitleTextSize.collectAsStateWithLifecycle()
         val subtitleBackdrop by viewModel.subtitleBackdrop.collectAsStateWithLifecycle()
         val subtitlePosition by viewModel.subtitlePosition.collectAsStateWithLifecycle()
+        val subtitleFont by viewModel.subtitleFont.collectAsStateWithLifecycle()
+        val subtitleCustomFont by viewModel.subtitleCustomFont.collectAsStateWithLifecycle()
+        val context = LocalContext.current
+        val subtitleFontPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) pickCustomFont(context, uri, previousUri = subtitleCustomFont?.uri)?.let(viewModel::setSubtitleCustomFont)
+        }
+        val pickSubtitleFont = { subtitleFontPicker.launch(CustomFontLoader.supportedMimeTypes) }
         val secondsFormat = stringResource(R.string.seconds_format)
         val speedFormat = stringResource(R.string.video_speed_format)
 
@@ -63,6 +77,12 @@ data object VideoScreen : Screen {
                     summary = stringResource(R.string.video_show_clock_summary),
                     checked = showClock,
                     onCheckedChange = viewModel::setShowClock,
+                )
+                SettingsSwitchItem(
+                    title = stringResource(R.string.video_show_progress_line_title),
+                    summary = stringResource(R.string.video_show_progress_line_summary),
+                    checked = showProgressLine,
+                    onCheckedChange = viewModel::setShowProgressLine,
                 )
             }
 
@@ -95,6 +115,23 @@ data object VideoScreen : Screen {
                     selectedIndex = subtitlePosition.ordinal,
                     onSelect = { viewModel.setSubtitlePosition(SubtitlePosition.entries[it]) },
                     enabled = subtitleCustomization,
+                )
+                SettingsChoiceItem(
+                    title = stringResource(R.string.video_subtitle_font_title),
+                    options = SubtitleFont.entries.map { it.label() },
+                    selectedIndex = subtitleFont.ordinal,
+                    onSelect = { index ->
+                        val font = SubtitleFont.entries[index]
+                        // The custom font becomes the font once one is picked, so it is never custom without one.
+                        if (font == SubtitleFont.CUSTOM && subtitleCustomFont == null) pickSubtitleFont() else viewModel.setSubtitleFont(font)
+                    },
+                    enabled = subtitleCustomization,
+                )
+                SettingsNavigationItem(
+                    title = stringResource(R.string.video_subtitle_custom_font_title),
+                    summary = subtitleCustomFont?.name?.ifBlank { null } ?: stringResource(R.string.custom_font_summary),
+                    onClick = pickSubtitleFont,
+                    enabled = subtitleCustomization && subtitleFont == SubtitleFont.CUSTOM,
                 )
                 SettingsSwitchItem(
                     title = stringResource(R.string.video_resume_title),
@@ -164,6 +201,16 @@ private fun SubtitleTextSize.label(): String =
             SubtitleTextSize.SMALL -> R.string.video_subtitle_text_size_small
             SubtitleTextSize.MEDIUM -> R.string.video_subtitle_text_size_medium
             SubtitleTextSize.LARGE -> R.string.video_subtitle_text_size_large
+        },
+    )
+
+@Composable
+private fun SubtitleFont.label(): String =
+    stringResource(
+        when (this) {
+            SubtitleFont.SYSTEM -> R.string.font_system
+            SubtitleFont.APP -> R.string.video_subtitle_font_app
+            SubtitleFont.CUSTOM -> R.string.font_custom
         },
     )
 

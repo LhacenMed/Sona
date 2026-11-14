@@ -101,7 +101,7 @@ internal fun SonaBottomSheetScope.ActiveDownloadContent(download: Download, view
     }
     ShowLogRow(download.id)
     // One video or one sound - a playlist's are each played once saved.
-    if (running != null && running.itemCount == null && liveAll[download.id]?.isPlayable == true) {
+    if (running != null && running.itemCount == null && download.choices.kind.isMedia && liveAll[download.id]?.isPlayable == true) {
         Button(
             onClick = {
                 viewModel.onPlayDownloading(download)

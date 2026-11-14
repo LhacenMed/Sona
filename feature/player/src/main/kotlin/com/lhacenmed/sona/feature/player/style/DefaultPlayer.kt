@@ -55,7 +55,7 @@ import androidx.compose.ui.util.lerp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.datastore.PlayerAppearance
 import com.lhacenmed.sona.core.datastore.PlayerSliderStyle
-import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.player.PlayerButtonGroup
 import com.lhacenmed.sona.core.designsystem.player.PlayerControls
 import com.lhacenmed.sona.core.designsystem.player.PlayerTimes
@@ -349,7 +349,7 @@ private fun DefaultTitleRow(
             if (onToggleFavorite != null) {
                 playerButton(favoriteIcon(isFavorite), likeLabel, colors.content, onToggleFavorite, checked = isFavorite)
             }
-            playerButton(PlayerIcons.More, moreLabel, colors.content, onMenuClick)
+            playerButton(SonaIcons.MoreVert, moreLabel, colors.content, onMenuClick)
         }
     }
 }
@@ -451,10 +451,10 @@ internal fun DefaultTransportControls(
                 lyricsCorner(
                     lyrics = lyrics,
                     colors = colors,
-                    playerIcon = PlayerIcons.Shuffle,
+                    playerIcon = SonaIcons.Shuffle,
                     playerContentDescription = shuffleLabel,
                     isPlayerToggleOn = playback.shuffleEnabled,
-                    lyricsIcon = PlayerIcons.More,
+                    lyricsIcon = SonaIcons.MoreVert,
                     lyricsContentDescription = lyricsMenuLabel,
                     turnsIn = false,
                     onPlayerClick = viewModel::onToggleShuffle,
@@ -468,7 +468,7 @@ internal fun DefaultTransportControls(
                     playerIcon = playback.repeatMode.transportIcon(),
                     playerContentDescription = repeatLabel,
                     isPlayerToggleOn = playback.repeatMode != RepeatMode.OFF,
-                    lyricsIcon = PlayerIcons.Close,
+                    lyricsIcon = SonaIcons.Close,
                     lyricsContentDescription = lyricsCloseLabel,
                     turnsIn = true,
                     onPlayerClick = viewModel::onCycleRepeatMode,

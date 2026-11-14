@@ -7,11 +7,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.ToggleButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,17 +17,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.R
 import com.lhacenmed.sona.core.designsystem.component.SonaActionButtonGroup
 import com.lhacenmed.sona.core.designsystem.component.SonaChoiceRow
+import com.lhacenmed.sona.core.designsystem.component.SonaConnectedChoice
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.actionButton
-import com.lhacenmed.sona.core.designsystem.theme.connectedLeadingButtonPressShapes
-import com.lhacenmed.sona.core.designsystem.theme.connectedTrailingButtonPressShapes
 import com.lhacenmed.sona.core.model.sort.SortCriterion
 import com.lhacenmed.sona.core.model.sort.SortDirection
 import com.lhacenmed.sona.core.model.sort.SortOrder
@@ -110,29 +104,15 @@ fun SonaSortSheet(
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 8.dp),
         )
-        Row(
+        SonaConnectedChoice(
+            options = SortDirection.entries,
+            selected = chosenOrder.direction,
+            onSelect = { if (isCustom) newTracksDirection = it else direction = it },
+            label = { if (isCustom) it.newTracksLabel() else it.label() },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-        ) {
-            SortDirection.entries.forEachIndexed { index, option ->
-                ToggleButton(
-                    checked = option == chosenOrder.direction,
-                    onCheckedChange = { if (isCustom) newTracksDirection = option else direction = option },
-                    shapes = if (index == 0) {
-                        connectedLeadingButtonPressShapes()
-                    } else {
-                        connectedTrailingButtonPressShapes()
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .semantics { role = Role.RadioButton },
-                ) {
-                    Text(if (isCustom) option.newTracksLabel() else option.label())
-                }
-            }
-        }
+        )
 
         scopeLabels?.let { labels ->
             Text(
@@ -141,29 +121,15 @@ fun SonaSortSheet(
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 8.dp),
             )
-            Row(
+            SonaConnectedChoice(
+                options = SortScope.entries,
+                selected = scope,
+                onSelect = { scope = it },
+                label = { labels.of(it) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-            ) {
-                SortScope.entries.forEachIndexed { index, option ->
-                    ToggleButton(
-                        checked = option == scope,
-                        onCheckedChange = { scope = option },
-                        shapes = if (index == 0) {
-                            connectedLeadingButtonPressShapes()
-                        } else {
-                            connectedTrailingButtonPressShapes()
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .semantics { role = Role.RadioButton },
-                    ) {
-                        Text(labels.of(option))
-                    }
-                }
-            }
+            )
         }
 
         Row(

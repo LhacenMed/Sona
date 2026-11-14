@@ -5,7 +5,7 @@ package com.lhacenmed.sona.feature.player
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
@@ -226,7 +226,7 @@ internal fun SwipeableMiniPlayerBox(
                             .padding(horizontal = 16.dp),
                 ) {
                     Icon(
-                        imageVector = if (offsetXAnimatable.value > 0) PlayerIcons.SkipPrevious else PlayerIcons.SkipNext,
+                        imageVector = if (offsetXAnimatable.value > 0) SonaIcons.SkipPrevious else SonaIcons.SkipNext,
                         contentDescription = null,
                         tint =
                             MaterialTheme.colorScheme.primary.copy(
@@ -424,7 +424,7 @@ private fun MiniPlayerTransportControls(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         MiniPlayerTransportButton(
-            icon = PlayerIcons.SkipPrevious,
+            icon = SonaIcons.SkipPrevious,
             contentDescription = stringResource(R.string.player_previous),
             onClick = viewModel::onSkipPrevious,
             colors = colors,
@@ -442,7 +442,7 @@ private fun MiniPlayerTransportControls(
         )
 
         MiniPlayerTransportButton(
-            icon = PlayerIcons.SkipNext,
+            icon = SonaIcons.SkipNext,
             contentDescription = stringResource(R.string.player_next),
             onClick = viewModel::onSkipNext,
             colors = colors,

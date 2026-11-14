@@ -22,7 +22,7 @@ class ListenHistory @Inject constructor(
         item.idInSpace?.let { playStatsDao.recordPlayStarted(it, playedAt) }
     }
 
-    /** [item] has been listened to long enough to count. */
+    /** [item] has played long enough to count - see [PlayHistoryRecorder]. */
     internal suspend fun recordCounted(item: MediaItem, playedAt: Long) {
         val id = item.idInSpace ?: return
         when (item.space) {

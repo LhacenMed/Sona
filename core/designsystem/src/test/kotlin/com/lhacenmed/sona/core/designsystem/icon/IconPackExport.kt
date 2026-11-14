@@ -15,8 +15,8 @@ import org.junit.Test
 /**
  * Writes every icon of [SonaIcons] out as the icon pack takes it - see [SonaIconPack]: a vector drawable named as the pack names
  * it, `xml/icon_delete.xml`, and the same drawing as an SVG, `svg/icon_delete.svg`, for a designer's tools. A pack redrawn from
- * these replaces the icons by dropping the drawables into a module's `res/drawable`. [PlayerIcons] are such drawables already -
- * core/common's `icon_player_*.xml`.
+ * these replaces the icons by dropping the drawables into a module's `res/drawable`. Those Android draws itself are such drawables
+ * already - core/common's `icon_*.xml`, exported from here.
  *
  * Run only when given a folder to write into:
  * `ICON_PACK_DIR=/path/to/pack ./gradlew :core:designsystem:testDebugUnitTest --tests "*IconPackExport*"`.
