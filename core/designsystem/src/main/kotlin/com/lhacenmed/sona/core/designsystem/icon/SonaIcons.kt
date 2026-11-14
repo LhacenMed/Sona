@@ -1,176 +1,204 @@
 package com.lhacenmed.sona.core.designsystem.icon
 
-import androidx.compose.material.icons.Icons
-// The style every icon is drawn in - these two imports and the two values below: filled, outlined, rounded or sharp.
-import androidx.compose.material.icons.automirrored.filled.*
-import androidx.compose.material.icons.filled.*
+import android.content.Context
+import android.content.res.Resources
+import androidx.annotation.DrawableRes
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.addPathNodes
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.common.R
 import com.lhacenmed.sona.core.common.cover.DefaultCover
 
-/** Material's icons in the style the app draws them in - see the imports above. */
-private val Glyphs = Icons.Filled
-
-/** The same style, for the icons that point one way and turn around where text runs right to left. */
-private val MirroredGlyphs = Icons.AutoMirrored.Filled
-
 /**
- * Every icon the app draws, by what it means - the one place each is chosen, so one meaning is drawn one way everywhere, and
- * the whole app changes style by changing [Glyphs] and [MirroredGlyphs]. An icon pack replaces any of them - see
- * [SonaIconPack]. The players draw their own set - see [PlayerIcons].
+ * Every icon the app draws, by what it means - the one place each is chosen, so one meaning is drawn one way everywhere: in
+ * the screens, the sheets and the players alike. Each is the drawable of its name in core/common, `icon_` and its name in
+ * snake case, which the notifications, the widgets and the floating window draw by its resource. The drawables are generated
+ * from Ionicons by `core/common/icons/icons.txt` - see `docs/ICONS.md`.
  */
 object SonaIcons {
-    val Add: ImageVector by icon { Glyphs.Add }
-    val AddPhotoAlternate: ImageVector by icon { Glyphs.AddPhotoAlternate }
-    val Album: ImageVector by icon { Glyphs.Album }
-    val ArrowBack: ImageVector by icon { MirroredGlyphs.ArrowBack }
-    val ArrowDownward: ImageVector by icon { Glyphs.ArrowDownward }
-    val ArrowUpward: ImageVector by icon { Glyphs.ArrowUpward }
-    val Article: ImageVector by icon { MirroredGlyphs.Article }
-    val Artist: ImageVector by icon { Glyphs.Person }
-    val AudioFile: ImageVector by icon { Glyphs.AudioFile }
-    val AutoAwesome: ImageVector by icon { Glyphs.AutoAwesome }
-    val AutoFixHigh: ImageVector by icon { Glyphs.AutoFixHigh }
-    val Backspace: ImageVector by icon { MirroredGlyphs.Backspace }
-    val Backup: ImageVector by icon { Glyphs.Backup }
-    val Bedtime: ImageVector by icon { Glyphs.Bedtime }
-    val Block: ImageVector by icon { Glyphs.Block }
-    val Bookmark: ImageVector by icon { Glyphs.Bookmark }
-    val BugReport: ImageVector by icon { Glyphs.BugReport }
-    val CalendarMonth: ImageVector by icon { Glyphs.CalendarMonth }
-    val Check: ImageVector by icon { Glyphs.Check }
-    val CheckBox: ImageVector by icon { Glyphs.CheckBox }
-    val CheckBoxOutlineBlank: ImageVector by icon { Glyphs.CheckBoxOutlineBlank }
-    val CheckCircle: ImageVector by icon { Glyphs.CheckCircle }
-    val Close: ImageVector by icon { Glyphs.Close }
-    val Cloud: ImageVector by icon { Glyphs.Cloud }
-    val CloudDone: ImageVector by icon { Glyphs.CloudDone }
-    val CloudOff: ImageVector by icon { Glyphs.CloudOff }
-    val Code: ImageVector by icon { Glyphs.Code }
-    val Comment: ImageVector by icon { MirroredGlyphs.Comment }
-    val ContentCopy: ImageVector by icon { Glyphs.ContentCopy }
-    val ContentCut: ImageVector by icon { Glyphs.ContentCut }
-    val ContentPaste: ImageVector by icon { Glyphs.ContentPaste }
-    val CreateNewFolder: ImageVector by icon { Glyphs.CreateNewFolder }
-    val Delete: ImageVector by icon { Glyphs.Delete }
-    val DeleteSweep: ImageVector by icon { Glyphs.DeleteSweep }
-    val Description: ImageVector by icon { Glyphs.Description }
-    val Deselect: ImageVector by icon { Glyphs.Deselect }
-    val Details: ImageVector by icon { Glyphs.Info }
-    val DoNotDisturbOn: ImageVector by icon { Glyphs.DoNotDisturbOn }
-    val Download: ImageVector by icon { Glyphs.Download }
-    val DragHandle: ImageVector by icon { Glyphs.DragHandle }
-    val DriveFileRenameOutline: ImageVector by icon { Glyphs.DriveFileRenameOutline }
-    val Edit: ImageVector by icon { Glyphs.Edit }
-    val EditNote: ImageVector by icon { Glyphs.EditNote }
-    val Equalizer: ImageVector by icon { Glyphs.Equalizer }
-    val Export: ImageVector by icon { Glyphs.FileUpload }
-    val Error: ImageVector by icon { Glyphs.Error }
-    val ExpandLess: ImageVector by icon { Glyphs.ExpandLess }
-    val ExpandMore: ImageVector by icon { Glyphs.ExpandMore }
-    val Extension: ImageVector by icon { Glyphs.Extension }
-    val FastForward: ImageVector by icon { Glyphs.FastForward }
-    val Favorite: ImageVector by icon { Glyphs.Favorite }
-    val FavoriteBorder: ImageVector by icon { Glyphs.FavoriteBorder }
-    val Feedback: ImageVector by icon { Glyphs.Feedback }
-    val FileOpen: ImageVector by icon { Glyphs.FileOpen }
-    val Fingerprint: ImageVector by icon { Glyphs.Fingerprint }
-    val Folder: ImageVector by icon { Glyphs.Folder }
-    val FolderOpen: ImageVector by icon { Glyphs.FolderOpen }
-    val FormatListNumbered: ImageVector by icon { Glyphs.FormatListNumbered }
-    val Genre: ImageVector by icon { Glyphs.Category }
-    val GoToAlbum: ImageVector by icon { Glyphs.Album }
-    val GoToArtist: ImageVector by icon { Glyphs.Person }
-    val GraphicEq: ImageVector by icon { Glyphs.GraphicEq }
-    val Group: ImageVector by icon { Glyphs.Group }
-    val HighQuality: ImageVector by icon { Glyphs.HighQuality }
-    val History: ImageVector by icon { Glyphs.History }
-    val Image: ImageVector by icon { Glyphs.Image }
-    val Import: ImageVector by icon { Glyphs.FileDownload }
-    val IndeterminateCheckBox: ImageVector by icon { Glyphs.IndeterminateCheckBox }
-    val Info: ImageVector by icon { Glyphs.Info }
-    val Input: ImageVector by icon { MirroredGlyphs.Input }
-    val KeyboardArrowDown: ImageVector by icon { Glyphs.KeyboardArrowDown }
-    val KeyboardArrowRight: ImageVector by icon { MirroredGlyphs.KeyboardArrowRight }
-    val KeyboardArrowUp: ImageVector by icon { Glyphs.KeyboardArrowUp }
-    val Language: ImageVector by icon { Glyphs.Language }
-    val LibraryAdd: ImageVector by icon { Glyphs.LibraryAdd }
-    val LibraryMusic: ImageVector by icon { Glyphs.LibraryMusic }
-    val Link: ImageVector by icon { Glyphs.Link }
-    val LinkOff: ImageVector by icon { Glyphs.LinkOff }
-    val Lock: ImageVector by icon { Glyphs.Lock }
-    val LockOpen: ImageVector by icon { Glyphs.LockOpen }
-    val Login: ImageVector by icon { MirroredGlyphs.Login }
-    val Lyrics: ImageVector by icon { Glyphs.Lyrics }
-    val Monitor: ImageVector by icon { Glyphs.Monitor }
-    val MoreTime: ImageVector by icon { Glyphs.MoreTime }
-    val MoreVert: ImageVector by icon { Glyphs.MoreVert }
-    val NewReleases: ImageVector by icon { Glyphs.NewReleases }
-    val Notes: ImageVector by icon { MirroredGlyphs.Notes }
-    val Numbers: ImageVector by icon { Glyphs.Numbers }
-    val OpenInNew: ImageVector by icon { MirroredGlyphs.OpenInNew }
-    val Palette: ImageVector by icon { Glyphs.Palette }
-    val Pause: ImageVector by icon { Glyphs.Pause }
-    val Play: ImageVector by icon { Glyphs.PlayArrow }
-    val PlayCircle: ImageVector by icon { Glyphs.PlayCircle }
-    val PlayNext: ImageVector by icon { Glyphs.QueuePlayNext }
-    val Playlist: ImageVector by icon { MirroredGlyphs.QueueMusic }
-    val PlaylistAdd: ImageVector by icon { MirroredGlyphs.PlaylistAdd }
-    val PushPin: ImageVector by icon { Glyphs.PushPin }
-    val QueueAdd: ImageVector by icon { Glyphs.AddToQueue }
-    val QueueMusic: ImageVector by icon { MirroredGlyphs.QueueMusic }
-    val RecordVoiceOver: ImageVector by icon { Glyphs.RecordVoiceOver }
-    val Redo: ImageVector by icon { MirroredGlyphs.Redo }
-    val Refresh: ImageVector by icon { Glyphs.Refresh }
-    val RemoveCircleOutline: ImageVector by icon { Glyphs.RemoveCircleOutline }
-    val RestartAlt: ImageVector by icon { Glyphs.RestartAlt }
-    val Restore: ImageVector by icon { Glyphs.Restore }
-    val Save: ImageVector by icon { Glyphs.Save }
-    val Schedule: ImageVector by icon { Glyphs.Schedule }
-    val Search: ImageVector by icon { Glyphs.Search }
-    val SearchOff: ImageVector by icon { Glyphs.SearchOff }
-    val Security: ImageVector by icon { Glyphs.Security }
-    val SelectAll: ImageVector by icon { Glyphs.SelectAll }
-    val Sell: ImageVector by icon { Glyphs.Sell }
-    val Send: ImageVector by icon { MirroredGlyphs.Send }
-    val Settings: ImageVector by icon { Glyphs.Settings }
-    val Share: ImageVector by icon { Glyphs.Share }
-    val ShortText: ImageVector by icon { Glyphs.ShortText }
-    val ShowChart: ImageVector by icon { MirroredGlyphs.ShowChart }
-    val Shuffle: ImageVector by icon { Glyphs.Shuffle }
-    val Smartphone: ImageVector by icon { Glyphs.Smartphone }
-    val Song: ImageVector by icon { Glyphs.MusicNote }
-    val Sort: ImageVector by icon { MirroredGlyphs.Sort }
-    val Speed: ImageVector by icon { Glyphs.Speed }
-    val Storage: ImageVector by icon { Glyphs.Storage }
-    val Subject: ImageVector by icon { Glyphs.Subject }
-    val Subscriptions: ImageVector by icon { Glyphs.Subscriptions }
-    val Subtitles: ImageVector by icon { Glyphs.Subtitles }
-    val Sync: ImageVector by icon { Glyphs.Sync }
-    val SyncDisabled: ImageVector by icon { Glyphs.SyncDisabled }
-    val SystemUpdate: ImageVector by icon { Glyphs.SystemUpdate }
-    val Terminal: ImageVector by icon { Glyphs.Terminal }
-    val Timer: ImageVector by icon { Glyphs.Timer }
-    val Title: ImageVector by icon { Glyphs.Title }
-    val TouchApp: ImageVector by icon { Glyphs.TouchApp }
-    val TrendingFlat: ImageVector by icon { MirroredGlyphs.TrendingFlat }
-    val TrendingUp: ImageVector by icon { MirroredGlyphs.TrendingUp }
-    val Tune: ImageVector by icon { Glyphs.Tune }
-    val Undo: ImageVector by icon { MirroredGlyphs.Undo }
-    val Verified: ImageVector by icon { Glyphs.Verified }
-    val Video: ImageVector by icon { Glyphs.Movie }
-    val VideoFile: ImageVector by icon { Glyphs.VideoFile }
-    val VideoLibrary: ImageVector by icon { Glyphs.VideoLibrary }
-    val Warning: ImageVector by icon { Glyphs.Warning }
-    val Wifi: ImageVector by icon { Glyphs.Wifi }
-    val WifiOff: ImageVector by icon { Glyphs.WifiOff }
+    private lateinit var resources: Resources
+
+    /** Reads the icons from [context]'s resources - as the app starts, before any icon is drawn. */
+    fun install(context: Context) {
+        resources = context.applicationContext.resources
+    }
+
+    /** An icon: the drawable [id], read once, when it is first drawn. */
+    private fun icon(@DrawableRes id: Int) = lazy { ImageVector.vectorResource(theme = null, res = resources, resId = id) }
+
+    val Add: ImageVector by icon(R.drawable.icon_add)
+    val AddPhotoAlternate: ImageVector by icon(R.drawable.icon_add_photo_alternate)
+    val Album: ImageVector by icon(R.drawable.icon_album)
+    val ArrowBack: ImageVector by icon(R.drawable.icon_arrow_back)
+    val ArrowDownward: ImageVector by icon(R.drawable.icon_arrow_downward)
+    val ArrowUpward: ImageVector by icon(R.drawable.icon_arrow_upward)
+    val Article: ImageVector by icon(R.drawable.icon_article)
+    val Artist: ImageVector by icon(R.drawable.icon_artist)
+    val AspectRatio: ImageVector by icon(R.drawable.icon_aspect_ratio)
+    val AudioFile: ImageVector by icon(R.drawable.icon_audio_file)
+    val AutoAwesome: ImageVector by icon(R.drawable.icon_auto_awesome)
+    val AutoFixHigh: ImageVector by icon(R.drawable.icon_auto_fix_high)
+    /** Turning with the device - and, held one way, [OrientationPortrait] and [OrientationLandscape]: the way it stands. */
+    val AutoRotate: ImageVector by icon(R.drawable.icon_auto_rotate)
+    val Backspace: ImageVector by icon(R.drawable.icon_backspace)
+    val Backup: ImageVector by icon(R.drawable.icon_backup)
+    val Bedtime: ImageVector by icon(R.drawable.icon_bedtime)
+    val Block: ImageVector by icon(R.drawable.icon_block)
+    val Bookmark: ImageVector by icon(R.drawable.icon_bookmark)
+    val Brightness: ImageVector by icon(R.drawable.icon_brightness)
+    val BugReport: ImageVector by icon(R.drawable.icon_bug_report)
+    val CalendarMonth: ImageVector by icon(R.drawable.icon_calendar_month)
+    val Check: ImageVector by icon(R.drawable.icon_check)
+    val CheckBox: ImageVector by icon(R.drawable.icon_check_box)
+    val CheckBoxOutlineBlank: ImageVector by icon(R.drawable.icon_check_box_outline_blank)
+    val CheckCircle: ImageVector by icon(R.drawable.icon_check_circle)
+    val Close: ImageVector by icon(R.drawable.icon_close)
+    val Cloud: ImageVector by icon(R.drawable.icon_cloud)
+    val CloudDone: ImageVector by icon(R.drawable.icon_cloud_done)
+    val CloudOff: ImageVector by icon(R.drawable.icon_cloud_off)
+    val Code: ImageVector by icon(R.drawable.icon_code)
+    /** Closing the player down to where it was opened from. */
+    val Collapse: ImageVector by icon(R.drawable.icon_collapse)
+    val Comment: ImageVector by icon(R.drawable.icon_comment)
+    val ContentCopy: ImageVector by icon(R.drawable.icon_content_copy)
+    val ContentCut: ImageVector by icon(R.drawable.icon_content_cut)
+    val ContentPaste: ImageVector by icon(R.drawable.icon_content_paste)
+    val CreateNewFolder: ImageVector by icon(R.drawable.icon_create_new_folder)
+    val Delete: ImageVector by icon(R.drawable.icon_delete)
+    val DeleteSweep: ImageVector by icon(R.drawable.icon_delete_sweep)
+    val Description: ImageVector by icon(R.drawable.icon_description)
+    val Deselect: ImageVector by icon(R.drawable.icon_deselect)
+    val Details: ImageVector by icon(R.drawable.icon_details)
+    val DoNotDisturbOn: ImageVector by icon(R.drawable.icon_do_not_disturb_on)
+    val Download: ImageVector by icon(R.drawable.icon_download)
+    val DragHandle: ImageVector by icon(R.drawable.icon_drag_handle)
+    val DriveFileRenameOutline: ImageVector by icon(R.drawable.icon_drive_file_rename_outline)
+    val Edit: ImageVector by icon(R.drawable.icon_edit)
+    val EditNote: ImageVector by icon(R.drawable.icon_edit_note)
+    val Equalizer: ImageVector by icon(R.drawable.icon_equalizer)
+    val Error: ImageVector by icon(R.drawable.icon_error)
+    val ExpandLess: ImageVector by icon(R.drawable.icon_expand_less)
+    val ExpandMore: ImageVector by icon(R.drawable.icon_expand_more)
+    val Export: ImageVector by icon(R.drawable.icon_export)
+    val Extension: ImageVector by icon(R.drawable.icon_extension)
+    val FastForward: ImageVector by icon(R.drawable.icon_fast_forward)
+    val Favorite: ImageVector by icon(R.drawable.icon_favorite)
+    val FavoriteBorder: ImageVector by icon(R.drawable.icon_favorite_border)
+    val Feedback: ImageVector by icon(R.drawable.icon_feedback)
+    val FileOpen: ImageVector by icon(R.drawable.icon_file_open)
+    val Fingerprint: ImageVector by icon(R.drawable.icon_fingerprint)
+    val Folder: ImageVector by icon(R.drawable.icon_folder)
+    val FolderOpen: ImageVector by icon(R.drawable.icon_folder_open)
+    val FormatListNumbered: ImageVector by icon(R.drawable.icon_format_list_numbered)
+    val Genre: ImageVector by icon(R.drawable.icon_genre)
+    val GoToAlbum: ImageVector by icon(R.drawable.icon_go_to_album)
+    val GoToArtist: ImageVector by icon(R.drawable.icon_go_to_artist)
+    val GraphicEq: ImageVector by icon(R.drawable.icon_graphic_eq)
+    val Group: ImageVector by icon(R.drawable.icon_group)
+    val HighQuality: ImageVector by icon(R.drawable.icon_high_quality)
+    val History: ImageVector by icon(R.drawable.icon_history)
+    val Image: ImageVector by icon(R.drawable.icon_image)
+    val Import: ImageVector by icon(R.drawable.icon_import)
+    val IndeterminateCheckBox: ImageVector by icon(R.drawable.icon_indeterminate_check_box)
+    val Info: ImageVector by icon(R.drawable.icon_info)
+    val Input: ImageVector by icon(R.drawable.icon_input)
+    val KeyboardArrowDown: ImageVector by icon(R.drawable.icon_keyboard_arrow_down)
+    val KeyboardArrowRight: ImageVector by icon(R.drawable.icon_keyboard_arrow_right)
+    val KeyboardArrowUp: ImageVector by icon(R.drawable.icon_keyboard_arrow_up)
+    val Language: ImageVector by icon(R.drawable.icon_language)
+    val LibraryAdd: ImageVector by icon(R.drawable.icon_library_add)
+    val LibraryMusic: ImageVector by icon(R.drawable.icon_library_music)
+    val Link: ImageVector by icon(R.drawable.icon_link)
+    val LinkOff: ImageVector by icon(R.drawable.icon_link_off)
+    val Lock: ImageVector by icon(R.drawable.icon_lock)
+    val LockOpen: ImageVector by icon(R.drawable.icon_lock_open)
+    val Login: ImageVector by icon(R.drawable.icon_login)
+    val Lyrics: ImageVector by icon(R.drawable.icon_lyrics)
+    val Monitor: ImageVector by icon(R.drawable.icon_monitor)
+    val MoreTime: ImageVector by icon(R.drawable.icon_more_time)
+    val MoreVert: ImageVector by icon(R.drawable.icon_more_vert)
+    val Muted: ImageVector by icon(R.drawable.icon_muted)
+    val NewReleases: ImageVector by icon(R.drawable.icon_new_releases)
+    val Notes: ImageVector by icon(R.drawable.icon_notes)
+    val Numbers: ImageVector by icon(R.drawable.icon_numbers)
+    val OpenInNew: ImageVector by icon(R.drawable.icon_open_in_new)
+    val OrientationLandscape: ImageVector by icon(R.drawable.icon_orientation_landscape)
+    val OrientationPortrait: ImageVector by icon(R.drawable.icon_orientation_portrait)
+    val Palette: ImageVector by icon(R.drawable.icon_palette)
+    val Pause: ImageVector by icon(R.drawable.icon_pause)
+    val PictureInPicture: ImageVector by icon(R.drawable.icon_picture_in_picture)
+    val Play: ImageVector by icon(R.drawable.icon_play)
+    val PlayAsAudio: ImageVector by icon(R.drawable.icon_play_as_audio)
+    val PlayCircle: ImageVector by icon(R.drawable.icon_play_circle)
+    val PlayNext: ImageVector by icon(R.drawable.icon_play_next)
+    val Playlist: ImageVector by icon(R.drawable.icon_playlist)
+    val PlaylistAdd: ImageVector by icon(R.drawable.icon_playlist_add)
+    val PushPin: ImageVector by icon(R.drawable.icon_push_pin)
+    val QueueAdd: ImageVector by icon(R.drawable.icon_queue_add)
+    val QueueMusic: ImageVector by icon(R.drawable.icon_queue_music)
+    val RecordVoiceOver: ImageVector by icon(R.drawable.icon_record_voice_over)
+    val Redo: ImageVector by icon(R.drawable.icon_redo)
+    val Refresh: ImageVector by icon(R.drawable.icon_refresh)
+    val RemoveCircleOutline: ImageVector by icon(R.drawable.icon_remove_circle_outline)
+    val Repeat: ImageVector by icon(R.drawable.icon_repeat)
+    val RepeatOne: ImageVector by icon(R.drawable.icon_repeat_one)
+    /** Repeat that stops once the track playing ends - the loop around a stop. */
+    val RepeatStop: ImageVector by icon(R.drawable.icon_repeat_stop)
+    val Replay: ImageVector by icon(R.drawable.icon_replay)
+    val RestartAlt: ImageVector by icon(R.drawable.icon_restart_alt)
+    val Restore: ImageVector by icon(R.drawable.icon_restore)
+    val Save: ImageVector by icon(R.drawable.icon_save)
+    val Schedule: ImageVector by icon(R.drawable.icon_schedule)
+    val Screenshot: ImageVector by icon(R.drawable.icon_screenshot)
+    val Search: ImageVector by icon(R.drawable.icon_search)
+    val SearchOff: ImageVector by icon(R.drawable.icon_search_off)
+    val Security: ImageVector by icon(R.drawable.icon_security)
+    /** Points back; drawn mirrored for the way forward. */
+    val SeekBack: ImageVector by icon(R.drawable.icon_seek_back)
+    val SelectAll: ImageVector by icon(R.drawable.icon_select_all)
+    val Sell: ImageVector by icon(R.drawable.icon_sell)
+    val Send: ImageVector by icon(R.drawable.icon_send)
+    val Settings: ImageVector by icon(R.drawable.icon_settings)
+    val Share: ImageVector by icon(R.drawable.icon_share)
+    val ShortText: ImageVector by icon(R.drawable.icon_short_text)
+    val ShowChart: ImageVector by icon(R.drawable.icon_show_chart)
+    val Shuffle: ImageVector by icon(R.drawable.icon_shuffle)
+    val SkipNext: ImageVector by icon(R.drawable.icon_skip_next)
+    val SkipPrevious: ImageVector by icon(R.drawable.icon_skip_previous)
+    val Smartphone: ImageVector by icon(R.drawable.icon_smartphone)
+    val Song: ImageVector by icon(R.drawable.icon_song)
+    val Sort: ImageVector by icon(R.drawable.icon_sort)
+    val Speed: ImageVector by icon(R.drawable.icon_speed)
+    val Storage: ImageVector by icon(R.drawable.icon_storage)
+    val Subject: ImageVector by icon(R.drawable.icon_subject)
+    val Subscriptions: ImageVector by icon(R.drawable.icon_subscriptions)
+    val Subtitles: ImageVector by icon(R.drawable.icon_subtitles)
+    val Sync: ImageVector by icon(R.drawable.icon_sync)
+    val SyncDisabled: ImageVector by icon(R.drawable.icon_sync_disabled)
+    val SystemUpdate: ImageVector by icon(R.drawable.icon_system_update)
+    val Terminal: ImageVector by icon(R.drawable.icon_terminal)
+    val Timer: ImageVector by icon(R.drawable.icon_timer)
+    val Title: ImageVector by icon(R.drawable.icon_title)
+    val TouchApp: ImageVector by icon(R.drawable.icon_touch_app)
+    val TrendingFlat: ImageVector by icon(R.drawable.icon_trending_flat)
+    val TrendingUp: ImageVector by icon(R.drawable.icon_trending_up)
+    val Tune: ImageVector by icon(R.drawable.icon_tune)
+    val Undo: ImageVector by icon(R.drawable.icon_undo)
+    val Verified: ImageVector by icon(R.drawable.icon_verified)
+    val Video: ImageVector by icon(R.drawable.icon_video)
+    val VideoFile: ImageVector by icon(R.drawable.icon_video_file)
+    val VideoLibrary: ImageVector by icon(R.drawable.icon_video_library)
+    val Volume: ImageVector by icon(R.drawable.icon_volume)
+    val Warning: ImageVector by icon(R.drawable.icon_warning)
+    val Wifi: ImageVector by icon(R.drawable.icon_wifi)
+    val WifiOff: ImageVector by icon(R.drawable.icon_wifi_off)
 
     /** What stands in for a missing cover: [DefaultCover]'s glyph, the one every default cover shares. */
-    val CoverPlaceholder: ImageVector by icon {
+    val CoverPlaceholder: ImageVector by lazy {
         drawnIcon(
             name = "CoverPlaceholder",
             size = 24.dp,
@@ -183,7 +211,7 @@ object SonaIcons {
      * The tick on a selected cover. Drawn small within its 20dp square, which is the whole of the badge - that built-in room
      * around it is what sets the tick's size, so the drawable fills the badge rather than being inset inside it.
      */
-    val SelectedBadge: ImageVector by icon {
+    val SelectedBadge: ImageVector by lazy {
         drawnIcon(
             name = "SelectedBadge",
             size = 20.dp,
@@ -192,9 +220,6 @@ object SonaIcons {
         )
     }
 }
-
-/** An icon of [SonaIcons], as [drawn] unless the icon pack has its own - see [SonaIconPack]. */
-private fun icon(drawn: () -> ImageVector) = PackIcon(prefix = "icon_", drawn)
 
 /** A glyph drawn from its path, filled white, so whatever draws it tints it. */
 private fun drawnIcon(name: String, size: Dp, viewportSize: Float, pathData: String): ImageVector =

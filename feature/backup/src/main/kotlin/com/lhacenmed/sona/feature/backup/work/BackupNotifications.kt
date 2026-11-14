@@ -106,11 +106,11 @@ internal fun cancelFailedNotification(context: Context) = SonaNotifications.canc
 
 /** What a backup's notification offers - see [BackupActionReceiver]. */
 internal enum class BackupAction(@StringRes val labelRes: Int, val iconRes: Int) {
-    PAUSE(R.string.backup_notification_pause, CommonR.drawable.icon_player_pause),
-    RESUME(R.string.backup_notification_resume, CommonR.drawable.icon_player_play),
-    STOP(R.string.backup_notification_stop, CommonR.drawable.icon_player_close),
-    RETRY(R.string.backup_notification_retry, CommonR.drawable.icon_player_replay),
-    RETRY_RESTORE(R.string.backup_notification_retry, CommonR.drawable.icon_player_replay),
+    PAUSE(R.string.backup_notification_pause, CommonR.drawable.icon_pause),
+    RESUME(R.string.backup_notification_resume, CommonR.drawable.icon_play),
+    STOP(R.string.backup_notification_stop, CommonR.drawable.icon_close),
+    RETRY(R.string.backup_notification_retry, CommonR.drawable.icon_replay),
+    RETRY_RESTORE(R.string.backup_notification_retry, CommonR.drawable.icon_replay),
     ;
 
     val intentAction = "com.lhacenmed.sona.backup.action.$name"

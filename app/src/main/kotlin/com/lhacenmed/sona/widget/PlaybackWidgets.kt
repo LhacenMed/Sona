@@ -274,7 +274,7 @@ class PlaybackWidgets @Inject constructor(
         // The same icons and names the notification's buttons have, for the same states.
         setImageViewResource(
             R.id.widget_favorite,
-            if (content.isFavorite) CommonR.drawable.icon_player_favorite else CommonR.drawable.icon_player_favorite_border,
+            if (content.isFavorite) CommonR.drawable.icon_favorite else CommonR.drawable.icon_favorite_border,
         )
         setContentDescription(
             R.id.widget_favorite,
@@ -283,7 +283,7 @@ class PlaybackWidgets @Inject constructor(
             ),
         )
         // The toggles as the player draws them: one glyph each, whole while on and faint while off - see InactiveToggleAlpha.
-        setImageViewResource(R.id.widget_shuffle, CommonR.drawable.icon_player_shuffle)
+        setImageViewResource(R.id.widget_shuffle, CommonR.drawable.icon_shuffle)
         setInt(R.id.widget_shuffle, "setImageAlpha", toggleAlpha(isOn = content.isShuffled))
         setContentDescription(
             R.id.widget_shuffle,
@@ -292,7 +292,7 @@ class PlaybackWidgets @Inject constructor(
         setImageViewResource(R.id.widget_repeat, content.repeatMode.transportIconRes)
         setInt(R.id.widget_repeat, "setImageAlpha", toggleAlpha(isOn = content.repeatMode != RepeatMode.OFF))
         setContentDescription(R.id.widget_repeat, context.getString(content.repeatMode.labelRes))
-        val playPauseIcon = if (content.isPlaying) CommonR.drawable.icon_player_pause else CommonR.drawable.icon_player_play
+        val playPauseIcon = if (content.isPlaying) CommonR.drawable.icon_pause else CommonR.drawable.icon_play
         setImageViewResource(R.id.widget_play_pause_icon, playPauseIcon)
         // The mini player's, a glyph alone in the icon colour - no circle round it.
         setImageViewResource(R.id.widget_play_pause_glyph, playPauseIcon)

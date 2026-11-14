@@ -59,7 +59,7 @@ private val FloatingWindow.aspectRatio: Rational
 private fun Context.playPauseAction(isPlaying: Boolean): RemoteAction {
     val label = getString(if (isPlaying) R.string.video_pause else R.string.video_play)
     return RemoteAction(
-        Icon.createWithResource(this, if (isPlaying) CommonR.drawable.icon_player_pause else CommonR.drawable.icon_player_play),
+        Icon.createWithResource(this, if (isPlaying) CommonR.drawable.icon_pause else CommonR.drawable.icon_play),
         label,
         label,
         PendingIntent.getBroadcast(this, 0, Intent(this, VideoFloatingWindowReceiver::class.java), PendingIntent.FLAG_IMMUTABLE),

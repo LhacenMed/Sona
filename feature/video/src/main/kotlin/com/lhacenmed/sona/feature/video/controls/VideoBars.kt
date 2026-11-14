@@ -23,7 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.component.SonaMarquee
-import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.player.PlayerButtonGroup
 import com.lhacenmed.sona.core.designsystem.player.PlayerControls
 import com.lhacenmed.sona.core.designsystem.player.PlayerTransport
@@ -54,7 +54,7 @@ internal fun VideoTopBar(
             .fillMaxWidth()
             .height(VideoPlayerTokens.BarButtonSize),
     ) {
-        VideoBarButton(VideoAction(PlayerIcons.Back, stringResource(R.string.video_back), onBack))
+        VideoBarButton(VideoAction(SonaIcons.ArrowBack, stringResource(R.string.video_back), onBack))
         Column(verticalArrangement = Arrangement.spacedBy(1.dp), modifier = Modifier.weight(1f).padding(start = 4.dp)) {
             // A long name scrolls by rather than being cut, so all of it can be read.
             SonaMarquee(text = title) { PlayerText(title, VideoPlayerType.Title) }
@@ -78,7 +78,7 @@ private fun ChapterButton(chapter: String, onClick: () -> Unit) {
             modifier = Modifier.height(16.dp),
         ) {
             PlayerText(chapter, VideoPlayerType.Chapter, color = VideoPlayerTokens.SecondaryContent, modifier = Modifier.weight(1f, fill = false))
-            Icon(PlayerIcons.ChevronRight, contentDescription = null, modifier = Modifier.size(14.dp))
+            Icon(SonaIcons.KeyboardArrowRight, contentDescription = null, modifier = Modifier.size(14.dp))
         }
     }
 }
@@ -104,7 +104,7 @@ internal fun VideoTransport(
     onCycleRepeatMode: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val playIcon = if (isPlaying) PlayerIcons.Pause else PlayerIcons.Play
+    val playIcon = if (isPlaying) SonaIcons.Pause else SonaIcons.Play
     val playLabel = stringResource(if (isPlaying) R.string.video_pause else R.string.video_play)
     if (isLandscape) {
         PlayerTransport(
@@ -145,7 +145,7 @@ internal fun VideoTransport(
             isLoading = isLoading,
             spacing = PlayerControls.transportGap(maxWidth, hasCorners = true),
             leading = {
-                playerButton(PlayerIcons.Shuffle, shuffleLabel, toggleColor(isShuffled), onToggleShuffle, checked = isShuffled)
+                playerButton(SonaIcons.Shuffle, shuffleLabel, toggleColor(isShuffled), onToggleShuffle, checked = isShuffled)
             },
             trailing = {
                 playerButton(repeatMode.transportIcon(), repeatLabel, toggleColor(isRepeating), onCycleRepeatMode, checked = isRepeating)

@@ -105,9 +105,9 @@ private val SpeakerTag = Regex("""^\[[^]]*]\s*""")
 
 /** What a download's notification offers - see [DownloadActionReceiver]. */
 private enum class DownloadAction(@StringRes val labelRes: Int, val iconRes: Int) {
-    PAUSE(R.string.download_pause, CommonR.drawable.icon_player_pause),
-    RESUME(R.string.download_resume, CommonR.drawable.icon_player_play),
-    CANCEL(R.string.download_cancel, CommonR.drawable.icon_player_close),
+    PAUSE(R.string.download_pause, CommonR.drawable.icon_pause),
+    RESUME(R.string.download_resume, CommonR.drawable.icon_play),
+    CANCEL(R.string.download_cancel, CommonR.drawable.icon_close),
     ;
 
     val intentAction = "com.lhacenmed.sona.download.action.$name"

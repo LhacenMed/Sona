@@ -2,7 +2,7 @@ package com.lhacenmed.sona.core.designsystem.component
 
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.designsystem.player.transportIcon
-import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,7 +21,7 @@ import com.lhacenmed.sona.core.designsystem.theme.connectedTrailingButtonPressSh
 
 /**
  * Shuffle and repeat, a connected pair of toggles - the top of a queue, the music's and the videos' alike, each over
- * modes of its own, each drawn with the players' glyphs - see [PlayerIcons] - repeat with [repeatMode]'s own;
+ * modes of its own, each drawn with its icon in [SonaIcons] - repeat with [repeatMode]'s own;
  * [contentColor] is what they are drawn in, over whatever lies behind them.
  */
 @Composable
@@ -58,7 +58,7 @@ fun SonaPlaybackModeButtons(
             shapes = connectedLeadingButtonPressShapes(),
             colors = if (isShuffled) checkedColors else uncheckedColors,
         ) {
-            Icon(PlayerIcons.Shuffle, contentDescription = shuffleLabel, modifier = Modifier.size(22.dp))
+            Icon(SonaIcons.Shuffle, contentDescription = shuffleLabel, modifier = Modifier.size(22.dp))
         }
 
         ToggleButton(

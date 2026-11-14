@@ -5,7 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.sp
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverArt
-import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -199,7 +199,7 @@ internal fun SleepTimerDialog(
     SonaDialog(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.player_sleep_timer),
-        icon = { Icon(PlayerIcons.SleepTimer, contentDescription = null) },
+        icon = { Icon(SonaIcons.Bedtime, contentDescription = null) },
         onReset = { sleepTimerValue = DefaultSleepTimerMinutes },
         buttons = {
             actionButton(label = cancelLabel, onClick = onDismiss)

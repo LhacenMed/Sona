@@ -2,7 +2,7 @@ package com.lhacenmed.sona.feature.player
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
@@ -346,7 +346,7 @@ private fun LyricsPillLine(
                 .padding(horizontal = 16.dp),
     ) {
         Icon(
-            imageVector = PlayerIcons.Lyrics,
+            imageVector = SonaIcons.Lyrics,
             contentDescription = null,
             tint = color,
             modifier = Modifier.size(20.dp),

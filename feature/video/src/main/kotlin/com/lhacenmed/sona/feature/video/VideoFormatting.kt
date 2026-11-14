@@ -6,7 +6,7 @@ import androidx.annotation.StringRes
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.lhacenmed.sona.core.datastore.VideoAspect
 import com.lhacenmed.sona.core.datastore.VideoOrientation
-import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.player.formatPlaybackTime
 import com.lhacenmed.sona.feature.playback.MediaTrack
 import java.util.Locale
@@ -75,7 +75,7 @@ internal val VideoOrientation.labelRes: Int
 /** The rotation button's icon for each way of standing, so it shows which the player is set to. */
 internal val VideoOrientation.icon: ImageVector
     get() = when (this) {
-        VideoOrientation.AUTO -> PlayerIcons.AutoRotate
-        VideoOrientation.PORTRAIT -> PlayerIcons.OrientationPortrait
-        VideoOrientation.LANDSCAPE -> PlayerIcons.OrientationLandscape
+        VideoOrientation.AUTO -> SonaIcons.AutoRotate
+        VideoOrientation.PORTRAIT -> SonaIcons.OrientationPortrait
+        VideoOrientation.LANDSCAPE -> SonaIcons.OrientationLandscape
     }

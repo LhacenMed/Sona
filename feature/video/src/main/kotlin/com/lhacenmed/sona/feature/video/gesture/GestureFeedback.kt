@@ -46,7 +46,7 @@ import com.lhacenmed.sona.feature.video.PlayerText
 import com.lhacenmed.sona.feature.video.R
 import com.lhacenmed.sona.feature.video.VideoPlayerTokens
 import com.lhacenmed.sona.feature.video.VideoPlayerType
-import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.feature.video.formatSeekSeconds
 import com.lhacenmed.sona.feature.video.speedLabel
 import com.lhacenmed.sona.feature.video.videoControlsPadding
@@ -126,10 +126,10 @@ internal fun GestureFeedbackLayer(state: GestureFeedbackState, modifier: Modifie
     Box(modifier = modifier.fillMaxSize()) {
         Shown(current as? GestureFeedback.DoubleTapSeek) { seek -> SeekRipple(seek.deltaMs) }
         Shown(current as? GestureFeedback.Brightness, AbsoluteAlignment.CenterLeft, fadeMs = VideoPlayerTokens.MeterFadeMs) { brightness ->
-            LevelMeter(PlayerIcons.Brightness, brightness.level)
+            LevelMeter(SonaIcons.Brightness, brightness.level)
         }
         Shown(current as? GestureFeedback.Volume, AbsoluteAlignment.CenterRight, fadeMs = VideoPlayerTokens.MeterFadeMs) { volume ->
-            LevelMeter(if (volume.level > 0f) PlayerIcons.Volume else PlayerIcons.Muted, volume.level)
+            LevelMeter(if (volume.level > 0f) SonaIcons.Volume else SonaIcons.Muted, volume.level)
         }
         Shown(current as? PillFeedback, Alignment.TopCenter) { FeedbackPill(it) }
     }
@@ -200,7 +200,7 @@ private fun SeekChevrons(isForward: Boolean) {
     Row(modifier = Modifier.graphicsLayer { scaleX = if (isForward) -1f else 1f }) {
         for (index in 0 until 3) {
             Icon(
-                imageVector = PlayerIcons.SeekChevron,
+                imageVector = SonaIcons.SeekBack,
                 contentDescription = null,
                 tint = VideoPlayerTokens.ContentColor,
                 modifier = Modifier
@@ -271,7 +271,7 @@ private fun FeedbackPill(feedback: PillFeedback) {
 
 private val PillFeedback.icon: ImageVector
     get() = when (this) {
-        is GestureFeedback.Speed -> PlayerIcons.Speed
+        is GestureFeedback.Speed -> SonaIcons.Speed
     }
 
 @Composable

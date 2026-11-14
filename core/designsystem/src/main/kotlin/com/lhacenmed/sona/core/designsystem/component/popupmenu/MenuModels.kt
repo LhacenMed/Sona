@@ -8,7 +8,7 @@ import android.util.TypedValue
 //import android.view.animation.LinearInterpolator
 import android.animation.TimeInterpolator
 import android.view.animation.DecelerateInterpolator
-import com.lhacenmed.sona.core.designsystem.R
+import com.lhacenmed.sona.core.common.R
 
 /**
  * A single menu row. Supports four rendering modes, determined by which fields are set:

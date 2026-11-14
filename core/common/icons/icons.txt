@@ -1,0 +1,173 @@
+# The app's icons: each line is a drawable, icon_<name>.xml, and the glyph that draws it. The glyph is an Ionicons
+# icon by its name - filled unless it ends in -outline - or one drawn for the app, drawn/<name>.svg beside this file,
+# on Ionicons' own 512 grid. After a change, `./gradlew generateIcons` redraws the drawables. See docs/ICONS.md.
+#
+# Flags: mirrored - turns round where text runs right to left; on - a dot beneath, for a toggle turned on where it
+# cannot be dimmed when off (the notification).
+#
+# name                      glyph                         flags
+add                         add
+add_photo_alternate         images
+album                       disc
+arrow_back                  arrow-back                    mirrored
+arrow_downward              arrow-down
+arrow_upward                arrow-up
+article                     newspaper                     mirrored
+artist                      person
+aspect_ratio                scan
+audio_file                  musical-notes
+auto_awesome                sparkles
+auto_fix_high               color-wand
+auto_rotate                 sync-circle
+backspace                   backspace                     mirrored
+backup                      cloud-upload
+bedtime                     moon
+block                       ban
+bookmark                    bookmark
+brightness                  sunny
+bug_report                  bug
+calendar_month              calendar
+check                       checkmark
+check_box                   checkbox
+check_box_outline_blank     square-outline
+check_circle                checkmark-circle
+close                       close
+cloud                       cloud
+cloud_done                  cloud-done
+cloud_off                   cloud-offline
+code                        code-slash
+collapse                    chevron-down
+comment                     chatbubble                    mirrored
+content_copy                copy
+content_cut                 cut
+content_paste               clipboard
+create_new_folder           folder-open
+delete                      trash
+delete_sweep                trash-bin
+description                 document-text
+deselect                    close-circle
+details                     information-circle
+do_not_disturb_on           remove-circle
+download                    download
+drag_handle                 reorder-three
+drive_file_rename_outline   pencil
+edit                        create
+edit_note                   journal
+equalizer                   stats-chart
+error                       alert-circle
+expand_less                 chevron-up
+expand_more                 chevron-down
+export                      push
+extension                   extension-puzzle
+fast_forward                play-forward
+favorite                    heart
+favorite_border             heart-outline
+feedback                    chatbox-ellipses
+file_open                   document
+fingerprint                 finger-print
+folder                      folder
+folder_open                 folder-open
+format_list_numbered        list-circle
+genre                       pricetags
+go_to_album                 disc
+go_to_artist                person
+graphic_eq                  pulse
+group                       people
+high_quality                diamond
+history                     time
+image                       image
+import                      file-tray-full
+indeterminate_check_box     drawn/checkbox-indeterminate
+info                        information-circle
+input                       document-attach               mirrored
+keyboard_arrow_down         chevron-down
+keyboard_arrow_right        chevron-forward               mirrored
+keyboard_arrow_up           chevron-up
+language                    language
+library_add                 duplicate
+library_music               library
+link                        link
+link_off                    unlink
+lock                        lock-closed
+lock_open                   lock-open
+login                       log-in                        mirrored
+lyrics                      mic
+monitor                     desktop
+more_time                   hourglass
+more_vert                   ellipsis-vertical
+muted                       volume-mute
+new_releases                rocket
+notes                       reader                        mirrored
+numbers                     keypad
+open_in_new                 open                          mirrored
+orientation_landscape       phone-landscape
+orientation_portrait        phone-portrait
+palette                     color-palette
+pause                       pause
+picture_in_picture          drawn/picture-in-picture
+play                        play
+play_as_audio               headset
+play_circle                 play-circle
+play_next                   return-down-forward           mirrored
+playlist                    list                          mirrored
+playlist_add                add-circle                    mirrored
+push_pin                    pin
+queue_add                   add-circle
+queue_music                 layers                        mirrored
+record_voice_over           megaphone
+redo                        arrow-redo                    mirrored
+refresh                     refresh
+remove_circle_outline       remove-circle-outline
+repeat                      repeat
+repeat_on                   repeat                        on
+repeat_one                  drawn/repeat-one
+repeat_one_on               drawn/repeat-one              on
+repeat_stop                 drawn/repeat-stop
+replay                      reload
+restart_alt                 refresh-circle
+restore                     arrow-undo-circle
+save                        save
+schedule                    stopwatch
+screenshot                  camera
+search                      search
+search_off                  search-circle
+security                    shield
+seek_back                   caret-back
+select_all                  checkmark-done
+sell                        pricetag
+send                        send                          mirrored
+settings                    settings
+share                       share-social
+short_text                  flash
+show_chart                  analytics                     mirrored
+shuffle                     shuffle
+shuffle_on                  shuffle                       on
+skip_next                   play-skip-forward
+skip_previous               play-skip-back
+smartphone                  phone-portrait
+song                        musical-note
+sort                        swap-vertical                 mirrored
+speed                       speedometer
+storage                     server
+subject                     list
+subscriptions               tv
+subtitles                   drawn/subtitles
+sync                        sync
+sync_disabled               sync-circle
+system_update               cloud-download
+terminal                    terminal
+timer                       timer
+title                       text
+touch_app                   hand-left
+trending_flat               arrow-forward                 mirrored
+trending_up                 trending-up                   mirrored
+tune                        options
+undo                        arrow-undo                    mirrored
+verified                    shield-checkmark
+video                       film
+video_file                  videocam
+video_library               albums
+volume                      volume-high
+warning                     warning
+wifi                        wifi
+wifi_off                    cloud-offline
