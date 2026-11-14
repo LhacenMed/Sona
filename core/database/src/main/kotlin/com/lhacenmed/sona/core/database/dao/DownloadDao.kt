@@ -55,6 +55,10 @@ interface DownloadDao {
     suspend fun moveSavedPath(from: String, to: String)
 
     /** The song [id] is saved as, as it is found. */
+    /** What the download's link was found to serve, where it is not what it was asked as - a file, asked for as a video. */
+    @Query("UPDATE downloads SET kind = :kind WHERE id = :id")
+    suspend fun setKind(id: Long, kind: String)
+
     @Query("UPDATE downloads SET song = :song WHERE id = :id")
     suspend fun setSong(id: Long, song: String)
 

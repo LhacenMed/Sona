@@ -13,7 +13,8 @@ import androidx.room.PrimaryKey
  * there is nothing to accumulate and nothing that can drift out of step with the counts.
  *
  * The two columns are written at different moments, following the source app: [lastPlayedAt] the
- * instant a track starts playing, [playCount] only once four fifths of it have been listened to - see
+ * instant a track starts playing, [playCount] once it has played long enough to count - a video at once,
+ * a song once four fifths of it have been listened to - see
  * `PlayHistoryRecorder`.
  */
 @Entity(

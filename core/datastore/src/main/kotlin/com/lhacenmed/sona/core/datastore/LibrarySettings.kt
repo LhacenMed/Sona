@@ -20,8 +20,11 @@ private val EXCLUDED_FOLDERS = stringSetPreferencesKey("excluded_folders")
 // who has chosen theirs - and a fresh datastore means [DEFAULT_HIDDEN_TABS], with no seed step.
 private val HIDDEN_TABS = stringSetPreferencesKey("hidden_tabs")
 
-/** Folders are hidden until asked for: the Videos tab and the music tabs already reach every file. */
-private val DEFAULT_HIDDEN_TABS = setOf(LibraryTab.FOLDERS.name)
+/**
+ * Genres and folders are hidden until asked for: the library opens on Tracks, Videos, Artists and Albums, which already reach
+ * every file.
+ */
+private val DEFAULT_HIDDEN_TABS = setOf(LibraryTab.GENRES.name, LibraryTab.FOLDERS.name)
 
 // Stored as names, separated, so a tab added later - named nowhere in it - simply joins the end.
 private val TAB_ORDER = stringPreferencesKey("tab_order")

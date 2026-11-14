@@ -4,7 +4,7 @@ package com.lhacenmed.sona.feature.player
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import com.lhacenmed.sona.core.designsystem.icon.PlayerIcons
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -1069,7 +1069,7 @@ internal fun LyricsV2(
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            imageVector = PlayerIcons.Close,
+                            imageVector = SonaIcons.Close,
                             contentDescription = stringResource(R.string.player_close),
                             tint = textColor,
                             modifier = Modifier.size(20.dp),
@@ -1104,7 +1104,7 @@ internal fun LyricsV2(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Icon(
-                            imageVector = PlayerIcons.Share,
+                            imageVector = SonaIcons.Share,
                             contentDescription = null,
                             tint = onTextColor,
                             modifier = Modifier.size(20.dp),

@@ -36,6 +36,7 @@ private val AUDIO_FOLDER_NAME = stringPreferencesKey("download_audio_folder")
 private val VIDEO_FOLDER_NAME = stringPreferencesKey("download_video_folder")
 private val AUDIO_FOLDER = stringPreferencesKey("download_audio_path")
 private val VIDEO_FOLDER = stringPreferencesKey("download_video_path")
+private val FILE_FOLDER = stringPreferencesKey("download_file_path")
 private val FILE_NAME_TEMPLATE = stringPreferencesKey("download_file_name_template")
 private val SPONSOR_SEGMENTS = stringSetPreferencesKey("download_sponsor_segments")
 private val PROXY = stringPreferencesKey("download_proxy")
@@ -80,6 +81,7 @@ class DownloadSettings @Inject constructor(
             wifiOnly = preferences[WIFI_ONLY] ?: defaults.wifiOnly,
             audioFolder = preferences[AUDIO_FOLDER] ?: (preferences[AUDIO_FOLDER_NAME] ?: preferences[FOLDER_NAME])?.let(::inDownload) ?: defaults.audioFolder,
             videoFolder = preferences[VIDEO_FOLDER] ?: (preferences[VIDEO_FOLDER_NAME] ?: preferences[FOLDER_NAME])?.let(::inDownload) ?: defaults.videoFolder,
+            fileFolder = preferences[FILE_FOLDER] ?: defaults.fileFolder,
             fileNameTemplate = preferences[FILE_NAME_TEMPLATE] ?: defaults.fileNameTemplate,
             sponsorSegments = preferences[SPONSOR_SEGMENTS]
                 ?.mapNotNull { id -> SponsorSegment.entries.firstOrNull { it.id == id } }?.toSet()
@@ -119,6 +121,7 @@ class DownloadSettings @Inject constructor(
         this[WIFI_ONLY] = preferences.wifiOnly
         this[AUDIO_FOLDER] = preferences.audioFolder
         this[VIDEO_FOLDER] = preferences.videoFolder
+        this[FILE_FOLDER] = preferences.fileFolder
         this[FILE_NAME_TEMPLATE] = preferences.fileNameTemplate
         this[SPONSOR_SEGMENTS] = preferences.sponsorSegments.map { it.id }.toSet()
         this[PROXY] = preferences.proxy

@@ -259,7 +259,7 @@ class VaultRepository @Inject internal constructor(
 
     suspend fun setSortOrder(isVideo: Boolean, order: SortOrder) = settings.setSortOrder(isVideo, order)
 
-    /** Counts a listen of the item [itemId] that lasted long enough to mean it - see `ListenHistory`. */
+    /** Counts a play of the item [itemId] that lasted long enough to count - see `PlayHistoryRecorder`. */
     suspend fun countPlay(itemId: Long) = itemDao.countPlay(itemId)
 
     /** Every item, by its id. */
