@@ -31,6 +31,13 @@ internal val PlayerHorizontalPadding = 24.dp
 internal val PlayerBarButtonSize = PlayerControls.BarButtonSize
 internal val PlayerBarIconSize = PlayerControls.BarIconSize
 
+/**
+ * How far the player's two bars keep their buttons from the screen's edges: the header below the status bar - or a notch
+ * reaching lower - as the queue bar above the navigation bar, within its [QueuePeekHeight]. Never less, however short the
+ * screen.
+ */
+internal val PlayerBarEdgeGap = (QueuePeekHeight - PlayerBarButtonSize) / 2
+
 /** The transport's height: its play button's. */
 internal val PlayerPlayButtonSize = PlayerControls.PlayButtonSize
 

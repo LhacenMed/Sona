@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.feature.player
 
+import com.lhacenmed.sona.feature.player.PlayerSectionGap
 import android.content.res.Configuration
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -165,7 +166,7 @@ internal fun LyricsSheet(
                 onSliderValueChangeFinished = onSliderValueChangeFinished,
                 viewModel = viewModel,
             )
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(PlayerSectionGap))
             DefaultTransportControls(
                 playback = playback,
                 isLoading = isLoading,

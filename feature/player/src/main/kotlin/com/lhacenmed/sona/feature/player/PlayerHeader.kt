@@ -8,7 +8,11 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -93,7 +97,10 @@ internal fun LyricsHeader(
     }
 }
 
-/** A row of the player's header, its buttons at either end on the player's keyline. */
+/**
+ * A row of the player's header, its buttons at either end on the player's keyline: [PlayerBarEdgeGap] below the status bar and
+ * any cutout - a notch reaching lower - on every screen.
+ */
 @Composable
 private fun PlayerHeaderBar(modifier: Modifier, content: @Composable RowScope.() -> Unit) {
     Row(
@@ -101,8 +108,8 @@ private fun PlayerHeaderBar(modifier: Modifier, content: @Composable RowScope.()
         modifier =
             modifier
                 .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = PlayerHorizontalPadding)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+                .padding(start = PlayerHorizontalPadding, top = PlayerBarEdgeGap, end = PlayerHorizontalPadding)
                 .height(PlayerBarButtonSize),
         content = content,
     )

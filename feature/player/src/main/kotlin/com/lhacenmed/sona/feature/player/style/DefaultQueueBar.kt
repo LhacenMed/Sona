@@ -2,6 +2,7 @@
 
 package com.lhacenmed.sona.feature.player.style
 
+import com.lhacenmed.sona.feature.player.PlayerBarEdgeGap
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -27,7 +28,6 @@ import com.lhacenmed.sona.core.designsystem.player.playerButton
 import com.lhacenmed.sona.core.designsystem.player.playerTextButton
 import com.lhacenmed.sona.feature.player.PlayerBarButtonSize
 import com.lhacenmed.sona.feature.player.PlayerHorizontalPadding
-import com.lhacenmed.sona.feature.player.QueuePeekHeight
 import com.lhacenmed.sona.feature.player.R
 import com.lhacenmed.sona.feature.player.background.PlayerColors
 
@@ -54,7 +54,7 @@ internal fun DefaultQueueBar(
                 modifier
                     .fillMaxWidth()
                     .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
-                    .padding(horizontal = PlayerHorizontalPadding, vertical = (QueuePeekHeight - PlayerBarButtonSize) / 2)
+                    .padding(horizontal = PlayerHorizontalPadding, vertical = PlayerBarEdgeGap)
                     .height(PlayerBarButtonSize),
         ) {
             PlayerBarButton(PlayerIcons.Queue, stringResource(R.string.player_queue), colors.content, onExpandQueue)

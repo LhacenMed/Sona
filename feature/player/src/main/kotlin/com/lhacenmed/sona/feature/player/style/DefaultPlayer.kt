@@ -2,6 +2,7 @@
 
 package com.lhacenmed.sona.feature.player.style
 
+import com.lhacenmed.sona.feature.player.PlayerBarEdgeGap
 import android.content.res.Configuration
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -222,7 +223,7 @@ internal fun DefaultPlayer(
                 viewModel = viewModel,
                 modifier = seekBarModifier,
             )
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(PlayerSectionGap))
             DefaultTransportControls(
                 playback = uiState.playback,
                 isLoading = isLoading,
@@ -304,7 +305,8 @@ internal fun DefaultPlayer(
 
                 seekBarAndTransport(glide)
 
-                Spacer(Modifier.height(14.dp))
+                // As far above the queue bar's buttons as beneath the times: the queue bar keeps its own edge gap above them.
+                Spacer(Modifier.height(PlayerSectionGap - PlayerBarEdgeGap))
             }
         }
     }
