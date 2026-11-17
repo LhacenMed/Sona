@@ -17,7 +17,7 @@ class SubtitleSourceTest {
     private val forcedArabic = track(trackIndex = 2, language = "ar", isForced = true)
 
     private fun track(trackIndex: Int, language: String?, isForced: Boolean = false) =
-        MediaTrack(groupIndex = 3, trackIndex = trackIndex, language = language, label = null, channelCount = 0, isForced = isForced, isSelected = false)
+        MediaTrack(groupIndex = 3, trackIndex = trackIndex, indexInType = 0, language = language, label = null, channelCount = 0, isForced = isForced, isSelected = false)
 
     private fun choose(
         choice: String? = null,

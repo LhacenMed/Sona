@@ -10,6 +10,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,7 +32,6 @@ import androidx.compose.foundation.layout.systemBarsIgnoringVisibility
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -50,6 +50,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.feature.video.PlayerText
@@ -150,9 +152,19 @@ internal fun PanelSectionTitle(title: String) {
     )
 }
 
-/** One of a set of which one is chosen: marked by a tick, and brighter than the rest. */
+/**
+ * One of a set of which one is chosen: marked by a tick, and brighter than the rest - and, with [onLongClick], something
+ * more done with it on a long press, which [longClickLabel] names.
+ */
 @Composable
-internal fun PanelChoiceRow(label: String, isChosen: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun PanelChoiceRow(
+    label: String,
+    isChosen: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
+    longClickLabel: String? = null,
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -160,7 +172,15 @@ internal fun PanelChoiceRow(label: String, isChosen: Boolean, onClick: () -> Uni
             .fillMaxWidth()
             .height(VideoPlayerTokens.PanelRowHeight)
             .clip(RoundedCornerShape(VideoPlayerTokens.PanelRowCornerRadius))
-            .selectable(selected = isChosen, role = Role.RadioButton, onClick = onClick)
+            .semantics { selected = isChosen }
+            // Felt once, as what the long press does says so - the app's toast - rather than also as the press is held.
+            .combinedClickable(
+                role = Role.RadioButton,
+                onLongClickLabel = longClickLabel,
+                onLongClick = onLongClick,
+                hapticFeedbackEnabled = false,
+                onClick = onClick,
+            )
             .padding(horizontal = 10.dp),
     ) {
         if (isChosen) {

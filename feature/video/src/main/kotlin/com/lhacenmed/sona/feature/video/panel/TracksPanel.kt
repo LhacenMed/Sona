@@ -63,6 +63,7 @@ internal fun ColumnScope.TracksPanel(
     textSize: SubtitleTextSize,
     onSelectAudio: (MediaTrack) -> Unit,
     onSelectSubtitle: (SubtitleSource) -> Unit,
+    onCopySubtitle: (SubtitleSource) -> Unit,
     onAddFile: () -> Unit,
     onTextSizeChange: (SubtitleTextSize) -> Unit,
     onOffsetChange: (Long) -> Unit,
@@ -81,7 +82,7 @@ internal fun ColumnScope.TracksPanel(
         }
         Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
             PanelSectionTitle(stringResource(R.string.video_tracks_subtitles))
-            SubtitleChoices(subtitles, onSelectSubtitle)
+            SubtitleChoices(subtitles, onSelectSubtitle, onCopySubtitle)
             PanelActionRow(SonaIcons.Add, stringResource(R.string.video_tracks_add_file), onAddFile, color = VideoPlayerTokens.TertiaryContent)
         }
     }
@@ -100,9 +101,11 @@ internal fun ColumnScope.TracksPanel(
     }
 }
 
+/** Each subtitle there is to show, and Off - each but Off copied whole on a long press. */
 @Composable
-private fun SubtitleChoices(subtitles: SubtitleUiState, onSelect: (SubtitleSource) -> Unit) {
+private fun SubtitleChoices(subtitles: SubtitleUiState, onSelect: (SubtitleSource) -> Unit, onCopy: (SubtitleSource) -> Unit) {
     val source = subtitles.source
+    val copyLabel = stringResource(R.string.video_subtitle_copy)
     val isDefaultShowingNothing = source == SubtitleSource.PlayerDefault && subtitles.tracks.none { it.isSelected }
     PanelChoiceRow(
         label = stringResource(R.string.video_tracks_off),
@@ -110,7 +113,14 @@ private fun SubtitleChoices(subtitles: SubtitleUiState, onSelect: (SubtitleSourc
         onClick = { onSelect(SubtitleSource.Off) },
     )
     (listOfNotNull(subtitles.attached) + subtitles.sideFiles).forEach { file ->
-        PanelChoiceRow(file.name, (source as? SubtitleSource.FromFile)?.subtitle == file, { onSelect(SubtitleSource.FromFile(file)) })
+        val fileSource = SubtitleSource.FromFile(file)
+        PanelChoiceRow(
+            label = file.name,
+            isChosen = (source as? SubtitleSource.FromFile)?.subtitle == file,
+            onClick = { onSelect(fileSource) },
+            onLongClick = { onCopy(fileSource) },
+            longClickLabel = copyLabel,
+        )
     }
     subtitles.tracks.forEachIndexed { index, track ->
         val isShowing = when (source) {
@@ -118,7 +128,14 @@ private fun SubtitleChoices(subtitles: SubtitleUiState, onSelect: (SubtitleSourc
             SubtitleSource.PlayerDefault -> track.isSelected
             else -> false
         }
-        PanelChoiceRow(track.displayName(index), isShowing, { onSelect(SubtitleSource.Embedded(track)) })
+        val trackSource = SubtitleSource.Embedded(track)
+        PanelChoiceRow(
+            label = track.displayName(index),
+            isChosen = isShowing,
+            onClick = { onSelect(trackSource) },
+            onLongClick = { onCopy(trackSource) },
+            longClickLabel = copyLabel,
+        )
     }
 }
 

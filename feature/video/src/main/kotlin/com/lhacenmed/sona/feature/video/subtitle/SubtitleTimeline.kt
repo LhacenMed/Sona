@@ -9,7 +9,8 @@ internal class TimedCues<T>(val startUs: Long, val endUs: Long?, val cues: List<
  */
 internal class SubtitleTimeline<T>(stretches: List<TimedCues<T>>) {
 
-    private val sorted = stretches.sortedBy { it.startUs }
+    /** Its stretches, those that begin first first. */
+    val sorted = stretches.sortedBy { it.startUs }
 
     private val endsUs = sorted.mapIndexed { index, stretch ->
         stretch.endUs ?: sorted.getOrNull(index + 1)?.startUs ?: Long.MAX_VALUE

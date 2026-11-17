@@ -4,13 +4,17 @@ import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.media3.common.text.Cue
+import com.lhacenmed.sona.core.data.contentUri
 import com.lhacenmed.sona.core.datastore.VideoSettings
+import com.lhacenmed.sona.core.designsystem.component.copyToClipboard
+import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.VideoSubtitle
 import com.lhacenmed.sona.core.model.VideoSubtitleStore
 import com.lhacenmed.sona.feature.playback.MediaTrack
 import com.lhacenmed.sona.feature.playback.VideoPlayback
 import com.lhacenmed.sona.feature.playback.VideoPlaybackState
+import com.lhacenmed.sona.feature.video.R
 import java.io.File
 import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
@@ -169,6 +173,29 @@ internal class SubtitleSession(
         }
     }
 
+    /**
+     * Copies every line of [source] - a file's, or one of the video's own tracks, read whole - as text, and says so; or
+     * that it could not, where it cannot be read or has no text, as a track of pictures has none.
+     */
+    fun copy(source: SubtitleSource) {
+        val current = loaded.value ?: return
+        scope.launch {
+            val transcript = withContext(Dispatchers.IO) {
+                val stretches = when (source) {
+                    is SubtitleSource.FromFile -> timelineOf(source.subtitle)?.sorted
+                    is SubtitleSource.Embedded -> embeddedSubtitleOf(context, current.video.track.contentUri, source.track.indexInType)
+                    SubtitleSource.Off, SubtitleSource.PlayerDefault -> null
+                }
+                stretches?.let(::transcriptOf)?.ifEmpty { null }
+            }
+            if (transcript == null) {
+                context.toast(R.string.video_subtitle_copy_failed)
+            } else {
+                context.copyToClipboard(transcript, context.getString(R.string.video_subtitle_copied))
+            }
+        }
+    }
+
     /** Writes [change] down for the video it is about - not any other, should the queue have moved on since. */
     private fun keep(current: LoadedVideo, change: (VideoSubtitle) -> VideoSubtitle) {
         val id = current.video.track.id
@@ -215,14 +242,16 @@ internal class SubtitleSession(
     }
 
     private suspend fun readTimeline(subtitle: SubtitleFile): SubtitleTimeline<Cue>? {
-        val timeline = withContext(Dispatchers.IO) {
-            runCatching { subtitle.file.inputStream().use { it.readSubtitleBytes() } }
-                .getOrNull()
-                ?.let { parseSubtitle(it, subtitle.file.extension) }
-        }
+        val timeline = withContext(Dispatchers.IO) { timelineOf(subtitle) }
         if (timeline == null) failures.trySend(Unit)
         return timeline
     }
+
+    /** The lines of [subtitle] - null where it cannot be read. Blocks. */
+    private fun timelineOf(subtitle: SubtitleFile): SubtitleTimeline<Cue>? =
+        runCatching { subtitle.file.inputStream().use { it.readSubtitleBytes() } }
+            .getOrNull()
+            ?.let { parseSubtitle(it, subtitle.file.extension) }
 
     /**
      * The file at [uri], its copy kept for [video] - or null where it is too large or is not subtitles at all, leaving

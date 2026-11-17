@@ -10,6 +10,11 @@ import androidx.media3.common.Tracks
 data class MediaTrack(
     val groupIndex: Int,
     val trackIndex: Int,
+    /**
+     * Where it lies among the file's own tracks of its type, those the device cannot play too - the place a reader of the
+     * file itself finds it at, which names its tracks in the order the player has them.
+     */
+    val indexInType: Int,
     /** Its language's code, or null where the file does not say. */
     val language: String?,
     /** The name the file gives it - "Commentary", say. */
@@ -23,8 +28,10 @@ data class MediaTrack(
 
 /** The tracks of [type] the device can play, in the order the file has them. */
 internal fun Tracks.mediaTracksOf(type: @C.TrackType Int): List<MediaTrack> = buildList {
+    var indexInType = -1
     groups.forEachIndexed { groupIndex, group ->
         if (group.type != type) return@forEachIndexed
+        indexInType++
         for (trackIndex in 0 until group.length) {
             if (!group.isTrackSupported(trackIndex)) continue
             val format = group.getTrackFormat(trackIndex)
@@ -32,6 +39,7 @@ internal fun Tracks.mediaTracksOf(type: @C.TrackType Int): List<MediaTrack> = bu
                 MediaTrack(
                     groupIndex = groupIndex,
                     trackIndex = trackIndex,
+                    indexInType = indexInType,
                     language = format.language?.takeUnless { it == C.LANGUAGE_UNDETERMINED },
                     label = format.label,
                     channelCount = format.channelCount.coerceAtLeast(0),

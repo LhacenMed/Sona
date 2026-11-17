@@ -49,6 +49,9 @@
     <string name="video_track_stereo">Stereo</string>
     <string name="video_track_forced">Forced</string>
     <string name="video_subtitle_failed">Couldn\'t read this subtitle file</string>
+    <string name="video_subtitle_copy">Copy subtitles</string>
+    <string name="video_subtitle_copied">Subtitles copied</string>
+    <string name="video_subtitle_copy_failed">Couldn\'t copy these subtitles</string>
     <string name="video_subtitle_size">Size</string>
     <string name="video_subtitle_size_small">S</string>
     <string name="video_subtitle_size_medium">M</string>

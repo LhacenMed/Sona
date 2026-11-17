@@ -422,6 +422,7 @@ internal fun VideoPlayerScreen(
                     textSize = subtitleStyle.textSize,
                     onSelectAudio = viewModel::onSelectAudioTrack,
                     onSelectSubtitle = viewModel.subtitles::choose,
+                    onCopySubtitle = viewModel.subtitles::copy,
                     onAddFile = { subtitleFilePicker.launch(arrayOf("*/*")) },
                     onTextSizeChange = viewModel::onSubtitleTextSizeChange,
                     onOffsetChange = viewModel.subtitles::setOffset,
