@@ -37,32 +37,37 @@ private val Uri.mimeType: String?
     get() = MimeTypeMap.getSingleton().getMimeTypeFromExtension(path?.substringAfterLast('.', "")?.lowercase())
 
 /**
- * The cover of the track or video at [uri], no larger than [sizePx]: Android's own thumbnail of the file - a
- * track's embedded picture, or failing that its folder's; a video's embedded picture, or failing that the frame
- * at its middle, never its first, so often black - which it keeps once made, so showing it again costs a read rather than a decode. A file MediaStore
- * has not indexed has none kept, and has one made from it. Before Android 10, which takes a video's opening
- * frame, a video's is made here by the same rule - see [videoPictureOf]. Null where the file has no picture to
- * give, and for a track before Android 10, which has no thumbnail of its own.
+ * The cover of the track or video at [uri], no larger than [sizePx]. A track's is Android's own thumbnail of its file - its
+ * embedded picture, or failing that its folder's - which Android keeps once made, so showing it again costs a read rather
+ * than a decode; a file MediaStore has not indexed has one made from it, and before Android 10 a track has none.
+ *
+ * A video's is always made here, by [videoPictureOf]: Android's kept thumbnail of a video is whichever frame it took when
+ * the thumbnail was first made - on many devices its first, so often black - and it never takes another.
  *
  * Blocks, and is called off the main thread.
  */
 fun mediaThumbnailOf(context: Context, uri: Uri, sizePx: Int): Bitmap? = runCatching {
     val size = Size(sizePx, sizePx)
-    val isVideo = uri.isVideo
     when {
-        uri.scheme == ContentResolver.SCHEME_FILE && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
-            val file = File(checkNotNull(uri.path))
-            if (isVideo) ThumbnailUtils.createVideoThumbnail(file, size, null) else ThumbnailUtils.createAudioThumbnail(file, size, null)
-        }
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> context.contentResolver.loadThumbnail(uri, size, null)
-        isVideo -> videoPictureOf(context, uri, sizePx)
-        else -> null
+        uri.isVideo -> videoPictureOf(context, uri, sizePx)
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.Q -> null
+        uri.scheme == ContentResolver.SCHEME_FILE -> ThumbnailUtils.createAudioThumbnail(File(checkNotNull(uri.path)), size, null)
+        else -> context.contentResolver.loadThumbnail(uri, size, null)
     }
 }.getOrNull()
 
+/** Where in a video, as parts of its length, a frame is looked for to stand for it - in turn, until one is not dark. */
+private val VideoCoverPositions = listOf(0.5, 0.25, 0.75, 0.1, 0.9)
+
+/** How bright, of 255, a frame has to be on average not to be taken for a dark one - a fade, a black screen. */
+private const val DARK_FRAME_LUMA = 40
+
+/** How many points across and down a frame is sampled at to tell how bright it is. */
+private const val BRIGHTNESS_SAMPLES = 12
+
 /**
- * The picture that stands for the video at [uri], no larger than [sizePx], chosen as Android 10 and later choose
- * it: the picture embedded in it, or failing that the frame at its middle.
+ * The picture that stands for the video at [uri], no larger than [sizePx]: the picture embedded in it, or failing that the
+ * first frame at [VideoCoverPositions] that is not dark - the brightest of them where all are.
  */
 private fun videoPictureOf(context: Context, uri: Uri, sizePx: Int): Bitmap? {
     val retriever = MediaMetadataRetriever()
@@ -74,15 +79,37 @@ private fun videoPictureOf(context: Context, uri: Uri, sizePx: Int): Bitmap? {
             val sampled = BitmapFactory.Options().apply { inSampleSize = (minOf(bounds.outWidth, bounds.outHeight) / sizePx).coerceAtLeast(1) }
             return BitmapFactory.decodeByteArray(picture, 0, picture.size, sampled)
         }
-        val middleUs = (retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L) * 1000 / 2
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            retriever.getScaledFrameAtTime(middleUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, sizePx, sizePx)
-        } else {
-            retriever.getFrameAtTime(middleUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+        val durationUs = (retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L) * 1000
+        var brightest: Pair<Bitmap, Int>? = null
+        for (position in VideoCoverPositions) {
+            val frame = retriever.frameAt((durationUs * position).toLong(), sizePx) ?: continue
+            val luma = frame.averageLuma()
+            if (luma >= DARK_FRAME_LUMA) return frame
+            if (brightest == null || luma > brightest.second) brightest = frame to luma
         }
+        return brightest?.first
     } finally {
         retriever.release()
     }
+}
+
+private fun MediaMetadataRetriever.frameAt(timeUs: Long, sizePx: Int): Bitmap? =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+        getScaledFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, sizePx, sizePx)
+    } else {
+        getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+    }
+
+/** How bright [this] is on average, of 255, from a grid of points across it. */
+private fun Bitmap.averageLuma(): Int {
+    var total = 0
+    for (row in 0 until BRIGHTNESS_SAMPLES) {
+        for (column in 0 until BRIGHTNESS_SAMPLES) {
+            val pixel = getPixel(width * (2 * column + 1) / (2 * BRIGHTNESS_SAMPLES), height * (2 * row + 1) / (2 * BRIGHTNESS_SAMPLES))
+            total += (299 * (pixel shr 16 and 0xFF) + 587 * (pixel shr 8 and 0xFF) + 114 * (pixel and 0xFF)) / 1000
+        }
+    }
+    return total / (BRIGHTNESS_SAMPLES * BRIGHTNESS_SAMPLES)
 }
 
 /**

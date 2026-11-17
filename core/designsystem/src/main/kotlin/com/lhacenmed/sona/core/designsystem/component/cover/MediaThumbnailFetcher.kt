@@ -16,6 +16,7 @@ import coil3.request.Options
 import coil3.size.pxOrElse
 import coil3.toAndroidUri
 import com.lhacenmed.sona.core.common.cover.isMediaFile
+import com.lhacenmed.sona.core.common.cover.isVideo
 import com.lhacenmed.sona.core.common.cover.mediaThumbnailOf
 import java.io.File
 import kotlin.math.min
@@ -27,14 +28,15 @@ private const val FALLBACK_SIZE_PX = 512
 private const val CACHED_THUMBNAIL_QUALITY = 90
 
 /**
- * A track's or a video's cover, wherever one is drawn: Android's own thumbnail of its file
- * ([mediaThumbnailOf]), which it keeps once made - so a list shows every cover at once, where reading each
- * file's picture or decoding a frame of each would lay them out one by one, and again on every launch.
+ * A track's or a video's cover, wherever one is drawn - [mediaThumbnailOf] - kept once made, so a list shows every cover
+ * at once, where reading each file's picture or decoding a frame of each would lay them out one by one, and again on
+ * every launch.
  *
- * A file Android does not index - one addressed by its path, as the Private Folder's are - has no thumbnail
- * kept for it, nor has any before Android 10, where the thumbnail is made here: so the one made is kept here instead, in Coil's disk cache: made once, it is read
- * back from then on rather than decoded from the file again each time its row comes into view. It is kept
- * by the file's last change, so a file changed in place is thumbnailed afresh.
+ * A track MediaStore indexes has Android's own thumbnail, which Android keeps. Every other cover is made here, and so is
+ * kept here instead, in Coil's disk cache: a video's, which Android's would show by a frame it picked once and never
+ * again; a file Android does not index - one addressed by its path, as the Private Folder's are; and any before Android
+ * 10. Made once, it is read back from then on rather than decoded from the file again each time its row comes into view.
+ * It is kept by the file's last change, so a file changed in place is thumbnailed afresh.
  */
 class MediaThumbnailFetcher private constructor(
     private val uri: android.net.Uri,
@@ -46,11 +48,14 @@ class MediaThumbnailFetcher private constructor(
         val sizePx = min(options.size.width.pxOrElse { FALLBACK_SIZE_PX }, options.size.height.pxOrElse { FALLBACK_SIZE_PX })
             .coerceAtLeast(1)
         val isFile = uri.scheme == ContentResolver.SCHEME_FILE
-        val diskCache = imageLoader.diskCache.takeIf { isFile || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q }
+        val isVideo = uri.isVideo
+        val diskCache = imageLoader.diskCache.takeIf { isFile || isVideo || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q }
             ?: return ImageFetchResult(image = thumbnail(sizePx).asImage(), isSampled = true, dataSource = DataSource.DISK)
 
-        // A file by its last change; an address MediaStore gave carries its own - see withCoverVersion.
-        val cacheKey = if (isFile) "thumbnail:${uri.path}:${File(checkNotNull(uri.path)).lastModified()}:$sizePx" else "thumbnail:$uri:$sizePx"
+        // A file by its last change; an address MediaStore gave carries its own - see withCoverVersion. A video's under a
+        // key of its own, so none kept by the frame chosen before is shown again.
+        val kind = if (isVideo) "video-cover" else "thumbnail"
+        val cacheKey = if (isFile) "$kind:${uri.path}:${File(checkNotNull(uri.path)).lastModified()}:$sizePx" else "$kind:$uri:$sizePx"
         diskCache.openSnapshot(cacheKey)?.let { snapshot ->
             return SourceFetchResult(
                 source = ImageSource(snapshot.data, diskCache.fileSystem, cacheKey, snapshot),
