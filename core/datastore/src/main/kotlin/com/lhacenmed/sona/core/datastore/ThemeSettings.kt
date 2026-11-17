@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.model.AppFont
@@ -28,6 +29,9 @@ private val CUSTOM_FONT_URI = stringPreferencesKey("custom_font_uri")
 private val CUSTOM_FONT_NAME = stringPreferencesKey("custom_font_name")
 
 private val ROUND_MODE = booleanPreferencesKey("round_mode")
+
+private val LAST_COVER_URI = stringPreferencesKey("last_cover_uri")
+private val LAST_COVER_COLOR = intPreferencesKey("last_cover_color")
 
 /**
  * How the app is themed: light or dark, where its colours come from, and the typeface it is set in -
@@ -132,6 +136,22 @@ class ThemeSettings @Inject constructor(
     suspend fun setRoundMode(enabled: Boolean) {
         dataStore.edit { it[ROUND_MODE] = enabled }
     }
+
+    /**
+     * The colour the theme last took from a cover, and the cover it took it from - kept rather than chosen, so the app
+     * opens in the colour it was left in instead of recolouring to it once the cover is read again. Null before any
+     * cover has coloured it.
+     */
+    val lastCoverColor: Setting<LastCoverColor?> = cache.setting { preferences ->
+        preferences[LAST_COVER_URI]?.let { LastCoverColor(coverArtUri = it, argb = preferences[LAST_COVER_COLOR]) }
+    }
+
+    suspend fun setLastCoverColor(last: LastCoverColor) {
+        dataStore.edit {
+            it[LAST_COVER_URI] = last.coverArtUri
+            if (last.argb != null) it[LAST_COVER_COLOR] = last.argb else it.remove(LAST_COVER_COLOR)
+        }
+    }
 }
 
 private fun Preferences.themeMode() = enum(THEME_MODE, ThemeMode.Default)
@@ -154,6 +174,9 @@ data class ThemeChoices(
     val font: AppFont,
     val customFont: CustomFont?,
 )
+
+/** [argb], the colour taken from the cover at [coverArtUri] - empty while none was playing - or null where it gave none. */
+data class LastCoverColor(val coverArtUri: String, val argb: Int?)
 
 /** A font file the user picked: where it is, and what it is called. */
 data class CustomFont(val uri: String, val name: String)

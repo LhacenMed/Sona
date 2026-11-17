@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.os.Build
 import android.os.SystemClock
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontFamily
 import coil3.SingletonImageLoader
 import coil3.request.ImageRequest
@@ -20,6 +21,7 @@ import com.lhacenmed.sona.core.designsystem.theme.ThemeColors
 import com.lhacenmed.sona.core.designsystem.theme.ThemeConfig
 import com.lhacenmed.sona.core.designsystem.theme.extractThemeColor
 import com.lhacenmed.sona.core.designsystem.theme.palette.ThemePalettes
+import com.lhacenmed.sona.core.datastore.LastCoverColor
 import com.lhacenmed.sona.core.datastore.ThemeChoices
 import com.lhacenmed.sona.core.datastore.ThemeSettings
 import com.lhacenmed.sona.core.model.AppFont
@@ -42,13 +44,13 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
-import kotlinx.coroutines.flow.runningFold
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transform
@@ -79,28 +81,40 @@ private val hasWallpaperColors = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 class SonaAppTheme @Inject constructor(
     @ApplicationContext private val context: Context,
     @ApplicationScope scope: CoroutineScope,
-    themeSettings: ThemeSettings,
+    private val themeSettings: ThemeSettings,
     repository: LibraryRepository,
-    playbackController: PlaybackController,
+    private val playbackController: PlaybackController,
 ) : AppTheme {
 
-    // Narrowed to the playing track's id before touching the library: the playback state also
-    // carries a position that ticks twice a second, and this used to linearly scan the whole track
-    // table on every one of those ticks looking for a single row.
-    //
-    // Only a track's cover colours the app: while a video plays, the colours stay as they were.
-    private val currentCoverArtUri = combine(
-        playbackController.playbackState.map { it.libraryTrackId }.distinctUntilChanged(),
+    /**
+     * The cover the theme is to take its colour from, empty while nothing with one plays - only once it is known: not
+     * before playback has put back the queue it was left with, nor while the library has yet to load the track playing.
+     * Only a track's cover colours the app: while a video plays, the colours stay as they were.
+     *
+     * Narrowed to the playing track's id before touching the library: the playback state also carries a position that
+     * ticks twice a second, and this used to linearly scan the whole track table on every one of those ticks.
+     */
+    private val currentCoverArtUri: Flow<String> = combine(
+        playbackController.playbackState.map { it.isReady to it.libraryTrackId }.distinctUntilChanged(),
         repository.tracksById,
-    ) { trackId, tracksById ->
-        tracksById[trackId]
-    }.runningFold(null as String?) { lastCoverArtUri, track ->
-        if (track?.isVideo == true) lastCoverArtUri else track?.coverArtUri
-    }.drop(1).distinctUntilChanged()
+    ) { (isReady, trackId), tracksById ->
+        when {
+            !isReady -> null
+            trackId == null -> ""
+            else -> tracksById[trackId]?.let { track -> if (track.isVideo) null else track.coverArtUri.orEmpty() }
+        }
+    }.filterNotNull().distinctUntilChanged()
+
+    /** The colour the theme last took from a cover - see [ThemeSettings.lastCoverColor]. */
+    private val rememberedCoverColor: Color? get() = themeSettings.lastCoverColor.value?.argb?.let(::Color)
 
     /**
      * The playing cover's colour while the theme takes one, and null otherwise - or while nothing with a
      * cover is playing. Nothing is loaded or extracted while the theme takes none.
+     *
+     * Until playback knows what it plays, it is the colour the app was left in, so a window opened as the app starts
+     * is drawn in it from its first frame. A cover's colour is kept as it is applied - [ThemeSettings.lastCoverColor] -
+     * and that cover playing again takes it back at once, rather than being read and extracted again.
      *
      * A new colour recolours the whole app over a few hundred milliseconds, recomposing everything that
      * reads a theme colour on every one of those frames, the player around the cover included. A track
@@ -116,13 +130,18 @@ class SonaAppTheme @Inject constructor(
             if (!usesCoverColors) {
                 flowOf(null)
             } else {
-                currentCoverArtUri.withIndex().mapLatest { (index, coverArtUri) ->
-                    val changedAt = SystemClock.uptimeMillis()
-                    val color = coverArtUri?.takeIf { it.isNotEmpty() }?.let { loadBitmap(it)?.extractThemeColor() }
-                    // The first cover is the one already showing - nothing slides in for it.
-                    if (index > 0) delay(RecolorHoldMillis - (SystemClock.uptimeMillis() - changedAt))
-                    color
-                }
+                currentCoverArtUri.withIndex()
+                    .mapLatest { (index, coverArtUri) ->
+                        val remembered = themeSettings.lastCoverColor.value
+                        if (remembered?.coverArtUri == coverArtUri) return@mapLatest remembered.argb?.let(::Color)
+                        val changedAt = SystemClock.uptimeMillis()
+                        val color = coverArtUri.takeIf { it.isNotEmpty() }?.let { loadBitmap(it)?.extractThemeColor() }
+                        // The first cover is the one already showing - nothing slides in for it.
+                        if (index > 0) delay(RecolorHoldMillis - (SystemClock.uptimeMillis() - changedAt))
+                        themeSettings.setLastCoverColor(LastCoverColor(coverArtUri, color?.toArgb()))
+                        color
+                    }
+                    .onStart { if (!playbackController.playbackState.value.isReady) emit(rememberedCoverColor) }
             }
         }
 
@@ -140,9 +159,9 @@ class SonaAppTheme @Inject constructor(
     /** Whether [config] has been fully worked out at least once - what [awaitReady] waits for. */
     private val isResolved = MutableStateFlow(false)
 
-    // Kept warm briefly after the last screen stops reading it, which is exactly what spans an activity
-    // handover: the pushed screen starts from an already-resolved config instead of re-extracting the
-    // cover's colour and animating up from the default on the way in.
+    // Kept for the process, as the theme is process state: every window - the widgets' too, with none open - starts
+    // from the config already worked out, never the default, and the cover's colour kept for the next launch follows
+    // every track, whether or not a window is open as it changes.
     override val config: StateFlow<ThemeConfig> = combine(themeSettings.choices.flow, coverColor, customFontFamily, ::configOf)
         // Marked resolved only once the config is in place, so whatever waits for it finds it there.
         .transform { config ->
@@ -151,8 +170,10 @@ class SonaAppTheme @Inject constructor(
         }
         .stateIn(
             scope,
-            SharingStarted.WhileSubscribed(5000),
-            configOf(themeSettings.choices.value, coverColor = null, customFontFamily = null),
+            SharingStarted.Eagerly,
+            themeSettings.choices.value.let { choices ->
+                configOf(choices, coverColor = rememberedCoverColor.takeIf { choices.usesCoverColors }, customFontFamily = null)
+            },
         )
 
     override suspend fun awaitReady() {
