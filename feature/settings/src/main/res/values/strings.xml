@@ -36,7 +36,7 @@
     <string name="permission_notifications_title">Notifications</string>
     <string name="permission_notifications_purpose">Show downloads, backups and updates as they run</string>
     <string name="permission_app_installs_title">Install updates</string>
-    <string name="permission_app_installs_purpose">Install a downloaded update of Sona</string>
+    <string name="permission_app_installs_purpose">Install updates of Sona, by itself where Android allows it</string>
     <string name="storage_title">Storage</string>
     <string name="storage_summary">Caches the app keeps on disk</string>
     <string name="backup_title">Backup &amp; restore</string>
@@ -498,7 +498,11 @@
     <string name="updates_check_failed">Could not check for updates</string>
     <string name="updates_error_unknown">Unknown error</string>
     <string name="updates_notifications_title">Update notifications</string>
-    <string name="updates_notifications_summary">Get notified when a new release is available on the selected channel</string>
+    <string name="updates_notifications_summary">Get notified when a new release is available on the selected channel and is not installed automatically</string>
+    <string name="updates_auto_update_title">Update automatically</string>
+    <string name="updates_auto_update_summary">Download new versions in the background and install them while Sona is not in use</string>
+    <string name="updates_mobile_data_title">Update using mobile data</string>
+    <string name="updates_mobile_data_summary">Download updates on metered networks too, rather than waiting for Wi-Fi</string>
     <string name="updates_auto_prompt_title">Show updates on launch</string>
     <string name="updates_auto_prompt_summary">Open the details of a new version as soon as the app starts</string>
     <string name="updates_channel_title">Update channel</string>

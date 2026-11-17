@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- In-app update: install the downloaded APK (user grants "install unknown apps" once) -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- With that grant, an update of Sona itself installs without asking, from Android 12 on - see UpdateInstaller. -->
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
 
     <application>
         <service
@@ -13,16 +15,10 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
-        <!-- Hands the downloaded APK to the system installer. -->
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.fileprovider"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/update_file_paths" />
-        </provider>
+        <!-- Hears what became of an install session - see UpdateInstaller. -->
+        <receiver
+            android:name="com.lhacenmed.sona.feature.update.UpdateInstallReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

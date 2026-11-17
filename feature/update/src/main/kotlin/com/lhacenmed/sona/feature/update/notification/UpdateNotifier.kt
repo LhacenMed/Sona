@@ -5,11 +5,6 @@ import android.content.Context
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.edit
-import androidx.work.Constraints
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.PeriodicWorkRequestBuilder
-import androidx.work.WorkManager
 import com.lhacenmed.sona.core.common.notification.SonaNotificationChannel
 import com.lhacenmed.sona.core.common.notification.SonaNotificationId
 import com.lhacenmed.sona.core.common.notification.SonaNotifications
@@ -17,71 +12,59 @@ import com.lhacenmed.sona.feature.update.R
 import com.lhacenmed.sona.feature.update.UpdateService
 import com.lhacenmed.sona.feature.update.github.Release
 import com.lhacenmed.sona.feature.update.installedBuild
-import java.util.concurrent.TimeUnit
 
 /**
- * The update notification - ArchiveTune's `UpdateNotificationManager`: while turned on, a background check
- * every six hours on any network, and one notification per new version, which opens the Updates screen and
- * carries a Download action that starts the in-app download straight away.
+ * The update notification - ArchiveTune's `UpdateNotificationManager`: one per version, opening the Updates
+ * screen. Either a new version is out, with a Download action that starts the in-app download straight away
+ * ([notifyAvailable]) - or it is already downloaded, and waits only for the user to install it ([notifyReady]).
  */
 object UpdateNotifier {
-    private const val WORK_NAME = "update_check_work"
-    private const val CHECK_INTERVAL_HOURS = 6L
-    private const val FLEX_MINUTES = 30L
-
     private const val PREFS = "update_notifier"
     private const val KEY_LAST_NOTIFIED_VERSION = "last_notified_version"
+    private const val KEY_LAST_READY_VERSION = "last_ready_version"
 
-    /** Keeps the background check scheduled while [enabled], and gone - its notification too - while not. */
-    fun follow(context: Context, enabled: Boolean) {
-        val workManager = WorkManager.getInstance(context)
-        if (!enabled) {
-            workManager.cancelUniqueWork(WORK_NAME)
-            SonaNotifications.cancel(context, SonaNotificationId.UPDATE_AVAILABLE)
-            return
-        }
-        val request = PeriodicWorkRequestBuilder<UpdateCheckWorker>(
-            CHECK_INTERVAL_HOURS, TimeUnit.HOURS,
-            FLEX_MINUTES, TimeUnit.MINUTES,
-        ).setConstraints(
-            Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .setRequiresBatteryNotLow(true)
-                .build(),
-        ).build()
-        workManager.enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.KEEP, request)
+    /** Takes the notification down - what turning update notifications off does. */
+    fun dismiss(context: Context) {
+        SonaNotifications.cancel(context, SonaNotificationId.UPDATE_AVAILABLE)
     }
 
     /** Notifies of [release] - once: a version already announced is not announced again. */
-    internal fun notifyIfNew(context: Context, release: Release) {
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        if (prefs.getString(KEY_LAST_NOTIFIED_VERSION, null) == release.versionName) return
-        if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
-        show(context, release)
-        prefs.edit { putString(KEY_LAST_NOTIFIED_VERSION, release.versionName) }
+    internal fun notifyAvailable(context: Context, release: Release) {
+        notifyOnce(context, KEY_LAST_NOTIFIED_VERSION, release.versionName) {
+            setContentText(context.getString(R.string.update_notification_text, release.versionName))
+            if (release.apkFor(context.installedBuild()) != null) {
+                addAction(
+                    R.drawable.ic_update,
+                    context.getString(R.string.update_notification_download),
+                    PendingIntent.getForegroundService(
+                        context,
+                        1,
+                        UpdateService.startIntent(context, release),
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                    ),
+                )
+            }
+        }
     }
 
-    private fun show(context: Context, release: Release) {
+    /** Notifies that [versionName] is downloaded and needs the user to install it - once, as [notifyAvailable]. */
+    internal fun notifyReady(context: Context, versionName: String) {
+        notifyOnce(context, KEY_LAST_READY_VERSION, versionName) {
+            setContentText(context.getString(R.string.update_notification_ready_text, versionName))
+        }
+    }
+
+    private fun notifyOnce(context: Context, key: String, versionName: String, content: NotificationCompat.Builder.() -> Unit) {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (prefs.getString(key, null) == versionName) return
+        if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
         val notification = SonaNotifications.builder(context, SonaNotificationChannel.UPDATE_ALERTS)
             .setContentTitle(context.getString(R.string.update_notification_title))
-            .setContentText(context.getString(R.string.update_notification_text, release.versionName))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
-            .apply {
-                if (release.apkFor(context.installedBuild()) != null) {
-                    addAction(
-                        R.drawable.ic_update,
-                        context.getString(R.string.update_notification_download),
-                        PendingIntent.getForegroundService(
-                            context,
-                            1,
-                            UpdateService.startIntent(context, release),
-                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                        ),
-                    )
-                }
-            }
+            .apply(content)
             .build()
         SonaNotifications.post(context, SonaNotificationId.UPDATE_AVAILABLE, notification)
+        prefs.edit { putString(key, versionName) }
     }
 }

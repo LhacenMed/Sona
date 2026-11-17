@@ -23,7 +23,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
-import java.io.File
 import org.json.JSONObject
 
 /**
@@ -101,7 +100,7 @@ class UpdateService : Service() {
 
     private fun postResult() {
         when (val s = UpdateRegistry.stateOf()) {
-            is UpdateState.Downloaded -> notify(SonaNotificationId.UPDATE_DOWNLOAD_RESULT, result(s.staged.file))
+            is UpdateState.Downloaded -> notify(SonaNotificationId.UPDATE_DOWNLOAD_RESULT, result())
             is UpdateState.Error      -> notify(SonaNotificationId.UPDATE_DOWNLOAD_RESULT, error(s.message))
             else                      -> Unit
         }
@@ -125,22 +124,15 @@ class UpdateService : Service() {
             .build()
     }
 
-    /** Completion notification: tapping it launches the system installer for the downloaded APK. */
-    private fun result(apk: File): Notification =
+    /** Completion notification: tapping it opens the Updates screen, where the downloaded APK is installed. */
+    private fun result(): Notification =
         base()
             .setContentText(getString(R.string.update_notif_ready))
-            .setContentIntent(installIntent(apk))
             .setAutoCancel(true)
             .build()
 
     private fun error(message: String): Notification =
         base().setContentText(message).setAutoCancel(true).build()
-
-    private fun installIntent(apk: File): PendingIntent =
-        PendingIntent.getActivity(
-            this, 0, UpdateInstaller.installIntent(this, apk),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
 
     private fun cancelIntent(): PendingIntent {
         val intent = Intent(this, UpdateService::class.java).setAction(ACTION_CANCEL)

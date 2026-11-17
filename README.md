@@ -111,7 +111,7 @@ Sona is not on Google Play or F-Droid.
 | --- | --- |
 | All files access (`MANAGE_EXTERNAL_STORAGE`; the storage permission on Android 10 and older) | Read your music and videos, and edit, move and delete them when you ask. |
 | Notifications (`POST_NOTIFICATIONS`) | Show the playback and update-download notifications. |
-| Install unknown apps (`REQUEST_INSTALL_PACKAGES`) | Install downloaded updates. Android asks you to grant this the first time. |
+| Install unknown apps (`REQUEST_INSTALL_PACKAGES`, `UPDATE_PACKAGES_WITHOUT_USER_ACTION`) | Install downloaded updates. Android asks you to grant this the first time; from Android 12 on, later updates install by themselves. |
 | Internet and network state | Check for and download updates, look up lyrics and tags, and back up to Google Drive once you connect it. |
 | Foreground service, wake lock, audio settings | Keep playing in the background and apply the equalizer. |
 

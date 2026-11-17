@@ -10,7 +10,6 @@ import com.lhacenmed.sona.core.data.LibraryRepository
 import com.lhacenmed.sona.core.datastore.EffectSettings
 import com.lhacenmed.sona.core.datastore.QuickPlaySettings
 import com.lhacenmed.sona.core.datastore.SettingsLoader
-import com.lhacenmed.sona.core.datastore.UpdateSettings
 import com.lhacenmed.sona.core.designsystem.component.cover.MediaThumbnailFetcher
 import com.lhacenmed.sona.core.designsystem.effect.SonaEffects
 import com.lhacenmed.sona.core.designsystem.icon.SonaIconPack
@@ -20,7 +19,6 @@ import com.lhacenmed.sona.feature.download.work.DownloadWork
 import com.lhacenmed.sona.feature.feedback.CrashReports
 import com.lhacenmed.sona.feature.tageditor.lyrics.MissingLyricsFinder
 import com.lhacenmed.sona.feature.update.UpdateMonitor
-import com.lhacenmed.sona.feature.update.notification.UpdateNotifier
 import com.lhacenmed.sona.widget.PlaybackWidgets
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -52,9 +50,6 @@ class SonaApplication : Application(), SingletonImageLoader.Factory {
 
     @Inject
     lateinit var effectSettings: EffectSettings
-
-    @Inject
-    lateinit var updateSettings: UpdateSettings
 
     @Inject
     lateinit var quickPlaySettings: QuickPlaySettings
@@ -93,15 +88,13 @@ class SonaApplication : Application(), SingletonImageLoader.Factory {
         // before the first frame. By the time anything asks for the track list, the query has
         // either finished or is already in flight; nothing waits for it to be started on demand.
         libraryRepository.get()
-        // Updates are looked for from here on, whichever activity is open: what the last session left is
-        // put back first, so its prompt is there again even offline - see UpdateMonitor.
+        // Updates are looked for from here on, whichever activity is open, and in the background as the
+        // settings have it: what the last session left is put back first - see UpdateMonitor.
         updateMonitor.start()
         // The tracks around the one playing are given the lyrics their files lack, whichever screen is open.
         missingLyricsFinder.get().start()
         // A widget on the home screen follows playback from the moment the process starts, whatever started it.
         playbackWidgets.get().takeIf { it.isPlaced }?.start()
-        // The background update check runs exactly while its notifications are on.
-        applicationScope.launch { updateSettings.notifications.flow.collect { UpdateNotifier.follow(this@SonaApplication, it) } }
         // Automatic backups are made exactly as often as the user chose.
         applicationScope.launch { backupSettings.schedule.collect { BackupWork.follow(this@SonaApplication, it) } }
         // yt-dlp kept up to date, and watched channels looked at, whether or not the download screen is ever opened.

@@ -72,22 +72,16 @@ fun startUpdate(context: Context, release: Release, apk: ReleaseApk?) {
 private fun StagedApk.isOf(release: Release, apk: ReleaseApk?): Boolean =
     versionName == release.versionName && (apk == null || variant == apk.variant)
 
-/** Hands the downloaded APK to the installer - or, without the grant to, sends the user to give it. */
+/** Hands the downloaded APK to the installer - Android asks the user what it needs of them. */
 private fun install(context: Context, downloaded: UpdateState.Downloaded) {
-    context.startActivity(
-        if (UpdateInstaller.canInstall(context)) {
-            UpdateInstaller.installIntent(context, downloaded.staged.file)
-        } else {
-            UpdateInstaller.requestPermissionIntent(context)
-        },
-    )
+    UpdateInstaller.installNow(context, downloaded.staged)
 }
 
 /**
  * The update in progress, after [startUpdate] - ArchiveTune's download dialog: the download's progress as a
  * wavy ring with its percentage, how much of how much has arrived and how fast, and Cancel. A download that finishes launches the installer at once;
- * without the grant to install, or on a failure, it stays to say so, and [onClose] is called once it is
- * done with.
+ * one found already downloaded waits to be installed, a failure stays to say so, and [onClose] is called once
+ * it is done with.
  */
 @Composable
 fun UpdateDownloadDialog(release: Release, onClose: () -> Unit) {
@@ -100,7 +94,7 @@ fun UpdateDownloadDialog(release: Release, onClose: () -> Unit) {
         when (val current = state) {
             UpdateState.Connecting, is UpdateState.Downloading -> sawDownload = true
             is UpdateState.Downloaded ->
-                if (sawDownload && UpdateInstaller.canInstall(context)) {
+                if (sawDownload) {
                     install(context, current)
                     onClose()
                 }

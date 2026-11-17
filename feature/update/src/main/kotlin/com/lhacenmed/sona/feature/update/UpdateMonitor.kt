@@ -8,6 +8,7 @@ import com.lhacenmed.sona.core.datastore.UpdateChannel
 import com.lhacenmed.sona.core.datastore.UpdateSettings
 import com.lhacenmed.sona.feature.update.github.Release
 import com.lhacenmed.sona.feature.update.github.Releases
+import com.lhacenmed.sona.feature.update.notification.UpdateNotifier
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -40,6 +41,10 @@ import kotlinx.coroutines.sync.withLock
  *
  * Whatever it finds lands in [UpdateRegistry], which every activity's prompt follows - see
  * [UpdateGate][com.lhacenmed.sona.feature.update.ui.UpdateGate].
+ *
+ * It is also where the settings meet the work done while the app is closed - see [UpdateWork]: the background
+ * check runs while the app updates itself or announces updates, and an update found is delivered by itself
+ * while that is turned on - see [AutoUpdater] - and installed as the app leaves the screen.
  */
 @Singleton
 class UpdateMonitor @Inject constructor(
@@ -65,6 +70,18 @@ class UpdateMonitor @Inject constructor(
             if (!context.installedBuild().isUpdatable) return@launch
             restore(updateSettings.channel.value)
             launch { updateSettings.channel.flow.drop(1).collect { offerKept(it) } }
+            launch {
+                combine(updateSettings.autoUpdate.flow, updateSettings.notifications.flow) { updates, notifies -> updates || notifies }
+                    .distinctUntilChanged()
+                    .collect { UpdateWork.followChecks(context, it) }
+            }
+            launch { updateSettings.notifications.flow.collect { notifies -> if (!notifies) UpdateNotifier.dismiss(context) } }
+            launch {
+                updateSettings.autoUpdate.flow.collect { updates -> if (updates) deliverAvailable() else UpdateWork.cancelDelivery(context) }
+            }
+            // A connection newly allowed or refused is one the delivery starts again to follow.
+            launch { updateSettings.usesMobileData.flow.drop(1).collect { deliverAvailable(replacing = true) } }
+            launch { isAppInForeground().collectLatest { isForeground -> if (!isForeground) installStaged() } }
             combine(isAppInForeground(), networkMonitor.isOnline, updateSettings.channel.flow) { isForeground, isOnline, channel ->
                 channel.takeIf { isForeground && isOnline }
             }
@@ -78,8 +95,29 @@ class UpdateMonitor @Inject constructor(
 
     private suspend fun check(channel: UpdateChannel, forceRefresh: Boolean): Result<Release> =
         checkMutex.withLock {
-            UpdateChecker.check(context, channel, forceRefresh).onSuccess { hasAnswered = true }
+            UpdateChecker.check(context, channel, forceRefresh).onSuccess {
+                hasAnswered = true
+                deliverAvailable()
+            }
         }
+
+    /** Has the available update delivered by itself, while the app updates itself and there is one. */
+    private fun deliverAvailable(replacing: Boolean = false) {
+        if (updateSettings.autoUpdate.value && UpdateRegistry.available.value != null) {
+            UpdateWork.deliver(context, updateSettings.usesMobileData.value, replacing)
+        }
+    }
+
+    /**
+     * Installs the update already downloaded, now that the app has left the screen - once it has stayed away
+     * [LeaveGraceMillis], so a glance at another app is not taken for leaving. Still busy - playing, say - it
+     * is left to [UpdateDeliveryWorker], which comes back to it.
+     */
+    private suspend fun installStaged() {
+        delay(LeaveGraceMillis)
+        val staged = (UpdateRegistry.stateOf() as? UpdateState.Downloaded)?.staged ?: return
+        if (updateSettings.autoUpdate.value) AutoUpdater.install(context, staged)
+    }
 
     /** Asks until GitHub answers, backing off between failures, then again every [RecheckIntervalMillis]. */
     private suspend fun keepChecking(channel: UpdateChannel) {
@@ -126,6 +164,9 @@ class UpdateMonitor @Inject constructor(
     }
 
     private companion object {
+        /** How long the app is off the screen before an update waiting to be installed is. */
+        const val LeaveGraceMillis = 10_000L
+
         /** How often an app left open looks again. */
         const val RecheckIntervalMillis = 30 * 60 * 1000L
 

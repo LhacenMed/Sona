@@ -65,6 +65,8 @@ data object UpdatesScreen : Screen {
         val channel by viewModel.channel.collectAsStateWithLifecycle()
         val notifications by viewModel.notifications.collectAsStateWithLifecycle()
         val autoPrompt by viewModel.autoPrompt.collectAsStateWithLifecycle()
+        val autoUpdate by viewModel.autoUpdate.collectAsStateWithLifecycle()
+        val usesMobileData by viewModel.usesMobileData.collectAsStateWithLifecycle()
         val latest by viewModel.latest.collectAsStateWithLifecycle()
         val check by viewModel.check.collectAsStateWithLifecycle()
         val installedBuild = viewModel.installedBuild
@@ -145,6 +147,20 @@ data object UpdatesScreen : Screen {
                             viewModel.setChannel(chosen)
                         }
                     },
+                )
+                SettingsSwitchItem(
+                    title = stringResource(R.string.updates_auto_update_title),
+                    summary = stringResource(R.string.updates_auto_update_summary),
+                    checked = autoUpdate,
+                    onCheckedChange = viewModel::setAutoUpdate,
+                    enabled = installedBuild.isUpdatable,
+                )
+                SettingsSwitchItem(
+                    title = stringResource(R.string.updates_mobile_data_title),
+                    summary = stringResource(R.string.updates_mobile_data_summary),
+                    checked = usesMobileData,
+                    onCheckedChange = viewModel::setUsesMobileData,
+                    enabled = autoUpdate && installedBuild.isUpdatable,
                 )
                 SettingsSwitchItem(
                     title = stringResource(R.string.updates_auto_prompt_title),

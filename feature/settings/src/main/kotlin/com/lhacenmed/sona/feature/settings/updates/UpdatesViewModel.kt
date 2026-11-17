@@ -46,6 +46,8 @@ class UpdatesViewModel @Inject constructor(
     val channel: StateFlow<UpdateChannel> = updateSettings.channel.stateIn(viewModelScope)
     val notifications: StateFlow<Boolean> = updateSettings.notifications.stateIn(viewModelScope)
     val autoPrompt: StateFlow<Boolean> = updateSettings.autoPrompt.stateIn(viewModelScope)
+    val autoUpdate: StateFlow<Boolean> = updateSettings.autoUpdate.stateIn(viewModelScope)
+    val usesMobileData: StateFlow<Boolean> = updateSettings.usesMobileData.stateIn(viewModelScope)
 
     /** The newest release on the channel, or null until it is known. */
     val latest: StateFlow<Release?> = UpdateRegistry.latest
@@ -97,6 +99,14 @@ class UpdatesViewModel @Inject constructor(
 
     fun setNotifications(enabled: Boolean) {
         viewModelScope.launch { updateSettings.setNotifications(enabled) }
+    }
+
+    fun setAutoUpdate(enabled: Boolean) {
+        viewModelScope.launch { updateSettings.setAutoUpdate(enabled) }
+    }
+
+    fun setUsesMobileData(uses: Boolean) {
+        viewModelScope.launch { updateSettings.setUsesMobileData(uses) }
     }
 
     fun setAutoPrompt(enabled: Boolean) {

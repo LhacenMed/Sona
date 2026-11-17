@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Last updated: 2026-10-30
+Last updated: 2026-11-15
 
 Sona does not collect, sell or share personal data. It has no accounts of its own, no analytics, no advertising and no crash reporting. This document lists everything the app stores, and every time it uses the network.
 
@@ -52,7 +52,7 @@ Sona has no server of its own. It connects only to the services below, each for 
 | Feature | When | What is sent | To |
 | --- | --- | --- | --- |
 | Update check | At launch and when the connection returns, if a release build is online; when you tap **Check now** in Settings › Updates | Nothing | `raw.githubusercontent.com` |
-| Update download | When you tap **Update** in the update dialog | Nothing | `github.com`, which redirects to GitHub's download servers |
+| Update download | By itself once a newer version is found, on Wi-Fi unless you allow mobile data, while **Update automatically** is on in Settings › Updates; otherwise when you tap **Update** in the update dialog | Nothing | `github.com`, which redirects to GitHub's download servers |
 | Changelog, commits and avatars | When you open Settings › Updates or About | Nothing | `api.github.com`, `github.com` |
 | **Find missing lyrics** (off by default, in Settings › Lyrics) | While music plays and the device is online, for the playing, next and previous tracks whose files have no lyrics | Title, artist, album, length | The lyrics services below |
 | Lyrics search in the tag editor | When you search for a track's lyrics | Title, artist, album, length | The lyrics services below |
@@ -76,8 +76,8 @@ Tracks are shared only when you choose Share, and only with the app you pick in 
 | --- | --- |
 | Notifications | Playback controls and update download progress |
 | Internet, network state | The requests listed under Network use |
-| Install unknown apps | Installing a downloaded update; Android asks for your approval |
 | All files access (the storage permission on Android 10 and older) | Reading your music and videos, editing tags and deleting tracks you choose, writing found lyrics into files, and putting restored music and videos back where they were |
+| Install unknown apps, update without asking | Installing a downloaded update: by itself while the app is not in use on Android 12 and newer once you have approved it, with your approval each time before that |
 | Foreground service, wake lock | Playing, downloading, backing up and restoring while the app is in the background |
 | Modify audio settings | The equalizer |
 

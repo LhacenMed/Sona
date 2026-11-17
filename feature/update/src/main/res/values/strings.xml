@@ -20,6 +20,7 @@
     <string name="update_no_apk">This release has no download for this device.</string>
     <string name="update_offline">No internet connection. Connect to the internet to download the update.</string>
     <string name="update_download_damaged">The download was incomplete or damaged. Try again.</string>
+    <string name="update_install_failed">The update could not be installed.</string>
     <string name="update_download_invalid">The downloaded file is not an update this device can install.</string>
 
     <!-- The download notification -->
@@ -32,6 +33,7 @@
     <string name="update_notification_title">New update available</string>
     <string name="update_notification_text">Version %1$s is available</string>
     <string name="update_notification_download">Download</string>
+    <string name="update_notification_ready_text">Version %1$s is downloaded and ready to install</string>
     <!-- Downloading an update - see ApkDownloader and ApkVariant -->
     <string name="update_download_failed">Download failed: %1$s</string>
     <string name="update_variant_universal">Universal</string>

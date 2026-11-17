@@ -282,6 +282,8 @@ internal val SettingsSearchEntries: List<SettingsSearchEntry> = with(SettingsCat
     section(
         R.string.updates_preferences_section,
         row(R.string.updates_channel_title),
+        row(R.string.updates_auto_update_title, R.string.updates_auto_update_summary),
+        row(R.string.updates_mobile_data_title, R.string.updates_mobile_data_summary),
         row(R.string.updates_auto_prompt_title, R.string.updates_auto_prompt_summary),
         row(R.string.updates_notifications_title, R.string.updates_notifications_summary),
     ) + section(
