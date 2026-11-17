@@ -257,9 +257,9 @@ private fun RestorePreviewDialog(
                 onClick = {
                     val filesToRestore = files.fingerprintsOf(picked)
                     // Files are written back where they were, which only managing all files allows.
-                    if (filesToRestore.isNotEmpty() && !AppPermission.FILE_CHANGES.isGranted(context)) {
+                    if (filesToRestore.isNotEmpty() && !AppPermission.STORAGE.isGranted(context)) {
                         context.toast(R.string.restore_file_access_needed)
-                        context.startActivity(AppPermission.FILE_CHANGES.settingsIntent(context))
+                        context.startActivity(AppPermission.STORAGE.settingsIntent(context))
                     } else {
                         onRestore(filesToRestore)
                     }

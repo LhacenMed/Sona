@@ -1,8 +1,5 @@
 package com.lhacenmed.sona.feature.library
 
-import androidx.activity.compose.LocalActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -10,13 +7,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.lhacenmed.sona.core.designsystem.component.EmptyStateAction
-import com.lhacenmed.sona.core.designsystem.component.SonaEmptyState
-import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.model.PlaybackParent
@@ -27,10 +19,6 @@ import com.lhacenmed.sona.feature.library.options.OptionsTarget
 /**
  * Every video, listed as the tracks tab's tracks are, and opened in the video player when tapped. The folders
  * holding them are the Folders tab's.
- *
- * Reading videos takes a permission of its own, asked for here rather than as the app opens: until it is
- * given, the tab offers it in the place its list will fill. It is checked again each time the app comes
- * back, so one granted in Android's settings shows the videos on return.
  */
 @Composable
 fun VideosScreen(
@@ -39,38 +27,8 @@ fun VideosScreen(
     listState: LazyListState,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
-    val activity = LocalActivity.current
-    val permission = AppPermission.VIDEO_LIBRARY
-    var canReadVideos by remember { mutableStateOf(permission.isGranted(context)) }
-    val onAccessChecked = { granted: Boolean ->
-        if (granted && !canReadVideos) viewModel.onVideoAccessGranted()
-        canReadVideos = granted
-    }
-    LifecycleResumeEffect(Unit) {
-        onAccessChecked(permission.isGranted(context))
-        onPauseOrDispose {}
-    }
-    val runtimePermission = checkNotNull(permission.runtimePermission)
-    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        onAccessChecked(granted)
-        // Declined with no rationale left to give: Android will not ask again, so its page is where it is granted.
-        if (!granted && activity?.shouldShowRequestPermissionRationale(runtimePermission) == false) {
-            context.startActivity(permission.settingsIntent(context))
-        }
-    }
-
-    if (!canReadVideos) {
-        SonaEmptyState(
-            title = stringResource(R.string.videos_permission_title),
-            message = stringResource(R.string.videos_permission_message),
-            modifier = modifier,
-            action = EmptyStateAction(label = stringResource(R.string.videos_permission_allow), icon = SonaIcons.Video) { permissionLauncher.launch(runtimePermission) },
-        )
-        return
-    }
-
     val videos by viewModel.videos.collectAsStateWithLifecycle()
+    val hasPermission by viewModel.hasPermission.collectAsStateWithLifecycle()
     val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
     val playback by viewModel.playback.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
@@ -81,7 +39,7 @@ fun VideosScreen(
     LibraryList(
         content = videos,
         selection = selection,
-        hasPermission = true,
+        hasPermission = hasPermission,
         isScanning = isScanning,
         emptyTitle = stringResource(R.string.library_no_videos_found),
         emptyMessage = searchEmptyMessage(searchQuery),

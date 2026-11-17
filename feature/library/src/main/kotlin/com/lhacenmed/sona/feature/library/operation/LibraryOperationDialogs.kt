@@ -17,6 +17,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.lhacenmed.sona.core.common.permission.AppPermission
+import com.lhacenmed.sona.core.designsystem.component.permission.rememberPermissionRequest
 import com.lhacenmed.sona.core.data.contentUri
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDialog
 import com.lhacenmed.sona.core.designsystem.component.toast
@@ -246,45 +247,22 @@ private fun rememberDeviceDeletion(
             onFinished(false)
         }
     }
-    val allFilesAccessLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult(),
-    ) {
-        val onFinished = pendingDeletion ?: return@rememberLauncherForActivityResult
+    // Declined, the deletion still happens where Android can ask for it itself - see requestSystemDeletion.
+    val requestStorageAccess = rememberPermissionRequest(AppPermission.STORAGE) { granted ->
+        val onFinished = pendingDeletion ?: return@rememberPermissionRequest
         pendingDeletion = null
-        if (AppPermission.FILE_CHANGES.isGranted(context)) {
-            actionsViewModel.deleteTracks(tracks, reporting(onFinished))
-        } else {
-            requestSystemDeletion(onFinished)
-        }
-    }
-    val writePermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        val onFinished = pendingDeletion ?: return@rememberLauncherForActivityResult
-        pendingDeletion = null
-        if (granted) actionsViewModel.deleteTracks(tracks, reporting(onFinished)) else onFinished(false)
+        if (granted) actionsViewModel.deleteTracks(tracks, reporting(onFinished)) else requestSystemDeletion(onFinished)
     }
 
     return { onFinished ->
-        val permission = AppPermission.FILE_CHANGES
-        val runtimePermission = permission.runtimePermission
-        when {
-            permission.isGranted(context) -> actionsViewModel.deleteTracks(tracks, reporting(onFinished))
-            runtimePermission != null -> {
-                pendingDeletion = onFinished
-                writePermissionLauncher.launch(runtimePermission)
-            }
-            else -> {
-                pendingDeletion = onFinished
-                allFilesAccessLauncher.launch(permission.settingsIntent(context))
-            }
-        }
+        pendingDeletion = onFinished
+        requestStorageAccess()
     }
 }
 
 /** Whether deleting from the device first takes the user to Android's settings to allow managing all files. */
 private fun needsAllFilesAccess(context: Context): Boolean =
-    Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !AppPermission.FILE_CHANGES.isGranted(context)
+    Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !AppPermission.STORAGE.isGranted(context)
 
 @Composable
 private fun deletionOutcome(count: Int, succeeded: Boolean): String = when {

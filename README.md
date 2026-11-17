@@ -109,7 +109,7 @@ Sona is not on Google Play or F-Droid.
 
 | Permission | Why |
 | --- | --- |
-| Music and audio (`READ_MEDIA_AUDIO`; `READ_EXTERNAL_STORAGE` on Android 12 and older) | Read your music library. |
+| All files access (`MANAGE_EXTERNAL_STORAGE`; the storage permission on Android 10 and older) | Read your music and videos, and edit, move and delete them when you ask. |
 | Notifications (`POST_NOTIFICATIONS`) | Show the playback and update-download notifications. |
 | Install unknown apps (`REQUEST_INSTALL_PACKAGES`) | Install downloaded updates. Android asks you to grant this the first time. |
 | Internet and network state | Check for and download updates, look up lyrics and tags, and back up to Google Drive once you connect it. |

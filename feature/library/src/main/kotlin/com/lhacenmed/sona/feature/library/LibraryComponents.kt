@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.common.format.formatDuration
+import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.data.search.SearchIndex
@@ -56,6 +57,7 @@ import com.lhacenmed.sona.core.designsystem.component.screen.PlayingRow
 import com.lhacenmed.sona.core.designsystem.component.screen.scrollBackToTop
 import com.lhacenmed.sona.core.designsystem.component.screen.scrollToRow
 import com.lhacenmed.sona.core.designsystem.component.overscroll.SonaPullToRefreshBox
+import com.lhacenmed.sona.core.designsystem.component.permission.rememberPermissionRequest
 import com.lhacenmed.sona.core.designsystem.component.section.rememberSectionListState
 import com.lhacenmed.sona.core.designsystem.component.section.sectionItemAnimation
 import com.lhacenmed.sona.core.designsystem.component.section.section
@@ -157,7 +159,10 @@ internal fun <T> LibraryListContent(
                     emptyTitle = emptyTitle,
                     emptyMessage = emptyMessage,
                 )
-                SonaEmptyState(title = title, message = message, action = emptyAction)
+                // Without access to the device's files there is no library to show: the list offers it in its place.
+                val requestStorageAccess = rememberPermissionRequest(AppPermission.STORAGE)
+                val storageAccessAction = EmptyStateAction(stringResource(R.string.library_permission_allow), SonaIcons.Folder, requestStorageAccess)
+                SonaEmptyState(title = title, message = message, action = if (hasPermission) emptyAction else storageAccessAction)
             }
             content is LibraryContent.Ready -> body(content.items)
         }

@@ -74,11 +74,10 @@ Tracks are shared only when you choose Share, and only with the app you pick in 
 
 | Permission | Used for |
 | --- | --- |
-| Music and audio (`READ_MEDIA_AUDIO`; `READ_EXTERNAL_STORAGE` on Android 12 and older) | Reading your music files |
 | Notifications | Playback controls and update download progress |
 | Internet, network state | The requests listed under Network use |
-| All files access | Editing tags and deleting tracks you choose, writing found lyrics into files, and putting restored music and videos back where they were |
 | Install unknown apps | Installing a downloaded update; Android asks for your approval |
+| All files access (the storage permission on Android 10 and older) | Reading your music and videos, editing tags and deleting tracks you choose, writing found lyrics into files, and putting restored music and videos back where they were |
 | Foreground service, wake lock | Playing, downloading, backing up and restoring while the app is in the background |
 | Modify audio settings | The equalizer |
 

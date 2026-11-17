@@ -167,7 +167,8 @@
     </plurals>
     <!-- The library's lists and detail screens - see LibraryComponents -->
     <string name="library_permission_title">Permission needed</string>
-    <string name="library_permission_message">Sona needs access to your audio files to show your library.</string>
+    <string name="library_permission_allow">Allow</string>
+    <string name="library_permission_message">Sona needs access to your files to show your library.</string>
     <string name="library_scanning_title">Scanning your library…</string>
     <string name="library_scanning_message">This only takes a moment.</string>
     <string name="library_empty_message">Add some music to your device to see it here.</string>
@@ -230,9 +231,6 @@
     <string name="shortcuts_more">More shortcuts</string>
     <string name="library_tabs_title">Library tabs</string>
     <string name="library_tabs_opened_at_launch">Opened at launch</string>
-    <string name="videos_permission_title">Allow access to videos</string>
-    <string name="videos_permission_message">Sona plays the videos on your device.</string>
-    <string name="videos_permission_allow">Allow</string>
     <string name="uncounted_title">Not counted in Most played</string>
     <string name="uncounted_count_again">Count again</string>
     <string name="uncounted_empty_title">Every collection counts</string>

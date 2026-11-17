@@ -40,8 +40,9 @@ fun scanSignatureOf(context: Context, excludedFolders: Set<String>, separatesArt
     }
     // Excluded folders are part of the result, so changing them must invalidate the signature.
     val exclusions = excludedFolders.sorted().joinToString(" ")
-    // Videos are read only once they may be: granting that changes what a scan finds, without a file changing.
-    val readsVideos = AppPermission.VIDEO_LIBRARY.isGranted(context)
+    // Videos were once read under a permission of their own: a library scanned without it is scanned again
+    // under the one that reads every file, which finds them without a file changing.
+    val readsVideos = AppPermission.STORAGE.isGranted(context)
     // Separating artists or not changes every artist a scan makes of the same files.
     return "$SCANNER_SCHEMA_VERSION|$version|$generation|${exclusions.hashCode()}|$readsVideos|$separatesArtists"
 }

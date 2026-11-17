@@ -289,21 +289,13 @@ class LibraryViewModel @Inject constructor(
     // starts/stops (the moment it would actually change, since granting it is what unblocks the
     // first scan) is enough to avoid a stale "permission needed" message without any polling.
     val hasPermission: StateFlow<Boolean> = mediaScanner.isScanning
-        .map { AppPermission.AUDIO_LIBRARY.isGranted(context) }
+        .map { AppPermission.STORAGE.isGranted(context) }
         .distinctUntilChanged()
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),
-            AppPermission.AUDIO_LIBRARY.isGranted(context),
+            AppPermission.STORAGE.isGranted(context),
         )
-
-    /**
-     * Reads the videos in, now that Sona may - a scan the device's unchanged media would otherwise skip,
-     * which the permission is part of the reckoning of.
-     */
-    fun onVideoAccessGranted() {
-        mediaScanner.requestScan()
-    }
 
     /** Starts playback of the whole tracks tab, beginning at [track] - searched or not: see [tabTracksOf]. */
     fun onTrackClick(track: Track) {

@@ -1,104 +1,83 @@
 package com.lhacenmed.sona.feature.settings.screen
 
-import androidx.activity.compose.LocalActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.lhacenmed.sona.core.common.permission.AppPermission
-import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
-import com.lhacenmed.sona.core.navigation.Screen
-import com.lhacenmed.sona.feature.settings.R
-import com.lhacenmed.sona.core.designsystem.component.settings.SettingsActionItem
+import com.lhacenmed.sona.core.designsystem.component.permission.rememberPermissionRequest
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsList
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSection
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSwitchItem
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.settings.R
 
 /**
- * Every permission Sona uses on this device, what it is for, and whether it is granted - one row each,
- * read from [AppPermission] so this screen lists exactly what the app asks for.
- *
- * Re-read every time the screen comes back into view, so a change made in Android's own settings shows
- * the moment the user returns. A row not granted asks for it: in Android's dialog where it still asks,
- * otherwise on the page where it is granted - its special-access page, or the app's details for a
- * permission the user declined for good. A granted row opens that page, where it can be taken back.
+ * Every permission Sona uses on this device and what it is for - one row each, read from [AppPermission] so
+ * this screen lists exactly what the app asks for. Whether each is granted is its switch: on while Sona holds
+ * it, off while it does not, as every other setting says which way it is set.
  */
 data object PermissionsScreen : Screen {
     override val titleRes: Int get() = R.string.permissions_title
 
     @Composable
     override fun Content() {
-        val context = LocalContext.current
-        val activity = LocalActivity.current
-        val grantedNow = { AppPermission.needed.filterTo(HashSet()) { it.isGranted(context) } }
-        var grantedPermissions by remember { mutableStateOf(grantedNow()) }
-        val refresh = { grantedPermissions = grantedNow() }
-        LifecycleResumeEffect(Unit) {
-            refresh()
-            onPauseOrDispose {}
-        }
-
-        // The permission Android's dialog is asking about, until the user answers it.
-        var askedPermission by remember { mutableStateOf<AppPermission?>(null) }
-        val runtimePermissionLauncher = rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestPermission(),
-        ) { granted ->
-            refresh()
-            val permission = askedPermission ?: return@rememberLauncherForActivityResult
-            askedPermission = null
-            // Declined with no rationale left to give: Android will not ask again, so its page is where
-            // the permission is granted from now on.
-            val runtimePermission = permission.runtimePermission ?: return@rememberLauncherForActivityResult
-            if (!granted && activity?.shouldShowRequestPermissionRationale(runtimePermission) == false) {
-                context.startActivity(permission.settingsIntent(context))
-            }
-        }
-
         SettingsList {
             SettingsSection(stringResource(R.string.permissions_section)) {
-                AppPermission.needed.forEach { permission ->
-                    val isGranted = permission in grantedPermissions
-                    val status = stringResource(
-                        if (isGranted) R.string.permission_status_allowed else R.string.permission_status_not_allowed,
-                    )
-                    SettingsActionItem(
-                        title = stringResource(permission.titleRes),
-                        summary = stringResource(permission.purposeRes) + InfoSeparator + status,
-                        onClick = {
-                            val runtimePermission = permission.runtimePermission
-                            if (isGranted || runtimePermission == null) {
-                                context.startActivity(permission.settingsIntent(context))
-                            } else {
-                                askedPermission = permission
-                                runtimePermissionLauncher.launch(runtimePermission)
-                            }
-                        },
-                    )
-                }
+                AppPermission.needed.forEach { permission -> PermissionItem(permission) }
             }
         }
     }
 }
 
+/**
+ * [permission], and whether Sona holds it - read again every time the screen comes back into view, so a change
+ * made in Android's own settings shows the moment the user returns. Turned on, it is asked for as
+ * [rememberPermissionRequest] asks; turned off, it opens the page where Android lets it be taken back, which
+ * an app cannot do itself.
+ */
+@Composable
+private fun PermissionItem(permission: AppPermission) {
+    val context = LocalContext.current
+    var isGranted by remember { mutableStateOf(permission.isGranted(context)) }
+    LifecycleResumeEffect(permission) {
+        isGranted = permission.isGranted(context)
+        onPauseOrDispose {}
+    }
+    val request = rememberPermissionRequest(permission) { isGranted = it }
+
+    SettingsSwitchItem(
+        title = stringResource(permission.titleRes),
+        summary = stringResource(permission.purposeRes),
+        icon = permission.icon,
+        checked = isGranted,
+        onCheckedChange = { if (isGranted) context.startActivity(permission.settingsIntent(context)) else request() },
+    )
+}
+
 internal val AppPermission.titleRes: Int
     get() = when (this) {
-        AppPermission.AUDIO_LIBRARY -> R.string.permission_audio_library_title
-        AppPermission.VIDEO_LIBRARY -> R.string.permission_video_library_title
+        AppPermission.STORAGE -> R.string.permission_storage_title
         AppPermission.NOTIFICATIONS -> R.string.permission_notifications_title
-        AppPermission.FILE_CHANGES -> R.string.permission_file_changes_title
         AppPermission.APP_INSTALLS -> R.string.permission_app_installs_title
     }
 
 internal val AppPermission.purposeRes: Int
     get() = when (this) {
-        AppPermission.AUDIO_LIBRARY -> R.string.permission_audio_library_purpose
-        AppPermission.VIDEO_LIBRARY -> R.string.permission_video_library_purpose
+        AppPermission.STORAGE -> R.string.permission_storage_purpose
         AppPermission.NOTIFICATIONS -> R.string.permission_notifications_purpose
-        AppPermission.FILE_CHANGES -> R.string.permission_file_changes_purpose
         AppPermission.APP_INSTALLS -> R.string.permission_app_installs_purpose
+    }
+
+private val AppPermission.icon: ImageVector
+    get() = when (this) {
+        AppPermission.STORAGE -> SonaIcons.Folder
+        AppPermission.NOTIFICATIONS -> SonaIcons.Notifications
+        AppPermission.APP_INSTALLS -> SonaIcons.SystemUpdate
     }

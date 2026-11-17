@@ -17,4 +17,7 @@
     <string name="track_popup_close">Close</string>
     <string name="track_popup_pause">Pause</string>
     <string name="track_popup_play">Play</string>
+    <string name="storage_access_title">Allow access to your files</string>
+    <string name="storage_access_message">Sona builds your library from the music and videos on this device, and edits, moves and deletes them when you ask it to. Android grants this on its own settings page.</string>
+    <string name="storage_access_allow">Allow</string>
 </resources>

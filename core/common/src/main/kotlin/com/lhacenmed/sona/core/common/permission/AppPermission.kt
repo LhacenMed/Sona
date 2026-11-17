@@ -19,65 +19,39 @@ import android.provider.Settings
  * its own ([settingsIntent]). Which one a permission is can depend on the Android version.
  */
 enum class AppPermission {
-    /** Reading the device's music - without it there is no library. */
-    AUDIO_LIBRARY,
+    /**
+     * The device's files, read and changed: the music and videos the library is built from, and deleting,
+     * moving and retagging them. One grant for all of it - access to manage all files from Android 11 on,
+     * which reads everything MediaStore lists too, and the storage permission before it.
+     */
+    STORAGE,
 
-    /** Reading the device's videos, whose sound the Videos tab plays - asked for from that tab. */
-    VIDEO_LIBRARY,
-
-    /** Showing an update's download progress. The player's own controls need no permission. */
+    /** Showing a download's or an update's progress. The player's own controls need no permission. */
     NOTIFICATIONS,
-
-    /** Changing tracks' files - deleting them, writing their tags - without Android asking each time. */
-    FILE_CHANGES,
 
     /** Installing a downloaded update. */
     APP_INSTALLS,
     ;
 
-    /**
-     * Whether this Android version has this permission at all - notifications are only asked for from 13 on,
-     * and videos only apart from music from 13 on, the one permission granting both before it.
-     */
+    /** Whether this Android version has this permission at all - notifications are only asked for from 13 on. */
     val isNeeded: Boolean
-        get() = (this != NOTIFICATIONS && this != VIDEO_LIBRARY) || Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+        get() = this != NOTIFICATIONS || Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
 
-    /**
-     * Whether it is asked for as the app opens: what the app is hardly usable without, and asked in
-     * Android's own dialog. Special access is asked for where it is first needed instead, rather than
-     * sending the user out of the app before they have used it.
-     */
+    /** Whether it is asked for as the app opens: what the app is hardly usable without. */
     val isAskedAtLaunch: Boolean
-        get() = this == AUDIO_LIBRARY || this == NOTIFICATIONS
+        get() = this == STORAGE || this == NOTIFICATIONS
 
     /** The runtime permission Android asks about in a dialog, or null where this is special access. */
     val runtimePermission: String?
         get() = when (this) {
-            AUDIO_LIBRARY -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                Manifest.permission.READ_MEDIA_AUDIO
-            } else {
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            }
-            VIDEO_LIBRARY -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                Manifest.permission.READ_MEDIA_VIDEO
-            } else {
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            }
+            // Writing to storage is granted with reading it, so the one dialog gives both.
+            STORAGE -> Manifest.permission.WRITE_EXTERNAL_STORAGE.takeIf { Build.VERSION.SDK_INT < Build.VERSION_CODES.R }
             NOTIFICATIONS -> Manifest.permission.POST_NOTIFICATIONS
-            FILE_CHANGES -> Manifest.permission.WRITE_EXTERNAL_STORAGE.takeIf {
-                Build.VERSION.SDK_INT < Build.VERSION_CODES.R
-            }
             APP_INSTALLS -> null
         }
 
     fun isGranted(context: Context): Boolean = when {
-        this == FILE_CHANGES && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ->
-            Environment.isExternalStorageManager()
-        // Managing all files reads every file too, MediaStore's included - so where it is granted, the library
-        // needs nothing more, and is never asked for.
-        (this == AUDIO_LIBRARY || this == VIDEO_LIBRARY) &&
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager() ->
-            true
+        this == STORAGE && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> Environment.isExternalStorageManager()
         this == APP_INSTALLS -> context.packageManager.canRequestPackageInstalls()
         else -> context.checkSelfPermission(checkNotNull(runtimePermission)) == PackageManager.PERMISSION_GRANTED
     }
@@ -89,7 +63,7 @@ enum class AppPermission {
     fun settingsIntent(context: Context): Intent {
         val packageUri = Uri.parse("package:${context.packageName}")
         return when {
-            this == FILE_CHANGES && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ->
+            this == STORAGE && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ->
                 Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, packageUri)
             this == APP_INSTALLS -> Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, packageUri)
             else -> Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, packageUri)

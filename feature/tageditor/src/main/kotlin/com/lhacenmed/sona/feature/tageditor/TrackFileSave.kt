@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import com.lhacenmed.sona.core.common.permission.AppPermission
+import com.lhacenmed.sona.core.designsystem.component.permission.rememberPermissionRequest
 import com.lhacenmed.sona.core.data.contentUri
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.model.Track
@@ -87,25 +88,8 @@ internal fun rememberTrackFileSave(
  * [onGranted]: what a file renamed, moved or converted needs, which Android's request for a media file's change does not cover.
  */
 @Composable
-fun rememberFileAccessRequest(onGranted: () -> Unit): () -> Unit {
-    val context = LocalContext.current
-    val latestOnGranted by rememberUpdatedState(onGranted)
-    val allFilesAccessLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        if (AppPermission.FILE_CHANGES.isGranted(context)) latestOnGranted()
-    }
-    val writePermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) latestOnGranted()
-    }
-    return {
-        val permission = AppPermission.FILE_CHANGES
-        val runtimePermission = permission.runtimePermission
-        when {
-            permission.isGranted(context) -> latestOnGranted()
-            runtimePermission != null -> writePermissionLauncher.launch(runtimePermission)
-            else -> allFilesAccessLauncher.launch(permission.settingsIntent(context))
-        }
-    }
-}
+fun rememberFileAccessRequest(onGranted: () -> Unit): () -> Unit =
+    rememberPermissionRequest(AppPermission.STORAGE) { granted -> if (granted) onGranted() }
 
 /**
  * Gets whatever Android wants before Sona changes the files of the tracks it is called with, then calls [onGranted].
@@ -122,7 +106,7 @@ fun rememberFileChangeRequest(onGranted: () -> Unit): (List<Track>) -> Unit {
     val requestFileAccess = rememberFileAccessRequest(onGranted)
 
     return { tracks ->
-        val permission = AppPermission.FILE_CHANGES
+        val permission = AppPermission.STORAGE
         when {
             tracks.isEmpty() -> Unit
             permission.isGranted(context) || permission.runtimePermission != null || tracks.any { it.isManuallyScanned } -> requestFileAccess()

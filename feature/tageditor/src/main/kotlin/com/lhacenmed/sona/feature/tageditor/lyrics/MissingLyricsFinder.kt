@@ -98,7 +98,7 @@ class MissingLyricsFinder @Inject constructor(
     }
 
     private suspend fun findLyrics(trackId: Long) {
-        if (trackId in lookedForTrackIds || !AppPermission.FILE_CHANGES.isGranted(context)) return
+        if (trackId in lookedForTrackIds || !AppPermission.STORAGE.isGranted(context)) return
         // Videos are played for their sound, and are seldom songs to have lyrics for.
         val track = libraryRepository.tracksById.value[trackId]?.takeUnless { it.isVideo } ?: return
         try {

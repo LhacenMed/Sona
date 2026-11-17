@@ -731,7 +731,7 @@ private fun rememberScreenshotAction(
                     val frame = context.captureVideoFrame(surface(), latestWidth, latestHeight, shown.contentUri, atMs)
                     when {
                         frame == null -> context.toast(R.string.video_screenshot_failed)
-                        Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && !AppPermission.FILE_CHANGES.isGranted(context) -> {
+                        Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && !AppPermission.STORAGE.isGranted(context) -> {
                             pending = PendingScreenshot(frame, shown.title)
                             permissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
                         }

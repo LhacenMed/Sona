@@ -91,9 +91,10 @@ class MainActivity : SonaActivity() {
     private var tabRequest by mutableStateOf<LibraryTabRequest?>(null)
 
     private val launchPermissionsLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
-            if (AppPermission.AUDIO_LIBRARY.isGranted(this)) mediaScanner.requestScan()
-        }
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {}
+
+    /** Whether the device's files could be read when the activity was last in front - see [onResume]. */
+    private var hadStorageAccess = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -121,18 +122,11 @@ class MainActivity : SonaActivity() {
             opening.join()
         }
 
-        if (AppPermission.AUDIO_LIBRARY.isGranted(this)) {
-            // Fire-and-forget on the application scope: a scan is process-wide work, and tying it
-            // to this activity meant every configuration change restarted it from the beginning.
-            // It also no longer blocks anything - the library on screen comes from the database,
-            // and the scan only reconciles what changed since last time (usually nothing).
-            mediaScanner.requestScan()
-        }
-
         // Every launch asks, in one dialog, for whatever the app is hardly usable without and has not
         // been granted. Android stops showing it for a permission the user keeps declining, so this
         // never nags; Settings > Permissions is where such a permission is granted after that. Not on
-        // a recreation, which would stack a second dialog over the first.
+        // a recreation, which would stack a second dialog over the first. Access Android grants only
+        // from its settings is asked for by StorageAccessPrompt instead, which says why first.
         if (savedInstanceState == null) {
             val missingPermissions = AppPermission.needed
                 .filter { it.isAskedAtLaunch && !it.isGranted(this) }
@@ -145,6 +139,21 @@ class MainActivity : SonaActivity() {
         if (savedInstanceState == null && intent.action == QuickPlayShortcut.ACTION) {
             playbackController.quickPlay()
         }
+    }
+
+    /**
+     * Scans as the activity opens with access to the device's files, and again the moment it comes back
+     * with access it did not have - granted in Android's dialog, or on its settings page.
+     */
+    override fun onResume() {
+        super.onResume()
+        val hasStorageAccess = AppPermission.STORAGE.isGranted(this)
+        // Fire-and-forget on the application scope: a scan is process-wide work, and tying it
+        // to this activity meant every configuration change restarted it from the beginning.
+        // It also no longer blocks anything - the library on screen comes from the database,
+        // and the scan only reconciles what changed since last time (usually nothing).
+        if (hasStorageAccess && !hadStorageAccess) mediaScanner.requestScan()
+        hadStorageAccess = hasStorageAccess
     }
 
     private fun showContent() {
@@ -165,6 +174,7 @@ class MainActivity : SonaActivity() {
                     NetworkStatusHost(networkBanner) {
                         AppShell(playerOverlay = playerOverlay, playingTab = playingTab, tabRequest = tabRequest)
                         appPrompts.Content()
+                        StorageAccessPrompt()
                     }
                 }
             }

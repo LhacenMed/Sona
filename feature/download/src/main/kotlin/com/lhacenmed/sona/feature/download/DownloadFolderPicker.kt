@@ -36,7 +36,7 @@ internal fun rememberDownloadFolderPicker(onPick: (String) -> Unit): () -> Unit 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri ?: return@rememberLauncherForActivityResult
         val path = storageFolderPathOf(uri) ?: return@rememberLauncherForActivityResult context.toast(notOnDevice)
-        if (isInDownload(path) || AppPermission.FILE_CHANGES.isGranted(context)) onPick(path) else waitingOnAccess = path
+        if (isInDownload(path) || AppPermission.STORAGE.isGranted(context)) onPick(path) else waitingOnAccess = path
     }
 
     waitingOnAccess?.let { path ->
@@ -50,7 +50,7 @@ internal fun rememberDownloadFolderPicker(onPick: (String) -> Unit): () -> Unit 
                 actionButton(label = cancelLabel, onClick = close)
                 actionButton(label = allowLabel, onClick = {
                     onPick(path)
-                    runCatching { context.startActivity(AppPermission.FILE_CHANGES.settingsIntent(context)) }
+                    runCatching { context.startActivity(AppPermission.STORAGE.settingsIntent(context)) }
                     close()
                 })
             },
