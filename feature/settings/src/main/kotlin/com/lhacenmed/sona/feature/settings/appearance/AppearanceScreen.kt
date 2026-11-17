@@ -89,6 +89,9 @@ data object AppearanceScreen : Screen {
                     onSelect = { index -> pickAppLanguage(languages.getOrNull(index - 1)) },
                 )
             }
+
+            SettingsSectionDivider()
+
             SettingsSection(stringResource(R.string.appearance_theme_section)) {
                 SettingsChoiceItem(
                     title = stringResource(R.string.theme_title),

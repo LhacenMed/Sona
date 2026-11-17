@@ -17,7 +17,7 @@ private val FeatureSettingsSources = listOf(File("../download/src/main/kotlin/co
 private val NotScreens = setOf("component", "search")
 
 /** A settings row, as a screen writes it: its kind of row, then its title. */
-private val SettingsRow = Regex("""Settings(?:Switch|Navigation|Choice|Slider|Action|Download|TextField|Link)Item\(\s*title = stringResource\(R\.string\.(\w+)\)""")
+private val SettingsRow = Regex("""Settings(?:Switch|SwitchSplit|SwitchContainer|Navigation|Choice|Slider|Action|Download|TextField|Link)Item\(\s*title = stringResource\(R\.string\.(\w+)\)""")
 
 /** Rows no search needs to find: shown only after something failed, they set nothing. */
 private val Unsearched = setOf("restore_drive_failed")

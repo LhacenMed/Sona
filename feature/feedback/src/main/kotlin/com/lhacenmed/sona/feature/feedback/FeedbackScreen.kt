@@ -29,7 +29,6 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -59,6 +58,7 @@ import com.lhacenmed.sona.core.navigation.Screen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.core.designsystem.component.SonaSwitch
 
 /** A picked screenshot or recording, as small as it is shown. */
 private val ThumbnailSize = 88.dp
@@ -136,7 +136,7 @@ data class FeedbackScreen(val crash: String? = null) : Screen {
                     title = stringResource(R.string.feedback_include_diagnostics),
                     summary = viewModel.diagnostics?.let { stringResource(R.string.feedback_include_diagnostics_summary, it.summary) },
                     onClick = { viewModel.includesDiagnostics = !viewModel.includesDiagnostics },
-                    trailing = { Switch(checked = viewModel.includesDiagnostics, onCheckedChange = { viewModel.includesDiagnostics = it }) },
+                    trailing = { SonaSwitch(checked = viewModel.includesDiagnostics, onCheckedChange = { viewModel.includesDiagnostics = it }) },
                 )
 
                 Column(

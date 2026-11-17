@@ -1,6 +1,5 @@
 package com.lhacenmed.sona.feature.player
 
-import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -16,6 +15,7 @@ import com.lhacenmed.sona.core.designsystem.component.sheet.SonaOptionsSheetHead
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.R as PlaybackR
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.core.designsystem.component.SonaSwitch
 
 /**
  * The open lyrics' overflow menu: first what the player puts away while its lyrics are open - the favourite,
@@ -111,7 +111,7 @@ internal fun LyricsMenuSheet(
             SonaOptionRow(
                 label = stringResource(R.string.player_show_lyrics_player_controls),
                 icon = SonaIcons.PlayCircle,
-                trailingContent = { Switch(checked = showPlayerControls, onCheckedChange = onShowPlayerControlsChange) },
+                trailingContent = { SonaSwitch(checked = showPlayerControls, onCheckedChange = onShowPlayerControlsChange) },
                 onClick = { onShowPlayerControlsChange(!showPlayerControls) },
             )
         }

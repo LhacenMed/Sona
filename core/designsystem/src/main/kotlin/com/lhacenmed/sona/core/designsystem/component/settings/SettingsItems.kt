@@ -3,6 +3,18 @@
 package com.lhacenmed.sona.core.designsystem.component.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.VerticalDivider
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,7 +31,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -42,8 +53,11 @@ import coil3.compose.AsyncImage
 import com.lhacenmed.sona.core.designsystem.R
 import com.lhacenmed.sona.core.designsystem.component.SonaIconButton
 import com.lhacenmed.sona.core.designsystem.component.SonaSettingsRow
+import com.lhacenmed.sona.core.designsystem.component.settingsDisabledColor
+import com.lhacenmed.sona.core.designsystem.component.settingsTitleStyle
 import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.core.designsystem.component.SonaSwitch
 
 /*
  * A row that only means something while another setting is set some way - black surfaces while the theme
@@ -90,10 +104,34 @@ private val LeadingSize = 40.dp
 /** An icon at the start of a row - centred in the width every row's leading content takes. */
 @Composable
 fun SettingsLeadingIcon(icon: Painter) {
-    Box(modifier = Modifier.size(LeadingSize), contentAlignment = Alignment.Center) {
-        Icon(icon, contentDescription = null)
+    SettingsLeadingContent { Icon(icon, contentDescription = null) }
+}
+
+/** [content] at the start of a row, centred in the width every row's leading content takes. */
+@Composable
+private fun SettingsLeadingContent(content: @Composable () -> Unit) {
+    Box(modifier = Modifier.size(LeadingSize), contentAlignment = Alignment.Center) { content() }
+}
+
+/**
+ * [content] at a row's end, set apart from the row by Seal's short upright line: a control of its own there, which does not
+ * do what pressing the row does.
+ */
+@Composable
+private fun SettingsTrailingDivided(content: @Composable () -> Unit) {
+    Row(modifier = Modifier.height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
+        VerticalDivider(
+            modifier = Modifier.height(TrailingDividerHeight).padding(end = TrailingDividerGap),
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = TrailingDividerAlpha),
+        )
+        content()
     }
 }
+
+/** Seal's line between a row and the control at its end: this tall, this far from it, and this faint. */
+private val TrailingDividerHeight = 32.dp
+private val TrailingDividerGap = 8.dp
+private const val TrailingDividerAlpha = 0.3f
 
 /**
  * A row that does something at once rather than leading anywhere - clearing a cache, checking for an
@@ -116,9 +154,10 @@ fun SettingsActionItem(
 
 /**
  * A row that does something when pressed - or, while not [enabled], stands faded and inert in its place.
- * While [isBusy] - what it started still under way - it shows so at its end and cannot be pressed again,
- * without fading. A [summary] is for what the title cannot say on its own - a state, a value - and a row
- * whose title says it all has none.
+ * While [isBusy] - what it started still under way - it shows so, in place of its [icon] or else at its end, and
+ * cannot be pressed again, without fading. A [summary] is for what the title cannot say on its own - a state, a
+ * value - and a row whose title says it all has none. [secondaryAction] - its settings, say - stands at its end, apart
+ * from the row's own press, as Seal's yt-dlp row has its update settings.
  */
 @Composable
 fun SettingsActionItem(
@@ -126,23 +165,41 @@ fun SettingsActionItem(
     summary: String? = null,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
     enabled: Boolean = true,
     isBusy: Boolean = false,
+    secondaryAction: SettingsSecondaryAction? = null,
 ) {
+    val busyIndicator: @Composable () -> Unit = { LoadingIndicator(modifier = Modifier.size(BusyIndicatorSize)) }
     SonaSettingsRow(
         title = title,
         summary = summary,
         enabled = enabled,
         // Busy, it cannot be pressed again - without fading, as it is not off.
         onClick = onClick.takeUnless { isBusy },
-        trailing = if (isBusy) {
-            { LoadingIndicator(modifier = Modifier.size(BusyIndicatorSize)) }
-        } else {
-            null
+        leading = icon?.let { { if (isBusy) SettingsLeadingContent(busyIndicator) else SettingsLeadingIcon(rememberVectorPainter(it)) } },
+        trailing = when {
+            secondaryAction != null -> {
+                {
+                    SettingsTrailingDivided {
+                        SonaIconButton(
+                            onClick = secondaryAction.onClick,
+                            icon = secondaryAction.icon,
+                            contentDescription = secondaryAction.label,
+                            enabled = enabled,
+                        )
+                    }
+                }
+            }
+            isBusy && icon == null -> busyIndicator
+            else -> null
         },
         modifier = modifier.settingsScrollTarget(title),
     )
 }
+
+/** What a row offers at its end, apart from its own press: [label], drawn as [icon], doing [onClick]. */
+class SettingsSecondaryAction(val label: String, val icon: ImageVector, val onClick: () -> Unit)
 
 /** How large a row's busy indicator is: an icon's size, so a row keeps its height while busy. */
 private val BusyIndicatorSize = 24.dp
@@ -252,6 +309,7 @@ fun SettingsSwitchItem(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
     enabled: Boolean = true,
 ) {
     SonaSettingsRow(
@@ -259,9 +317,85 @@ fun SettingsSwitchItem(
         summary = summary,
         enabled = enabled,
         onClick = { onCheckedChange(!checked) },
-        trailing = { Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled) },
+        leading = icon?.let { { SettingsLeadingIcon(rememberVectorPainter(it)) } },
+        trailing = { SonaSwitch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled) },
         modifier = modifier.settingsScrollTarget(title),
     )
+}
+
+/**
+ * Seal's switch with a divider: a setting that is turned on and off by its switch, and set up by pressing the row - a
+ * proxy's address, which parts SponsorBlock cuts. The line between them says the two do different things. While not
+ * [enabled] the whole row is faded and inert.
+ */
+@Composable
+fun SettingsSwitchSplitItem(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    summary: String? = null,
+    icon: ImageVector? = null,
+    enabled: Boolean = true,
+) {
+    SonaSettingsRow(
+        title = title,
+        summary = summary,
+        enabled = enabled,
+        onClick = onClick,
+        leading = icon?.let { { SettingsLeadingIcon(rememberVectorPainter(it)) } },
+        trailing = {
+            SettingsTrailingDivided {
+                SonaSwitch(
+                    checked = checked,
+                    onCheckedChange = onCheckedChange,
+                    enabled = enabled,
+                    modifier = Modifier.semantics { contentDescription = title },
+                )
+            }
+        },
+        modifier = modifier.settingsScrollTarget(title),
+    )
+}
+
+/**
+ * Seal's switch in a container: the one switch a whole screen hangs on - Use cookies - on a tinted card at its top, the card
+ * pressed as one.
+ */
+@Composable
+fun SettingsSwitchContainerItem(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .clip(MaterialTheme.shapes.extraLarge)
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .toggleable(
+                value = checked,
+                onValueChange = onCheckedChange,
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+                role = Role.Switch,
+            )
+            .padding(horizontal = 28.dp, vertical = 20.dp),
+    ) {
+        Text(
+            text = title,
+            style = settingsTitleStyle(),
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            maxLines = 2,
+            modifier = Modifier.weight(1f).padding(end = 12.dp),
+        )
+        SonaSwitch(checked = checked, onCheckedChange = null, interactionSource = interactionSource)
+    }
 }
 
 /** Where something a [SettingsDownloadItem] offers stands. */
@@ -297,6 +431,7 @@ fun SettingsDownloadItem(
     onCancel: () -> Unit,
     onRemove: () -> Unit,
     modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
 ) {
     val isDownloaded = download == SettingsDownload.Done
     val action = when (download) {
@@ -308,6 +443,7 @@ fun SettingsDownloadItem(
         title = title,
         summary = summary,
         onClick = action,
+        leading = icon?.let { { SettingsLeadingIcon(rememberVectorPainter(it)) } },
         trailing = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(modifier = Modifier.size(DownloadControlSize), contentAlignment = Alignment.Center) {
@@ -331,7 +467,7 @@ fun SettingsDownloadItem(
                 }
                 if (checked != null) {
                     Spacer(modifier = Modifier.width(DownloadControlSpacing))
-                    Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = isDownloaded)
+                    SonaSwitch(checked = checked, onCheckedChange = onCheckedChange, enabled = isDownloaded)
                 }
             }
         },
@@ -403,6 +539,7 @@ fun SettingsChoiceItem(
     modifier: Modifier = Modifier,
     defaultIndex: Int? = null,
     summary: String? = null,
+    icon: ImageVector? = null,
     enabled: Boolean = true,
 ) {
     var isChoosing by remember { mutableStateOf(false) }
@@ -412,12 +549,14 @@ fun SettingsChoiceItem(
         summary = summary ?: if (selectedIndex == defaultIndex) settingsDefaultLabel() else options[selectedIndex],
         enabled = enabled,
         onClick = { isChoosing = true },
+        leading = icon?.let { { SettingsLeadingIcon(rememberVectorPainter(it)) } },
         modifier = modifier.settingsScrollTarget(title),
     )
 
     if (isChoosing) {
         SettingsChoiceDialog(
             title = title,
+            icon = icon,
             options = options,
             selectedIndex = selectedIndex,
             defaultIndex = defaultIndex,
@@ -461,7 +600,8 @@ fun SettingsSliderItem(
 
 /**
  * A row holding a stored number on a continuous range - or, while not [enabled], still showing it, faded
- * and inert.
+ * and inert: its [icon] and title on one line with the value at its end, in the theme's colour, and the slider
+ * under them across the row - all within the edges every row's content keeps, the title where every row's is.
  *
  * The slider follows the finger on its own and hands over [onValueChangeFinished] only once it is let
  * go, so dragging it writes the setting once rather than on every frame of the drag.
@@ -474,12 +614,37 @@ fun SettingsSliderItem(
     valueRange: ClosedFloatingPointRange<Float>,
     formatValue: (Float) -> String,
     modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
     steps: Int = 0,
     enabled: Boolean = true,
 ) {
     var draggedValue by remember(value) { mutableFloatStateOf(value) }
-    Column(modifier = modifier.settingsScrollTarget(title).padding(horizontal = 16.dp, vertical = 8.dp)) {
-        SonaSettingsRow(title = title, summary = formatValue(draggedValue), enabled = enabled)
+    Column(
+        modifier = modifier
+            .settingsScrollTarget(title)
+            .fillMaxWidth()
+            .padding(horizontal = SliderRowPadding, vertical = SliderRowVerticalPadding),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.heightIn(min = LeadingSize)) {
+            if (icon != null) {
+                CompositionLocalProvider(LocalContentColor provides if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else settingsDisabledColor()) {
+                    SettingsLeadingIcon(rememberVectorPainter(icon))
+                }
+                Spacer(modifier = Modifier.width(SliderRowPadding))
+            }
+            Text(
+                text = title,
+                style = settingsTitleStyle(),
+                color = if (enabled) MaterialTheme.colorScheme.onSurface else settingsDisabledColor(),
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = formatValue(draggedValue),
+                style = MaterialTheme.typography.titleMedium,
+                color = if (enabled) MaterialTheme.colorScheme.primary else settingsDisabledColor(),
+                modifier = Modifier.padding(start = SliderRowPadding),
+            )
+        }
         Slider(
             value = draggedValue,
             onValueChange = { draggedValue = it },
@@ -491,6 +656,12 @@ fun SettingsSliderItem(
         )
     }
 }
+
+/** How far a slider row's content stands in from its edges, and from its icon: a list row's, so it lines up with the rest. */
+private val SliderRowPadding = 16.dp
+
+/** The room above and below a slider row's content. */
+private val SliderRowVerticalPadding = 12.dp
 
 /**
  * A row holding a piece of text the user types - a list of separator characters, a folder name.

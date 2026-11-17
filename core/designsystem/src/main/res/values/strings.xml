@@ -12,6 +12,7 @@
     <string name="dialog_reset">Reset</string>
     <string name="dialog_ok">OK</string>
     <string name="settings_dialog_save">Save</string>
+    <string name="settings_dialog_invalid">Invalid input</string>
     <string name="settings_row_default">Default</string>
     <string name="fab_menu_open">Show choices</string>
     <string name="fab_menu_close">Close</string>

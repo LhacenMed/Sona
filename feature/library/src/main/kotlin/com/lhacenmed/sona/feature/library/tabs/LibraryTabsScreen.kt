@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -25,6 +24,7 @@ import com.lhacenmed.sona.feature.library.R
 import com.lhacenmed.sona.feature.library.rememberReorderableRows
 import com.lhacenmed.sona.feature.library.reorderableRows
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.core.designsystem.component.SonaSwitch
 
 /**
  * The library's tabs - which are shown, and in what order, dragged by their handles. The first shown is the one the
@@ -66,7 +66,7 @@ data object LibraryTabsScreen : Screen {
                                 )
                             },
                             trailing = {
-                                Switch(
+                                SonaSwitch(
                                     checked = isVisible,
                                     onCheckedChange = { checked -> viewModel.setTabVisible(tab, checked) },
                                     enabled = canToggle,

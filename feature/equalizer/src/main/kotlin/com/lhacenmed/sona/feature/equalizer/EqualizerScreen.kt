@@ -54,7 +54,6 @@ import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -88,6 +87,7 @@ import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 import com.lhacenmed.sona.core.navigation.Screen
 import kotlin.math.roundToInt
+import com.lhacenmed.sona.core.designsystem.component.SonaSwitch
 
 /** How wide the controls grow, centred beyond it - on a tablet or in landscape. */
 private val ContentMaxWidth = 840.dp
@@ -286,7 +286,7 @@ private fun EqualizerHero(
                         color = contentColor,
                     )
                 }
-                Switch(checked = enabled, onCheckedChange = onEnabledChange)
+                SonaSwitch(checked = enabled, onCheckedChange = onEnabledChange)
             }
             FilledTonalButton(onClick = onOpenSystemEqualizer, modifier = Modifier.fillMaxWidth(), shapes = buttonPressShapes()) {
                 Icon(imageVector = SonaIcons.Tune, contentDescription = null)
@@ -567,7 +567,7 @@ private fun ToggleSlider(
                     Text(text = title, style = MaterialTheme.typography.titleMedium)
                     Text(text = description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Switch(checked = enabled, onCheckedChange = onEnabledChange, enabled = controlsEnabled)
+                SonaSwitch(checked = enabled, onCheckedChange = onEnabledChange, enabled = controlsEnabled)
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Slider(
@@ -597,7 +597,7 @@ private fun SettingsToggle(
         enabled = enabled,
         shapes = ListItemDefaults.shapes(shape = MaterialTheme.shapes.large),
         colors = ListItemDefaults.segmentedColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        trailingContent = { Switch(checked = checked, onCheckedChange = null, enabled = enabled) },
+        trailingContent = { SonaSwitch(checked = checked, onCheckedChange = null, enabled = enabled) },
         supportingContent = { Text(text = description) },
         content = { Text(text = title) },
     )

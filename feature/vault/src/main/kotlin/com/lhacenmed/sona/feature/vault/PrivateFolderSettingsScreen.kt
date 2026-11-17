@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -20,6 +19,7 @@ import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.core.vault.VaultState
 import com.lhacenmed.sona.feature.vault.R
+import com.lhacenmed.sona.core.designsystem.component.SonaSwitch
 
 /**
  * How the Private Folder is found and opened - WhatsApp's chat lock settings, for it: hidden from Settings, its secret
@@ -59,7 +59,7 @@ internal data object PrivateFolderSettingsScreen : Screen {
                             title = stringResource(R.string.vault_hide_title),
                             summary = stringResource(R.string.vault_hide_summary),
                             onClick = { setHidden(!current.isHidden) },
-                            trailing = { Switch(checked = current.isHidden, onCheckedChange = setHidden) },
+                            trailing = { SonaSwitch(checked = current.isHidden, onCheckedChange = setHidden) },
                         )
                         SonaSettingsRow(
                             title = stringResource(R.string.vault_secret_code),
@@ -79,7 +79,7 @@ internal data object PrivateFolderSettingsScreen : Screen {
                             enabled = canUseBiometrics,
                             onClick = { setUnlocksWithBiometrics(!current.unlocksWithBiometrics) },
                             trailing = {
-                                Switch(checked = current.unlocksWithBiometrics, onCheckedChange = setUnlocksWithBiometrics, enabled = canUseBiometrics)
+                                SonaSwitch(checked = current.unlocksWithBiometrics, onCheckedChange = setUnlocksWithBiometrics, enabled = canUseBiometrics)
                             },
                         )
                         SonaSettingsRow(

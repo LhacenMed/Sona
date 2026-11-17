@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.ButtonGroupScope
@@ -18,7 +19,6 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
@@ -36,6 +36,7 @@ import com.lhacenmed.sona.core.designsystem.R
 import com.lhacenmed.sona.core.designsystem.component.SonaActionButtonGroup
 import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.effect.ProvideSonaHaptics
+import com.lhacenmed.sona.core.designsystem.component.SonaSwitch
 
 /** Material's widest dialog, so one never stretches across a tablet or a landscape screen. */
 private val DialogMaxWidth = 560.dp
@@ -119,7 +120,7 @@ private fun Modifier.dialogSize(): Modifier = layout { measurable, constraints -
 
 /**
  * One choice in a dialog's list of them - a radio button and its label, over its [summary] where it says what the
- * label cannot - the whole row the target, its press reaching the dialog's edges as a list row's does while what it
+ * label cannot, and [tag] at its end where it has one - Seal's Stable, Nightly - the whole row the target, its press reaching the dialog's edges as a list row's does while what it
  * holds stays in line with the rest. The rows go in a column marked `selectableGroup`, so they are read out as one set.
  */
 @Composable
@@ -128,6 +129,7 @@ fun SonaDialogOption(
     selected: Boolean,
     onClick: () -> Unit,
     summary: String? = null,
+    tag: String? = null,
 ) {
     Row(
         modifier = Modifier
@@ -143,6 +145,12 @@ fun SonaDialogOption(
             Column(modifier = Modifier.padding(start = 16.dp)) {
                 Text(text = label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
                 Text(text = summary, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+        if (tag != null) {
+            Spacer(modifier = Modifier.weight(1f))
+            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 12.dp)) {
+                Text(text = tag, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
             }
         }
     }
@@ -173,7 +181,7 @@ fun SonaDialogSwitch(
             Text(text = summary, style = MaterialTheme.typography.bodyMedium)
         }
         VerticalDivider(modifier = Modifier.padding(horizontal = 16.dp).height(32.dp))
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        SonaSwitch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 
