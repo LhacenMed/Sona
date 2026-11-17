@@ -33,17 +33,16 @@ import com.lhacenmed.sona.core.datastore.DownloadSettings
 import com.lhacenmed.sona.core.designsystem.component.SonaActionButtonGroup
 import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.component.toast
-import com.lhacenmed.sona.core.downloader.DownloaderRuntime
+import com.lhacenmed.sona.core.datastore.stateIn
 import com.lhacenmed.sona.core.model.DownloadFailure
+import com.lhacenmed.sona.core.model.DownloaderPreferences
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.download.DownloadQueue
 import com.lhacenmed.sona.feature.download.R
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /** Where signing in starts, unless the user goes elsewhere. */
 private const val DefaultSite = "https://www.youtube.com"
@@ -101,7 +100,9 @@ data class CookiesScreen(val site: String = DefaultSite) : Screen {
                 })
                 actionButton(label = saveLabel, onClick = {
                     val url = webView?.url ?: address.withScheme()
-                    viewModel.save(url) { saved -> context.toast(if (saved) R.string.download_cookies_saved else R.string.download_cookies_none) }
+                    viewModel.save(url, webView?.settings?.userAgentString.orEmpty()) { saved ->
+                        context.toast(if (saved) R.string.download_cookies_saved else R.string.download_cookies_none)
+                    }
                 })
             }
         }
@@ -112,39 +113,51 @@ private fun String.withScheme(): String = trim().let { if (it.startsWith("http:/
 
 @HiltViewModel
 internal class CookiesViewModel @Inject constructor(
-    private val runtime: DownloaderRuntime,
+    private val cookies: SavedCookies,
     private val settings: DownloadSettings,
     private val queue: DownloadQueue,
 ) : ViewModel() {
 
+    /** Every site cookies are saved for - see [SavedCookies]. */
+    val sites: StateFlow<List<CookieSite>> = cookies.sites
+
+    val preferences: StateFlow<DownloaderPreferences> = settings.preferences.stateIn(viewModelScope)
+
     /**
-     * Saves the cookies the web view holds for [url]'s site in the Netscape format yt-dlp reads - in place of what was saved for
-     * it before, beside every other site's - and has downloads use them. Says whether there were any to [onSaved].
+     * Saves the cookies the web view holds for [url]'s site - in place of what was saved for it before, beside every other
+     * site's - and has downloads use them, as the browser that made them, [userAgent]: every download that failed for want of
+     * signing in tries again. Says whether there were any to [onSaved].
      */
-    fun save(url: String, onSaved: (Boolean) -> Unit) {
-        val host = Uri.parse(url).host?.removePrefix("www.") ?: return onSaved(false)
-        val cookies = CookieManager.getInstance().getCookie(url)?.split(';')?.map(String::trim)?.filter { '=' in it }.orEmpty()
-        if (cookies.isEmpty()) return onSaved(false)
-        CookieManager.getInstance().flush()
+    fun save(url: String, userAgent: String, onSaved: (Boolean) -> Unit) {
         viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                val domain = ".$host"
-                val expires = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis()) + TimeUnit.DAYS.toSeconds(365)
-                val others = runtime.cookiesFile.takeIf { it.exists() }?.readLines().orEmpty().filter { it.isNotBlank() && !it.startsWith("#") && !it.startsWith("$domain\t") }
-                val lines = cookies.map { cookie -> "$domain\tTRUE\t/\tTRUE\t$expires\t${cookie.substringBefore('=')}\t${cookie.substringAfter('=')}" }
-                runtime.cookiesFile.writeText((listOf("# Netscape HTTP Cookie File") + others + lines).joinToString("\n", postfix = "\n"))            }
-            settings.updatePreferences { it.copy(usesCookies = true) }
-            queue.retryFailed(DownloadFailure.LOGIN_REQUIRED)
-            onSaved(true)
+            val saved = cookies.save(url)
+            if (saved) {
+                settings.updatePreferences { it.copy(usesCookies = true, userAgent = userAgent) }
+                queue.retryFailed(DownloadFailure.LOGIN_REQUIRED)
+            }
+            onSaved(saved)
         }
     }
 
-    /** Forgets every site's cookies, here and in the web view. */
+    /** Forgets the cookies saved for [site]. */
+    fun remove(site: CookieSite) {
+        viewModelScope.launch { cookies.remove(site) }
+    }
+
+    /** Forgets every site's cookies, here and in the web view - and stops reading sites signed in, with none left to. */
     fun clear() {
-        CookieManager.getInstance().removeAllCookies(null)
         viewModelScope.launch {
-            withContext(Dispatchers.IO) { runtime.cookiesFile.delete() }
+            cookies.clear()
             settings.updatePreferences { it.copy(usesCookies = false) }
         }
+    }
+
+    /** Copies the cookies to [uri], saying whether it could to [onExported]. */
+    fun export(uri: Uri, onExported: (Boolean) -> Unit) {
+        viewModelScope.launch { onExported(cookies.export(uri)) }
+    }
+
+    fun updatePreferences(change: (DownloaderPreferences) -> DownloaderPreferences) {
+        viewModelScope.launch { settings.updatePreferences(change) }
     }
 }

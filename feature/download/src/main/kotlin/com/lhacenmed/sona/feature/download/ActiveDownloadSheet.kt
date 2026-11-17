@@ -84,7 +84,7 @@ internal fun SonaBottomSheetScope.ActiveDownloadContent(download: Download, view
             )
         }
 
-        val folder = downloadFolderOf(preferences, download.choices.kind).path.removePrefix(Environment.getExternalStorageDirectory().path).trimStart('/')
+        val folder = downloadFolderOf(preferences, download.choices.kind, runsCommand = download.options.commandArguments != null).path.removePrefix(Environment.getExternalStorageDirectory().path).trimStart('/')
         val tiles = listOf(
             R.string.download_tile_downloaded to (downloaded?.let { done -> total?.let { context.getString(R.string.download_size_of, size(done), size(it)) } ?: size(done) }),
             R.string.download_tile_speed to running?.bytesPerSecond?.let { context.getString(R.string.download_speed, size(it)) },

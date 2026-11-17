@@ -10,6 +10,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.text.format.Formatter
 import androidx.annotation.StringRes
+import androidx.core.app.NotificationCompat
 import androidx.work.ForegroundInfo
 import com.lhacenmed.sona.core.common.notification.SonaNotificationAction
 import com.lhacenmed.sona.core.common.notification.SonaNotificationChannel
@@ -25,20 +26,18 @@ import dagger.hilt.android.EntryPointAccessors
 private const val EXTRA_DOWNLOAD_ID = "com.lhacenmed.sona.download.extra.ID"
 private const val EXTRA_TITLE = "com.lhacenmed.sona.download.extra.TITLE"
 
-/** What every download's notification is gathered under, while more than one runs. */
-private const val GROUP = "com.lhacenmed.sona.downloads"
-
 /**
- * What downloads say in the shade. One notification stays for as long as any runs - the foreground service's own, never taken
- * away and posted again: the download itself while one runs, with how far it is, Pause and Cancel - on Android 16 and later a
- * live update, its percent in the status bar - and, while several run, their summary, each download in a notification of its
- * own gathered under it. Then whether each was saved, in one of its own that opens its sheet.
+ * What downloads say in the shade, as Seal says it: each notification one of its own, none grouped by the app, so Android
+ * bundles them all - running, paused, saved or failed - as it bundles any app's. The foreground service keeps one on a
+ * channel of its own for as long as any download runs, never taken away and posted again: how many run, and how fast. Each
+ * download has its own while it runs, with how far it is, Pause and Cancel; then, in its place, whether it was saved, in one
+ * that opens its sheet.
  */
 internal object DownloadNotifications {
 
     /** What the worker's foreground service shows for [running] - see [show]. */
     fun foregroundInfo(context: Context, running: List<RunningDownload>): ForegroundInfo {
-        val notification = foreground(context, running)
+        val notification = service(context, running)
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ForegroundInfo(SonaNotificationId.DOWNLOAD, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         } else {
@@ -47,13 +46,13 @@ internal object DownloadNotifications {
     }
 
     /**
-     * Shows [running] as it stands: in the foreground service's notification, changed in place - and, while more than one
-     * runs, each in its own beside it, taking away those of [shown] no longer running. The ids of their own now shown.
+     * Shows [running] as it stands: the foreground service's notification changed in place, and each download in its own,
+     * taking away those of [shown] no longer running. The ids of their own now shown.
      */
     fun show(context: Context, running: List<RunningDownload>, shown: Set<Int>): Set<Int> {
-        SonaNotifications.post(context, SonaNotificationId.DOWNLOAD, foreground(context, running))
-        val own = if (running.size > 1) running.associateBy { SonaNotificationId.download(it.id) } else emptyMap()
-        own.forEach { (id, download) -> SonaNotifications.post(context, id, runningNotification(context, download, isGrouped = true)) }
+        SonaNotifications.post(context, SonaNotificationId.DOWNLOAD, service(context, running))
+        val own = running.associateBy { SonaNotificationId.download(it.id) }
+        own.forEach { (id, download) -> SonaNotifications.post(context, id, runningNotification(context, download)) }
         clear(context, shown - own.keys)
         return own.keys
     }
@@ -61,33 +60,21 @@ internal object DownloadNotifications {
     /** Takes [shown], downloads' own notifications, out of the shade. */
     fun clear(context: Context, shown: Set<Int>) = shown.forEach { SonaNotifications.cancel(context, it) }
 
-    private fun foreground(context: Context, running: List<RunningDownload>): Notification = when (running.size) {
-        0 -> SonaNotifications.progress(
-            context,
-            SonaNotificationChannel.DOWNLOADS,
-            title = context.getString(R.string.download_starting),
-            text = null,
-            detail = null,
-            percent = null,
-            actions = emptyList(),
-        )
-        1 -> runningNotification(context, running.single(), isGrouped = false)
-        else -> {
-            // How far they all are, where every one of them knows its size.
-            val total = running.map { it.totalBytes }.takeIf { sizes -> sizes.all { it != null } }?.sumOf { it ?: 0 }
-            val speed = running.sumOf { it.bytesPerSecond ?: 0 }.takeIf { it > 0 }
-            SonaNotifications.progress(
-                context,
-                SonaNotificationChannel.DOWNLOADS,
-                title = context.resources.getQuantityString(R.plurals.download_downloading_count, running.size, running.size),
-                text = speed?.let { context.getString(R.string.download_speed, Formatter.formatShortFileSize(context, it)) },
-                detail = null,
-                percent = percentOf(running.sumOf { it.downloadedBytes ?: 0 }, total),
-                actions = emptyList(),
-                group = GROUP,
-                isGroupSummary = true,
+    private fun service(context: Context, running: List<RunningDownload>): Notification {
+        val speed = running.sumOf { it.bytesPerSecond ?: 0 }.takeIf { it > 0 }
+        return SonaNotifications.builder(context, SonaNotificationChannel.DOWNLOAD_SERVICE)
+            .setContentTitle(
+                if (running.isEmpty()) {
+                    context.getString(R.string.download_starting)
+                } else {
+                    context.resources.getQuantityString(R.plurals.download_downloading_count, running.size, running.size)
+                },
             )
-        }
+            .setContentText(speed?.let { context.getString(R.string.download_speed, Formatter.formatShortFileSize(context, it)) })
+            .setOngoing(true)
+            .setSilent(true)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+            .build()
     }
 
     /** Says [title] is paused, with Resume and Cancel - posted where it was paused from its notification. */
@@ -106,9 +93,10 @@ internal object DownloadNotifications {
 
     /**
      * Says download [downloadId], [title], was saved - or, for [failure], why not, as its row says it - in a notification of its
-     * own, kept beside every other's, that opens its sheet.
+     * own in place of the one it ran in, kept beside every other's, that opens its sheet.
      */
     fun postResult(context: Context, downloadId: Long, title: String, failure: DownloadFailure?) {
+        SonaNotifications.cancel(context, SonaNotificationId.download(downloadId))
         val notification = SonaNotifications.builder(context, SonaNotificationChannel.DOWNLOADS)
             .setContentTitle(title)
             .setContentText(context.getString(failure?.presentation?.rowRes ?: R.string.download_saved))
@@ -124,7 +112,7 @@ internal object DownloadNotifications {
         SonaNotifications.cancel(context, SonaNotificationId.downloadResult(downloadId))
     }
 
-    private fun runningNotification(context: Context, running: RunningDownload, isGrouped: Boolean): Notification {
+    private fun runningNotification(context: Context, running: RunningDownload): Notification {
         val title = running.title ?: context.getString(R.string.download_starting)
         return SonaNotifications.progress(
             context,
@@ -136,7 +124,8 @@ internal object DownloadNotifications {
             actions = listOf(DownloadAction.PAUSE, DownloadAction.CANCEL).map {
                 SonaNotificationAction(context.getString(it.labelRes), it.iconRes, it.intent(context, running.id, title))
             },
-            group = GROUP.takeIf { isGrouped },
+            // Bundled with the rest, as a live update never is.
+            asLiveUpdate = false,
         )
     }
 

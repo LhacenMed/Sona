@@ -11,6 +11,8 @@ import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.model.DownloadChoices
 import com.lhacenmed.sona.core.model.DownloaderPreferences
 import com.lhacenmed.sona.core.model.SponsorSegment
+import com.lhacenmed.sona.core.model.TranscriptionService
+import com.lhacenmed.sona.core.model.UpdateInterval
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -46,6 +48,26 @@ private val USES_ARCHIVE = booleanPreferencesKey("download_uses_archive")
 private val SUPADATA_KEY = stringPreferencesKey("download_supadata_key")
 private val GROQ_KEY = stringPreferencesKey("download_groq_key")
 private val TRANSCRIPTION_SERVICE = stringPreferencesKey("download_transcription_service")
+private val USES_PROXY = booleanPreferencesKey("download_uses_proxy")
+private val LIMITS_RATE = booleanPreferencesKey("download_limits_rate")
+private val FORCES_IPV4 = booleanPreferencesKey("download_forces_ipv4")
+private val CONCURRENT_FRAGMENTS = intPreferencesKey("download_concurrent_fragments")
+private val SENDS_USER_AGENT = booleanPreferencesKey("download_sends_user_agent")
+private val USER_AGENT = stringPreferencesKey("download_user_agent")
+private val SAVES_THUMBNAIL = booleanPreferencesKey("download_saves_thumbnail")
+private val INCOGNITO = booleanPreferencesKey("download_incognito")
+private val HIDES_PREVIEW = booleanPreferencesKey("download_hides_preview")
+private val SHOWS_LIBRARY_BUTTON = booleanPreferencesKey("download_shows_library_button")
+private val YT_DLP_CHANNEL = stringPreferencesKey("download_yt_dlp_channel")
+/** How often yt-dlp updates itself - [NEVER] for not at all. */
+private val YT_DLP_AUTO_UPDATE = stringPreferencesKey("download_yt_dlp_auto_update")
+private const val NEVER = "NEVER"
+private val COMMAND_FOLDER = stringPreferencesKey("download_command_folder")
+private val SUBTITLE_LANGUAGES = stringPreferencesKey("download_subtitle_languages")
+private val SUBTITLE_FORMAT = stringPreferencesKey("download_subtitle_format")
+private val WRITES_AUTO_SUBTITLES = booleanPreferencesKey("download_writes_auto_subtitles")
+private val KEEPS_SUBTITLE_FILES = booleanPreferencesKey("download_keeps_subtitle_files")
+private val DISABLED_TRANSCRIPTION_SERVICES = stringSetPreferencesKey("download_disabled_transcription_services")
 
 /** How the user downloads - what a Quick download takes, and the download screen starts from - and how downloading works. */
 @Singleton
@@ -86,9 +108,32 @@ class DownloadSettings @Inject constructor(
             sponsorSegments = preferences[SPONSOR_SEGMENTS]
                 ?.mapNotNull { id -> SponsorSegment.entries.firstOrNull { it.id == id } }?.toSet()
                 ?: defaults.sponsorSegments,
+            // A proxy or a limit given before either could be turned off is on.
+            usesProxy = preferences[USES_PROXY] ?: !preferences[PROXY].isNullOrBlank(),
             proxy = preferences[PROXY] ?: defaults.proxy,
-            rateLimit = preferences[RATE_LIMIT] ?: defaults.rateLimit,
+            limitsRate = preferences[LIMITS_RATE] ?: !preferences[RATE_LIMIT].isNullOrBlank(),
+            // A limit never given - kept blank before there was a default - is the default.
+            rateLimit = preferences[RATE_LIMIT]?.takeIf(String::isNotBlank) ?: defaults.rateLimit,
+            forcesIpv4 = preferences[FORCES_IPV4] ?: defaults.forcesIpv4,
+            concurrentFragments = preferences[CONCURRENT_FRAGMENTS] ?: defaults.concurrentFragments,
             usesCookies = preferences[USES_COOKIES] ?: defaults.usesCookies,
+            sendsUserAgent = preferences[SENDS_USER_AGENT] ?: defaults.sendsUserAgent,
+            userAgent = preferences[USER_AGENT] ?: defaults.userAgent,
+            commandFolder = preferences[COMMAND_FOLDER] ?: defaults.commandFolder,
+            subtitleLanguages = preferences[SUBTITLE_LANGUAGES] ?: defaults.subtitleLanguages,
+            subtitleFormat = preferences.enum(SUBTITLE_FORMAT, defaults.subtitleFormat),
+            writesAutoSubtitles = preferences[WRITES_AUTO_SUBTITLES] ?: defaults.writesAutoSubtitles,
+            keepsSubtitleFiles = preferences[KEEPS_SUBTITLE_FILES] ?: defaults.keepsSubtitleFiles,
+            disabledTranscriptionServices = preferences[DISABLED_TRANSCRIPTION_SERVICES]
+                ?.mapNotNull { name -> TranscriptionService.entries.firstOrNull { it.name == name } }?.toSet()
+                ?: defaults.disabledTranscriptionServices,
+            savesThumbnail = preferences[SAVES_THUMBNAIL] ?: defaults.savesThumbnail,
+            isIncognito = preferences[INCOGNITO] ?: defaults.isIncognito,
+            hidesPreview = preferences[HIDES_PREVIEW] ?: defaults.hidesPreview,
+            showsLibraryButton = preferences[SHOWS_LIBRARY_BUTTON] ?: defaults.showsLibraryButton,
+            ytDlpChannel = preferences.enum(YT_DLP_CHANNEL, defaults.ytDlpChannel),
+            ytDlpAutoUpdate = preferences[YT_DLP_AUTO_UPDATE]?.let { stored -> UpdateInterval.entries.firstOrNull { it.name == stored } }
+                ?: defaults.ytDlpAutoUpdate.takeIf { preferences[YT_DLP_AUTO_UPDATE] != NEVER },
             usesArchive = preferences[USES_ARCHIVE] ?: defaults.usesArchive,
             supadataKey = preferences[SUPADATA_KEY] ?: defaults.supadataKey,
             groqKey = preferences[GROQ_KEY] ?: defaults.groqKey,
@@ -124,9 +169,27 @@ class DownloadSettings @Inject constructor(
         this[FILE_FOLDER] = preferences.fileFolder
         this[FILE_NAME_TEMPLATE] = preferences.fileNameTemplate
         this[SPONSOR_SEGMENTS] = preferences.sponsorSegments.map { it.id }.toSet()
+        this[USES_PROXY] = preferences.usesProxy
         this[PROXY] = preferences.proxy
+        this[LIMITS_RATE] = preferences.limitsRate
         this[RATE_LIMIT] = preferences.rateLimit
+        this[FORCES_IPV4] = preferences.forcesIpv4
+        this[CONCURRENT_FRAGMENTS] = preferences.concurrentFragments
         this[USES_COOKIES] = preferences.usesCookies
+        this[SENDS_USER_AGENT] = preferences.sendsUserAgent
+        this[USER_AGENT] = preferences.userAgent
+        this[COMMAND_FOLDER] = preferences.commandFolder
+        this[SUBTITLE_LANGUAGES] = preferences.subtitleLanguages
+        this[SUBTITLE_FORMAT] = preferences.subtitleFormat.name
+        this[WRITES_AUTO_SUBTITLES] = preferences.writesAutoSubtitles
+        this[KEEPS_SUBTITLE_FILES] = preferences.keepsSubtitleFiles
+        this[DISABLED_TRANSCRIPTION_SERVICES] = preferences.disabledTranscriptionServices.map { it.name }.toSet()
+        this[SAVES_THUMBNAIL] = preferences.savesThumbnail
+        this[INCOGNITO] = preferences.isIncognito
+        this[HIDES_PREVIEW] = preferences.hidesPreview
+        this[SHOWS_LIBRARY_BUTTON] = preferences.showsLibraryButton
+        this[YT_DLP_CHANNEL] = preferences.ytDlpChannel.name
+        this[YT_DLP_AUTO_UPDATE] = preferences.ytDlpAutoUpdate?.name ?: NEVER
         this[USES_ARCHIVE] = preferences.usesArchive
         this[SUPADATA_KEY] = preferences.supadataKey
         this[GROQ_KEY] = preferences.groqKey

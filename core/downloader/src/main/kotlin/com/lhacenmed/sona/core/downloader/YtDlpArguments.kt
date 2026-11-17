@@ -1,6 +1,5 @@
 package com.lhacenmed.sona.core.downloader
 
-import com.lhacenmed.sona.core.downloader.transfer.ConnectionsPerDownload
 import com.lhacenmed.sona.core.model.DownloadChoices
 import com.lhacenmed.sona.core.model.DownloadKind
 import com.lhacenmed.sona.core.model.DownloadOptions
@@ -47,10 +46,13 @@ internal fun DownloadChoices.toArguments(
             }
             addAll(listOf("--merge-output-format", "mp4"))
             captionLanguages?.let { languages ->
-                addAll(captionArguments(languages))
-                // In the video itself, as tracks of its own, which every player reads - and then only there: yt-dlp keeps the
-                // files it embedded beside the video where it is told to write them, unless told otherwise.
-                if (!subtitlesAsFile) addAll(listOf("--embed-subs", "--compat-options", "no-keep-subs"))
+                addAll(preferences.captionArguments(languages))
+                // In the video itself, as tracks of its own, which every player reads - and then only there, unless they are kept
+                // too: yt-dlp keeps the files it embedded beside the video where it is told to write them, unless told otherwise.
+                if (!subtitlesAsFile) {
+                    add("--embed-subs")
+                    if (!preferences.keepsSubtitleFiles) addAll(listOf("--compat-options", "no-keep-subs"))
+                }
             }
         }
 
@@ -66,7 +68,7 @@ internal fun DownloadChoices.toArguments(
         // The video read, never fetched: its captions written alone - and nothing else here is for them.
         DownloadKind.SUBTITLES -> {
             add("--skip-download")
-            captionLanguages?.let { addAll(captionArguments(it)) }
+            captionLanguages?.let { addAll(preferences.captionArguments(it)) }
             return@buildList
         }
 
@@ -75,6 +77,8 @@ internal fun DownloadChoices.toArguments(
     // The cover inside the file, so the file shows it wherever it goes - in the library, Android's own, a song's and a video's
     // alike: Android reads a file's own picture before ever taking a frame of a video.
     addAll(listOf("--embed-thumbnail", "--convert-thumbnails", "jpg"))
+    // Kept beside it too, as a file of its own - yt-dlp deletes what it embedded unless told to write it.
+    if (preferences.savesThumbnail) add("--write-thumbnail")
     addAll(listOf("--embed-metadata", "--embed-chapters", "--parse-metadata", "%(release_year,upload_date)s:%(meta_date)s"))
     if (skipSponsors && preferences.sponsorSegments.isNotEmpty()) {
         addAll(listOf("--sponsorblock-remove", preferences.sponsorSegments.joinToString(",") { it.id }))
@@ -83,8 +87,16 @@ internal fun DownloadChoices.toArguments(
     if (options.splitChapters) add("--split-chapters")
 }
 
-/** What yt-dlp is told to write of a video's captions - those [languages] picks, made by people or by its site - as SubRip. */
-private fun captionArguments(languages: String) = listOf("--write-subs", "--write-auto-subs", "--sub-langs", languages, "--convert-subs", "srt")
+/**
+ * What yt-dlp is told to write of a video's captions: those [languages] picks, made by people - or by its site, where it
+ * [DownloaderPreferences.writesAutoSubtitles] - in the [DownloaderPreferences.subtitleFormat] chosen.
+ */
+private fun DownloaderPreferences.captionArguments(languages: String) = buildList {
+    add("--write-subs")
+    if (writesAutoSubtitles) add("--write-auto-subs")
+    addAll(listOf("--sub-langs", languages))
+    subtitleFormat.extension?.let { addAll(listOf("--convert-subs", it)) }
+}
 
 /**
  * [selector], its sound in [DownloadChoices.audioLanguage] where the video has its sound in it, else [otherwise] - which takes,
@@ -106,31 +118,41 @@ private fun DownloadChoices.videoSorter(decodesAv1InHardware: Boolean): String {
 }
 
 /**
- * What every request yt-dlp makes is told: through the proxy, at the rate, signed in and - where it [archives] - remembering what
- * it downloaded.
+ * What every request yt-dlp makes is told: through the proxy, at the rate, over IPv4, signed in - as the browser the cookies were
+ * made in, where it says so - and, where it [archives], remembering what it downloaded.
  */
 internal fun DownloaderPreferences.networkArguments(runtime: DownloaderRuntime, archives: Boolean = true): List<String> = buildList {
-    proxy.takeIf(String::isNotBlank)?.let { addAll(listOf("--proxy", it.trim())) }
-    rateLimit.takeIf(String::isNotBlank)?.let { addAll(listOf("--limit-rate", it.trim())) }
-    if (usesCookies && runtime.cookiesFile.exists()) addAll(listOf("--cookies", runtime.cookiesFile.path))
+    activeProxy?.let { addAll(listOf("--proxy", it)) }
+    activeRateLimit?.let { addAll(listOf("--limit-rate", it)) }
+    if (forcesIpv4) add("--force-ipv4")
+    if (usesCookies && runtime.cookiesFile.exists()) {
+        addAll(listOf("--cookies", runtime.cookiesFile.path))
+        if (sendsUserAgent && userAgent.isNotBlank()) addAll(listOf("--add-header", "User-Agent:$userAgent"))
+    }
     if (usesArchive && archives) addAll(listOf("--download-archive", runtime.archiveFile.path))
 }
 
 /**
  * What yt-dlp is told about every download, whatever was chosen: to save to [outputDir] by way of [tempDir], named by
- * [fileNameTemplate] - a chapter's file within a folder of its video's, where it [splitsChapters] - and to say each item, its
+ * [fileNameTemplate] - a chapter's file within a folder of its video's, where it [splitsChapters] - a stream in fragments fetched
+ * [concurrentFragments] at a time, and to say each item, its
  * progress - with yt-dlp's own words for it - and each file saved - with its Most replayed graph and its chapters - on lines
  * of Sona's own, beside all else it says.
  */
-internal fun downloadArguments(outputDir: String, tempDir: String, fileNameTemplate: String, splitsChapters: Boolean): List<String> = buildList {
+internal fun downloadArguments(
+    outputDir: String,
+    tempDir: String,
+    fileNameTemplate: String,
+    splitsChapters: Boolean,
+    concurrentFragments: Int,
+): List<String> = buildList {
     addAll(listOf("-P", "home:$outputDir", "-P", "temp:$tempDir", "-o", fileNameTemplate))
     if (splitsChapters) addAll(listOf("-o", "chapter:%(title).100B/%(section_number)02d - %(section_title).100B.%(ext)s"))
     addAll(
         listOf(
             // A link to one video in a playlist is the video: a playlist's own link is still the playlist.
             "--no-playlist",
-            // A stream in fragments - HLS, DASH - fetched as many at a time as a direct download's parts.
-            "--concurrent-fragments", ConnectionsPerDownload.toString(),
+            "--concurrent-fragments", concurrentFragments.toString(),
             "--no-mtime",
             // Everything it does written out, as Seal and YTDLnis show it - --print alone would quiet it.
             "--no-quiet",

@@ -17,7 +17,7 @@ private val SizeWithSuffix = Regex("""(?i)^\s*(\d+(?:\.\d+)?)\s*([kmgt]?)i?b?\s*
  * an HTTP one signed in to with what its address carries - so a direct download goes where the downloader's would.
  */
 internal fun DownloaderPreferences.transferClient(base: OkHttpClient): OkHttpClient {
-    val address = proxy.trim().takeIf { it.isNotEmpty() } ?: return base
+    val address = activeProxy ?: return base
     val uri = URI(if ("://" in address) address else "http://$address")
     val isSocks = uri.scheme.orEmpty().lowercase().startsWith("socks")
     val type = if (isSocks) Proxy.Type.SOCKS else Proxy.Type.HTTP
@@ -40,7 +40,7 @@ internal fun DownloaderPreferences.transferClient(base: OkHttpClient): OkHttpCli
  * yt-dlp's `--limit-rate` is - null with no limit.
  */
 internal fun DownloaderPreferences.rateThrottler(): Throttler? =
-    bytesPerSecondOf(rateLimit)?.let { limit -> Throttler().apply { bytesPerSecond(limit) } }
+    activeRateLimit?.let(::bytesPerSecondOf)?.let { limit -> Throttler().apply { bytesPerSecond(limit) } }
 
 /** [text] - `2M`, `500K` - in bytes, as yt-dlp reads a rate: null where it is blank, or no size. */
 internal fun bytesPerSecondOf(text: String): Long? {

@@ -44,7 +44,6 @@ import com.lhacenmed.sona.core.model.AudioFormat
 import com.lhacenmed.sona.core.model.DownloadChoices
 import com.lhacenmed.sona.core.model.DownloadKind
 import com.lhacenmed.sona.core.model.VideoQuality
-import java.util.Locale
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
 /** A picker's line under its title. */
@@ -209,7 +208,7 @@ internal fun SubtitlesSheet(viewModel: DownloadViewModel, info: MediaInfo, onDis
     val preferences by viewModel.preferences.collectAsStateWithLifecycle()
     val navigator = LocalNavigator.current
     val groups = info.captionGroups
-    var picked by remember { mutableStateOf(info.pickedCaptions(choices, options, Locale.getDefault().language, preferences.transcribes)) }
+    var picked by remember { mutableStateOf(info.pickedCaptions(choices, options, preferences, preferences.transcribes)) }
     var asFile by remember { mutableStateOf(choices.subtitlesAsFile) }
     var isAddingLanguage by remember { mutableStateOf(false) }
     fun pickRow(code: String, label: String, value: String? = null): SonaGroupRow = { shapes ->

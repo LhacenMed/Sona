@@ -3,6 +3,7 @@ package com.lhacenmed.sona.core.downloader
 import com.lhacenmed.sona.core.model.DownloadChoices
 import com.lhacenmed.sona.core.model.DownloadKind
 import com.lhacenmed.sona.core.model.DownloadOptions
+import com.lhacenmed.sona.core.model.DownloaderPreferences
 import org.json.JSONObject
 
 /** How yt-dlp names YouTube's captions made from the speech, in the language spoken - listed again without it, the same file. */
@@ -16,16 +17,17 @@ private val CurrentCodes = mapOf("iw" to "he", "in" to "id", "ji" to "yi")
 
 /**
  * What yt-dlp is told to embed of a video's captions, as its `--sub-langs` - the one place which captions a video is
- * downloaded with is decided: one track for each language they are wanted in, the device's [deviceLanguage] and English,
- * the best of that language the video has; and with neither, the one of the language spoken in it. Null for none.
+ * downloaded with is decided: one track for each language they are wanted in - [DownloaderPreferences.wantedCaptionLanguages] -
+ * the best of that language the video has; and with none, the one of the language spoken in it. Those its site made from the
+ * speech only where [DownloaderPreferences.writesAutoSubtitles]. Null for none.
  *
  * Chosen from [read], yt-dlp's read of the video, where it is at hand. A playlist's videos are not read before they are
  * downloaded, and no code tells people's captions from those YouTube translated, which it refuses: each takes those made
- * from its speech, in the language spoken.
+ * from its speech, in the language spoken - or, without those, people's in the languages wanted.
  */
-internal fun captionLanguagesOf(read: JSONObject?, deviceLanguage: String): String? {
-    if (read == null) return ".*$SpokenSuffix"
-    return exactCaptionLanguages(captionsToEmbed(read.keysOf("subtitles"), read.keysOf("automatic_captions"), wantedLanguages(deviceLanguage)))
+internal fun captionLanguagesOf(read: JSONObject?, preferences: DownloaderPreferences): String? {
+    if (read == null) return if (preferences.writesAutoSubtitles) ".*$SpokenSuffix" else exactCaptionLanguages(preferences.wantedCaptionLanguages)
+    return exactCaptionLanguages(captionsToEmbed(read.keysOf("subtitles"), read.keysOf("automatic_captions"), preferences))
 }
 
 /** [codes], picked - each matched whole - as yt-dlp's `--sub-langs`; null for none. */
@@ -33,18 +35,18 @@ internal fun exactCaptionLanguages(codes: List<String>): String? =
     codes.takeIf { it.isNotEmpty() }?.joinToString(",") { it.replace(Regex("""[\\.^$*+?{}\[\]|()]"""), """\\$0""") }
 
 /** The captions this video is downloaded with unless others are picked - see [captionLanguagesOf] - what a picker starts from. */
-fun MediaInfo.suggestedCaptions(deviceLanguage: String): List<String> =
-    captionsToEmbed(madeCaptions, automaticCaptions, wantedLanguages(deviceLanguage))
+fun MediaInfo.suggestedCaptions(preferences: DownloaderPreferences): List<String> =
+    captionsToEmbed(madeCaptions, automaticCaptions, preferences)
 
 /**
  * The captions a download of this video takes with [choices] and [options]: those picked, else those suggested - none for a
  * video downloaded without captions. Downloading the captions alone, they are always taken - and where it has none, its
  * speech is transcribed, where the user [transcribes] - see [CaptionTranscription].
  */
-fun MediaInfo.pickedCaptions(choices: DownloadChoices, options: DownloadOptions, deviceLanguage: String, transcribes: Boolean): List<String> =
+fun MediaInfo.pickedCaptions(choices: DownloadChoices, options: DownloadOptions, preferences: DownloaderPreferences, transcribes: Boolean): List<String> =
     options.subtitleLanguages ?: when {
-        choices.kind == DownloadKind.SUBTITLES -> suggestedCaptions(deviceLanguage).ifEmpty { listOfNotNull(TRANSCRIBED_CAPTIONS.takeIf { transcribes }) }
-        choices.captions -> suggestedCaptions(deviceLanguage)
+        choices.kind == DownloadKind.SUBTITLES -> suggestedCaptions(preferences).ifEmpty { listOfNotNull(TRANSCRIBED_CAPTIONS.takeIf { transcribes }) }
+        choices.captions -> suggestedCaptions(preferences)
         else -> emptyList()
     }
 
@@ -76,8 +78,9 @@ private fun spokenCaptionsOf(automatic: List<String>): List<String> {
     return marked.ifEmpty { automatic.filter { LanguageCode.matches(it) } }
 }
 
-/** The languages captions are wanted in: the device's, and English. */
-private fun wantedLanguages(deviceLanguage: String) = listOf(deviceLanguage, "en").map(::comparable).distinct()
+/** The codes of the captions to embed, as [preferences] want them - see [captionsToEmbed] - of the [made] and the [automatic]. */
+private fun captionsToEmbed(made: List<String>, automatic: List<String>, preferences: DownloaderPreferences): List<String> =
+    captionsToEmbed(made, automatic.takeIf { preferences.writesAutoSubtitles }.orEmpty(), preferences.wantedCaptionLanguages.map(::comparable).distinct())
 
 /**
  * The codes of the captions to embed, of the [made] by people and the [automatic], each named as yt-dlp names them - one

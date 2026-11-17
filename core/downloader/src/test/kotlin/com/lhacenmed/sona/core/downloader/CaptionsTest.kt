@@ -1,5 +1,6 @@
 package com.lhacenmed.sona.core.downloader
 
+import com.lhacenmed.sona.core.model.DownloaderPreferences
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -36,16 +37,26 @@ class CaptionsTest {
     @Test
     fun `a language's old code is its new one`() {
         assertEquals(listOf("iw"), captionsToEmbed(listOf("iw"), emptyList(), listOf("he")))
-        assertEquals("he", captionLanguagesOf(JSONObject("""{"subtitles":{"he":[]}}"""), "iw"))
+        assertEquals("he", captionLanguagesOf(JSONObject("""{"subtitles":{"he":[]}}"""), wanting("iw, en")))
     }
 
     @Test
     fun `yt-dlp is told the codes chosen, or nothing where there are none, and a playlist's videos the speech's`() {
         val read = JSONObject("""{"subtitles":{"en":[]},"automatic_captions":{"en-orig":[],"en":[],"fr":[],"fr-en":[]}}""")
-        assertEquals("en", captionLanguagesOf(read, "fr"))
-        assertNull(captionLanguagesOf(JSONObject("{}"), "fr"))
-        assertEquals(".*-orig", captionLanguagesOf(null, "fr"))
+        assertEquals("en", captionLanguagesOf(read, wanting("fr, en")))
+        assertNull(captionLanguagesOf(JSONObject("{}"), wanting("fr, en")))
+        assertEquals(".*-orig", captionLanguagesOf(null, wanting("fr, en")))
     }
+
+    @Test
+    fun `the languages set are wanted, and the speech's captions only while they are taken`() {
+        val read = JSONObject("""{"subtitles":{"de":[]},"automatic_captions":{"fr-orig":[],"fr":[]}}""")
+        assertEquals("fr", captionLanguagesOf(read, wanting("fr")))
+        assertEquals("de", captionLanguagesOf(read, wanting("fr").copy(writesAutoSubtitles = false)))
+        assertEquals("fr,de", captionLanguagesOf(null, wanting("fr, de").copy(writesAutoSubtitles = false)))
+    }
+
+    private fun wanting(languages: String) = DownloaderPreferences(subtitleLanguages = languages)
 
     @Test
     fun `a translation is made from people's captions in the language spoken, else the speech's`() {

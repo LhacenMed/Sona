@@ -5,9 +5,9 @@ import com.lhacenmed.sona.core.model.DownloadChoices
 import com.lhacenmed.sona.core.model.DownloadKind
 import com.lhacenmed.sona.core.model.DownloadOptions
 import com.lhacenmed.sona.core.model.DownloaderPreferences
+import com.lhacenmed.sona.core.model.YtDlpChannel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
-import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
@@ -115,7 +115,7 @@ class YtDlp @Inject constructor(
         val captionLanguages = when {
             !wantsCaptions -> null
             picked != null -> exactCaptionLanguages(picked)
-            else -> captionLanguagesOf(read, Locale.getDefault().language)
+            else -> captionLanguagesOf(read, preferences)
         }
         // Captions alone are saved where Sona then finds them - yt-dlp says nothing of the files it only moves - and moves them
         // where they belong.
@@ -130,7 +130,7 @@ class YtDlp @Inject constructor(
                 // The archive is of what was saved as sound or picture: captions alone are neither held back by it nor kept in it -
                 // and one asked for again anyway is downloaded, as it is recorded there already.
                 preferences.networkArguments(runtime, archives = choices.kind.isMedia && !options.downloadsAgain) +
-                downloadArguments(savesTo.path, workspace.path, preferences.fileNameTemplate, options.splitChapters) +
+                downloadArguments(savesTo.path, workspace.path, preferences.fileNameTemplate, options.splitChapters, preferences.concurrentFragments) +
                 (if (hasTranslations) listOf("--enable-file-urls") else emptyList()) +
                 options.commandArguments?.let(::splitArguments).orEmpty() +
                 target
@@ -157,7 +157,7 @@ class YtDlp @Inject constructor(
         // for the same languages, else those of the speech.
         if (source.infoJson != null && written(savesTo).isEmpty()) {
             onEvent(DownloadEvent.Log("[sona] No subtitles from the read: yt-dlp reads the link itself"))
-            runWith(captionLanguages ?: captionLanguagesOf(null, Locale.getDefault().language), listOf(source.url))
+            runWith(captionLanguages ?: captionLanguagesOf(null, preferences), listOf(source.url))
         }
         val listed = read?.let { it.keysOf("subtitles") + it.keysOf("automatic_captions") }.orEmpty()
         val why = listOf(
@@ -192,9 +192,9 @@ class YtDlp @Inject constructor(
     /** The version of yt-dlp in use - null while the downloader is not here. */
     suspend fun version(): String? = runCatching { run(listOf("--version")).trim() }.getOrNull()
 
-    /** Brings yt-dlp up to date, saying what it is now. */
-    suspend fun update(): String {
-        run(listOf("--update-to", YtDlpChannel))
+    /** Brings yt-dlp up to date on [channel], saying what it is now. */
+    suspend fun update(channel: YtDlpChannel): String {
+        run(listOf("--update-to", channel.id))
         return version().orEmpty()
     }
 

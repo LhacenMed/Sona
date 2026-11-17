@@ -7,7 +7,12 @@ import com.lhacenmed.sona.feature.library.R as LibraryR
 import com.lhacenmed.sona.feature.settings.R
 import com.lhacenmed.sona.feature.download.R as DownloadR
 import com.lhacenmed.sona.feature.settings.SettingsCategory
+import com.lhacenmed.sona.feature.download.settings.CookieProfilesScreen
+import com.lhacenmed.sona.feature.download.settings.DownloadDirectorySettingsScreen
 import com.lhacenmed.sona.feature.download.settings.DownloadsSettingsScreen
+import com.lhacenmed.sona.feature.download.settings.GeneralDownloadSettingsScreen
+import com.lhacenmed.sona.feature.download.settings.NetworkSettingsScreen
+import com.lhacenmed.sona.feature.download.settings.SubtitleSettingsScreen
 import com.lhacenmed.sona.feature.settings.screen.LyricsAnimationScreen
 import com.lhacenmed.sona.feature.settings.screen.purposeRes
 import com.lhacenmed.sona.feature.settings.screen.titleRes
@@ -218,37 +223,70 @@ internal val SettingsSearchEntries: List<SettingsSearchEntry> = with(SettingsCat
         row(R.string.block_screenshots_title, R.string.block_screenshots_summary),
     )
 } + with(SettingsCategory.Downloads) {
-    // The category opens the downloads themselves: every one of its rows is on the settings their bar opens.
-    fun settingsRow(@StringRes titleRes: Int, @StringRes summaryRes: Int? = null) = row(titleRes, summaryRes, DownloadsSettingsScreen)
+    // The category opens the downloads themselves: every one of its rows is on the settings their bar opens, and its pages.
+    fun on(screen: Screen, @StringRes titleRes: Int, @StringRes summaryRes: Int? = null) = row(titleRes, summaryRes, screen)
     section(
-        DownloadR.string.downloads_settings_downloader_section,
-        settingsRow(DownloadR.string.downloads_settings_downloader_title, DownloadR.string.downloads_settings_downloader_summary),
-        settingsRow(DownloadR.string.downloads_settings_ytdlp_title),
+        DownloadR.string.downloads_settings_screen_title,
+        on(DownloadsSettingsScreen, DownloadR.string.downloads_settings_general_title, DownloadR.string.downloads_settings_general_summary),
+        on(DownloadsSettingsScreen, DownloadR.string.downloads_settings_directory_title, DownloadR.string.downloads_settings_directory_summary),
+        on(DownloadsSettingsScreen, DownloadR.string.downloads_settings_network_title, DownloadR.string.downloads_settings_network_summary),
+        on(DownloadsSettingsScreen, DownloadR.string.downloads_settings_subtitles_title, DownloadR.string.downloads_settings_subtitles_summary),
+        on(DownloadsSettingsScreen, DownloadR.string.downloads_settings_commands_title, DownloadR.string.downloads_settings_commands_summary),
+        on(DownloadsSettingsScreen, DownloadR.string.downloads_settings_watches_title, DownloadR.string.downloads_settings_watches_summary),
+        on(DownloadsSettingsScreen, DownloadR.string.downloads_settings_terminal_title, DownloadR.string.downloads_settings_terminal_summary),
     ) + section(
-        DownloadR.string.downloads_settings_queue_section,
-        settingsRow(DownloadR.string.downloads_settings_at_once_title),
-        settingsRow(DownloadR.string.downloads_settings_wifi_only_title, DownloadR.string.downloads_settings_wifi_only_summary),
+        DownloadR.string.downloads_settings_general_section,
+        on(GeneralDownloadSettingsScreen, DownloadR.string.downloads_settings_downloader_title, DownloadR.string.downloads_settings_downloader_summary),
+        on(GeneralDownloadSettingsScreen, DownloadR.string.downloads_settings_ytdlp_title),
+        on(GeneralDownloadSettingsScreen, DownloadR.string.downloads_settings_thumbnail_title, DownloadR.string.downloads_settings_thumbnail_summary),
+        on(GeneralDownloadSettingsScreen, DownloadR.string.downloads_settings_library_button_title, DownloadR.string.downloads_settings_library_button_summary),
+        on(GeneralDownloadSettingsScreen, DownloadR.string.downloads_settings_at_once_title),
     ) + section(
-        DownloadR.string.downloads_settings_files_section,
-        settingsRow(DownloadR.string.downloads_settings_audio_folder_title),
-        settingsRow(DownloadR.string.downloads_settings_video_folder_title),
-        settingsRow(DownloadR.string.downloads_settings_file_folder_title),
-        settingsRow(DownloadR.string.downloads_settings_file_names_title),
-        settingsRow(DownloadR.string.downloads_settings_segments_title),
-        settingsRow(DownloadR.string.downloads_settings_archive_title, DownloadR.string.downloads_settings_archive_summary),
-        settingsRow(DownloadR.string.downloads_settings_clear_archive_title, DownloadR.string.downloads_settings_clear_archive_summary),
-        settingsRow(DownloadR.string.downloads_settings_clear_history_title, DownloadR.string.downloads_settings_clear_history_summary),
+        DownloadR.string.downloads_settings_privacy_section,
+        on(GeneralDownloadSettingsScreen, DownloadR.string.downloads_settings_incognito_title, DownloadR.string.downloads_settings_incognito_summary),
+        on(GeneralDownloadSettingsScreen, DownloadR.string.downloads_settings_preview_title, DownloadR.string.downloads_settings_preview_summary),
+        on(GeneralDownloadSettingsScreen, DownloadR.string.downloads_settings_clear_history_title, DownloadR.string.downloads_settings_clear_history_summary),
     ) + section(
-        DownloadR.string.downloads_settings_network_section,
-        settingsRow(DownloadR.string.downloads_settings_proxy_title),
-        settingsRow(DownloadR.string.downloads_settings_rate_title),
-        settingsRow(DownloadR.string.downloads_settings_cookies_title, DownloadR.string.downloads_settings_cookies_summary),
-        settingsRow(DownloadR.string.downloads_settings_use_cookies_title),
+        DownloadR.string.downloads_settings_advanced_section,
+        on(GeneralDownloadSettingsScreen, DownloadR.string.downloads_settings_archive_title, DownloadR.string.downloads_settings_archive_summary),
+        on(GeneralDownloadSettingsScreen, DownloadR.string.downloads_settings_sponsorblock_title, DownloadR.string.downloads_settings_sponsorblock_summary),
     ) + section(
-        DownloadR.string.downloads_settings_tools_section,
-        settingsRow(DownloadR.string.downloads_settings_commands_title, DownloadR.string.downloads_settings_commands_summary),
-        settingsRow(DownloadR.string.downloads_settings_watches_title, DownloadR.string.downloads_settings_watches_summary),
-        settingsRow(DownloadR.string.downloads_settings_terminal_title, DownloadR.string.downloads_settings_terminal_summary),
+        DownloadR.string.downloads_settings_general_section,
+        on(DownloadDirectorySettingsScreen, DownloadR.string.downloads_settings_video_folder_title),
+        on(DownloadDirectorySettingsScreen, DownloadR.string.downloads_settings_audio_folder_title),
+        on(DownloadDirectorySettingsScreen, DownloadR.string.downloads_settings_file_folder_title),
+        on(DownloadDirectorySettingsScreen, DownloadR.string.downloads_settings_command_folder_title),
+    ) + section(
+        DownloadR.string.downloads_settings_advanced_section,
+        on(DownloadDirectorySettingsScreen, DownloadR.string.downloads_settings_output_template_title, DownloadR.string.downloads_settings_output_template_summary),
+    ) + section(
+        DownloadR.string.downloads_settings_general_section,
+        on(NetworkSettingsScreen, DownloadR.string.downloads_settings_rate_title, DownloadR.string.downloads_settings_rate_summary),
+        on(NetworkSettingsScreen, DownloadR.string.downloads_settings_cellular_title, DownloadR.string.downloads_settings_cellular_summary),
+    ) + section(
+        DownloadR.string.downloads_settings_advanced_section,
+        on(NetworkSettingsScreen, DownloadR.string.downloads_settings_proxy_title, DownloadR.string.downloads_settings_proxy_summary),
+        on(NetworkSettingsScreen, DownloadR.string.downloads_settings_fragments_title, DownloadR.string.downloads_settings_fragments_summary),
+        on(NetworkSettingsScreen, DownloadR.string.downloads_settings_ipv4_title, DownloadR.string.downloads_settings_ipv4_summary),
+        on(NetworkSettingsScreen, DownloadR.string.downloads_settings_cookies_title, DownloadR.string.downloads_settings_cookies_summary),
+    ) + section(
+        DownloadR.string.downloads_settings_general_section,
+        on(SubtitleSettingsScreen, DownloadR.string.downloads_settings_download_subtitles),
+        on(SubtitleSettingsScreen, DownloadR.string.downloads_settings_subtitle_languages),
+        on(SubtitleSettingsScreen, DownloadR.string.downloads_settings_convert_subtitles),
+        on(SubtitleSettingsScreen, DownloadR.string.downloads_settings_auto_subtitles, DownloadR.string.downloads_settings_auto_subtitles_summary),
+        on(SubtitleSettingsScreen, DownloadR.string.downloads_settings_embed_subtitles, DownloadR.string.downloads_settings_embed_subtitles_summary),
+        on(SubtitleSettingsScreen, DownloadR.string.downloads_settings_keep_subtitle_files),
+    ) + section(
+        DownloadR.string.downloads_settings_transcription_title,
+        on(SubtitleSettingsScreen, DownloadR.string.downloads_settings_transcription_service_title),
+        on(SubtitleSettingsScreen, DownloadR.string.downloads_settings_supadata_title),
+        on(SubtitleSettingsScreen, DownloadR.string.downloads_settings_groq_title),
+    ) + section(
+        DownloadR.string.downloads_settings_cookies_title,
+        on(CookieProfilesScreen, DownloadR.string.downloads_settings_use_cookies),
+        on(CookieProfilesScreen, DownloadR.string.downloads_settings_generate_cookies),
+        on(CookieProfilesScreen, DownloadR.string.downloads_settings_ua_header, DownloadR.string.downloads_settings_ua_header_summary),
     )
 } + with(SettingsCategory.ListeningStats) {
     section(R.string.stats_period_section, row(R.string.stats_period_title))

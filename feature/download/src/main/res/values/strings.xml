@@ -248,14 +248,6 @@
     <string name="download_failure_other">Something went wrong</string>
     <string name="download_failure_other_message">Try again. If it keeps failing, the error details can help.</string>
 
-    <string name="download_segment_sponsor">Sponsors</string>
-    <string name="download_segment_self_promotion">Self-promotion</string>
-    <string name="download_segment_interaction">Reminders to like and subscribe</string>
-    <string name="download_segment_intro">Intros</string>
-    <string name="download_segment_outro">Endings</string>
-    <string name="download_segment_preview">Previews and recaps</string>
-    <string name="download_segment_filler">Off-topic tangents</string>
-    <string name="download_segment_music_offtopic">Non-music in music videos</string>
 
     <string name="download_cookies_title">Sign in to sites</string>
     <string name="download_cookies_site">Site</string>
@@ -302,54 +294,154 @@
     <string name="download_terminal_run">Run</string>
     <string name="download_terminal_stop">Stop</string>
 
-    <string name="downloads_settings_downloader_section">Downloading</string>
+    <string name="downloads_settings_screen_title">Download settings</string>
+    <string name="downloads_settings_general_section">General</string>
+    <string name="downloads_settings_privacy_section">Privacy</string>
+    <string name="downloads_settings_advanced_section">Advanced</string>
+
+    <string name="downloads_settings_general_title">General</string>
+    <string name="downloads_settings_general_summary">yt-dlp version, thumbnail, incognito</string>
+    <string name="downloads_settings_directory_title">Download directory</string>
+    <string name="downloads_settings_directory_summary">Select where to store videos and audio files</string>
+    <string name="downloads_settings_network_title">Network</string>
+    <string name="downloads_settings_network_summary">Rate limit, proxy, cookies</string>
+    <string name="downloads_settings_transcription_title">Transcription</string>
+    <string name="downloads_settings_subtitles_title">Subtitles</string>
+    <string name="downloads_settings_subtitles_summary">Languages, embed subtitles, auto captions, transcription</string>
+    <string name="downloads_settings_commands_title">Custom command</string>
+    <string name="downloads_settings_commands_summary">yt-dlp arguments, picked in a download\'s options</string>
+    <string name="downloads_settings_watches_title">Watched channels</string>
+    <string name="downloads_settings_watches_summary">Their new videos downloaded as they appear</string>
+    <string name="downloads_settings_terminal_title">Terminal</string>
+    <string name="downloads_settings_terminal_summary">Run yt-dlp by hand</string>
+
     <string name="downloads_settings_downloader_title">Downloader</string>
     <string name="downloads_settings_downloader_download_summary">Download Python, FFmpeg and yt-dlp (about 50 MB) to download from links</string>
     <string name="downloads_settings_downloader_downloading_summary">Downloading: %1$s of %2$s</string>
     <string name="downloads_settings_downloader_summary">Ready to download from links</string>
     <string name="downloads_settings_downloader_failed_summary">Couldn\'t be downloaded. Try again</string>
+    <string name="downloads_settings_remove_downloader_title">Remove the downloader?</string>
+    <string name="downloads_settings_remove_downloader_message">Python, FFmpeg and yt-dlp are taken off this device. Downloads under way stop, and those that need the downloader wait until it\'s downloaded again.</string>
+    <string name="downloads_settings_remove_downloader_confirm">Remove</string>
+    <string name="downloads_settings_downloader_removed">Downloader removed</string>
+    <string name="downloads_settings_downloader_not_removed">The downloader couldn\'t be removed</string>
     <string name="downloads_settings_ytdlp_title">Update yt-dlp</string>
-    <string name="downloads_settings_ytdlp_summary">Version %1$s - brought up to date every week by itself</string>
     <string name="downloads_settings_ytdlp_unavailable">Comes with the downloader</string>
-    <string name="downloads_settings_screen_title">Download settings</string>
-    <string name="downloads_settings_queue_section">How downloads run</string>
+    <string name="downloads_settings_ytdlp_settings">Update settings</string>
+    <string name="downloads_settings_ytdlp_up_to_date">Using the latest version of yt-dlp (%1$s)</string>
+    <string name="downloads_settings_ytdlp_update_failed">Could not install the latest yt-dlp version. Please make sure you are connected to the Internet.</string>
+    <string name="downloads_settings_update_title">Update</string>
+    <string name="downloads_settings_update_channel">Update channel</string>
+    <string name="downloads_settings_channel_stable">Stable</string>
+    <string name="downloads_settings_channel_nightly">Nightly</string>
+    <string name="downloads_settings_additional_settings">Additional settings</string>
+    <string name="downloads_settings_auto_update">Auto update</string>
+    <string name="downloads_settings_auto_update_disabled">Disabled</string>
+    <string name="downloads_settings_every_day">Every day</string>
+    <string name="downloads_settings_every_week">Every week</string>
+    <string name="downloads_settings_every_month">Every month</string>
+    <string name="downloads_settings_thumbnail_title">Save thumbnail</string>
+    <string name="downloads_settings_thumbnail_summary">Save video thumbnail as a file</string>
+    <string name="downloads_settings_library_button_title">Downloads button</string>
+    <string name="downloads_settings_library_button_summary">Show the button that opens Downloads on the library</string>
     <string name="downloads_settings_at_once_title">Downloads at once</string>
-    <string name="downloads_settings_wifi_only_title">Only on Wi-Fi</string>
-    <string name="downloads_settings_wifi_only_summary">Downloads wait for a network that isn\'t metered</string>
-    <string name="downloads_settings_files_section">Files</string>
-    <string name="downloads_settings_file_names_title">File names</string>
-    <string name="downloads_settings_segments_title">What Skip sponsors cuts</string>
-    <string name="downloads_settings_segments_done">Done</string>
-    <string name="downloads_settings_archive_title">Skip what was downloaded</string>
-    <string name="downloads_settings_archive_summary">A video downloaded once isn\'t downloaded again</string>
-    <string name="downloads_settings_clear_archive_title">Forget what was downloaded</string>
-    <string name="downloads_settings_clear_archive_summary">Lets every video be downloaded again</string>
+    <string name="downloads_settings_incognito_title">Incognito</string>
+    <string name="downloads_settings_incognito_summary">Disable download history</string>
+    <string name="downloads_settings_preview_title">Disable preview</string>
+    <string name="downloads_settings_preview_summary">No display of thumbnails during download</string>
     <string name="downloads_settings_clear_history_title">Clear download history</string>
     <string name="downloads_settings_clear_history_summary">Empties the Downloads list - the files stay on your device</string>
     <string name="downloads_settings_clear_history_message">Empty the Downloads list? The songs and videos stay on your device and in your library.</string>
     <string name="downloads_settings_clear_history_confirm">Clear</string>
     <string name="downloads_settings_history_cleared">Download history cleared</string>
     <string name="downloads_settings_history_not_cleared">The history couldn\'t be cleared</string>
-    <string name="downloads_settings_network_section">Network</string>
+    <string name="downloads_settings_archive_title">Download archive</string>
+    <string name="downloads_settings_archive_summary">Record downloaded video IDs in an archive to avoid duplicate downloads</string>
+    <string name="downloads_settings_edit_file">Edit file</string>
+    <string name="downloads_settings_archive_file" translatable="false">archive.txt</string>
+    <string name="downloads_settings_sponsorblock_title" translatable="false">SponsorBlock</string>
+    <string name="downloads_settings_sponsorblock_summary">Remove segments in videos with SponsorBlock API</string>
+    <string name="downloads_settings_sponsorblock_categories_summary">Specify the SponsorBlock categories to remove from the video file</string>
+    <string name="downloads_settings_sponsorblock_categories">SponsorBlock categories</string>
+    <string name="downloads_settings_learn_more">Learn more</string>
+
+    <string name="downloads_settings_output_template_title">Output template</string>
+    <string name="downloads_settings_output_template_summary">Specify the template for output file names</string>
+
+    <string name="downloads_settings_rate_title">Rate limit</string>
+    <string name="downloads_settings_rate_summary">Limit the maximum download speed</string>
+    <string name="downloads_settings_max_rate">Maximum rate</string>
+    <string name="downloads_settings_rate_unit" translatable="false">K</string>
+    <string name="downloads_settings_cellular_title">Download using cellular</string>
+    <string name="downloads_settings_cellular_summary">Allow downloading media when connected to metered networks</string>
+    <string name="downloads_settings_wifi_only_title">Only on Wi-Fi</string>
     <string name="downloads_settings_proxy_title">Proxy</string>
-    <string name="downloads_settings_rate_title">Speed limit</string>
-    <string name="downloads_settings_none">None</string>
-    <string name="downloads_settings_transcription_section">Transcription</string>
+    <string name="downloads_settings_proxy_summary">Use proxy for internet connections</string>
+    <string name="downloads_settings_fragments_title">Multi-threaded download</string>
+    <string name="downloads_settings_fragments_summary">Download more parts of M3U8/MPD videos in parallel</string>
+    <plurals name="downloads_settings_fragments_count">
+        <item quantity="one">%d thread would be used to download DASH/HLS native video concurrently.</item>
+        <item quantity="other">%d threads would be used to download DASH/HLS native video concurrently.</item>
+    </plurals>
+    <string name="downloads_settings_ipv4_title">Force IPv4</string>
+    <string name="downloads_settings_ipv4_summary">Make all connections via IPv4</string>
+    <string name="downloads_settings_cookies_title">Cookies</string>
+    <string name="downloads_settings_cookies_summary">Use Netscape formatted cookies for downloads</string>
+
+    <string name="downloads_settings_use_cookies">Use Cookies</string>
+    <string name="downloads_settings_generate_cookies">Generate new cookies</string>
+    <plurals name="downloads_settings_cookie_count">
+        <item quantity="one">%d cookie</item>
+        <item quantity="other">%d cookies</item>
+    </plurals>
+    <plurals name="downloads_settings_site_count">
+        <item quantity="one">%d website</item>
+        <item quantity="other">%d websites</item>
+    </plurals>
+    <string name="downloads_settings_cookies_total">%1$s from %2$s in total</string>
+    <string name="downloads_settings_cookies_help">How does it work?</string>
+    <string name="downloads_settings_cookies_usage">Downloading from some sites requires account authentication information. Press \"Generate new cookies\", enter the URL of the website and then log in with your account in the browser page, the app will generate it for you.</string>
+    <string name="downloads_settings_ua_header">User-Agent header</string>
+    <string name="downloads_settings_ua_header_summary">Send the browser\'s User-Agent with the cookies</string>
+    <string name="downloads_settings_export_cookies">Export to file</string>
+    <string name="downloads_settings_cookies_exported">Cookies exported</string>
+    <string name="downloads_settings_clear_cookies">Clear all cookies</string>
+    <string name="downloads_settings_clear_cookies_message">Delete all the cookies stored in the app for good?</string>
+    <string name="downloads_settings_clear_cookies_confirm">Clear</string>
+    <string name="downloads_settings_remove_cookies">Remove</string>
+    <plurals name="downloads_settings_remove_cookies_message">
+        <item quantity="one">Remove the cookies saved for %d website?</item>
+        <item quantity="other">Remove the cookies saved for %d websites?</item>
+    </plurals>
+    <string name="downloads_settings_cookies_removed">Cookies removed</string>
+    <string name="downloads_settings_cookies_not_exported">The cookies couldn\'t be exported</string>
+    <string name="downloads_settings_cookies_url" translatable="false">URL</string>
+
+    <string name="downloads_settings_download_subtitles">Download subtitles</string>
+    <string name="downloads_settings_subtitle_languages">Subtitle languages</string>
+    <string name="downloads_settings_subtitle_languages_summary">Language codes of the subtitles to download, separated by commas</string>
+    <string name="downloads_settings_subtitle_languages_default">Your device\'s language and English</string>
+    <string name="downloads_settings_convert_subtitles">Convert subtitles</string>
+    <string name="downloads_settings_subtitles_unconverted">Unconverted</string>
+    <string name="downloads_settings_auto_subtitles">Automatic captions</string>
+    <string name="downloads_settings_auto_subtitles_summary">Download auto-generated captions</string>
+    <string name="downloads_settings_embed_subtitles">Embed subtitles</string>
+    <string name="downloads_settings_embed_subtitles_summary">Embed soft-subs into videos if available</string>
+    <string name="downloads_settings_keep_subtitle_files">Keep subtitle files</string>
+    <string name="downloads_settings_reset">Reset</string>
+    <string name="downloads_settings_ytdlp_docs">Yt-dlp usage references</string>
+    <string name="downloads_settings_custom_template">Custom</string>
+    <string name="downloads_settings_template_required">Required: %1$s, %2$s</string>
+    <string name="downloads_settings_command_folder_title">Custom command directory</string>
+    <string name="downloads_settings_command_folder_summary">Specify the output directory when using custom commands</string>
+    <string name="downloads_settings_command_folder_unset">Tap to set up directory</string>
+    <string name="downloads_settings_folder_picker">Folder picker</string>
+    <string name="downloads_settings_command_folder_flag" translatable="false">-P</string>
     <string name="downloads_settings_transcription_service_title">Transcribe with</string>
     <string name="downloads_settings_supadata_title">Supadata key</string>
     <string name="downloads_settings_groq_title">Groq key</string>
     <string name="downloads_settings_key_set">Set</string>
     <string name="downloads_settings_transcription_summary">Free keys from supadata.ai and console.groq.com. Used only to make subtitles for videos that have none</string>
-    <string name="downloads_settings_cookies_title">Cookies</string>
-    <string name="downloads_settings_cookies_summary">Sign in on a site, for downloads that need an account</string>
-    <string name="downloads_settings_use_cookies_title">Read sites signed in</string>
-    <string name="downloads_settings_tools_section">Tools</string>
-    <string name="downloads_settings_commands_title">Commands</string>
-    <string name="downloads_settings_commands_summary">yt-dlp arguments, picked in a download\'s options</string>
-    <string name="downloads_settings_watches_title">Watched channels</string>
-    <string name="downloads_settings_watches_summary">Their new videos downloaded as they appear</string>
-    <string name="downloads_settings_terminal_title">Terminal</string>
-    <string name="downloads_settings_terminal_summary">Run yt-dlp by hand</string>
 
     <!-- The download sheet -->
     <string name="download_as">Download as</string>

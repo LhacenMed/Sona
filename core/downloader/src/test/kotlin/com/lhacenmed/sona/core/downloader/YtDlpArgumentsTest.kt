@@ -8,6 +8,7 @@ import com.lhacenmed.sona.core.model.DownloadKind
 import com.lhacenmed.sona.core.model.DownloadOptions
 import com.lhacenmed.sona.core.model.DownloaderPreferences
 import com.lhacenmed.sona.core.model.SponsorSegment
+import com.lhacenmed.sona.core.model.SubtitleFormat
 import com.lhacenmed.sona.core.model.VideoFormat
 import com.lhacenmed.sona.core.model.VideoQuality
 import java.io.File
@@ -89,9 +90,9 @@ class YtDlpArgumentsTest {
         val info = mediaInfoOf(read)
         assertEquals(listOf(AudioTrack("en", AudioTrackKind.ORIGINAL), AudioTrack("hi", AudioTrackKind.DUBBED), AudioTrack("en-desc", AudioTrackKind.DESCRIPTIVE)), info.audioTracks)
         val song = DownloadChoices(kind = DownloadKind.AUDIO, audioFormat = AudioFormat.ORIGINAL)
-        assertEquals("140-en", DirectTransfer().formatFor(info, song, DownloadOptions())?.id)
-        assertEquals("140-hi", DirectTransfer().formatFor(info, song.copy(audioLanguage = "hi"), DownloadOptions())?.id)
-        assertEquals("140-en", DirectTransfer().formatFor(info, song.copy(audioLanguage = "fr"), DownloadOptions())?.id)
+        assertEquals("140-en", DirectTransfer().formatFor(info, song, DownloadOptions(), DownloaderPreferences())?.id)
+        assertEquals("140-hi", DirectTransfer().formatFor(info, song.copy(audioLanguage = "hi"), DownloadOptions(), DownloaderPreferences())?.id)
+        assertEquals("140-en", DirectTransfer().formatFor(info, song.copy(audioLanguage = "fr"), DownloadOptions(), DownloaderPreferences())?.id)
     }
 
     @Test
@@ -132,6 +133,44 @@ class YtDlpArgumentsTest {
         assertFalse("--sponsorblock-remove" in DownloadChoices(skipSponsors = false).arguments())
         val preferences = DownloaderPreferences(sponsorSegments = setOf(SponsorSegment.SPONSOR, SponsorSegment.INTRO))
         assertEquals("sponsor,intro", DownloadChoices(skipSponsors = true).arguments(preferences = preferences).valueOf("--sponsorblock-remove"))
+    }
+
+    @Test
+    fun `captions are written as the settings say - their format, the speech's, and kept beside the video or not`() {
+        val video = DownloadChoices(kind = DownloadKind.VIDEO)
+        val default = video.arguments(captionLanguages = "en")
+        assertEquals("srt", default.valueOf("--convert-subs"))
+        assertTrue("--write-auto-subs" in default)
+        assertEquals("no-keep-subs", default.valueOf("--compat-options"))
+        val custom = video.arguments(
+            captionLanguages = "en",
+            preferences = DownloaderPreferences(subtitleFormat = SubtitleFormat.ORIGINAL, writesAutoSubtitles = false, keepsSubtitleFiles = true),
+        )
+        assertFalse("--convert-subs" in custom)
+        assertFalse("--write-auto-subs" in custom)
+        assertTrue("--embed-subs" in custom)
+        assertFalse("--compat-options" in custom)
+    }
+
+    @Test
+    fun `a proxy and a rate limit apply only while turned on, and are kept while off`() {
+        val off = DownloaderPreferences(proxy = "socks5://host:1080", rateLimit = "500K")
+        assertNull(off.activeProxy)
+        assertNull(off.activeRateLimit)
+        val on = off.copy(usesProxy = true, limitsRate = true)
+        assertEquals("socks5://host:1080", on.activeProxy)
+        assertEquals("500K", on.activeRateLimit)
+        assertNull(DownloaderPreferences(usesProxy = true, proxy = " ").activeProxy)
+    }
+
+    @Test
+    fun `the thumbnail is kept beside the file only when asked, and fragments come as many at once as set`() {
+        assertFalse("--write-thumbnail" in DownloadChoices().arguments())
+        val saving = DownloadChoices().arguments(preferences = DownloaderPreferences(savesThumbnail = true))
+        assertTrue("--write-thumbnail" in saving)
+        assertEquals("jpg", saving.valueOf("--convert-thumbnails"))
+        val download = downloadArguments("/out", "/tmp", "%(title)s.%(ext)s", splitsChapters = false, concurrentFragments = 16)
+        assertEquals("16", download.valueOf("--concurrent-fragments"))
     }
 
     @Test
@@ -203,11 +242,11 @@ class YtDlpArgumentsTest {
         val info = MediaInfo("id", "Song", "Artist", 200, null, "Youtube", listOf(m4a, video), null, null, null, null, null)
         val transfer = DirectTransfer()
         val audio = DownloadChoices(kind = DownloadKind.AUDIO, audioFormat = AudioFormat.ORIGINAL)
-        assertEquals(m4a, transfer.formatFor(info, audio, DownloadOptions()))
-        assertNull(transfer.formatFor(info, audio.copy(audioFormat = AudioFormat.MP3), DownloadOptions()))
-        assertNull(transfer.formatFor(info, audio.copy(skipSponsors = true), DownloadOptions()))
-        assertNull(transfer.formatFor(info, audio, DownloadOptions(clip = ClipRange(0, 10))))
-        assertNull(transfer.formatFor(info, DownloadChoices(kind = DownloadKind.VIDEO), DownloadOptions()))
+        assertEquals(m4a, transfer.formatFor(info, audio, DownloadOptions(), DownloaderPreferences()))
+        assertNull(transfer.formatFor(info, audio.copy(audioFormat = AudioFormat.MP3), DownloadOptions(), DownloaderPreferences()))
+        assertNull(transfer.formatFor(info, audio.copy(skipSponsors = true), DownloadOptions(), DownloaderPreferences()))
+        assertNull(transfer.formatFor(info, audio, DownloadOptions(clip = ClipRange(0, 10)), DownloaderPreferences()))
+        assertNull(transfer.formatFor(info, DownloadChoices(kind = DownloadKind.VIDEO), DownloadOptions(), DownloaderPreferences()))
     }
 
     @Test
@@ -218,10 +257,10 @@ class YtDlpArgumentsTest {
         val choices = DownloadChoices(kind = DownloadKind.VIDEO, videoQuality = VideoQuality.P1080)
         // A post's video: every variant whole, with its sound - the tallest within the quality is taken.
         val post = MediaInfo("p", "Post", null, 30, null, "Twitter", listOf(mp4("480", 480, true), mp4("720", 720, true), mp4("1440", 1440, true)), null, null, null, null, null)
-        assertEquals("720", transfer.formatFor(post, choices, DownloadOptions())?.id)
+        assertEquals("720", transfer.formatFor(post, choices, DownloadOptions(), DownloaderPreferences())?.id)
         // YouTube's: its whole file is the smallest, the rest pictures to merge - yt-dlp's to download.
         val youTube = post.copy(formats = listOf(mp4("18", 360, true), mp4("137", 1080, false)))
-        assertNull(transfer.formatFor(youTube, choices, DownloadOptions()))
-        assertNull(transfer.formatFor(post.copy(madeCaptions = listOf("en")), choices, DownloadOptions()))
+        assertNull(transfer.formatFor(youTube, choices, DownloadOptions(), DownloaderPreferences()))
+        assertNull(transfer.formatFor(post.copy(madeCaptions = listOf("en")), choices, DownloadOptions(), DownloaderPreferences()))
     }
 }

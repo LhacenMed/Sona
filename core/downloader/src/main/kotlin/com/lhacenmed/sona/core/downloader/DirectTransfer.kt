@@ -69,10 +69,11 @@ class DirectTransfer @Inject constructor() {
     private val client = OkHttpClient()
 
     /**
-     * The format [info] is downloaded as directly with [choices] and [options] - null where they ask for what only yt-dlp
-     * does: a merge of picture and sound, a conversion, captions, a cut, a command. A file is always downloaded directly.
+     * The format [info] is downloaded as directly with [choices], [options] and [preferences] - null where they ask for what
+     * only yt-dlp does: a merge of picture and sound, a conversion, captions, a cut, a command. A file is always downloaded
+     * directly.
      */
-    fun formatFor(info: MediaInfo, choices: DownloadChoices, options: DownloadOptions): MediaFormat? {
+    fun formatFor(info: MediaInfo, choices: DownloadChoices, options: DownloadOptions, preferences: DownloaderPreferences): MediaFormat? {
         if (choices.kind == DownloadKind.FILE) return info.formats.singleOrNull()
         val needsNothingElse = !choices.skipSponsors && options.clip == null && !options.splitChapters && options.commandArguments == null && !info.isPlaylist
         if (!needsNothingElse) return null
@@ -94,7 +95,7 @@ class DirectTransfer @Inject constructor() {
 
             DownloadKind.VIDEO -> {
                 // Captions are embedded by yt-dlp - and made, picked to be transcribed or translated, before it.
-                if (info.pickedCaptions(choices, options, Locale.getDefault().language, transcribes = false).isNotEmpty()) return null
+                if (info.pickedCaptions(choices, options, preferences, transcribes = false).isNotEmpty()) return null
                 val tallest = choices.videoQuality.height ?: Int.MAX_VALUE
                 val pictures = info.formats.filter { it.hasVideo && (it.height ?: 0) <= tallest }
                 // One file with its sound, as a post's video is served: taken only where nothing assembled would be better.

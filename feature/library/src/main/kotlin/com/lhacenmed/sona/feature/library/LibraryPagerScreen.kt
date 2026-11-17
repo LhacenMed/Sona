@@ -105,6 +105,7 @@ fun LibraryPagerScreen(
     // Not paused with the activity, as the rest is: it is changed from another screen - the settings - and is
     // then already there for the first frame back, rather than arriving just after it.
     val quickPlay by viewModel.quickPlay.collectAsState()
+    val showsDownloadsButton by viewModel.showsDownloadsButton.collectAsState()
     val hasTracks by viewModel.hasTracks.collectAsStateWithLifecycle()
     val revealsPrivateFolder by viewModel.revealsPrivateFolder.collectAsStateWithLifecycle()
     val openPrivateFolder = rememberPrivateFolderOpener()
@@ -374,7 +375,7 @@ fun LibraryPagerScreen(
                 SonaSecondaryFloatingActionButton(
                     icon = SonaIcons.Download,
                     contentDescription = stringResource(R.string.library_downloads),
-                    visible = { searchQuery == null },
+                    visible = { showsDownloadsButton && searchQuery == null },
                     onClick = onOpenDownloads,
                 )
                 QuickPlayButton(

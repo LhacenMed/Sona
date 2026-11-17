@@ -11,6 +11,7 @@ import com.lhacenmed.sona.core.data.quickplay.QuickPlay
 import com.lhacenmed.sona.core.data.quickplay.QuickPlaySourceRepository
 import com.lhacenmed.sona.core.data.search.SearchIndex
 import com.lhacenmed.sona.core.data.sort.LibrarySortOrders
+import com.lhacenmed.sona.core.datastore.DownloadSettings
 import com.lhacenmed.sona.core.datastore.LibrarySettings
 import com.lhacenmed.sona.core.datastore.LibraryTab
 import com.lhacenmed.sona.core.datastore.QuickPlayMode
@@ -83,6 +84,7 @@ class LibraryViewModel @Inject constructor(
     private val repository: LibraryRepository,
     private val librarySettings: LibrarySettings,
     quickPlaySettings: QuickPlaySettings,
+    downloadSettings: DownloadSettings,
     private val quickPlaySources: QuickPlaySourceRepository,
     private val mediaScanner: MediaScanner,
     private val playbackController: PlaybackController,
@@ -268,6 +270,11 @@ class LibraryViewModel @Inject constructor(
             SharingStarted.Eagerly,
             if (quickPlaySettings.showButton.value) QuickPlay(quickPlaySettings.mode.value, quickPlaySources.source.value) else null,
         )
+
+    /** Whether the button that opens Downloads is shown - turned off in the downloads' settings. */
+    val showsDownloadsButton: StateFlow<Boolean> = downloadSettings.preferences.flow
+        .map { it.showsLibraryButton }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, downloadSettings.preferences.value.showsLibraryButton)
 
     /** Favorites, which the quick play button's menu always offers. */
     val favoritesPlaylistId: Long get() = repository.favoritesPlaylistId

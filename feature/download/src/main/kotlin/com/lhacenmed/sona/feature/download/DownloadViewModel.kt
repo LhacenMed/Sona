@@ -3,7 +3,6 @@ package com.lhacenmed.sona.feature.download
 import android.content.Context
 import android.content.Intent
 import android.media.MediaScannerConnection
-import java.util.Locale
 import com.lhacenmed.sona.core.downloader.pickedCaptions
 import android.net.Uri
 import androidx.annotation.StringRes
@@ -364,7 +363,7 @@ class DownloadViewModel @Inject constructor(
             song = _song.value?.takeIf { kind == DownloadKind.AUDIO && chosen.savesAsSong }?.plan,
             // Captions alone are taken as the sheet showed them - its speech transcribed among them where it has none.
             subtitleLanguages = _options.value.subtitleLanguages ?: info?.takeIf { kind == DownloadKind.SUBTITLES && !it.isPlaylist }
-                ?.pickedCaptions(chosen, _options.value, Locale.getDefault().language, settings.preferences.value.transcribes),
+                ?.pickedCaptions(chosen, _options.value, settings.preferences.value, settings.preferences.value.transcribes),
         )
         // A playlist's videos listed as one, under its own name.
         val batch = entries?.let { DownloadBatch("playlist:${System.currentTimeMillis()}", info?.title ?: hostOf(url)) }
@@ -466,7 +465,7 @@ class DownloadViewModel @Inject constructor(
      */
     private fun savesWithoutDownloader(info: MediaInfo, choices: DownloadChoices): Boolean =
         if (info.isPlaylist) choices.kind == DownloadKind.AUDIO && info.site?.startsWith("Youtube") == true
-        else directTransfer.formatFor(info, choices, _options.value) != null
+        else directTransfer.formatFor(info, choices, _options.value, settings.preferences.value) != null
 
     fun onGetDownloader() = downloader.download()
 

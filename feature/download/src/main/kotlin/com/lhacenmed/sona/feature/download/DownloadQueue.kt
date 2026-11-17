@@ -59,8 +59,11 @@ data class RunningDownload(
 /** How far a download paused had got: bytes downloaded and of how many, each null where unknown - see [DownloadQueue.held]. */
 typealias HeldProgress = Pair<Long?, Long?>
 
-/** How the user stopped a running download: to carry on later from its last byte, or for good, with what it fetched. */
-internal enum class DownloadStop { PAUSE, CANCEL }
+/**
+ * How a running download was stopped: to carry on later from its last byte, for good with what it fetched - or, [RESTART], to
+ * be queued again at once, from its last byte, as the downloader is taken away under it.
+ */
+internal enum class DownloadStop { PAUSE, CANCEL, RESTART }
 
 /** One link to queue, with what is known of it already, and how. */
 data class DownloadRequest(
@@ -122,6 +125,16 @@ class DownloadQueue @Inject constructor(
     init {
         // What waited on the downloader downloads the moment it is here, wherever the user is.
         scope.launch { runtime.state.drop(1).filter { it == RuntimeState.Installed }.collect { retryFailed(DownloadFailure.NO_DOWNLOADER) } }
+        // yt-dlp goes on from the files it has open once they are deleted, so the downloader taken away, every running download
+        // starts again: what still has all it needs carries on from its last byte, and what needs the downloader waits for it -
+        // as any download queued without it does - and carries on the moment it is back.
+        scope.launch {
+            var wasInstalled = runtime.state.value == RuntimeState.Installed
+            runtime.state.collect { state ->
+                if (wasInstalled && state == RuntimeState.Missing) stop(synchronized(jobs) { jobs.keys.toList() }, DownloadStop.RESTART)
+                wasInstalled = state == RuntimeState.Installed
+            }
+        }
         scope.launch {
             val saved = dao.pausedIds().mapNotNull { id -> workspaces.progressOf(id)?.let { id to it } }.toMap()
             _held.update { saved + it }

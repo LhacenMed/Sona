@@ -97,7 +97,7 @@ class MediaResolver @Inject internal constructor(
      * the app first all the same: what signing in is for - what a site keeps from no one in particular - is what they fail on,
      * and such a link goes on to yt-dlp, signed in.
      */
-    private fun readsItself(preferences: DownloaderPreferences) = preferences.proxy.isBlank()
+    private fun readsItself(preferences: DownloaderPreferences) = preferences.activeProxy == null
 
     /** Lets [url]'s read go - one whose streams were found to work no longer. */
     fun forget(url: String) {

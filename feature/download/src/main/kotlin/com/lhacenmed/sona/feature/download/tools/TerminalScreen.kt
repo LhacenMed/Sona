@@ -105,7 +105,7 @@ internal class TerminalViewModel @Inject constructor(
             _isRunning.value = true
             try {
                 // In the videos' folder: what yt-dlp downloads untold is a video.
-                ytDlp.runTyped(splitArguments(arguments), downloadFolderOf(settings.preferences.value, DownloadKind.VIDEO), ::append)
+                ytDlp.runTyped(splitArguments(arguments), downloadFolderOf(settings.preferences.value, DownloadKind.VIDEO, runsCommand = true), ::append)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

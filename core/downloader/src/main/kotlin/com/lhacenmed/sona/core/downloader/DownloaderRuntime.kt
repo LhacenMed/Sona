@@ -74,12 +74,10 @@ Groups = X25519:P-256:X448:P-521:P-384:ffdhe2048:ffdhe3072:ffdhe4096:ffdhe6144:f
 private const val ReportEveryBytes = 512 * 1024L
 
 /**
- * The channel of yt-dlp's builds the app runs: nightly, as Seal's does - a site's reader fixed within a day of the site changing,
- * rather than at the next release, weeks later. The one place it is named: downloaded from it here, updated on it in [YtDlp.update].
+ * yt-dlp as its own project publishes it nightly, the newest - the default channel, as Seal's is: a site's reader fixed within a
+ * day of the site changing, rather than at the next release, weeks later. Kept up to date in place from then on, on whichever
+ * channel is chosen - see [YtDlp.update].
  */
-internal const val YtDlpChannel = "nightly"
-
-/** yt-dlp as its own project publishes it on [YtDlpChannel], the newest: kept up to date in place from then on - see [YtDlp.update]. */
 private const val YtDlpUrl = "https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp"
 
 /**

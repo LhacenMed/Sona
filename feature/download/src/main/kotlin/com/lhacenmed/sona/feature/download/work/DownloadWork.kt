@@ -17,6 +17,7 @@ import com.lhacenmed.sona.core.downloader.DownloaderRuntime
 import com.lhacenmed.sona.core.downloader.RuntimeState
 import com.lhacenmed.sona.core.downloader.YtDlp
 import com.lhacenmed.sona.core.model.DownloaderPreferences
+import com.lhacenmed.sona.core.model.UpdateInterval
 import com.lhacenmed.sona.feature.download.DownloadQueue
 import com.lhacenmed.sona.feature.download.DownloadRunner
 import com.lhacenmed.sona.feature.download.WatchChecker
@@ -67,19 +68,32 @@ object DownloadWork {
         WorkManager.getInstance(context).enqueueUniqueWork(DOWNLOADS_LATER, ExistingWorkPolicy.REPLACE, request)
     }
 
-    /** Keeps yt-dlp up to date every week, and watched channels looked at twice a day - whatever screen is open, or none. */
+    /** Keeps watched channels looked at twice a day - whatever screen is open, or none. */
     fun followMaintenance(context: Context) {
         val workManager = WorkManager.getInstance(context)
         val online = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
         workManager.enqueueUniquePeriodicWork(
-            YT_DLP_UPDATE,
-            ExistingPeriodicWorkPolicy.KEEP,
-            PeriodicWorkRequestBuilder<YtDlpUpdateWorker>(7, TimeUnit.DAYS).setConstraints(online).build(),
-        )
-        workManager.enqueueUniquePeriodicWork(
             WATCH_CHECK,
             ExistingPeriodicWorkPolicy.KEEP,
             PeriodicWorkRequestBuilder<WatchCheckWorker>(12, TimeUnit.HOURS).setConstraints(online).build(),
+        )
+    }
+
+    /**
+     * Brings yt-dlp up to date every [interval] - on the channel chosen as it runs - or never while it is null: the schedule
+     * changed in place as the interval is, keeping when it last ran.
+     */
+    fun followYtDlpUpdates(context: Context, interval: UpdateInterval?) {
+        val workManager = WorkManager.getInstance(context)
+        if (interval == null) {
+            workManager.cancelUniqueWork(YT_DLP_UPDATE)
+            return
+        }
+        val online = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
+        workManager.enqueueUniquePeriodicWork(
+            YT_DLP_UPDATE,
+            ExistingPeriodicWorkPolicy.UPDATE,
+            PeriodicWorkRequestBuilder<YtDlpUpdateWorker>(interval.days, TimeUnit.DAYS).setConstraints(online).build(),
         )
     }
 
@@ -136,7 +150,7 @@ internal class YtDlpUpdateWorker(context: Context, params: WorkerParameters) : C
         val entryPoint = entryPointOf(applicationContext)
         if (entryPoint.runtime().state.value != RuntimeState.Installed) return Result.success()
         return try {
-            entryPoint.ytDlp().update()
+            entryPoint.ytDlp().update(entryPoint.settings().preferences.value.ytDlpChannel)
             Result.success()
         } catch (e: CancellationException) {
             throw e

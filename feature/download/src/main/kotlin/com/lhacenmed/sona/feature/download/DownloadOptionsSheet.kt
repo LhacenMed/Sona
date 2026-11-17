@@ -13,7 +13,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ListItemShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
@@ -46,6 +45,7 @@ import com.lhacenmed.sona.core.model.DownloadKind
 import com.lhacenmed.sona.core.model.VideoFormat
 import java.util.Calendar
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.core.designsystem.component.SonaSwitch
 
 /** Which of the sheet's dialogs is open. */
 private enum class OptionsDialog { VIDEO_FORMAT, EXACT_FORMAT, CLIP, COMMAND, START_AT }
@@ -254,7 +254,7 @@ internal fun SwitchRow(
         value = value,
         enabled = enabled,
         onClick = { onCheckedChange(!checked) },
-        trailing = { Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled) },
+        trailing = { SonaSwitch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled) },
     )
 }
 

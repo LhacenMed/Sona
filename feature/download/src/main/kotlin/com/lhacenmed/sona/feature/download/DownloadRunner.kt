@@ -52,8 +52,9 @@ import kotlinx.coroutines.withContext
 /** What stops a download already in the library - the copy found at [path]. See [LibraryCopies]. */
 private class AlreadySavedException(path: String) : Exception("Already in the library: $path")
 
-/** Where [kind] is saved: the folder picked for it, which the library reads as any other. */
-internal fun downloadFolderOf(preferences: DownloaderPreferences, kind: DownloadKind): File = storageFolderAt(preferences.folderFor(kind))
+/** Where [kind] is saved: the folder picked for it - or for what [runsCommand], where one is - which the library reads as any other. */
+internal fun downloadFolderOf(preferences: DownloaderPreferences, kind: DownloadKind, runsCommand: Boolean): File =
+    storageFolderAt(preferences.folderFor(kind, runsCommand))
 
 /**
  * Runs the [DownloadQueue]: as many at once as the settings say, the longest waiting first - each read once (see
@@ -178,7 +179,8 @@ class DownloadRunner @Inject constructor(
                 !networkMonitor.isOnline.value
             when {
                 error == null -> {
-                    dao.setStatus(download.id, DownloadStatus.DONE.name)
+                    // Incognito, it leaves the list once saved, as clearing the history would take it: its files stay.
+                    if (settings.preferences.value.isIncognito) dao.delete(listOf(download.id)) else dao.setStatus(download.id, DownloadStatus.DONE.name)
                     workspaces.discard(listOf(download.id))
                 }
                 error is CancellationException -> when (queue.stopOf(download.id)) {
@@ -191,8 +193,8 @@ class DownloadRunner @Inject constructor(
                         queue.hold(download.id, running.downloadedBytes to running.totalBytes)
                         dao.setStatus(download.id, DownloadStatus.PAUSED.name)
                     }
-                    // Stopped with the worker, it is taken up again the next time the queue runs.
-                    null -> dao.setStatus(download.id, DownloadStatus.QUEUED.name)
+                    // Stopped with the worker, it is taken up again the next time the queue runs - and restarted, at once.
+                    DownloadStop.RESTART, null -> dao.setStatus(download.id, DownloadStatus.QUEUED.name)
                 }
                 waitsForNetwork -> dao.setStatus(download.id, DownloadStatus.QUEUED.name, failure = DownloadFailure.NO_NETWORK.name)
                 else -> dao.setStatus(download.id, DownloadStatus.FAILED.name, error.message, checkNotNull(failure).name)
@@ -233,7 +235,7 @@ class DownloadRunner @Inject constructor(
         // Downloaded as what its link serves - see MediaInfo.kindFor - and kept as that from here on.
         val kind = info.kindFor(queued.choices.kind)
         val download = if (kind == queued.choices.kind) queued else queued.copy(choices = queued.choices.copy(kind = kind)).also { dao.setKind(it.id, kind.name) }
-        val outputDir = downloadFolderOf(preferences, kind)
+        val outputDir = downloadFolderOf(preferences, kind, runsCommand = download.options.commandArguments != null)
         dao.setFound(download.id, info.title, info.thumbnailUrl, info.uploader, info.site, info.durationSeconds)
         onFound(info)
         // A sound is found as the song it is first - picked, or looked for now: kept with it where it is saved as that song, so
@@ -251,7 +253,7 @@ class DownloadRunner @Inject constructor(
             libraryCopies.of(listOf(query))[download.url]?.let { throw AlreadySavedException(it.first().path) }
         }
         // One video's page, read as no one - not where the user goes by way of a proxy.
-        val pageHeatmap = info.durationSeconds?.takeIf { !info.isPlaylist && preferences.proxy.isBlank() && download.choices.kind.isMedia }?.let { duration ->
+        val pageHeatmap = info.durationSeconds?.takeIf { !info.isPlaylist && preferences.activeProxy == null && download.choices.kind.isMedia }?.let { duration ->
             async { runCatching { playerHotspots.heatmapJson(download.url, duration) }.getOrNull() }
         }
         transfer(download, extraction, preferences, workspace, outputDir, onEvent)
@@ -269,7 +271,7 @@ class DownloadRunner @Inject constructor(
         val info = extraction.info
         // The saved commands added to its kind and for its link, as they stand when it starts, beside the one picked.
         val options = download.options.copy(commandArguments = dao.commandArgumentsFor(download.choices.kind, download.url, download.options.commandArguments))
-        directTransfer.formatFor(info, download.choices, options)?.let { format ->
+        directTransfer.formatFor(info, download.choices, options, preferences)?.let { format ->
             directTransfer.download(info, format, preferences, workspace, outputDir, onEvent)
             return
         }

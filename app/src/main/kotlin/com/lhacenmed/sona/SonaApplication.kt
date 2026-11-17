@@ -7,6 +7,7 @@ import coil3.SingletonImageLoader
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.common.notification.SonaNotifications
 import com.lhacenmed.sona.core.data.LibraryRepository
+import com.lhacenmed.sona.core.datastore.DownloadSettings
 import com.lhacenmed.sona.core.datastore.EffectSettings
 import com.lhacenmed.sona.core.datastore.QuickPlaySettings
 import com.lhacenmed.sona.core.datastore.SettingsLoader
@@ -24,6 +25,8 @@ import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 import javax.inject.Provider
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
@@ -63,6 +66,9 @@ class SonaApplication : Application(), SingletonImageLoader.Factory {
     @Inject
     lateinit var crashReports: CrashReports
 
+    @Inject
+    lateinit var downloadSettings: DownloadSettings
+
     /** Coil's own loader, drawing a track's or a video's cover from Android's thumbnail of its file - see [MediaThumbnailFetcher]. */
     override fun newImageLoader(context: PlatformContext): ImageLoader =
         ImageLoader.Builder(context)
@@ -97,7 +103,12 @@ class SonaApplication : Application(), SingletonImageLoader.Factory {
         playbackWidgets.get().takeIf { it.isPlaced }?.start()
         // Automatic backups are made exactly as often as the user chose.
         applicationScope.launch { backupSettings.schedule.collect { BackupWork.follow(this@SonaApplication, it) } }
-        // yt-dlp kept up to date, and watched channels looked at, whether or not the download screen is ever opened.
+        // yt-dlp kept up to date as often as the user chose, and watched channels looked at, whether or not the download screen
+        // is ever opened.
+        applicationScope.launch {
+            downloadSettings.preferences.flow.map { it.ytDlpAutoUpdate }.distinctUntilChanged()
+                .collect { DownloadWork.followYtDlpUpdates(this@SonaApplication, it) }
+        }
         DownloadWork.followMaintenance(this)
         // The launcher shortcut is named and drawn for how quick play plays, so it follows that as it changes.
         // Calls to the system's shortcut service, so off the main thread as well.

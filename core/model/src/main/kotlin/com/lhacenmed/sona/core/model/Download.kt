@@ -1,5 +1,7 @@
 package com.lhacenmed.sona.core.model
 
+import java.util.Locale
+
 /**
  * What a download keeps of what it fetches: the video with its sound, the sound alone, the video's captions alone - or, from a
  * link that serves a file of any other kind, that file as it is.
@@ -114,8 +116,26 @@ data class DownloadOptions(
     val downloadsAgain: Boolean = false,
 )
 
-/** How every file is named, yt-dlp's way: its title, cut to fit, and its id. */
-const val DEFAULT_FILE_NAME_TEMPLATE = "%(title).150B [%(id)s].%(ext)s"
+/** What every file name is built from, yt-dlp's way: its title, cut to fit - which every template keeps. */
+const val FILE_NAME_BASENAME = "%(title).150B"
+
+/** What every file name ends in, yt-dlp's way: its extension - which every template keeps. */
+const val FILE_NAME_EXTENSION = ".%(ext)s"
+
+/** A file named by its title alone. */
+const val TITLE_FILE_NAME_TEMPLATE = FILE_NAME_BASENAME + FILE_NAME_EXTENSION
+
+/** How every file is named unless another template is chosen: its title, and its id. */
+const val DEFAULT_FILE_NAME_TEMPLATE = "$FILE_NAME_BASENAME [%(id)s]$FILE_NAME_EXTENSION"
+
+/** What a video's captions are saved as - [extension] as yt-dlp's `--convert-subs` names it - or, [ORIGINAL], as its site serves them. */
+enum class SubtitleFormat(val extension: String?) {
+    ORIGINAL(null),
+    SRT("srt"),
+    ASS("ass"),
+    LRC("lrc"),
+    VTT("vtt"),
+}
 
 /**
  * The folder downloads are saved in until another is picked - as every folder is kept: its path on the device's own storage,
@@ -130,6 +150,19 @@ const val DEFAULT_DOWNLOAD_FOLDER = "Download/Sona"
 enum class TranscriptionService(val title: String) {
     SUPADATA("Supadata"),
     GROQ("Groq"),
+}
+
+/** Where yt-dlp is brought up to date from - [id] as `--update-to` names it. */
+enum class YtDlpChannel(val id: String) {
+    STABLE("stable"),
+    NIGHTLY("nightly"),
+}
+
+/** How often something is done by itself - every [days]. */
+enum class UpdateInterval(val days: Long) {
+    DAY(1),
+    WEEK(7),
+    MONTH(30),
 }
 
 /** How downloading works, whatever is downloaded - the Downloads settings. */
@@ -150,12 +183,51 @@ data class DownloaderPreferences(
         SponsorSegment.INTERACTION,
         SponsorSegment.MUSIC_OFFTOPIC,
     ),
-    /** A proxy every request goes through - `socks5://host:port`, `http://host:port` - none while blank. */
+    /** Every request goes through [proxy] - see [activeProxy]. */
+    val usesProxy: Boolean = false,
+    /** A proxy - `socks5://host:port`, `http://host:port` - kept while [usesProxy] is off, for when it is on again. */
     val proxy: String = "",
-    /** The most a download takes of the connection a second - `2M`, `500K` - no limit while blank. */
-    val rateLimit: String = "",
+    /** Downloads take no more of the connection than [rateLimit] - see [activeRateLimit]. */
+    val limitsRate: Boolean = false,
+    /** The most a download takes of the connection a second - `2M`, `500K` - kept while [limitsRate] is off. */
+    val rateLimit: String = "1000K",
+    /** Every connection is made over IPv4 - yt-dlp's `--force-ipv4`. */
+    val forcesIpv4: Boolean = false,
+    /** How many parts of a stream in fragments - HLS, DASH - yt-dlp fetches at once: 1, 8, 16 or 24. */
+    val concurrentFragments: Int = 8,
     /** Sites are read signed in, with the cookies saved from signing in on them. */
     val usesCookies: Boolean = false,
+    /** Signed in, requests also say they come from the browser the cookies were made in - [userAgent]. */
+    val sendsUserAgent: Boolean = false,
+    /** What the browser cookies were last made in calls itself - empty before any were. */
+    val userAgent: String = "",
+    /** The folder what downloads with a command - or is run in the terminal - is saved in: each kind's own while blank. */
+    val commandFolder: String = "",
+    /**
+     * The languages captions are wanted in, by their codes, comma-separated - `en, fr` - the device's and English while blank.
+     * See [wantedCaptionLanguages].
+     */
+    val subtitleLanguages: String = "",
+    /** What captions are saved as. */
+    val subtitleFormat: SubtitleFormat = SubtitleFormat.SRT,
+    /** Captions a site made from the speech are taken where people made none. */
+    val writesAutoSubtitles: Boolean = true,
+    /** Captions embedded in a video are kept beside it too, as files of their own. */
+    val keepsSubtitleFiles: Boolean = false,
+    /** The services not to transcribe with, though their keys are kept - turned off by the user. */
+    val disabledTranscriptionServices: Set<TranscriptionService> = emptySet(),
+    /** The thumbnail is also saved beside what it was downloaded with, as a file of its own. */
+    val savesThumbnail: Boolean = false,
+    /** Incognito: what is downloaded leaves the Downloads list once it is saved - its files are kept. */
+    val isIncognito: Boolean = false,
+    /** A link's thumbnail is not shown while it is read and its download set up. */
+    val hidesPreview: Boolean = false,
+    /** The library shows the button that opens Downloads. */
+    val showsLibraryButton: Boolean = true,
+    /** Where yt-dlp is brought up to date from. */
+    val ytDlpChannel: YtDlpChannel = YtDlpChannel.NIGHTLY,
+    /** How often yt-dlp brings itself up to date - never while null. */
+    val ytDlpAutoUpdate: UpdateInterval? = UpdateInterval.WEEK,
     /** What was downloaded once is not downloaded again, by its id at its site. */
     val usesArchive: Boolean = false,
     /** The user's own key to Supadata's transcript API - what transcribes a video's speech first; none while blank. */
@@ -165,9 +237,27 @@ data class DownloaderPreferences(
     /** The service a video's speech is transcribed by first - see [transcribers]. */
     val transcriptionService: TranscriptionService = TranscriptionService.SUPADATA,
 ) {
+    /** The proxy every request goes through - null while it is off, or none is given. */
+    val activeProxy: String? get() = proxy.trim().takeIf { usesProxy && it.isNotEmpty() }
+
+    /** The most a download takes of the connection a second - null while there is no limit. */
+    val activeRateLimit: String? get() = rateLimit.trim().takeIf { limitsRate && it.isNotEmpty() }
+
     /** The services a video's speech is transcribed by, in the order they are tried: the one chosen, then the other - each with its key given. */
     val transcribers: List<TranscriptionService>
-        get() = (listOf(transcriptionService) + TranscriptionService.entries).distinct().filter { keyFor(it).isNotBlank() }
+        get() = (listOf(transcriptionService) + TranscriptionService.entries).distinct().filter(::isTranscribingWith)
+
+    /** Whether [service] transcribes: its key is given, and it is not turned off. */
+    fun isTranscribingWith(service: TranscriptionService): Boolean = keyFor(service).isNotBlank() && service !in disabledTranscriptionServices
+
+    /** These preferences, [service] turned on - or, not [on], off, its key kept. */
+    fun transcribingWith(service: TranscriptionService, on: Boolean): DownloaderPreferences =
+        copy(disabledTranscriptionServices = if (on) disabledTranscriptionServices - service else disabledTranscriptionServices + service)
+
+    /** The languages captions are wanted in - those [subtitleLanguages] names, else the device's and English. */
+    val wantedCaptionLanguages: List<String>
+        get() = subtitleLanguages.split(',').map(String::trim).filter(String::isNotEmpty)
+            .ifEmpty { listOf(Locale.getDefault().language, "en") }
 
     /** Whether a video's speech can be transcribed into captions: a key to either is given. */
     val transcribes: Boolean get() = transcribers.isNotEmpty()
@@ -177,6 +267,16 @@ data class DownloaderPreferences(
         TranscriptionService.SUPADATA -> supadataKey
         TranscriptionService.GROQ -> groqKey
     }
+
+    /** These preferences, with [key] as the user's key to [service]. */
+    fun withKey(service: TranscriptionService, key: String): DownloaderPreferences = when (service) {
+        TranscriptionService.SUPADATA -> copy(supadataKey = key)
+        TranscriptionService.GROQ -> copy(groqKey = key)
+    }
+
+    /** The folder [kind] is saved in - the [commandFolder], where one is set, for what [runsCommand]. */
+    fun folderFor(kind: DownloadKind, runsCommand: Boolean): String =
+        commandFolder.takeIf { runsCommand && it.isNotBlank() } ?: folderFor(kind)
 
     /** The folder [kind] is saved in. */
     fun folderFor(kind: DownloadKind): String = when (kind) {

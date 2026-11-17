@@ -12,7 +12,6 @@ import com.lhacenmed.sona.core.downloader.captionLanguageOf
 import com.lhacenmed.sona.core.model.AudioFormat
 import com.lhacenmed.sona.core.model.DownloadFailure
 import com.lhacenmed.sona.core.model.DownloadKind
-import com.lhacenmed.sona.core.model.SponsorSegment
 import com.lhacenmed.sona.core.model.VideoFormat
 import com.lhacenmed.sona.core.model.VideoQuality
 import java.util.Locale
@@ -70,18 +69,6 @@ internal val AudioFormat.labelRes: Int
         AudioFormat.M4A -> R.string.download_format_m4a
         AudioFormat.MP3 -> R.string.download_format_mp3
         AudioFormat.OPUS -> R.string.download_format_opus
-    }
-
-val SponsorSegment.labelRes: Int
-    get() = when (this) {
-        SponsorSegment.SPONSOR -> R.string.download_segment_sponsor
-        SponsorSegment.SELF_PROMOTION -> R.string.download_segment_self_promotion
-        SponsorSegment.INTERACTION -> R.string.download_segment_interaction
-        SponsorSegment.INTRO -> R.string.download_segment_intro
-        SponsorSegment.OUTRO -> R.string.download_segment_outro
-        SponsorSegment.PREVIEW -> R.string.download_segment_preview
-        SponsorSegment.FILLER -> R.string.download_segment_filler
-        SponsorSegment.MUSIC_OFFTOPIC -> R.string.download_segment_music_offtopic
     }
 
 /** What the user can do about a failure - the one button its sheet offers. */

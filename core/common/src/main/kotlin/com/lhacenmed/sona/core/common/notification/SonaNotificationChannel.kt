@@ -84,6 +84,15 @@ enum class SonaNotificationChannel(
         importance = NotificationManagerCompat.IMPORTANCE_LOW,
         entry = AppEntry.DOWNLOADS,
     ),
+
+    /** The one notification kept while any download runs, which lets the download service carry on in the background. */
+    DOWNLOAD_SERVICE(
+        id = "download_service",
+        nameRes = R.string.notification_channel_download_service,
+        descriptionRes = R.string.notification_channel_download_service_description,
+        importance = NotificationManagerCompat.IMPORTANCE_LOW,
+        entry = AppEntry.DOWNLOADS,
+    ),
 }
 
 /** Every notification's id, in one place so no two features ever post under the same one. */
@@ -99,7 +108,7 @@ object SonaNotificationId {
     const val DOWNLOAD = 4600
     const val UPDATE_AVAILABLE = 9999
 
-    /** The id of download [downloadId]'s own notification, while it runs beside others - gathered under [DOWNLOAD]. */
+    /** The id of download [downloadId]'s own notification, while it runs. */
     fun download(downloadId: Long): Int = DOWNLOADS_FROM + (downloadId % DOWNLOADS_COUNT).toInt()
 
     /** The id of download [downloadId]'s notification once it is paused from its own. */
