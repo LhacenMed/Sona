@@ -1,10 +1,5 @@
 <resources>
-    <!-- The launch screen's placeholder note, before the gradient fills it. -->
-    <color name="splash_placeholder">#FFC4C4C4</color>
-
-    <!-- The brand's gradient, top to bottom - the launcher icon's, the launch screen's and the widgets' previews'. -->
-    <color name="brand_gradient_start">#FFFE664B</color>
-    <color name="brand_gradient_end">#FFFF2261</color>
+    <!-- The brand's gradient is the design system's - see sona_mark.xml. -->
 
     <!-- The widgets as the widget picker previews them: white over the brand's gradient. -->
     <color name="widget_preview_content">#FFFFFFFF</color>

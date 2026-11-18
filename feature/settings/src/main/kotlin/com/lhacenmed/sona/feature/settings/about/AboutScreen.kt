@@ -5,6 +5,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -12,6 +14,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.settings.R
+import com.lhacenmed.sona.core.designsystem.component.SonaMark
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsAvatar
 import com.lhacenmed.sona.feature.settings.component.SettingsHeader
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsLeadingIcon
@@ -65,7 +68,7 @@ data object AboutScreen : Screen {
         SettingsList {
             // Which version, which kind of build, and which of the release's APKs is installed.
             SettingsHeader(
-                mark = painterResource(R.drawable.ic_sona_mark),
+                mark = { SonaMark(modifier = Modifier.fillMaxSize()) },
                 title = stringResource(R.string.about_app_name),
                 details = listOfNotNull(
                     installedBuild.versionName,

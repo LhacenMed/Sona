@@ -242,6 +242,7 @@ dependencies {
     implementation(project(":feature:explorer"))
     implementation(project(":feature:feedback"))
     implementation(project(":feature:download"))
+    implementation(project(":feature:onboarding"))
     // Only in a debug build: none of it, nor anything it can reach, is in what users install.
     debugImplementation(project(":feature:debug"))
 

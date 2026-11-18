@@ -102,9 +102,10 @@ abstract class SonaActivity : AppCompatActivity() {
      * Holds this window's first frame until [awaitReady] returns, so the first thing the user sees is the
      * app as they set it up - their font, their colours, their library - rather than defaults corrected a
      * moment later. On Android 12+ the system launch screen stays up for as long as the frame is held.
-     * What is already ready costs nothing: the frame is released before it was ever due.
+     * What is already ready costs nothing: the frame is released before it was ever due. [onReleased] hears the moment
+     * the frame is let go.
      */
-    protected fun holdFirstFrameUntil(awaitReady: suspend () -> Unit) {
+    protected fun holdFirstFrameUntil(awaitReady: suspend () -> Unit, onReleased: () -> Unit = {}) {
         var isHeld = true
         val content = findViewById<View>(android.R.id.content)
         content.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
@@ -119,6 +120,7 @@ abstract class SonaActivity : AppCompatActivity() {
             isHeld = false
             // A held frame never draws, so nothing else asks for the next one.
             content.invalidate()
+            onReleased()
         }
     }
 

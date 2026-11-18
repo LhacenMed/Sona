@@ -3,7 +3,9 @@ package com.lhacenmed.sona.core.designsystem.component.fab
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.offset
@@ -30,6 +32,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.lhacenmed.sona.core.designsystem.component.LaunchMiniPlayerRise
+import com.lhacenmed.sona.core.designsystem.component.LaunchOrder
+import com.lhacenmed.sona.core.designsystem.component.launchEntrance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -188,7 +193,12 @@ fun FloatingActionButtonStack(content: @Composable () -> Unit) {
         LocalBottomContentPadding provides LocalBottomContentPadding.current + stack.reservedHeight,
         content = content,
     )
-    WindowOverlay { FloatingActionButtons(stack) }
+    // Arriving with the mini player as the app opens, the last of the library to come - see LaunchEntrance.
+    WindowOverlay {
+        Box(modifier = Modifier.fillMaxSize().launchEntrance(LaunchOrder.MINI_PLAYER, rise = LaunchMiniPlayerRise)) {
+            FloatingActionButtons(stack)
+        }
+    }
 }
 
 /** What [FloatingActionButtonStack] draws over the window - everything read from [stack]'s state. */

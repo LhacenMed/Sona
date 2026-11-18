@@ -12,6 +12,8 @@ import com.lhacenmed.sona.feature.debug.logs.LogsScreen
 import com.lhacenmed.sona.feature.debug.mediastore.MediaStoreScreen
 import com.lhacenmed.sona.feature.debug.preferences.PreferencesScreen
 import com.lhacenmed.sona.feature.debug.runtime.RuntimeScreen
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsActionItem
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsList
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsNavigationItem
 import dagger.Binds
@@ -38,6 +40,7 @@ data object DebugToolsScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.current
+        val viewModel = hiltViewModel<DebugViewModel>()
         SettingsList {
             DebugSection.entries.forEach { section ->
                 SettingsNavigationItem(
@@ -47,6 +50,12 @@ data object DebugToolsScreen : Screen {
                     onClick = { navigator.go(section.screen) },
                 )
             }
+            SettingsActionItem(
+                title = "Show setup again",
+                summary = "Restart the app into the first-launch setup, from its first step",
+                icon = SonaIcons.RestartAlt,
+                onClick = viewModel::showSetupAgain,
+            )
         }
     }
 }

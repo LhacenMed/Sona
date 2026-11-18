@@ -18,7 +18,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.Modifier
+import com.lhacenmed.sona.core.designsystem.component.LaunchMiniPlayerRise
+import com.lhacenmed.sona.core.designsystem.component.LaunchOrder
+import com.lhacenmed.sona.core.designsystem.component.launchEntrance
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.Key
@@ -245,6 +249,8 @@ internal fun BottomSheetPlayer(
         backgroundColor = playerStyle.sheetColor(),
         onDismiss = viewModel::onStopAndClearQueue,
         collapsedContent = {
+            // The last of the library to arrive as the app opens, rising into place - see LaunchEntrance.
+            Box(modifier = Modifier.launchEntrance(LaunchOrder.MINI_PLAYER, rise = LaunchMiniPlayerRise)) {
             MiniPlayer(
                 track = track,
                 playback = playback,
@@ -261,6 +267,7 @@ internal fun BottomSheetPlayer(
                     )
                 },
             )
+            }
         },
     ) {
         // Read once for the player's every view of them: its line, and the lyrics it opens.

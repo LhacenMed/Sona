@@ -1,13 +1,32 @@
 <resources>
     <!--
-        The system launch screen, on the dynamic-colour surface. That is also what the app opens on
-        by default, so the launch screen hands over to the app without a colour change. The
-        background is set explicitly so the system never works one out itself (from a saved copy
-        or the launcher icon).
+        Android's launch screen, on the dynamic-colour surface the app opens on by default: Sona's mark
+        animating in the theme's colours - see ic_splash_anim - the moment the app is launched, before any
+        of it runs. The background is set explicitly so the system never works one out itself.
     -->
     <style name="Theme.Sona.V31" parent="Theme.Material3.DynamicColors.DayNight.NoActionBar">
         <item name="android:windowSplashScreenBackground">?attr/colorSurface</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_anim</item>
         <item name="android:windowSplashScreenAnimationDuration">1000</item>
+    </style>
+
+    <!--
+        The launch screen where the app is set light or dark whatever the system is - see
+        MainActivity.keepSplashScreenInThemeMode. Android 13 and later.
+    -->
+    <style name="Theme.Sona.Splash.Light" parent="Theme.Material3.DynamicColors.Light.NoActionBar">
+        <item name="android:windowSplashScreenBackground">?attr/colorSurface</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_anim</item>
+        <item name="android:windowSplashScreenAnimationDuration">1000</item>
+    </style>
+
+    <style name="Theme.Sona.Splash.Dark" parent="Theme.Material3.DynamicColors.Dark.NoActionBar">
+        <item name="android:windowSplashScreenBackground">?attr/colorSurface</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_anim</item>
+        <item name="android:windowSplashScreenAnimationDuration">1000</item>
+    </style>
+
+    <style name="Theme.Sona.Splash.Black" parent="Theme.Sona.Splash.Dark">
+        <item name="android:windowSplashScreenBackground">@android:color/black</item>
     </style>
 </resources>
