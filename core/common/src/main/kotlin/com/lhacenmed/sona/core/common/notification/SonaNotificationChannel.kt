@@ -106,6 +106,7 @@ object SonaNotificationId {
     const val BACKUP_PAUSED = 4501
     const val BACKUP_FAILED = 4502
     const val DOWNLOAD = 4600
+    const val DOWNLOADER = 4700
     const val UPDATE_AVAILABLE = 9999
 
     /** The id of download [downloadId]'s own notification, while it runs. */

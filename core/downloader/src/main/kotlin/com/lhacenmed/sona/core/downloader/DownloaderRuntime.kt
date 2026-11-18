@@ -2,6 +2,10 @@ package com.lhacenmed.sona.core.downloader
 
 import android.content.Context
 import android.os.Build
+import android.text.format.Formatter
+import com.lhacenmed.sona.core.common.notification.SonaNotificationChannel
+import com.lhacenmed.sona.core.common.notification.SonaNotificationId
+import com.lhacenmed.sona.core.common.notification.SonaNotifications
 import com.lhacenmed.sona.core.common.di.ApplicationScope
 import com.lhacenmed.sona.core.common.storage.DownloaderFiles
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -21,6 +25,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -164,6 +169,7 @@ class DownloaderRuntime @Inject constructor(
     fun download() {
         if (_state.value == RuntimeState.Installed || download?.isActive == true) return
         _state.value = RuntimeState.Downloading(0, 0)
+        notifyWhileDownloading()
         download = scope.launch(Dispatchers.IO) {
             try {
                 fetch()
@@ -177,6 +183,42 @@ class DownloaderRuntime @Inject constructor(
                 _state.value = RuntimeState.Failed
             }
         }
+    }
+
+    /**
+     * Shows the download in the shade while it runs - so it is seen to carry on whatever the app is doing - each whole
+     * percent once, and takes it away as it ends, however it ends.
+     */
+    private fun notifyWhileDownloading() = scope.launch {
+        val title = context.getString(R.string.downloader_notification_title)
+        var shownPercent: Int? = -1
+        state.takeWhile { it is RuntimeState.Downloading }.collect { downloading ->
+            downloading as RuntimeState.Downloading
+            val percent = if (downloading.totalBytes > 0) (downloading.progress * 100).toInt() else null
+            if (percent == shownPercent) return@collect
+            shownPercent = percent
+            val text = if (downloading.totalBytes > 0) {
+                context.getString(
+                    R.string.downloader_notification_progress,
+                    Formatter.formatShortFileSize(context, downloading.receivedBytes),
+                    Formatter.formatShortFileSize(context, downloading.totalBytes),
+                )
+            } else {
+                null
+            }
+            val notification = SonaNotifications.progress(
+                context = context,
+                channel = SonaNotificationChannel.DOWNLOADS,
+                title = title,
+                text = text,
+                detail = null,
+                percent = percent,
+                actions = emptyList(),
+                asLiveUpdate = false,
+            )
+            SonaNotifications.post(context, SonaNotificationId.DOWNLOADER, notification)
+        }
+        SonaNotifications.cancel(context, SonaNotificationId.DOWNLOADER)
     }
 
     /** Stops a download under way, leaving nothing of it. */
