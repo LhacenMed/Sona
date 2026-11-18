@@ -73,6 +73,9 @@ internal object XVideoInfo {
                 webpageUrl = webpageUrl,
                 extractorKey = "Twitter",
                 formats = formats,
+                // The syndication's ISO time, "2020-08-01T16:11:39.000Z".
+                timestamp = root.text("created_at")?.let { runCatching { java.time.Instant.parse(it).epochSecond }.getOrNull() },
+                likeCount = root.opt("favorite_count").wholeNumber(),
             ),
         ) {
             put("display_id", postId)

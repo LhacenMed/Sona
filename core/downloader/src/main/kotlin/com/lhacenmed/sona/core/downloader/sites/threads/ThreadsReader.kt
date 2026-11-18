@@ -86,6 +86,8 @@ internal object ThreadsReader : SiteReader {
                 webpageUrl = webpageUrl,
                 extractorKey = "Threads",
                 formats = listOf(format),
+                timestamp = media.opt("taken_at").wholeNumber(),
+                likeCount = media.opt("like_count").wholeNumber(),
             ),
         )
     }

@@ -34,6 +34,7 @@ import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.ReplayHeatmap
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.VideoChapter
+import com.lhacenmed.sona.core.model.VideoStats
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
@@ -136,6 +137,8 @@ data class VideoPlaybackState(
     val subtitleTracks: List<MediaTrack> = emptyList(),
     /** [current]'s chapters, as its site marks them - none for one downloaded without, or not downloaded at all. */
     val chapters: List<VideoChapter> = emptyList(),
+    /** What [current]'s site counted of it as it was downloaded - null for one downloaded without, or not downloaded at all. */
+    val stats: VideoStats? = null,
     /**
      * The heights of [current]'s Most replayed graph, from 0 to 1 along it - null with none to show. The site's own where it
      * was downloaded with one - YouTube's, from everyone's watching - and this device's otherwise, as it grows - see
@@ -218,6 +221,14 @@ class VideoPlayback @Inject constructor(
                 else -> fileExtrasOf(video).map { it?.chapters.orEmpty() }
             }
         }
+
+    /**
+     * The watched video's [VideoPlaybackState.stats], from its file, whichever space it is in: the file is where they are kept,
+     * and they are read only as a video is opened.
+     */
+    @kotlin.OptIn(ExperimentalCoroutinesApi::class)
+    private val watchedStats: Flow<VideoStats?> = watchedVideo
+        .flatMapLatest { video -> if (video == null) flowOf(null) else fileExtrasOf(video).map { it?.stats } }
 
     /**
      * What [video]'s file carries of its site - see [EmbeddedExtras] - read from the file itself: the library's index holds
@@ -347,6 +358,7 @@ class VideoPlayback @Inject constructor(
                 _state.update { it.copy(chapters = chapters, replayHeights = replayHeights) }
             }
         }
+        scope.launch { watchedStats.collect { stats -> _state.update { it.copy(stats = stats) } } }
         scope.launch { watchedDownload.collect { fraction -> _state.update { it.copy(downloadedFraction = fraction) } } }
         // Changed while a video plays, from its queue or the settings, each takes hold at once.
         scope.launch {

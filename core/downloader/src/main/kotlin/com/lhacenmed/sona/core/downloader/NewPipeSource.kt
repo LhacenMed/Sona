@@ -130,6 +130,10 @@ internal class NewPipeSource @Inject constructor() {
             .put("description", info.description?.content)
             .put("webpage_url", info.url)
             .put("extractor_key", "Youtube")
+            // Its counts, where YouTube gave them: NewPipe's -1 is none, and a date it could only guess is left out.
+            .put("timestamp", info.uploadDate?.takeUnless { it.isApproximation }?.offsetDateTime()?.toEpochSecond())
+            .put("view_count", info.viewCount.takeIf { it >= 0 })
+            .put("like_count", info.likeCount.takeIf { it >= 0 })
             .put("formats", JSONArray(formats))
             .put("subtitles", made)
             .put("automatic_captions", automatic)

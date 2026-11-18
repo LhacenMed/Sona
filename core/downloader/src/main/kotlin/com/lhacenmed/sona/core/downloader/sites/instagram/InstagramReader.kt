@@ -103,6 +103,9 @@ internal object InstagramReader : SiteReader {
                 webpageUrl = webpageUrl,
                 extractorKey = "Instagram",
                 formats = formats,
+                timestamp = media.opt("taken_at").wholeNumber(),
+                viewCount = media.opt("play_count").wholeNumber() ?: media.opt("view_count").wholeNumber(),
+                likeCount = media.opt("like_count").wholeNumber(),
             ),
         )
     }

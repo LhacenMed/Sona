@@ -303,7 +303,7 @@ class DownloadRunner @Inject constructor(
      * [covers] saved beside them, and the library read them in, with all they carry.
      */
     private suspend fun bringIntoLibrary(saved: List<DownloadEvent.Saved>, covers: List<File>) {
-        saved.forEach { runCatching { EmbeddedExtras.write(it.file, it.heatmapJson, it.chaptersJson) } }
+        saved.forEach { runCatching { EmbeddedExtras.write(it.file, it.heatmapJson, it.chaptersJson, it.statsJson) } }
         val files = saved.map { it.file } + covers
         suspendCancellableCoroutine { continuation ->
             var left = files.size

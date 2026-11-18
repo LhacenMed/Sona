@@ -8,16 +8,25 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import android.icu.text.CompactDecimalFormat
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.player.formatPlaybackTime
 import com.lhacenmed.sona.core.designsystem.component.SonaPlaybackModeButtons
 import com.lhacenmed.sona.core.designsystem.component.SonaTrackRow
 import com.lhacenmed.sona.core.model.RepeatMode
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.model.VideoChapter
+import com.lhacenmed.sona.core.model.VideoStats
+import java.text.DateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 import com.lhacenmed.sona.feature.playback.QueueVideo
 import com.lhacenmed.sona.feature.playback.labelRes
 import com.lhacenmed.sona.feature.video.R
@@ -111,6 +120,25 @@ internal fun ColumnScope.ChaptersPanel(chapters: List<VideoChapter>, currentInde
         }
     }
 }
+
+/**
+ * What the video's site counted of it as it was downloaded - when it was uploaded, how often watched and liked - each where
+ * the site said. The day is the site's own, UTC's, wherever the device is.
+ */
+@Composable
+internal fun ColumnScope.AboutPanel(stats: VideoStats, onClose: () -> Unit) {
+    PanelHeader(stringResource(R.string.video_about), onClose)
+    val count = remember { CompactDecimalFormat.getInstance(Locale.getDefault(), CompactDecimalFormat.CompactStyle.SHORT) }
+    val day = remember { DateFormat.getDateInstance(DateFormat.LONG).apply { timeZone = TimeZone.getTimeZone("UTC") } }
+    Column(modifier = Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+        stats.uploadedAtMs?.let { PanelFactRow(SonaIcons.CalendarMonth, stringResource(R.string.video_uploaded, day.format(Date(it)))) }
+        stats.viewCount?.let { PanelFactRow(SonaIcons.Visibility, pluralStringResource(R.plurals.video_views, it.toPluralCount(), count.format(it))) }
+        stats.likeCount?.let { PanelFactRow(SonaIcons.ThumbUp, pluralStringResource(R.plurals.video_likes, it.toPluralCount(), count.format(it))) }
+    }
+}
+
+/** [this] as the count a plural is picked by - past what an Int holds, its largest, which every language says as "many". */
+private fun Long.toPluralCount(): Int = coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
 
 /** Whatever the player does that does not earn a place on the screen itself. Picking one closes it. */
 @Composable

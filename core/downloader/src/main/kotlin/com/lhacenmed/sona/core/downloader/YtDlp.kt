@@ -44,8 +44,11 @@ sealed interface DownloadEvent {
     /** A line of what the download does, in the downloader's own words - its log's, and its notification's. */
     data class Log(val line: String) : DownloadEvent
 
-    /** A file saved where it belongs, with the Most replayed graph and the chapters its site gave it, as yt-dlp gives them - see [EmbeddedExtras]. */
-    data class Saved(val file: File, val heatmapJson: String?, val chaptersJson: String?) : DownloadEvent
+    /**
+     * A file saved where it belongs, with the Most replayed graph, the chapters and the counts - see [videoStatsJsonOf] - its
+     * site gave it, as yt-dlp gives them - see [EmbeddedExtras].
+     */
+    data class Saved(val file: File, val heatmapJson: String?, val chaptersJson: String?, val statsJson: String? = null) : DownloadEvent
 }
 
 /** How far [downloadedBytes] of [totalBytes] is, from 0 to 1 - null while either is unknown. */
@@ -288,7 +291,7 @@ internal fun parseLine(line: String): DownloadEvent? {
 
         YtDlpLines.SAVED -> runCatching {
             val json = JSONObject(rest)
-            DownloadEvent.Saved(File(json.getString("filepath")), json.optJSONArray("heatmap")?.toString(), json.optJSONArray("chapters")?.toString())
+            DownloadEvent.Saved(File(json.getString("filepath")), json.optJSONArray("heatmap")?.toString(), json.optJSONArray("chapters")?.toString(), videoStatsJsonOf(json))
         }.getOrNull()
 
         else -> null

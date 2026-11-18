@@ -4,6 +4,16 @@
     <string name="video_pause">Pause</string>
     <string name="video_queue">Queue</string>
     <string name="video_more">More</string>
+    <string name="video_about">About this video</string>
+    <string name="video_uploaded">Uploaded %1$s</string>
+    <plurals name="video_views">
+        <item quantity="one">%1$s view</item>
+        <item quantity="other">%1$s views</item>
+    </plurals>
+    <plurals name="video_likes">
+        <item quantity="one">%1$s like</item>
+        <item quantity="other">%1$s likes</item>
+    </plurals>
 
     <string name="video_speed">Speed</string>
     <!-- A playback speed, as in "1.5\u00D7". -->

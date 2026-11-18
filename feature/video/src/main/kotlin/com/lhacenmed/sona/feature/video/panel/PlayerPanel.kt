@@ -69,6 +69,7 @@ internal enum class VideoPanel(val width: Dp) {
     SPEED(VideoPlayerTokens.ListPanelWidth),
     MORE(VideoPlayerTokens.ListPanelWidth),
     CHAPTERS(VideoPlayerTokens.ListPanelWidth),
+    ABOUT(VideoPlayerTokens.ListPanelWidth),
 }
 
 /**
@@ -205,6 +206,24 @@ internal fun PanelActionRow(
     modifier: Modifier = Modifier,
     color: Color = VideoPlayerTokens.ContentColor,
 ) {
+    PanelRow(
+        icon = icon,
+        label = label,
+        color = color,
+        modifier = modifier,
+        behavior = if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier.alpha(0.38f),
+    )
+}
+
+/** Something the panel tells rather than does - not a control, so neither pressed nor dimmed as one turned off. */
+@Composable
+internal fun PanelFactRow(icon: ImageVector, label: String, modifier: Modifier = Modifier) {
+    PanelRow(icon = icon, label = label, color = VideoPlayerTokens.ContentColor, modifier = modifier, behavior = Modifier)
+}
+
+/** A panel's row of [icon] by [label] - what it does when touched, [behavior], within its rounded bounds. */
+@Composable
+private fun PanelRow(icon: ImageVector, label: String, color: Color, modifier: Modifier, behavior: Modifier) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -212,7 +231,7 @@ internal fun PanelActionRow(
             .fillMaxWidth()
             .height(VideoPlayerTokens.PanelRowHeight)
             .clip(RoundedCornerShape(VideoPlayerTokens.PanelRowCornerRadius))
-            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier.alpha(0.38f))
+            .then(behavior)
             .padding(horizontal = 10.dp),
     ) {
         Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))

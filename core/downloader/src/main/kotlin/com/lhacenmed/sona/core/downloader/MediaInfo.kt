@@ -74,6 +74,10 @@ data class MediaInfo(
     val automaticCaptions: List<String> = emptyList(),
     /** Whether its link serves a file that is not media - an archive, a document - saved as it is: see `FileLinks`. */
     val isFile: Boolean = false,
+    /** Its own page, as its read names it - what a service that reads a site by its links is given. */
+    val webpageUrl: String? = null,
+    /** When it was uploaded, how often watched and liked, as its read gives them - see [videoStatsJsonOf]. */
+    val statsJson: String? = null,
 ) {
     val isPlaylist: Boolean get() = entries != null
 
@@ -150,6 +154,8 @@ internal fun mediaInfoOf(json: JSONObject): MediaInfo {
         artist = json.stringOrNull("artist") ?: json.stringOrNull("creator"),
         year = json.stringOrNull("release_year") ?: json.stringOrNull("upload_date")?.take(4),
         chaptersJson = json.optJSONArray("chapters")?.takeIf { it.length() > 0 }?.toString(),
+        statsJson = videoStatsJsonOf(json),
+        webpageUrl = json.stringOrNull("webpage_url"),
         madeCaptions = json.optJSONObject("subtitles")?.keys()?.asSequence()?.toList().orEmpty(),
         automaticCaptions = json.optJSONObject("automatic_captions")?.keys()?.asSequence()?.toList().orEmpty(),
         isFile = json.optString("_type") == FILE_TYPE,

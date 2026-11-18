@@ -124,6 +124,10 @@ internal object TikTokReader : SiteReader {
                 extractorKey = "TikTok",
                 formats = formats,
                 captions = captionsOf(video),
+                // Its counts as the page has them: numbers, or the same as text.
+                timestamp = item.opt("createTime").wholeNumber(),
+                viewCount = item.optJSONObject("stats")?.opt("playCount").wholeNumber() ?: item.optJSONObject("statsV2")?.opt("playCount").wholeNumber(),
+                likeCount = item.optJSONObject("stats")?.opt("diggCount").wholeNumber() ?: item.optJSONObject("statsV2")?.opt("diggCount").wholeNumber(),
             ),
         )
     }

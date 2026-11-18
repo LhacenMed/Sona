@@ -137,7 +137,7 @@ class DirectTransfer @Inject constructor() {
         part.copyTo(file, overwrite = true)
         if (format.isMedia) tag(file, info, client, withCover = !format.hasVideo)
         onEvent(DownloadEvent.Progress(total, total, null))
-        onEvent(DownloadEvent.Saved(file, heatmapJson = null, chaptersJson = info.chaptersJson))
+        onEvent(DownloadEvent.Saved(file, heatmapJson = null, chaptersJson = info.chaptersJson, statsJson = info.statsJson))
     }
 
     /**

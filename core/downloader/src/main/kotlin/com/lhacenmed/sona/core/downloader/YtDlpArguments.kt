@@ -166,7 +166,7 @@ internal fun downloadArguments(
             "--print",
             "before_dl:${YtDlpLines.SIZE} %(requested_formats.0.filesize,requested_formats.0.filesize_approx|)s " +
                 "%(requested_formats.1.filesize,requested_formats.1.filesize_approx|)s %(filesize,filesize_approx|)s",
-            "--print", "after_move:${YtDlpLines.SAVED} %(.{filepath,heatmap,chapters})j",
+            "--print", "after_move:${YtDlpLines.SAVED} %(.{filepath,heatmap,chapters,$VideoStatsFields})j",
         ),
     )
 }

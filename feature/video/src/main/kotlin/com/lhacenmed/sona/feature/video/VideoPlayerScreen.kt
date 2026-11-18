@@ -43,6 +43,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.lhacenmed.sona.feature.video.panel.AboutPanel
 import com.lhacenmed.sona.feature.video.panel.ChaptersPanel
 import com.lhacenmed.sona.core.model.indexAt
 import androidx.compose.animation.core.tween
@@ -451,9 +452,15 @@ internal fun VideoPlayerScreen(
                 )
 
                 VideoPanel.MORE -> MorePanel(
-                    actions = moreActions(playback, viewModel, screenshot, onOpenEqualizer),
+                    actions = moreActions(playback, viewModel, screenshot, onOpenEqualizer) { panel = VideoPanel.ABOUT },
                     onClose = close,
                 )
+
+                // Opened only where there is something to tell - see moreActions - and closed should the next video have nothing.
+                VideoPanel.ABOUT -> when (val stats = playback.stats) {
+                    null -> LaunchedEffect(Unit) { close() }
+                    else -> AboutPanel(stats, close)
+                }
             }
         }
     }
@@ -587,6 +594,7 @@ private fun moreActions(
     viewModel: VideoPlayerViewModel,
     onScreenshot: () -> Unit,
     onOpenEqualizer: () -> Unit,
+    onOpenAbout: () -> Unit,
 ): List<VideoAction> = listOfNotNull(
     VideoAction(
         icon = if (playback.isMuted) SonaIcons.Muted else SonaIcons.Volume,
@@ -598,6 +606,8 @@ private fun moreActions(
     // A Private Folder video is never saved out to the gallery.
     VideoAction(SonaIcons.Screenshot, stringResource(R.string.video_screenshot), onScreenshot)
         .takeUnless { playback.isPrivate },
+    // What its site counted of it, for a video downloaded with any.
+    VideoAction(SonaIcons.Info, stringResource(R.string.video_about), onOpenAbout).takeIf { playback.stats != null },
 )
 
 /**

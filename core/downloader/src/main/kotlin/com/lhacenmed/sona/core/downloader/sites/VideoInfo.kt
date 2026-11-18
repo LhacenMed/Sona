@@ -69,6 +69,10 @@ internal class VideoPost(
     val formats: List<VideoFormat>,
     /** Its captions, where its site gives any - see [CaptionFile]. */
     val captions: List<CaptionFile> = emptyList(),
+    /** When it was posted, in seconds since 1970, and how often watched and liked - where its site says. */
+    val timestamp: Long? = null,
+    val viewCount: Long? = null,
+    val likeCount: Long? = null,
 )
 
 /**
@@ -89,6 +93,9 @@ internal fun videoInfoJson(post: VideoPost, extra: JSONObject.() -> Unit = {}): 
         .put("duration", post.durationSeconds?.takeIf { it > 0 })
         .put("webpage_url", post.webpageUrl)
         .put("extractor_key", post.extractorKey)
+        .put("timestamp", post.timestamp?.takeIf { it > 0 })
+        .put("view_count", post.viewCount?.takeIf { it >= 0 })
+        .put("like_count", post.likeCount?.takeIf { it >= 0 })
         .put("formats", JSONArray(formats.map { format ->
             JSONObject()
                 .put("format_id", format.id)
