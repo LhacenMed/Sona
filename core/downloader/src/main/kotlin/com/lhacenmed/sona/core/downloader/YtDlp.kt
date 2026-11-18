@@ -79,6 +79,7 @@ class DownloadSource(val url: String, val infoJson: File?)
 class YtDlp @Inject constructor(
     @ApplicationContext private val context: Context,
     private val runtime: DownloaderRuntime,
+    private val transcriptionUsage: TranscriptionUsage,
 ) {
     /**
      * [url], read into yt-dlp's info JSON - one video with its formats and every caption it has, or a playlist with its
@@ -110,7 +111,7 @@ class YtDlp @Inject constructor(
         // handed as files of their own.
         val made = File(workspace, "captions")
         val picked = options.subtitleLanguages?.takeIf { wantsCaptions }?.let { codes ->
-            val transcribed = CaptionTranscription.make(read, codes, made, preferences) { onEvent(DownloadEvent.Log("[sona] $it")) }
+            val transcribed = CaptionTranscription.make(read, codes, made, preferences, transcriptionUsage) { onEvent(DownloadEvent.Log("[sona] $it")) }
             CaptionTranslation.make(read, transcribed, made)
         }
         val hasTranslations = read != null && picked != null && picked != options.subtitleLanguages

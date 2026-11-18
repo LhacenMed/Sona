@@ -441,6 +441,11 @@
     <string name="downloads_settings_supadata_title">Supadata key</string>
     <string name="downloads_settings_groq_title">Groq key</string>
     <string name="downloads_settings_key_set">Set</string>
+    <string name="downloads_settings_supadata_usage">%1$s of %2$s credits left</string>
+    <string name="downloads_settings_key_checking">Checking key…</string>
+    <string name="downloads_settings_key_refused">This key was refused - check it and try again</string>
+    <string name="downloads_settings_key_unreachable">Couldn\'t reach %1$s to check the key</string>
+    <string name="downloads_settings_groq_usage">%1$s of %2$s requests left today</string>
     <string name="downloads_settings_transcription_summary">Free keys from supadata.ai and console.groq.com. Used only to make subtitles for videos that have none</string>
 
     <!-- The download sheet -->
@@ -480,6 +485,7 @@
     <string name="download_subtitles_transcribe_by">By %1$s</string>
     <string name="download_subtitles_transcribe_by_else">By %1$s, else %2$s</string>
     <string name="download_subtitles_transcribe_needs_key">Needs a free key, in Downloads settings</string>
+    <string name="download_subtitles_transcribe_unavailable">Not available for this link</string>
     <string name="download_subtitles_translated_from">Translated from %1$s</string>
     <string name="download_subtitles_add_language">Add a language</string>
     <string name="download_subtitles_add">Add them</string>

@@ -6,12 +6,14 @@ import android.provider.Settings
 import android.text.format.DateFormat
 import android.text.format.Formatter
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -59,6 +61,8 @@ import com.lhacenmed.sona.core.designsystem.component.SonaRowGroup
 import com.lhacenmed.sona.core.designsystem.component.SonaValueRow
 import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.component.sheet.SonaBottomSheet
+import com.lhacenmed.sona.core.designsystem.component.sheet.SheetReveal
+import com.lhacenmed.sona.core.designsystem.component.sheet.SheetSwap
 import com.lhacenmed.sona.core.designsystem.component.sheet.SonaColumnBottomSheet
 import com.lhacenmed.sona.core.designsystem.component.shimmer
 import com.lhacenmed.sona.core.designsystem.player.formatPlaybackTime
@@ -69,6 +73,7 @@ import com.lhacenmed.sona.core.downloader.PlaylistEntry
 import com.lhacenmed.sona.core.downloader.RuntimeState
 import com.lhacenmed.sona.core.downloader.estimatedSizeBytes
 import com.lhacenmed.sona.core.downloader.pickedCaptions
+import com.lhacenmed.sona.core.downloader.transcribersFor
 import com.lhacenmed.sona.core.model.DownloadChoices
 import com.lhacenmed.sona.core.model.DownloadFailure
 import com.lhacenmed.sona.core.model.DownloadKind
@@ -125,32 +130,38 @@ private fun MediaSheet(info: MediaInfo?, preview: LinkPreview?, viewModel: Downl
         Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
             if (kind != DownloadKind.FILE) {
                 KindChoice(choices.kind) { picked -> viewModel.onSheetChoicesChange { it.copy(kind = picked) } }
-                val quality = qualityRow(info, choices) { picker = MediaPicker.QUALITY }
-                val track = audioTrackRow(info, choices) { picker = MediaPicker.AUDIO_TRACK }
-                val subtitles = subtitlesRow(info, choices, options, preferences) { picker = MediaPicker.SUBTITLES }
-                SonaRowGroup(
-                    when (choices.kind) {
-                        DownloadKind.VIDEO -> listOf(quality, track, subtitles)
-                        DownloadKind.AUDIO -> listOfNotNull(
-                            saveAsRow(choices.savesAsSong) { savesAsSong -> viewModel.onSheetChoicesChange(forEveryDownload = true) { it.copy(savesAsSong = savesAsSong) } },
-                            songRow(info, song) { picker = MediaPicker.SONG }.takeIf { choices.savesAsSong },
-                            track,
-                            quality,
-                        )
-                        DownloadKind.SUBTITLES -> listOf(subtitles)
-                        // Never the sheet's own choice: a download is a file only where its link serves one - see kind.
-                        DownloadKind.FILE -> emptyList()
-                    },
-                    modifier = Modifier.padding(top = 16.dp),
-                )
+                // The rows a kind has, crossfaded into another's as it is picked - and as the song row comes and goes.
+                SheetSwap(choices.kind to choices.savesAsSong, modifier = Modifier.padding(top = 16.dp)) { (shownKind, savesAsSong) ->
+                    // Each as the kind it is shown for: the one fading out keeps its own look until it is gone.
+                    val shown = choices.copy(kind = shownKind)
+                    val quality = qualityRow(info, shown) { picker = MediaPicker.QUALITY }
+                    val track = audioTrackRow(info, shown) { picker = MediaPicker.AUDIO_TRACK }
+                    val subtitles = subtitlesRow(info, shown, options, preferences) { picker = MediaPicker.SUBTITLES }
+                    SonaRowGroup(
+                        when (shownKind) {
+                            DownloadKind.VIDEO -> listOf(quality, track, subtitles)
+                            DownloadKind.AUDIO -> listOfNotNull(
+                                saveAsRow(savesAsSong) { saves -> viewModel.onSheetChoicesChange(forEveryDownload = true) { it.copy(savesAsSong = saves) } },
+                                songRow(info, song) { picker = MediaPicker.SONG }.takeIf { savesAsSong },
+                                track,
+                                quality,
+                            )
+                            DownloadKind.SUBTITLES -> listOf(subtitles)
+                            // Never the sheet's own choice: a download is a file only where its link serves one - see kind.
+                            DownloadKind.FILE -> emptyList()
+                        },
+                    )
+                }
                 SonaRowGroup(listOf(moreOptionsRow(enabled = info != null) { picker = MediaPicker.MORE_OPTIONS }), modifier = Modifier.padding(top = 12.dp))
             }
-            if (info != null && kind.isMedia) LibraryCheckLine(check, kind, setOfNotNull(viewModel.openLink), Modifier.padding(top = 16.dp))
+            SheetReveal(visible = info != null && kind.isMedia) {
+                LibraryCheckLine(check, kind, setOfNotNull(viewModel.openLink), Modifier.padding(top = 16.dp))
+            }
             // Pressed while the link is read, it downloads all the same: the download reads what is left - see onDownload.
             DownloadButton(
                 label = if (size != null) stringResource(R.string.download_download_size, size) else stringResource(R.string.download_download),
                 // Captions alone, once read, only where there are some picked to save.
-                enabled = info == null || kind != DownloadKind.SUBTITLES || info.pickedCaptions(choices, options, preferences, preferences.transcribes).isNotEmpty(),
+                enabled = info == null || kind != DownloadKind.SUBTITLES || info.pickedCaptions(choices, options, preferences, info.transcribersFor(preferences).isNotEmpty()).isNotEmpty(),
                 viewModel = viewModel,
                 onDownload = { viewModel.onDownload() },
                 modifier = Modifier.padding(top = if (kind == DownloadKind.FILE) 0.dp else 20.dp),
@@ -189,7 +200,7 @@ private fun MediaHeader(info: MediaInfo?, preview: LinkPreview?, showsThumbnail:
     }
     Row(modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 20.dp), verticalAlignment = Alignment.CenterVertically) {
         // Not drawn at all - nor loaded - where the preview is turned off: the title takes its place.
-        if (showsThumbnail) Box(modifier = Modifier.size(width = 128.dp, height = 72.dp).clip(RoundedCornerShape(12.dp))) {
+        if (showsThumbnail) Box(modifier = Modifier.size(width = 128.dp, height = HeaderHeight).clip(RoundedCornerShape(12.dp))) {
             if (thumbnail == null) {
                 Box(modifier = Modifier.matchParentSize().background(MaterialTheme.colorScheme.surfaceContainerHighest).shimmer())
             } else {
@@ -209,15 +220,17 @@ private fun MediaHeader(info: MediaInfo?, preview: LinkPreview?, showsThumbnail:
                 )
             }
         }
-        Column(modifier = Modifier.padding(start = if (showsThumbnail) 16.dp else 0.dp).weight(1f)) {
-            // Two lines held for every title, and for the skeleton before it, so nothing below moves as it comes.
+        // At least as tall as the picture whatever it says - a title of one line or two, or the skeleton before it - so nothing below moves
+        // as it comes; what it says centred in that height.
+        Column(
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(start = if (showsThumbnail) 16.dp else 0.dp).weight(1f).heightIn(min = HeaderHeight),
+        ) {
             if (title == null) {
-                Column(modifier = Modifier.height(44.dp)) {
-                    Bone(widthFraction = 0.92f, modifier = Modifier.padding(top = 4.dp))
-                    Bone(widthFraction = 0.6f, modifier = Modifier.padding(top = 10.dp))
-                }
+                Bone(widthFraction = 0.92f)
+                Bone(widthFraction = 0.6f, modifier = Modifier.padding(top = 10.dp))
             } else {
-                Text(title, style = MaterialTheme.typography.titleMedium, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             Text(
                 text = details.joinToString(InfoSeparator),
@@ -230,6 +243,9 @@ private fun MediaHeader(info: MediaInfo?, preview: LinkPreview?, showsThumbnail:
         }
     }
 }
+
+/** The header's height: its picture's, which two lines of title and the line under them fit in. */
+private val HeaderHeight = 72.dp
 
 /** A line of text not read yet. */
 @Composable
@@ -355,7 +371,9 @@ private fun audioTrackRow(info: MediaInfo?, choices: DownloadChoices, onClick: (
  * the video has any, or its speech can be transcribed.
  */
 private fun subtitlesRow(info: MediaInfo?, choices: DownloadChoices, options: DownloadOptions, preferences: DownloaderPreferences, onClick: () -> Unit): @Composable (ListItemShapes) -> Unit = { shapes ->
-    val picked = info?.pickedCaptions(choices, options, preferences, preferences.transcribes)
+    // Transcribed only where a service can - see transcribersFor.
+    val transcribes = info?.transcribersFor(preferences)?.isNotEmpty() == true
+    val picked = info?.pickedCaptions(choices, options, preferences, transcribes)
     val pickedNames = picked.orEmpty().map { captionName(it) }.joinToString(", ")
     SonaValueRow(
         label = stringResource(R.string.download_subtitles),
@@ -363,7 +381,7 @@ private fun subtitlesRow(info: MediaInfo?, choices: DownloadChoices, options: Do
         icon = SonaIcons.Subtitles,
         value = when {
             info == null -> null
-            !info.hasCaptions && !preferences.transcribes -> stringResource(R.string.download_subtitles_none)
+            !info.hasCaptions && !transcribes -> stringResource(R.string.download_subtitles_none)
             picked.isNullOrEmpty() -> stringResource(R.string.download_subtitles_off)
             choices.kind == DownloadKind.SUBTITLES -> pickedNames
             else -> stringResource(
@@ -371,7 +389,7 @@ private fun subtitlesRow(info: MediaInfo?, choices: DownloadChoices, options: Do
                 pickedNames,
             )
         },
-        enabled = info != null && (info.hasCaptions || preferences.transcribes),
+        enabled = info != null && (info.hasCaptions || transcribes),
         onClick = onClick,
     )
 }
@@ -496,7 +514,7 @@ private fun PlaylistSheet(info: MediaInfo, viewModel: DownloadViewModel) {
                     // Picking is all this list is for: a tap picks, as it does while selecting.
                     onClick = { picks.toggle(entry.id) },
                     onOpenOptions = null,
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                    containerColor = Color.Transparent,
                     cover = { isSelected -> SonaCoverArt(coverArtUri = entry.thumbnailUrl, contentDescription = null, isSelected = isSelected) },
                 )
             }

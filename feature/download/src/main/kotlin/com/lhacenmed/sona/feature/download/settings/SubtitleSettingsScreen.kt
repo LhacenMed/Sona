@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsChoiceItem
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsList
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsNavigationItem
@@ -18,10 +19,14 @@ import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSwitchIte
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSwitchSplitItem
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsTextFieldDialog
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.core.downloader.KeyCheck
+import com.lhacenmed.sona.core.downloader.ServiceUsage
+import com.lhacenmed.sona.core.downloader.at
 import com.lhacenmed.sona.core.model.SubtitleFormat
 import com.lhacenmed.sona.core.model.TranscriptionService
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.download.R
+import java.text.NumberFormat
 
 /**
  * Seal's Subtitle settings, and Sona's way of making subtitles a video has none of: whether downloads take a video's
@@ -37,6 +42,8 @@ data object SubtitleSettingsScreen : Screen {
         val viewModel: DownloadsSettingsViewModel = hiltViewModel()
         val preferences by viewModel.preferences.collectAsStateWithLifecycle()
         val choices by viewModel.choices.collectAsStateWithLifecycle()
+        val supadataKeyCheck by viewModel.supadataKeyCheck.collectAsStateWithLifecycle()
+        val groqRequests by viewModel.groqRequests.collectAsStateWithLifecycle()
         var isEditingLanguages by remember { mutableStateOf(false) }
         var editingKey by remember { mutableStateOf<TranscriptionService?>(null) }
         val keySet = stringResource(R.string.downloads_settings_key_set)
@@ -99,10 +106,19 @@ data object SubtitleSettingsScreen : Screen {
                     icon = SonaIcons.RecordVoiceOver,
                 )
                 TranscriptionService.entries.forEach { service ->
+                    // Whether its key works and what of its allowance is left, as far as the service tells - else that it has one.
+                    val usage = when (service) {
+                        TranscriptionService.SUPADATA -> supadataKeyCheck?.let { keyCheckSummary(it) }
+                        TranscriptionService.GROQ -> groqRequests?.let { requestsSummary(it.at()) }
+                    }
                     // On with no key yet, it asks for one: there is nothing to transcribe with until it has it.
                     SettingsSwitchSplitItem(
                         title = stringResource(service.keyTitleRes),
-                        summary = if (preferences.keyFor(service).isBlank()) keysSummary else keySet,
+                        summary = when {
+                            preferences.keyFor(service).isBlank() -> keysSummary
+                            usage != null -> usage
+                            else -> keySet
+                        },
                         icon = SonaIcons.Key,
                         checked = preferences.isTranscribingWith(service),
                         onCheckedChange = { on ->
@@ -126,11 +142,25 @@ data object SubtitleSettingsScreen : Screen {
         }
 
         editingKey?.let { service ->
+            val refusedLabel = stringResource(R.string.downloads_settings_key_refused)
+            val unreachableLabel = stringResource(R.string.downloads_settings_key_unreachable, service.title)
             SettingsTextFieldDialog(
                 title = stringResource(service.keyTitleRes),
                 icon = SonaIcons.Key,
                 description = keysSummary,
                 initialValue = preferences.keyFor(service),
+                // Tried against the service before it is kept - an empty key, taking the service off, needs no trying.
+                check = { key ->
+                    if (key.isBlank()) {
+                        null
+                    } else {
+                        when (viewModel.checkKey(service, key.trim())) {
+                            KeyCheck.Refused -> refusedLabel
+                            KeyCheck.Unreachable -> unreachableLabel
+                            else -> null
+                        }
+                    }
+                },
                 onConfirm = { key ->
                     // A key given is a service on.
                     viewModel.updatePreferences { it.withKey(service, key.trim()).transcribingWith(service, key.isNotBlank()) }
@@ -140,6 +170,33 @@ data object SubtitleSettingsScreen : Screen {
             )
         }
     }
+}
+
+/** What Supadata said of its key: "98,800 of 100,000 credits left · Pro" where it works - its own count, this billing period. */
+@Composable
+private fun keyCheckSummary(check: KeyCheck): String = when (check) {
+    KeyCheck.Checking -> stringResource(R.string.downloads_settings_key_checking)
+    KeyCheck.Refused -> stringResource(R.string.downloads_settings_key_refused)
+    KeyCheck.Unreachable -> stringResource(R.string.downloads_settings_key_unreachable, TranscriptionService.SUPADATA.title)
+    is KeyCheck.Works -> when (val usage = check.usage) {
+        is ServiceUsage.Credits -> {
+            val number = NumberFormat.getIntegerInstance()
+            val left = stringResource(
+                R.string.downloads_settings_supadata_usage,
+                number.format((usage.max - usage.used).coerceAtLeast(0)),
+                number.format(usage.max),
+            )
+            listOf(left, usage.plan).filter(String::isNotBlank).joinToString(InfoSeparator)
+        }
+        is ServiceUsage.DailyRequests -> requestsSummary(usage.at())
+    }
+}
+
+/** "1,970 of 2,000 requests left today" - as Groq's last answer counted them. */
+@Composable
+private fun requestsSummary(requests: ServiceUsage.DailyRequests): String {
+    val number = NumberFormat.getIntegerInstance()
+    return stringResource(R.string.downloads_settings_groq_usage, number.format(requests.left), number.format(requests.limit))
 }
 
 private val TranscriptionService.keyTitleRes: Int

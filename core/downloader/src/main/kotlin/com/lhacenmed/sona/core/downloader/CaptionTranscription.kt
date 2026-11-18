@@ -20,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import okhttp3.Headers
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
@@ -33,8 +34,8 @@ import org.json.JSONObject
 const val TRANSCRIBED_CAPTIONS = "transcribed"
 
 private const val SupadataApi = "https://api.supadata.ai/v1/transcript"
-private const val GroqApi = "https://api.groq.com/openai/v1/audio/transcriptions"
-private const val GroqModel = "whisper-large-v3-turbo"
+internal const val GroqApi = "https://api.groq.com/openai/v1/audio/transcriptions"
+internal const val GroqModel = "whisper-large-v3-turbo"
 
 /** The most sound Groq's free tier takes in one request. */
 private const val GroqMaxBytes = 25L * 1024 * 1024
@@ -70,22 +71,30 @@ internal object CaptionTranscription {
 
     /**
      * [picked], with [TRANSCRIBED_CAPTIONS] among them made into [folder] and listed in [read] under the language spoken - left
-     * out where no service makes it, each one's failure said to [log].
+     * out where no service makes it, each one's failure said to [log]; what each service's answer says of its allowance kept in
+     * [usage].
      */
-    suspend fun make(read: JSONObject?, picked: List<String>, folder: File, preferences: DownloaderPreferences, log: (String) -> Unit): List<String> {
+    suspend fun make(
+        read: JSONObject?,
+        picked: List<String>,
+        folder: File,
+        preferences: DownloaderPreferences,
+        usage: TranscriptionUsage,
+        log: (String) -> Unit,
+    ): List<String> {
         if (TRANSCRIBED_CAPTIONS !in picked) return picked
-        val code = read?.let { transcribe(it, preferences, log) }?.let { read.listMadeCaptions(it.language, it.lines, folder) }
+        val code = read?.let { transcribe(it, preferences, usage, log) }?.let { read.listMadeCaptions(it.language, it.lines, folder) }
         return picked.mapNotNull { if (it == TRANSCRIBED_CAPTIONS) code else it }
     }
 
-    private suspend fun transcribe(read: JSONObject, preferences: DownloaderPreferences, log: (String) -> Unit): Transcript? = withContext(Dispatchers.IO) {
+    private suspend fun transcribe(read: JSONObject, preferences: DownloaderPreferences, usage: TranscriptionUsage, log: (String) -> Unit): Transcript? = withContext(Dispatchers.IO) {
         val page = read.stringOrNull("webpage_url")
         val sound = soundOf(read)
         val attempts = preferences.transcribers.mapNotNull { service ->
             val key = preferences.keyFor(service)
             val attempt: (suspend () -> Transcript?)? = when (service) {
                 TranscriptionService.SUPADATA -> (page?.takeIf(::isSupadataSite) ?: sound?.getString("url"))?.let { url -> { supadata(url, key) } }
-                TranscriptionService.GROQ -> sound?.let { { groq(it, key) } }
+                TranscriptionService.GROQ -> sound?.let { { groq(it, key, usage) } }
             }
             attempt?.let { service.title to it }
         }
@@ -104,8 +113,6 @@ internal object CaptionTranscription {
         }
         null
     }
-
-    private fun isSupadataSite(url: String): Boolean = url.toHttpUrlOrNull()?.host?.let(SupadataSites::containsMatchIn) == true
 
     /**
      * The transcript Supadata gives of [url] - a video's link, or its file's - the site's own where it has one, else one made
@@ -140,8 +147,11 @@ internal object CaptionTranscription {
         job.optJSONObject("result") ?: job
     } ?: throw IOException("no transcript within ${SupadataWaitMs / 60_000} minutes")
 
-    /** The transcript Groq's Whisper hears in [sound], one of the read's formats - fetched here, as yt-dlp would fetch it. */
-    private suspend fun groq(sound: JSONObject, key: String): Transcript? {
+    /**
+     * The transcript Groq's Whisper hears in [sound], one of the read's formats - fetched here, as yt-dlp would fetch it - its
+     * answer's count of today's requests kept in [usage].
+     */
+    private suspend fun groq(sound: JSONObject, key: String, usage: TranscriptionUsage): Transcript? {
         val bytes = fetch(sound) ?: throw IOException("its sound is larger than the ${GroqMaxBytes / (1024 * 1024)} MB Groq takes")
         val body = MultipartBody.Builder().setType(MultipartBody.FORM)
             .addFormDataPart("file", "sound.${sound.getString("ext")}", bytes.toRequestBody("application/octet-stream".toMediaType()))
@@ -149,7 +159,7 @@ internal object CaptionTranscription {
             .addFormDataPart("response_format", "verbose_json")
             .addFormDataPart("temperature", "0")
             .build()
-        val answer = call(Request.Builder().url(GroqApi).header("Authorization", "Bearer $key").post(body).build()).json
+        val answer = call(Request.Builder().url(GroqApi).header("Authorization", "Bearer $key").post(body).build(), onHeaders = usage::recordGroq).json
         val lines = answer.optJSONArray("segments")?.objects().orEmpty().mapNotNull { segment ->
             val text = segment.optString("text").trim().takeIf(String::isNotEmpty) ?: return@mapNotNull null
             CaptionLine((segment.optDouble("start") * 1000).toLong(), (segment.optDouble("end") * 1000).toLong(), text)
@@ -186,12 +196,16 @@ internal object CaptionTranscription {
 
     /**
      * [request]'s answer - asked again, a little later each time, while the service is busy or briefly failing: past its rate,
-     * or erring on its side. Failing with the service's own words where it refuses.
+     * or erring on its side. Failing with the service's own words where it refuses. Every answer's headers, refusals' too, go
+     * to [onHeaders].
      */
-    private suspend fun call(request: Request): Answer {
+    private suspend fun call(request: Request, onHeaders: (Headers) -> Unit = {}): Answer {
         var attempt = 0
         while (true) {
-            val (code, text, retryAfter) = client.newCall(request).await { Triple(it.code, it.body?.string().orEmpty(), it.header("retry-after")?.toLongOrNull()) }
+            val (code, text, retryAfter) = client.newCall(request).await {
+                onHeaders(it.headers)
+                Triple(it.code, it.body?.string().orEmpty(), it.header("retry-after")?.toLongOrNull())
+            }
             // As long as the service asks - Groq says so on a 429 - else a little longer each time; never a wait past a minute.
             if (code in RetriedCodes && ++attempt < MaxAttempts && (retryAfter == null || retryAfter <= MaxRetryAfterSeconds)) {
                 delay(retryAfter?.coerceAtLeast(1)?.times(1000) ?: (RetryDelayMs * attempt))
@@ -212,6 +226,26 @@ internal object CaptionTranscription {
             ?: listOfNotNull(json.stringOrNull("message"), json.stringOrNull("details")).distinct().joinToString(": ").ifEmpty { null }
             ?: json.stringOrNull("error")
     }.getOrNull() ?: text.take(200).ifBlank { "no reason given" }
+}
+
+/** Whether [url] is a page of a site Supadata reads a video's transcript from by its link alone. */
+private fun isSupadataSite(url: String): Boolean = url.toHttpUrlOrNull()?.host?.let(SupadataSites::containsMatchIn) == true
+
+/**
+ * The services, of those [preferences] turn on, that can make captions of this video's speech - in the order they are tried:
+ * Supadata by the link of a site it reads, or by a sound it can fetch as anyone could, with no one's cookies; Groq by a sound
+ * small enough to upload. None for a link neither can - a file a page serves only to its own visitors, a whole film's sound.
+ */
+fun MediaInfo.transcribersFor(preferences: DownloaderPreferences): List<TranscriptionService> {
+    val sound = formats.filter { it.hasAudio && it.directUrl != null && it.extension in GroqExtensions }
+        .minWithOrNull(compareBy<MediaFormat> { it.hasVideo }.thenBy { it.sizeBytes ?: Long.MAX_VALUE })
+    return preferences.transcribers.filter { service ->
+        when (service) {
+            TranscriptionService.SUPADATA ->
+                webpageUrl?.let(::isSupadataSite) == true || sound != null && sound.headers.keys.none { it.equals("Cookie", ignoreCase = true) }
+            TranscriptionService.GROQ -> sound != null && (sound.sizeBytes ?: 0) <= GroqMaxBytes
+        }
+    }
 }
 
 /** How many times a busy or briefly failing service is asked, in all. */

@@ -33,12 +33,13 @@ import com.lhacenmed.sona.core.downloader.AudioTrackKind
 import com.lhacenmed.sona.core.downloader.MediaInfo
 import com.lhacenmed.sona.core.downloader.TRANSCRIBED_CAPTIONS
 import com.lhacenmed.sona.core.navigation.LocalNavigator
-import com.lhacenmed.sona.feature.download.settings.DownloadsSettingsScreen
+import com.lhacenmed.sona.feature.download.settings.SubtitleSettingsScreen
 import com.lhacenmed.sona.core.downloader.captionLanguageOf
 import com.lhacenmed.sona.core.downloader.translatedCaptionCode
 import com.lhacenmed.sona.core.downloader.captionGroups
 import com.lhacenmed.sona.core.downloader.estimatedSizeBytes
 import com.lhacenmed.sona.core.downloader.pickedCaptions
+import com.lhacenmed.sona.core.downloader.transcribersFor
 import com.lhacenmed.sona.core.downloader.videoQualities
 import com.lhacenmed.sona.core.model.AudioFormat
 import com.lhacenmed.sona.core.model.DownloadChoices
@@ -208,7 +209,9 @@ internal fun SubtitlesSheet(viewModel: DownloadViewModel, info: MediaInfo, onDis
     val preferences by viewModel.preferences.collectAsStateWithLifecycle()
     val navigator = LocalNavigator.current
     val groups = info.captionGroups
-    var picked by remember { mutableStateOf(info.pickedCaptions(choices, options, preferences, preferences.transcribes)) }
+    // The services that can transcribe this very link - none where neither can, whatever keys are given.
+    val transcribers = info.transcribersFor(preferences)
+    var picked by remember { mutableStateOf(info.pickedCaptions(choices, options, preferences, transcribers.isNotEmpty())) }
     var asFile by remember { mutableStateOf(choices.subtitlesAsFile) }
     var isAddingLanguage by remember { mutableStateOf(false) }
     fun pickRow(code: String, label: String, value: String? = null): SonaGroupRow = { shapes ->
@@ -253,11 +256,23 @@ internal fun SubtitlesSheet(viewModel: DownloadViewModel, info: MediaInfo, onDis
             SectionLabel(stringResource(R.string.download_subtitles_transcribed))
             SonaRowGroup(
                 listOf(
-                    if (preferences.transcribes) {
-                        val services = preferences.transcribers.map { it.title }
+                    if (transcribers.isNotEmpty()) {
+                        val services = transcribers.map { it.title }
                         val by = services.getOrNull(1)?.let { stringResource(R.string.download_subtitles_transcribe_by_else, services[0], it) }
                             ?: stringResource(R.string.download_subtitles_transcribe_by, services[0])
                         pickRow(TRANSCRIBED_CAPTIONS, stringResource(R.string.download_subtitles_transcribe), by)
+                    } else if (preferences.transcribes) {
+                        // A key is given, but this link is none either service reads - said so, rather than offered to fail.
+                        { shapes ->
+                            SonaValueRow(
+                                label = stringResource(R.string.download_subtitles_transcribe),
+                                shapes = shapes,
+                                value = stringResource(R.string.download_subtitles_transcribe_unavailable),
+                                enabled = false,
+                                trailing = null,
+                                onClick = {},
+                            )
+                        }
                     } else {
                         { shapes ->
                             SonaValueRow(
@@ -265,7 +280,7 @@ internal fun SubtitlesSheet(viewModel: DownloadViewModel, info: MediaInfo, onDis
                                 shapes = shapes,
                                 value = stringResource(R.string.download_subtitles_transcribe_needs_key),
                                 onClick = {
-                                    navigator.go(DownloadsSettingsScreen)
+                                    navigator.go(SubtitleSettingsScreen)
                                     dismiss()
                                 },
                             )
