@@ -43,10 +43,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
-import com.lhacenmed.sona.core.designsystem.component.LocalDragHandle
 import com.lhacenmed.sona.core.designsystem.component.SonaTrackRow
 import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.designsystem.component.swipe.LocalSwipeActions
@@ -69,8 +70,8 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 /**
  * The queue: a bar along the bottom of the full player - the [lyrics], the sleep timer and the queue, in the player
  * style's own shape, sliding out of the way while the lyrics are open in the player - that expands into the queue
- * itself, where every row plays when tapped, moves by its
- * handle, and is swiped towards its end to play next or towards its start to leave the queue, shuffled or
+ * itself, where every row plays when tapped, moves once held by a long press
+ * and dragged, and is swiped towards its end to play next or towards its start to leave the queue, shuffled or
  * not. Ported from ArchiveTune's `Queue`.
  *
  * The rows are the queue in the order it plays, and every change to them is made in that order - the
@@ -97,6 +98,7 @@ internal fun Queue(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val haptics = LocalHapticFeedback.current
     val playback = uiState.playback
     val currentTrack = uiState.currentTrack
 
@@ -192,7 +194,7 @@ internal fun Queue(
         // of the bar, or a swipe up over the player. It is first in view, rows being places in the queue.
         val lazyListState = rememberLazyListState(initialFirstVisibleItemIndex = uiState.currentQueueIndex.coerceAtLeast(0))
         // A drag down with the list already at its top closes the sheet, wherever on the list it
-        // starts - swiping a row away is a horizontal gesture, and moving one starts on its handle,
+        // starts - swiping a row away is a horizontal gesture, and moving one starts with a long press,
         // so neither can claim a vertical drag of the list first.
         val sheetScrollConnection =
             remember(state, lazyListState) {
@@ -315,13 +317,19 @@ internal fun Queue(
                                             )
                                         }
 
-                                    // The handle and the swipe reach the row through the composition, the way
-                                    // every list in the app hands them over.
+                                    // The swipe reaches the row through the composition, the way every list in the app
+                                    // hands it over - and not while a row is being moved, which a sideways move would
+                                    // otherwise swipe as well.
                                     CompositionLocalProvider(
-                                        LocalDragHandle provides Modifier.draggableHandle(),
-                                        LocalSwipeActions provides swipeActions,
+                                        LocalSwipeActions provides swipeActions.takeUnless { reorderableState.isAnyItemDragging },
                                     ) {
                                         SonaTrackRow(
+                                            // Moved by a long press on the row itself rather than a handle always on show,
+                                            // so no scroll or tap moves a row by accident: held, it lifts, felt as it does,
+                                            // and follows the finger until let go.
+                                            modifier = Modifier.longPressDraggableHandle(
+                                                onDragStarted = { haptics.performHapticFeedback(HapticFeedbackType.LongPress) },
+                                            ),
                                             track = item.track,
                                             isCurrent = { isActive },
                                             isPlaying = { playback.isPlaying && isActive },
