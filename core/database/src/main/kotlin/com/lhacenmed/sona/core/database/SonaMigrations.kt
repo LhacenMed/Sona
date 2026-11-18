@@ -598,3 +598,10 @@ val MIGRATION_35_36 = object : Migration(35, 36) {
         db.execSQL("ALTER TABLE `downloads` ADD COLUMN `downloadsAgain` INTEGER NOT NULL DEFAULT 0")
     }
 }
+
+/** What the browser a download was found in sent for it - see `DownloadOptions.requestHeaders`. */
+val MIGRATION_36_37 = object : Migration(36, 37) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `downloads` ADD COLUMN `requestHeaders` TEXT")
+    }
+}

@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.media.MediaScannerConnection
 import com.lhacenmed.sona.core.downloader.pickedCaptions
+import com.lhacenmed.sona.core.downloader.transcribersFor
 import android.net.Uri
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
@@ -240,11 +241,15 @@ class DownloadViewModel @Inject constructor(
         }
     }
 
-    /** A link pasted, shared or typed: read, and shown in the sheet. */
-    fun open(url: String) {
+    /**
+     * A link pasted, shared or typed - or caught in the browser, with [requestHeaders] it sent for it, which reading and
+     * downloading it send too: read, and shown in the sheet.
+     */
+    fun open(url: String, requestHeaders: Map<String, String> = emptyMap()) {
         link = url
         _linkEntry.value = ""
         resetOptions()
+        _options.value = _options.value.copy(requestHeaders = requestHeaders)
         readJob?.cancel()
         resolver.cached(url)?.let {
             _linkSheet.value = LinkSheet.Found(it.info)
@@ -267,7 +272,7 @@ class DownloadViewModel @Inject constructor(
                 if (shown?.title == null) linkPreviews.read(url)?.let(::show)
             }
             _linkSheet.value = try {
-                val read = resolver.resolve(url, settings.preferences.value).info
+                val read = resolver.resolve(url, settings.preferences.value, requestHeaders).info
                 preview.cancel()
                 val info = shown?.thumbnailUrl?.let { read.copy(thumbnailUrl = it) } ?: read
                 linkPreviews.remember(url, info)
@@ -291,7 +296,7 @@ class DownloadViewModel @Inject constructor(
     private suspend fun completeShown(url: String) {
         val shown = (_linkSheet.value as? LinkSheet.Found)?.info?.takeUnless { it.isPlaylist } ?: return
         val full = try {
-            resolver.resolveForDownload(url, settings.preferences.value).info
+            resolver.resolveForDownload(url, settings.preferences.value, _options.value.requestHeaders).info
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -363,7 +368,7 @@ class DownloadViewModel @Inject constructor(
             song = _song.value?.takeIf { kind == DownloadKind.AUDIO && chosen.savesAsSong }?.plan,
             // Captions alone are taken as the sheet showed them - its speech transcribed among them where it has none.
             subtitleLanguages = _options.value.subtitleLanguages ?: info?.takeIf { kind == DownloadKind.SUBTITLES && !it.isPlaylist }
-                ?.pickedCaptions(chosen, _options.value, settings.preferences.value, settings.preferences.value.transcribes),
+                ?.let { it.pickedCaptions(chosen, _options.value, settings.preferences.value, it.transcribersFor(settings.preferences.value).isNotEmpty()) },
         )
         // A playlist's videos listed as one, under its own name.
         val batch = entries?.let { DownloadBatch("playlist:${System.currentTimeMillis()}", info?.title ?: hostOf(url)) }

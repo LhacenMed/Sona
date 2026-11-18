@@ -62,9 +62,10 @@ class MediaResolver @Inject internal constructor(
 
     /**
      * [url], read - from what is kept where it was read before. Fails as yt-dlp does, or with [DownloaderMissingException] for
-     * a link only yt-dlp reads while the downloader is not here.
+     * a link only yt-dlp reads while the downloader is not here. [headers] are what the browser it was found in sent for it - see
+     * `DownloadOptions.requestHeaders`.
      */
-    suspend fun resolve(url: String, preferences: DownloaderPreferences): Extraction {
+    suspend fun resolve(url: String, preferences: DownloaderPreferences, headers: Map<String, String> = emptyMap()): Extraction {
         val key = linkKeyOf(url)
         cache.inMemory(key)?.let { return it }
         val read = synchronized(reading) {
@@ -72,7 +73,7 @@ class MediaResolver @Inject internal constructor(
                 // In the app's scope: one caller leaving does not stop the read the others wait on.
                 scope.async(Dispatchers.IO) {
                     try {
-                        cache.get(key) ?: read(key, preferences).also { cache.put(key, it) }
+                        cache.get(key) ?: read(key, preferences, headers).also { cache.put(key, it) }
                     } finally {
                         synchronized(reading) { reading.remove(key) }
                     }
@@ -86,8 +87,8 @@ class MediaResolver @Inject internal constructor(
      * [url], read as it is downloaded: [resolve]'s read, completed with all yt-dlp's would hold - see [Extraction.isComplete] -
      * so yt-dlp is handed it, and does not read the link again.
      */
-    suspend fun resolveForDownload(url: String, preferences: DownloaderPreferences): Extraction {
-        val extraction = resolve(url, preferences)
+    suspend fun resolveForDownload(url: String, preferences: DownloaderPreferences, headers: Map<String, String> = emptyMap()): Extraction {
+        val extraction = resolve(url, preferences, headers)
         if (extraction.isComplete) return extraction
         return withContext(Dispatchers.IO) { extractionOf(newPipe.complete(extraction.json), isComplete = true).also { cache.put(linkKeyOf(url), it) } }
     }
@@ -109,7 +110,7 @@ class MediaResolver @Inject internal constructor(
      * each within its budget; a link of no site here, as the file it serves where it serves one - see [FileLinks] - asked
      * through the proxy as yt-dlp would ask; and by yt-dlp for everything else.
      */
-    private suspend fun read(url: String, preferences: DownloaderPreferences): Extraction {
+    private suspend fun read(url: String, preferences: DownloaderPreferences, headers: Map<String, String>): Extraction {
         if (readsItself(preferences) && synchronized(appMisses) { url !in appMisses }) {
             val appRead = when {
                 newPipe.accepts(url) -> readWithin(NewPipeBudgetMs) { newPipe.read(url) }?.let { extractionOf(it, isComplete = false) }
@@ -127,9 +128,9 @@ class MediaResolver @Inject internal constructor(
             }
         }
         if (!newPipe.accepts(url) && SiteReaders.readerFor(url) == null) {
-            readWithin(FileBudgetMs) { FileLinks.read(url, preferences.transferClient(fileClient)) }?.let { return extractionOf(it, isComplete = true) }
+            readWithin(FileBudgetMs) { FileLinks.read(url, preferences.transferClient(fileClient), headers) }?.let { return extractionOf(it, isComplete = true) }
         }
-        return extractionOf(ytDlp.infoJson(url, preferences, readingArguments.forLink(url)).toString(), isComplete = true)
+        return extractionOf(ytDlp.infoJson(url, preferences, readingArguments.forLink(url) + headerArguments(headers)).toString(), isComplete = true)
     }
 
     /**

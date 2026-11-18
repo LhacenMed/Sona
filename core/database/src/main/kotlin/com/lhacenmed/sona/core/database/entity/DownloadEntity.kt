@@ -60,6 +60,8 @@ data class DownloadEntity(
     val batchKey: String? = null,
     val batchTitle: String? = null,
     @ColumnInfo(defaultValue = "0") val downloadsAgain: Boolean = false,
+    /** What the browser it was found in sent for it, one `Name: value` a line - null for a link given. */
+    val requestHeaders: String? = null,
 )
 
 fun DownloadEntity.toDomain() = Download(
@@ -86,6 +88,9 @@ fun DownloadEntity.toDomain() = Download(
         subtitleLanguages = subtitleLanguages?.lines()?.filter(String::isNotEmpty),
         song = song,
         downloadsAgain = downloadsAgain,
+        requestHeaders = requestHeaders?.lines().orEmpty().mapNotNull { line ->
+            line.split(": ", limit = 2).takeIf { it.size == 2 }?.let { (name, value) -> name to value }
+        }.toMap(),
     ),
     // One running as the app was last stopped never finished: it is taken up again.
     status = enumOr(status, DownloadStatus.QUEUED).let { if (it == DownloadStatus.RUNNING) DownloadStatus.QUEUED else it },
@@ -143,6 +148,7 @@ fun queuedDownload(
     batchKey = batch?.key,
     batchTitle = batch?.title,
     downloadsAgain = options.downloadsAgain,
+    requestHeaders = options.requestHeaders.takeIf { it.isNotEmpty() }?.entries?.joinToString("\n") { (name, value) -> "$name: $value" },
 )
 
 private inline fun <reified T : Enum<T>> enumOr(name: String, default: T): T = enumValues<T>().firstOrNull { it.name == name } ?: default

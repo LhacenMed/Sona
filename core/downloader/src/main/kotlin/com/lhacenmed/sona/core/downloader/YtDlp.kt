@@ -136,6 +136,7 @@ class YtDlp @Inject constructor(
                 preferences.networkArguments(runtime, archives = choices.kind.isMedia && !options.downloadsAgain) +
                 downloadArguments(savesTo.path, workspace.path, preferences.fileNameTemplate, options.splitChapters, preferences.concurrentFragments) +
                 (if (hasTranslations) listOf("--enable-file-urls") else emptyList()) +
+                headerArguments(options.requestHeaders) +
                 options.commandArguments?.let(::splitArguments).orEmpty() +
                 target
             // Its errors among the rest, in the order it wrote them: its log is all it said.

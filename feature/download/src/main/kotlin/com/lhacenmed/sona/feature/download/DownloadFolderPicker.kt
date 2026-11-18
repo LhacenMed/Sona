@@ -29,7 +29,7 @@ private const val DownloadFolder = "Download"
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-internal fun rememberDownloadFolderPicker(onPick: (String) -> Unit): () -> Unit {
+fun rememberDownloadFolderPicker(onPick: (String) -> Unit): () -> Unit {
     val context = LocalContext.current
     var waitingOnAccess by remember { mutableStateOf<String?>(null) }
     val notOnDevice = stringResource(R.string.download_folder_not_on_device)

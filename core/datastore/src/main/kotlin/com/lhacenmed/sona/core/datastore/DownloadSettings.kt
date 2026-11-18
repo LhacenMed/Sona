@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.lhacenmed.sona.core.common.di.ApplicationScope
+import com.lhacenmed.sona.core.model.BrowserBookmark
 import com.lhacenmed.sona.core.model.DownloadChoices
 import com.lhacenmed.sona.core.model.DownloaderPreferences
 import com.lhacenmed.sona.core.model.SponsorSegment
@@ -17,8 +18,12 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
+import org.json.JSONArray
+import org.json.JSONObject
 
 private val KIND = stringPreferencesKey("download_kind")
+/** The browser's bookmarks, as a JSON array of `{url, title}`, in the order they were added. */
+private val BROWSER_BOOKMARKS = stringPreferencesKey("browser_bookmarks")
 private val VIDEO_QUALITY = stringPreferencesKey("download_video_quality")
 private val VIDEO_FORMAT = stringPreferencesKey("download_video_format")
 private val AUDIO_FORMAT = stringPreferencesKey("download_audio_format")
@@ -139,6 +144,21 @@ class DownloadSettings @Inject constructor(
             groqKey = preferences[GROQ_KEY] ?: defaults.groqKey,
             transcriptionService = preferences.enum(TRANSCRIPTION_SERVICE, defaults.transcriptionService),
         )
+    }
+
+    /** The browser's bookmarks - see [BrowserBookmark] - the first added first. */
+    val browserBookmarks: Setting<List<BrowserBookmark>> = cache.setting { preferences ->
+        val array = preferences[BROWSER_BOOKMARKS]?.let { runCatching { JSONArray(it) }.getOrNull() } ?: return@setting emptyList()
+        List(array.length()) { array.optJSONObject(it) }.mapNotNull { item ->
+            item?.optString("url")?.takeIf(String::isNotEmpty)?.let { BrowserBookmark(it, item.optString("title")) }
+        }
+    }
+
+    /** Keeps [bookmarks] as the browser's, in place of what it had. */
+    suspend fun setBrowserBookmarks(bookmarks: List<BrowserBookmark>) {
+        dataStore.edit { preferences ->
+            preferences[BROWSER_BOOKMARKS] = JSONArray(bookmarks.map { JSONObject().put("url", it.url).put("title", it.title) }).toString()
+        }
     }
 
     suspend fun setChoices(choices: DownloadChoices) {

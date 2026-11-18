@@ -230,7 +230,7 @@ class DownloadRunner @Inject constructor(
         onFound: (MediaInfo) -> Unit,
         onEvent: (DownloadEvent) -> Unit,
     ): String? = coroutineScope {
-        val extraction = resolver.resolveForDownload(queued.url, preferences)
+        val extraction = resolver.resolveForDownload(queued.url, preferences, queued.options.requestHeaders)
         val info = extraction.info
         // Downloaded as what its link serves - see MediaInfo.kindFor - and kept as that from here on.
         val kind = info.kindFor(queued.choices.kind)

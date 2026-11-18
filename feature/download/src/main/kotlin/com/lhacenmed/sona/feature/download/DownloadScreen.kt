@@ -48,6 +48,7 @@ import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.model.DownloadStatus
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.download.browser.BrowserScreen
 import com.lhacenmed.sona.feature.download.settings.DownloadsSettingsScreen
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 
@@ -102,6 +103,8 @@ data class DownloadScreen(val link: String? = null, val downloadId: Long? = null
                 title = "",
                 onNavigateBack = navigator::back,
                 actions = listOf(
+                    // Pages whose download buttons hand files to a browser rather than showing their links hand them to Sona there.
+                    TopBarAction(stringResource(R.string.download_browser), SonaIcons.Language) { navigator.go(BrowserScreen()) },
                     TopBarAction(stringResource(R.string.download_history), SonaIcons.History) { navigator.go(HistoryScreen) },
                     TopBarAction(stringResource(R.string.download_settings), SonaIcons.Settings) { navigator.go(DownloadsSettingsScreen) },
                 ),

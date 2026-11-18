@@ -139,6 +139,10 @@ internal fun DownloaderPreferences.networkArguments(runtime: DownloaderRuntime, 
  * progress - with yt-dlp's own words for it - and each file saved - with its Most replayed graph and its chapters - on lines
  * of Sona's own, beside all else it says.
  */
+/** [headers] - what the browser a link was found in sent for it - as yt-dlp sends headers of its own, the last of one name winning. */
+internal fun headerArguments(headers: Map<String, String>): List<String> =
+    headers.flatMap { (name, value) -> listOf("--add-header", "$name:$value") }
+
 internal fun downloadArguments(
     outputDir: String,
     tempDir: String,

@@ -114,6 +114,11 @@ data class DownloadOptions(
     val song: String? = null,
     /** Saved even where it is already in the library - asked for once told so. See `LibraryCopies`. */
     val downloadsAgain: Boolean = false,
+    /**
+     * What the browser it was found in sent for it - its cookies, who it said it was, the page it came from - sent with every
+     * request for it, so a site that serves a file only to the page that links it serves it here too. None for a link given.
+     */
+    val requestHeaders: Map<String, String> = emptyMap(),
 )
 
 /** What every file name is built from, yt-dlp's way: its title, cut to fit - which every template keeps. */

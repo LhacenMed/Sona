@@ -17,10 +17,12 @@ internal object FileLinks {
     /**
      * [url], read as the file it serves - in yt-dlp's shape, one format, the file itself: a song's or a video's taken to hold
      * its sound or picture; any other neither, and marked a file - see [MediaInfo.isFile]. Null for what yt-dlp reads: a page, a
-     * feed, a stream's playlist. Throws where the link fails.
+     * feed, a stream's playlist. Throws where the link fails. Asked, and fetched, with [headers] over Sona's own - the browser's
+     * it was found in, where it was.
      */
-    fun read(url: String, client: OkHttpClient): String? {
-        val served = client.probe(url, FileRequestHeaders)
+    fun read(url: String, client: OkHttpClient, headers: Map<String, String> = emptyMap()): String? {
+        val requestHeaders = FileRequestHeaders + headers
+        val served = client.probe(url, requestHeaders)
         if (served.isForDownloader) return null
         val link = url.toHttpUrlOrNull()
         val name = served.name ?: link?.host ?: "download"
@@ -37,7 +39,7 @@ internal object FileLinks {
             .put("ext", extension)
             .put("vcodec", if (isVideo) "unknown" else "none")
             .put("acodec", if (isMedia) "unknown" else "none")
-            .put("http_headers", JSONObject(FileRequestHeaders))
+            .put("http_headers", JSONObject(requestHeaders))
             .apply { served.totalBytes?.let { put("filesize", it) } }
         return JSONObject()
             .put("_type", if (isMedia) "video" else FILE_TYPE)
