@@ -20,6 +20,7 @@ import com.lhacenmed.sona.feature.library.LibraryPagerScreen
 import com.lhacenmed.sona.feature.library.LibraryTabRequest
 import com.lhacenmed.sona.feature.settings.QuickPlaySourceSetting
 import com.lhacenmed.sona.feature.settings.SettingsScreen
+import com.lhacenmed.sona.feature.settings.about.AboutScreen
 
 /**
  * [playingTab] opens the library on the tab the queue plays from, at its playing row, the full player over it;
@@ -53,6 +54,7 @@ fun AppShell(playerOverlay: PlayerOverlay, playingTab: LibraryTab?, tabRequest: 
                     LibraryPagerScreen(
                         onChooseQuickPlaySource = { navigator.go(QuickPlaySourceSetting) },
                         onOpenDownloads = { navigator.go(DownloadScreen()) },
+                        onOpenAbout = { navigator.go(AboutScreen) },
                         modifier = Modifier.padding(innerPadding),
                         actions = libraryActions,
                         playingTab = playingTab,

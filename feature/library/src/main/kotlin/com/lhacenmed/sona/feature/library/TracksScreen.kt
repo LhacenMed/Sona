@@ -2,6 +2,8 @@ package com.lhacenmed.sona.feature.library
 
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
+import com.lhacenmed.sona.core.common.format.formatDuration
+import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,7 +44,6 @@ fun TracksScreen(
         modifier = modifier,
         listState = listState,
         onRefresh = rememberLibraryRefresh(viewModel),
-        loadingIcon = SonaIcons.Song,
         sectionOf = trackSections,
         isCurrent = { playback.marks(it) },
         isPlaying = { playback.isPlaying },
@@ -58,7 +59,9 @@ fun TracksScreen(
                 optionsTarget = OptionsTarget.ForTrack(track, queueSource = viewModel.tabTracksOf(track))
             },
             // A track the search found by its lyrics alone says why, with the line it found.
-            subtitle = trackLyricLines[track.id]?.let { line -> "♪ $line" },
+            subtitle = trackLyricLines[track.id]?.let { line -> "♪ $line" }
+                // The library's own line for a track: who it is by, and how long it is.
+                ?: "${track.artist}$InfoSeparator${formatDuration(track.durationMs)}",
         )
     }
 

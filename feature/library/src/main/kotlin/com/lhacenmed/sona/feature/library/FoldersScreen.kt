@@ -44,7 +44,6 @@ fun FoldersScreen(
         emptyTitle = stringResource(R.string.library_no_folders_found),
         emptyMessage = searchEmptyMessage(searchQuery),
         key = { it.rowKey },
-        loadingIcon = SonaIcons.Folder,
         sectionOf = folderSections,
         isCurrent = { playback.marks(it) },
         isPlaying = { playback.isPlaying },

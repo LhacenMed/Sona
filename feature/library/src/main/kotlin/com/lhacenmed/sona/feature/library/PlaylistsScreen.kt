@@ -178,7 +178,6 @@ data object PlaylistsScreen : Screen {
                     } else {
                         searchEmptyMessage(searchQuery)
                     },
-                    loadingIcon = SonaIcons.Playlist,
                     modifier = Modifier.fillMaxSize(),
                     // Only while not searching: a search that matches nothing is not a missing playlist.
                     emptyAction = if (searchQuery == null) {

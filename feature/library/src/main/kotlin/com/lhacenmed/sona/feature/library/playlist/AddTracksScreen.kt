@@ -83,7 +83,8 @@ data class AddTracksScreen(val playlistId: Long) : Screen {
                     tabTitles = MediaTab.entries.map { stringResource(it.labelRes) },
                     selectedPosition = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
                     onTabClick = { page -> scope.launch { pagerState.animateScrollToPage(page) } },
-                    modifier = Modifier.padding(horizontal = SonaComponentStyle.ContentHorizontalPadding, vertical = 8.dp),
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    edgePadding = SonaComponentStyle.ContentHorizontalPadding,
                 )
             },
         ) {
@@ -106,7 +107,6 @@ data class AddTracksScreen(val playlistId: Long) : Screen {
                     emptyTitle = stringResource(if (isVideos) R.string.library_no_videos_found else R.string.library_no_tracks_found),
                     emptyMessage = searchEmptyMessage(searchQuery),
                     key = { it.id },
-                    loadingIcon = if (isVideos) SonaIcons.Video else SonaIcons.Song,
                     sectionOf = (if (isVideos) videoSections else trackSections).whileNotSearched(searchQuery),
                     isCurrent = { playback.marks(it) },
                     isPlaying = { playback.isPlaying },

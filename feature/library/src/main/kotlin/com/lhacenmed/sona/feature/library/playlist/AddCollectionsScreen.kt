@@ -141,7 +141,8 @@ data class AddCollectionsScreen(val playlistId: Long) : Screen {
                     tabTitles = CollectionTab.entries.map { stringResource(it.labelRes) },
                     selectedPosition = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
                     onTabClick = { page -> scope.launch { pagerState.animateScrollToPage(page) } },
-                    modifier = Modifier.padding(horizontal = SonaComponentStyle.ContentHorizontalPadding, vertical = 8.dp),
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    edgePadding = SonaComponentStyle.ContentHorizontalPadding,
                 )
             },
         ) {
@@ -259,7 +260,6 @@ private fun <T> PickerList(
         emptyTitle = emptyTitle,
         emptyMessage = emptyMessage,
         key = key,
-        loadingIcon = SonaIcons.Playlist,
         modifier = Modifier.fillMaxSize(),
         sectionOf = sectionOf,
         isCurrent = isCurrent,

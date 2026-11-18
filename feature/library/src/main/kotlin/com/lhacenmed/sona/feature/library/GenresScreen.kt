@@ -40,7 +40,6 @@ fun GenresScreen(
         emptyTitle = stringResource(R.string.library_no_genres_found),
         emptyMessage = searchEmptyMessage(searchQuery),
         key = { it.id },
-        loadingIcon = SonaIcons.Genre,
         sectionOf = genreSections,
         isCurrent = { playback.marks(it) },
         isPlaying = { playback.isPlaying },

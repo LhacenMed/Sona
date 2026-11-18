@@ -305,7 +305,6 @@ private fun CoverTrackChooser(
             isScanning = false,
             emptyTitle = stringResource(R.string.library_no_tracks_found),
             emptyMessage = searchEmptyMessage(searchQuery),
-            loadingIcon = SonaIcons.Song,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth(),

@@ -1,6 +1,14 @@
 package com.lhacenmed.sona.feature.library
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.res.pluralStringResource
+import com.lhacenmed.sona.core.data.itemsOrNull
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -10,6 +18,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -30,24 +39,33 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.datastore.LibraryTab
+import com.lhacenmed.sona.core.designsystem.component.LaunchOrder
+import com.lhacenmed.sona.core.designsystem.component.LaunchRise
+import com.lhacenmed.sona.core.designsystem.component.LaunchTitleShift
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
+import com.lhacenmed.sona.core.designsystem.component.SonaMark
 import com.lhacenmed.sona.core.designsystem.component.SonaTabPager
 import com.lhacenmed.sona.core.designsystem.component.SonaTabRow
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
-import com.lhacenmed.sona.core.designsystem.component.fab.SonaSecondaryFloatingActionButton
 import com.lhacenmed.sona.core.designsystem.component.header.collapsingHeader
 import com.lhacenmed.sona.core.designsystem.component.header.collapsingHeaderDrag
 import com.lhacenmed.sona.core.designsystem.component.header.rememberCollapsingHeaderState
+import com.lhacenmed.sona.core.designsystem.component.launchEntrance
+import com.lhacenmed.sona.core.designsystem.component.launchEntranceMark
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.component.screen.PlayingRowReveal
-import com.lhacenmed.sona.core.designsystem.component.sheet.sortAction
-import com.lhacenmed.sona.core.designsystem.component.topBarBackground
+import com.lhacenmed.sona.core.designsystem.component.header.collapsingHeaderTail
+import com.lhacenmed.sona.core.designsystem.component.liftedTopBarBackground
+import com.lhacenmed.sona.core.designsystem.component.rememberTopBarLift
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.feature.library.R
@@ -94,6 +112,7 @@ import kotlinx.coroutines.launch
 fun LibraryPagerScreen(
     onChooseQuickPlaySource: () -> Unit,
     onOpenDownloads: () -> Unit,
+    onOpenAbout: () -> Unit,
     modifier: Modifier = Modifier,
     actions: List<TopBarAction> = emptyList(),
     playingTab: LibraryTab? = null,
@@ -107,6 +126,7 @@ fun LibraryPagerScreen(
     val quickPlay by viewModel.quickPlay.collectAsState()
     val showsDownloadsButton by viewModel.showsDownloadsButton.collectAsState()
     val hasTracks by viewModel.hasTracks.collectAsStateWithLifecycle()
+    val isFirstScan by viewModel.isFirstScan.collectAsStateWithLifecycle()
     val revealsPrivateFolder by viewModel.revealsPrivateFolder.collectAsStateWithLifecycle()
     val openPrivateFolder = rememberPrivateFolderOpener()
     if (visibleTabs.isEmpty()) return
@@ -147,6 +167,18 @@ fun LibraryPagerScreen(
         // so the two can never fight over which tab is selected.
         var requestedPage by remember { mutableStateOf<Int?>(null) }
 
+        // Whether the list on screen was last scrolled down, through its rows: quick play steps aside for them then, and
+        // comes back as soon as the list is scrolled back up.
+        var isScrollingDown by remember { mutableStateOf(false) }
+        val quickPlayFollowsScroll = remember {
+            object : NestedScrollConnection {
+                override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                    if (consumed.y != 0f) isScrollingDown = consumed.y < 0f
+                    return Offset.Zero
+                }
+            }
+        }
+
         // The tab whose sort sheet is open. Held as the tab rather than a flag, so the sheet keeps
         // sorting the tab it was opened over.
         var sortingTab by remember { mutableStateOf<LibraryTab?>(null) }
@@ -160,6 +192,9 @@ fun LibraryPagerScreen(
         // long as [pillLeads]. A swipe therefore still reads the pager directly, with nothing in
         // between to lag behind the finger.
         val pillPosition = remember { Animatable(0f) }
+        // The pill glides on the theme's fast expressive spring, overshooting and settling onto its tab, while the pager
+        // beneath moves as quickly without the bounce - a page sliding past its place would read as a fault.
+        val pillMotion = MaterialTheme.motionScheme.fastSpatialSpec<Float>()
         var pillLeads by remember { mutableStateOf(false) }
 
         // Every suspending move lives here, in one place and in one order, which is what makes a tap
@@ -189,7 +224,7 @@ fun LibraryPagerScreen(
                         pillLeads = true
                     }
                     coroutineScope {
-                        launch { pillPosition.animateTo(requested.toFloat(), TabMotion) }
+                        launch { pillPosition.animateTo(requested.toFloat(), pillMotion) }
                         snapshotFlow { pagerState.settledPage }
                             .takeWhile { settled -> settled != requested && requestedPage == requested }
                             .collectLatest { pagerState.animateScrollToPage(requested, animationSpec = TabMotion) }
@@ -246,25 +281,32 @@ fun LibraryPagerScreen(
                     .background(MaterialTheme.colorScheme.surface),
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // The bar, the shortcuts and the tabs are one section, lifting as one: once the list on
-                    // screen leaves its top, or the shortcuts start collapsing over it.
-                    Column(modifier = Modifier.topBarBackground { shortcutsHeader.fraction > 0f }) {
-                        val sortTabAction = sortAction { sortingTab = selectedTab }
+                    // The bar, the shortcuts, the tabs and the list's header are one section, lifting as one: as far as the
+                    // shortcuts have collapsed over the list, frame by frame, and once the list on screen leaves its top.
+                    val lift = rememberTopBarLift(progress = { shortcutsHeader.fraction })
+                    Column(modifier = Modifier.liftedTopBarBackground(lift)) {
                         SonaTopAppBar(
                             drawsBackground = false,
                             // The app's own label, so the bar reads exactly what the launcher does - "Sona Debug"
                             // on a debug build, which :app sets per build type.
                             title = stringResource(LocalContext.current.applicationInfo.labelRes),
-                            // The library's own two first, so they are the ones always drawn as icons: both act
-                            // on the tab on screen, while the shell's actions are the ones that can fold into
-                            // the menu.
-                            actions = listOf(
+                            // Where the launch screen's mark lands as the app opens - see LaunchEntrance.
+                            titleLeading = { SonaMark(modifier = Modifier.size(LibraryMarkSize).launchEntranceMark()) },
+                            titleStyle = WordmarkStyle,
+                            titleModifier = Modifier.launchEntrance(LaunchOrder.TITLE, fromStart = LaunchTitleShift),
+                            // Sona's name, and its mark, are what open About.
+                            onTitleClick = onOpenAbout,
+                            actionsModifier = Modifier.launchEntrance(LaunchOrder.ACTIONS),
+                            // The library's own first, so they are the ones always drawn as icons, while the shell's
+                            // actions are the ones that can fold into the menu. Downloads only while it is turned on.
+                            actions = listOfNotNull(
                                 TopBarAction(label = stringResource(R.string.library_search), icon = SonaIcons.Search) {
                                     viewModel.onSearchQueryChange("")
                                 },
-                                sortAction { sortingTab = selectedTab },
+                                TopBarAction(label = stringResource(R.string.library_downloads), icon = SonaIcons.Download, onClick = onOpenDownloads)
+                                    .takeIf { showsDownloadsButton },
                             ) + actions,
-                            // Sorting stays beside the field: a search narrows a tab, it does not reorder it.
+                            // Sorting stays in the list's header beneath: a search narrows a tab, it does not reorder it.
                             search = searchQuery?.let { query ->
                                 TopBarSearch(
                                     query = query,
@@ -276,7 +318,6 @@ fun LibraryPagerScreen(
                                         TopBarAction(label = stringResource(R.string.library_private_folder), icon = SonaIcons.LockOpen) {
                                             viewModel.openPrivateFolder(onOpened = openPrivateFolder)
                                         }.takeIf { revealsPrivateFolder },
-                                        sortTabAction,
                                     ),
                                     // The keyboard's search key, as the padlock: the secret code typed opens the folder.
                                     // Checked afresh, so a code searched for at once opens it before its padlock shows.
@@ -294,6 +335,7 @@ fun LibraryPagerScreen(
                         // The gap down to the tabs collapses with the shortcuts, so collapsed the tabs sit right
                         // under the bar.
                         LibraryShortcuts(
+                            lift = lift,
                             modifier = Modifier
                                 .collapsingHeader(shortcutsHeader)
                                 .collapsingHeaderDrag(
@@ -303,8 +345,10 @@ fun LibraryPagerScreen(
                                 .padding(
                                     start = SonaComponentStyle.ContentHorizontalPadding,
                                     end = SonaComponentStyle.ContentHorizontalPadding,
-                                    bottom = if (visibleTabs.size > 1) TabRowGap else 0.dp,
-                                ),
+                                    top = ShortcutsTopGap,
+                                    bottom = ShortcutsBottomGap,
+                                )
+                                .launchEntrance(LaunchOrder.SHORTCUTS, rise = LaunchRise),
                         )
 
                         if (visibleTabs.size > 1) {
@@ -331,11 +375,10 @@ fun LibraryPagerScreen(
                                         requestedPage = page
                                     }
                                 },
-                                modifier = Modifier.padding(
-                                    start = SonaComponentStyle.ContentHorizontalPadding,
-                                    end = SonaComponentStyle.ContentHorizontalPadding,
-                                    bottom = TabRowGap,
-                                ),
+                                modifier = Modifier
+                                    .padding(vertical = TabsVerticalPadding)
+                                    .launchEntrance(LaunchOrder.TABS, rise = LaunchRise),
+                                edgePadding = SonaComponentStyle.ContentHorizontalPadding,
                                 // Held and dragged, a tab takes another place - the first being where the library opens.
                                 onMoveTab = { from, to ->
                                     followedTab = FollowedTab(visibleTabs[pagerState.settledPage], visibleTabs)
@@ -343,6 +386,21 @@ fun LibraryPagerScreen(
                                 },
                             )
                         }
+
+                        // How much the tab being shown holds and how it is sorted - the one a tap or a swipe is going to,
+                        // from the moment it does. Its first scan shows here as it fills. It scrolls away with the list
+                        // once the shortcuts have collapsed.
+                        val headerTab = visibleTabs[pagerState.targetPage.coerceIn(visibleTabs.indices)]
+                        val headerContent by viewModel.contentOf(headerTab).collectAsStateWithLifecycle()
+                        LibraryListHeader(
+                            countLabel = headerContent.itemsOrNull?.size?.let { count -> pluralStringResource(headerTab.countPlural, count, count) },
+                            sort = viewModel.sort(headerTab),
+                            isFirstScan = isFirstScan,
+                            onSort = { sortingTab = headerTab },
+                            modifier = Modifier
+                                .collapsingHeaderTail(shortcutsHeader)
+                                .launchEntrance(LaunchOrder.TOOLS, rise = LaunchRise),
+                        )
                     }
 
                     CompositionLocalProvider(LocalLibraryShortcutsHeader provides shortcutsHeader) {
@@ -350,7 +408,9 @@ fun LibraryPagerScreen(
                         // composition and nothing else, the same reason all five can be built on the launch frame.
                         SonaTabPager(
                             state = pagerState,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .nestedScroll(quickPlayFollowsScroll),
                             key = { page -> visibleTabs[page].name },
                         ) { page ->
                             val tab = visibleTabs[page]
@@ -371,16 +431,9 @@ fun LibraryPagerScreen(
                 // library itself rather than its search. Stepping aside for the player, a fast scroll or
                 // the list's end is the FAB stack's, as every FAB's is. Read by the stack as it draws the
                 // button - see QuickPlayButton - so this screen does not recompose for any of it.
-                // Right above quick play: the way to downloading more, on the library itself rather than its search.
-                SonaSecondaryFloatingActionButton(
-                    icon = SonaIcons.Download,
-                    contentDescription = stringResource(R.string.library_downloads),
-                    visible = { showsDownloadsButton && searchQuery == null },
-                    onClick = onOpenDownloads,
-                )
                 QuickPlayButton(
                     quickPlay = { quickPlay },
-                    visible = { hasTracks && searchQuery == null },
+                    visible = { hasTracks && searchQuery == null && !isScrollingDown },
                     favoritesPlaylistId = viewModel.favoritesPlaylistId,
                     onPlay = viewModel::onQuickPlay,
                     onPlayFrom = viewModel::onQuickPlayFrom,
@@ -420,18 +473,42 @@ private fun excludeFolderActions(selection: SelectionState, onExclude: (folderPa
 }
 
 /** The room above and below the tab strip. */
-private val TabRowGap = 8.dp
+/** The gaps down the library's head: bar to shortcuts, shortcuts to the tabs. */
+private val ShortcutsTopGap = 8.dp
+private val ShortcutsBottomGap = 12.dp
+
+/** The room above and below the tabs. */
+private val TabsVerticalPadding = 8.dp
+
+/** How a tab's count is said - "588 tracks". */
+private val LibraryTab.countPlural: Int
+    get() = when (this) {
+        LibraryTab.TRACKS -> R.plurals.library_tracks
+        LibraryTab.VIDEOS -> R.plurals.library_videos
+        LibraryTab.ARTISTS -> R.plurals.library_artists
+        LibraryTab.ALBUMS -> R.plurals.library_albums
+        LibraryTab.GENRES -> R.plurals.library_genres
+        LibraryTab.FOLDERS -> R.plurals.library_folders
+    }
+
+/** The library's title: Sona's wordmark, heavier and a touch tighter than a screen's title. */
+private val WordmarkStyle = TextStyle(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.44).sp)
+
+/** The Sona mark before the library's title. */
+private val LibraryMarkSize = 28.dp
 
 /** The tab on screen as a tab was moved along the strip, and the order it was moved in - see [LibraryPagerScreen]. */
 private class FollowedTab(val tab: LibraryTab, val order: List<LibraryTab>)
 
 /**
- * The motion a tap gives the pager and the pill. They share one spec because they cover different
- * distances - the pager snaps a page before animating a long move, the pill glides the whole way -
- * and should still arrive together, so the pill never waits long over a pager that is still moving.
- * A tap on the chosen tab moves its list back to the top with the same motion.
+ * The motion a tap gives the pager, as stiff as the pill's expressive spring - see `pillMotion` - so the two arrive
+ * together though they cover different distances, without the pill's bounce. A tap on the chosen tab moves its list back
+ * to the top with the same motion.
  */
-private val TabMotion = spring<Float>()
+private val TabMotion = spring<Float>(stiffness = ExpressiveFastSpatialStiffness)
+
+/** Material 3 Expressive's fast spatial spring's stiffness - `MotionScheme.expressive().fastSpatialSpec()`. */
+private const val ExpressiveFastSpatialStiffness = 800f
 
 /**
  * Takes the list to its first row in one short glide, however far down it is.

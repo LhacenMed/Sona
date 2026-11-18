@@ -1,6 +1,22 @@
 package com.lhacenmed.sona.feature.library
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import com.lhacenmed.sona.core.designsystem.component.CoverArtDefaults
+import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.OverscrollEffect
@@ -35,7 +51,6 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -47,7 +62,6 @@ import com.lhacenmed.sona.core.common.permission.AppPermission
 import com.lhacenmed.sona.core.data.LibraryContent
 import com.lhacenmed.sona.core.data.itemsOrEmpty
 import com.lhacenmed.sona.core.data.search.SearchIndex
-import com.lhacenmed.sona.core.designsystem.component.CookieShape
 import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.designsystem.component.EmptyStateAction
 import com.lhacenmed.sona.core.designsystem.component.SonaEmptyState
@@ -62,6 +76,11 @@ import com.lhacenmed.sona.core.designsystem.component.section.rememberSectionLis
 import com.lhacenmed.sona.core.designsystem.component.section.sectionItemAnimation
 import com.lhacenmed.sona.core.designsystem.component.section.section
 import com.lhacenmed.sona.core.designsystem.component.section.withoutItemAnimation
+import com.lhacenmed.sona.core.designsystem.component.ListRowGap
+import com.lhacenmed.sona.core.designsystem.component.LocalLaunchEntrance
+import com.lhacenmed.sona.core.designsystem.component.LocalRowReveal
+import com.lhacenmed.sona.core.designsystem.component.revealedRow
+import com.lhacenmed.sona.core.designsystem.component.rowReveal
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.component.LocalDragHandle
 import com.lhacenmed.sona.core.designsystem.component.LocalDragSelection
@@ -72,8 +91,8 @@ import com.lhacenmed.sona.core.designsystem.component.TopBarSearch
 import com.lhacenmed.sona.core.designsystem.component.dragSelection
 import com.lhacenmed.sona.core.designsystem.component.rememberDragSelection
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
+import com.lhacenmed.sona.core.designsystem.component.sheet.optionsSheetAction
 import com.lhacenmed.sona.core.designsystem.component.sheet.sortAction
-import com.lhacenmed.sona.core.designsystem.component.shimmer
 import com.lhacenmed.sona.core.designsystem.component.swipe.LocalSwipeActions
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
@@ -85,8 +104,6 @@ import com.lhacenmed.sona.core.designsystem.component.DetailScaffold
 import com.lhacenmed.sona.core.designsystem.component.FavoriteToggle
 import com.lhacenmed.sona.core.designsystem.component.TopBarCollapse
 import com.lhacenmed.sona.core.designsystem.component.rememberDetailHeaderState
-import com.lhacenmed.sona.core.designsystem.theme.LocalIsRounded
-import com.lhacenmed.sona.core.designsystem.theme.SquareShape
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.feature.library.R
 import com.lhacenmed.sona.feature.library.operation.RemoveFromListDialog
@@ -98,8 +115,6 @@ import com.lhacenmed.sona.feature.library.options.OptionsSwipe
 import com.lhacenmed.sona.feature.library.options.OptionsTarget
 import com.lhacenmed.sona.feature.library.options.RemovableTrackList
 import com.lhacenmed.sona.feature.library.options.TrackOptionsContext
-import com.lhacenmed.sona.feature.library.options.actions
-import com.lhacenmed.sona.feature.library.options.disabledActions
 import com.lhacenmed.sona.feature.library.options.label
 import com.lhacenmed.sona.feature.library.options.rememberOptionsActions
 import com.lhacenmed.sona.feature.library.options.rememberOptionsSwipeActions
@@ -123,18 +138,18 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
  */
 
 /** The size of a loading list's cookie: Auxio's `size_fast_scroll_popup`. */
-private val LoadingCookieSize = 96.dp
 
 /**
  * The shell every library list screen renders inside. It keeps the screen's root layout shape
  * identical across all three states, so nothing reflows as data arrives.
  *
- * [LibraryContent.Loading] draws a placeholder rather than either an empty-library message (which
- * would be a lie) or blank space (which reads as a broken screen, and was the "empty for a second,
- * then everything appears at once" the library used to show on launch). The placeholder is centred
- * in the space the list will fill, and takes up none of its layout, so the real list simply replaces
- * it. [loadingIcon] is what the placeholder shows: the icon of what the list holds. [emptyAction] is
- * what an empty list offers to fill it, if anything.
+ * [LibraryContent.Loading] - and an empty library still being scanned for the first time - draws skeleton rows rather
+ * than either an empty-library message (which would be a lie) or blank space (which reads as a broken screen): rows of
+ * the real rows' shape where the real rows will be, so the list simply takes their place. [emptyAction] is what an empty
+ * list offers to fill it, if anything.
+ *
+ * Rows arrive one after another as they first show - see [RowReveal]: with the launch, and wherever they take the
+ * placeholders' place, which arrive so themselves. A list ready from its first frame, with no launch under way, shows as it is.
  */
 @Composable
 internal fun <T> LibraryListContent(
@@ -143,28 +158,32 @@ internal fun <T> LibraryListContent(
     isScanning: Boolean,
     emptyTitle: String,
     emptyMessage: String,
-    loadingIcon: ImageVector,
     modifier: Modifier = Modifier,
     emptyAction: EmptyStateAction? = null,
     body: @Composable (List<T>) -> Unit,
 ) {
+    val isLoading = content is LibraryContent.Loading ||
+        (content is LibraryContent.Ready && content.items.isEmpty() && isScanning && hasPermission)
+    val revealsRows = remember { isLoading } || LocalLaunchEntrance.current != null
+    val rowReveal = rowReveal(key = isLoading, reveals = revealsRows)
     Box(modifier = modifier.fillMaxSize()) {
-        when {
-            content is LibraryContent.Loading ->
-                LoadingListPlaceholder(icon = loadingIcon)
-            content is LibraryContent.Ready && content.items.isEmpty() -> {
-                val (title, message) = emptyLibraryStateContent(
-                    hasPermission = hasPermission,
-                    isScanning = isScanning,
-                    emptyTitle = emptyTitle,
-                    emptyMessage = emptyMessage,
-                )
-                // Without access to the device's files there is no library to show: the list offers it in its place.
-                val requestStorageAccess = rememberPermissionRequest(AppPermission.STORAGE)
-                val storageAccessAction = EmptyStateAction(stringResource(R.string.library_permission_allow), SonaIcons.Folder, requestStorageAccess)
-                SonaEmptyState(title = title, message = message, action = if (hasPermission) emptyAction else storageAccessAction)
+        CompositionLocalProvider(LocalRowReveal provides rowReveal) {
+            when {
+                isLoading -> SkeletonRows()
+                content is LibraryContent.Ready && content.items.isEmpty() -> {
+                    val (title, message) = emptyLibraryStateContent(
+                        hasPermission = hasPermission,
+                        isScanning = isScanning,
+                        emptyTitle = emptyTitle,
+                        emptyMessage = emptyMessage,
+                    )
+                    // Without access to the device's files there is no library to show: the list offers it in its place.
+                    val requestStorageAccess = rememberPermissionRequest(AppPermission.STORAGE)
+                    val storageAccessAction = EmptyStateAction(stringResource(R.string.library_permission_allow), SonaIcons.Folder, requestStorageAccess)
+                    SonaEmptyState(title = title, message = message, action = if (hasPermission) emptyAction else storageAccessAction)
+                }
+                content is LibraryContent.Ready -> body(content.items)
             }
-            content is LibraryContent.Ready -> body(content.items)
         }
     }
 }
@@ -207,7 +226,6 @@ internal fun <T> LibraryList(
     emptyTitle: String,
     emptyMessage: String,
     key: (T) -> Any,
-    loadingIcon: ImageVector,
     modifier: Modifier = Modifier,
     listState: LazyListState = rememberLazyListState(),
     onReorder: ((List<T>) -> Unit)? = null,
@@ -227,7 +245,6 @@ internal fun <T> LibraryList(
         isScanning = isScanning,
         emptyTitle = emptyTitle,
         emptyMessage = emptyMessage,
-        loadingIcon = loadingIcon,
         modifier = modifier,
     ) { items ->
         val groups = remember(items, headingOf) { headingOf?.let(items::groupBy)?.toList().orEmpty() }
@@ -295,17 +312,19 @@ internal fun <T> LibraryList(
                         modifier = Modifier
                             .fillMaxSize()
                             .dragSelection(dragSelection),
-                        contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+                        contentPadding = PaddingValues(top = ListTopGap, bottom = LocalBottomContentPadding.current),
                         overscrollEffect = overscrollEffect,
                     ) {
                         val rows: LazyListScope.(List<T>) -> Unit = { rowItems ->
-                            items(
+                            itemsIndexed(
                                 items = rowItems,
-                                key = key,
+                                key = { _, item -> key(item) },
                                 // Every row in these lists is the same composable shape, so telling Compose that
                                 // lets it reuse a scrolled-off row's slot table wholesale instead of rebuilding it.
-                                contentType = { LIST_ROW_CONTENT_TYPE },
-                            ) { item -> row(item) }
+                                contentType = { _, _ -> LIST_ROW_CONTENT_TYPE },
+                            ) { index, item ->
+                                Box(modifier = Modifier.revealedRow(index)) { row(item) }
+                            }
                         }
                         if (isSectioned) {
                             groups.forEachIndexed { index, (heading, rowItems) ->
@@ -369,6 +388,9 @@ private fun KeepAtTopWhenRowsChange(listState: LazyListState, rows: List<*>) {
 /** How close to an edge a drag starts scrolling the list: one row's height, as the queue uses. */
 private val ReorderAutoScrollThreshold = 72.dp
 
+/** With the first row's own half gap, the space between the section above a list and its first row: 8dp. */
+private val ListTopGap = 6.dp
+
 
 /**
  * A list whose rows can be dragged into a new order, on the same drag system as the player's queue.
@@ -391,7 +413,7 @@ private fun <T> ReorderableColumn(
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+        contentPadding = PaddingValues(top = ListTopGap, bottom = LocalBottomContentPadding.current),
         overscrollEffect = overscrollEffect,
     ) {
         reorderableRows(reorderableRows, key, row = row)
@@ -554,28 +576,49 @@ internal fun <T> LazyListScope.reorderableRows(
 private const val MOVING_ROWS_GAP_KEY = "moving-rows-gap"
 
 
+/** How many skeleton rows stand in for a list still being read, each fainter than the one above it. */
+private const val SkeletonRowCount = 5
+
+/** Each skeleton row's title and line, as wide as a real row's might be - varied, so they read as rows rather than a pattern. */
+private val SkeletonTitleWidths = listOf(148.dp, 120.dp, 164.dp, 132.dp, 140.dp)
+private val SkeletonLineWidths = listOf(96.dp, 84.dp, 108.dp, 72.dp, 90.dp)
+
+/** How long a skeleton takes to brighten, and to dim again. */
+private const val SkeletonPulseMillis = 1400
+
 /**
- * Auxio's empty-list cookie - the six-sided expressive shape with [icon] inside it - centred and
- * shimmering while the list loads.
- *
- * The loading window should normally be a frame or two (the library is already in memory by then), so
- * the cookie carries no message: text would only flash. On a genuinely slow first read, the shimmer
- * is what says the list is on its way.
+ * Rows of a track row's shape - its cover, its title and its line - standing where a list still being read will be, fading
+ * toward the bottom and pulsing slowly. They take the real rows' places, so nothing moves as the list arrives.
  */
 @Composable
-private fun LoadingListPlaceholder(
-    icon: ImageVector,
-    modifier: Modifier = Modifier,
-) {
-    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Box(
-            modifier = Modifier
-                .size(LoadingCookieSize)
-                .shimmer()
-                .background(MaterialTheme.colorScheme.surfaceVariant, if (LocalIsRounded.current) CookieShape else SquareShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun SkeletonRows() {
+    val pulse by rememberInfiniteTransition(label = "skeletonPulse").animateFloat(
+        initialValue = 0.55f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(SkeletonPulseMillis, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "skeletonPulse",
+    )
+    val tone = MaterialTheme.colorScheme.surfaceContainerHigh
+    // Spaced as the rows they stand in for, so nothing shifts as the real ones take their place.
+    Column(modifier = Modifier.fillMaxWidth().padding(top = ListTopGap).clearAndSetSemantics { }) {
+        repeat(SkeletonRowCount) { index ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .revealedRow(index)
+                    .padding(vertical = ListRowGap / 2)
+                    .height(64.dp)
+                    .padding(horizontal = SonaComponentStyle.ContentHorizontalPadding)
+                    .graphicsLayer { alpha = (1f - index * 0.2f).coerceAtLeast(0.12f) * pulse },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Box(modifier = Modifier.size(CoverArtDefaults.ListSize).background(tone, RoundedCornerShape(CoverArtDefaults.ListCornerRadius)))
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(modifier = Modifier.size(SkeletonTitleWidths[index], 12.dp).background(tone, RoundedCornerShape(6.dp)))
+                    Box(modifier = Modifier.size(SkeletonLineWidths[index], 10.dp).background(tone, RoundedCornerShape(5.dp)))
+                }
+            }
         }
     }
 }
@@ -660,12 +703,11 @@ internal fun TrackListDetail(
     var searchQuery by remember { mutableStateOf<String?>(null) }
     var isSortSheetOpen by remember { mutableStateOf(false) }
     var optionsTarget by remember { mutableStateOf<OptionsTarget?>(null) }
+    var isCollectionOptionsOpen by remember { mutableStateOf(false) }
     // The selected tracks waiting on the user to confirm removing them, in the order they were selected.
     var removingTracks by remember { mutableStateOf<List<Track>>(emptyList()) }
     val sort = viewModel.sort
     val favorites by collectionActions.viewModel.favorites.collectAsStateWithLifecycle()
-    val hasPrivateFolder by collectionActions.viewModel.hasPrivateFolder.collectAsStateWithLifecycle()
-    val uncountedParents by collectionActions.viewModel.uncountedParents.collectAsStateWithLifecycle()
     // Known from the screen itself rather than its collection, so the heart takes its place on the first frame.
     val favoriteItems = remember(viewModel) { favoriteItemsOf(viewModel.playbackParent) }
     val hasTracks = tracks.itemsOrEmpty.isNotEmpty()
@@ -797,16 +839,8 @@ internal fun TrackListDetail(
                                     },
                                 )
                             }
-                            collection?.let { target ->
-                                val disabledActions = target.disabledActions()
-                                target.actions(hasPrivateFolder, uncountedParents).forEach { action ->
-                                    add(
-                                        TopBarAction(label = action.label, icon = action.icon, enabled = action !in disabledActions) {
-                                            collectionActions.perform(target, action)
-                                        },
-                                    )
-                                }
-                            }
+                            // The collection's options in its sheet, as its row offers them - never a menu of its own.
+                            if (collection != null) add(optionsSheetAction { isCollectionOptionsOpen = true })
                         },
                         search = searchQuery?.let { query ->
                             TopBarSearch(
@@ -1008,6 +1042,9 @@ internal fun TrackListDetail(
     }
 
     // Nothing is left here to show once the collection this screen is showing has been deleted.
+    if (isCollectionOptionsOpen && collection != null) {
+        OptionsSheet(target = collection, onDismissRequest = { isCollectionOptionsOpen = false }, onCollectionDeleted = onBack)
+    }
     OptionsFollowUps(actions = collectionActions, onCollectionDeleted = onBack)
 
     if (removableList != null && removingTracks.isNotEmpty()) {

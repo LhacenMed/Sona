@@ -44,7 +44,6 @@ fun VideosScreen(
         emptyTitle = stringResource(R.string.library_no_videos_found),
         emptyMessage = searchEmptyMessage(searchQuery),
         key = { it.id },
-        loadingIcon = SonaIcons.Video,
         sectionOf = videoSections,
         isCurrent = { playback.marks(it) },
         isPlaying = { playback.isPlaying },

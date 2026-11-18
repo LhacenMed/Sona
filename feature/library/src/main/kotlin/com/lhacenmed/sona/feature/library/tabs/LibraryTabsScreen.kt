@@ -5,26 +5,16 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.lhacenmed.sona.core.designsystem.R as DesignR
+import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
-import com.lhacenmed.sona.core.designsystem.component.LocalDragHandle
-import com.lhacenmed.sona.core.designsystem.component.SonaSettingsRow
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.fastscroll.FastScroller
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.library.R
-import com.lhacenmed.sona.feature.library.rememberReorderableRows
-import com.lhacenmed.sona.feature.library.reorderableRows
-import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
-import com.lhacenmed.sona.core.designsystem.component.SonaSwitch
 
 /**
  * The library's tabs - which are shown, and in what order, dragged by their handles. The first shown is the one the
@@ -35,12 +25,8 @@ data object LibraryTabsScreen : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.current
-        val viewModel: LibraryTabsViewModel = hiltViewModel()
-        val tabs by viewModel.tabs.collectAsStateWithLifecycle()
-        val visibleCount = tabs.count { it.isVisible }
-        val openedAtLaunch = tabs.firstOrNull { it.isVisible }?.tab
         val listState = rememberLazyListState()
-        val rows = rememberReorderableRows(tabs, key = { it.tab.name }, listState, onReorder = viewModel::arrange)
+        val editor = rememberLibraryTabEditor(listState)
 
         Column(modifier = Modifier.fillMaxSize()) {
             SonaTopAppBar(title = stringResource(R.string.library_tabs_title), onNavigateBack = navigator::back)
@@ -49,31 +35,9 @@ data object LibraryTabsScreen : Screen {
                     state = listState,
                     overscrollEffect = overscrollEffect,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+                    contentPadding = PaddingValues(top = 8.dp, bottom = LocalBottomContentPadding.current),
                 ) {
-                    reorderableRows(rows, key = { it.tab.name }) { (tab, isVisible) ->
-                        // Disabled rather than allowed-then-ignored, so the last visible tab's switch visibly can't be turned off.
-                        val canToggle = !(isVisible && visibleCount <= 1)
-                        SonaSettingsRow(
-                            title = tab.label,
-                            summary = stringResource(R.string.library_tabs_opened_at_launch).takeIf { tab == openedAtLaunch },
-                            onClick = { viewModel.setTabVisible(tab, !isVisible) }.takeIf { canToggle },
-                            leading = {
-                                Icon(
-                                    imageVector = SonaIcons.DragHandle,
-                                    contentDescription = stringResource(DesignR.string.list_row_reorder),
-                                    modifier = LocalDragHandle.current ?: Modifier,
-                                )
-                            },
-                            trailing = {
-                                SonaSwitch(
-                                    checked = isVisible,
-                                    onCheckedChange = { checked -> viewModel.setTabVisible(tab, checked) },
-                                    enabled = canToggle,
-                                )
-                            },
-                        )
-                    }
+                    libraryTabRows(editor)
                 }
             }
         }

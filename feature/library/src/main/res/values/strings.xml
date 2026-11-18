@@ -51,6 +51,14 @@
         <item quantity="one">%d video</item>
         <item quantity="other">%d videos</item>
     </plurals>
+    <plurals name="library_genres">
+        <item quantity="one">%d genre</item>
+        <item quantity="other">%d genres</item>
+    </plurals>
+    <plurals name="library_folders">
+        <item quantity="one">%d folder</item>
+        <item quantity="other">%d folders</item>
+    </plurals>
     <!-- An options sheet - see OptionsSheet and OptionsActions -->
     <string name="options_type_track">Track</string>
     <string name="options_type_video">Video</string>

@@ -47,6 +47,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
@@ -236,6 +237,30 @@ class LibraryViewModel @Inject constructor(
     }
 
     val isScanning: StateFlow<Boolean> = mediaScanner.isScanning
+
+    /** What [tab] lists, as it is shown - searched, where a search is under way. */
+    fun contentOf(tab: LibraryTab): StateFlow<LibraryContent<*>> = when (tab) {
+        LibraryTab.TRACKS -> tracks
+        LibraryTab.VIDEOS -> videos
+        LibraryTab.ARTISTS -> artists
+        LibraryTab.ALBUMS -> albums
+        LibraryTab.GENRES -> genres
+        LibraryTab.FOLDERS -> folders
+    }
+
+    /**
+     * Whether the library is being read for the first time - a scan under way that began over an empty library. A returning
+     * user's rescans run quietly under the library they already have. Whether it is empty is known only once it has been
+     * read, so a rescan starting as the app opens, before the library is read, is not taken for a first one.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val isFirstScan: StateFlow<Boolean> = mediaScanner.isScanning
+        .mapLatest { scanning ->
+            scanning &&
+                repository.tracks.first { it !is LibraryContent.Loading }.itemsOrEmpty.isEmpty() &&
+                repository.videos.first { it !is LibraryContent.Loading }.itemsOrEmpty.isEmpty()
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     /** Whether pulling a tab's list down past its top rescans the library - see [rescanLibrary]. */
     val isPullToRefreshEnabled: StateFlow<Boolean> = librarySettings.pullToRefreshEnabled.flow

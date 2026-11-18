@@ -40,7 +40,6 @@ fun ArtistsScreen(
         emptyTitle = stringResource(R.string.library_no_artists_found),
         emptyMessage = searchEmptyMessage(searchQuery),
         key = { it.id },
-        loadingIcon = SonaIcons.Artist,
         sectionOf = artistSections,
         isCurrent = { playback.marks(it) },
         isPlaying = { playback.isPlaying },

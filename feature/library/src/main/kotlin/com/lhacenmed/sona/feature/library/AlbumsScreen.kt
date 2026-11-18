@@ -40,7 +40,6 @@ fun AlbumsScreen(
         emptyTitle = stringResource(R.string.library_no_albums_found),
         emptyMessage = searchEmptyMessage(searchQuery),
         key = { it.id },
-        loadingIcon = SonaIcons.Album,
         sectionOf = albumSections,
         isCurrent = { playback.marks(it) },
         isPlaying = { playback.isPlaying },

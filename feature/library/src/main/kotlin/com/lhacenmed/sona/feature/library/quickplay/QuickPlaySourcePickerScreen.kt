@@ -73,7 +73,6 @@ data class QuickPlaySourcePickerScreen(val kind: QuickPlaySourceKind) : Screen {
                         content = playlists.filterItems { it.trackCount > 0 }.searchedFor(searchQuery) { listOf(it.name) },
                         emptyTitle = stringResource(R.string.playlists_none_found),
                         searchQuery = searchQuery,
-                        loadingIcon = kind.icon,
                         key = { it.id },
                     ) { playlist ->
                         val parent = PlaybackParent.Playlist(playlist.id)
@@ -95,7 +94,6 @@ data class QuickPlaySourcePickerScreen(val kind: QuickPlaySourceKind) : Screen {
                         content = artists.filterItems { it.trackCount > 0 }.searchedFor(searchQuery) { listOf(it.name) },
                         emptyTitle = stringResource(R.string.library_no_artists_found),
                         searchQuery = searchQuery,
-                        loadingIcon = kind.icon,
                         key = { it.id },
                         sectionOf = sections.whileNotSearched(searchQuery),
                     ) { artist ->
@@ -118,7 +116,6 @@ data class QuickPlaySourcePickerScreen(val kind: QuickPlaySourceKind) : Screen {
                         content = albums.searchedFor(searchQuery) { listOf(it.title, it.artistName) },
                         emptyTitle = stringResource(R.string.library_no_albums_found),
                         searchQuery = searchQuery,
-                        loadingIcon = kind.icon,
                         key = { it.id },
                         sectionOf = sections.whileNotSearched(searchQuery),
                     ) { album ->
@@ -141,7 +138,6 @@ data class QuickPlaySourcePickerScreen(val kind: QuickPlaySourceKind) : Screen {
                         content = genres.searchedFor(searchQuery) { listOf(it.name) },
                         emptyTitle = stringResource(R.string.library_no_genres_found),
                         searchQuery = searchQuery,
-                        loadingIcon = kind.icon,
                         key = { it.id },
                         sectionOf = sections.whileNotSearched(searchQuery),
                     ) { genre ->
@@ -164,7 +160,6 @@ data class QuickPlaySourcePickerScreen(val kind: QuickPlaySourceKind) : Screen {
                         content = folders.searchedFor(searchQuery) { listOf(it.name) },
                         emptyTitle = stringResource(R.string.library_no_folders_found),
                         searchQuery = searchQuery,
-                        loadingIcon = kind.icon,
                         key = { it.path },
                         sectionOf = sections.whileNotSearched(searchQuery),
                     ) { folder ->
@@ -204,7 +199,6 @@ private fun <T> PickerList(
     content: LibraryContent<T>,
     emptyTitle: String,
     searchQuery: String?,
-    loadingIcon: ImageVector,
     key: (T) -> Any,
     sectionOf: ((T) -> String?)? = null,
     row: @Composable (T) -> Unit,
@@ -217,7 +211,6 @@ private fun <T> PickerList(
         emptyTitle = emptyTitle,
         emptyMessage = searchEmptyMessage(searchQuery),
         key = key,
-        loadingIcon = loadingIcon,
         modifier = Modifier.fillMaxSize(),
         sectionOf = sectionOf,
         row = row,
