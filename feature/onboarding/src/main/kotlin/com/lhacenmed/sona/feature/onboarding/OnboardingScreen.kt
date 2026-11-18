@@ -4,6 +4,23 @@ package com.lhacenmed.sona.feature.onboarding
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.runtime.State
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.Measurable
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.IntOffset
+import com.lhacenmed.sona.core.designsystem.motion.FadeInMillis
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.math.roundToInt
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -55,8 +72,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.pluralStringResource
@@ -88,6 +103,9 @@ import kotlinx.coroutines.delay
 
 /** How long the last step takes to settle - its shape turned and morphed, its words arrived - before the library is built. */
 private const val EndSettleMillis = 900L
+
+/** How long leaving waits at most for the companion to come to rest as the mark - for a frame clock that never runs. */
+private const val MaxBecomeMarkMillis = 2_000L
 
 /** The bar at the top: back, the progress, skip. */
 private val BarHeight = 64.dp
@@ -127,7 +145,7 @@ fun OnboardingScreen(onEndInSight: () -> Unit, onFinished: (markBounds: Rect, co
     val progress by viewModel.progress.collectAsStateWithLifecycle()
     val step = progress.step
     var isLeaving by rememberSaveable { mutableStateOf(false) }
-    var companionBounds by remember { mutableStateOf(Rect.Zero) }
+    var isMark by remember { mutableStateOf(false) }
     // The colours the companion ends in: Sona's mark's own.
     val cookieColor = MaterialTheme.colorScheme.primaryContainer
     val noteColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -141,14 +159,6 @@ fun OnboardingScreen(onEndInSight: () -> Unit, onFinished: (markBounds: Rect, co
         if (step != OnboardingStep.DONE) return@LaunchedEffect
         delay(EndSettleMillis)
         onEndInSight()
-    }
-
-    LaunchedEffect(isLeaving) {
-        if (!isLeaving) return@LaunchedEffect
-        onEndInSight()
-        viewModel.finish()
-        delay(CompanionMorphMillis.toLong())
-        onFinished(companionBounds, cookieColor, noteColor)
     }
 
     // Everything but the companion leaves as the setup ends, the shape staying behind to become the mark.
@@ -180,9 +190,26 @@ fun OnboardingScreen(onEndInSight: () -> Unit, onFinished: (markBounds: Rect, co
                 val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
                 val width = maxWidth
                 val window = LocalWindowInfo.current.containerSize
+                val density = LocalDensity.current
+
+                // Handed over once the companion is the mark at rest - told by it, not guessed from the clock - and from
+                // where it then is for certain: the hero's place, whole.
+                LaunchedEffect(isLeaving) {
+                    if (!isLeaving) return@LaunchedEffect
+                    onEndInSight()
+                    viewModel.finish()
+                    withTimeoutOrNull(MaxBecomeMarkMillis) { snapshotFlow { isMark }.first { it } }
+                    val markBounds = with(density) {
+                        val side = CompanionSize.toPx()
+                        Rect(Offset((width.toPx() - side) / 2f, heroTop.toPx()), Size(side, side))
+                    }
+                    onFinished(markBounds, cookieColor, noteColor)
+                }
+
                 OnboardingCompanion(
                     step = step,
                     isLeaving = isLeaving,
+                    onBecameMark = { isMark = true },
                     modifier = Modifier
                         .graphicsLayer {
                             transformOrigin = TransformOrigin(0f, 0f)
@@ -200,8 +227,7 @@ fun OnboardingScreen(onEndInSight: () -> Unit, onFinished: (markBounds: Rect, co
                             val flightScale = if (from == null) scale else lerp(from.width / CompanionSize.toPx(), scale, flown)
                             scaleX = flightScale
                             scaleY = flightScale
-                        }
-                        .onGloballyPositioned { companionBounds = it.boundsInRoot() },
+                        },
                 )
 
                 Box(modifier = Modifier.fillMaxSize().graphicsLayer { alpha = contentAlpha }) {
@@ -227,7 +253,8 @@ fun OnboardingScreen(onEndInSight: () -> Unit, onFinished: (markBounds: Rect, co
                         if (shown.isHero) {
                             HeroText(
                                 step = shown,
-                                trackCount = viewModel.trackCount.collectAsStateWithLifecycle().value,
+                                songCount = viewModel.songCount.collectAsStateWithLifecycle().value,
+                                videoCount = viewModel.videoCount.collectAsStateWithLifecycle().value,
                                 arrivals = arrivals,
                                 modifier = Modifier.padding(top = heroTop + CompanionSize + 36.dp),
                             )
@@ -349,9 +376,21 @@ private fun OnboardingBar(
     }
 }
 
+/** What is ready as the setup ends - "212 songs are ready", or "212 songs and 64 videos are ready" - then where to change it all. */
+@Composable
+private fun doneMessage(songCount: Int, videoCount: Int): String {
+    val songs = pluralStringResource(R.plurals.onboarding_songs, songCount, songCount)
+    val ready = if (videoCount == 0) {
+        pluralStringResource(R.plurals.onboarding_done_ready, songCount, songs)
+    } else {
+        stringResource(R.string.onboarding_done_ready_both, songs, pluralStringResource(R.plurals.onboarding_videos_count, videoCount, videoCount))
+    }
+    return ready + " " + stringResource(R.string.onboarding_done_change_later)
+}
+
 /** The first and the last step's words, centred under the companion. */
 @Composable
-private fun HeroText(step: OnboardingStep, trackCount: Int, arrivals: StepArrivals, modifier: Modifier = Modifier) {
+private fun HeroText(step: OnboardingStep, songCount: Int, videoCount: Int, arrivals: StepArrivals, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier.fillMaxWidth().padding(horizontal = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -359,7 +398,7 @@ private fun HeroText(step: OnboardingStep, trackCount: Int, arrivals: StepArriva
     ) {
         val (title, message) = when (step) {
             OnboardingStep.DONE -> stringResource(R.string.onboarding_done_title) to
-                pluralStringResource(R.plurals.onboarding_done_message, trackCount, trackCount)
+                doneMessage(songCount, videoCount)
             else -> stringResource(R.string.onboarding_welcome_title) to stringResource(R.string.onboarding_welcome_message)
         }
         with(arrivals) {
@@ -375,77 +414,215 @@ private fun HeroText(step: OnboardingStep, trackCount: Int, arrivals: StepArriva
     }
 }
 
-/** What a step asks the user to do next, pinned at its foot: one button, or two where there is a real choice. */
+/** One of a step's buttons: what it says, does, and whether it can be pressed yet. */
+private class StepAction(val label: String, val onClick: () -> Unit, val isEnabled: Boolean = true)
+
+/**
+ * How a step's buttons stand at its foot: the main one alone, the other alone, the two side by side, or - on the first
+ * step - the main one above the other.
+ */
+private enum class ActionsArrangement { PRIMARY, SECONDARY, SIDE_BY_SIDE, STACKED }
+
+/**
+ * What a step asks the user to do next, pinned at its foot: one button, or two where there is a real choice. The same two
+ * buttons all the way through - never made again - so from one step to the next each moves, grows or shrinks to its new
+ * place, takes its new words, and comes or goes where the step has one button fewer or more, rather than being swapped.
+ */
 @Composable
 private fun OnboardingActions(step: OnboardingStep, viewModel: OnboardingViewModel, onOpenLibrary: () -> Unit, modifier: Modifier = Modifier) {
     val restore by viewModel.restore.collectAsStateWithLifecycle()
+    val connectDrive = rememberDriveConnection(viewModel)
+    var primary: StepAction? = null
+    var secondary: StepAction? = null
     when (step) {
-        OnboardingStep.WELCOME -> Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            PrimaryButton(stringResource(R.string.onboarding_get_started), onClick = viewModel::getStarted)
-            TextButton(
-                onClick = viewModel::startRestore,
-                shapes = buttonPressShapes(),
-                modifier = Modifier.fillMaxWidth().height(ButtonHeight),
-            ) { Text(stringResource(R.string.onboarding_restore_from_backup), style = MaterialTheme.typography.titleMedium) }
+        OnboardingStep.WELCOME -> {
+            primary = StepAction(stringResource(R.string.onboarding_get_started), viewModel::getStarted)
+            secondary = StepAction(stringResource(R.string.onboarding_restore_from_backup), viewModel::startRestore)
         }
-        OnboardingStep.UPDATES -> Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SecondaryButton(stringResource(R.string.onboarding_not_now), onClick = { viewModel.chooseAutoUpdate(false) }, modifier = Modifier.weight(1f))
-            PrimaryButton(stringResource(R.string.onboarding_turn_on), onClick = { viewModel.chooseAutoUpdate(true) }, modifier = Modifier.weight(1f))
+        OnboardingStep.UPDATES -> {
+            secondary = StepAction(stringResource(R.string.onboarding_not_now), { viewModel.chooseAutoUpdate(false) })
+            primary = StepAction(stringResource(R.string.onboarding_turn_on), { viewModel.chooseAutoUpdate(true) })
         }
-        OnboardingStep.RESTORE -> when (restore.stage) {
-            // Nothing chosen yet: the only way on is the setup a new user goes through.
-            RestoreStage.SOURCE, RestoreStage.NO_BACKUPS ->
-                SecondaryButton(stringResource(R.string.onboarding_restore_start_fresh), onClick = viewModel::startFresh, modifier = modifier)
-            RestoreStage.RESTORED -> PrimaryButton(stringResource(R.string.onboarding_continue), onClick = viewModel::finishRestore, modifier = modifier)
+        OnboardingStep.RESTORE -> when {
+            // Nothing to restore yet: the only way on is the setup a new user goes through.
+            restore.stage == RestoreStage.SOURCE || restore is RestoreState.NoBackups ->
+                secondary = StepAction(stringResource(R.string.onboarding_restore_start_fresh), viewModel::startFresh)
+            restore.stage == RestoreStage.RESTORED -> primary = StepAction(stringResource(R.string.onboarding_continue), viewModel::finishRestore)
+            // Still looking: Restore waits for a backup to be found.
+            restore is RestoreState.Searching -> primary = StepAction(stringResource(R.string.onboarding_restore), {}, isEnabled = false)
             else -> {
                 val chosen = restore as? RestoreState.Chosen
                 val status = chosen?.status
-                val connectDrive = rememberDriveConnection(viewModel)
-                // A restore stopped for want of Drive's access carries on once the account is connected again.
-                if (status == RestoreStatus.FAILED && chosen.failure == BackupFailure.DRIVE_ACCESS_LOST) {
-                    PrimaryButton(
-                        stringResource(R.string.onboarding_restore_connect_drive),
-                        onClick = { connectDrive(DrivePurpose.CARRY_ON_RESTORE) },
-                        modifier = modifier,
+                primary = if (status == RestoreStatus.FAILED && chosen.failure == BackupFailure.DRIVE_ACCESS_LOST) {
+                    // A restore stopped for want of Drive's access carries on once the account is connected again.
+                    StepAction(stringResource(R.string.onboarding_restore_connect_drive), { connectDrive(DrivePurpose.CARRY_ON_RESTORE) })
+                } else {
+                    StepAction(
+                        label = stringResource(
+                            when (status) {
+                                RestoreStatus.RESTORING -> R.string.onboarding_restoring
+                                RestoreStatus.FAILED -> R.string.onboarding_try_again
+                                else -> R.string.onboarding_restore
+                            },
+                        ),
+                        onClick = viewModel::restore,
+                        isEnabled = (status == RestoreStatus.READY && chosen.choosesAnything) || status == RestoreStatus.FAILED,
                     )
-                    return
                 }
-                PrimaryButton(
-                    label = stringResource(
-                        when (status) {
-                            RestoreStatus.RESTORING -> R.string.onboarding_restoring
-                            RestoreStatus.FAILED -> R.string.onboarding_try_again
-                            else -> R.string.onboarding_restore
-                        },
-                    ),
-                    onClick = viewModel::restore,
-                    enabled = status == RestoreStatus.READY || status == RestoreStatus.FAILED,
-                    modifier = modifier,
-                )
             }
         }
-        OnboardingStep.DONE -> PrimaryButton(stringResource(R.string.onboarding_open_library), onClick = onOpenLibrary, modifier = modifier)
-        else -> PrimaryButton(stringResource(R.string.onboarding_continue), onClick = viewModel::next, modifier = modifier)
+        OnboardingStep.DONE -> primary = StepAction(stringResource(R.string.onboarding_open_library), onOpenLibrary)
+        else -> primary = StepAction(stringResource(R.string.onboarding_continue), viewModel::next)
+    }
+    val arrangement = when {
+        primary == null -> ActionsArrangement.SECONDARY
+        secondary == null -> ActionsArrangement.PRIMARY
+        step == OnboardingStep.WELCOME -> ActionsArrangement.STACKED
+        else -> ActionsArrangement.SIDE_BY_SIDE
+    }
+    // A button going keeps what it last said as it fades.
+    val last = remember { arrayOfNulls<StepAction>(2) }
+    primary?.let { last[0] = it }
+    secondary?.let { last[1] = it }
+
+    ActionsLayout(
+        arrangement = arrangement,
+        primary = { isShown -> last[0]?.let { PrimaryButton(it, isShown) } },
+        secondary = { isShown -> last[1]?.let { SecondaryButton(it, isShown, isOutlined = step != OnboardingStep.WELCOME) } },
+        modifier = modifier,
+    )
+}
+
+/** Where one of the buttons stands: its sides, in halves of the row from its start and from its end, and its row from the foot. */
+private class ActionPlace(val start: Float, val end: Float, val row: Float, val isShown: Boolean)
+
+private val FullWidth = ActionPlace(start = 0f, end = 0f, row = 0f, isShown = true)
+
+private fun ActionsArrangement.primaryPlace(): ActionPlace = when (this) {
+    ActionsArrangement.PRIMARY -> FullWidth
+    // Gone into the other's place, so it leaves where the other stays.
+    ActionsArrangement.SECONDARY -> ActionPlace(0f, 0f, 0f, isShown = false)
+    ActionsArrangement.SIDE_BY_SIDE -> ActionPlace(start = 1f, end = 0f, row = 0f, isShown = true)
+    ActionsArrangement.STACKED -> ActionPlace(0f, 0f, row = 1f, isShown = true)
+}
+
+private fun ActionsArrangement.secondaryPlace(): ActionPlace = when (this) {
+    // Folded to nothing at the start side, so it comes out from there - growing as the main one makes room, never over it.
+    ActionsArrangement.PRIMARY -> ActionPlace(start = 0f, end = 2f, row = 0f, isShown = false)
+    ActionsArrangement.SECONDARY, ActionsArrangement.STACKED -> FullWidth
+    ActionsArrangement.SIDE_BY_SIDE -> ActionPlace(start = 0f, end = 1f, row = 0f, isShown = true)
+}
+
+/** How long the buttons take to move to their places, and to come or go. */
+private const val ActionsMillis = 420
+
+/** The room between the buttons side by side, and one above the other. */
+private val ActionsGap = 8.dp
+private val ActionsRowGap = 4.dp
+
+/**
+ * The two buttons, each in its place for [arrangement] - moving, growing and shrinking between places as it changes, in
+ * the layout's own pass, so nothing is composed again for it. Always two rows tall, the buttons standing at its foot, so
+ * its own place never moves; a button not shown is faded out where the other stands and beneath it, out of touch's way.
+ */
+@Composable
+private fun ActionsLayout(
+    arrangement: ActionsArrangement,
+    primary: @Composable (isShown: Boolean) -> Unit,
+    secondary: @Composable (isShown: Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val primaryPlace = arrangement.primaryPlace()
+    val secondaryPlace = arrangement.secondaryPlace()
+    val primaryStart = animatePlace(primaryPlace.start, "primaryStart")
+    val primaryEnd = animatePlace(primaryPlace.end, "primaryEnd")
+    val primaryRow = animatePlace(primaryPlace.row, "primaryRow")
+    val secondaryStart = animatePlace(secondaryPlace.start, "secondaryStart")
+    val secondaryEnd = animatePlace(secondaryPlace.end, "secondaryEnd")
+    val secondaryRow = animatePlace(secondaryPlace.row, "secondaryRow")
+
+    Layout(
+        contents = listOf({ primary(primaryPlace.isShown) }, { secondary(secondaryPlace.isShown) }),
+        modifier = modifier.fillMaxWidth().height(ButtonHeight * 2 + ActionsRowGap),
+    ) { (primaryMeasurables, secondaryMeasurables), constraints ->
+        val width = constraints.maxWidth
+        val height = constraints.maxHeight
+        val half = (width + ActionsGap.toPx()) / 2f
+        val rowStep = (ButtonHeight + ActionsRowGap).toPx()
+        val buttonHeight = ButtonHeight.roundToPx()
+
+        fun placeOf(measurables: List<Measurable>, start: State<Float>, end: State<Float>, row: State<Float>) = measurables.map {
+            val left = start.value * half
+            val right = width - end.value * half
+            it.measure(Constraints.fixed((right - left).roundToInt().coerceAtLeast(0), buttonHeight)) to
+                IntOffset(left.roundToInt(), (height - buttonHeight - row.value * rowStep).roundToInt())
+        }
+        val primaries = placeOf(primaryMeasurables, primaryStart, primaryEnd, primaryRow)
+        val secondaries = placeOf(secondaryMeasurables, secondaryStart, secondaryEnd, secondaryRow)
+        layout(width, height) {
+            // The one shown above the one going, so the one going never takes a touch.
+            primaries.forEach { (placeable, at) -> placeable.placeRelative(at, zIndex = if (primaryPlace.isShown) 1f else 0f) }
+            secondaries.forEach { (placeable, at) -> placeable.placeRelative(at, zIndex = if (secondaryPlace.isShown) 1f else 0f) }
+        }
     }
 }
 
-/** The way on that is not the step's main one: outlined, in the text's colour. */
 @Composable
-private fun SecondaryButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    OutlinedButton(
-        onClick = onClick,
-        shapes = buttonPressShapes(),
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
-        modifier = modifier.fillMaxWidth().height(ButtonHeight),
-    ) { Text(label, style = MaterialTheme.typography.titleMedium) }
-}
+private fun animatePlace(target: Float, label: String): State<Float> =
+    animateFloatAsState(target, tween(ActionsMillis, easing = EmphasizedDecelerate), label = label)
+
+/**
+ * A button fading in as it comes and out as it goes - out of touch and of what is read aloud meanwhile - its words changing
+ * in a short cross-fade.
+ */
+private fun Modifier.actionShown(isShown: Boolean, alpha: State<Float>): Modifier =
+    graphicsLayer { this.alpha = alpha.value }.then(if (isShown) Modifier else Modifier.clearAndSetSemantics {})
 
 @Composable
-private fun PrimaryButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+private fun shownAlpha(isShown: Boolean): State<Float> =
+    animateFloatAsState(if (isShown) 1f else 0f, tween(if (isShown) ActionsMillis else FadeOutMillis), label = "actionShown")
+
+@Composable
+private fun ActionLabel(label: String) {
+    AnimatedContent(
+        targetState = label,
+        transitionSpec = { fadeIn(tween(FadeInMillis, delayMillis = FadeOutMillis)) togetherWith fadeOut(tween(FadeOutMillis)) using null },
+        label = "actionLabel",
+    ) { Text(it, style = MaterialTheme.typography.titleMedium, maxLines = 1) }
+}
+
+/** The step's main way on, filled. */
+@Composable
+private fun PrimaryButton(action: StepAction, isShown: Boolean) {
+    val alpha = shownAlpha(isShown)
     Button(
-        onClick = onClick,
-        enabled = enabled,
+        onClick = { if (isShown) action.onClick() },
+        enabled = action.isEnabled,
         shapes = buttonPressShapes(),
-        modifier = modifier.fillMaxWidth().height(ButtonHeight),
-    ) { Text(label, style = MaterialTheme.typography.titleMedium) }
+        modifier = Modifier.actionShown(isShown, alpha),
+    ) { ActionLabel(action.label) }
+}
+
+/**
+ * The way on that is not the step's main one: outlined, in the text's colour - or, beneath the first step's main one, a
+ * plain text button in the accent's; its outline and colour turning from one to the other.
+ */
+@Composable
+private fun SecondaryButton(action: StepAction, isShown: Boolean, isOutlined: Boolean) {
+    val alpha = shownAlpha(isShown)
+    val outline = (ButtonDefaults.outlinedButtonBorder(enabled = true).brush as? SolidColor)?.value ?: MaterialTheme.colorScheme.outlineVariant
+    val border by animateColorAsState(if (isOutlined) outline else outline.copy(alpha = 0f), tween(ActionsMillis), label = "actionOutline")
+    val content by animateColorAsState(
+        if (isOutlined) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary,
+        tween(ActionsMillis),
+        label = "actionContent",
+    )
+    OutlinedButton(
+        onClick = { if (isShown) action.onClick() },
+        enabled = action.isEnabled,
+        shapes = buttonPressShapes(),
+        border = BorderStroke(1.dp, border),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = content),
+        modifier = Modifier.actionShown(isShown, alpha),
+    ) { ActionLabel(action.label) }
 }

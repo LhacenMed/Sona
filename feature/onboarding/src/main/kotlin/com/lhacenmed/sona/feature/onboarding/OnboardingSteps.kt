@@ -5,24 +5,64 @@ package com.lhacenmed.sona.feature.onboarding
 import android.app.Activity
 import android.content.Context
 import android.os.Build
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.AnimatedVisibilityScope
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.runtime.Stable
-import com.lhacenmed.sona.core.designsystem.component.SonaIconButton
 import com.lhacenmed.sona.core.downloader.RuntimeState
 import android.text.format.DateUtils
 import android.text.format.Formatter
 import androidx.activity.result.IntentSenderRequest
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.foundation.selection.triStateToggleable
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
+import androidx.compose.foundation.clickable
+import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.annotation.StringRes
+import android.os.Environment
+import android.os.StatFs
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.TriStateCheckbox
+import androidx.compose.material3.VerticalDivider
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.fromHtml
+import androidx.compose.ui.text.withStyle
+import com.lhacenmed.sona.core.common.format.formatDuration
+import com.lhacenmed.sona.core.designsystem.component.sheet.SonaColumnBottomSheet
+import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.backup.RestorePart
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -103,6 +143,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -121,6 +162,7 @@ import com.lhacenmed.sona.core.designsystem.motion.EmphasizedDecelerate
 import com.lhacenmed.sona.core.designsystem.motion.FadeInMillis
 import com.lhacenmed.sona.core.designsystem.motion.StaggerMillis
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
+import com.lhacenmed.sona.core.designsystem.theme.ContainerEdge
 import com.lhacenmed.sona.core.designsystem.theme.palette.ThemePalettes
 import com.lhacenmed.sona.core.model.DEFAULT_DOWNLOAD_FOLDER
 import com.lhacenmed.sona.core.model.ThemeMode
@@ -149,6 +191,12 @@ internal val MessageStyle = TextStyle(fontSize = 15.sp, lineHeight = 22.sp)
 
 /** The accents offered where colours do not follow the cover - presets of Settings' palettes, by their ids. */
 private val AccentPaletteIds = listOf("default", "sunset_orange", "teal_wave", "ocean_blue", "olive_garden")
+
+/** How what a choice, or a screen's line, shows under it comes and goes: opening into its room as it fades in, closing as it fades out. */
+private val OptionEnter = expandVertically(tween(ArrivalMillis, easing = EmphasizedDecelerate), expandFrom = Alignment.Top) +
+    fadeIn(tween(FadeInMillis, delayMillis = FadeOutMillis))
+private val OptionExit = shrinkVertically(tween(ArrivalMillis, easing = EmphasizedDecelerate), shrinkTowards = Alignment.Top) +
+    fadeOut(tween(FadeOutMillis))
 
 /** How long the last of a screen's pieces takes to be in place, from the moment the screen is composed. */
 private const val ArrivalsMillis = LastStaggered * StaggerMillis + ArrivalMillis
@@ -217,23 +265,29 @@ internal fun StepBody(step: OnboardingStep, viewModel: OnboardingViewModel, arri
 @Composable
 private fun StepList(
     title: String,
-    message: String,
+    message: String?,
     arrivals: StepArrivals,
     modifier: Modifier,
     listState: LazyListState = rememberLazyListState(),
     content: LazyListScope.() -> Unit,
 ) {
+    // The last line said, so one leaving folds away still saying it.
+    val lastMessage = remember { arrayOfNulls<String>(1) }
+    message?.let { lastMessage[0] = it }
     LazyColumn(state = listState, modifier = modifier.fadingFoot()) {
         item(key = "title") {
             with(arrivals) {
-                Column(modifier = Modifier.padding(horizontal = ScreenPadding).padding(bottom = 24.dp)) {
+                Column(modifier = Modifier.padding(horizontal = ScreenPadding).padding(bottom = 16.dp)) {
                     Text(title, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.arrive(0))
-                    Text(
-                        message,
-                        style = MessageStyle,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp).arrive(1),
-                    )
+                    AnimatedVisibility(visible = message != null, enter = OptionEnter, exit = OptionExit) {
+                        Text(
+                            lastMessage[0].orEmpty(),
+                            style = MessageStyle,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp).arrive(1),
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
                 }
             }
         }
@@ -257,7 +311,8 @@ private fun Modifier.fadingFoot(): Modifier = graphicsLayer { compositingStrateg
 private fun LazyListScope.piece(key: String, arrivals: StepArrivals, order: Int, content: @Composable () -> Unit) {
     item(key = key) {
         with(arrivals) {
-            Box(modifier = Modifier.padding(horizontal = ScreenPadding).arrive(order)) { content() }
+            // Coming and going as a screen's rows change - the others moving to make room - not snapping in or out.
+            Box(modifier = Modifier.animateItem(fadeInSpec = tween(FadeInMillis, delayMillis = FadeOutMillis), placementSpec = tween(ArrivalMillis, easing = EmphasizedDecelerate), fadeOutSpec = tween(FadeOutMillis)).padding(horizontal = ScreenPadding).arrive(order)) { content() }
         }
     }
 }
@@ -330,24 +385,39 @@ private fun InfoCard(lines: List<Pair<ImageVector, String>>) {
 
 // Restore.
 
-/** The screens restoring goes through, one after another on its step - each arriving as a step does. */
-internal enum class RestoreStage { SOURCE, SEARCHING, NO_BACKUPS, CHOSEN, RESTORING, RESTORED }
+/**
+ * The screens restoring goes through on its step: where the backup is, then - one screen for each - the account's backups
+ * or the file chosen, then restoring it and what came back. Within a screen nothing is swapped: looking through an account,
+ * its backups found, one read, its parts chosen - each comes in, or goes, where it stands, the rest moving to make room.
+ */
+internal enum class RestoreStage { SOURCE, DRIVE, FILE, RESTORING, RESTORED }
 
 internal val RestoreState.stage: RestoreStage
     get() = when (this) {
         is RestoreState.ChoosingSource -> RestoreStage.SOURCE
-        is RestoreState.Searching -> RestoreStage.SEARCHING
-        is RestoreState.NoBackups -> RestoreStage.NO_BACKUPS
-        is RestoreState.Chosen -> if (status == RestoreStatus.RESTORING || status == RestoreStatus.FAILED) RestoreStage.RESTORING else RestoreStage.CHOSEN
+        is RestoreState.Searching, is RestoreState.NoBackups -> RestoreStage.DRIVE
+        is RestoreState.Chosen -> when {
+            status == RestoreStatus.RESTORING || status == RestoreStatus.FAILED || source == BackupSource.Earlier -> RestoreStage.RESTORING
+            source is BackupSource.Drive -> RestoreStage.DRIVE
+            else -> RestoreStage.FILE
+        }
         is RestoreState.Restored -> RestoreStage.RESTORED
     }
 
 /** The steps a restore goes through, as it says it is on them - see [BackupStep]. */
 private val RestoreSteps = BackupStep.entries.dropWhile { it != BackupStep.READING_BACKUP }
 
+/** The parts of what comes back the choice sheet shows, one tab each. */
+private enum class ChoiceTab { LIBRARY, TRACKS, VIDEOS }
+
+/** How what comes in under a heading - a backup being read, then its parts - replaces what was there: fading through, resizing between. */
+private fun AnimatedContentTransitionScope<*>.fadeThrough(): ContentTransform =
+    fadeIn(tween(FadeInMillis, delayMillis = FadeOutMillis)) togetherWith fadeOut(tween(FadeOutMillis)) using
+        SizeTransform(clip = false) { _, _ -> tween<IntSize>(ArrivalMillis, easing = EmphasizedDecelerate) }
+
 /**
- * Restoring: where the backup is - Google Drive or a file - then which, then restoring it and what came back. Each screen
- * arrives as a step does, forward or back; the first with the step itself, by its [arrivals].
+ * Restoring: where the backup is - Google Drive or a file - then which, and what of it, then restoring it and what came back.
+ * Each screen arrives as a step does, forward or back; the first with the step itself, by its [arrivals].
  */
 @Composable
 private fun RestoreBody(viewModel: OnboardingViewModel, arrivals: StepArrivals, modifier: Modifier) {
@@ -359,6 +429,8 @@ private fun RestoreBody(viewModel: OnboardingViewModel, arrivals: StepArrivals, 
     val connectDrive = rememberDriveConnection(viewModel)
     val chooseFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(viewModel::openBackupFile) }
     val onChooseFile = { chooseFile.launch(BackupFileTypes) }
+    val onChangeAccount = { connectDrive(DrivePurpose.FIND_BACKUPS) }
+    var choiceTab by rememberSaveable { mutableStateOf<ChoiceTab?>(null) }
 
     AnimatedContent(
         targetState = restore,
@@ -369,36 +441,44 @@ private fun RestoreBody(viewModel: OnboardingViewModel, arrivals: StepArrivals, 
         // The first screen arrives with the step; each after it, on its own.
         val stageArrivals = if (shown.stage == initialStage) arrivals else rememberStepArrivals(forward)
         val (title, message) = restoreText(shown)
-        // Each stage's own rows, laid in the list under the title.
-        val content: LazyListScope.() -> Unit = when (shown) {
-            is RestoreState.ChoosingSource -> sourceStage(shown, stageArrivals, onConnect = { connectDrive(DrivePurpose.FIND_BACKUPS) }, onChooseFile = onChooseFile)
-            is RestoreState.Searching -> searchingStage(shown.account, stageArrivals, onChange = { connectDrive(DrivePurpose.FIND_BACKUPS) })
-            is RestoreState.NoBackups -> noBackupsStage(shown, stageArrivals, onChange = { connectDrive(DrivePurpose.FIND_BACKUPS) }, onChooseFile = onChooseFile)
-            is RestoreState.Chosen -> if (shown.stage == RestoreStage.RESTORING) {
-                restoringStage(shown, stageArrivals)
-            } else {
-                chosenStage(shown, viewModel, stageArrivals, onChange = { connectDrive(DrivePurpose.FIND_BACKUPS) }, onChooseFile = onChooseFile)
-            }
-            is RestoreState.Restored -> restoredStage(shown, viewModel, stageArrivals, onConnect = { connectDrive(DrivePurpose.BACK_UP) })
+        // Each screen's own rows, laid in the list under the title.
+        val content: LazyListScope.() -> Unit = when (shown.stage) {
+            RestoreStage.SOURCE -> sourceStage(shown as RestoreState.ChoosingSource, stageArrivals, onConnect = onChangeAccount, onChooseFile = onChooseFile)
+            RestoreStage.DRIVE -> driveStage(shown, viewModel, stageArrivals, onChangeAccount, onChooseFile, onChoose = { choiceTab = it })
+            RestoreStage.FILE -> fileStage(shown as RestoreState.Chosen, viewModel, stageArrivals, onChooseFile, onChoose = { choiceTab = it })
+            RestoreStage.RESTORING -> restoringStage(shown as RestoreState.Chosen, stageArrivals)
+            RestoreStage.RESTORED -> restoredStage(shown as RestoreState.Restored, viewModel, stageArrivals, onConnect = { connectDrive(DrivePurpose.BACK_UP) })
         }
         StepList(title, message, stageArrivals, modifier, content = content)
     }
+
+    // Choosing exactly what comes back - only while the backup chosen is open and nothing has started.
+    val chosen = (restore as? RestoreState.Chosen)?.takeIf { it.status == RestoreStatus.READY && it.preview != null }
+    val tab = choiceTab
+    if (chosen != null && tab != null) {
+        RestoreChoiceSheet(chosen, initialTab = tab, viewModel = viewModel, onDismiss = { choiceTab = null })
+    } else if (chosen == null && tab != null) {
+        LaunchedEffect(Unit) { choiceTab = null }
+    }
 }
 
-/** What a restore screen is called, and what it says under that. */
+/** What a restore screen is called, and what it says under that - nothing, where its rows say it all. */
 @Composable
-private fun restoreText(restore: RestoreState): Pair<String, String> = when (restore) {
-    is RestoreState.Chosen -> when {
-        restore.stage == RestoreStage.RESTORING -> {
+private fun restoreText(restore: RestoreState): Pair<String, String?> = when (restore) {
+    is RestoreState.Chosen -> when (restore.stage) {
+        RestoreStage.RESTORING -> {
             // From the device it was made on, where that is known; else from the file, or Drive - or carrying on.
             val from = restore.device?.label ?: (restore.source as? BackupSource.File)?.name
+            val withMedia = restore.chosenMusic.isNotEmpty() || restore.chosenVideos.isNotEmpty()
             stringResource(R.string.onboarding_restoring) to when {
+                from != null && withMedia -> stringResource(R.string.onboarding_restoring_from_with_media, from)
                 from != null -> stringResource(R.string.onboarding_restoring_from, from)
                 restore.source == BackupSource.Earlier -> stringResource(R.string.onboarding_restoring_carrying_on)
+                withMedia -> stringResource(R.string.onboarding_restoring_from_drive_with_media)
                 else -> stringResource(R.string.onboarding_restoring_from_drive)
             }
         }
-        restore.source is BackupSource.Drive -> stringResource(R.string.onboarding_restore_title) to stringResource(R.string.onboarding_restore_pick_message)
+        RestoreStage.DRIVE -> stringResource(R.string.onboarding_restore_title) to null
         else -> stringResource(R.string.onboarding_restore_title) to stringResource(R.string.onboarding_restore_check_message)
     }
     is RestoreState.Restored -> stringResource(R.string.onboarding_restored_title) to stringResource(R.string.onboarding_restored_message)
@@ -515,118 +595,604 @@ private fun AccountChip(account: String, onChange: () -> Unit) {
             contentAlignment = Alignment.Center,
         ) { Text(account.take(1).uppercase(), style = MaterialTheme.typography.titleSmall, color = colors.onPrimary) }
         Text(account, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-        TextButton(onClick = onChange, shapes = buttonPressShapes()) { Text(stringResource(R.string.onboarding_restore_change)) }
+        TextButton(onClick = onChange, shapes = buttonPressShapes(ContainerEdge.End)) { Text(stringResource(R.string.onboarding_restore_change)) }
     }
 }
 
-private fun searchingStage(account: String, arrivals: StepArrivals, onChange: () -> Unit): LazyListScope.() -> Unit = {
-    piece("account", arrivals, 2) { AccountChip(account, onChange) }
-    piece("searching", arrivals, 3) {
-        Row(
-            modifier = Modifier
-                .padding(top = 16.dp)
-                .fillMaxWidth()
-                .height(56.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainer)
-                .padding(horizontal = 16.dp)
-                .semantics { liveRegion = LiveRegionMode.Polite },
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            LoadingIndicator(modifier = Modifier.size(24.dp))
-            Text(
-                stringResource(R.string.onboarding_restore_searching),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-private fun noBackupsStage(
-    restore: RestoreState.NoBackups,
+/**
+ * The connected account's screen, all of it under the account: looking for its backups, then those found - or that there
+ * are none - and, of the one picked, what comes back. One list, its rows coming and going as the search and the reading go.
+ */
+private fun driveStage(
+    restore: RestoreState,
+    viewModel: OnboardingViewModel,
     arrivals: StepArrivals,
-    onChange: () -> Unit,
+    onChangeAccount: () -> Unit,
     onChooseFile: () -> Unit,
+    onChoose: (ChoiceTab) -> Unit,
 ): LazyListScope.() -> Unit = {
-    piece("account", arrivals, 2) { AccountChip(restore.account, onChange) }
-    piece("empty", arrivals, 3) {
-        Column(
-            modifier = Modifier
-                .padding(top = 16.dp)
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainer)
-                .padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Icon(SonaIcons.CloudOff, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(32.dp))
-            Text(
-                stringResource(R.string.onboarding_restore_no_backups),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-            Text(
-                if (restore.couldNotRead) {
-                    stringResource(R.string.onboarding_restore_drive_unreadable)
-                } else {
-                    stringResource(R.string.onboarding_restore_no_backups_message, restore.account)
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-            Row(modifier = Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                TextButton(onClick = onChange, shapes = buttonPressShapes()) { Text(stringResource(R.string.onboarding_restore_other_account)) }
-                TextButton(onClick = onChooseFile, shapes = buttonPressShapes()) { Text(stringResource(R.string.onboarding_restore_choose_file)) }
-            }
+    val account = when (restore) {
+        is RestoreState.Searching -> restore.account
+        is RestoreState.NoBackups -> restore.account
+        is RestoreState.Chosen -> (restore.source as? BackupSource.Drive)?.account.orEmpty()
+        else -> ""
+    }
+    piece("account", arrivals, 2) { AccountChip(account, onChangeAccount) }
+    when (restore) {
+        is RestoreState.Searching -> piece("searching", arrivals, 3) {
+            StatusRow(stringResource(R.string.onboarding_restore_searching), modifier = Modifier.padding(top = 16.dp))
         }
+        is RestoreState.NoBackups -> piece("empty", arrivals, 3) { NoBackupsCard(restore, onChangeAccount, onChooseFile) }
+        is RestoreState.Chosen -> {
+            val source = restore.source as BackupSource.Drive
+            piece("backups", arrivals, 3) {
+                SonaRowGroup(
+                    modifier = Modifier.padding(top = 8.dp),
+                    rows = source.backups.mapIndexed { index, backup ->
+                        driveBackupRow(backup, isNewest = index == 0, isPicked = backup == source.picked, viewModel::pickDriveBackup)
+                    },
+                )
+            }
+            comesBack(restore, viewModel, arrivals, onChoose)
+        }
+        else -> Unit
     }
 }
 
-private fun chosenStage(
+/** The file chosen, and what of it comes back. */
+private fun fileStage(
     restore: RestoreState.Chosen,
     viewModel: OnboardingViewModel,
     arrivals: StepArrivals,
-    onChange: () -> Unit,
     onChooseFile: () -> Unit,
+    onChoose: (ChoiceTab) -> Unit,
 ): LazyListScope.() -> Unit = {
-    when (val source = restore.source) {
-        is BackupSource.Drive -> {
-            piece("account", arrivals, 2) { AccountChip(source.account, onChange) }
-            piece("backups", arrivals, 3) {
-                Column {
-                    GroupLabel(stringResource(R.string.onboarding_restore_backups_in_account))
-                    SonaRowGroup(rows = source.backups.mapIndexed { index, backup -> driveBackupRow(backup, isNewest = index == 0, isPicked = backup == source.picked, viewModel::pickDriveBackup) })
+    val name = (restore.source as? BackupSource.File)?.name.orEmpty()
+    piece("file", arrivals, 2) { BackupFileChip(name, restore.preview, onChooseFile) }
+    comesBack(restore, viewModel, arrivals, onChoose)
+}
+
+/** What a [StatusRow] or [comesBack] shows: the backup being read, a passphrase wanted, one that cannot be read, or its parts. */
+private enum class OpenPhase { READING, PASSPHRASE, UNREADABLE, READY }
+
+private val RestoreStatus.phase: OpenPhase
+    get() = when (this) {
+        RestoreStatus.NEEDS_PASSPHRASE, RestoreStatus.WRONG_PASSPHRASE -> OpenPhase.PASSPHRASE
+        RestoreStatus.UNREADABLE, RestoreStatus.UNSUPPORTED -> OpenPhase.UNREADABLE
+        RestoreStatus.READY -> OpenPhase.READY
+        else -> OpenPhase.READING
+    }
+
+/**
+ * What comes back of the backup chosen, under its heading: while it is read, a line saying so - then, in its place, what is
+ * in it to choose from, or what stands in the way. Picking another backup reads it again, in the same place.
+ */
+private fun LazyListScope.comesBack(restore: RestoreState.Chosen, viewModel: OnboardingViewModel, arrivals: StepArrivals, onChoose: (ChoiceTab) -> Unit) {
+    piece("comesBack", arrivals, 4) {
+        Column {
+            GroupLabel(stringResource(R.string.onboarding_restore_what_comes_back))
+            AnimatedContent(
+                targetState = restore,
+                contentKey = { it.status.phase },
+                transitionSpec = { fadeThrough() },
+                contentAlignment = Alignment.TopStart,
+                label = "comesBack",
+            ) { shown ->
+                when (shown.status.phase) {
+                    OpenPhase.READING -> StatusRow(stringResource(R.string.onboarding_restore_opening))
+                    OpenPhase.PASSPHRASE -> PassphraseField(isWrong = shown.status == RestoreStatus.WRONG_PASSPHRASE, onSubmit = viewModel::submitPassphrase)
+                    OpenPhase.UNREADABLE -> OpenStatusLine(shown.status)
+                    OpenPhase.READY -> ChoiceSummary(shown, viewModel, onChoose)
                 }
             }
         }
-        is BackupSource.File -> piece("file", arrivals, 2) { BackupFileChip(source.name, restore.preview, onChooseFile) }
-        // Only ever restoring or stopped - shown as a restore under way is, not as one to choose.
-        BackupSource.Earlier -> Unit
     }
-    piece("status", arrivals, 4) {
+}
+
+/** A line on its own card saying what is under way - looking for backups, reading one - turning as it goes. */
+@Composable
+private fun StatusRow(text: String, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(horizontal = 16.dp)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        LoadingIndicator(modifier = Modifier.size(24.dp))
+        Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun NoBackupsCard(restore: RestoreState.NoBackups, onChangeAccount: () -> Unit, onChooseFile: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .padding(top = 16.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(SonaIcons.CloudOff, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(32.dp))
+        Text(stringResource(R.string.onboarding_restore_no_backups), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
+        Text(
+            if (restore.couldNotRead) {
+                stringResource(R.string.onboarding_restore_drive_unreadable)
+            } else {
+                stringResource(R.string.onboarding_restore_no_backups_message, restore.account)
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        Row(modifier = Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            TextButton(onClick = onChangeAccount, shapes = buttonPressShapes()) { Text(stringResource(R.string.onboarding_restore_other_account)) }
+            TextButton(onClick = onChooseFile, shapes = buttonPressShapes()) { Text(stringResource(R.string.onboarding_restore_choose_file)) }
+        }
+    }
+}
+
+/** How many of [all] are chosen, as a checkbox standing for them all shows it. */
+private fun toggleStateOf(chosen: Int, all: Int): ToggleableState = when {
+    chosen == 0 -> ToggleableState.Off
+    chosen >= all -> ToggleableState.On
+    else -> ToggleableState.Indeterminate
+}
+
+/** The size of [files] together, as a list of what comes back says it. */
+@Composable
+private fun sizeOf(files: List<Track>): String = Formatter.formatShortFileSize(LocalContext.current, files.sumOf { it.sizeBytes })
+
+/** What of the library comes back, in a word or two: none, all of it, or how many of its parts. */
+@Composable
+private fun librarySummary(parts: Set<RestorePart>): String = when (parts.size) {
+    0 -> stringResource(R.string.onboarding_restore_none)
+    RestorePart.entries.size -> stringResource(R.string.onboarding_restore_library_all)
+    else -> stringResource(R.string.onboarding_restore_some_of, parts.size, RestorePart.entries.size)
+}
+
+/** How many of the [offered] music files or videos come back, and their size: none, all of them, or some. */
+@Composable
+private fun filesSummary(chosen: List<Track>, offered: List<Track>, isVideo: Boolean): String = when (chosen.size) {
+    0 -> stringResource(R.string.onboarding_restore_none)
+    offered.size -> pluralStringResource(
+        if (isVideo) R.plurals.onboarding_restore_videos_all else R.plurals.onboarding_restore_tracks_all,
+        offered.size,
+        offered.size,
+        sizeOf(chosen),
+    )
+    else -> pluralStringResource(
+        if (isVideo) R.plurals.onboarding_restore_videos_some else R.plurals.onboarding_restore_tracks_some,
+        offered.size,
+        chosen.size,
+        offered.size,
+        sizeOf(chosen),
+    )
+}
+
+/**
+ * Of a backup open, what comes back: the library, the music and the videos it can bring - each a row opening the sheet that
+ * chooses exactly, with a checkbox beside it for the whole of it - and how much that takes to download, against the room
+ * there is. A backup bringing no files - a file's, with Drive not connected - offers its library's parts as chips instead.
+ */
+@Composable
+private fun ChoiceSummary(restore: RestoreState.Chosen, viewModel: OnboardingViewModel, onChoose: (ChoiceTab) -> Unit) {
+    val preview = restore.preview ?: return
+    val files = preview.files
+    val offersFiles = files.music.isNotEmpty() || files.videos.isNotEmpty()
+    if (restore.source !is BackupSource.Drive && !offersFiles) {
         Column {
-            OpenStatusLine(restore.status)
-            if (restore.status == RestoreStatus.NEEDS_PASSPHRASE || restore.status == RestoreStatus.WRONG_PASSPHRASE) {
-                PassphraseField(isWrong = restore.status == RestoreStatus.WRONG_PASSPHRASE, onSubmit = viewModel::submitPassphrase)
+            PartChips(restore, viewModel)
+            Text(
+                stringResource(R.string.onboarding_restore_file_no_media),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 8.dp, top = 16.dp),
+            )
+        }
+        return
+    }
+    Column {
+        SonaRowGroup(
+            rows = buildList {
+                add(
+                    categoryRow(
+                        icon = SonaIcons.Tune,
+                        title = R.string.onboarding_restore_library,
+                        summary = { librarySummary(restore.parts) },
+                        state = toggleStateOf(restore.parts.size, RestorePart.entries.size),
+                        allLabel = R.string.onboarding_restore_all_library,
+                        onOpen = { onChoose(ChoiceTab.LIBRARY) },
+                        onToggle = { viewModel.setAllRestoreParts(restore.parts.size < RestorePart.entries.size) },
+                    ),
+                )
+                if (files.music.isNotEmpty()) {
+                    add(
+                        categoryRow(
+                            icon = SonaIcons.Song,
+                            title = R.string.onboarding_restore_tracks,
+                            summary = { filesSummary(restore.chosenMusic, files.music, isVideo = false) },
+                            state = toggleStateOf(restore.chosenMusic.size, files.music.size),
+                            allLabel = R.string.onboarding_restore_all_tracks,
+                            onOpen = { onChoose(ChoiceTab.TRACKS) },
+                            onToggle = { viewModel.setAllRestoreFiles(files.music, restore.chosenMusic.size < files.music.size) },
+                        ),
+                    )
+                }
+                if (files.videos.isNotEmpty()) {
+                    add(
+                        categoryRow(
+                            icon = SonaIcons.Video,
+                            title = R.string.onboarding_restore_videos,
+                            summary = { filesSummary(restore.chosenVideos, files.videos, isVideo = true) },
+                            state = toggleStateOf(restore.chosenVideos.size, files.videos.size),
+                            allLabel = R.string.onboarding_restore_all_videos,
+                            onOpen = { onChoose(ChoiceTab.VIDEOS) },
+                            onToggle = { viewModel.setAllRestoreFiles(files.videos, restore.chosenVideos.size < files.videos.size) },
+                        ),
+                    )
+                }
+            },
+        )
+        if (offersFiles) StorageLine(restore.chosenMusic + restore.chosenVideos)
+    }
+}
+
+/** How much the files chosen take to download, and how much room there is on this phone - its share of that room drawn under. */
+@Composable
+private fun StorageLine(chosen: List<Track>) {
+    val context = LocalContext.current
+    val total = chosen.sumOf { it.sizeBytes }
+    val free = remember { freeBytes() }
+    val share by animateFloatAsState(
+        targetValue = if (free > 0) (total.toFloat() / free).coerceIn(0.01f, 1f) else 1f,
+        animationSpec = tween(ArrivalMillis, easing = EmphasizedDecelerate),
+        label = "storageShare",
+    )
+    val colors = MaterialTheme.colorScheme
+    Column(modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                AnnotatedString.fromHtml(stringResource(R.string.onboarding_restore_to_download, Formatter.formatShortFileSize(context, total))),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                stringResource(R.string.onboarding_restore_free, Formatter.formatShortFileSize(context, free)),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceVariant,
+            )
+        }
+        LinearProgressIndicator(
+            progress = { share },
+            modifier = Modifier.padding(top = 6.dp).fillMaxWidth(),
+            color = if (total > free) colors.error else colors.primary,
+            trackColor = colors.surfaceContainerHighest,
+            drawStopIndicator = {},
+        )
+    }
+}
+
+/** The room left on this phone's own storage, where restored files go. */
+private fun freeBytes(): Long = runCatching { StatFs(Environment.getExternalStorageDirectory().path).availableBytes }.getOrDefault(0L)
+
+/** A backup's library parts as chips, each taken or left - their counts beside them - for a backup that brings no files. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PartChips(restore: RestoreState.Chosen, viewModel: OnboardingViewModel) {
+    val summary = restore.preview?.summary ?: return
+    FlowRow(modifier = Modifier.padding(start = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        RestorePart.entries.forEach { part ->
+            val selected = part in restore.parts
+            val count = when (part) {
+                RestorePart.SETTINGS -> null
+                RestorePart.PLAYLISTS -> "%,d".format(summary.playlists)
+                RestorePart.FAVORITES -> "%,d".format(summary.favorites)
+                RestorePart.HISTORY -> pluralStringResource(R.plurals.onboarding_restore_plays, summary.plays, "%,d".format(summary.plays))
+            }
+            FilterChip(
+                selected = selected,
+                onClick = { viewModel.toggleRestorePart(part) },
+                label = {
+                    Text(stringResource(part.labelRes))
+                    if (count != null) Text(" $count", modifier = Modifier.graphicsLayer { alpha = 0.8f })
+                },
+                leadingIcon = {
+                    AnimatedVisibility(visible = selected, enter = expandHorizontally() + fadeIn(), exit = shrinkHorizontally() + fadeOut()) {
+                        Icon(SonaIcons.Check, contentDescription = null, modifier = Modifier.size(FilterChipDefaults.IconSize))
+                    }
+                },
+            )
+        }
+    }
+}
+
+private val RestorePart.labelRes: Int
+    get() = when (this) {
+        RestorePart.SETTINGS -> R.string.onboarding_restore_settings
+        RestorePart.PLAYLISTS -> R.string.onboarding_restore_playlists
+        RestorePart.FAVORITES -> R.string.onboarding_restore_favorites
+        RestorePart.HISTORY -> R.string.onboarding_restore_history
+    }
+
+private val RestorePart.icon: ImageVector
+    get() = when (this) {
+        RestorePart.SETTINGS -> SonaIcons.Tune
+        RestorePart.PLAYLISTS -> SonaIcons.QueueMusic
+        RestorePart.FAVORITES -> SonaIcons.Favorite
+        RestorePart.HISTORY -> SonaIcons.History
+    }
+
+/**
+ * A part of what comes back, two things side by side: the row itself - pressed, it opens the sheet that chooses exactly - and,
+ * past a hairline, its checkbox, a button of its own taking or leaving the whole of it.
+ */
+private fun categoryRow(
+    icon: ImageVector,
+    @StringRes title: Int,
+    summary: @Composable () -> String,
+    state: ToggleableState,
+    @StringRes allLabel: Int,
+    onOpen: () -> Unit,
+    onToggle: () -> Unit,
+): SonaGroupRow = { shapes ->
+    val colors = MaterialTheme.colorScheme
+    val label = stringResource(allLabel)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 64.dp)
+            .clip(shapes.shape)
+            .background(colors.surfaceContainer)
+            .padding(end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .heightIn(min = 64.dp)
+                .clickable(onClick = onOpen)
+                .padding(start = 16.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Icon(icon, contentDescription = null, tint = colors.onSurfaceVariant)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(stringResource(title), style = MaterialTheme.typography.bodyLarge)
+                Text(summary(), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+            }
+            Icon(SonaIcons.KeyboardArrowRight, contentDescription = null, tint = colors.onSurfaceVariant)
+        }
+        VerticalDivider(modifier = Modifier.height(32.dp), color = colors.outlineVariant)
+        ChoiceCheckbox(state = state, label = label, onToggle = onToggle)
+    }
+}
+
+/** A checkbox that is a button of its own - its shape turning as it is pressed, as the app's icon buttons do. */
+@Composable
+private fun ChoiceCheckbox(state: ToggleableState, label: String, onToggle: () -> Unit) {
+    IconButton(
+        onClick = onToggle,
+        shapes = iconButtonPressShapes(),
+        modifier = Modifier.size(48.dp).semantics {
+            role = Role.Checkbox
+            toggleableState = state
+            contentDescription = label
+        },
+    ) { TriStateCheckbox(state = state, onClick = null) }
+}
+
+/**
+ * Choosing exactly what comes back: the library's parts, the music, the videos - a tab each, where there are files to bring -
+ * every one a row to take or leave under Select all, and at its foot how much is to download, then Done.
+ */
+@Composable
+private fun RestoreChoiceSheet(restore: RestoreState.Chosen, initialTab: ChoiceTab, viewModel: OnboardingViewModel, onDismiss: () -> Unit) {
+    val files = restore.preview?.files ?: return
+    val tabs = listOfNotNull(ChoiceTab.LIBRARY, ChoiceTab.TRACKS.takeIf { files.music.isNotEmpty() }, ChoiceTab.VIDEOS.takeIf { files.videos.isNotEmpty() })
+    var tab by rememberSaveable { mutableStateOf(initialTab.takeIf { it in tabs } ?: ChoiceTab.LIBRARY) }
+    val context = LocalContext.current
+    val colors = MaterialTheme.colorScheme
+    SonaColumnBottomSheet(title = stringResource(R.string.onboarding_restore_what_comes_back), onDismissRequest = onDismiss) { scope ->
+        if (tabs.size > 1) {
+            SonaConnectedChoice(
+                options = tabs,
+                selected = tab,
+                onSelect = { tab = it },
+                label = {
+                    stringResource(
+                        when (it) {
+                            ChoiceTab.LIBRARY -> R.string.onboarding_restore_library
+                            ChoiceTab.TRACKS -> R.string.onboarding_restore_tracks
+                            ChoiceTab.VIDEOS -> R.string.onboarding_restore_videos
+                        },
+                    )
+                },
+                isCompact = true,
+                modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
+            )
+        }
+        AnimatedContent(
+            targetState = tab,
+            transitionSpec = { fadeThrough() },
+            contentAlignment = Alignment.TopStart,
+            modifier = Modifier.weight(1f, fill = false).padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp),
+            label = "choiceTab",
+        ) { shown ->
+            when (shown) {
+                ChoiceTab.LIBRARY -> LibraryChoice(restore, viewModel)
+                ChoiceTab.TRACKS -> FileChoice(files.music, restore.chosenMusic, here = files.musicHere, isVideo = false, viewModel = viewModel)
+                ChoiceTab.VIDEOS -> FileChoice(files.videos, restore.chosenVideos, here = files.videosHere, isVideo = true, viewModel = viewModel)
+            }
+        }
+        HorizontalDivider(color = colors.outlineVariant)
+        Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp)) {
+            val total = (restore.chosenMusic + restore.chosenVideos).sumOf { it.sizeBytes }
+            Text(
+                AnnotatedString.fromHtml(
+                    stringResource(
+                        R.string.onboarding_restore_to_download_free,
+                        Formatter.formatShortFileSize(context, total),
+                        Formatter.formatShortFileSize(context, remember { freeBytes() }),
+                    ),
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceVariant,
+                modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 10.dp),
+            )
+            Button(onClick = { scope.dismiss() }, shapes = buttonPressShapes(), modifier = Modifier.fillMaxWidth().height(56.dp)) {
+                Text(stringResource(R.string.onboarding_restore_done), style = MaterialTheme.typography.titleMedium)
             }
         }
     }
-    piece("comesBack", arrivals, 5) {
-        Column {
-            GroupLabel(stringResource(R.string.onboarding_restore_what_comes_back))
-            InfoCard(
-                listOf(
-                    SonaIcons.Settings to stringResource(R.string.onboarding_restore_settings),
-                    SonaIcons.Playlist to stringResource(R.string.onboarding_restore_playlists),
-                    SonaIcons.Favorite to stringResource(R.string.onboarding_restore_favorites),
-                    SonaIcons.History to stringResource(R.string.onboarding_restore_history),
-                ),
-            )
+}
+
+/** Select all, over what it stands for, on its own pill: how many are chosen, and a checkbox for every one at once. */
+@Composable
+private fun SelectAllRow(summary: String, state: ToggleableState, onToggle: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .padding(bottom = 8.dp)
+            .fillMaxWidth()
+            .height(52.dp)
+            .clip(RoundedCornerShape(26.dp))
+            .background(colors.secondaryContainer)
+            .triStateToggleable(state = state, role = Role.Checkbox, onClick = onToggle)
+            .padding(start = 16.dp, end = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            stringResource(R.string.onboarding_restore_select_all),
+            style = MaterialTheme.typography.titleSmall,
+            color = colors.onSecondaryContainer,
+            modifier = Modifier.weight(1f),
+        )
+        Text(summary, style = MaterialTheme.typography.bodySmall, color = colors.onSecondaryContainer.copy(alpha = 0.85f))
+        TriStateCheckbox(
+            state = state,
+            onClick = null,
+            colors = CheckboxDefaults.colors(uncheckedColor = colors.onSecondaryContainer),
+        )
+    }
+}
+
+@Composable
+private fun LibraryChoice(restore: RestoreState.Chosen, viewModel: OnboardingViewModel) {
+    val summary = restore.preview?.summary ?: return
+    Column {
+        SelectAllRow(
+            summary = stringResource(R.string.onboarding_restore_some_of, restore.parts.size, RestorePart.entries.size),
+            state = toggleStateOf(restore.parts.size, RestorePart.entries.size),
+            onToggle = { viewModel.setAllRestoreParts(restore.parts.size < RestorePart.entries.size) },
+        )
+        listOf(RestorePart.PLAYLISTS, RestorePart.FAVORITES, RestorePart.HISTORY, RestorePart.SETTINGS).forEach { part ->
+            val count = when (part) {
+                RestorePart.PLAYLISTS -> "%,d".format(summary.playlists)
+                RestorePart.FAVORITES -> "%,d".format(summary.favorites)
+                RestorePart.HISTORY -> pluralStringResource(R.plurals.onboarding_restore_plays, summary.plays, "%,d".format(summary.plays))
+                RestorePart.SETTINGS -> null
+            }
+            ChoiceRow(
+                title = stringResource(part.labelRes),
+                subtitle = count,
+                isChosen = part in restore.parts,
+                onToggle = { viewModel.toggleRestorePart(part) },
+            ) { ChoiceTile(part.icon, width = 36.dp, height = 36.dp, corner = 10.dp) }
         }
+    }
+}
+
+/** The [offered] music or videos, by title, each taken or left - and how many more of the backup's are here already. */
+@Composable
+private fun FileChoice(offered: List<Track>, chosen: List<Track>, here: Int, isVideo: Boolean, viewModel: OnboardingViewModel) {
+    val context = LocalContext.current
+    val chosenPaths = remember(chosen) { chosen.mapTo(HashSet()) { it.path } }
+    val sorted = remember(offered) { offered.sortedBy { it.title.lowercase() } }
+    val separator = stringResource(R.string.onboarding_detail_separator)
+    Column {
+        SelectAllRow(
+            summary = stringResource(R.string.onboarding_restore_some_of_size, chosen.size, offered.size, sizeOf(chosen)),
+            state = toggleStateOf(chosen.size, offered.size),
+            onToggle = { viewModel.setAllRestoreFiles(offered, chosen.size < offered.size) },
+        )
+        LazyColumn {
+            items(sorted, key = { it.path }) { file ->
+                ChoiceRow(
+                    title = file.title,
+                    subtitle = listOfNotNull(
+                        file.durationMs.takeIf { it > 0 }?.let(::formatDuration),
+                        Formatter.formatShortFileSize(context, file.sizeBytes),
+                    ).joinToString(separator),
+                    isChosen = file.path in chosenPaths,
+                    onToggle = { viewModel.toggleRestoreFile(file.path) },
+                ) {
+                    if (isVideo) {
+                        ChoiceTile(SonaIcons.Video, width = 64.dp, height = 36.dp, corner = 8.dp)
+                    } else {
+                        ChoiceTile(SonaIcons.Song, width = 40.dp, height = 40.dp, corner = 10.dp)
+                    }
+                }
+            }
+            if (here > 0) {
+                item(key = "here") {
+                    Text(
+                        pluralStringResource(R.plurals.onboarding_restore_here, here, here),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 12.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** What a row of the choice sheet stands for, on a tile of its own. */
+@Composable
+private fun ChoiceTile(icon: ImageVector, width: Dp, height: Dp, corner: Dp) {
+    Box(
+        modifier = Modifier.size(width, height).clip(RoundedCornerShape(corner)).background(MaterialTheme.colorScheme.surfaceContainerHighest),
+        contentAlignment = Alignment.Center,
+    ) { Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp)) }
+}
+
+/** One thing to take or leave in the choice sheet, the whole row its checkbox. */
+@Composable
+private fun ChoiceRow(title: String, subtitle: String?, isChosen: Boolean, onToggle: () -> Unit, tile: @Composable () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .toggleable(value = isChosen, role = Role.Checkbox, onValueChange = { onToggle() })
+            .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        tile()
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (subtitle != null) {
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        Checkbox(checked = isChosen, onCheckedChange = null)
     }
 }
 
@@ -713,7 +1279,7 @@ private fun BackupFileChip(name: String, preview: RestorePreview?, onChange: () 
                 )
             }
         }
-        TextButton(onClick = onChange, shapes = buttonPressShapes()) { Text(stringResource(R.string.onboarding_restore_change)) }
+        TextButton(onClick = onChange, shapes = buttonPressShapes(ContainerEdge.End)) { Text(stringResource(R.string.onboarding_restore_change)) }
     }
 }
 
@@ -817,23 +1383,21 @@ private fun RestoreStepRow(label: String, isDone: Boolean, isCurrent: Boolean) {
     }
 }
 
-/** What came back, and - restored from Drive - backing up there from now on; from a file, connecting Drive to. */
+/**
+ * Welcome back: what came back, counted - then, where songs and videos were chosen, those still coming in, the library
+ * usable meanwhile - and, restored from Drive, backing up there from now on; from a file, connecting Drive to.
+ */
 private fun restoredStage(
     restore: RestoreState.Restored,
     viewModel: OnboardingViewModel,
     arrivals: StepArrivals,
     onConnect: () -> Unit,
 ): LazyListScope.() -> Unit = {
-    piece("cameBack", arrivals, 2) {
-        InfoCard(
-            listOf(
-                SonaIcons.QueueMusic to stringResource(R.string.onboarding_restored_lists),
-                SonaIcons.Tune to stringResource(R.string.onboarding_restored_settings),
-                SonaIcons.History to stringResource(R.string.onboarding_restored_history),
-            ),
-        )
+    piece("cameBack", arrivals, 2) { CameBackCard(restore.cameBack) }
+    restore.media?.let { media ->
+        piece("media", arrivals, 3) { MediaDownloadCard(media, onRetry = viewModel::retryMedia) }
     }
-    piece("backingUp", arrivals, 3) {
+    piece("backingUp", arrivals, 4) {
         val keepsBackingUp by viewModel.keepsBackingUp.collectAsStateWithLifecycle()
         val isDriveConnected by viewModel.isDriveConnected.collectAsStateWithLifecycle()
         SonaRowGroup(
@@ -864,6 +1428,123 @@ private fun restoredStage(
     }
 }
 
+/**
+ * What came back, a line for each part restored - counted where the backup said how much: "6 playlists and 48 favorites",
+ * "1,204 plays of history". A restore carried on from before, whose backup is not known here any more, says it in words.
+ */
+@Composable
+private fun CameBackCard(cameBack: CameBack?) {
+    val lines = buildList {
+        if (cameBack == null) {
+            add(SonaIcons.QueueMusic to AnnotatedString(stringResource(R.string.onboarding_restored_lists)))
+            add(SonaIcons.Tune to AnnotatedString(stringResource(R.string.onboarding_restored_settings)))
+            add(SonaIcons.History to AnnotatedString(stringResource(R.string.onboarding_restored_history)))
+            return@buildList
+        }
+        val (parts, summary) = cameBack
+        val playlists = pluralStringResource(R.plurals.onboarding_restored_playlists, summary.playlists, summary.playlists)
+        val favorites = pluralStringResource(R.plurals.onboarding_restored_favorites, summary.favorites, summary.favorites)
+        val lists = when {
+            RestorePart.PLAYLISTS in parts && RestorePart.FAVORITES in parts ->
+                AnnotatedString.fromHtml(stringResource(R.string.onboarding_restored_lists_and, playlists, favorites))
+            RestorePart.PLAYLISTS in parts -> bold(playlists)
+            RestorePart.FAVORITES in parts -> bold(favorites)
+            else -> null
+        }
+        lists?.let { add(SonaIcons.QueueMusic to it) }
+        if (RestorePart.SETTINGS in parts) add(SonaIcons.Tune to AnnotatedString(stringResource(R.string.onboarding_restored_settings)))
+        if (RestorePart.HISTORY in parts) {
+            add(SonaIcons.History to AnnotatedString(pluralStringResource(R.plurals.onboarding_restored_plays, summary.plays, "%,d".format(summary.plays))))
+        }
+    }
+    if (lines.isEmpty()) return
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+    ) {
+        lines.forEach { (icon, text) ->
+            Row(modifier = Modifier.padding(vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                Text(text, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
+
+private fun bold(text: String): AnnotatedString = buildAnnotatedString { withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(text) } }
+
+/**
+ * The songs and videos still coming in after the library: how many, one bar for them all, and that Sona can be used
+ * meanwhile - then that they are all in, or that some did not come, with Try again for the rest.
+ */
+@Composable
+private fun MediaDownloadCard(media: MediaDownload, onRetry: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val progressLabel = stringResource(R.string.onboarding_restored_media_progress)
+    val share by animateFloatAsState(
+        targetValue = if (media.total > 0) media.done.toFloat() / media.total else 0f,
+        animationSpec = tween(ArrivalMillis, easing = EmphasizedDecelerate),
+        label = "mediaDownload",
+    )
+    Column(
+        modifier = Modifier
+            .padding(top = 8.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(colors.surfaceContainer)
+            .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 12.dp)
+            .animateContentSize(tween(ArrivalMillis, easing = EmphasizedDecelerate)),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            val icon = when (media.state) {
+                MediaDownload.State.DOWNLOADING -> SonaIcons.CloudDownload
+                MediaDownload.State.DONE -> SonaIcons.CheckCircle
+                MediaDownload.State.FAILED -> SonaIcons.CloudOff
+            }
+            Crossfade(targetState = icon, label = "mediaIcon") {
+                Icon(it, contentDescription = null, tint = if (media.state == MediaDownload.State.FAILED) colors.error else colors.primary)
+            }
+            Column(modifier = Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite }) {
+                Text(
+                    stringResource(
+                        when (media.state) {
+                            MediaDownload.State.DOWNLOADING -> R.string.onboarding_restored_media_downloading
+                            MediaDownload.State.DONE -> R.string.onboarding_restored_media_done
+                            MediaDownload.State.FAILED -> R.string.onboarding_restored_media_failed
+                        },
+                    ),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                if (media.total > 0) {
+                    Text(
+                        pluralStringResource(R.plurals.onboarding_restored_media_count, media.total, media.done, media.total),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.onSurfaceVariant,
+                    )
+                }
+            }
+            if (media.state == MediaDownload.State.FAILED) Pill(stringResource(R.string.onboarding_try_again), onRetry)
+        }
+        if (media.state == MediaDownload.State.DOWNLOADING) {
+            LinearProgressIndicator(
+                progress = { share },
+                modifier = Modifier.padding(top = 12.dp, bottom = 10.dp).fillMaxWidth().semantics { contentDescription = progressLabel },
+                trackColor = colors.secondaryContainer,
+                drawStopIndicator = {},
+            )
+            Text(
+                stringResource(R.string.onboarding_restored_media_use_now),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.End),
+            )
+        }
+    }
+}
+
 // Access.
 
 private fun accessStep(arrivals: StepArrivals): LazyListScope.() -> Unit = {
@@ -871,6 +1552,9 @@ private fun accessStep(arrivals: StepArrivals): LazyListScope.() -> Unit = {
         SonaRowGroup(rows = AppPermission.needed.map { permission -> permissionRow(permission) })
     }
 }
+
+/** How the check of a permission just granted grows in: a little past whole, and back. */
+private val GrantedCheckEasing = CubicBezierEasing(0.34f, 1.4f, 0.64f, 1f)
 
 /** A permission's row: why it is wanted, and Allow - asking right there - or a check once it is granted. */
 private fun permissionRow(permission: AppPermission): SonaGroupRow = { shapes ->
@@ -895,48 +1579,114 @@ private fun permissionRow(permission: AppPermission): SonaGroupRow = { shapes ->
         colors = rowColors(),
         leadingContent = { Icon(icon, contentDescription = null) },
         trailingContent = {
-            if (isGranted) {
-                Icon(
-                    SonaIcons.CheckCircle,
-                    contentDescription = allowedLabel,
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            } else {
-                Pill(stringResource(R.string.onboarding_allow), request)
+            // Allow goes and the check comes in one move, the slot narrowing from its end toward the check meanwhile -
+            // its height the button's either way, so the row never jumps.
+            AnimatedContent(
+                targetState = isGranted,
+                transitionSpec = {
+                    (fadeIn(tween(FadeInMillis, delayMillis = FadeOutMillis)) +
+                        scaleIn(tween(ArrivalMillis, delayMillis = FadeOutMillis, easing = GrantedCheckEasing), initialScale = 0.4f)) togetherWith
+                        (fadeOut(tween(FadeOutMillis)) + scaleOut(tween(FadeOutMillis), targetScale = 0.9f)) using
+                        SizeTransform(clip = false) { _, _ -> tween<IntSize>(ArrivalMillis, easing = EmphasizedDecelerate) }
+                },
+                contentAlignment = Alignment.CenterEnd,
+                modifier = Modifier.heightIn(min = 36.dp),
+                label = "permissionGranted",
+            ) { granted ->
+                if (granted) {
+                    Icon(
+                        SonaIcons.CheckCircle,
+                        contentDescription = allowedLabel,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                } else {
+                    Pill(stringResource(R.string.onboarding_allow), request)
+                }
             }
         },
         supportingContent = { Text(stringResource(summary)) },
     ) { Text(stringResource(title)) }
 }
 
-// Music folders.
+// Media folders.
 
+/**
+ * The folders Sona finds songs and videos in, a tab for each: every folder a switch, counted in what the tab shows - and in
+ * the other kind too, where it holds both, as a folder counts or not as a whole.
+ */
 private fun foldersStep(viewModel: OnboardingViewModel, arrivals: StepArrivals): LazyListScope.() -> Unit = {
     piece("folders", arrivals, 2) {
         val folders by viewModel.folders.collectAsStateWithLifecycle()
-        val trackCount by viewModel.trackCount.collectAsStateWithLifecycle()
-        Column {
-            if (folders.isEmpty()) {
-                Text(
+        val songCount by viewModel.songCount.collectAsStateWithLifecycle()
+        val videoCount by viewModel.videoCount.collectAsStateWithLifecycle()
+        val isFindingMedia by viewModel.isFindingMedia.collectAsStateWithLifecycle()
+        var showsVideos by rememberSaveable { mutableStateOf(false) }
+        // No folder yet is not yet none, while the library is still read or scanned: it says so, as reading a backup does.
+        val phase = when {
+            folders.isNotEmpty() -> FoldersPhase.FOLDERS
+            isFindingMedia -> FoldersPhase.FINDING
+            else -> FoldersPhase.EMPTY
+        }
+        AnimatedContent(targetState = phase, transitionSpec = { fadeThrough() }, contentAlignment = Alignment.TopStart, label = "foldersPhase") { shownPhase ->
+            when (shownPhase) {
+                FoldersPhase.FINDING -> StatusRow(stringResource(R.string.onboarding_folders_finding))
+                FoldersPhase.EMPTY -> Text(
                     stringResource(R.string.onboarding_folders_empty),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 8.dp),
                 )
-            } else {
-                SonaRowGroup(
-                    rows = folders.map { folder ->
-                        switchRow(
-                            title = folder.name,
-                            summary = pluralStringResource(R.plurals.onboarding_folder_tracks, folder.trackCount, folder.trackCount),
-                            icon = SonaIcons.Folder,
-                            checked = folder.isIncluded,
-                            onCheckedChange = { viewModel.setFolderIncluded(folder.path, it) },
-                        )
-                    },
-                )
+                FoldersPhase.FOLDERS -> FolderTabs(folders, showsVideos, onShowVideos = { showsVideos = it }, songCount, videoCount, viewModel)
+            }
+        }
+    }
+}
+
+/** The folders, a tab for songs and one for videos - see [foldersStep]. */
+@Composable
+private fun FolderTabs(
+    folders: List<MediaFolder>,
+    showsVideos: Boolean,
+    onShowVideos: (Boolean) -> Unit,
+    songCount: Int,
+    videoCount: Int,
+    viewModel: OnboardingViewModel,
+) {
+    Column {
+        SonaConnectedChoice(
+            options = listOf(false, true),
+            selected = showsVideos,
+            onSelect = onShowVideos,
+            label = { stringResource(if (it) R.string.onboarding_videos else R.string.onboarding_music) },
+            icon = { if (it) SonaIcons.Video else SonaIcons.Song },
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+        )
+        AnimatedContent(targetState = showsVideos, transitionSpec = { fadeThrough() }, contentAlignment = Alignment.TopStart, label = "folderKind") { videosShown ->
+            val shown = folders.filter { if (videosShown) it.videoCount > 0 else it.songCount > 0 }
+            Column {
+                if (shown.isEmpty()) {
+                    Text(
+                        stringResource(if (videosShown) R.string.onboarding_folders_no_videos else R.string.onboarding_folders_no_songs),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                    )
+                } else {
+                    SonaRowGroup(
+                        rows = shown.map { folder ->
+                            switchRow(
+                                title = folder.name,
+                                summary = folderSummary(folder, videosFirst = videosShown),
+                                icon = SonaIcons.Folder,
+                                checked = folder.isIncluded,
+                                onCheckedChange = { viewModel.setFolderIncluded(folder.path, it) },
+                            )
+                        },
+                    )
+                }
+                val total = if (videosShown) videoCount else songCount
                 Text(
-                    pluralStringResource(R.plurals.onboarding_library_total, trackCount, trackCount),
+                    pluralStringResource(if (videosShown) R.plurals.onboarding_library_videos else R.plurals.onboarding_library_songs, total, total),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 8.dp, top = 12.dp),
@@ -944,6 +1694,18 @@ private fun foldersStep(viewModel: OnboardingViewModel, arrivals: StepArrivals):
             }
         }
     }
+}
+
+/** Where the folders step stands: the library still being found, nothing found, or its folders. */
+private enum class FoldersPhase { FINDING, EMPTY, FOLDERS }
+
+/** What a folder holds: the tab's kind first - "12 songs" - then the other, where it has any: "12 songs · 3 videos". */
+@Composable
+private fun folderSummary(folder: MediaFolder, videosFirst: Boolean): String {
+    val songs = folder.songCount.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.onboarding_songs, it, it) }
+    val videos = folder.videoCount.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.onboarding_videos_count, it, it) }
+    val ordered = if (videosFirst) listOf(videos, songs) else listOf(songs, videos)
+    return ordered.filterNotNull().joinToString(stringResource(R.string.onboarding_detail_separator))
 }
 
 // Library.
@@ -1029,58 +1791,89 @@ private fun downloadsStep(viewModel: OnboardingViewModel, arrivals: StepArrivals
 }
 
 /**
- * The downloader - what downloading takes beyond the app: fetched from here, once, carrying on on its own while the setup
- * moves on; its progress shown as it goes, and stopped from its end.
+ * The downloader - what downloading takes beyond the app: fetched from here, once, carrying on on its own - its
+ * notification showing it - while the setup moves on. One button does it all: download, then a ring filling round stop as
+ * it comes, then a check.
  */
 private fun downloaderRow(state: RuntimeState, enabled: Boolean, viewModel: OnboardingViewModel): SonaGroupRow = { shapes ->
     val context = LocalContext.current
     val summary = when (state) {
         RuntimeState.Missing -> stringResource(R.string.onboarding_downloader_missing)
-        is RuntimeState.Downloading -> stringResource(
-            R.string.onboarding_downloader_downloading,
-            Formatter.formatShortFileSize(context, state.receivedBytes),
-            Formatter.formatShortFileSize(context, state.totalBytes),
-        )
+        is RuntimeState.Downloading -> if (state.totalBytes > 0) {
+            stringResource(
+                R.string.onboarding_downloader_downloading,
+                Formatter.formatShortFileSize(context, state.receivedBytes),
+                Formatter.formatShortFileSize(context, state.totalBytes),
+            )
+        } else {
+            stringResource(R.string.onboarding_downloader_starting)
+        }
         RuntimeState.Installed -> stringResource(R.string.onboarding_downloader_installed)
         RuntimeState.Failed -> stringResource(R.string.onboarding_downloader_failed)
     }
+    val act = {
+        when (state) {
+            RuntimeState.Missing, RuntimeState.Failed -> viewModel.downloadDownloader()
+            is RuntimeState.Downloading -> viewModel.stopDownloadingDownloader()
+            RuntimeState.Installed -> Unit
+        }
+    }
     SegmentedListItem(
-        onClick = { if (state == RuntimeState.Missing || state == RuntimeState.Failed) viewModel.downloadDownloader() },
+        onClick = act,
         shapes = shapes,
         colors = rowColors(),
         enabled = enabled,
-        leadingContent = { Icon(SonaIcons.Download, contentDescription = null) },
-        trailingContent = {
-            when (state) {
-                RuntimeState.Missing -> Pill(stringResource(R.string.onboarding_downloader_get), viewModel::downloadDownloader, enabled)
-                RuntimeState.Failed -> Pill(stringResource(R.string.onboarding_downloader_retry), viewModel::downloadDownloader, enabled)
-                RuntimeState.Installed -> Icon(
-                    SonaIcons.CheckCircle,
-                    contentDescription = stringResource(R.string.onboarding_downloader_installed),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                is RuntimeState.Downloading -> SonaIconButton(
-                    onClick = viewModel::stopDownloadingDownloader,
-                    icon = SonaIcons.Close,
-                    contentDescription = stringResource(R.string.onboarding_downloader_cancel),
-                )
-            }
-        },
-        supportingContent = {
-            Column {
-                Text(summary, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
-                if (state is RuntimeState.Downloading) {
-                    val progress by animateFloatAsState(state.progress, tween(400, easing = EmphasizedDecelerate), label = "downloaderProgress")
-                    LinearProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier.padding(top = 8.dp).fillMaxWidth(),
-                        trackColor = MaterialTheme.colorScheme.secondaryContainer,
-                        drawStopIndicator = {},
-                    )
-                }
-            }
-        },
+        leadingContent = { Icon(SonaIcons.Extension, contentDescription = null) },
+        trailingContent = { DownloaderButton(state, enabled, onClick = act) },
+        supportingContent = { Text(summary, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) },
     ) { Text(stringResource(R.string.onboarding_downloader)) }
+}
+
+/** The downloader's one button: its icon cross-fading between download, stop and done, a ring round it filling while it downloads. */
+@Composable
+private fun DownloaderButton(state: RuntimeState, enabled: Boolean, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val isDownloading = state is RuntimeState.Downloading
+    val ringAlpha by animateFloatAsState(if (isDownloading) 1f else 0f, tween(FadeInMillis), label = "downloaderRing")
+    val progress by animateFloatAsState(
+        targetValue = (state as? RuntimeState.Downloading)?.progress ?: if (state == RuntimeState.Installed) 1f else 0f,
+        animationSpec = tween(400, easing = EmphasizedDecelerate),
+        label = "downloaderProgress",
+    )
+    val label = stringResource(
+        when (state) {
+            RuntimeState.Missing -> R.string.onboarding_downloader_get
+            RuntimeState.Failed -> R.string.onboarding_downloader_retry
+            is RuntimeState.Downloading -> R.string.onboarding_downloader_cancel
+            RuntimeState.Installed -> R.string.onboarding_downloader_installed
+        },
+    )
+    Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator(
+            progress = { progress },
+            modifier = Modifier.size(44.dp).graphicsLayer { alpha = ringAlpha },
+            strokeWidth = 3.dp,
+            trackColor = colors.secondaryContainer,
+            gapSize = 0.dp,
+        )
+        FilledTonalIconButton(
+            onClick = onClick,
+            enabled = enabled && state != RuntimeState.Installed,
+            shapes = iconButtonPressShapes(),
+            modifier = Modifier.size(36.dp).semantics { contentDescription = label },
+        ) {
+            Crossfade(
+                targetState = when (state) {
+                    RuntimeState.Missing -> SonaIcons.Download
+                    RuntimeState.Failed -> SonaIcons.Refresh
+                    is RuntimeState.Downloading -> SonaIcons.Close
+                    RuntimeState.Installed -> SonaIcons.Check
+                },
+                animationSpec = tween(FadeInMillis),
+                label = "downloaderIcon",
+            ) { Icon(it, contentDescription = null, modifier = Modifier.size(20.dp)) }
+        }
+    }
 }
 
 /** One of the folders downloads can be saved to, picked by its radio button. */
@@ -1129,24 +1922,36 @@ private fun lookStep(viewModel: OnboardingViewModel, arrivals: StepArrivals): La
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            // The one under the choice opens as the other closes, the swatches popping in one after another.
-            AnimatedVisibility(visible = usesWallpaperColors, enter = OptionEnter, exit = OptionExit) {
-                Text(
-                    stringResource(R.string.onboarding_colors_wallpaper_summary),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 8.dp, top = 8.dp),
-                )
-            }
-            AnimatedVisibility(visible = !usesWallpaperColors, enter = OptionEnter, exit = OptionExit) {
-                Column {
-                    if (!HasWallpaperColors) GroupLabel(stringResource(R.string.onboarding_accent_color))
-                    AccentSwatches(
-                        selectedId = theme.colorPalette ?: AccentPaletteIds.first(),
-                        onSelect = viewModel::setAccent,
-                        modifier = Modifier.padding(top = if (HasWallpaperColors) 12.dp else 0.dp),
-                    )
+            if (HasWallpaperColors) {
+                // What is under the choice changes in one move: the one there fades, the room settles to the other's size,
+                // and the other fades in - never two things animating against each other.
+                AnimatedContent(
+                    targetState = usesWallpaperColors,
+                    transitionSpec = {
+                        fadeIn(tween(FadeInMillis, delayMillis = FadeOutMillis)) togetherWith fadeOut(tween(FadeOutMillis)) using
+                            SizeTransform(clip = false) { _, _ -> tween<IntSize>(ArrivalMillis, easing = EmphasizedDecelerate) }
+                    },
+                    contentAlignment = Alignment.TopStart,
+                    label = "colorsChoice",
+                ) { isWallpaper ->
+                    if (isWallpaper) {
+                        Text(
+                            stringResource(R.string.onboarding_colors_wallpaper_summary),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.fillMaxWidth().padding(start = 8.dp, top = 8.dp),
+                        )
+                    } else {
+                        AccentSwatches(
+                            selectedId = theme.colorPalette ?: AccentPaletteIds.first(),
+                            onSelect = viewModel::setAccent,
+                            modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                        )
+                    }
                 }
+            } else {
+                GroupLabel(stringResource(R.string.onboarding_accent_color))
+                AccentSwatches(selectedId = theme.colorPalette ?: AccentPaletteIds.first(), onSelect = viewModel::setAccent)
             }
             SonaRowGroup(
                 modifier = Modifier.padding(top = 16.dp),
@@ -1163,15 +1968,6 @@ private fun lookStep(viewModel: OnboardingViewModel, arrivals: StepArrivals): La
         }
     }
 }
-
-/** How what a choice reveals under it comes and goes: opening into its room as it fades in, closing as it fades out. */
-private val OptionEnter = expandVertically(tween(ArrivalMillis, easing = EmphasizedDecelerate), expandFrom = Alignment.Top) +
-    fadeIn(tween(FadeInMillis, delayMillis = StaggerMillis))
-private val OptionExit = shrinkVertically(tween(FadeOutMillis * 2, easing = FastOutLinearInEasing), shrinkTowards = Alignment.Top) +
-    fadeOut(tween(FadeOutMillis))
-
-/** How far a swatch grows from as it pops in. */
-private const val SwatchStartScale = 0.6f
 
 /** Whether the device gives its wallpaper's colours for apps to take on - Android 12 on. */
 private val HasWallpaperColors = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
@@ -1190,26 +1986,17 @@ private val ThemeMode.icon: ImageVector
         ThemeMode.DARK -> SonaIcons.DarkMode
     }
 
-/**
- * A few of Settings' palettes as round swatches; the picked one - [selectedId], if any - turns a softer square, ringed. Shown
- * in an [AnimatedVisibility], they pop in one after another as it opens.
- */
+/** A few of Settings' palettes as round swatches; the picked one - [selectedId], if any - turns a softer square, ringed. */
 @Composable
-private fun AnimatedVisibilityScope.AccentSwatches(selectedId: String?, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
+private fun AccentSwatches(selectedId: String?, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
     // Each swatch keeps room for its ring around it, so they stand 12 apart and in line with the label.
     Row(modifier = modifier.padding(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        AccentPaletteIds.mapNotNull(ThemePalettes::findById).forEachIndexed { index, palette ->
+        AccentPaletteIds.mapNotNull(ThemePalettes::findById).forEach { palette ->
             val isSelected = palette.id == selectedId
             val corner by animateDpAsState(if (isSelected) 12.dp else 18.dp, label = "swatchCorner")
             val name = stringResource(palette.nameRes)
-            val delay = (index + 1) * StaggerMillis
             Box(
                 modifier = Modifier
-                    .animateEnterExit(
-                        enter = fadeIn(tween(FadeInMillis, delay)) +
-                            scaleIn(tween(ArrivalMillis, delay, EmphasizedDecelerate), initialScale = SwatchStartScale),
-                        exit = ExitTransition.None,
-                    )
                     .size(44.dp)
                     .border(2.dp, if (isSelected) MaterialTheme.colorScheme.onSurface else Color.Transparent, RoundedCornerShape(corner + 4.dp))
                     .padding(4.dp)

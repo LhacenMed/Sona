@@ -33,6 +33,10 @@ import com.lhacenmed.sona.feature.backup.BackupSchedule
 import com.lhacenmed.sona.feature.backup.BackupSettings
 import com.lhacenmed.sona.feature.backup.OpenedBackup
 import com.lhacenmed.sona.feature.backup.RestorePreview
+import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.backup.BackupStep
+import com.lhacenmed.sona.feature.backup.RestoreSummary
+import com.lhacenmed.sona.feature.backup.RestorePart
 import com.lhacenmed.sona.feature.backup.StoredBackup
 import com.lhacenmed.sona.feature.backup.isBackupFileName
 import com.lhacenmed.sona.feature.backup.drive.DriveAccess
@@ -61,11 +65,17 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+/** The steps of a restore past its library: its files coming in. */
+private val MediaSteps = setOf(BackupStep.DOWNLOADING_FILES, BackupStep.ADDING_FILES)
+
 /** How downloading is set up: whether the library offers it, and whether it saves to the usual folder. */
 data class DownloadSetup(val isOn: Boolean, val savesToDefaultFolder: Boolean, val folder: String)
 
-/** A folder the library's music is in, with how much - and whether it counts, or is excluded. */
-data class MusicFolder(val path: String, val name: String, val trackCount: Int, val isIncluded: Boolean)
+/**
+ * A folder the library's songs or videos are in, with how many of each - and whether it counts, or is excluded: the whole
+ * folder, songs and videos alike, as the library leaves out a folder whole.
+ */
+data class MediaFolder(val path: String, val name: String, val songCount: Int, val videoCount: Int, val isIncluded: Boolean)
 
 /** Where a backup to restore is: one of those in the connected account's Drive, or a file on this phone. */
 sealed interface BackupSource {
@@ -105,14 +115,36 @@ sealed interface RestoreState {
         val preview: RestorePreview? = null,
         val progress: BackupProgress? = null,
         val failure: BackupFailure? = null,
+        /** What of the library comes back - all of it, until chosen otherwise. */
+        val parts: Set<RestorePart> = RestorePart.entries.toSet(),
+        /** The files offered that are left behind, by path - none, until chosen otherwise. */
+        val leftOutFiles: Set<String> = emptySet(),
     ) : RestoreState {
 
         /** The device the backup was made on, as far as is known: from Drive's list, or from the backup once open. */
         val device: BackupDevice? get() = preview?.device ?: (source as? BackupSource.Drive)?.picked?.device
+
+        /** The music and the videos that come back - those offered, less those left behind. */
+        val chosenMusic: List<Track> get() = preview?.files?.music.orEmpty().filter { it.path !in leftOutFiles }
+        val chosenVideos: List<Track> get() = preview?.files?.videos.orEmpty().filter { it.path !in leftOutFiles }
+
+        /** Whether anything at all would come back. */
+        val choosesAnything: Boolean get() = parts.isNotEmpty() || chosenMusic.isNotEmpty() || chosenVideos.isNotEmpty()
     }
 
-    /** Restored - from Drive, where it [isFromDrive]. */
-    data class Restored(val isFromDrive: Boolean) : RestoreState
+    /**
+     * Restored - from Drive, where it [isFromDrive]: what came back, [cameBack], where it is known, and the music and videos
+     * still coming in, [media], where any were chosen - the library usable meanwhile.
+     */
+    data class Restored(val isFromDrive: Boolean, val cameBack: CameBack? = null, val media: MediaDownload? = null) : RestoreState
+}
+
+/** What a restore brought back: the [parts] of the library chosen, and how much of each the backup held - [summary]. */
+data class CameBack(val parts: Set<RestorePart>, val summary: RestoreSummary)
+
+/** The music and videos a restore brings back after the library: [done] of [total], and where that stands. */
+data class MediaDownload(val done: Int, val total: Int, val state: State) {
+    enum class State { DOWNLOADING, DONE, FAILED }
 }
 
 enum class RestoreStatus { OPENING, NEEDS_PASSPHRASE, WRONG_PASSPHRASE, READY, UNSUPPORTED, UNREADABLE, RESTORING, FAILED }
@@ -146,20 +178,26 @@ class OnboardingViewModel @Inject constructor(
     private val _progress = MutableStateFlow(onboardingSettings.progress.value ?: OnboardingProgress(OnboardingPath.FRESH, OnboardingStep.WELCOME))
     val progress: StateFlow<OnboardingProgress> = _progress.asStateFlow()
 
-    private val tracks = combine(libraryRepository.tracks, libraryRepository.videos) { music, videos ->
-        music.itemsOrEmpty + videos.itemsOrEmpty
-    }
+    private val songs = libraryRepository.tracks.map { it.itemsOrEmpty }
+    private val videos = libraryRepository.videos.map { it.itemsOrEmpty }
 
-    val trackCount: StateFlow<Int> = tracks.map { it.size }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+    val songCount: StateFlow<Int> = songs.map { it.size }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+    val videoCount: StateFlow<Int> = videos.map { it.size }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
-    /** Each folder's count as last seen - an excluded folder's tracks leave the library, but its row stays to bring them back. */
-    private val folderCounts = LinkedHashMap<String, Int>()
+    /** Whether the library is still being found - read from disk, or scanned - so no folder yet is not yet none. */
+    val isFindingMedia: StateFlow<Boolean> = combine(libraryRepository.isReady, mediaScanner.isScanning) { isReady, isScanning -> !isReady || isScanning }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
-    val folders: StateFlow<List<MusicFolder>> = combine(tracks, librarySettings.excludedFolders.flow) { all, excluded ->
-        all.groupingBy { it.folderPath }.eachCount().forEach { (path, count) -> folderCounts[path] = count }
+    /** Each folder's songs and videos as last seen - an excluded folder's leave the library, but its row stays to bring them back. */
+    private val folderCounts = LinkedHashMap<String, Pair<Int, Int>>()
+
+    val folders: StateFlow<List<MediaFolder>> = combine(songs, videos, librarySettings.excludedFolders.flow) { songs, videos, excluded ->
+        val songsIn = songs.groupingBy { it.folderPath }.eachCount()
+        val videosIn = videos.groupingBy { it.folderPath }.eachCount()
+        (songsIn.keys + videosIn.keys).forEach { path -> folderCounts[path] = (songsIn[path] ?: 0) to (videosIn[path] ?: 0) }
         folderCounts.entries
-            .sortedByDescending { it.value }
-            .map { (path, count) -> MusicFolder(path, displayNameOf(path), count, path !in excluded) }
+            .sortedByDescending { (_, counts) -> counts.first + counts.second }
+            .map { (path, counts) -> MediaFolder(path, displayNameOf(path), counts.first, counts.second, path !in excluded) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val showsShuffleButton: StateFlow<Boolean> = quickPlaySettings.showButton.stateIn(viewModelScope)
@@ -202,7 +240,13 @@ class OnboardingViewModel @Inject constructor(
         if (_progress.value.step == OnboardingStep.RESTORE) {
             viewModelScope.launch {
                 when (val run = BackupWork.restoreRun(context).first()) {
-                    is BackupRun.Running -> follow(RestoreState.Chosen(BackupSource.Earlier, RestoreStatus.RESTORING, progress = run.progress))
+                    is BackupRun.Running -> {
+                        // Already past the library - its files coming in - it shows as restored, as it was left.
+                        if (run.progress?.step in MediaSteps) {
+                            _restore.value = RestoreState.Restored(driveAccess.isConnected.value, media = MediaDownload(0, 0, MediaDownload.State.DOWNLOADING))
+                        }
+                        follow(RestoreState.Chosen(BackupSource.Earlier, RestoreStatus.RESTORING, progress = run.progress))
+                    }
                     is BackupRun.Succeeded -> _restore.value = RestoreState.Restored(isFromDrive = driveAccess.isConnected.value)
                     is BackupRun.Failed -> _restore.value = RestoreState.Chosen(BackupSource.Earlier, RestoreStatus.FAILED, failure = run.reason)
                     BackupRun.Stopped, BackupRun.Paused -> _restore.value = RestoreState.Chosen(BackupSource.Earlier, RestoreStatus.FAILED)
@@ -353,13 +397,35 @@ class OnboardingViewModel @Inject constructor(
 
     // Restoring.
 
+    /** Brings [part] of the library back, or leaves it - on the backup chosen, before restoring it. */
+    fun toggleRestorePart(part: RestorePart) = updateChoice { it.copy(parts = if (part in it.parts) it.parts - part else it.parts + part) }
+
+    /** Brings the whole library back, or none of it. */
+    fun setAllRestoreParts(on: Boolean) = updateChoice { it.copy(parts = if (on) RestorePart.entries.toSet() else emptySet()) }
+
+    /** Brings the file at [path] back, or leaves it behind. */
+    fun toggleRestoreFile(path: String) = updateChoice { it.copy(leftOutFiles = if (path in it.leftOutFiles) it.leftOutFiles - path else it.leftOutFiles + path) }
+
+    /** Brings every one of [files] back, or none. */
+    fun setAllRestoreFiles(files: List<Track>, on: Boolean) = updateChoice { chosen ->
+        val paths = files.mapTo(HashSet()) { it.path }
+        chosen.copy(leftOutFiles = if (on) chosen.leftOutFiles - paths else chosen.leftOutFiles + paths)
+    }
+
+    private fun updateChoice(change: (RestoreState.Chosen) -> RestoreState.Chosen) {
+        val chosen = _restore.value as? RestoreState.Chosen ?: return
+        if (chosen.status == RestoreStatus.READY) _restore.value = change(chosen)
+    }
+
     /**
      * Connects a Google account - through Google's own account sheet, and its consent screen the first time, which
      * [onConsent] opens and [finishConnectingDrive] hears back from - for [purpose].
      */
     fun connectDrive(onConsent: (PendingIntent) -> Unit, purpose: DrivePurpose) {
         connectingFor = purpose
-        if (purpose == DrivePurpose.FIND_BACKUPS) _restore.value = RestoreState.ChoosingSource(isConnecting = true)
+        // From choosing where, the button says it is connecting; from an account's screen - Change - that screen stays as it is
+        // while Google's sheet is up, rather than going back a screen and coming again.
+        if (purpose == DrivePurpose.FIND_BACKUPS && _restore.value is RestoreState.ChoosingSource) _restore.value = RestoreState.ChoosingSource(isConnecting = true)
         viewModelScope.launch {
             when (val connection = runCatching { driveAccess.connect() }.getOrNull()) {
                 is DriveConnection.NeedsConsent -> onConsent(connection.consent)
@@ -390,7 +456,7 @@ class OnboardingViewModel @Inject constructor(
 
     /** Back to where connecting was asked from - saying so where it [failed], rather than was turned away from. */
     private fun onDriveNotConnected(failed: Boolean) {
-        if (connectingFor == DrivePurpose.FIND_BACKUPS) _restore.value = RestoreState.ChoosingSource(couldNotConnect = failed)
+        if (connectingFor == DrivePurpose.FIND_BACKUPS && _restore.value is RestoreState.ChoosingSource) _restore.value = RestoreState.ChoosingSource(couldNotConnect = failed)
     }
 
     /** Looks for Sona's backups in the connected account's Drive, and opens the newest. */
@@ -474,8 +540,10 @@ class OnboardingViewModel @Inject constructor(
         when (chosen.status) {
             RestoreStatus.READY -> {
                 val preview = chosen.preview ?: return
+                if (!chosen.choosesAnything) return
                 follow(chosen) {
-                    backupRepository.chooseFilesToRestore(preview.files.fingerprintsOf(preview.files.all))
+                    backupRepository.chooseLibraryToRestore(chosen.parts)
+                    backupRepository.chooseFilesToRestore(preview.files.fingerprintsOfFiles(chosen.chosenMusic + chosen.chosenVideos))
                     BackupWork.restore(context)
                 }
             }
@@ -490,26 +558,63 @@ class OnboardingViewModel @Inject constructor(
      */
     private fun follow(chosen: RestoreState.Chosen, start: suspend () -> Unit = {}) {
         restoring?.cancel()
-        _restore.value = chosen.copy(status = RestoreStatus.RESTORING, progress = chosen.progress, failure = null)
+        lastChosen = chosen
+        val isFromDrive = chosen.source is BackupSource.Drive || (chosen.source == BackupSource.Earlier && driveAccess.isConnected.value)
+        val cameBack = chosen.preview?.let { CameBack(chosen.parts, it.summary) }
+        val mediaCount = chosen.chosenMusic.size + chosen.chosenVideos.size
+        // Once the library is in, it is restored - whatever music and videos are still coming in after it.
+        var isLibraryIn = (_restore.value as? RestoreState.Restored)?.media != null
+        fun restored(media: MediaDownload?) = RestoreState.Restored(isFromDrive, cameBack, media)
+        suspend fun libraryIn() {
+            if (isLibraryIn) return
+            isLibraryIn = true
+            // Now, not at the very end: the setup may be left while the files are still coming in.
+            if (isFromDrive) backupSettings.setSchedule(BackupSchedule.WEEKLY)
+        }
+        _restore.value = if (isLibraryIn) {
+            restored(MediaDownload(0, mediaCount, MediaDownload.State.DOWNLOADING))
+        } else {
+            chosen.copy(status = RestoreStatus.RESTORING, progress = chosen.progress, failure = null)
+        }
         restoring = viewModelScope.launch {
             start()
             // The latest run may be one from before: what counts is what follows this one running.
             val outcome = BackupWork.restoreRun(context)
                 .dropWhile { it !is BackupRun.Running }
                 .onEach { run ->
-                    if (run is BackupRun.Running) _restore.value = chosen.copy(status = RestoreStatus.RESTORING, progress = run.progress, failure = null)
+                    if (run !is BackupRun.Running) return@onEach
+                    val progress = run.progress
+                    if (isLibraryIn || progress?.step in MediaSteps) {
+                        libraryIn()
+                        val total = progress?.total?.takeIf { it > 0 } ?: mediaCount
+                        _restore.value = restored(MediaDownload(progress?.done?.coerceAtMost(total) ?: 0, total, MediaDownload.State.DOWNLOADING))
+                    } else {
+                        _restore.value = chosen.copy(status = RestoreStatus.RESTORING, progress = progress, failure = null)
+                    }
                 }
                 .first { it != null && it !is BackupRun.Running }
-            _restore.value = when (outcome) {
-                is BackupRun.Succeeded -> {
-                    val isFromDrive = chosen.source is BackupSource.Drive || (chosen.source == BackupSource.Earlier && driveAccess.isConnected.value)
-                    if (isFromDrive) backupSettings.setSchedule(BackupSchedule.WEEKLY)
-                    RestoreState.Restored(isFromDrive)
+            val media = (_restore.value as? RestoreState.Restored)?.media
+            _restore.value = when {
+                outcome is BackupRun.Succeeded -> {
+                    libraryIn()
+                    restored(media?.copy(done = media.total, state = MediaDownload.State.DONE))
                 }
-                is BackupRun.Failed -> chosen.copy(status = RestoreStatus.FAILED, progress = latestProgress(), failure = outcome.reason)
+                // The library is in: only files stopped coming - for the restore to be run again to bring the rest.
+                isLibraryIn -> restored((media ?: MediaDownload(0, mediaCount, MediaDownload.State.FAILED)).copy(state = MediaDownload.State.FAILED))
+                outcome is BackupRun.Failed -> chosen.copy(status = RestoreStatus.FAILED, progress = latestProgress(), failure = outcome.reason)
                 else -> chosen.copy(status = RestoreStatus.FAILED, progress = latestProgress())
             }
         }
+    }
+
+    /** The restore last started, for its files to be brought in again - see [retryMedia]. */
+    private var lastChosen: RestoreState.Chosen? = null
+
+    /** Runs the restore again for the files that did not come in - the library already in staying as it is. */
+    fun retryMedia() {
+        val restored = _restore.value as? RestoreState.Restored ?: return
+        if (restored.media?.state != MediaDownload.State.FAILED || restoring?.isActive == true) return
+        follow(lastChosen ?: RestoreState.Chosen(BackupSource.Earlier, RestoreStatus.FAILED)) { BackupWork.restore(context) }
     }
 
     /** How far the restore on screen had come - for one stopped to show where. */

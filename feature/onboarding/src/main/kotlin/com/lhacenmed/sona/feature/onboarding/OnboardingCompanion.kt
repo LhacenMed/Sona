@@ -18,7 +18,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
@@ -37,6 +39,7 @@ import com.lhacenmed.sona.core.designsystem.component.SonaMark
 import com.lhacenmed.sona.core.designsystem.component.launchEntranceFlight
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.motion.EmphasizedDecelerate
+import kotlinx.coroutines.flow.first
 import kotlin.math.roundToInt
 
 /** The companion's own size - drawn at this, and scaled to where it stands. */
@@ -99,7 +102,7 @@ private val OnboardingStep.isMark: Boolean get() = this == OnboardingStep.WELCOM
  * library's entrance to fly it to the bar as it is. Drawn at [CompanionSize], and scaled to its place.
  */
 @Composable
-internal fun OnboardingCompanion(step: OnboardingStep, isLeaving: Boolean, modifier: Modifier = Modifier) {
+internal fun OnboardingCompanion(step: OnboardingStep, isLeaving: Boolean, onBecameMark: () -> Unit, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
     val entrance = LocalLaunchEntrance.current
     val markPath = stringResource(DesignR.string.sona_mark_cookie_path)
@@ -138,9 +141,15 @@ internal fun OnboardingCompanion(step: OnboardingStep, isLeaving: Boolean, modif
         morph.animateTo(1f, tween(CompanionMorphMillis, easing = EmphasizedDecelerate))
     }
 
-    val turnTarget = if (shownStep == null) 0f else step.ordinal * DegreesPerStep
+    // Leaving, it turns to the nearest upright, in the morph's time and without passing it, so it is the mark exactly as
+    // the morph ends - the library's mark starts from there, upright, with nothing left to turn.
+    val stepTurn = step.ordinal * DegreesPerStep
+    val turnTarget = if (shownStep == null) (stepTurn / 360f).roundToInt() * 360f else stepTurn
     val turn = remember { Animatable(turnTarget) }
-    LaunchedEffect(turnTarget) { turn.animateTo(turnTarget, tween(TurnMillis, easing = TurnEasing)) }
+    LaunchedEffect(turnTarget) {
+        val spec = if (shownStep == null) tween(CompanionMorphMillis, easing = EmphasizedDecelerate) else tween<Float>(TurnMillis, easing = TurnEasing)
+        turn.animateTo(turnTarget, spec)
+    }
 
     // The hero's slow spin, once landed; stopped, it settles upright, so the mark it becomes is upright too.
     val spin = remember { Animatable(0f) }
@@ -151,6 +160,19 @@ internal fun OnboardingCompanion(step: OnboardingStep, isLeaving: Boolean, modif
         } else {
             spin.animateTo((spin.value / 360f).roundToInt() * 360f, tween(CompanionMorphMillis, easing = EmphasizedDecelerate))
         }
+    }
+
+    // Told once, leaving, every part of it has come to rest as the mark - its shape, its turn, its spin - not when it
+    // should have by the clock: on a busy device the frames come late, and the mark is handed over only as it is.
+    val becameMark by rememberUpdatedState(onBecameMark)
+    LaunchedEffect(isLeaving) {
+        if (!isLeaving) return@LaunchedEffect
+        snapshotFlow {
+            to === mark && morph.value == 1f &&
+                !turn.isRunning && turn.value % 360f == 0f &&
+                !spin.isRunning && spin.value % 360f == 0f
+        }.first { it }
+        becameMark()
     }
 
     // How far the launch screen's mark has flown here - 1 once landed, or where there was none.

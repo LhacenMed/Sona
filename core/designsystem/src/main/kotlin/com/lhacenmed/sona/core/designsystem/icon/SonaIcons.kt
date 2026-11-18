@@ -66,6 +66,7 @@ object SonaIcons {
     val ClosedCaption: ImageVector by icon { Glyphs.ClosedCaption }
     val Cloud: ImageVector by icon { Glyphs.Cloud }
     val CloudDone: ImageVector by icon { Glyphs.CloudDone }
+    val CloudDownload: ImageVector by icon { Glyphs.CloudDownload }
     val CloudOff: ImageVector by icon { Glyphs.CloudOff }
     val CloudSync: ImageVector by icon { Glyphs.CloudSync }
     val CloudUpload: ImageVector by icon { Glyphs.CloudUpload }

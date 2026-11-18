@@ -14,7 +14,7 @@
     <string name="onboarding_restore_from_backup">Restore from a backup</string>
 
     <string name="onboarding_restore_title">Restore a backup</string>
-    <string name="onboarding_restore_message">Bring back your playlists, favorites and settings.</string>
+    <string name="onboarding_restore_message">Bring back your music and library.</string>
     <string name="onboarding_restore_drive">Google Drive</string>
     <string name="onboarding_restore_drive_summary">Backups Sona saved to your Google account.</string>
     <string name="onboarding_restore_connect_drive">Connect Google account</string>
@@ -43,11 +43,11 @@
     <string name="onboarding_restored_settings">Settings, theme and library sections</string>
     <string name="onboarding_restored_history">Play history</string>
     <string name="onboarding_restored_keep_backing_up">Keep backing up here</string>
-    <string name="onboarding_restored_keep_backing_up_summary">Every week, on Wi‑Fi.</string>
+    <string name="onboarding_restored_keep_backing_up_summary">Every week on Wi‑Fi, the first a week from now.</string>
     <string name="onboarding_restored_back_up_to_drive">Back up to Google Drive</string>
     <string name="onboarding_restored_back_up_to_drive_summary">So the next phone is one tap away.</string>
     <string name="onboarding_restored_connect">Connect</string>
-    <string name="onboarding_restore_opening">Reading…</string>
+    <string name="onboarding_restore_opening">Reading the backup…</string>
     <string name="onboarding_restore_unreadable">This file is not a Sona backup, or it is damaged.</string>
     <string name="onboarding_restore_unsupported">This backup was made by a newer version of Sona.</string>
     <string name="onboarding_restore_failed">The restore stopped. Try again, it carries on from where it left off.</string>
@@ -65,6 +65,70 @@
     <string name="onboarding_restoring">Restoring…</string>
     <string name="onboarding_restore_progress">Restore progress</string>
     <string name="onboarding_try_again">Try again</string>
+    <string name="onboarding_restoring_from_with_media">From %1$s. Your library first, then songs and videos.</string>
+    <string name="onboarding_restoring_from_drive_with_media">From Google Drive. Your library first, then songs and videos.</string>
+    <string name="onboarding_restore_library">Library</string>
+    <string name="onboarding_restore_tracks">Music</string>
+    <string name="onboarding_restore_videos">Videos</string>
+    <string name="onboarding_restore_none">None</string>
+    <string name="onboarding_restore_library_all">Playlists, favorites, settings</string>
+    <string name="onboarding_restore_some_of">%1$d of %2$d</string>
+    <plurals name="onboarding_restore_tracks_all">
+        <item quantity="one">%1$d song · %2$s</item>
+        <item quantity="other">%1$d songs · %2$s</item>
+    </plurals>
+    <plurals name="onboarding_restore_tracks_some">
+        <item quantity="one">%1$d of %2$d song · %3$s</item>
+        <item quantity="other">%1$d of %2$d songs · %3$s</item>
+    </plurals>
+    <plurals name="onboarding_restore_videos_all">
+        <item quantity="one">%1$d video · %2$s</item>
+        <item quantity="other">%1$d videos · %2$s</item>
+    </plurals>
+    <plurals name="onboarding_restore_videos_some">
+        <item quantity="one">%1$d of %2$d video · %3$s</item>
+        <item quantity="other">%1$d of %2$d videos · %3$s</item>
+    </plurals>
+    <string name="onboarding_restore_some_of_size">%1$d of %2$d · %3$s</string>
+    <string name="onboarding_restore_all_library">All library</string>
+    <string name="onboarding_restore_all_tracks">All music</string>
+    <string name="onboarding_restore_all_videos">All videos</string>
+    <string name="onboarding_restore_to_download">&lt;b>%1$s&lt;/b> to download</string>
+    <string name="onboarding_restore_free">%1$s free</string>
+    <string name="onboarding_restore_to_download_free">&lt;b>%1$s&lt;/b> to download · %2$s free</string>
+    <string name="onboarding_restore_file_no_media">File backups don’t include songs or videos. Restore from Google Drive to bring those back.</string>
+    <string name="onboarding_restore_select_all">Select all</string>
+    <plurals name="onboarding_restore_here">
+        <item quantity="one">%1$d more already on this phone</item>
+        <item quantity="other">%1$d more already on this phone</item>
+    </plurals>
+    <plurals name="onboarding_restore_plays">
+        <item quantity="one">%1$s play</item>
+        <item quantity="other">%1$s plays</item>
+    </plurals>
+    <string name="onboarding_restore_done">Done</string>
+    <plurals name="onboarding_restored_playlists">
+        <item quantity="one">%1$d playlist</item>
+        <item quantity="other">%1$d playlists</item>
+    </plurals>
+    <plurals name="onboarding_restored_favorites">
+        <item quantity="one">%1$d favorite</item>
+        <item quantity="other">%1$d favorites</item>
+    </plurals>
+    <string name="onboarding_restored_lists_and">&lt;b>%1$s&lt;/b> and &lt;b>%2$s&lt;/b></string>
+    <plurals name="onboarding_restored_plays">
+        <item quantity="one">%1$s play of history</item>
+        <item quantity="other">%1$s plays of history</item>
+    </plurals>
+    <string name="onboarding_restored_media_downloading">Downloading media</string>
+    <string name="onboarding_restored_media_done">Media restored</string>
+    <string name="onboarding_restored_media_failed">Some files didn’t download</string>
+    <plurals name="onboarding_restored_media_count">
+        <item quantity="one">%1$d of %2$d song or video</item>
+        <item quantity="other">%1$d of %2$d songs and videos</item>
+    </plurals>
+    <string name="onboarding_restored_media_use_now">You can use Sona now</string>
+    <string name="onboarding_restored_media_progress">Media download</string>
 
     <string name="onboarding_access_title">Allow access</string>
     <string name="onboarding_access_message">Each one is optional. You can change them later in Settings.</string>
@@ -75,16 +139,29 @@
     <string name="onboarding_access_installs">Install updates</string>
     <string name="onboarding_access_installs_summary">So Sona can update itself.</string>
 
-    <string name="onboarding_folders_title">Music folders</string>
+    <string name="onboarding_folders_title">Media folders</string>
     <string name="onboarding_folders_message">Sona looks for songs and videos in these folders.</string>
-    <string name="onboarding_folders_empty">No music found yet. Allow access to music and videos to see your folders.</string>
-    <plurals name="onboarding_folder_tracks">
-        <item quantity="one">%d track</item>
-        <item quantity="other">%d tracks</item>
+    <string name="onboarding_folders_empty">Nothing found yet. Allow access to music and videos to see your folders.</string>
+    <string name="onboarding_folders_finding">Looking for your songs and videos…</string>
+    <string name="onboarding_folders_no_songs">No songs found yet.</string>
+    <string name="onboarding_folders_no_videos">No videos found yet.</string>
+    <string name="onboarding_music">Music</string>
+    <string name="onboarding_videos">Videos</string>
+    <plurals name="onboarding_songs">
+        <item quantity="one">%d song</item>
+        <item quantity="other">%d songs</item>
     </plurals>
-    <plurals name="onboarding_library_total">
-        <item quantity="one">%d track in your library</item>
-        <item quantity="other">%d tracks in your library</item>
+    <plurals name="onboarding_videos_count">
+        <item quantity="one">%d video</item>
+        <item quantity="other">%d videos</item>
+    </plurals>
+    <plurals name="onboarding_library_songs">
+        <item quantity="one">%d song in your library</item>
+        <item quantity="other">%d songs in your library</item>
+    </plurals>
+    <plurals name="onboarding_library_videos">
+        <item quantity="one">%d video in your library</item>
+        <item quantity="other">%d videos in your library</item>
     </plurals>
 
     <string name="onboarding_library_title">Your library</string>
@@ -97,13 +174,14 @@
     <string name="onboarding_downloads_use">Use downloads</string>
     <string name="onboarding_downloads_use_summary">A Downloads button in your library.</string>
     <string name="onboarding_downloader">Downloader</string>
-    <string name="onboarding_downloader_missing">About 50 MB, once. It keeps downloading while you carry on.</string>
-    <string name="onboarding_downloader_downloading">%1$s of %2$s · it keeps going while you carry on</string>
-    <string name="onboarding_downloader_installed">Ready to download.</string>
-    <string name="onboarding_downloader_failed">Couldn’t download it. Check your connection.</string>
+    <string name="onboarding_downloader_missing">Needed to download. About 50 MB.</string>
+    <string name="onboarding_downloader_downloading">%1$s of %2$s</string>
+    <string name="onboarding_downloader_starting">Starting…</string>
+    <string name="onboarding_downloader_installed">Ready</string>
+    <string name="onboarding_downloader_failed">Couldn’t download. Check your connection.</string>
     <string name="onboarding_downloader_get">Download</string>
     <string name="onboarding_downloader_retry">Retry</string>
-    <string name="onboarding_downloader_cancel">Stop downloading the downloader</string>
+    <string name="onboarding_downloader_cancel">Stop</string>
     <string name="onboarding_downloads_save_to">Save to</string>
     <string name="onboarding_downloads_default_folder_summary">Shows up in your library.</string>
     <string name="onboarding_downloads_other_folder">Another folder…</string>
@@ -137,9 +215,11 @@
     <string name="onboarding_turn_on">Turn on</string>
 
     <string name="onboarding_done_title">You’re all set</string>
-    <plurals name="onboarding_done_message">
-        <item quantity="one">%d track is ready. You can change any of this in Settings.</item>
-        <item quantity="other">%d tracks are ready. You can change any of this in Settings.</item>
+    <plurals name="onboarding_done_ready">
+        <item quantity="one">%1$s is ready.</item>
+        <item quantity="other">%1$s are ready.</item>
     </plurals>
+    <string name="onboarding_done_ready_both">%1$s and %2$s are ready.</string>
+    <string name="onboarding_done_change_later">You can change any of this in Settings.</string>
     <string name="onboarding_open_library">Open library</string>
 </resources>
