@@ -14,9 +14,13 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /** How far into a video it has to be left to be resumed - less, and it starts over. */
 private const val MinimumResumeMs = 5_000L
@@ -29,56 +33,67 @@ private const val CheckpointMs = 10_000L
 
 /** Where one [PlaybackSpace]'s resume positions are kept, by the id each item has in it. */
 internal interface ResumePositionStore {
-    suspend fun getAll(): Map<Long, Long>
+    /** Every position kept, and again each time they change - written by something else too, a restore. */
+    fun observe(): Flow<Map<Long, Long>>
     suspend fun save(id: Long, positionMs: Long)
     suspend fun forget(id: Long)
 }
 
 /** The library's videos' positions, in its own database. */
 private fun ResumePositionDao.asResumePositionStore() = object : ResumePositionStore {
-    override suspend fun getAll() = this@asResumePositionStore.getAll().associate { it.trackId to it.positionMs }
+    override fun observe() = observeAll().map { rows -> rows.associate { it.trackId to it.positionMs } }
     override suspend fun save(id: Long, positionMs: Long) = upsert(ResumePositionEntity(id, positionMs))
     override suspend fun forget(id: Long) = delete(id)
 }
 
 /** The Private Folder's videos' positions, kept in the vault with the rest of it. */
 private fun VaultRepository.asResumePositionStore() = object : ResumePositionStore {
-    override suspend fun getAll() = resumePositions()
+    // Only ever written here: read once.
+    override fun observe() = flow { emit(resumePositions()) }
     override suspend fun save(id: Long, positionMs: Long) = saveResumePosition(id, positionMs)
     override suspend fun forget(id: Long) = forgetResumePosition(id)
 }
 
 /** Positions held in memory alone - those of videos played as they download, until each is saved into the library. */
 private object HeldInMemory : ResumePositionStore {
-    override suspend fun getAll() = emptyMap<Long, Long>()
+    override fun observe() = flowOf(emptyMap<Long, Long>())
     override suspend fun save(id: Long, positionMs: Long) = Unit
     override suspend fun forget(id: Long) = Unit
 }
 
-/** One space's positions - read once and then kept in memory, this being their only writer. */
+/**
+ * One space's positions, kept in memory as they are stored - this the one writer of those it plays, and a restore adding
+ * those of videos the space had none for, which are taken in as they arrive.
+ */
 private class ResumeBook(private val store: ResumePositionStore, private val writeScope: CoroutineScope) {
     private val positionsMs = HashMap<Long, Long>()
+
+    /** Those forgotten here - watched to the end - which a store yet to catch up may still hold, not to be taken back. */
+    private val forgotten = HashSet<Long>()
 
     /** Whether [positionsMs] holds what was stored - until then, one missing from it may still be stored. */
     private var isLoaded = false
 
     init {
         writeScope.launch(Dispatchers.Main) {
-            val stored = withContext(Dispatchers.IO) { store.getAll() }
-            // Any written meanwhile is newer than what was read.
-            stored.forEach { (id, positionMs) -> positionsMs.putIfAbsent(id, positionMs) }
-            isLoaded = true
+            store.observe().flowOn(Dispatchers.IO).collect { stored ->
+                // One held here is the newer: written by this book, or on its way to the store.
+                stored.forEach { (id, positionMs) -> if (id !in forgotten) positionsMs.putIfAbsent(id, positionMs) }
+                isLoaded = true
+            }
         }
     }
 
     operator fun get(id: Long): Long? = positionsMs[id]
 
     fun save(id: Long, positionMs: Long) {
+        forgotten.remove(id)
         if (positionsMs.put(id, positionMs) == positionMs) return
         writeScope.launch(Dispatchers.IO) { store.save(id, positionMs) }
     }
 
     fun forget(id: Long) {
+        forgotten.add(id)
         if (positionsMs.remove(id) == null && isLoaded) return
         writeScope.launch(Dispatchers.IO) { store.forget(id) }
     }
