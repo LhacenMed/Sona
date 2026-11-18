@@ -12,13 +12,22 @@ import kotlinx.serialization.Serializable
 /** The format backups are written in. A backup in a later one is refused rather than half read. */
 const val BACKUP_FORMAT_VERSION = 1
 
-/** What a backup says of itself. */
+/** What a backup says of itself - and of the [device] it was made on, which a backup from before it was kept does not. */
 @Serializable
 data class BackupManifest(
     val formatVersion: Int,
     val createdAt: Long,
     val appVersionCode: Long,
+    val device: BackupDevice? = null,
 )
+
+/** The device a backup was made on: the [name] its owner gave it, and its [model] - "Pixel 8". */
+@Serializable
+data class BackupDevice(val name: String, val model: String) {
+
+    /** What it is called, as shown: the name its owner gave it, or its model where it has none. */
+    val label: String get() = name.ifBlank { model }
+}
 
 /**
  * Everything the user made in the library, with each track named by its file's path rather than by an id - so

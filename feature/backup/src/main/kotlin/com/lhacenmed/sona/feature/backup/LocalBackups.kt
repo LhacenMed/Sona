@@ -45,7 +45,7 @@ class LocalBackups @Inject constructor(
             .sortedByDescending { it.createdAt }
     }
 
-    override suspend fun add(name: String, write: (OutputStream) -> Unit) = withContext(ioDispatcher) {
+    override suspend fun add(name: String, device: BackupDevice, write: (OutputStream) -> Unit) = withContext(ioDispatcher) {
         val partial = File(directory, ".$name.part")
         try {
             partial.outputStream().buffered().use(write)

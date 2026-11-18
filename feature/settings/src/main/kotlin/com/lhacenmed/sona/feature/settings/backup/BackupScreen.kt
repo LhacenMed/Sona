@@ -29,6 +29,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDialog
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.navigation.Screen
+import com.lhacenmed.sona.feature.backup.BackupFileTypes
 import com.lhacenmed.sona.feature.backup.BackupOutcome
 import com.lhacenmed.sona.feature.explorer.FolderPickerSheet
 import com.lhacenmed.sona.feature.backup.BackupSchedule
@@ -167,7 +168,7 @@ data object BackupScreen : Screen {
                 SettingsActionItem(
                     title = stringResource(R.string.restore_from_file_title),
                     summary = if (isRestoring) runText(context, restoreRun) else null,
-                    onClick = { pickBackup.launch(arrayOf("*/*")) },
+                    onClick = { pickBackup.launch(BackupFileTypes) },
                     enabled = !isRestoring,
                     isBusy = isRestoring,
                 )

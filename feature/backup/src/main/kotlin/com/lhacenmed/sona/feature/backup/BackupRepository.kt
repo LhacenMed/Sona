@@ -94,6 +94,8 @@ enum class BackupOutcome {
  */
 data class RestorePreview(
     val createdAt: Long,
+    /** The device it was made on - none for a backup from before that was kept. */
+    val device: BackupDevice?,
     val files: RestoreFiles,
     val isDriveUnreachable: Boolean,
 )
@@ -266,7 +268,8 @@ class BackupRepository @Inject constructor(
         onProgress(BackupProgress(BackupStep.CHECKING_LAST_BACKUP))
         if (isCurrent(content, key, media, isDriveConnected)) return@withContext BackupOutcome.UNCHANGED
         val createdAt = System.currentTimeMillis()
-        val manifest = BackupManifest(BACKUP_FORMAT_VERSION, createdAt, appVersionCode())
+        val device = thisDevice(context)
+        val manifest = BackupManifest(BACKUP_FORMAT_VERSION, createdAt, appVersionCode(), device)
         val name = backupFileName(createdAt)
         val write: (OutputStream) -> Unit = { output ->
             BackupArchive.write(key?.let { BackupCipher.encrypting(output, it) } ?: output, manifest, library, settings, files)
@@ -289,12 +292,12 @@ class BackupRepository @Inject constructor(
             }
         }
         onProgress(BackupProgress(BackupStep.SAVING_ON_DEVICE))
-        val localChecksum = keep(localBackups, name, write)
+        val localChecksum = keep(localBackups, name, device, write)
         driveFailure?.let { throw it }
         var driveChecksum: String? = null
         if (isDriveConnected) {
             onProgress(BackupProgress(BackupStep.SAVING_TO_DRIVE))
-            driveChecksum = keep(driveBackups, name, write)
+            driveChecksum = keep(driveBackups, name, device, write)
             // Only once every file is there: what a file still on its way replaces is all Drive has of it until then.
             if (outcome == BackupOutcome.SAVED) {
                 onProgress(BackupProgress(BackupStep.CLEANING_DRIVE))
@@ -345,8 +348,8 @@ class BackupRepository @Inject constructor(
      * Adds the backup [write] writes to [destination], as [name], in place of every one kept there before - only once
      * it is kept whole, so there is never none. The checksum of what it kept.
      */
-    private suspend fun keep(destination: BackupDestination, name: String, write: (OutputStream) -> Unit): String {
-        val checksum = destination.add(name, write)
+    private suspend fun keep(destination: BackupDestination, name: String, device: BackupDevice, write: (OutputStream) -> Unit): String {
+        val checksum = destination.add(name, device, write)
         destination.list().filter { it.name != name }.forEach { destination.delete(it) }
         return checksum
     }
@@ -525,12 +528,13 @@ class BackupRepository @Inject constructor(
     private suspend fun previewOf(contents: BackupContents, key: BackupKey?): RestorePreview {
         val cloud = driveBackups.media(key)
         val createdAt = contents.manifest.createdAt
+        val device = contents.manifest.device
         val inCloud = try {
             cloudFingerprints(contents, cloud)
         } catch (_: IOException) {
-            return RestorePreview(createdAt, RestoreFiles(emptyList()), isDriveUnreachable = true)
+            return RestorePreview(createdAt, device, RestoreFiles(emptyList()), isDriveUnreachable = true)
         }
-        return RestorePreview(createdAt, RestoreFiles(mediaPlanOf(contents, restorerOf(cloud), inCloud).missing), isDriveUnreachable = false)
+        return RestorePreview(createdAt, device, RestoreFiles(mediaPlanOf(contents, restorerOf(cloud), inCloud).missing), isDriveUnreachable = false)
     }
 
     /** Which of the backup's files [cloud] keeps - none while Drive is not connected. Asks Drive, so it may fail. */

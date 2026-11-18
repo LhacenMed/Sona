@@ -3,6 +3,7 @@ package com.lhacenmed.sona.feature.backup.drive
 import android.content.Context
 import com.lhacenmed.sona.core.common.di.IoDispatcher
 import com.lhacenmed.sona.feature.backup.BackedUpMedia
+import com.lhacenmed.sona.feature.backup.BackupDevice
 import com.lhacenmed.sona.feature.backup.BackupDestination
 import com.lhacenmed.sona.feature.backup.BackupProgress
 import com.lhacenmed.sona.feature.backup.BackupStep
@@ -43,6 +44,13 @@ private const val SEALED_MEDIA_FILE = "sealedMediaFile"
 private const val MEDIA_IDENTITY = "identity"
 private const val MEDIA_PATH = "path"
 private const val SEALED_CHECKSUM = "sealedChecksum"
+
+/** What a backup in Drive keeps of the device it was made on - see [BackupDevice]. */
+private const val DEVICE_NAME = "deviceName"
+private const val DEVICE_MODEL = "deviceModel"
+
+/** How much of a device's name or model Drive keeps: what a key and its value may take together, with room to spare. */
+private const val DEVICE_DETAIL_MAX_LENGTH = 80
 
 /** How many files upload at once: enough to keep a connection full, few enough for what Drive takes from one app. */
 private const val PARALLEL_UPLOADS = 4
@@ -91,18 +99,26 @@ class DriveBackups @Inject internal constructor(
 
     override suspend fun list(): List<StoredBackup> =
         inFolder(::rootFolder) { folderId -> api.find(mapOf(KIND to BACKUP), folderId) }
-            .map { StoredBackup(it.id, it.name, it.createdAt, it.sizeBytes) }
+            .map { file ->
+                val device = file.properties[DEVICE_MODEL]?.let { model -> BackupDevice(file.properties[DEVICE_NAME].orEmpty(), model) }
+                StoredBackup(file.id, file.name, file.createdAt, file.sizeBytes, device)
+            }
             .sortedByDescending { it.createdAt }
 
     /** Keeps the backup only once Drive holds the very bytes written - one that arrived otherwise is deleted. */
-    override suspend fun add(name: String, write: (OutputStream) -> Unit): String {
+    override suspend fun add(name: String, device: BackupDevice, write: (OutputStream) -> Unit): String {
         val file = File(context.cacheDir, name)
         try {
             val written = withContext(ioDispatcher) {
                 file.outputStream().buffered().use(write)
                 fingerprintOf(file)
             }
-            val uploaded = inFolder(::rootFolder) { folderId -> api.upload(file, name, folderId, mapOf(KIND to BACKUP)) }
+            val properties = mapOf(
+                KIND to BACKUP,
+                DEVICE_NAME to device.name.take(DEVICE_DETAIL_MAX_LENGTH),
+                DEVICE_MODEL to device.model.take(DEVICE_DETAIL_MAX_LENGTH),
+            )
+            val uploaded = inFolder(::rootFolder) { folderId -> api.upload(file, name, folderId, properties) }
             val kept = api.checksumOf(uploaded.id)
             if (kept != null && kept != written) {
                 api.delete(uploaded.id)
