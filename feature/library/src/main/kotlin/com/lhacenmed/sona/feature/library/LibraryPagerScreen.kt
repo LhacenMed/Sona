@@ -2,10 +2,6 @@ package com.lhacenmed.sona.feature.library
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.height
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.pluralStringResource
 import com.lhacenmed.sona.core.data.itemsOrNull
@@ -166,18 +162,6 @@ fun LibraryPagerScreen(
         // leaves this null: the pager is then its own authority and the strip simply follows it,
         // so the two can never fight over which tab is selected.
         var requestedPage by remember { mutableStateOf<Int?>(null) }
-
-        // Whether the list on screen was last scrolled down, through its rows: quick play steps aside for them then, and
-        // comes back as soon as the list is scrolled back up.
-        var isScrollingDown by remember { mutableStateOf(false) }
-        val quickPlayFollowsScroll = remember {
-            object : NestedScrollConnection {
-                override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                    if (consumed.y != 0f) isScrollingDown = consumed.y < 0f
-                    return Offset.Zero
-                }
-            }
-        }
 
         // The tab whose sort sheet is open. Held as the tab rather than a flag, so the sheet keeps
         // sorting the tab it was opened over.
@@ -408,9 +392,7 @@ fun LibraryPagerScreen(
                         // composition and nothing else, the same reason all five can be built on the launch frame.
                         SonaTabPager(
                             state = pagerState,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .nestedScroll(quickPlayFollowsScroll),
+                            modifier = Modifier.fillMaxSize(),
                             key = { page -> visibleTabs[page].name },
                         ) { page ->
                             val tab = visibleTabs[page]
@@ -433,7 +415,7 @@ fun LibraryPagerScreen(
                 // button - see QuickPlayButton - so this screen does not recompose for any of it.
                 QuickPlayButton(
                     quickPlay = { quickPlay },
-                    visible = { hasTracks && searchQuery == null && !isScrollingDown },
+                    visible = { hasTracks && searchQuery == null },
                     favoritesPlaylistId = viewModel.favoritesPlaylistId,
                     onPlay = viewModel::onQuickPlay,
                     onPlayFrom = viewModel::onQuickPlayFrom,

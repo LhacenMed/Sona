@@ -47,7 +47,8 @@ internal abstract class ScreenList {
         private set
 
     /** Where the list's top stands in the window, and the stretch of the window it shows in. */
-    private var windowTopPx by mutableFloatStateOf(0f)
+    protected var windowTopPx by mutableFloatStateOf(0f)
+        private set
     private var shownTopPx by mutableFloatStateOf(0f)
     private var shownBottomPx by mutableFloatStateOf(0f)
 
@@ -71,6 +72,12 @@ internal abstract class ScreenList {
 
     /** Whether the list has scrolled from its top at all - what a top app bar lifts by. */
     abstract val isScrolled: Boolean
+
+    /**
+     * Where the list's content ends in the window, once the list can scroll no further - its end reached, or too short
+     * to scroll - and null while it can: what the FAB stack steps aside from.
+     */
+    abstract val endInWindowPx: Float?
 
     /** Whether the list is far enough from its top for a way back to be worth offering. */
     val isAwayFromTop: Boolean
@@ -121,6 +128,14 @@ private class LazyScreenList(val state: LazyListState) : ScreenList() {
     override val isScrolled: Boolean
         get() = state.canScrollBackward
 
+    // The last row laid out is the list's last, the list scrolling no further: its foot, past the padding the list starts with.
+    override val endInWindowPx: Float?
+        get() {
+            if (state.canScrollForward) return null
+            val lastRow = state.layoutInfo.visibleItemsInfo.lastOrNull() ?: return null
+            return windowTopPx - state.layoutInfo.viewportStartOffset + lastRow.offset + lastRow.size
+        }
+
     override fun rowSpanPx(index: Int): ClosedFloatingPointRange<Float>? =
         state.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
             ?.let { row -> row.offset.toFloat()..(row.offset + row.size).toFloat() }
@@ -141,6 +156,14 @@ private class ScrollScreenList(val state: ScrollState) : ScreenList() {
 
     override val isScrolled: Boolean
         get() = state.value > 0
+
+    // A column's last element is not known, only where its content - the room it keeps at its end with it - ends.
+    override val endInWindowPx: Float?
+        get() = if (state.canScrollForward || state.maxValue == Int.MAX_VALUE) {
+            null
+        } else {
+            windowTopPx + state.maxValue + state.viewportSize - state.value
+        }
 }
 
 /**

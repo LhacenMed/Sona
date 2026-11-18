@@ -21,6 +21,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -29,6 +30,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.effect.ProvideSonaHaptics
 import kotlinx.coroutines.launch
 
@@ -171,12 +173,15 @@ internal fun SheetFrame(
         sheetState = sheetState,
         contentWindowInsets = { WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom) },
     ) {
-        // Its own window, with its own haptics: gated as every window's are.
+        // Its own window, with its own haptics: gated as every window's are. Nothing is laid over it - it stands above the
+        // mini player and the screen's FABs - so a list in it ends at its own foot, with none of the screen's room kept.
         ProvideSonaHaptics {
-            // Every sheet grows and shrinks to what it holds rather than jumping to it: a row added, an option switched. The one
-            // size animation in a sheet - what changes inside it fades, see SheetReveal and SheetSwap, and leaves the size to this.
-            Column(modifier = Modifier.animateContentSize(MaterialTheme.motionScheme.defaultSpatialSpec())) {
-                content(sheetScope)
+            CompositionLocalProvider(LocalBottomContentPadding provides 0.dp) {
+                // Every sheet grows and shrinks to what it holds rather than jumping to it: a row added, an option switched. The one
+                // size animation in a sheet - what changes inside it fades, see SheetReveal and SheetSwap, and leaves the size to this.
+                Column(modifier = Modifier.animateContentSize(MaterialTheme.motionScheme.defaultSpatialSpec())) {
+                    content(sheetScope)
+                }
             }
         }
     }

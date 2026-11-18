@@ -41,6 +41,7 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -140,15 +141,23 @@ internal class FloatingActionButtonStackState {
         get() = coveredHeight + StackSpacing
 
     /**
-     * The room a list keeps at its end for the stack - see [FloatingActionButtonStack]: the screen's own buttons, if
-     * any, and the scroll button above them, as they stand once all of them show, with a FAB's margin over them.
+     * The room a list keeps at its end for the stack - see [FloatingActionButtonStack]: a screen's extended buttons -
+     * its Save, its Add - with a FAB's margin over them, since what they do has to stay in reach at the list's end. Every
+     * other button steps aside there instead, and keeps no room.
      */
     val reservedHeight: Dp
-        get() {
-            val buttonsHeight = screenButtons?.height ?: 0.dp
-            val secondaryHeight = if (secondaryButton != null) ScrollButtonSize + StackSpacing else 0.dp
-            return (if (buttonsHeight > 0.dp) buttonsHeight + StackSpacing else 0.dp) + secondaryHeight + ScrollButtonSize + StackSpacing
-        }
+        get() = (screenButtons as? ExtendedButtons)?.height?.takeIf { it > 0.dp }?.let { it + StackSpacing } ?: 0.dp
+
+    /**
+     * Whether the screen's list has come to its end with its last row under the buttons that step aside - the scroll
+     * button, the second one and a menu FAB - however it got there: scrolled down to it, or too short to scroll at all.
+     * Told by where the list's end lies alone, never by which way it last moved, so it cannot flicker while scrolling.
+     */
+    fun coversListEnd(windowHeightPx: Float, density: Density): Boolean {
+        val endPx = screenLists.current?.endInWindowPx ?: return false
+        val lowestButton = (screenButtons as? PrimaryButton)?.height?.takeIf { it > 0.dp } ?: ScrollButtonSize
+        return endPx > windowHeightPx - with(density) { (standingHeight + reservedHeight + lowestButton).toPx() }
+    }
 }
 
 internal val LocalFloatingActionButtonStack = staticCompositionLocalOf<FloatingActionButtonStackState?> { null }
@@ -166,14 +175,14 @@ internal val LocalFloatingActionButtonStack = staticCompositionLocalOf<FloatingA
  * the navigation bar while there is no mini player, and follows it frame by frame: it rides up as the
  * mini player slides in and back down as it slides away, and rides the player's top as it is dragged up.
  *
- * Every list keeps room for the stack at its end - [LocalBottomContentPadding] is given to [content] with the
- * stack's [FloatingActionButtonStackState.reservedHeight] added, so whatever list a screen shows ends with it, with
- * nothing asked of the screen - so its last row always scrolls clear of the buttons, and they never have to step
- * aside from it: a list too short to scroll past them would otherwise have them gone for good. The whole stack steps
- * aside together only while the player is raised over the screen, and while the list is fast scrolled. How tall it
- * is is set by which buttons the screen shows rather than which the stack is showing, so the stack stepping aside
- * never moves one - while a screen whose own FAB is turned off or hidden, as the library's is while searched, has
- * none, and the way back to the top glides down into its place.
+ * A list keeps room at its end only for a screen's extended buttons - [LocalBottomContentPadding] is given to
+ * [content] with [FloatingActionButtonStackState.reservedHeight] added, with nothing asked of the screen - since a Save
+ * or an Add has to stay in reach. Every other button steps aside instead once the list's end lies under it - see
+ * [FloatingActionButtonStackState.coversListEnd] - whether scrolled down to or too short to scroll, and is back as soon
+ * as the end is clear of it: no list keeps room for buttons that are not there. The whole stack steps aside together
+ * while the player is raised over the screen, and while the list is fast scrolled. None of this moves the list - the
+ * room kept depends only on which buttons the screen has - while a screen whose own FAB is turned off or hidden, as the
+ * library's is while searched, has none, and the way back to the top glides down into its place.
  *
  * The scroll button takes the list back to its top once it is a quarter of a screen from it. Nearer the top,
  * it takes the list to the row it marks as playing instead, while that row is off screen - see
@@ -225,10 +234,15 @@ private fun BoxScope.FloatingActionButtons(stack: FloatingActionButtonStackState
         )
         val density = LocalDensity.current
         val windowHeightPx = LocalWindowInfo.current.containerSize.height.toFloat()
-        val isShownState = remember(stack) {
+        // Out of the way while the player is raised over the screen and while its list is fast scrolled - the screen's
+        // extended buttons too - and, but for them, while the list's end lies under the stack.
+        val isClearState = remember(stack) {
             derivedStateOf {
                 !stack.playerSheet.isRaised && stack.screenLists.current?.isFastScrolling?.invoke() != true
             }
+        }
+        val isShownState = remember(stack, isClearState, density, windowHeightPx) {
+            derivedStateOf { isClearState.value && !stack.coversListEnd(windowHeightPx, density) }
         }
         val scrollTarget by remember(stack, isShownState, density, windowHeightPx) {
             derivedStateOf {
@@ -276,7 +290,7 @@ private fun BoxScope.FloatingActionButtons(stack: FloatingActionButtonStackState
             is PrimaryButton -> screenButtons.content?.let { content ->
                 PrimaryButtonMenu(button = screenButtons, content = content, isShown = isShown, anchor = anchor)
             }
-            is ExtendedButtons -> ExtendedButtonColumn(buttons = screenButtons.buttons, isShown = isShown, anchor = anchor)
+            is ExtendedButtons -> ExtendedButtonColumn(buttons = screenButtons.buttons, isShown = isClearState.value, anchor = anchor)
             null -> Unit
         }
     }
