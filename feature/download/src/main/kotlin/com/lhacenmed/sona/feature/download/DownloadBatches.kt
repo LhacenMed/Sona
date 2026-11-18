@@ -1,6 +1,5 @@
 package com.lhacenmed.sona.feature.download
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -110,7 +109,7 @@ internal fun BatchRow(batch: DownloadBatch, selection: SelectionState, viewModel
     }
     val fraction = videos.sumOf { reached[it.id]?.toDouble() ?: 0.0 }.toFloat() / videos.size
     val ids = videos.filter { it.isActive }.map(Download::id)
-    Box(modifier = Modifier.background(MaterialTheme.colorScheme.surface)) {
+    Box {
         // Filling for as long as any of it is still to come - not only while one runs, which leaves gaps between them.
         if (ids.isNotEmpty()) RowProgressFill(fraction = fraction)
         SonaListRow(

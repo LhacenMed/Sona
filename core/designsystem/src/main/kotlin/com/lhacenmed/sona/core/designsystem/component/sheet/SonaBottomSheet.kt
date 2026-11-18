@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -147,7 +148,7 @@ internal fun SheetTitle(title: String) {
  * finger instead of following it. Only a list longer than the screen by more than the status bar hid that.
  * The content is held below the status bar by a gap fixed at the bar's height instead.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun SheetFrame(
     onDismissRequest: () -> Unit,
@@ -172,8 +173,9 @@ internal fun SheetFrame(
     ) {
         // Its own window, with its own haptics: gated as every window's are.
         ProvideSonaHaptics {
-            // Every sheet grows and shrinks to what it holds rather than jumping to it: a row added, an option switched.
-            Column(modifier = Modifier.animateContentSize()) {
+            // Every sheet grows and shrinks to what it holds rather than jumping to it: a row added, an option switched. The one
+            // size animation in a sheet - what changes inside it fades, see SheetReveal and SheetSwap, and leaves the size to this.
+            Column(modifier = Modifier.animateContentSize(MaterialTheme.motionScheme.defaultSpatialSpec())) {
                 content(sheetScope)
             }
         }

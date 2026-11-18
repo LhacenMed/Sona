@@ -61,9 +61,12 @@ fun SonaTheme(
     SystemBarsFollowing(darkTheme)
 
     // Round mode reaches every shape from here: Material's through the theme, Sona's own through
-    // [LocalIsRounded] - see `SonaShapes`.
+    // [LocalIsRounded] - see `SonaShapes`. Everything moves on Material 3 Expressive's springs, which overshoot and
+    // settle: Material's own components - switches, sliders, sheets, button groups, menus - and every one of the app's
+    // that reads [MaterialTheme.motionScheme].
     MaterialTheme(
         colorScheme = animateColorSchemeAsState(targetColorScheme),
+        motionScheme = MotionScheme.expressive(),
         shapes = if (coverStyle.isRounded) MaterialTheme.shapes else SquareShapes,
         typography = rememberTypography(config.font, config.customFontFamily),
     ) {
@@ -109,8 +112,8 @@ fun ThemeConfig.colorScheme(context: Context, isDark: Boolean): ColorScheme {
 }
 
 /**
- * [content] moving on Material's expressive springs - which overshoot and settle - rather than the app's
- * standard ones: whatever inside reads [MaterialTheme.motionScheme], Material's own components included.
+ * [content] moving on Material's expressive springs - which overshoot and settle - as [SonaTheme] has it, for content
+ * that may be drawn outside it: whatever inside reads [MaterialTheme.motionScheme], Material's own components included.
  */
 @Composable
 fun ExpressiveMotion(content: @Composable () -> Unit) {

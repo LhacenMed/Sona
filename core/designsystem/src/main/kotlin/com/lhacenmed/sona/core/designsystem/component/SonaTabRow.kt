@@ -1,5 +1,16 @@
 package com.lhacenmed.sona.core.designsystem.component
 
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
@@ -10,7 +21,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -57,8 +67,15 @@ import kotlin.math.floor
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
-private val TabRowHeight = 44.dp
-private val TabRowPadding = 4.dp
+/** A tab's height, and how far its label stands in from its sides. */
+private val TabRowHeight = 36.dp
+private val TabLabelPadding = 14.dp
+
+/** A tab's corners at rest: a whole pill. */
+private val TabCornerRadius = TabRowHeight / 2
+
+/** The gap between tabs. */
+private val TabGap = 4.dp
 
 /** How the tabs a drag passes make way, and how the one let go settles into its place. */
 private val TabMoveMotion = spring<Float>()
@@ -94,7 +111,10 @@ private class TabDrag(val from: Int, val selected: Float) {
 }
 
 /**
- * A tab strip whose selected tab wears a rounded pill.
+ * A tab strip whose selected tab wears a pill. Every tab is a pill as wide as the widest label needs, laid [edgePadding] in
+ * from the row's start; where they are more than the row holds it scrolls, and keeps the selected tab in view. The row
+ * runs to the window's edges - pass no padding around it - and its two edges fade across [edgePadding], always: at rest
+ * the fades fall on the empty room beside the first and last tabs, and a tab scrolled toward an edge fades out there.
  *
  * [selectedPosition] is a lambda returning a *continuous* position (e.g. a pager's
  * `currentPage + currentPageOffsetFraction`) rather than a discrete index, so the selected pill and
@@ -118,6 +138,7 @@ fun SonaTabRow(
     selectedPosition: () -> Float,
     onTabClick: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    edgePadding: Dp = 0.dp,
     onMoveTab: ((from: Int, to: Int) -> Unit)? = null,
 ) {
     if (tabTitles.isEmpty()) return
@@ -158,17 +179,40 @@ fun SonaTabRow(
         }
     }
 
+    // One width for every tab - the widest label's - so a tab's place is its index, as the drag below reckons it.
+    val textMeasurer = rememberTextMeasurer()
+    val labelStyle = MaterialTheme.typography.labelLarge
+    val density = LocalDensity.current
+    val restingTabWidth = remember(tabTitles, labelStyle, density) {
+        val widestLabel = tabTitles.maxOf { textMeasurer.measure(it, labelStyle, maxLines = 1).size.width }
+        with(density) { widestLabel.toDp() } + TabLabelPadding * 2
+    }
+    val rowWidth = restingTabWidth * tabCount + TabGap * (tabCount - 1)
+    val scrollState = rememberScrollState()
+
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
             .height(TabRowHeight)
-            // Vertical only: the outer tabs' edges are the row's own, so the row lines up with
-            // whatever the caller aligns it to.
-            .padding(vertical = TabRowPadding),
+            .fadingEdges(edgePadding)
+            .horizontalScroll(scrollState),
     ) {
-        val restingTabWidth = ((maxWidth - SonaComponentStyle.ItemSpacing * (tabCount - 1)) / tabCount).coerceAtLeast(0.dp)
         // From one tab's place to the next's.
-        val placeWidth = with(LocalDensity.current) { (restingTabWidth + SonaComponentStyle.ItemSpacing).toPx() }
+        val placeWidth = with(density) { (restingTabWidth + TabGap).toPx() }
+        val viewportWidth = with(density) { maxWidth.toPx() }
+        val edgePx = with(density) { edgePadding.toPx() }
+        // The selected tab kept in view - clear of the fades, as it stands at rest - as a swipe or a tap moves the selection
+        // along a row wider than the screen.
+        LaunchedEffect(placeWidth, viewportWidth, edgePx) {
+            snapshotFlow { selectedPosition().roundToInt() }.collect { selected ->
+                val left = selected * placeWidth
+                val right = left + placeWidth + 2 * edgePx
+                when {
+                    left < scrollState.value -> scrollState.animateScrollTo(left.roundToInt())
+                    right > scrollState.value + viewportWidth -> scrollState.animateScrollTo((right - viewportWidth).roundToInt())
+                }
+            }
+        }
 
         fun letGo(moving: TabDrag) {
             if (moving.isDropped) return
@@ -193,12 +237,12 @@ fun SonaTabRow(
         }
 
         Layout(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.padding(horizontal = edgePadding).width(rowWidth).fillMaxHeight(),
             content = {
                 Box(
                     modifier = Modifier.drawBehind {
                         val cornerRadius = if (!isRounded) 0f else lerpAtPosition(position(), tabCount) { tab ->
-                            pressedCornerRadius(pressOf(tab)).toPx()
+                            pressedCornerRadius(pressOf(tab), TabCornerRadius).toPx()
                         }
                         drawRoundRect(color = thumbColor, cornerRadius = CornerRadius(cornerRadius))
                     },
@@ -240,7 +284,7 @@ fun SonaTabRow(
                 }
             },
         ) { measurables, constraints ->
-            val spacing = SonaComponentStyle.ItemSpacing.toPx()
+            val spacing = TabGap.toPx()
             // Never below nothing: narrower than its gaps - as it can be measured while its window is resized - the
             // row is no wider than they are, rather than every tab and the pill a negative width.
             val restingWidth = ((constraints.maxWidth - spacing * (tabCount - 1)) / tabCount).coerceAtLeast(0f)
@@ -321,7 +365,7 @@ private fun TabLabel(
         modifier = modifier
             // Clipped before `clickable` so the press ripple stays inside the tab's animated shape.
             .graphicsLayer {
-                shape = RoundedCornerShape(if (isRounded) pressedCornerRadius(pressFraction()) else 0.dp)
+                shape = RoundedCornerShape(if (isRounded) pressedCornerRadius(pressFraction(), TabCornerRadius) else 0.dp)
                 clip = true
             }
             // Within the clip, so lifted it wears the selected pill's very colour and shape - opaque over what it passes.
@@ -364,8 +408,29 @@ private fun TabLabelText(
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         textAlign = TextAlign.Center,
-        modifier = modifier.padding(horizontal = 4.dp),
+        modifier = modifier.padding(horizontal = TabLabelPadding),
     )
+}
+
+/** Fades the row's two edges to nothing across [width], so tabs scrolled toward an edge fade out there. */
+private fun Modifier.fadingEdges(width: Dp): Modifier {
+    if (width <= 0.dp) return this
+    return graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithContent {
+            drawContent()
+            val fade = width.toPx()
+            drawRect(
+                brush = Brush.horizontalGradient(listOf(Color.Transparent, Color.Black), startX = 0f, endX = fade),
+                size = Size(fade, size.height),
+                blendMode = BlendMode.DstIn,
+            )
+            drawRect(
+                brush = Brush.horizontalGradient(listOf(Color.Black, Color.Transparent), startX = size.width - fade, endX = size.width),
+                topLeft = Offset(size.width - fade, 0f),
+                size = Size(fade, size.height),
+                blendMode = BlendMode.DstIn,
+            )
+        }
 }
 
 /**

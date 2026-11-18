@@ -9,14 +9,19 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -30,6 +35,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
@@ -42,6 +48,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.R
@@ -119,6 +126,9 @@ data class TopBarCollapse(
     val shuffle: TopBarAction,
 )
 
+/** The gap between a title and what stands before it. */
+private val TitleLeadingGap = 12.dp
+
 /** How far below its place a revealed title or button starts - Auxio's `spacing_small`. */
 private val RevealRise = 8.dp
 
@@ -173,6 +183,11 @@ private sealed interface BarContent {
  * when there is a remainder - see [visibleActionCount]. A screen that grows a sixth action needs no
  * layout work to accommodate it, and a screen never decides for itself that an action belongs in the
  * menu: three actions on a bar with room for three are three icons.
+ *
+ * [titleLeading] stands before the title while browsing - the library's Sona mark - [titleStyle] sets a title apart from
+ * the usual - the library's wordmark - and [titleModifier] and [actionsModifier] move the title and the actions on their own
+ * - the library's, arriving with the launch. [onTitleClick] makes the title, with what stands before it, one pressable
+ * target - the library's name opening About.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -180,12 +195,17 @@ fun SonaTopAppBar(
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
+    titleLeading: (@Composable () -> Unit)? = null,
+    titleStyle: TextStyle? = null,
+    titleModifier: Modifier = Modifier,
+    actionsModifier: Modifier = Modifier,
     onNavigateBack: (() -> Unit)? = null,
     actions: List<TopBarAction> = emptyList(),
     selection: TopBarSelection? = null,
     search: TopBarSearch? = null,
     collapse: TopBarCollapse? = null,
     drawsBackground: Boolean = true,
+    onTitleClick: (() -> Unit)? = null,
 ) {
     val content: BarContent = when {
         selection != null -> BarContent.Selecting(selection)
@@ -231,8 +251,15 @@ fun SonaTopAppBar(
         when (activeContent) {
             is BarContent.Browsing -> TopAppBar(
                 title = {
-                    Box(modifier = Modifier.revealedBy(collapse)) {
-                        BarTitle(title = activeContent.title, subtitle = activeContent.subtitle)
+                    Row(
+                        modifier = Modifier
+                            .revealedBy(collapse)
+                            .then(if (onTitleClick != null) Modifier.pressableTitle(onTitleClick) else Modifier),
+                        horizontalArrangement = Arrangement.spacedBy(TitleLeadingGap),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        titleLeading?.invoke()
+                        BarTitle(title = activeContent.title, subtitle = activeContent.subtitle, style = titleStyle, modifier = titleModifier)
                     }
                 },
                 colors = barColors,
@@ -246,7 +273,7 @@ fun SonaTopAppBar(
                     }
                 },
                 actions = {
-                    BarActions(actions = activeContent.actions, collapse = collapse)
+                    BarActions(actions = activeContent.actions, collapse = collapse, modifier = actionsModifier)
                 },
             )
 
@@ -301,15 +328,38 @@ fun SonaTopAppBar(
  */
 @Composable
 fun Modifier.topBarBackground(isLifted: () -> Boolean = { false }): Modifier {
+    val lift = rememberTopBarLift(isLifted = isLifted)
+    val colorScheme = MaterialTheme.colorScheme
+    return drawBehind { drawRect(lerp(colorScheme.surface, colorScheme.surfaceContainer, lift())) }
+}
+
+/**
+ * How lifted a top section is, from 0 at rest to 1 lifted - see [topBarBackground] - read as it is drawn. Lifted by the
+ * screen's list leaving its top, or [isLifted], over a short animation; and by [progress] as it goes, frame by frame, with no
+ * animation of its own: a header collapsing lifts the section exactly as far as it has collapsed, never ahead of it.
+ */
+@Composable
+fun rememberTopBarLift(isLifted: () -> Boolean = { false }, progress: () -> Float = { 0f }): () -> Float {
     val screenLists = LocalScreenLists.current
     val currentIsLifted by rememberUpdatedState(isLifted)
+    val currentProgress by rememberUpdatedState(progress)
     val isLiftedNow by remember(screenLists) {
         derivedStateOf { currentIsLifted() || screenLists?.current?.isScrolled == true }
     }
-    val liftFraction by animateFloatAsState(targetValue = if (isLiftedNow) 1f else 0f, label = "topBarLift")
-    val colorScheme = MaterialTheme.colorScheme
-    return drawBehind { drawRect(lerp(colorScheme.surface, colorScheme.surfaceContainer, liftFraction)) }
+    val liftFraction = animateFloatAsState(targetValue = if (isLiftedNow) 1f else 0f, label = "topBarLift")
+    return remember { { maxOf(liftFraction.value, currentProgress().coerceIn(0f, 1f)) } }
 }
+
+/** A top section's background lifted as far as [lift] says - see [topBarBackground] and [rememberTopBarLift]. */
+@Composable
+fun Modifier.liftedTopBarBackground(lift: () -> Float): Modifier {
+    val colorScheme = MaterialTheme.colorScheme
+    return drawBehind { drawRect(lerp(colorScheme.surface, colorScheme.surfaceContainer, lift())) }
+}
+
+/** A bar's title pressed as one, with no ripple: the title is the bar's name, not a button drawn on it. */
+private fun Modifier.pressableTitle(onClick: () -> Unit): Modifier =
+    clickable(interactionSource = null, indication = null, role = Role.Button, onClick = onClick)
 
 /** Fades and raises the content in as [collapse] reveals it; leaves it be on a bar with no header. */
 private fun Modifier.revealedBy(collapse: TopBarCollapse?): Modifier =
@@ -405,13 +455,14 @@ private fun SearchField(search: TopBarSearch) {
 }
 
 @Composable
-private fun BarTitle(title: String, subtitle: String?) {
+private fun BarTitle(title: String, subtitle: String?, style: TextStyle? = null, modifier: Modifier = Modifier) {
+    val titleStyle = style?.let { LocalTextStyle.current.merge(it) } ?: LocalTextStyle.current
     if (subtitle == null) {
-        Text(text = title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(text = title, style = titleStyle, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = modifier)
         return
     }
-    Column {
-        Text(text = title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    Column(modifier = modifier) {
+        Text(text = title, style = titleStyle, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(
             text = subtitle,
             style = MaterialTheme.typography.bodySmall,
@@ -441,6 +492,7 @@ private fun BarTitle(title: String, subtitle: String?) {
 private fun BarActions(
     actions: List<TopBarAction>,
     collapse: TopBarCollapse? = null,
+    modifier: Modifier = Modifier,
 ) {
     val visibleCount = visibleActionCount(actions.size, collapse = collapse)
     val overflowed = actions.drop(visibleCount)
@@ -455,7 +507,7 @@ private fun BarActions(
     // The bar ends its actions 4dp from the edge, which puts an ordinary 48dp button's glyph on the
     // content keyline. A grouped button is only its 40dp container, holding the glyph 4dp nearer the
     // edge, so the group gives those 4dp back.
-    Box(modifier = Modifier.padding(end = 4.dp)) {
+    Box(modifier = modifier.padding(end = 4.dp)) {
         // Beneath the group, so every press lands on a button rather than on the anchor.
         OverflowMenuAnchor(menu = overflowMenu, modifier = Modifier.matchParentSize())
         SonaIconButtonGroup {

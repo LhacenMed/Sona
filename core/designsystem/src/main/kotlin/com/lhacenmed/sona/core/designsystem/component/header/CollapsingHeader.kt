@@ -52,14 +52,33 @@ class CollapsingHeaderState internal constructor(private val scope: CoroutineSco
     /** How much of it never collapses - a bar it collapses into. */
     internal var pinnedPx by mutableIntStateOf(0)
 
+    /** How tall its tail is open - what collapses after it, below whatever is pinned between the two - see [collapsingHeaderTail]. */
+    internal var tailHeightPx by mutableIntStateOf(0)
+
     /** How far scrolling has collapsed it. Kept within [rangePx] when read. */
     private var collapsedPx by mutableFloatStateOf(0f)
 
     private var settleJob: Job? = null
 
-    /** How far it collapses at most. */
-    internal val rangePx: Float
+    /** How far the header itself collapses at most. */
+    private val headRangePx: Float
         get() = (heightPx - pinnedPx).coerceAtLeast(0).toFloat()
+
+    /** How far it collapses at most: the header, then its tail. */
+    internal val rangePx: Float
+        get() = headRangePx + tailHeightPx
+
+    /** How far the header itself has collapsed, in pixels - first, before its tail. */
+    internal val headOffsetPx: Float
+        get() = offsetPx.coerceAtMost(headRangePx)
+
+    /** How far the header itself has collapsed, 0 open and 1 collapsed. */
+    internal val headFraction: Float
+        get() = if (headRangePx == 0f) 0f else headOffsetPx / headRangePx
+
+    /** How far its tail has collapsed, in pixels - once the header has. */
+    internal val tailOffsetPx: Float
+        get() = (offsetPx - headRangePx).coerceIn(0f, tailHeightPx.toFloat())
 
     /** How far it has collapsed, in pixels: 0 open, [rangePx] collapsed. */
     internal val offsetPx: Float
@@ -175,12 +194,25 @@ fun Modifier.collapsingHeaderDrag(
 fun Modifier.collapsingHeader(state: CollapsingHeaderState): Modifier =
     clipToBounds()
         .layout { measurable, constraints ->
-            val placeable = if (state.offsetPx == 0f) {
+            val placeable = if (state.headOffsetPx == 0f) {
                 measurable.measure(constraints.copy(maxHeight = Constraints.Infinity)).also { state.heightPx = it.height }
             } else {
-                val height = (state.heightPx - state.offsetPx.roundToInt()).coerceAtLeast(0)
+                val height = (state.heightPx - state.headOffsetPx.roundToInt()).coerceAtLeast(0)
                 measurable.measure(constraints.copy(minHeight = height, maxHeight = height))
             }
             layout(placeable.width, placeable.height) { placeable.place(0, 0) }
         }
-        .graphicsLayer { alpha = 1 - min(state.fraction * 2, 1f) }
+        .graphicsLayer { alpha = 1 - min(state.headFraction * 2, 1f) }
+
+/**
+ * What collapses after the header [state] collapses, on the same scroll - below whatever stays pinned between the two, a
+ * tab row: once the header is gone, this scrolls away too, as a list's first row does, the list rising under the finger
+ * all the way.
+ */
+fun Modifier.collapsingHeaderTail(state: CollapsingHeaderState): Modifier =
+    clipToBounds().layout { measurable, constraints ->
+        val content = measurable.measure(constraints.copy(minHeight = 0, maxHeight = Constraints.Infinity))
+        state.tailHeightPx = content.height
+        val scrolled = state.tailOffsetPx.roundToInt().coerceIn(0, content.height)
+        layout(content.width, content.height - scrolled) { content.place(0, -scrolled) }
+    }

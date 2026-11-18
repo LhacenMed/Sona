@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.ButtonGroupScope
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -33,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.lhacenmed.sona.core.designsystem.R
+import com.lhacenmed.sona.core.designsystem.component.LocalRowGroupContainerColor
 import com.lhacenmed.sona.core.designsystem.component.SonaActionButtonGroup
 import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.effect.ProvideSonaHaptics
@@ -47,6 +49,9 @@ private val DialogMargin = 24.dp
 /** How far everything in a dialog stands in from its edges - all but an option's press, which reaches them. */
 private val DialogPadding = 24.dp
 
+/** How far below its top edge a working dialog's progress line runs - within the room [DialogPadding] keeps above its title. */
+private val WorkingLineInset = 10.dp
+
 /**
  * The one dialog in the app - ArchiveTune's `DefaultDialog`: a surface in Material's dialog shape and
  * colour, [icon] centred over [title] when there is one, [content], then [buttons] at the end.
@@ -60,6 +65,9 @@ private val DialogPadding = 24.dp
  *
  * A press anywhere off it dismisses it, as back does: the dialog is all its window holds - see
  * [dialogSize] - so everywhere else is outside it.
+ *
+ * While [isWorking] - what it started still under way - a progress line runs just inside its top edge, over the room the
+ * dialog keeps there: nothing in it moves, and it is no taller, as the work starts and ends.
  */
 @Composable
 fun SonaDialog(
@@ -69,6 +77,7 @@ fun SonaDialog(
     title: String? = null,
     icon: (@Composable () -> Unit)? = null,
     onReset: (() -> Unit)? = null,
+    isWorking: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Dialog(
@@ -83,21 +92,35 @@ fun SonaDialog(
                 color = AlertDialogDefaults.containerColor,
                 tonalElevation = AlertDialogDefaults.TonalElevation,
             ) {
-                Column(modifier = Modifier.padding(vertical = DialogPadding)) {
-                    DialogHeader(title = title, icon = icon)
-                    // The scroll spans the dialog's whole width and its content stands in from inside it, so a
-                    // row can reach the dialog's edges - see [SonaDialogOption] - without being cut off.
-                    Column(
-                        modifier = Modifier
-                            .weight(1f, fill = false)
-                            .verticalScroll(rememberScrollState())
-                            .padding(horizontal = DialogPadding),
-                    ) {
-                        CompositionLocalProvider(LocalContentColor provides AlertDialogDefaults.textContentColor) {
-                            content()
+                Box {
+                    Column(modifier = Modifier.padding(vertical = DialogPadding)) {
+                        DialogHeader(title = title, icon = icon)
+                        // The scroll spans the dialog's whole width and its content stands in from inside it, so a
+                        // row can reach the dialog's edges - see [SonaDialogOption] - without being cut off.
+                        Column(
+                            modifier = Modifier
+                                .weight(1f, fill = false)
+                                .verticalScroll(rememberScrollState())
+                                .padding(horizontal = DialogPadding),
+                        ) {
+                            // Rows grouped in it stand one tone above it, as they stand above a sheet - not below it.
+                            CompositionLocalProvider(
+                                LocalContentColor provides AlertDialogDefaults.textContentColor,
+                                LocalRowGroupContainerColor provides MaterialTheme.colorScheme.surfaceContainerHighest,
+                            ) {
+                                content()
+                            }
                         }
+                        DialogButtons(buttons = buttons, onReset = onReset)
                     }
-                    DialogButtons(buttons = buttons, onReset = onReset)
+                    if (isWorking) {
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .fillMaxWidth()
+                                .padding(horizontal = DialogPadding, vertical = WorkingLineInset),
+                        )
+                    }
                 }
             }
         }

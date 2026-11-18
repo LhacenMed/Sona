@@ -10,6 +10,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -72,7 +74,9 @@ fun settingsDefaultLabel(): String = stringResource(R.string.settings_row_defaul
 /**
  * The editor behind a [SettingsTextFieldItem] - laid out as Seal's are: its row's [icon] centred over the title, what the
  * setting does in [description], then the field, named by [label] and ended by [suffix] - a unit, say - with [keyboardType]'s
- * keys. A value [isValid] refuses is not saved: the field says so, and the dialog stays open.
+ * keys. A value [isValid] refuses is not saved: the field says so, and the dialog stays open. Where it has a [check] - a key
+ * tried against its service, say - Save runs it while the dialog shows it is working, and saves only what it holds: what it
+ * answers instead is shown on the field, in the colour of an error.
  */
 @Composable
 fun SettingsTextFieldDialog(
@@ -86,9 +90,13 @@ fun SettingsTextFieldDialog(
     suffix: String? = null,
     keyboardType: KeyboardType = KeyboardType.Text,
     isValid: (String) -> Boolean = { true },
+    check: (suspend (String) -> String?)? = null,
 ) {
+    val scope = rememberCoroutineScope()
     var value by remember { mutableStateOf(initialValue) }
-    var isRefused by remember { mutableStateOf(false) }
+    var refusal by remember { mutableStateOf<String?>(null) }
+    var isChecking by remember { mutableStateOf(false) }
+    val invalidLabel = stringResource(R.string.settings_dialog_invalid)
     val cancelLabel = stringResource(R.string.confirmation_dialog_cancel)
     val saveLabel = stringResource(R.string.settings_dialog_save)
 
@@ -96,9 +104,23 @@ fun SettingsTextFieldDialog(
         onDismissRequest = onDismiss,
         title = title,
         icon = icon?.let { { Icon(it, contentDescription = null) } },
+        isWorking = isChecking,
         buttons = {
             actionButton(label = cancelLabel, onClick = onDismiss)
-            actionButton(label = saveLabel, onClick = { if (isValid(value)) onConfirm(value) else isRefused = true })
+            actionButton(label = saveLabel, enabled = !isChecking, onClick = {
+                when {
+                    !isValid(value) -> refusal = invalidLabel
+                    check == null -> onConfirm(value)
+                    else -> {
+                        isChecking = true
+                        scope.launch {
+                            val reason = check(value)
+                            isChecking = false
+                            if (reason == null) onConfirm(value) else refusal = reason
+                        }
+                    }
+                }
+            })
         },
     ) {
         description?.let { Text(it, style = MaterialTheme.typography.bodyLarge) }
@@ -106,16 +128,13 @@ fun SettingsTextFieldDialog(
             value = value,
             onValueChange = {
                 value = it
-                isRefused = false
+                refusal = null
             },
+            enabled = !isChecking,
             label = label?.let { { Text(it) } },
             trailingIcon = suffix?.let { { Text(it) } },
-            isError = isRefused,
-            supportingText = if (isRefused) {
-                { Text(stringResource(R.string.settings_dialog_invalid)) }
-            } else {
-                null
-            },
+            isError = refusal != null,
+            supportingText = refusal?.let { { Text(it) } },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = ImeAction.Done),
             modifier = Modifier.fillMaxWidth().padding(top = if (description != null) 16.dp else 0.dp),

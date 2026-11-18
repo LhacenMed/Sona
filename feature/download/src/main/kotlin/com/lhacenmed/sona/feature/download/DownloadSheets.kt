@@ -46,6 +46,7 @@ import com.lhacenmed.sona.core.designsystem.component.SonaIconButton
 import com.lhacenmed.sona.core.designsystem.component.SonaRowGroup
 import com.lhacenmed.sona.core.designsystem.component.SonaValueRow
 import com.lhacenmed.sona.core.designsystem.component.copyToClipboard
+import com.lhacenmed.sona.core.designsystem.component.sheet.SheetReveal
 import com.lhacenmed.sona.core.designsystem.component.sheet.SonaBottomSheet
 import com.lhacenmed.sona.core.designsystem.component.sheet.SonaOptionRow
 import com.lhacenmed.sona.core.designsystem.component.sheet.SonaOptionsSheetHeader
@@ -303,13 +304,13 @@ internal fun ErrorDetails(error: String) {
         onClick = { showsDetails = !showsDetails },
         trailingContent = { Icon(if (showsDetails) SonaIcons.ExpandLess else SonaIcons.ExpandMore, contentDescription = null) },
     )
-    if (showsDetails) {
-        Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-            SelectionContainer {
+    SheetReveal(visible = showsDetails) {
+        Column {
+            SelectionContainer(modifier = Modifier.padding(horizontal = 24.dp)) {
                 Text(error, style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            SonaOptionRow(label = stringResource(R.string.download_copy_error), icon = SonaIcons.ContentCopy, onClick = { context.copyToClipboard(error, copiedLabel) })
         }
-        SonaOptionRow(label = stringResource(R.string.download_copy_error), icon = SonaIcons.ContentCopy, onClick = { context.copyToClipboard(error, copiedLabel) })
     }
 }
 

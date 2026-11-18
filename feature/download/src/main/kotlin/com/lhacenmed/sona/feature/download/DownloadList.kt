@@ -1,7 +1,6 @@
 package com.lhacenmed.sona.feature.download
 
 import android.content.Intent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -209,7 +208,7 @@ internal fun DownloadRow(
     val isMissing = download.id in missingFiles
     val heldAll by viewModel.held.collectAsStateWithLifecycle()
     val held = heldAll[download.id]
-    Box(modifier = Modifier.background(MaterialTheme.colorScheme.surface)) {
+    Box {
         rowFillOf(download, running, held)?.let { RowProgressFill(it.fraction) }
         SonaListRow(
             title = download.song?.title ?: running?.title ?: download.title ?: hostOf(download.url),

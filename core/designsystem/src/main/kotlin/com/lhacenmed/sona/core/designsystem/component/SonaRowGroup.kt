@@ -17,7 +17,9 @@ import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.semantics.Role
@@ -27,8 +29,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.theme.connectedLeadingButtonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.connectedTrailingButtonPressShapes
-import com.lhacenmed.sona.core.designsystem.theme.togglePressShapes
+import com.lhacenmed.sona.core.designsystem.theme.connectedMiddleButtonPressShapes
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+
+/**
+ * What a [SonaRowGroup]'s rows are painted on, one tone above the surface they stand on - Material's own while null, right
+ * for a screen or a sheet; a dialog, higher itself, gives its own.
+ */
+internal val LocalRowGroupContainerColor = staticCompositionLocalOf<Color?> { null }
 
 /** A row of a [SonaRowGroup], laid out in the shapes of its place in the group. */
 typealias SonaGroupRow = @Composable (ListItemShapes) -> Unit
@@ -67,6 +75,7 @@ fun SonaValueRow(
         shapes = shapes,
         modifier = modifier,
         enabled = enabled,
+        colors = LocalRowGroupContainerColor.current?.let { ListItemDefaults.segmentedColors(containerColor = it) } ?: ListItemDefaults.segmentedColors(),
         leadingContent = leading,
         trailingContent = trailing,
         supportingContent = value?.let { { Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis) } },
@@ -102,7 +111,7 @@ fun <T> SonaConnectedChoice(
                 shapes = when (index) {
                     0 -> connectedLeadingButtonPressShapes()
                     options.lastIndex -> connectedTrailingButtonPressShapes()
-                    else -> togglePressShapes()
+                    else -> connectedMiddleButtonPressShapes()
                 },
                 modifier = Modifier
                     .then(if (isCompact) Modifier else Modifier.heightIn(min = 48.dp))

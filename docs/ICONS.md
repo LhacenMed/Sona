@@ -62,6 +62,7 @@ An icon Android draws by its resource is also exported into `core/common/src/mai
 | `SonaIcons.AddPhotoAlternate` | `icon_add_photo_alternate.xml` | Material `AddPhotoAlternate` |
 | `SonaIcons.Album` | `icon_album.xml` | Material `Album` |
 | `SonaIcons.ArrowBack` | `icon_arrow_back.xml` | Material `ArrowBack`, mirrored |
+| `SonaIcons.ArrowForward` | `icon_arrow_forward.xml` | Material `ArrowForward`, mirrored |
 | `SonaIcons.ArrowDownward` | `icon_arrow_downward.xml` | Material `ArrowDownward` |
 | `SonaIcons.ArrowUpward` | `icon_arrow_upward.xml` | Material `ArrowUpward` |
 | `SonaIcons.Article` | `icon_article.xml` | Material `Article`, mirrored |
@@ -211,7 +212,9 @@ An icon Android draws by its resource is also exported into `core/common/src/mai
 | `SonaIcons.Sync` | `icon_sync.xml` | Material `Sync` |
 | `SonaIcons.SyncDisabled` | `icon_sync_disabled.xml` | Material `SyncDisabled` |
 | `SonaIcons.SystemUpdate` | `icon_system_update.xml` | Material `SystemUpdate` |
+| `SonaIcons.Tab` | `icon_tab.xml` | Material `Tab` |
 | `SonaIcons.Terminal` | `icon_terminal.xml` | Material `Terminal` |
+| `SonaIcons.ThumbUp` | `icon_thumb_up.xml` | Material `ThumbUp` |
 | `SonaIcons.Timer` | `icon_timer.xml` | Material `Timer` |
 | `SonaIcons.Title` | `icon_title.xml` | Material `Title` |
 | `SonaIcons.TouchApp` | `icon_touch_app.xml` | Material `TouchApp` |

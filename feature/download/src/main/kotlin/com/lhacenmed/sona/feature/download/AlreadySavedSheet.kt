@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -101,7 +102,7 @@ internal fun AlreadySavedSheet(sheet: LinkSheet.AlreadySaved, viewModel: Downloa
                     // Picking is all this list is for: a tap picks.
                     onClick = { picks.toggle(request.url) },
                     onOpenOptions = null,
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                    containerColor = Color.Transparent,
                     cover = { isSelected -> SonaCoverArt(coverArtUri = request.thumbnailUrl, contentDescription = null, isSelected = isSelected) },
                 )
             }

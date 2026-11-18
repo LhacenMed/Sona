@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -19,12 +20,15 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.lhacenmed.sona.core.common.format.formatFileSize
 import com.lhacenmed.sona.core.designsystem.R
 import com.lhacenmed.sona.core.designsystem.component.swipe.LocalSwipeActions
@@ -37,7 +41,7 @@ import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
  * What parts the facts on one line - a track's artist and album, a count and a duration: a dot, which no
  * name is mistaken for, where a dash could be part of the name itself.
  */
-const val InfoSeparator = " • "
+const val InfoSeparator = " · "
 
 /** How much of the selection colour washes over a selected row. */
 const val SELECTED_ROW_TINT_ALPHA = 0.12f
@@ -45,6 +49,22 @@ const val SELECTED_ROW_TINT_ALPHA = 0.12f
 /** A row takes the selection colour faster than it lets it go, so selecting reads as the deliberate act. */
 private const val SELECTED_ROW_FADE_IN_MILLIS = 200
 private const val SELECTED_ROW_FADE_OUT_MILLIS = 100
+
+/**
+ * How far every row stands in from the list's sides, and how round its corners are: the shape the playing row's container,
+ * a selected row's tint and a press's ripple all fill, so each row reads as one piece wherever it is listed.
+ */
+private val RowInset = 8.dp
+private val RowShape = RoundedCornerShape(16.dp)
+
+/** The space between one row's shape and the next, half of it above each row and half below. */
+val ListRowGap = 4.dp
+
+/** A row's title and its line beneath: a little smaller than a list's usual, so a row stays 64dp tall. */
+private val RowTitleSize = 15.sp
+private val RowTitleLineHeight = 20.sp
+private val RowSubtitleSize = 13.sp
+private val RowSubtitleLineHeight = 18.sp
 
 /**
  * The slot a row's trailing glyph - a drag handle, a pin - is centred in: Auxio's `size_touchable_small`,
@@ -151,6 +171,11 @@ fun SonaListRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(containerColor)
+                    // Every row is inset from the list's sides in a shape of its own, its content still on the keyline;
+                    // the playing row stands apart on a container in it.
+                    .padding(horizontal = RowInset, vertical = ListRowGap / 2)
+                    .clip(RowShape)
+                    .then(if (isCurrent) Modifier.background(MaterialTheme.colorScheme.surfaceContainer) else Modifier)
                     .drawBehind {
                         drawRect(selectedTint.copy(alpha = SELECTED_ROW_TINT_ALPHA * selectedFraction.value))
                     }
@@ -162,12 +187,12 @@ fun SonaListRow(
                         },
                     )
                     .padding(
-                        start = SonaComponentStyle.ContentHorizontalPadding,
-                        top = 12.dp,
+                        start = SonaComponentStyle.ContentHorizontalPadding - RowInset,
+                        top = 8.dp,
                         // The overflow glyph, not its 48dp touch target, ends on the keyline: the target
                         // holds the glyph 12dp in from its edge.
-                        end = SonaComponentStyle.ContentHorizontalPadding - 12.dp,
-                        bottom = 12.dp,
+                        end = (SonaComponentStyle.ContentHorizontalPadding - 12.dp - RowInset).coerceAtLeast(0.dp),
+                        bottom = 8.dp,
                     ),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -179,14 +204,14 @@ fun SonaListRow(
                 ) {
                     Text(
                         text = title,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleMedium.copy(fontSize = RowTitleSize, lineHeight = RowTitleLineHeight),
                         color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
                         text = subtitle,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = RowSubtitleSize, lineHeight = RowSubtitleLineHeight),
                         color = subtitleColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,

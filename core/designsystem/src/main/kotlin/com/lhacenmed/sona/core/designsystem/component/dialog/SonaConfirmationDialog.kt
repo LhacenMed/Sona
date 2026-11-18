@@ -1,26 +1,16 @@
 package com.lhacenmed.sona.core.designsystem.component.dialog
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.R
 import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.component.toast
-
-/** A progress bar's own height: the slot held for it before it appears. */
-private val ProgressSlotHeight = 4.dp
 
 /**
  * The one confirmation dialog in the app: it asks before a change, then stays over it until it has
@@ -29,11 +19,9 @@ private val ProgressSlotHeight = 4.dp
  *
  * [title] names the change and how much it touches - "Remove 3 tracks" - so [message] only says what
  * follows from it. Confirming starts [operation], which reports back whether it succeeded. Until it
- * does, an indeterminate progress bar runs - none of these changes can tell how far along it is - both
+ * does, the dialog shows it is working - none of these changes can tell how far along it is - both
  * buttons are held and the dialog cannot be dismissed, so nothing reads as done before it is. Once it
  * reports, a toast says how it went and the dialog closes.
- *
- * The progress bar's slot is held from the first frame, so confirming moves nothing in the dialog.
  */
 @Composable
 fun SonaConfirmationDialog(
@@ -53,6 +41,7 @@ fun SonaConfirmationDialog(
     SonaDialog(
         onDismissRequest = { if (!isRunning) onDismiss() },
         title = title,
+        isWorking = isRunning,
         buttons = {
             actionButton(label = cancelLabel, onClick = onDismiss, enabled = !isRunning)
             actionButton(
@@ -70,13 +59,5 @@ fun SonaConfirmationDialog(
         },
     ) {
         Text(message)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp)
-                .heightIn(min = ProgressSlotHeight),
-        ) {
-            if (isRunning) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-        }
     }
 }

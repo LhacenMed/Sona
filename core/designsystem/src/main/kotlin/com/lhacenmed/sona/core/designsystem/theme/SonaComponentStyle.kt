@@ -105,6 +105,20 @@ fun togglePressShapes(): ToggleButtonShapes =
     )
 
 /**
+ * The shapes a button between the first and the last of a connected group presses with: Material's own - its corners small
+ * while it is not picked, round once it is, and tightening to [SonaComponentStyle.PressedCornerRadius] while held - square
+ * while round mode is off.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun connectedMiddleButtonPressShapes(): ToggleButtonShapes =
+    if (!LocalIsRounded.current) {
+        SquareToggleButtonShapes
+    } else {
+        ButtonGroupDefaults.connectedMiddleButtonShapes(pressedShape = RoundedCornerShape(PressedCorner))
+    }
+
+/**
  * The shapes the first button of a connected group presses with: Material's own, its inner corners
  * tightening to [SonaComponentStyle.PressedCornerRadius] while held. Its outer corners stay round - and
  * the whole button square while round mode is off.

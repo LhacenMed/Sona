@@ -97,7 +97,8 @@ fun FolderPickerSheet(
                 tabTitles = tabs.map { it.title },
                 selectedPosition = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
                 onTabClick = { page -> scope.launch { pagerState.animateScrollToPage(page) } },
-                modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
+                modifier = Modifier.padding(bottom = 8.dp),
+                edgePadding = 24.dp,
             )
         }
         FolderPathBar(folders = explored[currentPage].pathTo(navigation.open), onOpen = navigation::open)

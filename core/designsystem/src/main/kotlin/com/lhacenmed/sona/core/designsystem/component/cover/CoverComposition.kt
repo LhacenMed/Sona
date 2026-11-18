@@ -10,9 +10,11 @@ import android.graphics.RectF
 import coil3.ImageLoader
 import coil3.asImage
 import coil3.decode.DataSource
+import coil3.decode.ImageSource
 import coil3.fetch.FetchResult
 import coil3.fetch.Fetcher
 import coil3.fetch.ImageFetchResult
+import coil3.fetch.SourceFetchResult
 import coil3.request.ImageRequest
 import coil3.request.Options
 import coil3.request.SuccessResult
@@ -93,6 +95,28 @@ internal class CoverCompositionFetcher(
             options.size.height.pxOrElse { FALLBACK_SIZE_PX },
         ).coerceAtLeast(1)
 
+        // Kept once composed, so a launch shows it at once rather than loading and composing its four covers again.
+        val diskCache = imageLoader.diskCache
+        val cacheKey = "composition:${composition.memoryCacheKey(size)}"
+        diskCache?.openSnapshot(cacheKey)?.let { snapshot ->
+            return SourceFetchResult(
+                source = ImageSource(snapshot.data, diskCache.fileSystem, cacheKey, snapshot),
+                mimeType = "image/png",
+                dataSource = DataSource.DISK,
+            )
+        }
+        val composed = compose(size) ?: return null
+        diskCache?.openEditor(cacheKey)?.let { editor ->
+            runCatching {
+                // PNG: the gaps are cleared, and JPEG would fill them in.
+                diskCache.fileSystem.write(editor.data) { composed.compress(Bitmap.CompressFormat.PNG, 100, outputStream()) }
+                editor.commit()
+            }.onFailure { editor.abort() }
+        }
+        return ImageFetchResult(image = composed.asImage(), isSampled = true, dataSource = DataSource.DISK)
+    }
+
+    private suspend fun compose(size: Int): Bitmap? {
         val bitmaps = ArrayList<Bitmap>(COMPOSED_COVER_COUNT)
         var nextCovers = composition.coverArtUris
         while (bitmaps.size < COMPOSED_COVER_COUNT && nextCovers.isNotEmpty()) {
@@ -100,21 +124,17 @@ internal class CoverCompositionFetcher(
             nextCovers = nextCovers.drop(batch.size)
             bitmaps += coroutineScope { batch.map { async { loadBitmap(it, size) } }.awaitAll() }.filterNotNull()
         }
-        if (bitmaps.size < COMPOSED_COVER_COUNT) {
-            val first = bitmaps.firstOrNull() ?: return null
-            return ImageFetchResult(image = first.asImage(), isSampled = true, dataSource = DataSource.DISK)
-        }
+        if (bitmaps.size < COMPOSED_COVER_COUNT) return bitmaps.firstOrNull()
 
         val random = Random(composition.seed)
         // Auxio's: cycled a fixed number of times, then a seeded number more.
         repeat(11) { random.nextLong() }
         repeat(random.nextInt(1..30) + 1) { random.nextLong() }
-        val composed = when (composition.arrangement) {
+        return when (composition.arrangement) {
             CoverArrangement.Gallery -> composeGallery(bitmaps, size, random, composition.cornerRadiusRatio)
             CoverArrangement.Smattering -> composeSmattering(bitmaps, size, random, composition.cornerRadiusRatio)
             CoverArrangement.Stack -> composeStack(bitmaps, size, random, composition.cornerRadiusRatio)
         }
-        return ImageFetchResult(image = composed.asImage(), isSampled = true, dataSource = DataSource.DISK)
     }
 
     private suspend fun loadBitmap(coverArtUri: String, sizePx: Int): Bitmap? {

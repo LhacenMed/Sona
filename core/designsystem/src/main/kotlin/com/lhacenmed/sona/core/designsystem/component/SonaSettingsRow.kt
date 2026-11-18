@@ -22,12 +22,19 @@ import androidx.compose.ui.unit.sp
 /** How wide a settings row's end is: a switch's, so whatever stands there lines up with the switches down a list. */
 private val SettingsTrailingWidth = 52.dp
 
-/** Seal's preference title, in the theme's own font: larger than a list's headline, so a row reads as a setting rather than an item. */
-private val SettingsTitleStyle = TextStyle(fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Normal, lineBreak = LineBreak.Paragraph)
+/** A preference's title, in the theme's own font: a touch larger than a list's headline, so a row reads as a setting rather than an item. */
+private val SettingsTitleStyle = TextStyle(fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.Normal, lineBreak = LineBreak.Paragraph)
+
+/** A preference's summary under its title: a list row's subtitle size, so the two read as one family. */
+private val SettingsSummaryStyle = TextStyle(fontSize = 13.sp, lineHeight = 18.sp)
 
 /** Every settings row's title, in the theme's font - one style, whichever kind of row draws it. */
 @Composable
 internal fun settingsTitleStyle(): TextStyle = MaterialTheme.typography.titleLarge.merge(SettingsTitleStyle)
+
+/** Every settings row's summary - one style, whichever kind of row draws it. */
+@Composable
+internal fun settingsSummaryStyle(): TextStyle = MaterialTheme.typography.bodyMedium.merge(SettingsSummaryStyle)
 
 /** The colour of what a settings row says while it is not enabled - the one disabled look every row shares. */
 @Composable
@@ -61,7 +68,7 @@ fun SonaSettingsRow(
 ) {
     ListItem(
         headlineContent = { Text(title, style = settingsTitleStyle(), maxLines = titleMaxLines, overflow = TextOverflow.Ellipsis) },
-        supportingContent = summary?.let { { Text(it, maxLines = summaryMaxLines, overflow = TextOverflow.Ellipsis) } },
+        supportingContent = summary?.let { { Text(it, style = settingsSummaryStyle(), maxLines = summaryMaxLines, overflow = TextOverflow.Ellipsis) } },
         leadingContent = leading,
         trailingContent = trailing?.let { content ->
             { Box(modifier = Modifier.widthIn(min = SettingsTrailingWidth), contentAlignment = Alignment.Center) { content() } }

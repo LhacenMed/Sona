@@ -155,8 +155,9 @@ fun SonaSortSheet(
     }
 }
 
+/** What [this] criterion is called, wherever a sort is named - the sheet, the library's tool row. */
 @Composable
-private fun SortCriterion.label(): String = stringResource(
+fun SortCriterion.label(): String = stringResource(
     when (this) {
         SortCriterion.CUSTOM -> R.string.sort_custom
         SortCriterion.NAME -> R.string.sort_name

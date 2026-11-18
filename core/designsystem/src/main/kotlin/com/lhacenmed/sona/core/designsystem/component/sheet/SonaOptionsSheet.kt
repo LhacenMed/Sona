@@ -16,10 +16,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.component.FavoriteToggle
 import com.lhacenmed.sona.core.designsystem.component.SonaFavoriteButton
+import com.lhacenmed.sona.core.designsystem.component.TopBarAction
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.core.designsystem.R
+
+/**
+ * The top bar button that opens what a screen shows in its options sheet - a detail screen's collection, as its row's
+ * button does: its options in the sheet, never in a menu of the bar's own.
+ */
+@Composable
+fun optionsSheetAction(onClick: () -> Unit) = TopBarAction(
+    label = stringResource(R.string.list_row_more_options),
+    icon = SonaIcons.MoreVert,
+    onClick = onClick,
+)
 
 /** How faint a disabled option reads, next to the options it sits among: Material's disabled content alpha. */
 private const val DISABLED_OPTION_ALPHA = 0.38f
