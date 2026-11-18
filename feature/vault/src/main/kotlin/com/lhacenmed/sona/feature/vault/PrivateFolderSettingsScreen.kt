@@ -23,7 +23,8 @@ import com.lhacenmed.sona.core.designsystem.component.SonaSwitch
 
 /**
  * How the Private Folder is found and opened - WhatsApp's chat lock settings, for it: hidden from Settings, its secret
- * code the way to it then; opened by fingerprint or face beside its PIN; and its PIN changed. Reached from inside the
+ * code the way to it then; whether the library's options offer to add to it; opened by fingerprint or face beside its
+ * PIN; and its PIN changed. Reached from inside the
  * folder only, so nothing outside it says it is there.
  */
 internal data object PrivateFolderSettingsScreen : Screen {
@@ -60,6 +61,12 @@ internal data object PrivateFolderSettingsScreen : Screen {
                             summary = stringResource(R.string.vault_hide_summary),
                             onClick = { setHidden(!current.isHidden) },
                             trailing = { SonaSwitch(checked = current.isHidden, onCheckedChange = setHidden) },
+                        )
+                        SonaSettingsRow(
+                            title = stringResource(R.string.vault_offer_add_title),
+                            summary = stringResource(R.string.vault_offer_add_summary),
+                            onClick = { viewModel.setOffersAddToPrivate(!current.offersAddToPrivate) },
+                            trailing = { SonaSwitch(checked = current.offersAddToPrivate, onCheckedChange = viewModel::setOffersAddToPrivate) },
                         )
                         SonaSettingsRow(
                             title = stringResource(R.string.vault_secret_code),

@@ -29,6 +29,7 @@ private val SECRET_CODE_SALT = stringPreferencesKey("secret_code_salt")
 private val SECRET_CODE_HASH = stringPreferencesKey("secret_code_hash")
 private val IS_HIDDEN = booleanPreferencesKey("is_hidden")
 private val UNLOCKS_WITH_BIOMETRICS = booleanPreferencesKey("unlocks_with_biometrics")
+private val OFFERS_ADD_TO_PRIVATE = booleanPreferencesKey("offers_add_to_private")
 
 /** What a tab's list is sorted by, and which way - the videos', or the tracks'. */
 private fun sortCriterionKey(isVideo: Boolean) = stringPreferencesKey(if (isVideo) "videos_sort_criterion" else "tracks_sort_criterion")
@@ -49,6 +50,7 @@ internal data class VaultCredentials(
     val secretCode: VaultSecretCode?,
     val isHidden: Boolean,
     val unlocksWithBiometrics: Boolean,
+    val offersAddToPrivate: Boolean,
 )
 
 /** The vault's PIN, security question and lockout - in the vault's own directory, so never in a backup. */
@@ -72,6 +74,7 @@ internal class VaultSettings @Inject constructor(@ApplicationContext context: Co
             secretCode = prefs[SECRET_CODE_SALT]?.let { salt -> prefs[SECRET_CODE_HASH]?.let { hash -> VaultSecretCode(salt, hash) } },
             isHidden = prefs[IS_HIDDEN] ?: false,
             unlocksWithBiometrics = prefs[UNLOCKS_WITH_BIOMETRICS] ?: false,
+            offersAddToPrivate = prefs[OFFERS_ADD_TO_PRIVATE] ?: true,
         )
     }
 
@@ -115,6 +118,10 @@ internal class VaultSettings @Inject constructor(@ApplicationContext context: Co
 
     suspend fun setUnlocksWithBiometrics(enabled: Boolean) {
         dataStore.edit { it[UNLOCKS_WITH_BIOMETRICS] = enabled }
+    }
+
+    suspend fun setOffersAddToPrivate(offers: Boolean) {
+        dataStore.edit { it[OFFERS_ADD_TO_PRIVATE] = offers }
     }
 
     /** Counts a wrong PIN or answer, locking guesses out until [lockedUntil] says for the new count. */

@@ -44,6 +44,7 @@ import com.lhacenmed.sona.feature.library.operation.ExcludeFoldersDialog
 import com.lhacenmed.sona.feature.library.operation.RemoveFromListDialog
 import com.lhacenmed.sona.feature.library.playlist.AddCollectionsScreen
 import com.lhacenmed.sona.feature.library.playlist.AddTracksScreen
+import com.lhacenmed.sona.feature.library.playlist.PickDestination
 import com.lhacenmed.sona.feature.library.playlist.EditPlaylistScreen
 import com.lhacenmed.sona.feature.tageditor.TagEditorScreen
 import com.lhacenmed.sona.feature.tageditor.autotag.AutoTagScreen
@@ -126,7 +127,7 @@ internal class OptionsActions(
             }
             OptionsAction.VIEW_DETAILS -> navigator.go(detailScreenOf(target))
             OptionsAction.BROWSE_FOLDER -> navigator.go(FolderExplorerScreen((target as OptionsTarget.ForFolder).folder.path))
-            OptionsAction.ADD_TRACKS -> navigator.go(AddTracksScreen(playlistOf(target).playlist.id))
+            OptionsAction.ADD_TRACKS -> navigator.go(AddTracksScreen(PickDestination.Playlist(playlistOf(target).playlist.id)))
             OptionsAction.ADD_COLLECTIONS -> navigator.go(AddCollectionsScreen(playlistOf(target).playlist.id))
             OptionsAction.EDIT -> navigator.go(EditPlaylistScreen(playlistOf(target).playlist.id))
             OptionsAction.IMPORT -> followUp = FollowUp.ImportFile(playlistOf(target))

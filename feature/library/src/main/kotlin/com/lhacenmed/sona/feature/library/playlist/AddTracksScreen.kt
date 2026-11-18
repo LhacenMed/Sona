@@ -23,6 +23,7 @@ import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
 import com.lhacenmed.sona.core.model.PlaybackParent
+import com.lhacenmed.sona.core.navigation.PrivateFolderPicker
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.library.LibraryList
 import com.lhacenmed.sona.feature.library.R
@@ -35,6 +36,11 @@ import com.lhacenmed.sona.feature.library.searchEmptyMessage
 import com.lhacenmed.sona.feature.library.searchedFor
 import com.lhacenmed.sona.feature.library.whileNotSearched
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import javax.inject.Inject
 import kotlinx.coroutines.launch
 
 /** What a playlist can take one by one, as the library's own tabs list them. */
@@ -44,12 +50,13 @@ private enum class MediaTab(@StringRes val labelRes: Int) {
 }
 
 /**
- * Picking tracks and videos one by one from the whole library, to add to the playlist [playlistId].
+ * Picking tracks and videos one by one from the whole library, to add to [destination] - a playlist, or the Private
+ * Folder, which opens this from inside it: see [PrivateFolderPicker].
  *
  * One selection runs across both tabs, so music and videos are gathered in a single add, and one search
- * narrows both. Select all works on the tab on screen.
+ * narrows both. Select all works on the tab on screen. It opens on Videos where [startsOnVideos] - asked for from there.
  */
-data class AddTracksScreen(val playlistId: Long) : Screen {
+data class AddTracksScreen(val destination: PickDestination, val startsOnVideos: Boolean = false) : Screen {
 
     @Composable
     override fun Content() {
@@ -62,15 +69,18 @@ data class AddTracksScreen(val playlistId: Long) : Screen {
         val resumePositionsMs = viewModel.resumePositionsMs.collectAsStateWithLifecycle()
         val selection = rememberSelectionState()
         var searchQuery by remember { mutableStateOf<String?>(null) }
-        val pagerState = rememberPagerState(pageCount = { MediaTab.entries.size })
+        val pagerState = rememberPagerState(initialPage = (if (startsOnVideos) MediaTab.VIDEOS else MediaTab.TRACKS).ordinal) { MediaTab.entries.size }
         val scope = rememberCoroutineScope()
         var optionsTarget by remember { mutableStateOf<OptionsTarget.ForTrack?>(null) }
         val visibleTracks = tracks.searchedFor(searchQuery) { listOf(it.title, it.artist, it.album) }
         val visibleVideos = videos.searchedFor(searchQuery) { listOf(it.title, it.artist, it.album) }
 
         PlaylistTrackPicker(
-            title = OptionsAction.ADD_TRACKS.label,
-            playlistId = playlistId,
+            title = when (destination) {
+                is PickDestination.Playlist -> OptionsAction.ADD_TRACKS.label
+                PickDestination.PrivateFolder -> OptionsAction.ADD_TO_PRIVATE.label
+            },
+            destination = destination,
             selection = selection,
             searchQuery = searchQuery,
             onSearchQueryChange = { searchQuery = it },
@@ -135,4 +145,16 @@ data class AddTracksScreen(val playlistId: Long) : Screen {
             OptionsSheet(target = target, onDismissRequest = { optionsTarget = null })
         }
     }
+}
+
+/** The Private Folder's way into this picker. */
+internal class LibraryPrivateFolderPicker @Inject constructor() : PrivateFolderPicker {
+    override fun screen(startsOnVideos: Boolean): Screen = AddTracksScreen(PickDestination.PrivateFolder, startsOnVideos)
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+internal abstract class PrivateFolderPickerModule {
+    @Binds
+    abstract fun bindPrivateFolderPicker(picker: LibraryPrivateFolderPicker): PrivateFolderPicker
 }

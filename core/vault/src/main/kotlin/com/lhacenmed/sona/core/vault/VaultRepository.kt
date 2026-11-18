@@ -57,6 +57,8 @@ sealed interface VaultState {
         val isHidden: Boolean,
         /** Whether the device's fingerprint or face opens it, beside its PIN. */
         val unlocksWithBiometrics: Boolean,
+        /** Whether the library's options offer "Add to Private Folder" - the folder's own Add always does. */
+        val offersAddToPrivate: Boolean,
     ) : VaultState
 }
 
@@ -114,6 +116,7 @@ class VaultRepository @Inject internal constructor(
                 hasSecretCode = credentials.secretCode != null,
                 isHidden = credentials.isHidden,
                 unlocksWithBiometrics = credentials.unlocksWithBiometrics,
+                offersAddToPrivate = credentials.offersAddToPrivate,
             )
         }
     }.stateIn(scope, SharingStarted.Eagerly, VaultState.Loading)
@@ -212,6 +215,11 @@ class VaultRepository @Inject internal constructor(
     suspend fun setUnlocksWithBiometrics(enabled: Boolean) {
         check(isUnlocked.value) { "Biometrics are turned on from inside the vault only" }
         settings.setUnlocksWithBiometrics(enabled)
+    }
+
+    suspend fun setOffersAddToPrivate(offers: Boolean) {
+        check(isUnlocked.value) { "What the library offers is changed from inside the vault only" }
+        settings.setOffersAddToPrivate(offers)
     }
 
     /** PIN and answer guesses share one lockout, so the answer is no way around the PIN's. */

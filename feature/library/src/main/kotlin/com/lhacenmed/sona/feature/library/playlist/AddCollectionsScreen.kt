@@ -131,7 +131,7 @@ data class AddCollectionsScreen(val playlistId: Long) : Screen {
 
         PlaylistTrackPicker(
             title = OptionsAction.ADD_COLLECTIONS.label,
-            playlistId = playlistId,
+            destination = PickDestination.Playlist(playlistId),
             selection = selection,
             searchQuery = searchQuery,
             onSearchQueryChange = { searchQuery = it },

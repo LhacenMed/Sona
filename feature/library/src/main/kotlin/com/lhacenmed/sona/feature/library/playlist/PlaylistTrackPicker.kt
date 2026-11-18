@@ -23,14 +23,17 @@ import com.lhacenmed.sona.core.designsystem.component.topBarBackground
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDialog
 import com.lhacenmed.sona.core.designsystem.component.selectAllAction
 import com.lhacenmed.sona.core.designsystem.component.toast
+import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.feature.library.R
+import com.lhacenmed.sona.feature.library.operation.AddToPrivateDialog
 import com.lhacenmed.sona.feature.library.options.OptionsAction
 import com.lhacenmed.sona.feature.library.options.label
 import com.lhacenmed.sona.feature.library.selection.SelectionKey
 import com.lhacenmed.sona.feature.library.selection.SelectionOptionsHost
 import com.lhacenmed.sona.feature.library.selection.toLibraryTopBarSelection
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import java.io.Serializable
 
 /**
  * The shape both of a playlist's pickers share: a bar naming what is being picked, with [tabs] beneath it - the
@@ -47,12 +50,13 @@ import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
  * only then leaves - so nothing picked is lost to a search being closed.
  *
  * Add first works out what the picks would really add - each track once, none the playlist already
- * holds - and asks to confirm that many. The screen leaves only after the tracks are in [playlistId].
+ * holds - and asks to confirm that many. The screen leaves only after the tracks are in [destination]: a playlist, or
+ * the Private Folder, which they move into as its own Add moves them - see [AddToPrivateDialog].
  */
 @Composable
 internal fun PlaylistTrackPicker(
     title: String,
-    playlistId: Long,
+    destination: PickDestination,
     selection: SelectionState,
     searchQuery: String?,
     onSearchQueryChange: (String?) -> Unit,
@@ -66,10 +70,19 @@ internal fun PlaylistTrackPicker(
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     // The tracks Add worked out, waiting on the user to confirm adding them.
     var confirmingTrackIds by remember { mutableStateOf<List<Long>>(emptyList()) }
+    var movingToPrivate by remember { mutableStateOf<List<Track>>(emptyList()) }
 
-    val addAction = TopBarAction(label = OptionsAction.PLAYLIST_ADD.label, icon = SonaIcons.Check) {
-        viewModel.resolveAddition(playlistId, selection.selectedKeys.filterIsInstance<SelectionKey>()) { trackIds ->
-            if (trackIds.isEmpty()) context.toast(context.getString(R.string.track_picker_already_added)) else confirmingTrackIds = trackIds
+    val addLabel = when (destination) {
+        is PickDestination.Playlist -> OptionsAction.PLAYLIST_ADD.label
+        PickDestination.PrivateFolder -> OptionsAction.ADD_TO_PRIVATE.label
+    }
+    val addAction = TopBarAction(label = addLabel, icon = SonaIcons.Check) {
+        val keys = selection.selectedKeys.filterIsInstance<SelectionKey>()
+        when (destination) {
+            is PickDestination.Playlist -> viewModel.resolveAddition(destination.id, keys) { trackIds ->
+                if (trackIds.isEmpty()) context.toast(context.getString(R.string.track_picker_already_added)) else confirmingTrackIds = trackIds
+            }
+            PickDestination.PrivateFolder -> viewModel.resolveTracks(keys) { movingToPrivate = it }
         }
     }
 
@@ -111,7 +124,13 @@ internal fun PlaylistTrackPicker(
         }
     }
 
-    if (confirmingTrackIds.isNotEmpty()) {
+    if (movingToPrivate.isNotEmpty()) {
+        // Closed rather than backed out of once moved: back would only close the search or the selection.
+        AddToPrivateDialog(tracks = movingToPrivate, onDismiss = { movingToPrivate = emptyList() }, onMoved = navigator::close)
+    }
+
+    val playlistId = (destination as? PickDestination.Playlist)?.id
+    if (playlistId != null && confirmingTrackIds.isNotEmpty()) {
         val trackIds = confirmingTrackIds
         val isSingle = trackIds.size == 1
         val playlistName = playlists.itemsOrEmpty.find { it.id == playlistId }?.name ?: stringResource(R.string.track_picker_the_playlist)
@@ -131,4 +150,11 @@ internal fun PlaylistTrackPicker(
             },
         )
     }
+}
+
+/** Where a picker's picks go - carried by its screen, so serialized with it on the way to the screen's activity. */
+sealed interface PickDestination : Serializable {
+    data class Playlist(val id: Long) : PickDestination
+
+    data object PrivateFolder : PickDestination
 }

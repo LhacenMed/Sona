@@ -87,6 +87,11 @@ class PlaylistPickerViewModel @Inject constructor(
         }
     }
 
+    /** The tracks [keys] stand for, each once, in the order they were picked - what a move into the Private Folder takes. */
+    fun resolveTracks(keys: List<SelectionKey>, onResolved: (List<Track>) -> Unit) {
+        viewModelScope.launch { onResolved(repository.tracksOf(keys).distinctBy { it.id }) }
+    }
+
     /**
      * Appends [trackIds] to [playlistId] and reports how it went - waited on, so the screen only leaves
      * once the tracks are really in the playlist.

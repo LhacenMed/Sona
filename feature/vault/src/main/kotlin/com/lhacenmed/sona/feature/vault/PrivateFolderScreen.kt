@@ -14,6 +14,17 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import com.lhacenmed.sona.core.designsystem.component.LocalDragSelection
+import com.lhacenmed.sona.core.designsystem.component.SelectionState
+import com.lhacenmed.sona.core.designsystem.component.dragSelection
+import com.lhacenmed.sona.core.designsystem.component.fab.ExtendedFloatingActionButtonContent
+import com.lhacenmed.sona.core.designsystem.component.fab.SonaExtendedFloatingActionButtons
+import com.lhacenmed.sona.core.designsystem.component.rememberDragSelection
+import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
+import com.lhacenmed.sona.core.designsystem.component.selectAllAction
+import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
+import com.lhacenmed.sona.core.navigation.PrivateFolderPicker
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -110,6 +121,24 @@ private fun PrivateFolderContent(viewModel: PrivateFolderViewModel) {
     var optionsItem by remember { mutableStateOf<VaultItem?>(null) }
     // The tab whose list is being sorted - its videos, or its tracks - while its sheet is open.
     var sortingVideos by remember { mutableStateOf<Boolean?>(null) }
+    // One selection across both tabs, as the library's picker keeps one; its action waiting on its confirmation.
+    val selection = rememberSelectionState()
+    var selectionAction by remember { mutableStateOf<VaultItemAction?>(null) }
+    val videos by viewModel.videos.collectAsStateWithLifecycle()
+    val tracks by viewModel.tracks.collectAsStateWithLifecycle()
+    val shownItems = if (pagerState.settledPage == 0) videos else tracks
+
+    SonaExtendedFloatingActionButtons(
+        listOf(
+            ExtendedFloatingActionButtonContent(
+                label = stringResource(R.string.vault_add),
+                icon = SonaIcons.Add,
+                onClick = { navigator.go(viewModel.pickerScreen(startsOnVideos = pagerState.settledPage == 0)) },
+                isPrimary = true,
+                isVisible = !selection.isActive,
+            ),
+        ),
+    )
 
     Column(modifier = Modifier.fillMaxSize()) {
         // The bar and the tabs are one section, lifting as one once the list leaves its top - as the library's do.
@@ -122,22 +151,32 @@ private fun PrivateFolderContent(viewModel: PrivateFolderViewModel) {
                     sortAction { sortingVideos = pagerState.settledPage == 0 },
                     TopBarAction(label = stringResource(R.string.vault_settings), icon = SonaIcons.Settings) { navigator.go(PrivateFolderSettingsScreen) },
                 ),
+                selection = selection.toTopBarSelection(
+                    actions = listOf(
+                        selection.selectAllAction(shownItems.orEmpty().map(VaultItem::id)),
+                        TopBarAction(label = stringResource(R.string.vault_move_out), icon = SonaIcons.LockOpen) { selectionAction = VaultItemAction.MOVE_OUT },
+                        TopBarAction(label = stringResource(R.string.vault_delete_permanently), icon = SonaIcons.Delete) { selectionAction = VaultItemAction.DELETE },
+                    ),
+                    onMoreOptions = null,
+                ),
             )
             SonaTabRow(
                 tabTitles = listOf(stringResource(R.string.vault_videos), stringResource(R.string.vault_tracks)),
                 selectedPosition = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
                 onTabClick = { page -> scope.launch { pagerState.animateScrollToPage(page) } },
-                modifier = Modifier.padding(horizontal = SonaComponentStyle.ContentHorizontalPadding, vertical = 8.dp),
+                modifier = Modifier.padding(vertical = 8.dp),
+                edgePadding = SonaComponentStyle.ContentHorizontalPadding,
             )
         }
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), beyondViewportPageCount = 1) { page ->
             val isVideo = page == 0
-            val items by (if (isVideo) viewModel.videos else viewModel.tracks).collectAsStateWithLifecycle()
+            val items = if (isVideo) videos else tracks
             val sectionOf by (if (isVideo) viewModel.videoSections else viewModel.trackSections).collectAsStateWithLifecycle()
             VaultItemList(
                 items = items,
                 sectionOf = sectionOf,
                 isVideo = isVideo,
+                selection = selection,
                 playingItemId = playingItemId,
                 resumePositionMsOf = { item -> resumePositionsMs.value[item.id] ?: 0L },
                 trackOf = viewModel::trackOf,
@@ -148,6 +187,17 @@ private fun PrivateFolderContent(viewModel: PrivateFolderViewModel) {
     }
 
     optionsItem?.let { item -> VaultItemOptions(item = item, onDismissRequest = { optionsItem = null }) }
+
+    selectionAction?.let { action ->
+        val selected = (videos.orEmpty() + tracks.orEmpty()).filter { selection.isSelected(it.id) }
+        VaultItemsDialog(
+            items = selected,
+            action = action,
+            onDismiss = { selectionAction = null },
+            // Only what was done leaves the selection: whatever could not be stays picked, to try again.
+            onDone = { done -> selection.deselectAll(done.map(VaultItem::id)) },
+        )
+    }
 
     sortingVideos?.let { isVideo ->
         val order by viewModel.sortOrder(isVideo).collectAsStateWithLifecycle()
@@ -171,6 +221,7 @@ private fun VaultItemList(
     items: List<VaultItem>?,
     sectionOf: (VaultItem) -> String?,
     isVideo: Boolean,
+    selection: SelectionState,
     playingItemId: Long?,
     resumePositionMsOf: (VaultItem) -> Long,
     trackOf: (VaultItem) -> Track,
@@ -193,43 +244,46 @@ private fun VaultItemList(
         return
     }
     val listState = rememberLazyListState()
+    val dragSelection = rememberDragSelection(selection, listState, remember(items) { items.map(VaultItem::id) })
     FastScroller(
         listState = listState,
         modifier = Modifier.fillMaxSize(),
         sectionAt = { index -> items.getOrNull(index)?.let(sectionOf) },
     ) { overscrollEffect ->
-        LazyColumn(
-            state = listState,
-            overscrollEffect = overscrollEffect,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
-        ) {
-            items(items, key = VaultItem::id) { item ->
-                val isCurrent = item.id == playingItemId
-                val track = remember(item) { trackOf(item) }
-                if (item.isVideo) {
-                    SonaVideoRow(
-                        video = track,
-                        resumePositionMs = { resumePositionMsOf(item) },
-                        isCurrent = { isCurrent },
-                        isPlaying = { false },
-                        selection = null,
-                        selectionKey = null,
+        CompositionLocalProvider(LocalDragSelection provides dragSelection) {
+            LazyColumn(
+                state = listState,
+                overscrollEffect = overscrollEffect,
+                modifier = Modifier.fillMaxSize().dragSelection(dragSelection),
+                contentPadding = PaddingValues(bottom = LocalBottomContentPadding.current),
+            ) {
+                items(items, key = VaultItem::id) { item ->
+                    val isCurrent = item.id == playingItemId
+                    val track = remember(item) { trackOf(item) }
+                    if (item.isVideo) {
+                        SonaVideoRow(
+                            video = track,
+                            resumePositionMs = { resumePositionMsOf(item) },
+                            isCurrent = { isCurrent },
+                            isPlaying = { false },
+                            selection = selection,
+                            selectionKey = item.id,
+                            onClick = { onPlay(item) },
+                            onOpenOptions = { onOpenOptions(item) },
+                        )
+                        return@items
+                    }
+                    SonaListRow(
+                        title = item.title,
+                        subtitle = item.subtitle,
+                        selection = selection,
+                        selectionKey = item.id,
                         onClick = { onPlay(item) },
                         onOpenOptions = { onOpenOptions(item) },
-                    )
-                    return@items
-                }
-                SonaListRow(
-                    title = item.title,
-                    subtitle = item.subtitle,
-                    selection = null,
-                    selectionKey = null,
-                    onClick = { onPlay(item) },
-                    onOpenOptions = { onOpenOptions(item) },
-                    isCurrent = isCurrent,
-                ) {
-                    SonaCoverArt(coverArtUri = track.coverArtUri, contentDescription = null, isCurrent = isCurrent)
+                        isCurrent = isCurrent,
+                    ) { isSelected ->
+                        SonaCoverArt(coverArtUri = track.coverArtUri, contentDescription = null, isCurrent = isCurrent, isSelected = isSelected)
+                    }
                 }
             }
         }
@@ -240,7 +294,11 @@ private fun VaultItemList(
 internal class PrivateFolderViewModel @Inject constructor(
     private val vault: VaultRepository,
     private val playbackController: PlaybackController,
+    private val picker: PrivateFolderPicker,
 ) : ViewModel() {
+
+    /** The library's picker its Add opens, to move tracks and videos in - on the tab it is opened from. */
+    fun pickerScreen(startsOnVideos: Boolean): Screen = picker.screen(startsOnVideos)
 
     val state: StateFlow<VaultState> = vault.state
 

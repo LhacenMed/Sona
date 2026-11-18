@@ -18,7 +18,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import com.lhacenmed.sona.core.common.coroutines.launchOperation
 import com.lhacenmed.sona.core.common.format.formatDuration
 import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverArt
@@ -36,10 +35,12 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
-/** What a chosen option is waiting on - its confirmation. */
-private enum class VaultItemAction { MOVE_OUT, DELETE }
+/** What a chosen option or a selection's action is waiting on - its confirmation. */
+internal enum class VaultItemAction { MOVE_OUT, DELETE }
 
 /**
  * The options of the Private Folder track or video the player is showing [track] for - the folder's own, as
@@ -101,47 +102,78 @@ internal fun VaultItemOptions(item: VaultItem, onDismissRequest: () -> Unit) {
             )
         }
     }
+    action?.let { VaultItemsDialog(items = listOf(item), action = it, onDismiss = onDismissRequest) }
+}
+
+/**
+ * The confirmation of [action] on [items] - one item's, from its options, or a selection's, from its bar - then the
+ * action itself, item by item: one that cannot be moved or deleted stays where it is, and the rest are still done.
+ * [onDone] hears which were, before the dialog is dismissed; a selection keeps the others picked.
+ */
+@Composable
+internal fun VaultItemsDialog(
+    items: List<VaultItem>,
+    action: VaultItemAction,
+    onDismiss: () -> Unit,
+    onDone: (done: List<VaultItem>) -> Unit = {},
+) {
+    val viewModel: VaultItemOptionsViewModel = hiltViewModel()
+    val isSingle = items.size == 1
+    // Reported as succeeded only once every item is done, and as "some could not be" when only part of them were.
+    val reporting: ((succeeded: Boolean) -> Unit) -> (done: List<VaultItem>) -> Unit = { onFinished ->
+        { done ->
+            onDone(done)
+            onFinished(done.size == items.size)
+        }
+    }
     when (action) {
-        VaultItemAction.MOVE_OUT -> MoveOutDialog(item = item, viewModel = viewModel, onDismiss = onDismissRequest)
+        VaultItemAction.MOVE_OUT -> MoveOutDialog(items = items, viewModel = viewModel, onDismiss = onDismiss, reporting = reporting)
         VaultItemAction.DELETE -> SonaConfirmationDialog(
             title = stringResource(R.string.vault_delete_permanently),
-            message = stringResource(R.string.vault_delete_message),
+            message = stringResource(if (isSingle) R.string.vault_delete_message else R.string.vault_delete_some_message),
             confirmLabel = stringResource(R.string.vault_delete),
             successMessage = stringResource(R.string.vault_deleted),
-            failureMessage = stringResource(R.string.vault_delete_failed),
-            onDismiss = onDismissRequest,
-            operation = { onFinished -> viewModel.delete(item, onFinished) },
+            failureMessage = stringResource(if (isSingle) R.string.vault_delete_failed else R.string.vault_delete_some_failed),
+            onDismiss = onDismiss,
+            operation = { onFinished -> viewModel.delete(items, reporting(onFinished)) },
         )
-        null -> Unit
     }
 }
 
 /**
- * Moving [item] back out - to Music/Sona or Movies/Sona, where the library picks it up again. Below Android
- * 10 that needs the storage permission, asked for here; from 10 on, none.
+ * Moving [items] back out - to Music/Sona or Movies/Sona, where the library picks them up again. Below Android
+ * 10 that needs the storage permission, asked for here; from 10 on, none - and refused, nothing moves.
  */
 @Composable
-private fun MoveOutDialog(item: VaultItem, viewModel: VaultItemOptionsViewModel, onDismiss: () -> Unit) {
+private fun MoveOutDialog(
+    items: List<VaultItem>,
+    viewModel: VaultItemOptionsViewModel,
+    onDismiss: () -> Unit,
+    reporting: ((succeeded: Boolean) -> Unit) -> (done: List<VaultItem>) -> Unit,
+) {
     val context = LocalContext.current
-    var pendingMove by remember { mutableStateOf<((succeeded: Boolean) -> Unit)?>(null) }
+    var pendingMove by remember { mutableStateOf<((done: List<VaultItem>) -> Unit)?>(null) }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        val onFinished = pendingMove ?: return@rememberLauncherForActivityResult
+        val onMoved = pendingMove ?: return@rememberLauncherForActivityResult
         pendingMove = null
-        if (granted) viewModel.moveOut(item, onFinished) else onFinished(false)
+        if (granted) viewModel.moveOut(items, onMoved) else onMoved(emptyList())
     }
+    val folders = items.map { if (it.isVideo) "Movies/Sona" else "Music/Sona" }.distinct().joinToString(" & ")
+    val isSingle = items.size == 1
     SonaConfirmationDialog(
         title = stringResource(R.string.vault_move_out),
-        message = stringResource(R.string.vault_move_out_message, if (item.isVideo) "Movies/Sona" else "Music/Sona"),
+        message = stringResource(if (isSingle) R.string.vault_move_out_message else R.string.vault_move_out_some_message, folders),
         confirmLabel = stringResource(R.string.vault_move_out_confirm),
         successMessage = stringResource(R.string.vault_moved_out),
-        failureMessage = stringResource(R.string.vault_move_out_failed),
+        failureMessage = stringResource(if (isSingle) R.string.vault_move_out_failed else R.string.vault_move_out_some_failed),
         onDismiss = onDismiss,
         operation = { onFinished ->
+            val onMoved = reporting(onFinished)
             if (context.needsStoragePermission()) {
-                pendingMove = onFinished
+                pendingMove = onMoved
                 permissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
             } else {
-                viewModel.moveOut(item, onFinished)
+                viewModel.moveOut(items, onMoved)
             }
         },
     )
@@ -167,18 +199,29 @@ internal class VaultItemOptionsViewModel @Inject constructor(
     /** The file itself, which the app's covers already know to thumbnail - a track's art, a video's frame. */
     fun coverOf(item: VaultItem): String? = vault.trackOf(item).coverArtUri
 
-    /** Out of the queue first, so the player never reaches a file that has gone. */
-    fun moveOut(item: VaultItem, onFinished: (succeeded: Boolean) -> Unit) {
-        viewModelScope.launchOperation(onFinished) {
-            playbackController.removePrivateFromQueue(setOf(item.id))
-            vault.moveOut(item)
-        }
-    }
+    fun moveOut(items: List<VaultItem>, onFinished: (done: List<VaultItem>) -> Unit) = eachOf(items, onFinished, vault::moveOut)
 
-    fun delete(item: VaultItem, onFinished: (succeeded: Boolean) -> Unit) {
-        viewModelScope.launchOperation(onFinished) {
-            playbackController.removePrivateFromQueue(setOf(item.id))
-            vault.delete(item)
+    fun delete(items: List<VaultItem>, onFinished: (done: List<VaultItem>) -> Unit) = eachOf(items, onFinished, vault::delete)
+
+    /**
+     * Does [action] to each of [items] on its own, so one that fails - its file unreadable, say - leaves the others
+     * done and itself untouched; [onFinished] hears which were done. Each leaves the queue first, so the player never
+     * reaches a file that has gone.
+     */
+    private fun eachOf(items: List<VaultItem>, onFinished: (done: List<VaultItem>) -> Unit, action: suspend (VaultItem) -> Unit) {
+        viewModelScope.launch {
+            val done = items.filter { item ->
+                try {
+                    playbackController.removePrivateFromQueue(setOf(item.id))
+                    action(item)
+                    true
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (_: Exception) {
+                    false
+                }
+            }
+            onFinished(done)
         }
     }
 }

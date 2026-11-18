@@ -74,4 +74,8 @@ internal class VaultAccessViewModel @Inject constructor(
     fun setUnlocksWithBiometrics(enabled: Boolean) {
         viewModelScope.launch { vault.setUnlocksWithBiometrics(enabled) }
     }
+
+    fun setOffersAddToPrivate(offers: Boolean) {
+        viewModelScope.launch { vault.setOffersAddToPrivate(offers) }
+    }
 }

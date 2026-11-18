@@ -121,10 +121,13 @@ class OptionsActionsViewModel @Inject constructor(
         viewModelScope.launch { playbackSettings.setPlaysCounted(listOf(parent), counted) }
     }
 
-    /** Whether the Private Folder is set up - what offering "Add to Private Folder" waits on: see [OptionsTarget.actions]. */
-    val hasPrivateFolder: StateFlow<Boolean> = vaultRepository.state
-        .map { it is VaultState.Created }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), vaultRepository.state.value is VaultState.Created)
+    /**
+     * Whether options offer "Add to Private Folder": once it is set up, and while its settings leave the offer on - see
+     * [OptionsTarget.actions].
+     */
+    val offersAddToPrivate: StateFlow<Boolean> = vaultRepository.state
+        .map { it.offersAddToPrivate }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), vaultRepository.state.value.offersAddToPrivate)
 
     /**
      * Copies [tracks]' files into the Private Folder, handing [onCopied] what they became there - all of them or none:
@@ -372,3 +375,5 @@ class OptionsActionsViewModel @Inject constructor(
     private suspend fun readyTracks(query: Flow<LibraryContent<Track>>): List<Track> =
         query.first { it is LibraryContent.Ready }.itemsOrEmpty
 }
+
+private val VaultState.offersAddToPrivate: Boolean get() = (this as? VaultState.Created)?.offersAddToPrivate == true

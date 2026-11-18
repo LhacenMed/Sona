@@ -144,12 +144,12 @@ internal val OptionsTarget.playbackParent: PlaybackParent?
  * The rows an options sheet or a collection's menu lists, top to bottom - Auxio's inflated menu XML, chosen by
  * target and context. Favoriting is the heart in the sheet's header rather than a row - see [OptionsSheet].
  *
- * A track offers to go into the Private Folder only once [hasPrivateFolder]: until it is set up, from past
+ * A track offers to go into the Private Folder only while [offersAddToPrivate]: until it is set up, from past
  * the end of Settings, nothing in the library gives it away. A collection offers to keep its plays out of Most
  * played, or - among [uncountedParents] - to count them again, beside exporting it.
  */
-fun OptionsTarget.actions(hasPrivateFolder: Boolean, uncountedParents: Set<PlaybackParent>): List<OptionsAction> =
-    collectionActions(hasPrivateFolder).flatMap { action ->
+fun OptionsTarget.actions(offersAddToPrivate: Boolean, uncountedParents: Set<PlaybackParent>): List<OptionsAction> =
+    collectionActions(offersAddToPrivate).flatMap { action ->
         if (action == EXPORT && this !is OptionsTarget.ForSelection) {
             listOf(if (playbackParent in uncountedParents) COUNT_PLAYS else STOP_COUNTING_PLAYS, action)
         } else {
@@ -157,7 +157,7 @@ fun OptionsTarget.actions(hasPrivateFolder: Boolean, uncountedParents: Set<Playb
         }
     }
 
-private fun OptionsTarget.collectionActions(hasPrivateFolder: Boolean): List<OptionsAction> = when (this) {
+private fun OptionsTarget.collectionActions(offersAddToPrivate: Boolean): List<OptionsAction> = when (this) {
     is OptionsTarget.ForTrack -> if (track.isVideo) {
         VideoActions
     } else {
@@ -169,7 +169,7 @@ private fun OptionsTarget.collectionActions(hasPrivateFolder: Boolean): List<Opt
             TrackOptionsContext.FROM_ARTIST ->
                 listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, ALBUM_DETAILS, SONG_PROPERTIES, EDIT_TAGS, SHARE)
         }
-    } + listOfNotNull(removableFrom?.removeAction, ADD_TO_PRIVATE.takeIf { hasPrivateFolder }, DELETE_FROM_DEVICE)
+    } + listOfNotNull(removableFrom?.removeAction, ADD_TO_PRIVATE.takeIf { offersAddToPrivate }, DELETE_FROM_DEVICE)
 
     is OptionsTarget.ForAlbum -> when (context) {
         AlbumOptionsContext.LIST -> AlbumActions
@@ -203,7 +203,7 @@ private fun OptionsTarget.collectionActions(hasPrivateFolder: Boolean): List<Opt
             if (keys.any { it is SelectionKey.Playlist }) {
                 emptyList()
             } else {
-                listOfNotNull(ADD_TO_PRIVATE.takeIf { hasPrivateFolder }, DELETE_FROM_DEVICE)
+                listOfNotNull(ADD_TO_PRIVATE.takeIf { offersAddToPrivate }, DELETE_FROM_DEVICE)
             }
 }
 
