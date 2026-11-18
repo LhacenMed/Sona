@@ -12,6 +12,7 @@ import com.lhacenmed.sona.core.database.entity.ResumePositionEntity
 import com.lhacenmed.sona.core.database.entity.VideoSubtitleEntity
 import com.lhacenmed.sona.core.model.sort.SortableList
 import com.lhacenmed.sona.core.model.withRenamedPlaylist
+import com.lhacenmed.sona.feature.backup.BackedUpPlaylist
 import com.lhacenmed.sona.feature.backup.BackupLibrary
 
 /** What the device's library already holds, as far as merging a backup into it needs to know. */
@@ -28,6 +29,17 @@ data class LocalLibrary(
 data class NewVideoSubtitle(
     val subtitle: VideoSubtitleEntity,
     val attachedFile: String?,
+)
+
+/**
+ * A cover a backup gives a playlist the device has already, still on its default - the built-in Favorites of a fresh
+ * install, say: its [source], the track it shows, and the backup's copy of its image, for one that is an image.
+ */
+data class PlaylistCover(
+    val playlistId: Long,
+    val source: PlaylistCoverSource,
+    val trackId: Long?,
+    val image: String?,
 )
 
 /** A playlist the device does not have, with the backup's copy of its cover image to give it, if any. */
@@ -54,13 +66,15 @@ data class LibraryMergePlan(
     val playlistIds: Map<Long, Long>,
     val videoSubtitles: List<NewVideoSubtitle> = emptyList(),
     val replayHeatmaps: List<ReplayHeatmapEntity> = emptyList(),
+    val playlistCovers: List<PlaylistCover> = emptyList(),
 )
 
 /**
  * Merges [backup] into [local], deciding nothing by order of arrival - so it comes out the same however many
  * times it runs:
  * - a playlist is the device's one of the same name, or a new one, kept at its backed-up id where that is free;
- *   its tracks are added to whichever, each keeping the date it was added first;
+ *   its tracks are added to whichever, each keeping the date it was added first; the device's keeps its cover, unless
+ *   that is still the default, when it takes the backup's;
  * - a favorite is added where it is not one already;
  * - a list's hand-made order is the device's where it has one, else the backup's;
  * - a play count is the higher of the two, and a last play the later - adding counts up would count the same
@@ -79,11 +93,13 @@ fun planLibraryMerge(backup: BackupLibrary, local: LocalLibrary, trackIdOf: (Str
     val playlistIds = HashMap<Long, Long>()
     val newPlaylists = mutableListOf<NewPlaylist>()
     val playlistsModifiedAt = HashMap<Long, Long>()
+    val playlistCovers = mutableListOf<PlaylistCover>()
     for (playlist in backup.playlists) {
         val existing = localByName[playlist.name]
         if (existing != null) {
             playlistIds[playlist.id] = existing.id
             playlistsModifiedAt[existing.id] = playlist.modifiedAt
+            if (existing.hasDefaultCover()) coverOf(playlist, existing.id, trackIdOf)?.let(playlistCovers::add)
             continue
         }
         val id = if (takenIds.add(playlist.id)) playlist.id else nextFreeId++
@@ -155,9 +171,28 @@ fun planLibraryMerge(backup: BackupLibrary, local: LocalLibrary, trackIdOf: (Str
             trackIdOf(heatmap.path)?.takeIf { it !in local.replayHeatmapTrackIds }
                 ?.let { ReplayHeatmapEntity(it, heatmap.durationMs, Base64.getDecoder().decode(heatmap.playedMs)) }
         }.distinctBy { it.trackId },
+        playlistCovers = playlistCovers,
     )
 }
 
 /** A playlist's hand-made order is kept under its id; any other list's under what it is named by. */
 private fun String.renamedInstance(list: SortableList, playlistIds: Map<Long, Long>): String =
     if (list == SortableList.PLAYLIST_TRACKS) toLongOrNull()?.let(playlistIds::get)?.toString() ?: this else this
+
+/** Whether [this] still has the cover every playlist starts with: its tracks stacked, none picked, no image. */
+private fun PlaylistEntity.hasDefaultCover(): Boolean =
+    coverSource == PlaylistCoverSource.STACKED && coverTrackId == null && coverImageUri == null
+
+/**
+ * The cover [playlist] had, to give the device's [playlistId] - null where that is the default too, or one this device
+ * cannot show: a track it does not have, an image the backup did not carry.
+ */
+private fun coverOf(playlist: BackedUpPlaylist, playlistId: Long, trackIdOf: (String) -> Long?): PlaylistCover? {
+    val trackId = playlist.coverTrackPath?.let(trackIdOf)
+    return when (playlist.coverSource) {
+        PlaylistCoverSource.STACKED -> null
+        PlaylistCoverSource.IMAGE -> playlist.coverImage?.let { PlaylistCover(playlistId, PlaylistCoverSource.IMAGE, null, it) }
+        PlaylistCoverSource.TRACK -> trackId?.let { PlaylistCover(playlistId, PlaylistCoverSource.TRACK, it, null) }
+        PlaylistCoverSource.FIRST_TRACK, PlaylistCoverSource.LAST_TRACK -> PlaylistCover(playlistId, playlist.coverSource, trackId, null)
+    }
+}

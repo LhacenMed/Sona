@@ -9,7 +9,12 @@ import com.lhacenmed.sona.feature.backup.media.MissingMedia
  * offers them: [music] and [videos], keyed by their kind as [BackupFilePicks] are. None is on this device yet, so
  * each is named by its file, with the size and length the backup recorded.
  */
-class RestoreFiles(missing: List<MissingMedia>) {
+class RestoreFiles(
+    missing: List<MissingMedia>,
+    /** How many of the backup's music files, and of its videos, are on this device already - nothing to bring back. */
+    val musicHere: Int = 0,
+    val videosHere: Int = 0,
+) {
 
     private val fingerprintByPath = missing.associate { it.media.path to it.media.fingerprint }
 
@@ -33,6 +38,9 @@ class RestoreFiles(missing: List<MissingMedia>) {
     fun pickedMusic(keys: Set<String>): List<Track> = music.filter { musicPicks.isPicked(it, keys) }
 
     fun pickedVideos(keys: Set<String>): List<Track> = videos.filter { videoPicks.isPicked(it, keys) }
+
+    /** The fingerprints of [files], of those offered. */
+    fun fingerprintsOfFiles(files: Collection<Track>): Set<String> = files.mapNotNullTo(HashSet()) { fingerprintByPath[it.path] }
 
     /** The fingerprints of the files [keys] pick - what [BackupRepository.chooseFilesToRestore] takes. */
     fun fingerprintsOf(keys: Set<String>): Set<String> =

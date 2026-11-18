@@ -1,6 +1,8 @@
 package com.lhacenmed.sona.feature.backup
 
 import com.lhacenmed.sona.core.common.storage.DownloaderFiles
+import com.lhacenmed.sona.core.model.FAVORITES_PLAYLIST_ID
+import com.lhacenmed.sona.core.model.sort.SortableList
 import com.lhacenmed.sona.feature.backup.library.planDownloadsMerge
 import android.content.Context
 import android.net.ConnectivityManager
@@ -66,6 +68,7 @@ import kotlinx.coroutines.withContext
 private const val RESTORE_DIRECTORY_NAME = "restore"
 private const val INCOMING_DIRECTORY_NAME = ".incoming"
 private const val FILES_TO_RESTORE_NAME = "files-to-restore"
+private const val PARTS_TO_RESTORE_NAME = "parts-to-restore"
 private const val RESTORE_KEY_NAME = "key"
 
 /** How many files download at once - as many as upload at once, see `DriveMedia`. */
@@ -98,7 +101,15 @@ data class RestorePreview(
     val device: BackupDevice?,
     val files: RestoreFiles,
     val isDriveUnreachable: Boolean,
+    /** How much of the user's own it holds - see [RestoreSummary]. */
+    val summary: RestoreSummary = RestoreSummary(),
 )
+
+/** How much a backup holds of what the user made: their own [playlists], their [favorites], and the [plays] of their history. */
+data class RestoreSummary(val playlists: Int = 0, val favorites: Int = 0, val plays: Int = 0)
+
+/** A part of a backup's library that a restore can leave out - every part comes back unless chosen otherwise. */
+enum class RestorePart { SETTINGS, PLAYLISTS, FAVORITES, HISTORY }
 
 /** How opening a backup went. */
 sealed interface OpenedBackup {
@@ -438,6 +449,11 @@ class BackupRepository @Inject constructor(
         }
     }
 
+    /** Chooses which [parts] of the library the next [restore] brings back - every one, until this is called. */
+    suspend fun chooseLibraryToRestore(parts: Set<RestorePart>) = withContext(ioDispatcher) {
+        File(restoreDirectory, PARTS_TO_RESTORE_NAME).writeText(parts.joinToString("\n") { it.name })
+    }
+
     /** Chooses, by fingerprint, which of the files this device is missing the next [restore] brings back. */
     suspend fun chooseFilesToRestore(fingerprints: Set<String>) = withContext(ioDispatcher) {
         File(restoreDirectory, FILES_TO_RESTORE_NAME).writeText(fingerprints.joinToString("\n"))
@@ -455,6 +471,10 @@ class BackupRepository @Inject constructor(
     suspend fun restore(onProgress: (BackupProgress) -> Unit) = withContext(ioDispatcher) {
         onProgress(BackupProgress(BackupStep.READING_BACKUP))
         val contents = BackupArchive.read(restoreDirectory)
+        val parts = File(restoreDirectory, PARTS_TO_RESTORE_NAME).takeIf { it.isFile }?.readLines()
+            ?.mapNotNullTo(HashSet()) { line -> RestorePart.entries.firstOrNull { it.name == line } }
+            ?: RestorePart.entries.toSet()
+        val library = contents.library.keeping(parts)
         val filesToRestore = File(restoreDirectory, FILES_TO_RESTORE_NAME).takeIf { it.isFile }?.readLines()?.toSet().orEmpty()
         // One for the whole run, so Drive's files are listed once.
         val cloud = driveBackups.media(restoreKey())
@@ -467,8 +487,8 @@ class BackupRepository @Inject constructor(
         val inCloud = if (filesToRestore.isEmpty()) emptySet() else cloudFingerprints(contents, cloud)
         val plan = mediaPlanOf(contents, restorer, inCloud)
         onProgress(BackupProgress(BackupStep.RESTORING_LIBRARY))
-        val playlistIds = mergeLibrary(contents, plan.present)
-        restoreSettingsAndFiles(contents, playlistIds)
+        val playlistIds = mergeLibrary(contents, library, plan.present)
+        restoreSettingsAndFiles(contents, playlistIds, withSettings = RestorePart.SETTINGS in parts)
 
         val missing = plan.missing.filter { it.media.fingerprint in filesToRestore }
         if (missing.isNotEmpty()) {
@@ -481,7 +501,7 @@ class BackupRepository @Inject constructor(
                 mediaScanner.rescan(force = true)
                 // Where each restored file now is, for every path the backup had its bytes at - nothing to compare again.
                 val restoredAt = downloads.restored.flatMap { (item, file) -> (listOf(item.media.path) + item.otherPaths).map { it to file.path } }
-                mergeLibrary(contents, plan.present + restoredAt)
+                mergeLibrary(contents, library, plan.present + restoredAt)
             }
             if (downloads.failed > 0) throw IOException("${downloads.failed} of ${missing.size} files could not be downloaded")
         }
@@ -529,12 +549,18 @@ class BackupRepository @Inject constructor(
         val cloud = driveBackups.media(key)
         val createdAt = contents.manifest.createdAt
         val device = contents.manifest.device
+        val summary = contents.library.summary()
         val inCloud = try {
             cloudFingerprints(contents, cloud)
         } catch (_: IOException) {
-            return RestorePreview(createdAt, device, RestoreFiles(emptyList()), isDriveUnreachable = true)
+            return RestorePreview(createdAt, device, RestoreFiles(emptyList()), isDriveUnreachable = true, summary = summary)
         }
-        return RestorePreview(createdAt, device, RestoreFiles(mediaPlanOf(contents, restorerOf(cloud), inCloud).missing), isDriveUnreachable = false)
+        val plan = mediaPlanOf(contents, restorerOf(cloud), inCloud)
+        // What of the backup is on this device already, by kind - for a list of what comes back to say how much is not in it.
+        val isVideoByPath = contents.library.media.associate { it.path to it.isVideo }
+        val here = plan.present.keys.groupingBy { isVideoByPath[it] == true }.eachCount()
+        val files = RestoreFiles(plan.missing, musicHere = here[false] ?: 0, videosHere = here[true] ?: 0)
+        return RestorePreview(createdAt, device, files, isDriveUnreachable = false, summary = summary)
     }
 
     /** Which of the backup's files [cloud] keeps - none while Drive is not connected. Asks Drive, so it may fail. */
@@ -563,7 +589,7 @@ class BackupRepository @Inject constructor(
     )
 
     /** Merges the backup's library into this device's, its tracks found through [present]. Its playlists' ids here. */
-    private suspend fun mergeLibrary(contents: BackupContents, present: Map<String, String>): Map<Long, Long> {
+    private suspend fun mergeLibrary(contents: BackupContents, library: BackupLibrary, present: Map<String, String>): Map<Long, Long> {
         val idByPath = backupDao.trackFiles().associate { it.path to it.id }
         val local = LocalLibrary(
             playlists = backupDao.playlists(),
@@ -574,7 +600,7 @@ class BackupRepository @Inject constructor(
             replayHeatmapTrackIds = backupDao.replayHeatmaps().mapTo(HashSet()) { it.trackId },
         )
         val downloads = planDownloadsMerge(contents.library.downloads, localDownloads())
-        val plan = planLibraryMerge(contents.library, local) { path -> present[path]?.let(idByPath::get) }
+        val plan = planLibraryMerge(library, local) { path -> present[path]?.let(idByPath::get) }
         // Copied in before the playlists are written, so none is ever written pointing at a cover not yet there.
         val newPlaylists = plan.newPlaylists.map { new ->
             val image = new.coverImage?.let { contents.file(BackupEntries.cover(it)) }
@@ -583,6 +609,12 @@ class BackupRepository @Inject constructor(
                 new.playlist.coverSource == PlaylistCoverSource.IMAGE -> new.playlist.copy(coverSource = PlaylistCoverSource.STACKED)
                 else -> new.playlist
             }
+        }
+        // The same for the covers given to playlists the device had: one whose image is not in the backup is left as it was.
+        val playlistCovers = plan.playlistCovers.mapNotNull { cover ->
+            if (cover.image == null) return@mapNotNull cover to null
+            val image = contents.file(BackupEntries.cover(cover.image)) ?: return@mapNotNull null
+            cover to playlistCoverImages.import(Uri.fromFile(image).toString())
         }
         // As with the covers: copied in first, and a subtitle whose file the backup does not hold is written without one.
         val videoSubtitles = plan.videoSubtitles.map { new ->
@@ -599,6 +631,7 @@ class BackupRepository @Inject constructor(
             backupDao.insertPlaylists(newPlaylists)
             backupDao.insertPlaylistTracks(plan.playlistTracks)
             plan.playlistsModifiedAt.forEach { (playlistId, modifiedAt) -> backupDao.raiseModifiedAt(playlistId, modifiedAt) }
+            playlistCovers.forEach { (cover, imageUri) -> backupDao.setCover(cover.playlistId, cover.source.name, cover.trackId, imageUri) }
             backupDao.insertFavoriteCollections(plan.favoriteCollections)
             backupDao.insertArrangements(plan.arrangements)
             backupDao.upsertPlayStats(plan.playStats)
@@ -622,17 +655,20 @@ class BackupRepository @Inject constructor(
     )
 
     /** Puts the backup's settings in place, with the player's background and the custom font it carries. */
-    private suspend fun restoreSettingsAndFiles(contents: BackupContents, playlistIds: Map<Long, Long>) {
-        val previousBackground = playerStyleSettings.appearance.value.customBackground.imageUri
-        settingsBackup.restore(contents.settings, playlistIds)
-        val background = contents.file(BackupEntries.BACKGROUND)?.let { customBackgroundImages.import(Uri.fromFile(it).toString()) }
-        playerStyleSettings.setCustomBackgroundImage(background)
-        previousBackground?.takeIf { it != background }?.let { customBackgroundImages.release(it) }
+    /** Every setting, the player's background and the fonts - only [withSettings] - then what downloading had kept. */
+    private suspend fun restoreSettingsAndFiles(contents: BackupContents, playlistIds: Map<Long, Long>, withSettings: Boolean) {
+        if (withSettings) {
+            val previousBackground = playerStyleSettings.appearance.value.customBackground.imageUri
+            settingsBackup.restore(contents.settings, playlistIds)
+            val background = contents.file(BackupEntries.BACKGROUND)?.let { customBackgroundImages.import(Uri.fromFile(it).toString()) }
+            playerStyleSettings.setCustomBackgroundImage(background)
+            previousBackground?.takeIf { it != background }?.let { customBackgroundImages.release(it) }
+        }
 
         contents.file(BackupEntries.DOWNLOAD_COOKIES)?.let { mergeCookies(it, DownloaderFiles.cookies(context)) }
         contents.file(BackupEntries.DOWNLOAD_ARCHIVE)?.let { mergeLines(it, DownloaderFiles.archive(context)) { line -> line } }
 
-        if (contents.fonts.isNotEmpty()) {
+        if (withSettings && contents.fonts.isNotEmpty()) {
             val fontDirectory = CustomFontLoader.fontDirectory(context)
             fontDirectory.deleteRecursively()
             fontDirectory.mkdirs()
@@ -683,3 +719,30 @@ private fun fileOf(uri: String): File? = Uri.parse(uri).takeIf { it.scheme == "f
 private fun ByteArray.toBase64(): String = Base64.getEncoder().encodeToString(this)
 
 private fun String.fromBase64(): ByteArray = Base64.getDecoder().decode(this)
+
+/** How much [this] holds of what the user made - see [RestoreSummary]. */
+private fun BackupLibrary.summary(): RestoreSummary {
+    val favorites = playlists.firstOrNull { it.id == FAVORITES_PLAYLIST_ID }?.tracks?.size ?: 0
+    return RestoreSummary(
+        playlists = playlists.count { !it.isBuiltIn && it.id != FAVORITES_PLAYLIST_ID },
+        favorites = favorites + favoriteCollections.size,
+        plays = playStats.sumOf { it.playCount },
+    )
+}
+
+/**
+ * [this], with only [parts] of it: a playlist left out takes its hand-made order with it, so that order never lands on a
+ * playlist of this device's that happens to have the same id.
+ */
+internal fun BackupLibrary.keeping(parts: Set<RestorePart>): BackupLibrary {
+    val keepsPlaylists = RestorePart.PLAYLISTS in parts
+    val keepsFavorites = RestorePart.FAVORITES in parts
+    val kept = playlists.filter { if (it.id == FAVORITES_PLAYLIST_ID) keepsFavorites else keepsPlaylists }
+    val leftOut = (playlists - kept.toSet()).mapTo(HashSet()) { it.id.toString() }
+    return copy(
+        playlists = kept,
+        favoriteCollections = if (keepsFavorites) favoriteCollections else emptyList(),
+        arrangements = arrangements.filterNot { it.list == SortableList.PLAYLIST_TRACKS && it.instanceId in leftOut },
+        playStats = if (RestorePart.HISTORY in parts) playStats else emptyList(),
+    )
+}

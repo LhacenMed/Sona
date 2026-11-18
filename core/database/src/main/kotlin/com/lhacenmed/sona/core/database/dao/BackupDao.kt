@@ -89,6 +89,10 @@ interface BackupDao {
     @Query("UPDATE playlists SET coverImageUri = :imageUri WHERE id = :playlistId")
     suspend fun setCoverImage(playlistId: Long, imageUri: String?)
 
+    /** Gives a playlist the cover a backup had for it - its source by name, as the column keeps it. */
+    @Query("UPDATE playlists SET coverSource = :source, coverTrackId = :trackId, coverImageUri = :imageUri WHERE id = :playlistId")
+    suspend fun setCover(playlistId: Long, source: String, trackId: Long?, imageUri: String?)
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertFavoriteCollections(rows: List<FavoriteCollectionEntity>)
 

@@ -55,6 +55,16 @@ class LibraryMergeTest {
     }
 
     @Test
+    fun `a playlist the device has takes the backup's cover only while its own is still the default`() {
+        val backedUp = playlist(1, "Favorites", coverSource = PlaylistCoverSource.FIRST_TRACK)
+        val fresh = planLibraryMerge(backup(listOf(backedUp)), local(listOf(localPlaylist(1, "Favorites"))), trackIds::get)
+        assertEquals(listOf(PlaylistCover(1L, PlaylistCoverSource.FIRST_TRACK, null, null)), fresh.playlistCovers)
+
+        val chosen = localPlaylist(1, "Favorites").copy(coverSource = PlaylistCoverSource.LAST_TRACK)
+        assertEquals(emptyList<PlaylistCover>(), planLibraryMerge(backup(listOf(backedUp)), local(listOf(chosen)), trackIds::get).playlistCovers)
+    }
+
+    @Test
     fun `a new playlist keeps its id where free, and takes a new one where not`() {
         val plan = planLibraryMerge(
             backup(listOf(playlist(3, "Road"), playlist(5, "Gym"))),
