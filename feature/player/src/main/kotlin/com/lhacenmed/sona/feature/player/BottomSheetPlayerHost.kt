@@ -1,6 +1,14 @@
 package com.lhacenmed.sona.feature.player
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,6 +16,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,6 +37,10 @@ import com.lhacenmed.sona.feature.player.background.playerColors
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackSpace
 
+/** How far above the mini player the screen starts fading under it, and how far it fades by the screen's foot. */
+private val MiniPlayerScrimRise = 32.dp
+private const val MiniPlayerScrimAlpha = 0.85f
+
 /**
  * The player an activity lays over its content: a mini player along the bottom that expands into the
  * full player and its queue, hosted the way ArchiveTune's `MainActivity` hosts its `BottomSheetPlayer`.
@@ -37,7 +50,7 @@ import com.lhacenmed.sona.feature.playback.PlaybackSpace
  * when the queue is emptied - and holds still while neither is known yet.
  *
  * [content] is the screen it lays itself over, told through [LocalBottomContentPadding] how much of its
- * bottom the mini player covers, and the gap to keep above it, and through [LocalPlayerSheetHeight]
+ * bottom the mini player covers as it comes and goes, and the gap to keep above it, and through [LocalPlayerSheetHeight]
  * how high the player reaches up over it at every moment.
  *
  * It plays [space]'s tracks alone - see [PlayerViewModel]. What only the library's tracks have - an album
@@ -106,15 +119,45 @@ fun BottomSheetPlayerHost(
         val sheetHeight = remember(state) { PlayerSheetHeight(current = { state.value }, collapsed = state.collapsedBound) }
         val miniPlayerSeekBarRequests = remember { MiniPlayerSeekBarRequests() }
 
-        // Held clear whether or not a track is loaded, so a list's end stays where it is as the mini
-        // player comes and goes rather than jumping under it.
+        // As much as the mini player covers, as it covers it: it grows as the mini player slides in and shrinks to the
+        // navigation bar alone as it is swiped away, frame by frame with it - and holds still while the player opens
+        // above it, so nothing recomposes for a drag of the open player.
+        val bottomContentPadding by remember(state, bottomInset) {
+            derivedStateOf {
+                val presence = (state.value / state.collapsedBound).coerceIn(0f, 1f)
+                bottomInset + (state.collapsedBound - bottomInset + MiniPlayerContentSpacing) * presence
+            }
+        }
         CompositionLocalProvider(
-            LocalBottomContentPadding provides miniPlayerClearance + MiniPlayerContentSpacing,
+            LocalBottomContentPadding provides bottomContentPadding,
             LocalPlayerSheetHeight provides sheetHeight,
             LocalMiniPlayerSeekBarRequests provides miniPlayerSeekBarRequests,
         ) {
             content()
         }
+
+        // The screen fading into its own colour beneath the mini player, from its foot up past its top - faintly, so the
+        // mini player reads as standing above the screen rather than cut into it. Drawn only: it takes no touch, and it
+        // goes with the mini player - as the sheet leaves, and as it opens over it.
+        val screenColor = MaterialTheme.colorScheme.surface
+        Box(
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(miniPlayerClearance + MiniPlayerScrimRise)
+                    .drawBehind {
+                        val presence = (state.value / state.collapsedBound).coerceIn(0f, 1f) * (1f - state.revealFraction)
+                        if (presence > 0f) {
+                            drawRect(
+                                Brush.verticalGradient(
+                                    0f to Color.Transparent,
+                                    1f to screenColor.copy(alpha = MiniPlayerScrimAlpha * presence),
+                                ),
+                            )
+                        }
+                    },
+        )
 
         // Every control within it - the player's, its lyrics sheet's and its queue bar's - is on in the one second accent.
         CompositionLocalProvider(LocalPlayerCheckedColors provides playerColors().checked) {

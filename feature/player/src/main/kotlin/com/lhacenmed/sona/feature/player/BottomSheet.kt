@@ -112,7 +112,7 @@ internal fun BottomSheet(
                     ).drawBehind {
                         // Faded in as it opens, read as it is drawn: a drag moves the sheet without composing it again.
                         if (backgroundColor.isSpecified) {
-                            drawRect(backgroundColor.copy(alpha = backgroundColor.alpha * state.progress.coerceIn(0f, 1f)))
+                            drawRect(backgroundColor.copy(alpha = backgroundColor.alpha * state.revealFraction))
                         }
                     },
         ) {
@@ -131,9 +131,7 @@ internal fun BottomSheet(
                                 } else {
                                     Modifier
                                 },
-                            ).graphicsLayer {
-                                alpha = ((state.progress - 0.25f) * 4).coerceIn(0f, 1f)
-                            },
+                            ).graphicsLayer { alpha = state.contentAlpha },
                     content = content,
                 )
             }
@@ -142,9 +140,8 @@ internal fun BottomSheet(
                 Box(
                     modifier =
                         Modifier
-                            .graphicsLayer {
-                                alpha = 1f - (state.progress * 4).coerceAtMost(1f)
-                            }.then(
+                            .graphicsLayer { alpha = state.collapsedContentAlpha }
+                            .then(
                                 if (isCollapsedContentEnabled) {
                                     Modifier
                                         .bottomSheetDraggable(state, onDismiss)
@@ -205,6 +202,21 @@ internal class BottomSheetState(
     val progress by derivedStateOf {
         1f - (animatable.upperBound!! - animatable.value) / (animatable.upperBound!! - collapsedBound)
     }
+
+    /** How far the sheet has opened, from its collapsed bar to open: what its background fades in by. */
+    val revealFraction: Float
+        get() = progress.coerceIn(0f, 1f)
+
+    /**
+     * The collapsed bar and the open content hand over rather than overlap: the bar is gone by [CollapsedHandOff] of the
+     * way open, and only then does the content start to show - arriving with the background as it finishes, never
+     * ahead of it.
+     */
+    val collapsedContentAlpha: Float
+        get() = 1f - (revealFraction / CollapsedHandOff).coerceAtMost(1f)
+
+    val contentAlpha: Float
+        get() = ((revealFraction - CollapsedHandOff) / (1f - CollapsedHandOff)).coerceIn(0f, 1f)
 
     private fun updateAnchor(anchor: Int) {
         targetAnchor = anchor
@@ -347,6 +359,9 @@ internal class BottomSheetState(
                 }
         }
 }
+
+/** How far open a sheet is when its collapsed bar has gone and its content starts to show. */
+private const val CollapsedHandOff = 0.25f
 
 internal const val EXPANDED_ANCHOR = 2
 internal const val COLLAPSED_ANCHOR = 1
