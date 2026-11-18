@@ -6,6 +6,53 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-11-18
+
+### Added
+
+- Add SharedLinkActivity for handling shared links.
+- Add rename action for tracks and playlists.
+- Add video progress line and subtitle font customization.
+- Remember the last cover colour across launches.
+- Restyle settings rows and add SonaSwitch.
+- Ask for one storage permission covering all file access.
+- Download and install updates automatically.
+- Copy a subtitle track's text with a long press.
+- Split download settings into pages and add yt-dlp options.
+- Adopt expressive motion and restyle rows, tabs and dialogs.
+- Add first-launch setup and an animated launch entrance.
+- Redesign the library's header, tabs and list tools.
+- Keep a video's upload date, views and likes and show them.
+- Check transcription keys and show what each service has left.
+- Add an in-app browser that hands its downloads over.
+- Record which device made each backup.
+- Keep a control's corners round against its container's edge.
+- Show the downloader's download in a notification.
+- Let a restore leave out parts of the library.
+- Open the lyrics with a tap on the cover.
+- Choose the mini player's button and rework its swipe.
+- Move a queue row with a long press instead of a handle.
+- Hand the sheet's bar over to its content, and fade the screen under the mini player.
+- Rework the restore step and the steps' buttons.
+
+### Changed
+
+- The notification, widgets and floating window use the players' own icons.
+- A row's options button shows a vertical more icon.
+- Unify player icons with SonaIcons design system.
+- Restructure with multi-part transfer layer.
+- Tidy picker and options plumbing.
+
+### Fixed
+
+- The player's top buttons no longer crowd the status bar or a notch.
+- Use middle frame for video covers instead of first frame.
+- Pick a non-dark frame for video covers.
+- Step the FABs aside at a list's end instead of keeping room.
+- Show and stop an automatic backup from the backup screen.
+- Take in resume positions a restore writes.
+- Wait longer for the first frame before dropping the launch screen.
+
 ## [1.8.2] - 2026-11-13
 
 ### Added
