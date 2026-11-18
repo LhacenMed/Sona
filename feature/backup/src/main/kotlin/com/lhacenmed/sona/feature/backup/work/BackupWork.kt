@@ -23,6 +23,7 @@ import dagger.hilt.android.EntryPointAccessors
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 private const val AUTOMATIC_BACKUP = "automatic_backup"
@@ -48,10 +49,13 @@ enum class BackupFailure {
     DRIVE_ACCESS_LOST,
 }
 
-/** A backup or a restore the user started, as its screen follows it. */
+/** A backup or a restore, as its screen follows it - one the user started, or an automatic backup while it runs. */
 sealed interface BackupRun {
-    /** Under way - at [progress], once it has said where it is. */
-    data class Running(val progress: BackupProgress?) : BackupRun
+    /**
+     * Under way - at [progress], once it has said where it is. [isAutomatic] for a backup the schedule started, whose end is
+     * not kept to be told: once over, the screen shows the last one the user started again.
+     */
+    data class Running(val progress: BackupProgress?, val isAutomatic: Boolean = false) : BackupRun
 
     /** Done - a backup, as [outcome] says; a restore, with none. */
     data class Succeeded(val outcome: BackupOutcome?) : BackupRun
@@ -73,11 +77,17 @@ sealed interface BackupRun {
  */
 object BackupWork {
 
-    /** Keeps automatic backups made as often as [schedule] says - or none, while it is off. */
+    /**
+     * Keeps automatic backups made as often as [schedule] says - or none, while it is off. The first comes a whole interval
+     * after the schedule is turned on, never there and then: turned on at the end of the setup, or right after a restore,
+     * there is time to choose what is backed up, and nothing just restored is sent straight back. A schedule already
+     * followed keeps its own timing.
+     */
     fun follow(context: Context, schedule: BackupSchedule) {
         val workManager = WorkManager.getInstance(context)
         val intervalDays = schedule.intervalDays ?: return run { workManager.cancelUniqueWork(AUTOMATIC_BACKUP) }
         val request = PeriodicWorkRequestBuilder<BackupWorker>(intervalDays, TimeUnit.DAYS)
+            .setInitialDelay(intervalDays, TimeUnit.DAYS)
             .setInputData(workDataOf(KEY_AUTOMATIC to true))
             .setConstraints(
                 Constraints.Builder()
@@ -94,12 +104,12 @@ object BackupWork {
     }
 
     /**
-     * Pauses the backup the user started. Resumed, it carries on from where it stopped: the files already in Drive
-     * are not sent again, and one cut short goes on from the very byte Drive has of it.
+     * Pauses the backup under way - the user's, or an automatic one. Resumed, it carries on from where it stopped: the
+     * files already in Drive are not sent again, and one cut short goes on from the very byte Drive has of it.
      */
     suspend fun pauseBackup(context: Context) {
         settingsOf(context).setBackupPaused(true)
-        WorkManager.getInstance(context).cancelUniqueWork(BACKUP)
+        cancelBackups(context)
         postPausedNotification(context)
     }
 
@@ -110,13 +120,31 @@ object BackupWork {
     }
 
     /**
-     * Stops the backup the user started, or the one paused. Nothing is left half done: a backup is kept only once
-     * written whole, files already in Drive stay there for the next one, and an upload cut short is let go of by Drive.
+     * Stops the backup under way - the user's, or an automatic one - or the one paused. Nothing is left half done: a backup
+     * is kept only once written whole, files already in Drive stay there for the next one, and an upload cut short is let
+     * go of by Drive.
      */
     suspend fun stopBackup(context: Context) {
         leavePause(context)
-        WorkManager.getInstance(context).cancelUniqueWork(BACKUP)
+        cancelBackups(context)
     }
+
+    /**
+     * Cancels every backup under way. An automatic one stops for this time only: the schedule is followed afresh, the next
+     * a whole interval from now.
+     */
+    private suspend fun cancelBackups(context: Context) {
+        val workManager = WorkManager.getInstance(context)
+        workManager.cancelUniqueWork(BACKUP)
+        workManager.cancelUniqueWork(BACKUP_ON_WIFI)
+        if (isRunning(workManager, AUTOMATIC_BACKUP)) {
+            workManager.cancelUniqueWork(AUTOMATIC_BACKUP)
+            follow(context, settingsOf(context).scheduleNow())
+        }
+    }
+
+    private suspend fun isRunning(workManager: WorkManager, name: String): Boolean =
+        workManager.getWorkInfosForUniqueWorkFlow(name).first().any { it.state == WorkInfo.State.RUNNING }
 
     /** No backup is paused any more: one is under way again, or none is wanted. */
     internal suspend fun leavePause(context: Context) {
@@ -139,11 +167,32 @@ object BackupWork {
         WorkManager.getInstance(context).enqueueUniqueWork(RESTORE, ExistingWorkPolicy.KEEP, userRequest<RestoreWorker>())
     }
 
-    /** The latest backup the user started - paused, while it is - or null before any. */
+    /**
+     * The backup under way - an automatic one too, while it runs - or else the latest the user started, paused while it is,
+     * or null before any.
+     */
     fun backupRun(context: Context): Flow<BackupRun?> =
-        combine(runOf(context, BACKUP), settingsOf(context).isBackupPaused) { run, isPaused ->
-            if (isPaused && run !is BackupRun.Running) BackupRun.Paused else run
+        combine(runOf(context, BACKUP), automaticRunOf(context), settingsOf(context).isBackupPaused) { run, automatic, isPaused ->
+            when {
+                run is BackupRun.Running -> run
+                automatic != null -> automatic
+                isPaused -> BackupRun.Paused
+                else -> run
+            }
         }
+
+    /** An automatic backup while it runs - on its schedule, or waiting on Wi-Fi - or null while none does. */
+    private fun automaticRunOf(context: Context): Flow<BackupRun.Running?> {
+        val workManager = WorkManager.getInstance(context)
+        return combine(
+            workManager.getWorkInfosForUniqueWorkFlow(AUTOMATIC_BACKUP),
+            workManager.getWorkInfosForUniqueWorkFlow(BACKUP_ON_WIFI),
+        ) { scheduled, onWifi ->
+            // Only running counts: between its runs, a scheduled backup waits as enqueued.
+            (scheduled + onWifi).firstOrNull { it.state == WorkInfo.State.RUNNING }
+                ?.let { BackupRun.Running(it.progress.toBackupProgress(), isAutomatic = true) }
+        }
+    }
 
     /** The latest restore, or null before any. */
     fun restoreRun(context: Context): Flow<BackupRun?> = runOf(context, RESTORE)

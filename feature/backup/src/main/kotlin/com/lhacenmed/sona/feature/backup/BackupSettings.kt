@@ -5,6 +5,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -78,8 +79,14 @@ class BackupSettings @Inject constructor(
     )
 
     val schedule: StateFlow<BackupSchedule> = dataStore.data
-        .map { preferences -> preferences[SCHEDULE]?.let { name -> BackupSchedule.entries.firstOrNull { it.name == name } } ?: BackupSchedule.OFF }
+        .map(::scheduleOf)
         .stateIn(scope, SharingStarted.Eagerly, BackupSchedule.OFF)
+
+    /** The schedule as stored - read, rather than as [schedule] has it so far, for a process just started to act on. */
+    internal suspend fun scheduleNow(): BackupSchedule = scheduleOf(dataStore.data.first())
+
+    private fun scheduleOf(preferences: Preferences): BackupSchedule =
+        preferences[SCHEDULE]?.let { name -> BackupSchedule.entries.firstOrNull { it.name == name } } ?: BackupSchedule.OFF
 
     val isEncrypted: StateFlow<Boolean> = dataStore.data.map { it[SEALED_KEY] != null }.stateIn(scope, SharingStarted.Eagerly, false)
 

@@ -324,6 +324,7 @@ private val BackupSchedule.labelRes: Int
 @Composable
 private fun RunOutcomeToast(run: BackupRun?, @StringRes successRes: Int, @StringRes failureRes: Int) {
     val context = LocalContext.current
+    // Only of a run the user started: how an automatic one ended is not kept, and the last one's would be told instead.
     var wasRunning by remember { mutableStateOf(false) }
     LaunchedEffect(run) {
         if (wasRunning) {
@@ -338,7 +339,7 @@ private fun RunOutcomeToast(run: BackupRun?, @StringRes successRes: Int, @String
                 else -> Unit
             }
         }
-        wasRunning = run is BackupRun.Running
+        wasRunning = run is BackupRun.Running && !run.isAutomatic
     }
 }
 
