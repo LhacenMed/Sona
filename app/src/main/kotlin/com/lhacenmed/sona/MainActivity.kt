@@ -414,8 +414,11 @@ private const val SplashIconSizeDp = 288f
 /** The mark's share of the launch screen's icon: 202 of its 432 units - see `ic_splash_anim`. */
 private const val SplashMarkFraction = 202f / 432f
 
-/** How long the launch screen waits at most for the app to draw its copy of it beneath. */
-private const val MaxSplashHandOffMillis = 500L
+/**
+ * How long the launch screen waits at most for the app to draw its copy of it beneath. Long enough for a busy first frame:
+ * taken away before the copy is drawn, a frame would show no mark at all. Only a window that never draws waits it out.
+ */
+private const val MaxSplashHandOffMillis = 2_000L
 
 /** How long after the first frame is drawn the launch screen has to hand its icon over before the mark starts without it. */
 private const val SplashHandOffWaitMillis = 500L
