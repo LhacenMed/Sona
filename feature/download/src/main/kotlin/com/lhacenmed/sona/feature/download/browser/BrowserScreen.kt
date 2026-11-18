@@ -86,6 +86,7 @@ import com.lhacenmed.sona.core.designsystem.component.sheet.SonaBottomSheetScope
 import com.lhacenmed.sona.core.designsystem.component.sheet.SonaColumnBottomSheet
 import com.lhacenmed.sona.core.designsystem.component.sheet.SonaOptionRow
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.core.designsystem.theme.ContainerEdge
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.model.BrowserBookmark
 import com.lhacenmed.sona.core.navigation.LocalNavigator
@@ -349,6 +350,7 @@ private fun AddressField(tab: BrowserTab?, onOpenPage: (String) -> Unit) {
                         onClick = { if (text.isNotEmpty()) text = "" else isEditing = false },
                         icon = SonaIcons.Close,
                         contentDescription = stringResource(R.string.browser_clear),
+                        edge = ContainerEdge.End,
                     )
                 }
             },

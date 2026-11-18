@@ -37,6 +37,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.player.formatPlaybackTime
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
+import com.lhacenmed.sona.core.designsystem.theme.ContainerEdge
 import com.lhacenmed.sona.feature.video.PlayerText
 import com.lhacenmed.sona.feature.video.R
 import com.lhacenmed.sona.feature.video.VideoPlayerTokens
@@ -116,9 +117,10 @@ internal fun ResumePrompt(resumedFromMs: Long?, isVisible: Boolean, isLandscape:
                 )
                 // As tall as the pill to the finger, whatever it looks.
                 CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides VideoPlayerTokens.ResumePromptHeight) {
+                    // Against the pill's end, it keeps the pill's roundness there through a press.
                     TextButton(
                         onClick = onStartOver,
-                        shapes = buttonPressShapes(),
+                        shapes = buttonPressShapes(ContainerEdge.End),
                         colors = ButtonDefaults.textButtonColors(contentColor = VideoPlayerTokens.ContentColor),
                         contentPadding = PaddingValues(horizontal = 10.dp),
                         modifier = Modifier.height(28.dp),

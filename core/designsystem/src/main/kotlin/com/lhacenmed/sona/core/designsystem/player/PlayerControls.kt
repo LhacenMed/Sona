@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import com.lhacenmed.sona.core.designsystem.component.SonaIconButtonGroup
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
+import com.lhacenmed.sona.core.designsystem.theme.ContainerEdge
 import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.iconTogglePressShapes
 import com.lhacenmed.sona.core.designsystem.theme.togglePressShapes
@@ -131,7 +132,8 @@ fun PlayerButtonGroup(modifier: Modifier = Modifier, spacing: Dp = SonaComponent
 
 /**
  * A control in a [PlayerButtonGroup]: [icon] in [color], [checked] as [PlayerBarButton] is. [onClick] is null for a
- * control that cannot act right now. [modifier] is applied beneath the group's width animation.
+ * control that cannot act right now. [modifier] is applied beneath the group's width animation; [edge] is the side of
+ * its container it stands against, if any - see [ContainerEdge].
  */
 fun ButtonGroupScope.playerButton(
     icon: ImageVector,
@@ -142,6 +144,7 @@ fun ButtonGroupScope.playerButton(
     size: Dp = PlayerControls.BarButtonSize,
     iconSize: Dp = PlayerControls.BarIconSize,
     containerColor: Color = Color.Transparent,
+    edge: ContainerEdge? = null,
     modifier: Modifier = Modifier,
 ) = customItem(
     buttonGroupContent = {
@@ -152,6 +155,7 @@ fun ButtonGroupScope.playerButton(
             color = color,
             enabled = onClick != null,
             containerColor = containerColor,
+            edge = edge,
             interactionSource = interactionSource,
             // The group's width comes first, and this gives way to it: all a press has to grow into.
             modifier = Modifier.animateWidth(interactionSource).then(modifier).size(size),
@@ -206,13 +210,14 @@ private fun PlayerIconButton(
     enabled: Boolean,
     modifier: Modifier,
     containerColor: Color = Color.Transparent,
+    edge: ContainerEdge? = null,
     interactionSource: MutableInteractionSource? = null,
     content: @Composable () -> Unit,
 ) {
     if (checked == null) {
         IconButton(
             onClick = onClick,
-            shapes = iconButtonPressShapes(),
+            shapes = iconButtonPressShapes(edge),
             enabled = enabled,
             colors = IconButtonColors(containerColor, color, containerColor, color.copy(alpha = DisabledAlpha)),
             interactionSource = interactionSource,
@@ -224,7 +229,7 @@ private fun PlayerIconButton(
         IconToggleButton(
             checked = checked,
             onCheckedChange = { onClick() },
-            shapes = iconTogglePressShapes(),
+            shapes = iconTogglePressShapes(edge),
             enabled = enabled,
             colors = IconToggleButtonColors(
                 containerColor = containerColor,

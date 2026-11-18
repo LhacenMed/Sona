@@ -81,6 +81,7 @@ import com.lhacenmed.sona.feature.tageditor.tags.TagField
 import com.lhacenmed.sona.feature.tageditor.tags.label
 import kotlin.math.abs
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.core.designsystem.theme.ContainerEdge
 
 /** A recording within this much of the video's length is the same recording - the lyrics' own margin. */
 private const val SameLengthMarginSeconds = 2L
@@ -491,7 +492,9 @@ private fun ColumnScope.ChangePageContent(song: VideoSong, onPick: () -> Unit, o
         placeholder = { Text(stringResource(R.string.download_search_songs)) },
         leadingIcon = { Icon(SonaIcons.Search, contentDescription = null) },
         trailingIcon = {
-            if (text.isNotEmpty()) SonaIconButton(onClick = { text = "" }, icon = SonaIcons.Close, contentDescription = stringResource(R.string.download_clear_search))
+            if (text.isNotEmpty()) {
+                SonaIconButton(onClick = { text = "" }, icon = SonaIcons.Close, contentDescription = stringResource(R.string.download_clear_search), edge = ContainerEdge.End)
+            }
         },
         singleLine = true,
         shape = CircleShape,

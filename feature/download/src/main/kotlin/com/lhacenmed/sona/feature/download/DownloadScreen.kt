@@ -45,6 +45,7 @@ import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
+import com.lhacenmed.sona.core.designsystem.theme.ContainerEdge
 import com.lhacenmed.sona.core.model.DownloadStatus
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
@@ -151,7 +152,7 @@ private fun LinkField(text: String, viewModel: DownloadViewModel) {
                     val clipboard = context.getSystemService(ClipboardManager::class.java)?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)
                     if (!viewModel.onPaste(clipboard?.toString())) focusRequester.requestFocus()
                 },
-                shapes = buttonPressShapes(),
+                shapes = buttonPressShapes(ContainerEdge.End),
                 contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                 modifier = Modifier.padding(end = 6.dp),
             ) {

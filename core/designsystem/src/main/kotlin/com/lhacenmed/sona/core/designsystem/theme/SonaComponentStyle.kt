@@ -67,31 +67,41 @@ object SonaComponentStyle {
 }
 
 /**
+ * The side of its container a control stands against - the end of the mini player, of a field, of a prompt's pill - as
+ * the first and the last of a connected group stand against the group's ends. Its corners on that side are the
+ * container's own and keep their roundness through a press, so the two stay concentric: only the side facing in tightens
+ * - Material 3 Expressive's press, for a control at an edge.
+ */
+enum class ContainerEdge { Start, End }
+
+/**
  * The shapes every labelled button presses with: a pill at rest, tightening to
- * [SonaComponentStyle.PressedCornerRadius] while held - square throughout while round mode is off.
+ * [SonaComponentStyle.PressedCornerRadius] while held - square throughout while round mode is off. At a container's
+ * [edge], that side stays round - see [ContainerEdge].
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun buttonPressShapes(): ButtonShapes =
-    ButtonDefaults.shapes(shape = pillShape, pressedShape = roundedShape(SonaComponentStyle.PressedCornerRadius))
+fun buttonPressShapes(edge: ContainerEdge? = null): ButtonShapes =
+    ButtonDefaults.shapes(shape = pillShape, pressedShape = cornersAt(edge, PressedCorner))
 
 /** The shapes every icon button presses with - see [buttonPressShapes]. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun iconButtonPressShapes(): IconButtonShapes =
-    IconButtonDefaults.shapes(shape = pillShape, pressedShape = roundedShape(SonaComponentStyle.PressedCornerRadius))
+fun iconButtonPressShapes(edge: ContainerEdge? = null): IconButtonShapes =
+    IconButtonDefaults.shapes(shape = pillShape, pressedShape = cornersAt(edge, PressedCorner))
 
 /**
  * The shapes every icon toggle presses with: a pill while off, squaring to [SonaComponentStyle.CornerRadius] while on,
- * and tightening to [SonaComponentStyle.PressedCornerRadius] while held either way.
+ * and tightening to [SonaComponentStyle.PressedCornerRadius] while held either way - but at a container's [edge], see
+ * [ContainerEdge].
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun iconTogglePressShapes(): IconToggleButtonShapes =
+fun iconTogglePressShapes(edge: ContainerEdge? = null): IconToggleButtonShapes =
     IconButtonDefaults.toggleableShapes(
         shape = pillShape,
-        pressedShape = roundedShape(SonaComponentStyle.PressedCornerRadius),
-        checkedShape = roundedShape(SonaComponentStyle.CornerRadius),
+        pressedShape = cornersAt(edge, PressedCorner),
+        checkedShape = cornersAt(edge, CornerSize(SonaComponentStyle.CornerRadius)),
     )
 
 /** The shapes every labelled toggle presses with - see [iconTogglePressShapes]. */
@@ -129,14 +139,7 @@ fun connectedLeadingButtonPressShapes(): ToggleButtonShapes =
     if (!LocalIsRounded.current) {
         SquareToggleButtonShapes
     } else {
-        ButtonGroupDefaults.connectedLeadingButtonShapes(
-            pressedShape = RoundedCornerShape(
-                topStart = FullCorner,
-                bottomStart = FullCorner,
-                topEnd = PressedCorner,
-                bottomEnd = PressedCorner,
-            ),
-        )
+        ButtonGroupDefaults.connectedLeadingButtonShapes(pressedShape = edgeShape(ContainerEdge.Start, PressedCorner))
     }
 
 /** The last button of a connected group's shapes - see [connectedLeadingButtonPressShapes]. */
@@ -146,14 +149,7 @@ fun connectedTrailingButtonPressShapes(): ToggleButtonShapes =
     if (!LocalIsRounded.current) {
         SquareToggleButtonShapes
     } else {
-        ButtonGroupDefaults.connectedTrailingButtonShapes(
-            pressedShape = RoundedCornerShape(
-                topStart = PressedCorner,
-                bottomStart = PressedCorner,
-                topEnd = FullCorner,
-                bottomEnd = FullCorner,
-            ),
-        )
+        ButtonGroupDefaults.connectedTrailingButtonShapes(pressedShape = edgeShape(ContainerEdge.End, PressedCorner))
     }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -165,6 +161,20 @@ private val SquareToggleButtonShapes = ToggleButtonShapes(
 
 private val FullCorner = CornerSize(50)
 private val PressedCorner = CornerSize(SonaComponentStyle.PressedCornerRadius)
+
+/** [inner] corners all round - or, at a container's [edge], on the side facing in alone - square while round mode is off. */
+@Composable
+private fun cornersAt(edge: ContainerEdge?, inner: CornerSize): Shape = when {
+    !LocalIsRounded.current -> SquareShape
+    edge == null -> RoundedCornerShape(inner)
+    else -> edgeShape(edge, inner)
+}
+
+/** Round on the side against a container's [edge], [inner] on the side facing in - see [ContainerEdge]. */
+private fun edgeShape(edge: ContainerEdge, inner: CornerSize): Shape = when (edge) {
+    ContainerEdge.Start -> RoundedCornerShape(topStart = FullCorner, bottomStart = FullCorner, topEnd = inner, bottomEnd = inner)
+    ContainerEdge.End -> RoundedCornerShape(topStart = inner, bottomStart = inner, topEnd = FullCorner, bottomEnd = FullCorner)
+}
 
 /**
  * The corners of something [pressFraction] of the way from [restingRadius] to fully held - for a

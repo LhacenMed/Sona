@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.lhacenmed.sona.core.designsystem.theme.SonaComponentStyle
+import com.lhacenmed.sona.core.designsystem.theme.ContainerEdge
 import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 
 /**
@@ -40,10 +41,12 @@ fun SonaIconButton(
     enabled: Boolean = true,
     colors: IconButtonColors = IconButtonDefaults.iconButtonColors(),
     interactionSource: MutableInteractionSource? = null,
+    // The side of its container it stands against, if it stands against one - see ContainerEdge.
+    edge: ContainerEdge? = null,
 ) {
     IconButton(
         onClick = onClick,
-        shapes = iconButtonPressShapes(),
+        shapes = iconButtonPressShapes(edge),
         modifier = modifier,
         enabled = enabled,
         colors = colors,
