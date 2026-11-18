@@ -46,14 +46,6 @@ data object BehaviorScreen : Screen {
                     onClick = { navigator.go(LibraryTabsScreen) },
                 )
                 SettingsChoiceItem(
-                    title = stringResource(R.string.playback_bar_action_title),
-                    options = listOf(
-                        stringResource(R.string.playback_bar_action_skip_next),
-                        stringResource(R.string.playback_bar_action_favorite),
-                        stringResource(R.string.playback_bar_action_none),
-                    ),
-                )
-                SettingsChoiceItem(
                     title = stringResource(R.string.fast_scroll_touch_area_title),
                     options = FastScrollTouchArea.entries.map { fastScrollTouchAreaLabel(it) },
                     selectedIndex = fastScrollTouchArea.ordinal,

@@ -16,6 +16,8 @@ private val PLAYER_STYLE = stringPreferencesKey("player_style")
 private val PLAYER_SLIDER_STYLE = stringPreferencesKey("player_slider_style")
 private val PLAYER_BACKGROUND_STYLE = stringPreferencesKey("player_background_style")
 private val MINI_PLAYER_BACKGROUND_STYLE = stringPreferencesKey("mini_player_background_style")
+private val MINI_PLAYER_BUTTON = stringPreferencesKey("mini_player_button")
+private val SHOWS_LYRICS_PREVIEW = booleanPreferencesKey("player_shows_lyrics_preview")
 private val HIDE_PLAYER_THUMBNAIL = booleanPreferencesKey("hide_player_thumbnail")
 private val SWIPE_TO_CHANGE_TRACK = booleanPreferencesKey("swipe_thumbnail")
 private val CUSTOM_BACKGROUND_IMAGE_URI = stringPreferencesKey("player_custom_image_uri")
@@ -48,6 +50,8 @@ class PlayerStyleSettings @Inject constructor(
             sliderStyle = preferences.enum(PLAYER_SLIDER_STYLE, PlayerSliderStyle.Default),
             background = preferences.enum(PLAYER_BACKGROUND_STYLE, PlayerBackgroundStyle.Default),
             miniPlayerBackground = preferences.enum(MINI_PLAYER_BACKGROUND_STYLE, MiniPlayerBackgroundStyle.Default),
+            miniPlayerButton = preferences.enum(MINI_PLAYER_BUTTON, MiniPlayerButton.Default),
+            showsLyricsPreview = preferences[SHOWS_LYRICS_PREVIEW] ?: true,
             hideThumbnail = preferences[HIDE_PLAYER_THUMBNAIL] ?: false,
             swipeToChangeTrack = preferences[SWIPE_TO_CHANGE_TRACK] ?: true,
             customBackground = CustomBackground(
@@ -78,6 +82,10 @@ class PlayerStyleSettings @Inject constructor(
     suspend fun setMiniPlayerBackground(style: MiniPlayerBackgroundStyle) =
         set(MINI_PLAYER_BACKGROUND_STYLE, style.name)
 
+    suspend fun setMiniPlayerButton(button: MiniPlayerButton) = set(MINI_PLAYER_BUTTON, button.name)
+
+    suspend fun setShowsLyricsPreview(enabled: Boolean) = set(SHOWS_LYRICS_PREVIEW, enabled)
+
     suspend fun setHideThumbnail(enabled: Boolean) = set(HIDE_PLAYER_THUMBNAIL, enabled)
 
     suspend fun setSwipeToChangeTrack(enabled: Boolean) = set(SWIPE_TO_CHANGE_TRACK, enabled)
@@ -104,6 +112,10 @@ data class PlayerAppearance(
     val sliderStyle: PlayerSliderStyle,
     val background: PlayerBackgroundStyle,
     val miniPlayerBackground: MiniPlayerBackgroundStyle,
+    /** What stands beside play and pause in the mini player. */
+    val miniPlayerButton: MiniPlayerButton,
+    /** The line playing beneath the title, in a player whose lyrics open in a sheet of their own. */
+    val showsLyricsPreview: Boolean,
     /** ArchiveTune's "Hide player thumbnail": the app's logo in place of the cover. */
     val hideThumbnail: Boolean,
     /** Swiping the cover, or the mini player, changes track. */

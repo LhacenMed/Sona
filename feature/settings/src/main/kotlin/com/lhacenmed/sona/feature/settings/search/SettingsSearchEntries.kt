@@ -69,6 +69,8 @@ internal val SettingsSearchEntries: List<SettingsSearchEntry> = with(SettingsCat
         row(R.string.player_background_title),
         row(R.string.customized_background_title, R.string.customized_background_summary),
         row(R.string.mini_player_background_title),
+        row(R.string.mini_player_button_title),
+        row(R.string.lyrics_preview_title, R.string.lyrics_preview_summary),
         row(R.string.hide_player_thumbnail_title, R.string.hide_player_thumbnail_summary),
         row(R.string.swipe_to_change_song_title, R.string.swipe_to_change_song_summary),
     ) + section(
@@ -206,7 +208,6 @@ internal val SettingsSearchEntries: List<SettingsSearchEntry> = with(SettingsCat
     section(
         R.string.behavior_display_section,
         row(LibraryR.string.library_tabs_title, R.string.library_tabs_summary),
-        row(R.string.playback_bar_action_title),
         row(R.string.fast_scroll_touch_area_title),
         row(R.string.pull_to_refresh_title, R.string.pull_to_refresh_summary),
     ) + section(

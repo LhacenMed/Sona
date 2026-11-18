@@ -254,6 +254,8 @@ internal fun BottomSheetPlayer(
             MiniPlayer(
                 track = track,
                 playback = playback,
+                isFavorite = uiState.isCurrentTrackFavorite,
+                canFavorite = uiState.canFavorite,
                 position = position,
                 duration = duration,
                 appearance = appearance,
@@ -298,7 +300,7 @@ internal fun BottomSheetPlayer(
                 queueBarHeight = queueSheetState.collapsedBound,
                 titleActions = titleActions,
                 lyrics = lyrics,
-                lyricsPreview = { previewModifier ->
+                lyricsPreview = if (!appearance.showsLyricsPreview) null else { previewModifier ->
                     LyricsPreview(
                         track = track,
                         lyrics = trackLyrics,

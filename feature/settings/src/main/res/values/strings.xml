@@ -98,6 +98,13 @@
     <string name="customized_background_title">Customized background</string>
     <string name="customized_background_summary">Choose and adjust the image</string>
     <string name="mini_player_background_title">Mini player background style</string>
+    <string name="mini_player_button_title">Mini player button</string>
+    <string name="mini_player_button_skip_next">Skip to next</string>
+    <string name="mini_player_button_repeat">Repeat mode</string>
+    <string name="mini_player_button_shuffle">Shuffle</string>
+    <string name="mini_player_button_favorite">Favorites</string>
+    <string name="lyrics_preview_title">Lyrics preview</string>
+    <string name="lyrics_preview_summary">Show the line playing under the title, where lyrics open in their own sheet</string>
     <string name="hide_player_thumbnail_title">Hide player thumbnail</string>
     <string name="hide_player_thumbnail_summary">Show the app\'s logo in place of the cover</string>
     <string name="swipe_to_change_song_title">Swipe to change song</string>
@@ -318,10 +325,6 @@
     <!-- Behavior -->
     <string name="behavior_display_section">Display</string>
     <string name="library_tabs_summary">Change visibility and order of library tabs</string>
-    <string name="playback_bar_action_title">Playback bar button</string>
-    <string name="playback_bar_action_skip_next">Skip to next</string>
-    <string name="playback_bar_action_favorite">Add to favorites</string>
-    <string name="playback_bar_action_none">None</string>
     <string name="fast_scroll_touch_area_title">Fast scroll touch area</string>
     <string name="fast_scroll_touch_area_narrow">Narrow</string>
     <string name="fast_scroll_touch_area_standard">Standard</string>

@@ -7,6 +7,7 @@ import com.lhacenmed.sona.core.data.background.CustomBackgroundImages
 import com.lhacenmed.sona.core.datastore.CustomFont
 import com.lhacenmed.sona.core.datastore.EffectSettings
 import com.lhacenmed.sona.core.datastore.MiniPlayerBackgroundStyle
+import com.lhacenmed.sona.core.datastore.MiniPlayerButton
 import com.lhacenmed.sona.core.datastore.PlayerAppearance
 import com.lhacenmed.sona.core.datastore.PlayerBackgroundStyle
 import com.lhacenmed.sona.core.datastore.PlayerSliderStyle
@@ -59,6 +60,8 @@ class AppearanceSettingsViewModel @Inject constructor(
     fun setPlayerBackground(style: PlayerBackgroundStyle) = write { playerStyleSettings.setBackground(style) }
     fun setMiniPlayerBackground(style: MiniPlayerBackgroundStyle) =
         write { playerStyleSettings.setMiniPlayerBackground(style) }
+    fun setMiniPlayerButton(button: MiniPlayerButton) = write { playerStyleSettings.setMiniPlayerButton(button) }
+    fun setShowsLyricsPreview(enabled: Boolean) = write { playerStyleSettings.setShowsLyricsPreview(enabled) }
     fun setHideThumbnail(enabled: Boolean) = write { playerStyleSettings.setHideThumbnail(enabled) }
     fun setSwipeToChangeTrack(enabled: Boolean) = write { playerStyleSettings.setSwipeToChangeTrack(enabled) }
     /**

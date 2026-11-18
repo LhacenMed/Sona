@@ -19,6 +19,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.datastore.CustomFont
 import com.lhacenmed.sona.core.datastore.MiniPlayerBackgroundStyle
+import com.lhacenmed.sona.core.datastore.MiniPlayerButton
 import com.lhacenmed.sona.core.datastore.PlayerBackgroundStyle
 import com.lhacenmed.sona.core.datastore.PlayerStyle
 import com.lhacenmed.sona.core.designsystem.component.toast
@@ -199,6 +200,19 @@ data object AppearanceScreen : Screen {
                     defaultIndex = MiniPlayerBackgroundStyle.Default.ordinal,
                     onSelect = { viewModel.setMiniPlayerBackground(MiniPlayerBackgroundStyle.entries[it]) },
                 )
+                SettingsChoiceItem(
+                    title = stringResource(R.string.mini_player_button_title),
+                    options = MiniPlayerButton.entries.map { miniPlayerButtonLabel(it) },
+                    selectedIndex = player.miniPlayerButton.ordinal,
+                    defaultIndex = MiniPlayerButton.Default.ordinal,
+                    onSelect = { viewModel.setMiniPlayerButton(MiniPlayerButton.entries[it]) },
+                )
+                SettingsSwitchItem(
+                    title = stringResource(R.string.lyrics_preview_title),
+                    summary = stringResource(R.string.lyrics_preview_summary),
+                    checked = player.showsLyricsPreview,
+                    onCheckedChange = viewModel::setShowsLyricsPreview,
+                )
                 SettingsSwitchItem(
                     title = stringResource(R.string.hide_player_thumbnail_title),
                     summary = stringResource(R.string.hide_player_thumbnail_summary),
@@ -328,5 +342,16 @@ private fun miniPlayerBackgroundLabel(style: MiniPlayerBackgroundStyle): String 
             MiniPlayerBackgroundStyle.FOLLOW_THEME -> R.string.background_follow_theme
             MiniPlayerBackgroundStyle.GRADIENT -> R.string.background_gradient
             MiniPlayerBackgroundStyle.GLOW -> R.string.background_glow
+        },
+    )
+
+@Composable
+private fun miniPlayerButtonLabel(button: MiniPlayerButton): String =
+    stringResource(
+        when (button) {
+            MiniPlayerButton.SKIP_NEXT -> R.string.mini_player_button_skip_next
+            MiniPlayerButton.REPEAT -> R.string.mini_player_button_repeat
+            MiniPlayerButton.SHUFFLE -> R.string.mini_player_button_shuffle
+            MiniPlayerButton.FAVORITE -> R.string.mini_player_button_favorite
         },
     )

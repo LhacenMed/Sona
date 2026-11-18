@@ -13,7 +13,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.res.stringResource
 import com.lhacenmed.sona.core.datastore.MiniPlayerBackgroundStyle
+import com.lhacenmed.sona.core.datastore.MiniPlayerButton
+import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.core.designsystem.player.transportIcon
+import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.datastore.PlayerAppearance
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
@@ -22,9 +27,9 @@ import com.lhacenmed.sona.feature.player.background.rememberCoverGradientColors
 import kotlin.math.roundToInt
 
 /**
- * The collapsed player: artwork ringed by progress, title and artist, and transport buttons, over the
- * background [appearance] chooses. Swiping it sideways changes track, while [appearance] allows it.
- * Ported from ArchiveTune's `MiniPlayer`.
+ * The collapsed player: artwork ringed by progress, title and artist, and play beside the button [appearance] chooses,
+ * over the background it chooses. Swiping it sideways changes track, while [appearance] allows it - and stretches it
+ * either way. Ported from ArchiveTune's `MiniPlayer`.
  *
  * Given a [seekBar] - while the screen beneath asks for it, see `ShowMiniPlayerSeekBar` - it shows where the
  * track is and a slider to move through it in place of the names, at the same height, and holds still under
@@ -34,6 +39,8 @@ import kotlin.math.roundToInt
 internal fun MiniPlayer(
     track: Track?,
     playback: PlaybackUiState,
+    isFavorite: Boolean,
+    canFavorite: Boolean,
     position: Long,
     duration: Long,
     appearance: PlayerAppearance,
@@ -48,9 +55,30 @@ internal fun MiniPlayer(
         enabled = appearance.miniPlayerBackground != MiniPlayerBackgroundStyle.FOLLOW_THEME,
     )
     val contentColors = rememberMiniPlayerContentColors()
+    val action = when (appearance.miniPlayerButton) {
+        MiniPlayerButton.SKIP_NEXT -> MiniPlayerAction(SonaIcons.SkipNext, stringResource(R.string.player_next), viewModel::onSkipNext)
+        MiniPlayerButton.REPEAT -> MiniPlayerAction(
+            icon = playback.repeatMode.transportIcon(),
+            label = stringResource(R.string.player_repeat),
+            onClick = viewModel::onCycleRepeatMode,
+            checked = playback.repeatMode != RepeatMode.OFF,
+        )
+        MiniPlayerButton.SHUFFLE -> MiniPlayerAction(
+            icon = SonaIcons.Shuffle,
+            label = stringResource(R.string.player_shuffle),
+            onClick = viewModel::onToggleShuffle,
+            checked = playback.shuffleEnabled,
+        )
+        MiniPlayerButton.FAVORITE -> MiniPlayerAction(
+            icon = if (isFavorite) SonaIcons.Favorite else SonaIcons.FavoriteBorder,
+            label = stringResource(R.string.player_like),
+            onClick = viewModel::onToggleFavorite.takeIf { canFavorite },
+            checked = isFavorite,
+        )
+    }
 
     SwipeableMiniPlayerBox(
-        swipeEnabled = appearance.swipeToChangeTrack && seekBar == null,
+        canSkip = appearance.swipeToChangeTrack && seekBar == null,
         onSwipeToPrevious = viewModel::onSkipToPreviousTrack,
         onSwipeToNext = viewModel::onSkipNext,
         layoutDirection = layoutDirection,
@@ -79,6 +107,7 @@ internal fun MiniPlayer(
                 colors = contentColors,
                 seekBar = seekBar,
                 sliderStyle = appearance.sliderStyle,
+                action = action,
             )
         }
     }
@@ -99,11 +128,8 @@ private fun rememberMiniPlayerContentColors(): MiniPlayerContentColors {
             progressTrack = colorScheme.outline.copy(alpha = 0.18f),
             artworkContainer = colorScheme.surfaceVariant,
             artworkBorder = colorScheme.outline.copy(alpha = 0.2f),
-            primaryButtonContainer = colorScheme.primary,
-            primaryButtonIcon = colorScheme.onPrimary,
             secondaryButtonContainer = colorScheme.surfaceContainerHighest,
             buttonIcon = colorScheme.onSurface,
-            disabledButtonIcon = colorScheme.onSurface.copy(alpha = 0.38f),
         )
     }
 }

@@ -6,7 +6,27 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import com.lhacenmed.sona.core.designsystem.theme.ContainerEdge
 import android.view.HapticFeedbackConstants
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.offset
+import androidx.compose.material3.WavyProgressIndicatorDefaults
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.util.lerp
+import com.lhacenmed.sona.core.designsystem.player.PlayerButtonGroup
+import com.lhacenmed.sona.core.designsystem.player.playerButton
+import com.lhacenmed.sona.feature.player.background.playerColors
+import com.lhacenmed.sona.core.designsystem.player.LocalPlayerCheckedColors
+import kotlin.math.roundToInt
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -35,10 +55,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -70,11 +87,9 @@ import com.lhacenmed.sona.core.designsystem.motion.SwipeStretchMaxFraction
 import com.lhacenmed.sona.core.designsystem.motion.performSwipeArmHaptic
 import com.lhacenmed.sona.core.designsystem.motion.rubberBandOffset
 import com.lhacenmed.sona.core.designsystem.motion.rubberBandPull
-import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.feature.playback.PlaybackUiState
 import kotlin.math.abs
-import kotlin.math.absoluteValue
 import kotlin.math.sign
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -83,6 +98,7 @@ import kotlinx.coroutines.launch
 private const val SwipeSensitivity = 0.73f
 
 private val MiniPlayerTransportButtonSpacing = 4.dp
+private val MiniPlayerButtonSize = 48.dp
 
 @Immutable
 internal data class MiniPlayerContentColors(
@@ -92,17 +108,57 @@ internal data class MiniPlayerContentColors(
     val progressTrack: Color,
     val artworkContainer: Color,
     val artworkBorder: Color,
-    val primaryButtonContainer: Color,
-    val primaryButtonIcon: Color,
     val secondaryButtonContainer: Color,
     val buttonIcon: Color,
-    val disabledButtonIcon: Color,
 )
 
+/**
+ * How much of the finger's travel the mini player follows while a swipe can still skip, up to the skip: lighter than the
+ * band past it, but never quite under the finger - so the player always reads as held back, and the skip as something
+ * pulled out of it.
+ */
+private const val SkipSwipeFollow = 0.6f
+
+/** How far, as a share of its width, the mini player gives under a swipe that cannot skip. */
+private const val HeldSwipeStretchFraction = 0.06f
+
+/**
+ * Where the mini player is held for [pull] - the finger's travel - across [width]: the one curve its swipe is drawn on.
+ *
+ * Where it [canSkip], it follows [SkipSwipeFollow] of the finger up to the skip's arm, then stiffens on the rubber band up
+ * to [SwipeStretchMaxFraction] - the band's slope at the arm is the same [SkipSwipeFollow], so the resistance builds
+ * without a step. Where it cannot, the band resists from the first pixel, as far as [HeldSwipeStretchFraction] only, so
+ * the player answers the finger without seeming to promise anything.
+ */
+private fun miniPlayerSwipeOffset(pull: Float, width: Float, canSkip: Boolean): Float =
+    if (canSkip) {
+        rubberBandOffset(pull * SkipSwipeFollow, width * SwipeArmFraction, width * (SwipeStretchMaxFraction - SwipeArmFraction))
+    } else {
+        rubberBandOffset(pull * SkipSwipeFollow, 0f, width * HeldSwipeStretchFraction)
+    }
+
+/** The pull that holds the mini player at [offset] - [miniPlayerSwipeOffset] undone, so a grab takes it up where it is. */
+private fun miniPlayerSwipePull(offset: Float, width: Float, canSkip: Boolean): Float =
+    if (canSkip) {
+        rubberBandPull(offset, width * SwipeArmFraction, width * (SwipeStretchMaxFraction - SwipeArmFraction)) / SkipSwipeFollow
+    } else {
+        rubberBandPull(offset, 0f, width * HeldSwipeStretchFraction) / SkipSwipeFollow
+    }
+
+/** The skip a swipe offers, drawn in the room it opens beside the player. */
+private val SkipIndicatorSize = 40.dp
+private val SkipIndicatorIconSize = 20.dp
+private val SkipIndicatorRingWidth = 2.5.dp
+
+/**
+ * The mini player under a sideways swipe: held by [miniPlayerSwipeOffset] whatever the swipe can do, and - where it
+ * [canSkip] - skipping to the previous or next track once let go past the arm, or flung, with [SwipeSkipIndicator] in the
+ * room it opens saying which, and how near.
+ */
 @Composable
 internal fun SwipeableMiniPlayerBox(
-    // Off, the player holds still under the finger - ArchiveTune's swipe-to-change-song switch.
-    swipeEnabled: Boolean,
+    // Off - the switch, or the seek bar holding the player - the swipe stretches the player but skips nothing.
+    canSkip: Boolean,
     onSwipeToPrevious: () -> Unit,
     onSwipeToNext: () -> Unit,
     layoutDirection: LayoutDirection,
@@ -139,24 +195,17 @@ internal fun SwipeableMiniPlayerBox(
                     .height(MiniPlayerHeight)
                     .padding(horizontal = MiniPlayerHorizontalPadding)
                     .onSizeChanged { playerWidth = it.width }
-                    .pointerInput(swipeEnabled) {
-                        if (!swipeEnabled) return@pointerInput
+                    .pointerInput(canSkip) {
                         // Where this gesture has put the player, and how fast it is moving. Held here rather
                         // than read back from the animation, whose snaps are launched and may not have landed
                         // yet - so the release judges the drag exactly as the finger left it.
                         var dragOffset = 0f
-                        // The finger's travel, before the rubber band takes its share of it.
+                        // The finger's travel, before the swipe's curve takes its share of it.
                         var dragPull = 0f
                         // Past the skip threshold: releasing now changes track.
                         var isArmed = false
                         val velocityTracker = VelocityTracker()
                         val directionSign = if (layoutDirection == LayoutDirection.Rtl) -1f else 1f
-
-                        // The player follows the finger up to the skip threshold and resists past it. Either way
-                        // there is a track to change to: past the queue's ends, the other end's.
-                        fun arm() = playerWidth * SwipeArmFraction
-
-                        fun stretchLimit() = playerWidth * (SwipeStretchMaxFraction - SwipeArmFraction)
 
                         // Khatmah's tick: CLOCK_TICK is felt where the lighter CONTEXT_CLICK often is not.
                         fun tick() = view.performSonaHaptic(HapticFeedbackConstants.CLOCK_TICK)
@@ -171,7 +220,7 @@ internal fun SwipeableMiniPlayerBox(
                             onDragStart = {
                                 // Taken up where a settle still under way has it, so a grab never jumps.
                                 dragOffset = offsetXAnimatable.value
-                                dragPull = rubberBandPull(dragOffset, arm(), stretchLimit())
+                                dragPull = miniPlayerSwipePull(dragOffset, playerWidth.toFloat(), canSkip)
                                 // Unarmed even if grabbed past the threshold, so the tick confirms every skip.
                                 isArmed = false
                                 velocityTracker.resetTracking()
@@ -180,9 +229,9 @@ internal fun SwipeableMiniPlayerBox(
                             onHorizontalDrag = { change, dragAmount ->
                                 velocityTracker.addPosition(change.uptimeMillis, change.position)
                                 dragPull += dragAmount * directionSign
-                                val arm = arm()
-                                dragOffset = rubberBandOffset(dragPull, arm, stretchLimit())
-                                val reachedArm = arm > 0f && abs(dragOffset) >= arm
+                                dragOffset = miniPlayerSwipeOffset(dragPull, playerWidth.toFloat(), canSkip)
+                                val arm = playerWidth * SwipeArmFraction
+                                val reachedArm = canSkip && arm > 0f && abs(dragOffset) >= arm
                                 // Felt both ways across the arm: the skip is live, or no longer is.
                                 if (reachedArm != isArmed) view.performSwipeArmHaptic(reachedArm)
                                 isArmed = reachedArm
@@ -198,8 +247,8 @@ internal fun SwipeableMiniPlayerBox(
                                 val velocityThreshold = (SwipeSensitivity * -8.25f) + 8.5f
 
                                 val shouldChangeSong =
-                                    (abs(dragOffset) > minDistanceThreshold && outwardVelocity > velocityThreshold) ||
-                                        isArmed
+                                    canSkip &&
+                                        ((abs(dragOffset) > minDistanceThreshold && outwardVelocity > velocityThreshold) || isArmed)
 
                                 if (shouldChangeSong) {
                                     // An armed skip has already ticked; a fling that never armed ticks now.
@@ -218,25 +267,70 @@ internal fun SwipeableMiniPlayerBox(
         ) {
             content(offsetXAnimatable.value)
 
-            if (offsetXAnimatable.value.absoluteValue > 50f) {
-                Box(
-                    modifier =
-                        Modifier
-                            .align(if (offsetXAnimatable.value > 0) Alignment.CenterStart else Alignment.CenterEnd)
-                            .padding(horizontal = 16.dp),
-                ) {
-                    Icon(
-                        imageVector = if (offsetXAnimatable.value > 0) SonaIcons.SkipPrevious else SonaIcons.SkipNext,
-                        contentDescription = null,
-                        tint =
-                            MaterialTheme.colorScheme.primary.copy(
-                                alpha = (offsetXAnimatable.value.absoluteValue / skipArm).coerceIn(0f, 1f),
-                            ),
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
+            if (canSkip && skipArm > 0f && offsetXAnimatable.value != 0f) {
+                SwipeSkipIndicator(offset = offsetXAnimatable::value, arm = skipArm)
             }
         }
+    }
+}
+
+/**
+ * Telegram's swipe indicator: the skip's glyph on a disc of its own - legible over whatever list the swipe uncovers - in
+ * the middle of the room the swipe opens, ringed by how near the swipe is to skipping. Growing in as the room does, it
+ * fills with the accent the moment letting go would skip. [offset] is read only where it is laid out and drawn.
+ */
+@Composable
+private fun BoxScope.SwipeSkipIndicator(offset: () -> Float, arm: Float) {
+    val toPrevious = offset() > 0f
+    val isArmed by remember(arm) { derivedStateOf { abs(offset()) >= arm } }
+    val colorScheme = MaterialTheme.colorScheme
+    val motion = MaterialTheme.motionScheme
+    val discColor by animateColorAsState(
+        if (isArmed) colorScheme.primary else colorScheme.secondaryContainer,
+        motion.fastEffectsSpec(),
+        label = "skipDisc",
+    )
+    val iconColor by animateColorAsState(
+        if (isArmed) colorScheme.onPrimary else colorScheme.onSecondaryContainer,
+        motion.fastEffectsSpec(),
+        label = "skipIcon",
+    )
+    val armedScale by animateFloatAsState(if (isArmed) 1.1f else 1f, motion.fastSpatialSpec(), label = "skipScale")
+    val ringColor = colorScheme.primary
+    val ringTrackColor = colorScheme.primary.copy(alpha = 0.2f)
+    val nearness = { (abs(offset()) / arm).coerceIn(0f, 1f) }
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier =
+            Modifier
+                .align(if (toPrevious) Alignment.CenterStart else Alignment.CenterEnd)
+                // Centred in the room the swipe opens - mirrored with the layout, as the swipe itself is.
+                .offset {
+                    val room = abs(offset())
+                    val inset = ((room - SkipIndicatorSize.toPx()) / 2f).roundToInt()
+                    IntOffset(if (toPrevious) inset else -inset, 0)
+                }.graphicsLayer {
+                    val shown = nearness()
+                    alpha = (shown * 2f).coerceAtMost(1f)
+                    scaleX = lerp(0.6f, 1f, shown) * armedScale
+                    scaleY = scaleX
+                }.size(SkipIndicatorSize)
+                .drawBehind {
+                    val ring = SkipIndicatorRingWidth.toPx()
+                    drawCircle(discColor, radius = size.minDimension / 2f - ring)
+                    val arc = Size(size.width - ring, size.height - ring)
+                    val topLeft = Offset(ring / 2f, ring / 2f)
+                    drawArc(ringTrackColor, 0f, 360f, false, topLeft, arc, style = Stroke(ring))
+                    drawArc(ringColor, -90f, 360f * nearness(), false, topLeft, arc, style = Stroke(ring, cap = StrokeCap.Round))
+                },
+    ) {
+        Icon(
+            imageVector = if (toPrevious) SonaIcons.SkipPrevious else SonaIcons.SkipNext,
+            contentDescription = null,
+            tint = iconColor,
+            modifier = Modifier.size(SkipIndicatorIconSize),
+        )
     }
 }
 
@@ -279,25 +373,31 @@ private fun MiniPlayerArtwork(
     coverArtUri: String?,
     progress: () -> Float,
     isLoading: Boolean,
+    isPlaying: Boolean,
+    showsProgress: Boolean,
     colors: MiniPlayerContentColors,
     modifier: Modifier = Modifier,
 ) {
+    // Where the seek bar shows where the track is, the ring would say it twice: it fades out, the cover staying in place.
+    val ringAlpha by animateFloatAsState(if (showsProgress) 1f else 0f, MaterialTheme.motionScheme.defaultEffectsSpec(), label = "miniRing")
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier.size(52.dp),
     ) {
         if (isLoading) {
             CircularWavyProgressIndicator(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().graphicsLayer { alpha = ringAlpha },
                 color = colors.progress,
                 trackColor = colors.progressTrack,
             )
         } else {
             CircularWavyProgressIndicator(
                 progress = progress,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().graphicsLayer { alpha = ringAlpha },
                 color = colors.progress,
                 trackColor = colors.progressTrack,
+                // Flat while paused, as the expanded player's seek bar is: Material eases the wave out and back in.
+                amplitude = if (isPlaying) WavyProgressIndicatorDefaults.indicatorAmplitude else { _ -> 0f },
             )
         }
 
@@ -324,135 +424,70 @@ private fun MiniPlayerArtwork(
     }
 }
 
-@Composable
-private fun MiniPlayerTransportButton(
-    icon: ImageVector,
-    contentDescription: String,
-    onClick: () -> Unit,
-    colors: MiniPlayerContentColors,
-    modifier: Modifier = Modifier,
-    isPrimary: Boolean = false,
-) {
-    val view = LocalView.current
-
-    val buttonColors =
-        IconButtonDefaults.iconButtonColors(
-            containerColor = if (isPrimary) colors.primaryButtonContainer else colors.secondaryButtonContainer,
-            contentColor = if (isPrimary) colors.primaryButtonIcon else colors.buttonIcon,
-        )
-    val handleClick = {
-        view.performContextClick()
-        onClick()
-    }
-    val content: @Composable () -> Unit = {
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            modifier = Modifier.size(if (isPrimary) 24.dp else 20.dp),
-        )
-    }
-
-    if (isPrimary) {
-        FilledIconButton(
-            onClick = handleClick,
-            shapes = iconButtonPressShapes(),
-            modifier = modifier.size(48.dp),
-            colors = buttonColors,
-            content = content,
-        )
-    } else {
-        IconButton(
-            onClick = handleClick,
-            shapes = iconButtonPressShapes(),
-            modifier = modifier.size(48.dp),
-            colors = buttonColors,
-            content = content,
-        )
-    }
-}
+/** What stands beside play and pause in the mini player: its glyph, its name, and what it does - null while it cannot. */
+@Immutable
+internal class MiniPlayerAction(
+    val icon: ImageVector,
+    val label: String,
+    val onClick: (() -> Unit)?,
+    /** For a toggle - the favourite - whether it is on. */
+    val checked: Boolean? = null,
+)
 
 /**
- * What the mini player's seek bar stands beside: play and pause, and the screen's own [action] - the seek bar moves
- * through the track, so it needs no skipping.
+ * Play and pause, and the [action] beside it, as one Material 3 Expressive button group - as the expanded player's
+ * transport is: a held button widens at the other's expense. The last of them stands against the mini player's end,
+ * whose roundness it keeps through a press - see [ContainerEdge].
  */
 @Composable
-private fun MiniPlayerSeekControls(
+private fun MiniPlayerControls(
     playback: PlaybackUiState,
     viewModel: PlayerViewModel,
-    action: TopBarAction,
+    action: MiniPlayerAction,
     colors: MiniPlayerContentColors,
 ) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(MiniPlayerTransportButtonSpacing),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        MiniPlayerTransportButton(
-            icon = playback.playPauseIcon(),
-            contentDescription =
-                stringResource(
-                    if (playback.hasEnded || !playback.isPlaying) R.string.player_play else R.string.player_pause,
-                ),
-            onClick = viewModel::onTogglePlayPause,
-            isPrimary = true,
-            colors = colors,
-        )
-        IconButton(
-            onClick = action.onClick,
-            shapes = iconButtonPressShapes(),
-            modifier = Modifier.size(48.dp),
-            enabled = action.enabled,
-            colors = IconButtonDefaults.iconButtonColors(
-                containerColor = colors.secondaryButtonContainer,
-                contentColor = colors.buttonIcon,
-                disabledContainerColor = Color.Transparent,
-                disabledContentColor = colors.disabledButtonIcon,
-            ),
-        ) {
-            Icon(imageVector = action.icon, contentDescription = action.label, modifier = Modifier.size(20.dp))
+    val view = LocalView.current
+    val withClick = { onClick: () -> Unit ->
+        {
+            view.performContextClick()
+            onClick()
         }
     }
-}
-
-@Composable
-private fun MiniPlayerTransportControls(
-    playback: PlaybackUiState,
-    viewModel: PlayerViewModel,
-    colors: MiniPlayerContentColors,
-) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(MiniPlayerTransportButtonSpacing),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        MiniPlayerTransportButton(
-            icon = SonaIcons.SkipPrevious,
-            contentDescription = stringResource(R.string.player_previous),
-            onClick = viewModel::onSkipPrevious,
-            colors = colors,
-        )
-
-        MiniPlayerTransportButton(
+    val isPaused = playback.hasEnded || !playback.isPlaying
+    val playLabel = stringResource(if (isPaused) R.string.player_play else R.string.player_pause)
+    // Play as the expanded player's is: on its own colour while playing, turning to the checked colours while paused.
+    val playerColors = playerColors()
+    val checkedColors = LocalPlayerCheckedColors.current
+    val motion = MaterialTheme.motionScheme
+    val playContainer by animateColorAsState(if (isPaused) checkedColors.container else playerColors.button, motion.defaultEffectsSpec(), label = "miniPlayContainer")
+    val playContent by animateColorAsState(if (isPaused) checkedColors.content else playerColors.onButton, motion.defaultEffectsSpec(), label = "miniPlayContent")
+    PlayerButtonGroup(spacing = MiniPlayerTransportButtonSpacing) {
+        playerButton(
             icon = playback.playPauseIcon(),
-            contentDescription =
-                stringResource(
-                    if (playback.hasEnded || !playback.isPlaying) R.string.player_play else R.string.player_pause,
-                ),
-            onClick = viewModel::onTogglePlayPause,
-            isPrimary = true,
-            colors = colors,
+            label = playLabel,
+            color = playContent,
+            onClick = withClick(viewModel::onTogglePlayPause),
+            size = MiniPlayerButtonSize,
+            iconSize = 24.dp,
+            containerColor = playContainer,
         )
-
-        MiniPlayerTransportButton(
-            icon = SonaIcons.SkipNext,
-            contentDescription = stringResource(R.string.player_next),
-            onClick = viewModel::onSkipNext,
-            colors = colors,
+        playerButton(
+            icon = action.icon,
+            label = action.label,
+            color = colors.buttonIcon,
+            onClick = action.onClick?.let(withClick),
+            checked = action.checked,
+            size = MiniPlayerButtonSize,
+            iconSize = 20.dp,
+            containerColor = colors.secondaryButtonContainer,
+            edge = ContainerEdge.End,
         )
     }
 }
 
 /**
  * The mini player's seek bar, as the player hands it over: where the slider is held, how it moves the track, and the
- * [action] the screen beneath puts beside play and pause.
+ * [action] the screen beneath puts beside play and pause, in the place of the mini player's own.
  */
 internal class MiniPlayerSeekBarState(
     val sliderPosition: Long?,
@@ -514,6 +549,7 @@ internal fun MiniPlayerContent(
     colors: MiniPlayerContentColors,
     seekBar: MiniPlayerSeekBarState?,
     sliderStyle: PlayerSliderStyle,
+    action: MiniPlayerAction,
 ) {
     val progressProvider =
         remember(position, duration) {
@@ -531,6 +567,8 @@ internal fun MiniPlayerContent(
             coverArtUri = track?.coverArtUri,
             progress = progressProvider,
             isLoading = playback.isBuffering,
+            isPlaying = playback.isPlaying,
+            showsProgress = seekBar == null,
             colors = colors,
         )
 
@@ -550,10 +588,8 @@ internal fun MiniPlayerContent(
             else -> Spacer(Modifier.weight(1f))
         }
 
-        if (seekBar != null) {
-            MiniPlayerSeekControls(playback = playback, viewModel = viewModel, action = seekBar.action, colors = colors)
-        } else {
-            MiniPlayerTransportControls(playback = playback, viewModel = viewModel, colors = colors)
-        }
+        // The seek bar moves through the track, so it needs no skipping: the screen's own action stands beside play instead.
+        val shownAction = seekBar?.action?.let { MiniPlayerAction(it.icon, it.label, it.onClick.takeIf { _ -> it.enabled }) } ?: action
+        MiniPlayerControls(playback = playback, viewModel = viewModel, action = shownAction, colors = colors)
     }
 }

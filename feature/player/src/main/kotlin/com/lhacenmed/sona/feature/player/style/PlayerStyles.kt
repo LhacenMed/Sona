@@ -40,7 +40,7 @@ internal fun PlayerStyle.sheetColor(): Color =
 /**
  * The expanded player above the queue bar, leaving [queueBarHeight] clear at its bottom for it - with the
  * [lyrics] pill in it and room made for the lyrics while they are open, where they open in the player; otherwise
- * with [lyricsPreview], their line playing, which opens their sheet.
+ * with [lyricsPreview], their line playing, which opens their sheet - none while the settings leave it out.
  */
 @Composable
 internal fun PlayerStyle.ExpandedPlayer(
@@ -56,7 +56,7 @@ internal fun PlayerStyle.ExpandedPlayer(
     queueBarHeight: Dp,
     titleActions: PlayerTitleActions,
     lyrics: PlayerLyricsState,
-    lyricsPreview: @Composable (Modifier) -> Unit,
+    lyricsPreview: (@Composable (Modifier) -> Unit)?,
     onMenuClick: () -> Unit,
     onCollapse: () -> Unit,
     onOpenEqualizer: () -> Unit,

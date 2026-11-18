@@ -106,7 +106,8 @@ internal object DefaultPlayerColors {
  *
  * Lyrics that open in a sheet of their own - the default style's - leave the player as it is under them: the sheet draws
  * the same seek bar, transport and queue bar in the same places - see `LyricsSheet`. Beneath the title in portrait, their
- * line playing - [lyricsPreview] - opens them; landscape has no room for it beside the seek bar and transport.
+ * line playing - [lyricsPreview], unless the settings leave it out - opens them; landscape has no room for it beside the
+ * seek bar and transport. A press on the artwork opens them, wherever they open.
  *
  * Lyrics that open in the player - the immersive style's - show their line in a pill above the seek bar, and grow from it
  * over the header and the artwork, which recede: in portrait the title goes with them, and the seek bar and transport glide
@@ -128,7 +129,7 @@ internal fun DefaultPlayer(
     queueBarHeight: Dp,
     titleActions: PlayerTitleActions,
     lyrics: PlayerLyricsState,
-    lyricsPreview: @Composable (Modifier) -> Unit,
+    lyricsPreview: (@Composable (Modifier) -> Unit)?,
     onMenuClick: () -> Unit,
     onCollapse: () -> Unit,
     onOpenEqualizer: () -> Unit,
@@ -295,7 +296,7 @@ internal fun DefaultPlayer(
                     Spacer(Modifier.height(PlayerSectionGap))
                     if (lyrics.opensInPlayer) {
                         LyricsPillSlot(lyrics, Modifier.padding(horizontal = PlayerHorizontalPadding))
-                    } else {
+                    } else if (lyricsPreview != null) {
                         CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides defaultTouchTarget) {
                             lyricsPreview(Modifier)
                         }
