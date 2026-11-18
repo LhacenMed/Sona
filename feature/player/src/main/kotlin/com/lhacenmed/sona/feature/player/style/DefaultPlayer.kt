@@ -199,11 +199,11 @@ internal fun DefaultPlayer(
     val thumbnail: @Composable (Modifier) -> Unit = { modifier ->
         Thumbnail(
             uiState = uiState,
-            durationMs = duration,
             textBackgroundColor = contentColor,
             hideThumbnail = appearance.hideThumbnail,
             swipeToChangeTrack = appearance.swipeToChangeTrack,
             isPlayerExpanded = isPlayerExpanded,
+            onTap = lyrics::open,
             viewModel = viewModel,
             modifier = modifier,
         )

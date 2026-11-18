@@ -1,9 +1,5 @@
 package com.lhacenmed.sona.feature.player.swiper
 
-import android.annotation.SuppressLint
-import android.view.GestureDetector
-import android.view.MotionEvent
-import android.view.View
 import android.view.ViewGroup
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.getValue
@@ -22,13 +18,13 @@ import com.lhacenmed.sona.feature.player.QueueTrack
 
 /**
  * The queue's covers, one page per slot, for [CarouselTransformer] to mask. Auxio's
- * `CoverPagerAdapter`, with a double tap on either half of a cover in place of its tap.
+ * `CoverPagerAdapter`.
  *
- * @param onDoubleTap Called with whether the tap landed on the half that seeks backward.
+ * @param onTap Called for a tap on a cover, as the finger lifts.
  */
 internal class CoverPagerAdapter(
     private val cornerRadius: Dp,
-    private val onDoubleTap: (isBackward: Boolean) -> Unit,
+    private val onTap: () -> Unit,
 ) : ListAdapter<QueueTrack, CoverViewHolder>(CoverViewHolder.DIFF_CALLBACK) {
 
     /**
@@ -43,7 +39,7 @@ internal class CoverPagerAdapter(
         }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
-        CoverViewHolder.from(parent, cornerRadius, onDoubleTap)
+        CoverViewHolder.from(parent, cornerRadius, onTap)
 
     override fun onBindViewHolder(holder: CoverViewHolder, position: Int) {
         holder.bind(getItem(position))
@@ -108,13 +104,16 @@ internal class CoverViewHolder private constructor(
         fun from(
             parent: ViewGroup,
             cornerRadius: Dp,
-            onDoubleTap: (isBackward: Boolean) -> Unit,
+            onTap: () -> Unit,
         ): CoverViewHolder {
             val page =
                 MaskableFrameLayout(parent.context).apply {
                     layoutParams =
                         ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-                    setOnDoubleTapListener(onDoubleTap)
+                    // A click, so it answers as the finger lifts and is announced as one; the page has no ripple to show.
+                    // Only taps are the page's: the pager still intercepts a swipe that starts on it, and the player
+                    // sheet still takes a vertical drag.
+                    setOnClickListener { onTap() }
                 }
             return CoverViewHolder(page, cornerRadius)
         }
@@ -129,26 +128,4 @@ internal class CoverViewHolder private constructor(
                     oldItem.track.coverArtUri == newItem.track.coverArtUri
             }
     }
-}
-
-/**
- * Reports a double tap and on which half of the page it landed. Only taps are the page's: the pager
- * still intercepts a swipe that starts on it, and the player sheet still takes a vertical drag.
- */
-@SuppressLint("ClickableViewAccessibility")
-private fun View.setOnDoubleTapListener(onDoubleTap: (isBackward: Boolean) -> Unit) {
-    val detector =
-        GestureDetector(
-            context,
-            object : GestureDetector.SimpleOnGestureListener() {
-                override fun onDown(e: MotionEvent) = true
-
-                override fun onDoubleTap(e: MotionEvent): Boolean {
-                    val isOnLeftHalf = e.x < width / 2f
-                    onDoubleTap(if (layoutDirection == View.LAYOUT_DIRECTION_RTL) !isOnLeftHalf else isOnLeftHalf)
-                    return true
-                }
-            },
-        )
-    setOnTouchListener { _, event -> detector.onTouchEvent(event) }
 }

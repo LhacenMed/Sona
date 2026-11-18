@@ -38,10 +38,10 @@ internal class QueueCoverPager(
     /** Asked to play the slot a swipe settled on. */
     var onSwipeToTrack: (QueueTrack) -> Unit = {}
 
-    /** Told a cover was double-tapped, and whether on the half that seeks backward. */
-    var onDoubleTap: (isBackward: Boolean) -> Unit = {}
+    /** Told a cover was tapped. */
+    var onTap: () -> Unit = {}
 
-    private val coverAdapter = CoverPagerAdapter(cornerRadius) { isBackward -> onDoubleTap(isBackward) }
+    private val coverAdapter = CoverPagerAdapter(cornerRadius) { onTap() }
     private val pager = ViewPager2(context)
     private val carousel = CarouselTransformer()
     private val overscroll = CoverOverscroll(pager, carousel)
