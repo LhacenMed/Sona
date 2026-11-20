@@ -67,6 +67,10 @@ import com.lhacenmed.sona.feature.library.options.OptionsAction
 import com.lhacenmed.sona.feature.library.options.label
 import com.lhacenmed.sona.feature.library.searchEmptyMessage
 import com.lhacenmed.sona.feature.library.searchedFor
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import com.lhacenmed.sona.core.designsystem.component.rememberSyncedTextFieldState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardCapitalization
 
 /**
  * Editing the playlist [playlistId]: its name and its cover, previewed as they are changed and saved
@@ -156,10 +160,10 @@ data class EditPlaylistScreen(val playlistId: Long) : Screen {
                         modifier = Modifier.padding(16.dp),
                     )
                     OutlinedTextField(
-                        value = if (isRenamable) viewModel.name else saved?.title.orEmpty(),
-                        onValueChange = viewModel::rename,
+                        state = rememberSyncedTextFieldState(if (isRenamable) viewModel.name else saved?.title.orEmpty(), viewModel::rename),
                         label = { Text(stringResource(R.string.edit_playlist_name)) },
-                        singleLine = true,
+                        lineLimits = TextFieldLineLimits.SingleLine,
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                         enabled = isRenamable,
                         isError = isNameTaken,
                         supportingText = when {

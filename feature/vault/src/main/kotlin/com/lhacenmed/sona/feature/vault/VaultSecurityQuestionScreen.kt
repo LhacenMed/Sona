@@ -25,6 +25,12 @@ import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.vault.R
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.material3.OutlinedSecureTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 
 /**
  * Creating the Private Folder's last step: a security question and answer to get back in with if the PIN
@@ -39,8 +45,10 @@ internal data object VaultSecurityQuestionScreen : Screen {
         val navigator = LocalNavigator.current
         val viewModel: VaultAccessViewModel = hiltViewModel()
         val flow = viewModel.flow
-        var question by remember { mutableStateOf("") }
-        var answer by remember { mutableStateOf("") }
+        val questionState = rememberTextFieldState()
+        val answerState = rememberTextFieldState()
+        val question = questionState.text.toString()
+        val answer = answerState.text.toString()
         var isCreating by remember { mutableStateOf(false) }
 
         VaultStepScaffold(title = stringResource(PinPurpose.CREATE.titleRes)) {
@@ -59,18 +67,17 @@ internal data object VaultSecurityQuestionScreen : Screen {
                 )
                 Spacer(Modifier.height(16.dp))
                 OutlinedTextField(
-                    value = question,
-                    onValueChange = { question = it },
+                    state = questionState,
                     label = { Text(stringResource(R.string.vault_question)) },
-                    singleLine = true,
+                    lineLimits = TextFieldLineLimits.SingleLine,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = answer,
-                    onValueChange = { answer = it },
+                OutlinedSecureTextField(
+                    state = answerState,
                     label = { Text(stringResource(R.string.vault_answer)) },
-                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(16.dp))

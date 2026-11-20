@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +27,10 @@ import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialogOption
 import kotlin.math.roundToInt
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.foundation.text.input.InputTransformation
 
 /** How far the slider reaches either way, and the steps it moves in - fine enough to line lyrics up by ear. */
 private const val SliderLimitMs = 1000
@@ -54,13 +57,13 @@ internal fun LyricsSyncOffsetDialog(
 ) {
     var isCustom by rememberSaveable { mutableStateOf(!lyricsSyncOffset.isSliderOffset()) }
     var sliderOffset by rememberSaveable { mutableIntStateOf(lyricsSyncOffset.toSliderOffset()) }
-    var typedOffset by rememberSaveable { mutableStateOf(lyricsSyncOffset.toString()) }
-    val customOffset = typedOffset.toCustomOffsetOrNull()
+    val typedOffset = rememberTextFieldState(lyricsSyncOffset.toString())
+    val customOffset = typedOffset.text.toString().toCustomOffsetOrNull()
     val offset = if (isCustom) customOffset else sliderOffset
 
     fun useCustom(custom: Boolean) {
         if (custom == isCustom) return
-        if (custom) typedOffset = sliderOffset.toString() else customOffset?.let { sliderOffset = it.toSliderOffset() }
+        if (custom) typedOffset.setTextAndPlaceCursorAtEnd(sliderOffset.toString()) else customOffset?.let { sliderOffset = it.toSliderOffset() }
         isCustom = custom
     }
 
@@ -74,7 +77,7 @@ internal fun LyricsSyncOffsetDialog(
         icon = { Icon(SonaIcons.Speed, contentDescription = null) },
         onReset = {
             sliderOffset = 0
-            typedOffset = "0"
+            typedOffset.setTextAndPlaceCursorAtEnd("0")
         },
         buttons = {
             actionButton(label = cancelLabel, onClick = onDismiss)
@@ -108,10 +111,10 @@ internal fun LyricsSyncOffsetDialog(
                 )
             }
             OutlinedTextField(
-                value = typedOffset,
-                onValueChange = { typedOffset = it.asOffsetInput() },
+                state = typedOffset,
+                inputTransformation = OffsetInput,
                 enabled = isCustom,
-                singleLine = true,
+                lineLimits = TextFieldLineLimits.SingleLine,
                 isError = isCustom && customOffset == null,
                 label = { Text(stringResource(R.string.player_lyrics_sync_offset_milliseconds)) },
                 suffix = { Text("ms") },
@@ -119,7 +122,7 @@ internal fun LyricsSyncOffsetDialog(
                     Text(stringResource(R.string.player_lyrics_sync_offset_custom_range, -CustomLimitMs, CustomLimitMs))
                 },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { customOffset?.let(onConfirm) }),
+                onKeyboardAction = { customOffset?.let(onConfirm) },
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -137,6 +140,13 @@ private fun Int.toSliderOffset(): Int = toFloat().toSliderOffset()
 
 private fun Float.toSliderOffset(): Int =
     (coerceIn(-SliderLimitMs.toFloat(), SliderLimitMs.toFloat()) / SliderStepMs).roundToInt() * SliderStepMs
+
+/** What may be typed as an offset - see [asOffsetInput]: anything else is kept out as it is typed. */
+private val OffsetInput = InputTransformation {
+    val typed = asCharSequence().toString()
+    val kept = typed.asOffsetInput()
+    if (kept != typed) replace(0, length, kept)
+}
 
 /** What can be typed of an offset: digits, after a sign at the start, no longer than a minute's worth. */
 private fun String.asOffsetInput(): String =

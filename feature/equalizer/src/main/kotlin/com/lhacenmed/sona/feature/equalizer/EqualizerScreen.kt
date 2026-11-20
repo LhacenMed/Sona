@@ -88,6 +88,11 @@ import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
 import com.lhacenmed.sona.core.navigation.Screen
 import kotlin.math.roundToInt
 import com.lhacenmed.sona.core.designsystem.component.SonaSwitch
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 
 /** How wide the controls grow, centred beyond it - on a tablet or in landscape. */
 private val ContentMaxWidth = 840.dp
@@ -617,7 +622,8 @@ private fun ValuePill(value: String) {
 
 @Composable
 private fun SaveProfileDialog(onSave: (String) -> Unit, onDismiss: () -> Unit) {
-    var name by rememberSaveable { mutableStateOf("") }
+    val name = rememberTextFieldState()
+    val typed = name.text.trim().toString()
     // Read here rather than inside the group: a group builds its items outside composition.
     val closeLabel = stringResource(R.string.eq_close)
     val saveLabel = stringResource(R.string.eq_save)
@@ -626,14 +632,15 @@ private fun SaveProfileDialog(onSave: (String) -> Unit, onDismiss: () -> Unit) {
         title = stringResource(R.string.eq_save_profile),
         buttons = {
             actionButton(label = closeLabel, onClick = onDismiss)
-            actionButton(label = saveLabel, onClick = { onSave(name.trim()) }, enabled = name.isNotBlank())
+            actionButton(label = saveLabel, onClick = { onSave(typed) }, enabled = typed.isNotEmpty())
         },
     ) {
         OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
+            state = name,
             label = { Text(text = stringResource(R.string.eq_profile_name)) },
-            singleLine = true,
+            lineLimits = TextFieldLineLimits.SingleLine,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+            onKeyboardAction = { if (typed.isNotEmpty()) onSave(typed) },
             modifier = Modifier.fillMaxWidth(),
         )
     }

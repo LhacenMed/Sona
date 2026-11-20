@@ -79,6 +79,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.maxLength
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.drop
 
 /** The longest a theme's name may be. */
 private const val MaxThemeNameLength = 48
@@ -118,9 +127,10 @@ data object ThemeCreatorScreen : Screen {
         val storedPalette = theme.colorPalette
 
         val storedSeeds = remember(storedPalette) { ThemePalettes.seedsOf(storedPalette) }
-        var themeName by rememberSaveable(storedPalette) {
-            mutableStateOf(storedPalette?.let(ThemeSeedPaletteCodec::extractNameFromPreference).orEmpty())
+        val themeNameState = rememberSaveable(storedPalette, saver = TextFieldState.Saver) {
+            TextFieldState(storedPalette?.let(ThemeSeedPaletteCodec::extractNameFromPreference).orEmpty())
         }
+        val themeName = themeNameState.text.toString()
         var primary by rememberSaveable(storedPalette, stateSaver = ColorSaver) { mutableStateOf(storedSeeds.primary) }
         var secondary by rememberSaveable(storedPalette, stateSaver = ColorSaver) { mutableStateOf(storedSeeds.secondary) }
         var tertiary by rememberSaveable(storedPalette, stateSaver = ColorSaver) { mutableStateOf(storedSeeds.tertiary) }
@@ -191,7 +201,7 @@ data object ThemeCreatorScreen : Screen {
                         secondary = default.secondary
                         tertiary = default.tertiary
                         neutral = default.neutral
-                        themeName = ""
+                        themeNameState.clearText()
                     },
                     TopBarAction(label = stringResource(R.string.save), icon = SonaIcons.Check, onClick = ::applyTheme),
                 ),
@@ -215,11 +225,12 @@ data object ThemeCreatorScreen : Screen {
                     EditorCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                         Text(text = stringResource(R.string.theme_meta_title), style = MaterialTheme.typography.titleSmall)
                         OutlinedTextField(
-                            value = themeName,
-                            onValueChange = { themeName = it.take(MaxThemeNameLength) },
+                            state = themeNameState,
+                            inputTransformation = InputTransformation.maxLength(MaxThemeNameLength),
                             label = { Text(stringResource(R.string.theme_name_optional)) },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            lineLimits = TextFieldLineLimits.SingleLine,
+                            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+                            onKeyboardAction = { applyTheme() },
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Button(onClick = ::applyTheme, shapes = buttonPressShapes(), modifier = Modifier.fillMaxWidth()) {
@@ -364,10 +375,21 @@ private fun SeedColorEditor(
     }
 
     val hex = remember(argb) { String.format("#%08X", argb) }
-    var hexInput by rememberSaveable(role) { mutableStateOf(hex) }
+    val hexInput = rememberSaveable(role, saver = TextFieldState.Saver) { TextFieldState(hex) }
     var hexError by rememberSaveable(role) { mutableStateOf(false) }
     // Follows the colour however it changed, except while the field holds something that is not one yet.
-    LaunchedEffect(hex) { if (!hexError) hexInput = hex }
+    LaunchedEffect(hex) { if (!hexError && hexInput.text.toString() != hex) hexInput.setTextAndPlaceCursorAtEnd(hex) }
+    // What is typed, taken as the colour as soon as it is one.
+    LaunchedEffect(hexInput) {
+        snapshotFlow { hexInput.text.toString() }.drop(1).collect { typed ->
+            val parsed = runCatching {
+                val normalized = typed.trim().let { if (it.startsWith("#")) it else "#$it" }
+                Color(android.graphics.Color.parseColor(normalized))
+            }.getOrNull()
+            hexError = parsed == null
+            parsed?.let(onColorChange)
+        }
+    }
 
     fun commitChannels() {
         hexError = false
@@ -412,20 +434,12 @@ private fun SeedColorEditor(
         }
 
         OutlinedTextField(
-            value = hexInput,
-            onValueChange = { next ->
-                hexInput = next.take(12)
-                val parsed = runCatching {
-                    val normalized = hexInput.trim().let { if (it.startsWith("#")) it else "#$it" }
-                    Color(android.graphics.Color.parseColor(normalized))
-                }.getOrNull()
-                hexError = parsed == null
-                parsed?.let(onColorChange)
-            },
+            state = hexInput,
+            inputTransformation = InputTransformation.maxLength(12),
             label = { Text(stringResource(R.string.theme_editor_hex_input)) },
             isError = hexError,
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, imeAction = ImeAction.Done),
+            lineLimits = TextFieldLineLimits.SingleLine,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, autoCorrectEnabled = false, keyboardType = KeyboardType.Ascii, imeAction = ImeAction.Done),
             modifier = Modifier.fillMaxWidth(),
         )
 

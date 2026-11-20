@@ -3,15 +3,16 @@ package com.lhacenmed.sona.feature.library
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import com.lhacenmed.sona.core.designsystem.R as DesignR
 import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.feature.library.R
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 
 /**
  * Asks for a playlist's name, whether it is being created or renamed - and, with no [takenNames] to keep clear of, for any
@@ -36,8 +37,8 @@ internal fun PlaylistNameDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
 ) {
-    var name by remember { mutableStateOf(initialName) }
-    val trimmed = name.trim()
+    val name = rememberTextFieldState(initialName)
+    val trimmed = name.text.trim().toString()
     val isTaken = isPlaylistNameTaken(trimmed, takenNames)
     val error = if (isTaken) stringResource(R.string.playlist_name_taken) else null
     // Read here rather than inside the buttons: they are built outside composition.
@@ -56,9 +57,10 @@ internal fun PlaylistNameDialog(
         },
     ) {
         OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            singleLine = true,
+            state = name,
+            lineLimits = TextFieldLineLimits.SingleLine,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+            onKeyboardAction = { if (trimmed.isNotEmpty() && !isTaken) onConfirm(trimmed) },
             isError = error != null,
             supportingText = error?.let { { Text(it) } },
         )

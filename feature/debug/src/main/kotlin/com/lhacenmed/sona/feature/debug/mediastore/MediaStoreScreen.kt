@@ -39,6 +39,10 @@ import com.lhacenmed.sona.core.designsystem.component.settings.SettingsList
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsNavigationItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 
 /** The collections of Android's own media database the scanner reads. */
 private enum class MediaCollection(val title: String, val uri: Uri) {
@@ -75,7 +79,7 @@ private data class MediaCollectionScreen(val collection: MediaCollection) : Scre
     @Composable
     override fun Content() {
         val context = LocalContext.current
-        var filterDraft by rememberSaveable { mutableStateOf("") }
+        val filterDraft = rememberTextFieldState()
         var filter by rememberSaveable { mutableStateOf("") }
         var offset by rememberSaveable { mutableIntStateOf(0) }
         val result = rememberLoaded(filter, offset) {
@@ -83,14 +87,19 @@ private data class MediaCollectionScreen(val collection: MediaCollection) : Scre
         }
         Column(Modifier.fillMaxSize()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                fun apply() {
+                    filter = filterDraft.text.toString()
+                    offset = 0
+                }
                 OutlinedTextField(
-                    value = filterDraft,
-                    onValueChange = { filterDraft = it },
+                    state = filterDraft,
                     label = { Text("WHERE") },
-                    singleLine = true,
+                    lineLimits = TextFieldLineLimits.SingleLine,
+                    keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, imeAction = ImeAction.Go),
+                    onKeyboardAction = { apply() },
                     modifier = Modifier.weight(1f),
                 )
-                TextButton(shapes = buttonPressShapes(), onClick = { filter = filterDraft; offset = 0 }) { Text("Apply") }
+                TextButton(shapes = buttonPressShapes(), onClick = ::apply) { Text("Apply") }
             }
             Loaded(result) { page ->
                 PageBar(offset, page.rows.size, page.hasMore) { offset = it }

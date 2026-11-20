@@ -23,7 +23,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.common.permission.AppPermission
@@ -40,13 +39,21 @@ import com.lhacenmed.sona.feature.backup.RestorePreview
 import com.lhacenmed.sona.feature.explorer.FolderPickerSheet
 import com.lhacenmed.sona.feature.explorer.FolderPickerTab
 import com.lhacenmed.sona.feature.settings.R
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.material3.OutlinedSecureTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 
 /** Asks for the passphrase backups are encrypted with from now on - twice, so a typo cannot lock them away. */
 @Composable
 internal fun NewPassphraseDialog(onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
-    var passphrase by remember { mutableStateOf("") }
-    var repeated by remember { mutableStateOf("") }
-    val isMismatched = repeated.isNotEmpty() && repeated != passphrase
+    val passphrase = rememberTextFieldState()
+    val repeated = rememberTextFieldState()
+    val typed = passphrase.text.toString()
+    val isMismatched = repeated.text.isNotEmpty() && repeated.text.toString() != typed
+    val canSave = typed.isNotEmpty() && repeated.text.toString() == typed
     val cancelLabel = stringResource(R.string.dialog_cancel)
     val saveLabel = stringResource(R.string.dialog_save)
 
@@ -55,16 +62,16 @@ internal fun NewPassphraseDialog(onConfirm: (String) -> Unit, onDismiss: () -> U
         title = stringResource(R.string.backup_passphrase_title),
         buttons = {
             actionButton(label = cancelLabel, onClick = onDismiss)
-            actionButton(label = saveLabel, onClick = { onConfirm(passphrase) }, enabled = passphrase.isNotEmpty() && repeated == passphrase)
+            actionButton(label = saveLabel, onClick = { onConfirm(typed) }, enabled = canSave)
         },
     ) {
         Text(stringResource(R.string.backup_passphrase_note))
-        PassphraseField(passphrase, { passphrase = it }, stringResource(R.string.backup_passphrase_hint))
+        PassphraseField(passphrase, stringResource(R.string.backup_passphrase_hint), imeAction = ImeAction.Next)
         PassphraseField(
-            value = repeated,
-            onValueChange = { repeated = it },
+            state = repeated,
             label = stringResource(R.string.backup_passphrase_repeat_hint),
             error = stringResource(R.string.backup_passphrase_mismatch).takeIf { isMismatched },
+            onDone = { if (canSave) onConfirm(typed) },
         )
     }
 }
@@ -176,21 +183,22 @@ internal fun RestoreDialog(
         }
 
         is RestoreStep.Passphrase -> {
-            var passphrase by remember { mutableStateOf("") }
+            val passphrase = rememberTextFieldState()
+            val typed = passphrase.text.toString()
             val openLabel = stringResource(R.string.restore_ok)
             SonaDialog(
                 onDismissRequest = onDismiss,
                 title = stringResource(R.string.restore_passphrase_title),
                 buttons = {
                     actionButton(label = cancelLabel, onClick = onDismiss)
-                    actionButton(label = openLabel, onClick = { onPassphrase(passphrase) }, enabled = passphrase.isNotEmpty())
+                    actionButton(label = openLabel, onClick = { onPassphrase(typed) }, enabled = typed.isNotEmpty())
                 },
             ) {
                 PassphraseField(
-                    value = passphrase,
-                    onValueChange = { passphrase = it },
+                    state = passphrase,
                     label = stringResource(R.string.backup_passphrase_hint),
                     error = stringResource(R.string.restore_passphrase_wrong).takeIf { step.isWrong },
+                    onDone = { if (typed.isNotEmpty()) onPassphrase(typed) },
                 )
             }
         }
@@ -350,16 +358,16 @@ private fun CheckRow(label: String, isChecked: Boolean, onCheckedChange: (Boolea
     }
 }
 
+/** A passphrase typed, hidden as Android hides one, the keyboard's [imeAction] going on to the next - or [onDone]. */
 @Composable
-private fun PassphraseField(value: String, onValueChange: (String) -> Unit, label: String, error: String? = null) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
+private fun PassphraseField(state: TextFieldState, label: String, error: String? = null, imeAction: ImeAction = ImeAction.Done, onDone: () -> Unit = {}) {
+    OutlinedSecureTextField(
+        state = state,
         label = { Text(label) },
-        singleLine = true,
         isError = error != null,
         supportingText = error?.let { { Text(it) } },
-        visualTransformation = PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = imeAction),
+        onKeyboardAction = if (imeAction == ImeAction.Done) ({ onDone() }) else null,
         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
     )
 }

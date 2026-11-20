@@ -103,7 +103,6 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -142,7 +141,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -159,6 +157,7 @@ import com.lhacenmed.sona.core.designsystem.component.SonaSwitch
 import com.lhacenmed.sona.core.designsystem.component.permission.rememberPermissionRequest
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.motion.EmphasizedDecelerate
+import com.lhacenmed.sona.core.designsystem.component.animateProgressAsState
 import com.lhacenmed.sona.core.designsystem.motion.FadeInMillis
 import com.lhacenmed.sona.core.designsystem.motion.StaggerMillis
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
@@ -170,6 +169,8 @@ import com.lhacenmed.sona.feature.download.rememberDownloadFolderPicker
 import com.lhacenmed.sona.feature.library.tabs.LibraryTabEditor
 import com.lhacenmed.sona.feature.library.tabs.libraryTabRows
 import com.lhacenmed.sona.feature.library.tabs.rememberLibraryTabEditor
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.material3.OutlinedSecureTextField
 
 /** How far a step's content slides in from the side it is going to. */
 private val ArrivalShift = 24.dp
@@ -1302,11 +1303,11 @@ private fun OpenStatusLine(status: RestoreStatus) {
 
 @Composable
 private fun PassphraseField(isWrong: Boolean, onSubmit: (String) -> Unit) {
-    var passphrase by rememberSaveable { mutableStateOf("") }
+    val passphrase = rememberTextFieldState()
+    val typed = passphrase.text.toString()
     Row(modifier = Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(
-            value = passphrase,
-            onValueChange = { passphrase = it },
+        OutlinedSecureTextField(
+            state = passphrase,
             label = { Text(stringResource(R.string.onboarding_restore_passphrase)) },
             isError = isWrong,
             supportingText = if (isWrong) {
@@ -1314,13 +1315,11 @@ private fun PassphraseField(isWrong: Boolean, onSubmit: (String) -> Unit) {
             } else {
                 null
             },
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { onSubmit(passphrase) }),
+            onKeyboardAction = { if (typed.isNotEmpty()) onSubmit(typed) },
             modifier = Modifier.weight(1f),
         )
-        TextButton(onClick = { onSubmit(passphrase) }, enabled = passphrase.isNotEmpty(), shapes = buttonPressShapes()) {
+        TextButton(onClick = { onSubmit(typed) }, enabled = typed.isNotEmpty(), shapes = buttonPressShapes()) {
             Text(stringResource(R.string.onboarding_restore_open))
         }
     }
@@ -1332,11 +1331,7 @@ private fun restoringStage(restore: RestoreState.Chosen, arrivals: StepArrivals)
     val isFailed = restore.status == RestoreStatus.FAILED
     piece("progress", arrivals, 2) {
         val progressLabel = stringResource(R.string.onboarding_restore_progress)
-        val whole by animateFloatAsState(
-            targetValue = (current + (restore.progress?.fraction ?: 0f)) / RestoreSteps.size,
-            animationSpec = tween(400, easing = EmphasizedDecelerate),
-            label = "restoreProgress",
-        )
+        val whole by animateProgressAsState((current + (restore.progress?.fraction ?: 0f)) / RestoreSteps.size)
         Column {
             Text(
                 when {
@@ -1484,11 +1479,7 @@ private fun bold(text: String): AnnotatedString = buildAnnotatedString { withSty
 private fun MediaDownloadCard(media: MediaDownload, onRetry: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val progressLabel = stringResource(R.string.onboarding_restored_media_progress)
-    val share by animateFloatAsState(
-        targetValue = if (media.total > 0) media.done.toFloat() / media.total else 0f,
-        animationSpec = tween(ArrivalMillis, easing = EmphasizedDecelerate),
-        label = "mediaDownload",
-    )
+    val share by animateProgressAsState(if (media.total > 0) media.done.toFloat() / media.total else 0f)
     Column(
         modifier = Modifier
             .padding(top = 8.dp)
@@ -1835,11 +1826,7 @@ private fun DownloaderButton(state: RuntimeState, enabled: Boolean, onClick: () 
     val colors = MaterialTheme.colorScheme
     val isDownloading = state is RuntimeState.Downloading
     val ringAlpha by animateFloatAsState(if (isDownloading) 1f else 0f, tween(FadeInMillis), label = "downloaderRing")
-    val progress by animateFloatAsState(
-        targetValue = (state as? RuntimeState.Downloading)?.progress ?: if (state == RuntimeState.Installed) 1f else 0f,
-        animationSpec = tween(400, easing = EmphasizedDecelerate),
-        label = "downloaderProgress",
-    )
+    val progress by animateProgressAsState((state as? RuntimeState.Downloading)?.progress ?: if (state == RuntimeState.Installed) 1f else 0f)
     val label = stringResource(
         when (state) {
             RuntimeState.Missing -> R.string.onboarding_downloader_get

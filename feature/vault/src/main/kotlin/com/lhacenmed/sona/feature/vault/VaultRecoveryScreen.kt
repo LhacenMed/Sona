@@ -26,6 +26,10 @@ import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.core.vault.VaultAccessResult
 import com.lhacenmed.sona.core.vault.VaultState
 import com.lhacenmed.sona.feature.vault.R
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.material3.OutlinedSecureTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 
 /**
  * A forgotten PIN's first step: the security question answered, before a new PIN is chosen - the folder
@@ -39,7 +43,8 @@ internal data object VaultRecoveryScreen : Screen {
         val navigator = LocalNavigator.current
         val viewModel: VaultAccessViewModel = hiltViewModel()
         val vault by viewModel.state.collectAsStateWithLifecycle()
-        var answer by remember { mutableStateOf("") }
+        val answerState = rememberTextFieldState()
+        val answer = answerState.text.toString()
         var isChecking by remember { mutableStateOf(false) }
         var error by remember { mutableStateOf<String?>(null) }
 
@@ -49,11 +54,25 @@ internal data object VaultRecoveryScreen : Screen {
             Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(current.securityQuestion, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(16.dp))
-                OutlinedTextField(
-                    value = answer,
-                    onValueChange = { answer = it },
+                // Read here rather than inside the group: it builds its buttons outside composition.
+                val wrongAnswer = stringResource(R.string.vault_wrong_answer)
+                val canContinue = answer.isNotBlank() && !isChecking && lockoutMessage == null
+                fun continueWithAnswer() {
+                    isChecking = true
+                    viewModel.verifySecurityAnswer(answer) { result ->
+                        isChecking = false
+                        error = if (result == VaultAccessResult.WrongSecret) wrongAnswer else null
+                        if (result == VaultAccessResult.Granted) {
+                            viewModel.flow.verifiedAnswer = answer
+                            navigator.go(VaultChoosePinScreen(PinPurpose.RESET))
+                        }
+                    }
+                }
+                OutlinedSecureTextField(
+                    state = answerState,
                     label = { Text(stringResource(R.string.vault_answer)) },
-                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    onKeyboardAction = { if (canContinue) continueWithAnswer() },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(8.dp))
@@ -63,27 +82,11 @@ internal data object VaultRecoveryScreen : Screen {
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Spacer(Modifier.height(16.dp))
-                // Read here rather than inside the group: it builds its buttons outside composition.
                 val backLabel = stringResource(R.string.vault_back_to_pin)
                 val continueLabel = stringResource(R.string.vault_continue)
-                val wrongAnswer = stringResource(R.string.vault_wrong_answer)
                 SonaActionButtonGroup {
                     actionButton(label = backLabel, onClick = navigator::back)
-                    actionButton(
-                        label = continueLabel,
-                        onClick = {
-                            isChecking = true
-                            viewModel.verifySecurityAnswer(answer) { result ->
-                                isChecking = false
-                                error = if (result == VaultAccessResult.WrongSecret) wrongAnswer else null
-                                if (result == VaultAccessResult.Granted) {
-                                    viewModel.flow.verifiedAnswer = answer
-                                    navigator.go(VaultChoosePinScreen(PinPurpose.RESET))
-                                }
-                            }
-                        },
-                        enabled = answer.isNotBlank() && !isChecking && lockoutMessage == null,
-                    )
+                    actionButton(label = continueLabel, onClick = ::continueWithAnswer, enabled = canContinue)
                 }
             }
         }

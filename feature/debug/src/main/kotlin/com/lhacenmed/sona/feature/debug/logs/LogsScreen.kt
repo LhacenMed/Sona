@@ -21,10 +21,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
@@ -39,6 +37,9 @@ import com.lhacenmed.sona.feature.debug.rememberLoaded
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.KeyboardOptions
 
 /** How many of the latest log lines are read. */
 private const val MAX_LOG_LINES = 2_000
@@ -51,7 +52,8 @@ data object LogsScreen : Screen {
     override fun Content() {
         val scope = rememberCoroutineScope()
         var version by remember { mutableIntStateOf(0) }
-        var filter by rememberSaveable { mutableStateOf("") }
+        val filterState = rememberTextFieldState()
+        val filter = filterState.text.toString()
         val lines = rememberLoaded(version) {
             withContext(Dispatchers.IO) {
                 AppLog.recentLines(MAX_LOG_LINES).asReversed()
@@ -59,10 +61,10 @@ data object LogsScreen : Screen {
         }
         Column(Modifier.fillMaxSize()) {
             OutlinedTextField(
-                value = filter,
-                onValueChange = { filter = it },
+                state = filterState,
                 label = { Text("Contains") },
-                singleLine = true,
+                lineLimits = TextFieldLineLimits.SingleLine,
+                keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
             Row {

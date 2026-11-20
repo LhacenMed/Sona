@@ -41,6 +41,8 @@ import com.lhacenmed.sona.feature.debug.Message
 import com.lhacenmed.sona.feature.debug.rememberLoaded
 import kotlinx.coroutines.launch
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.KeyboardOptions
 
 private fun sectionKeyOf(file: PreferenceFile) = "${file.kind}:${file.name}"
 
@@ -140,7 +142,7 @@ data object PreferencesScreen : Screen {
     @Composable
     private fun ValueDialog(item: PreferenceValue, onSave: suspend (String) -> Unit, onDismiss: () -> Unit, onSaved: () -> Unit) {
         val scope = rememberCoroutineScope()
-        var text by remember(item) { mutableStateOf(preferenceText(item.value)) }
+        val text = remember(item) { TextFieldState(preferenceText(item.value)) }
         var failure by remember(item) { mutableStateOf<String?>(null) }
 
         SonaDialog(
@@ -150,14 +152,14 @@ data object PreferencesScreen : Screen {
                 actionButton(label = "Cancel", onClick = onDismiss)
                 actionButton(
                     label = "Save",
-                    onClick = { scope.launch { runCatching { onSave(text) }.onSuccess { onSaved() }.onFailure { failure = it.toString() } } },
+                    onClick = { scope.launch { runCatching { onSave(text.text.toString()) }.onSuccess { onSaved() }.onFailure { failure = it.toString() } } },
                 )
             },
         ) {
             failure?.let { Message(it) }
             OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
+                state = text,
+                keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
                 label = { Text(item.value::class.simpleName.orEmpty()) },
                 modifier = Modifier.fillMaxWidth(),
             )

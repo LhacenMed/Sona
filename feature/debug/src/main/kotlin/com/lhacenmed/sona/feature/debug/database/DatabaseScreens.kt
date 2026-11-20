@@ -49,6 +49,11 @@ import com.lhacenmed.sona.core.designsystem.component.settings.SettingsNavigatio
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSection
 import kotlinx.coroutines.launch
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import com.lhacenmed.sona.core.designsystem.component.rememberSyncedTextFieldState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 
 /** Every database, each with its SQL console and its tables. */
 data object DatabasesScreen : Screen {
@@ -93,7 +98,7 @@ internal data class TableScreen(val file: String, val table: String, val isView:
     override fun Content() {
         val viewModel = hiltViewModel<DebugViewModel>()
         val selection = rememberSelectionState()
-        var filterDraft by rememberSaveable { mutableStateOf("") }
+        val filterDraft = rememberTextFieldState()
         var filter by rememberSaveable { mutableStateOf("") }
         var offset by rememberSaveable { mutableIntStateOf(0) }
         var version by remember { mutableIntStateOf(0) }
@@ -112,14 +117,19 @@ internal data class TableScreen(val file: String, val table: String, val isView:
                 actions = listOf(TopBarAction(label = "Schema", icon = SonaIcons.Code) { isSchemaShown = true }),
             )
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                fun apply() {
+                    filter = filterDraft.text.toString()
+                    offset = 0
+                }
                 OutlinedTextField(
-                    value = filterDraft,
-                    onValueChange = { filterDraft = it },
+                    state = filterDraft,
                     label = { Text("WHERE") },
-                    singleLine = true,
+                    lineLimits = TextFieldLineLimits.SingleLine,
+                    keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, imeAction = ImeAction.Go),
+                    onKeyboardAction = { apply() },
                     modifier = Modifier.weight(1f),
                 )
-                TextButton(shapes = buttonPressShapes(), onClick = { filter = filterDraft; offset = 0 }) { Text("Apply") }
+                TextButton(shapes = buttonPressShapes(), onClick = ::apply) { Text("Apply") }
             }
             Loaded(result) { loaded ->
                 PageBar(offset, loaded.rows.size, loaded.hasMore) { offset = it }
@@ -199,8 +209,7 @@ private fun RowDialog(
         columns.forEachIndexed { index, column ->
             val original = row.cells[index]
             OutlinedTextField(
-                value = edits[column] ?: original.orEmpty(),
-                onValueChange = { edits[column] = it },
+                state = rememberSyncedTextFieldState(edits[column] ?: original.orEmpty()) { edits[column] = it },
                 label = { Text(column) },
                 placeholder = { if (original == null) Text("NULL") },
                 // What a blob holds is not text: only its size is here to be seen.
@@ -219,23 +228,22 @@ internal data class SqlConsoleScreen(val file: String) : Screen {
     override fun Content() {
         val viewModel = hiltViewModel<DebugViewModel>()
         val scope = rememberCoroutineScope()
-        var sql by rememberSaveable { mutableStateOf("") }
+        val sql = rememberTextFieldState()
         var result by remember { mutableStateOf<Result<SqlResult>?>(null) }
 
         Column(Modifier.fillMaxSize()) {
             OutlinedTextField(
-                value = sql,
-                onValueChange = { sql = it },
+                state = sql,
                 label = { Text("SQL") },
-                minLines = 3,
-                maxLines = 6,
+                lineLimits = TextFieldLineLimits.MultiLine(minHeightInLines = 3, maxHeightInLines = 6),
+                keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
                 textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             )
             Button(
                 shapes = buttonPressShapes(),
-                enabled = sql.isNotBlank(),
-                onClick = { scope.launch { result = runCatching { viewModel.databases.run(file, sql) } } },
+                enabled = sql.text.isNotBlank(),
+                onClick = { scope.launch { result = runCatching { viewModel.databases.run(file, sql.text.toString()) } } },
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             ) { Text("Run") }
             result?.let { finished ->

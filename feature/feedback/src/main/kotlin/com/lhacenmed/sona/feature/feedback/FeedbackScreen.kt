@@ -59,6 +59,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.component.SonaSwitch
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import com.lhacenmed.sona.core.designsystem.component.rememberSyncedTextFieldState
 
 /** A picked screenshot or recording, as small as it is shown. */
 private val ThumbnailSize = 88.dp
@@ -104,10 +106,9 @@ data class FeedbackScreen(val crash: String? = null) : Screen {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     OutlinedTextField(
-                        value = viewModel.message,
-                        onValueChange = { viewModel.message = it },
+                        state = rememberSyncedTextFieldState(viewModel.message) { viewModel.message = it },
                         placeholder = { Text(stringResource(R.string.feedback_message_hint)) },
-                        minLines = 6,
+                        lineLimits = TextFieldLineLimits.MultiLine(minHeightInLines = 6),
                         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                         modifier = Modifier.fillMaxWidth(),
                     )

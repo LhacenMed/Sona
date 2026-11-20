@@ -9,9 +9,9 @@ activityCompose = "1.10.1"
 fragment = "1.8.6"
 biometric = "1.1.0"
 composeBom = "2026.09.00"
-# The BOM still pins material3 1.4.0; the expressive button group and the pressed-shape
-# morph it animates only exist from 1.5.0 onwards, which has not left alpha yet.
-material3 = "1.5.0-alpha27"
+# The BOM still pins material3 1.4.0; the expressive button group, the pressed-shape morph it animates, and the
+# state-based text fields' expressive styling only exist from 1.5.0 onwards. 1.6.0 needs Android Gradle Plugin 9.4.
+material3 = "1.5.0"
 hilt = "2.60.1"
 room = "2.7.1"
 media3 = "1.11.1"

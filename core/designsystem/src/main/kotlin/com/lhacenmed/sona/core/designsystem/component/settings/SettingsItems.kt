@@ -34,6 +34,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import com.lhacenmed.sona.core.designsystem.component.animateProgressAsState
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -455,7 +456,8 @@ fun SettingsDownloadItem(
                             Icon(SonaIcons.Refresh, contentDescription = stringResource(R.string.settings_download_retry))
                         }
                         is SettingsDownload.InProgress -> {
-                            CircularProgressIndicator(progress = { download.progress }, modifier = Modifier.size(DownloadControlSize))
+                            val progress by animateProgressAsState(download.progress)
+                            CircularProgressIndicator(progress = { progress }, modifier = Modifier.size(DownloadControlSize))
                             IconButton(shapes = iconButtonPressShapes(), onClick = onCancel) {
                                 Icon(SonaIcons.Close, contentDescription = stringResource(R.string.settings_download_stop), modifier = Modifier.size(18.dp))
                             }

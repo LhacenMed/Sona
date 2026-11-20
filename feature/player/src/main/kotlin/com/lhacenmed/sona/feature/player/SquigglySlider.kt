@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.PI
 import kotlin.math.ceil
 import kotlin.math.sin
+import com.lhacenmed.sona.core.designsystem.component.rememberFollowingSliderState
 
 private const val SegmentsPerWavelength = 10
 private const val TwoPi = 2 * PI.toFloat()
@@ -95,13 +96,12 @@ internal fun SquigglySlider(
     val animationProgress = rememberSquigglesAnimationProgress()
 
     Slider(
-        value = value,
+        state = rememberFollowingSliderState(value, valueRange),
         onValueChange = onValueChange,
         modifier = modifier,
         onValueChangeFinished = onValueChangeFinished,
         colors = colors,
         interactionSource = interactionSource,
-        valueRange = valueRange,
         thumb = { SliderDefaults.Thumb(interactionSource = interactionSource, colors = colors, thumbSize = PlayerSeekThumbSize) },
         track = { sliderState ->
             SquigglyTrack(
@@ -156,7 +156,7 @@ private fun SquigglyTrack(
                     val thumbWidth = PlayerSeekThumbSize.width.toPx()
                     val clearance = thumbWidth / 2 + PlayerSeekThumbGap.toPx()
                     val strokeWidth = squigglesSpec.strokeWidth.toPx()
-                    val thumbCentre = thumbWidth / 2 + (size.width - thumbWidth) * sliderState.valueFraction
+                    val thumbCentre = thumbWidth / 2 + (size.width - thumbWidth) * sliderState.coercedValueAsFraction
                     val playedEnd = thumbCentre - clearance
                     val restStart = thumbCentre + clearance
                     val isRtl = layoutDirection == LayoutDirection.Rtl
@@ -232,12 +232,3 @@ private fun DrawScope.buildSquiggles(
         pointX = (pointX + segmentWidth).coerceAtMost(waveEndOffset)
     }
 }
-
-/** The 0..1 share of its range the slider's value stands at. */
-@OptIn(ExperimentalMaterial3Api::class)
-private val SliderState.valueFraction: Float
-    get() {
-        val start = valueRange.start
-        val end = valueRange.endInclusive
-        return if (end - start == 0f) 0f else ((value.coerceIn(start, end) - start) / (end - start)).coerceIn(0f, 1f)
-    }

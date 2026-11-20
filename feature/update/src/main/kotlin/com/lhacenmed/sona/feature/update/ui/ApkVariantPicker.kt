@@ -30,6 +30,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.feature.update.R
 import com.lhacenmed.sona.feature.update.github.ReleaseApk
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
 
 /**
  * Which of a release's [apks] to update with - the [selected] one, and the rest a tap away: each with its
@@ -46,11 +48,11 @@ internal fun ApkVariantPicker(
     val context = LocalContext.current
     var isExpanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(expanded = isExpanded, onExpandedChange = { isExpanded = it }, modifier = modifier) {
+        val variantLabel = selected.variant.label
         OutlinedTextField(
-            value = selected.variant.label,
-            onValueChange = {},
+            state = remember(variantLabel) { TextFieldState(variantLabel) },
             readOnly = true,
-            singleLine = true,
+            lineLimits = TextFieldLineLimits.SingleLine,
             label = { Text(stringResource(R.string.update_variant)) },
             suffix = { Text(Formatter.formatShortFileSize(context, selected.sizeBytes)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isExpanded) },

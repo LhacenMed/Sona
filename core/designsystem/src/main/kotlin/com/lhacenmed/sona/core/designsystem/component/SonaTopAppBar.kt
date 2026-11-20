@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButtonDefaults
@@ -54,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.R
 import com.lhacenmed.sona.core.designsystem.component.screen.LocalScreenLists
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import androidx.compose.foundation.text.input.TextFieldLineLimits
 
 /**
  * One thing a top app bar can do. Whether it is drawn as an icon or as a row in the overflow menu is
@@ -429,20 +429,17 @@ private fun SearchField(search: TopBarSearch) {
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
     TextField(
-        value = search.query,
-        onValueChange = search.onQueryChange,
+        state = rememberSyncedTextFieldState(search.query, search.onQueryChange),
         modifier = Modifier
             .fillMaxWidth()
             .focusRequester(focusRequester),
         placeholder = { Text(search.hint ?: stringResource(R.string.top_bar_search_hint)) },
-        singleLine = true,
+        lineLimits = TextFieldLineLimits.SingleLine,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        keyboardActions = KeyboardActions(
-            onSearch = {
-                keyboard?.hide()
-                search.onSearch?.invoke()
-            },
-        ),
+        onKeyboardAction = {
+            keyboard?.hide()
+            search.onSearch?.invoke()
+        },
         // Undecorated, so it reads as the bar's title turned editable rather than a field dropped
         // into the bar.
         colors = TextFieldDefaults.colors(

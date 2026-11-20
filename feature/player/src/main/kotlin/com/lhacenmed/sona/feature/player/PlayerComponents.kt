@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lhacenmed.sona.core.datastore.PlayerSliderStyle
+import com.lhacenmed.sona.core.designsystem.component.rememberFollowingSliderState
 import com.lhacenmed.sona.core.designsystem.component.SonaMarquee
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.model.Track
@@ -175,13 +176,12 @@ fun StyledPlaybackSlider(
     when (sliderStyle) {
         PlayerSliderStyle.STANDARD -> {
             Slider(
-                value = value,
+                state = rememberFollowingSliderState(value, valueRange),
                 onValueChange = onValueChange,
                 modifier = modifier,
                 onValueChangeFinished = onValueChangeFinished,
                 colors = colors,
                 interactionSource = interactionSource,
-                valueRange = valueRange,
                 thumb = { SliderDefaults.Thumb(interactionSource = interactionSource, colors = colors, thumbSize = PlayerSeekThumbSize) },
                 track = { sliderState ->
                     SliderDefaults.Track(

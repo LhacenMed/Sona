@@ -2,8 +2,8 @@
 
 package com.lhacenmed.sona.feature.update.ui
 
+import com.lhacenmed.sona.core.designsystem.component.animateProgressAsState
 import android.content.Context
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,7 +15,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.WavyProgressIndicatorDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -113,11 +112,7 @@ fun UpdateDownloadDialog(release: Release, onClose: () -> Unit) {
         UpdateState.Connecting, is UpdateState.Downloading -> {
             val downloading = current as? UpdateState.Downloading
             val progress = downloading?.progress
-            val animatedProgress by animateFloatAsState(
-                targetValue = progress ?: 0f,
-                animationSpec = WavyProgressIndicatorDefaults.ProgressAnimationSpec,
-                label = "update-download-progress",
-            )
+            val animatedProgress by animateProgressAsState(progress ?: 0f)
             SonaDialog(
                 onDismissRequest = {},
                 title = title,

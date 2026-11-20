@@ -26,6 +26,11 @@ import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialogOption
 import com.lhacenmed.sona.core.designsystem.R
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.drop
 
 /**
  * The chooser behind a [SettingsChoiceItem]: every option by its name, in its own order - or, for a look,
@@ -93,12 +98,30 @@ fun SettingsTextFieldDialog(
     check: (suspend (String) -> String?)? = null,
 ) {
     val scope = rememberCoroutineScope()
-    var value by remember { mutableStateOf(initialValue) }
+    val value = rememberTextFieldState(initialValue)
     var refusal by remember { mutableStateOf<String?>(null) }
     var isChecking by remember { mutableStateOf(false) }
     val invalidLabel = stringResource(R.string.settings_dialog_invalid)
     val cancelLabel = stringResource(R.string.confirmation_dialog_cancel)
     val saveLabel = stringResource(R.string.settings_dialog_save)
+    // Saved from its button and from the keyboard's Done alike.
+    fun save() {
+        val typed = value.text.toString()
+        when {
+            !isValid(typed) -> refusal = invalidLabel
+            check == null -> onConfirm(typed)
+            else -> {
+                isChecking = true
+                scope.launch {
+                    val reason = check(typed)
+                    isChecking = false
+                    if (reason == null) onConfirm(typed) else refusal = reason
+                }
+            }
+        }
+    }
+    // A refusal is of what was typed: typing again takes it away.
+    LaunchedEffect(value) { snapshotFlow { value.text.toString() }.drop(1).collect { refusal = null } }
 
     SonaDialog(
         onDismissRequest = onDismiss,
@@ -107,36 +130,20 @@ fun SettingsTextFieldDialog(
         isWorking = isChecking,
         buttons = {
             actionButton(label = cancelLabel, onClick = onDismiss)
-            actionButton(label = saveLabel, enabled = !isChecking, onClick = {
-                when {
-                    !isValid(value) -> refusal = invalidLabel
-                    check == null -> onConfirm(value)
-                    else -> {
-                        isChecking = true
-                        scope.launch {
-                            val reason = check(value)
-                            isChecking = false
-                            if (reason == null) onConfirm(value) else refusal = reason
-                        }
-                    }
-                }
-            })
+            actionButton(label = saveLabel, enabled = !isChecking, onClick = ::save)
         },
     ) {
         description?.let { Text(it, style = MaterialTheme.typography.bodyLarge) }
         OutlinedTextField(
-            value = value,
-            onValueChange = {
-                value = it
-                refusal = null
-            },
+            state = value,
             enabled = !isChecking,
             label = label?.let { { Text(it) } },
             trailingIcon = suffix?.let { { Text(it) } },
             isError = refusal != null,
             supportingText = refusal?.let { { Text(it) } },
-            singleLine = true,
+            lineLimits = TextFieldLineLimits.SingleLine,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = ImeAction.Done),
+            onKeyboardAction = { if (!isChecking) save() },
             modifier = Modifier.fillMaxWidth().padding(top = if (description != null) 16.dp else 0.dp),
         )
     }

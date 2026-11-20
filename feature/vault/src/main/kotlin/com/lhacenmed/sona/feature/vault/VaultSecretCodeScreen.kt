@@ -29,6 +29,10 @@ import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.core.vault.MIN_SECRET_CODE_LENGTH
 import com.lhacenmed.sona.core.vault.VaultState
 import com.lhacenmed.sona.feature.vault.R
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.material3.OutlinedSecureTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 
 /**
  * Choosing the Private Folder's secret code - typed twice, as a PIN is chosen - or, with one set, removing it: the
@@ -46,8 +50,10 @@ internal data class VaultSecretCodeScreen(val hidesFolder: Boolean = false) : Sc
         val navigator = LocalNavigator.current
         val viewModel: VaultAccessViewModel = hiltViewModel()
         val vault by viewModel.state.collectAsStateWithLifecycle()
-        var code by remember { mutableStateOf("") }
-        var confirmation by remember { mutableStateOf("") }
+        val codeState = rememberTextFieldState()
+        val confirmationState = rememberTextFieldState()
+        val code = codeState.text.toString()
+        val confirmation = confirmationState.text.toString()
         var isRemoving by remember { mutableStateOf(false) }
         val hasSecretCode = (vault as? VaultState.Created)?.hasSecretCode == true
         val isLongEnough = code.trim().length >= MIN_SECRET_CODE_LENGTH
@@ -60,22 +66,21 @@ internal data class VaultSecretCodeScreen(val hidesFolder: Boolean = false) : Sc
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Spacer(Modifier.height(24.dp))
-                OutlinedTextField(
-                    value = code,
-                    onValueChange = { code = it },
+                OutlinedSecureTextField(
+                    state = codeState,
                     label = { Text(stringResource(if (hasSecretCode) R.string.vault_new_secret_code else R.string.vault_secret_code)) },
                     supportingText = { Text(stringResource(R.string.vault_secret_code_length, MIN_SECRET_CODE_LENGTH)) },
                     isError = code.isNotEmpty() && !isLongEnough,
-                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = confirmation,
-                    onValueChange = { confirmation = it },
+                OutlinedSecureTextField(
+                    state = confirmationState,
                     label = { Text(stringResource(R.string.vault_confirm_secret_code)) },
                     isError = confirmation.isNotEmpty() && !isConfirmed,
-                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    onKeyboardAction = { if (isConfirmed) viewModel.setSecretCode(code, hidesFolder, onSaved = navigator::back) },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(24.dp))
