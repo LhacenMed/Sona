@@ -8,6 +8,7 @@ import com.lhacenmed.sona.core.model.ReplayHeatmap
 import com.lhacenmed.sona.core.model.ReplayHeatmapStore
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.VideoSubtitle
+import com.lhacenmed.sona.core.model.VideoBookmarkStore
 import com.lhacenmed.sona.core.model.VideoSubtitleStore
 import com.lhacenmed.sona.core.model.sort.SortCriterion
 import com.lhacenmed.sona.core.model.sort.SortOrder
@@ -17,6 +18,8 @@ import com.lhacenmed.sona.core.vault.data.VaultReplayHeatmap
 import com.lhacenmed.sona.core.vault.data.VaultReplayHeatmapDao
 import com.lhacenmed.sona.core.vault.data.VaultResumePosition
 import com.lhacenmed.sona.core.vault.data.VaultResumePositionDao
+import com.lhacenmed.sona.core.vault.data.VaultVideoBookmark
+import com.lhacenmed.sona.core.vault.data.VaultVideoBookmarkDao
 import com.lhacenmed.sona.core.vault.data.VaultVideoSubtitle
 import com.lhacenmed.sona.core.vault.data.VaultVideoSubtitleDao
 import java.io.File
@@ -99,6 +102,7 @@ class VaultRepository @Inject internal constructor(
     private val resumePositionDao: VaultResumePositionDao,
     private val videoSubtitleDao: VaultVideoSubtitleDao,
     private val replayHeatmapDao: VaultReplayHeatmapDao,
+    private val videoBookmarkDao: VaultVideoBookmarkDao,
     private val librarySettings: LibrarySettings,
     @ApplicationScope scope: CoroutineScope,
 ) {
@@ -342,6 +346,15 @@ class VaultRepository @Inject internal constructor(
 
         override suspend fun write(videoId: Long, heatmap: ReplayHeatmap) =
             replayHeatmapDao.upsert(VaultReplayHeatmap(videoId, heatmap.durationMs, heatmap.toBytes()))
+    }
+
+    /** The places marked in its videos, kept in the vault with the rest of it. */
+    val videoBookmarks: VideoBookmarkStore = object : VideoBookmarkStore {
+        override suspend fun read(videoId: Long): List<Long> = videoBookmarkDao.get(videoId)
+
+        override suspend fun add(videoId: Long, positionMs: Long) = videoBookmarkDao.upsert(VaultVideoBookmark(videoId, positionMs))
+
+        override suspend fun remove(videoId: Long, positionMs: Long) = videoBookmarkDao.delete(videoId, positionMs)
     }
 
     /** Copies [track]'s file in from [source]. The library's copy is the caller's to delete once this returns. */

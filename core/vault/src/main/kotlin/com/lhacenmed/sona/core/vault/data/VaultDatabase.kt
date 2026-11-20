@@ -10,8 +10,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * is not - see `vaultDirectory`.
  */
 @Database(
-    entities = [VaultItem::class, VaultResumePosition::class, VaultVideoSubtitle::class, VaultReplayHeatmap::class],
-    version = 5,
+    entities = [VaultItem::class, VaultResumePosition::class, VaultVideoSubtitle::class, VaultReplayHeatmap::class, VaultVideoBookmark::class],
+    version = 6,
     exportSchema = true,
 )
 abstract class VaultDatabase : RoomDatabase() {
@@ -19,6 +19,18 @@ abstract class VaultDatabase : RoomDatabase() {
     abstract fun resumePositionDao(): VaultResumePositionDao
     abstract fun videoSubtitleDao(): VaultVideoSubtitleDao
     abstract fun replayHeatmapDao(): VaultReplayHeatmapDao
+    abstract fun videoBookmarkDao(): VaultVideoBookmarkDao
+}
+
+/** The places marked in each video. A table of its own, starting empty. */
+internal val VAULT_MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `vault_video_bookmarks` (`itemId` INTEGER NOT NULL, `positionMs` INTEGER NOT NULL, " +
+                "PRIMARY KEY(`itemId`, `positionMs`), " +
+                "FOREIGN KEY(`itemId`) REFERENCES `vault_items`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        )
+    }
 }
 
 /** How often each moment of each video has been watched. A table of its own, starting empty. */
