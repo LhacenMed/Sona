@@ -20,10 +20,27 @@ import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import org.json.JSONArray
 import org.json.JSONObject
+import com.lhacenmed.sona.core.model.SearchEngine
+import com.lhacenmed.sona.core.model.ShieldsPreferences
 
 private val KIND = stringPreferencesKey("download_kind")
 /** The browser's bookmarks, as a JSON array of `{url, title}`, in the order they were added. */
 private val BROWSER_BOOKMARKS = stringPreferencesKey("browser_bookmarks")
+private val BROWSER_SEARCH_ENGINE = stringPreferencesKey("browser_search_engine")
+private val SHIELDS_AD_BLOCK = stringPreferencesKey("browser_shields_ad_block")
+private val SHIELDS_HTTPS_UPGRADE = stringPreferencesKey("browser_shields_https_upgrade")
+private val SHIELDS_BLOCK_SCRIPTS = booleanPreferencesKey("browser_shields_block_scripts")
+private val SHIELDS_FINGERPRINTING = stringPreferencesKey("browser_shields_fingerprinting")
+private val SHIELDS_COOKIES = stringPreferencesKey("browser_shields_cookies")
+private val SHIELDS_FORGET_ON_CLOSE = booleanPreferencesKey("browser_shields_forget_on_close")
+private val SHIELDS_REDUCE_LANGUAGE = booleanPreferencesKey("browser_shields_reduce_language")
+private val SHIELDS_DE_AMP = booleanPreferencesKey("browser_shields_de_amp")
+private val SHIELDS_DEBOUNCE = booleanPreferencesKey("browser_shields_debounce")
+/** The sites, by eTLD+1, the browser's Shields are down on. */
+private val SHIELDS_DOWN_SITES = stringSetPreferencesKey("browser_shields_down_sites")
+/** The filter lists, by catalog id, turned on - and off - against the catalog's defaults. */
+private val SHIELDS_LISTS_ON = stringSetPreferencesKey("browser_shields_lists_on")
+private val SHIELDS_LISTS_OFF = stringSetPreferencesKey("browser_shields_lists_off")
 private val VIDEO_QUALITY = stringPreferencesKey("download_video_quality")
 private val VIDEO_FORMAT = stringPreferencesKey("download_video_format")
 private val AUDIO_FORMAT = stringPreferencesKey("download_audio_format")
@@ -151,6 +168,51 @@ class DownloadSettings @Inject constructor(
         val array = preferences[BROWSER_BOOKMARKS]?.let { runCatching { JSONArray(it) }.getOrNull() } ?: return@setting emptyList()
         List(array.length()) { array.optJSONObject(it) }.mapNotNull { item ->
             item?.optString("url")?.takeIf(String::isNotEmpty)?.let { BrowserBookmark(it, item.optString("title")) }
+        }
+    }
+
+    /** What the browser searches with - see [SearchEngine]. */
+    val browserSearchEngine: Setting<SearchEngine> = cache.setting { it.enum(BROWSER_SEARCH_ENGINE, SearchEngine.Default) }
+
+    suspend fun setBrowserSearchEngine(engine: SearchEngine) {
+        dataStore.edit { it[BROWSER_SEARCH_ENGINE] = engine.name }
+    }
+
+    /** The browser's Shields and privacy - see [ShieldsPreferences]. */
+    val browserShields: Setting<ShieldsPreferences> = cache.setting { preferences ->
+        val defaults = ShieldsPreferences()
+        ShieldsPreferences(
+            adBlock = preferences.enum(SHIELDS_AD_BLOCK, defaults.adBlock),
+            httpsUpgrade = preferences.enum(SHIELDS_HTTPS_UPGRADE, defaults.httpsUpgrade),
+            blockScripts = preferences[SHIELDS_BLOCK_SCRIPTS] ?: defaults.blockScripts,
+            fingerprinting = preferences.enum(SHIELDS_FINGERPRINTING, defaults.fingerprinting),
+            cookies = preferences.enum(SHIELDS_COOKIES, defaults.cookies),
+            forgetOnClose = preferences[SHIELDS_FORGET_ON_CLOSE] ?: defaults.forgetOnClose,
+            reduceLanguage = preferences[SHIELDS_REDUCE_LANGUAGE] ?: defaults.reduceLanguage,
+            deAmp = preferences[SHIELDS_DE_AMP] ?: defaults.deAmp,
+            debounce = preferences[SHIELDS_DEBOUNCE] ?: defaults.debounce,
+            downSites = preferences[SHIELDS_DOWN_SITES] ?: defaults.downSites,
+            listsOn = preferences[SHIELDS_LISTS_ON] ?: defaults.listsOn,
+            listsOff = preferences[SHIELDS_LISTS_OFF] ?: defaults.listsOff,
+        )
+    }
+
+    /** Changes the Shields as [change] makes them from what they are. */
+    suspend fun updateShields(change: (ShieldsPreferences) -> ShieldsPreferences) {
+        dataStore.edit { preferences ->
+            val shields = change(browserShields.value)
+            preferences[SHIELDS_AD_BLOCK] = shields.adBlock.name
+            preferences[SHIELDS_HTTPS_UPGRADE] = shields.httpsUpgrade.name
+            preferences[SHIELDS_BLOCK_SCRIPTS] = shields.blockScripts
+            preferences[SHIELDS_FINGERPRINTING] = shields.fingerprinting.name
+            preferences[SHIELDS_COOKIES] = shields.cookies.name
+            preferences[SHIELDS_FORGET_ON_CLOSE] = shields.forgetOnClose
+            preferences[SHIELDS_REDUCE_LANGUAGE] = shields.reduceLanguage
+            preferences[SHIELDS_DE_AMP] = shields.deAmp
+            preferences[SHIELDS_DEBOUNCE] = shields.debounce
+            preferences[SHIELDS_DOWN_SITES] = shields.downSites
+            preferences[SHIELDS_LISTS_ON] = shields.listsOn
+            preferences[SHIELDS_LISTS_OFF] = shields.listsOff
         }
     }
 

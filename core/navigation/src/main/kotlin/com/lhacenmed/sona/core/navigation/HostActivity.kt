@@ -30,6 +30,10 @@ import com.lhacenmed.sona.core.designsystem.theme.AppTheme
 import com.lhacenmed.sona.core.designsystem.theme.SonaTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.asPaddingValues
+import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 
 /**
  * The single reusable host for every "pushed" screen in the app. Adding a new screen never
@@ -115,10 +119,7 @@ class HostActivity : SonaActivity() {
                     CompositionLocalProvider(LocalNavigator provides navigator, LocalScreenEntered provides hasEntered) {
                         // Over the player too, so a screen can lay something over the whole window.
                         WindowOverlayHost {
-                            playerOverlay.Content(
-                                isPrivate = screen.isPrivate,
-                                expandsPlayer = arrivesAtPlaying,
-                            ) {
+                            val screenContent: @Composable () -> Unit = {
                                 // Inside the player, so the screen's FABs stand clear of it.
                                 FloatingActionButtonStack {
                                     if (arrivesAtPlaying) PlayingRowReveal()
@@ -144,6 +145,15 @@ class HostActivity : SonaActivity() {
                                         }
                                     }
                                 }
+                            }
+                            if (screen.hasPlayer) {
+                                playerOverlay.Content(isPrivate = screen.isPrivate, expandsPlayer = arrivesAtPlaying, content = screenContent)
+                            } else {
+                                // No mini player to stand clear of: lists end clear of the navigation bar alone.
+                                CompositionLocalProvider(
+                                    LocalBottomContentPadding provides WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+                                    content = screenContent,
+                                )
                             }
                         }
                         appPrompts.Content()

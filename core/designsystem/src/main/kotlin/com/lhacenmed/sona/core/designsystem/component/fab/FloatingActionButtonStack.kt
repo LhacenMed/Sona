@@ -24,6 +24,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -32,6 +33,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.findRootCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import com.lhacenmed.sona.core.designsystem.component.LaunchMiniPlayerRise
 import com.lhacenmed.sona.core.designsystem.component.LaunchOrder
 import com.lhacenmed.sona.core.designsystem.component.launchEntrance
@@ -129,9 +134,15 @@ internal class FloatingActionButtonStackState {
     /** The navigation bar the stack stands on while there is no mini player. */
     var navigationBarHeight: Dp by mutableStateOf(0.dp)
 
-    /** How much of the window's bottom stands covered at this moment: by the player, or by the navigation bar while the player is lower. */
+    /** How high each of the screen's own bars at its foot reaches, from the window's bottom - see [floatingActionButtonFloor]. */
+    internal val floors = mutableStateMapOf<Any, Dp>()
+
+    /**
+     * How much of the window's bottom stands covered at this moment: by the player, by the navigation bar while the player is
+     * lower, or by the highest of the screen's own bars at its foot.
+     */
     val coveredHeight: Dp
-        get() = max(playerSheet.value, navigationBarHeight)
+        get() = max(max(playerSheet.value, navigationBarHeight), floors.values.maxOrNull() ?: 0.dp)
 
     /**
      * How high the stack's bottom stands above the window's bottom at this moment: a FAB's margin above
@@ -161,6 +172,23 @@ internal class FloatingActionButtonStackState {
 }
 
 internal val LocalFloatingActionButtonStack = staticCompositionLocalOf<FloatingActionButtonStackState?> { null }
+
+/**
+ * Marks this as a bar of the screen's own at its foot - its Copy and Share, its Save - which the window's FABs stand above, a
+ * FAB's margin over its top, as they stand above the mini player: the scroll button never lands on it. Where it reaches is
+ * read as it is laid out, so a bar that grows, shrinks or leaves moves the stack with it; nothing of the bar itself changes.
+ */
+fun Modifier.floatingActionButtonFloor(): Modifier = composed {
+    val stack = LocalFloatingActionButtonStack.current ?: return@composed this
+    val density = LocalDensity.current
+    val key = remember { Any() }
+    DisposableEffect(stack, key) { onDispose { stack.floors.remove(key) } }
+    onGloballyPositioned { coordinates ->
+        val windowHeight = coordinates.findRootCoordinates().size.height
+        val reach = with(density) { (windowHeight - coordinates.boundsInWindow().top).coerceAtLeast(0f).toDp() }
+        if (stack.floors[key] != reach) stack.floors[key] = reach
+    }
+}
 
 /**
  * Every FAB the screen [content] shows, stacked at the window's bottom end: the screen's own buttons, if it

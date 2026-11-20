@@ -43,6 +43,12 @@ data object DownloadsSettingsScreen : Screen {
                 onClick = { navigator.go(NetworkSettingsScreen) },
             )
             SettingsNavigationItem(
+                title = stringResource(R.string.downloads_settings_browser_title),
+                summary = stringResource(R.string.downloads_settings_browser_summary),
+                icon = SonaIcons.Language,
+                onClick = { navigator.go(BrowserSettingsScreen) },
+            )
+            SettingsNavigationItem(
                 title = stringResource(R.string.downloads_settings_subtitles_title),
                 summary = stringResource(R.string.downloads_settings_subtitles_summary),
                 icon = SonaIcons.Subtitles,

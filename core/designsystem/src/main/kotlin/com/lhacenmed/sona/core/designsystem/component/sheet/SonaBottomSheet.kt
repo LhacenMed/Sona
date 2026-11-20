@@ -29,6 +29,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
 import com.lhacenmed.sona.core.designsystem.effect.ProvideSonaHaptics
@@ -132,12 +133,16 @@ fun SonaLazyBottomSheet(
     }
 }
 
+/** A sheet's title, as every sheet's stands - for a header of its own that only adds to it: [modifier], a long press's. */
 @Composable
-internal fun SheetTitle(title: String) {
+fun SheetTitle(title: String, modifier: Modifier = Modifier) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleLarge,
-        modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
+        // A title is what the sheet is about - a page's, a link's - never all of a long one: two lines, then cut short.
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
     )
 }
 

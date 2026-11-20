@@ -7,6 +7,7 @@ import com.lhacenmed.sona.feature.library.R as LibraryR
 import com.lhacenmed.sona.feature.settings.R
 import com.lhacenmed.sona.feature.download.R as DownloadR
 import com.lhacenmed.sona.feature.settings.SettingsCategory
+import com.lhacenmed.sona.feature.download.settings.BrowserSettingsScreen
 import com.lhacenmed.sona.feature.download.settings.CookieProfilesScreen
 import com.lhacenmed.sona.feature.download.settings.DownloadDirectorySettingsScreen
 import com.lhacenmed.sona.feature.download.settings.DownloadsSettingsScreen
@@ -231,6 +232,7 @@ internal val SettingsSearchEntries: List<SettingsSearchEntry> = with(SettingsCat
         on(DownloadsSettingsScreen, DownloadR.string.downloads_settings_general_title, DownloadR.string.downloads_settings_general_summary),
         on(DownloadsSettingsScreen, DownloadR.string.downloads_settings_directory_title, DownloadR.string.downloads_settings_directory_summary),
         on(DownloadsSettingsScreen, DownloadR.string.downloads_settings_network_title, DownloadR.string.downloads_settings_network_summary),
+        on(DownloadsSettingsScreen, DownloadR.string.downloads_settings_browser_title, DownloadR.string.downloads_settings_browser_summary),
         on(DownloadsSettingsScreen, DownloadR.string.downloads_settings_subtitles_title, DownloadR.string.downloads_settings_subtitles_summary),
         on(DownloadsSettingsScreen, DownloadR.string.downloads_settings_commands_title, DownloadR.string.downloads_settings_commands_summary),
         on(DownloadsSettingsScreen, DownloadR.string.downloads_settings_watches_title, DownloadR.string.downloads_settings_watches_summary),
@@ -269,7 +271,22 @@ internal val SettingsSearchEntries: List<SettingsSearchEntry> = with(SettingsCat
         on(NetworkSettingsScreen, DownloadR.string.downloads_settings_proxy_title, DownloadR.string.downloads_settings_proxy_summary),
         on(NetworkSettingsScreen, DownloadR.string.downloads_settings_fragments_title, DownloadR.string.downloads_settings_fragments_summary),
         on(NetworkSettingsScreen, DownloadR.string.downloads_settings_ipv4_title, DownloadR.string.downloads_settings_ipv4_summary),
-        on(NetworkSettingsScreen, DownloadR.string.downloads_settings_cookies_title, DownloadR.string.downloads_settings_cookies_summary),
+        on(BrowserSettingsScreen, DownloadR.string.downloads_settings_cookies_title, DownloadR.string.downloads_settings_cookies_summary),
+    ) + section(
+        DownloadR.string.downloads_settings_general_section,
+        on(BrowserSettingsScreen, DownloadR.string.browser_settings_search_engine),
+    ) + section(
+        DownloadR.string.browser_shields_and_privacy,
+        on(BrowserSettingsScreen, DownloadR.string.browser_shields_ad_block),
+        on(BrowserSettingsScreen, DownloadR.string.browser_shields_https_upgrade, DownloadR.string.browser_shields_https_upgrade_summary),
+        on(BrowserSettingsScreen, DownloadR.string.browser_shields_block_scripts, DownloadR.string.browser_shields_block_scripts_summary),
+        on(BrowserSettingsScreen, DownloadR.string.browser_shields_fingerprinting, DownloadR.string.browser_shields_fingerprinting_summary),
+        on(CookieProfilesScreen, DownloadR.string.browser_shields_cookies),
+        on(BrowserSettingsScreen, DownloadR.string.browser_shields_forget, DownloadR.string.browser_shields_forget_summary),
+        on(BrowserSettingsScreen, DownloadR.string.browser_shields_language, DownloadR.string.browser_shields_language_summary),
+        on(BrowserSettingsScreen, DownloadR.string.browser_shields_de_amp, DownloadR.string.browser_shields_de_amp_summary),
+        on(BrowserSettingsScreen, DownloadR.string.browser_shields_debounce, DownloadR.string.browser_shields_debounce_summary),
+        on(BrowserSettingsScreen, DownloadR.string.browser_shields_content_filtering, DownloadR.string.browser_shields_content_filtering_summary),
     ) + section(
         DownloadR.string.downloads_settings_general_section,
         on(SubtitleSettingsScreen, DownloadR.string.downloads_settings_download_subtitles),

@@ -6,12 +6,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,7 +19,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.SonaListRow
@@ -34,6 +30,7 @@ import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
 import com.lhacenmed.sona.core.designsystem.component.selectAllAction
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsActionItem
+import com.lhacenmed.sona.core.designsystem.component.settings.SettingsChoiceItem
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsList
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsNote
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSwitchContainerItem
@@ -45,8 +42,10 @@ import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.download.R
 import com.lhacenmed.sona.core.designsystem.R as DesignSystemR
-import com.lhacenmed.sona.feature.download.tools.CookieSite
-import com.lhacenmed.sona.feature.download.tools.CookiesScreen
+import com.lhacenmed.sona.core.downloader.CookieSite
+import com.lhacenmed.sona.core.model.CookieBlockMode
+import com.lhacenmed.sona.feature.download.browser.BrowserScreen
+import com.lhacenmed.sona.feature.download.browser.BrowserViewModel
 import com.lhacenmed.sona.feature.download.tools.CookiesViewModel
 
 /** The name a file of exported cookies is offered under. */
@@ -64,10 +63,12 @@ data object CookieProfilesScreen : Screen {
         val navigator = LocalNavigator.current
         val context = LocalContext.current
         val viewModel: CookiesViewModel = hiltViewModel()
+        val browser: BrowserViewModel = hiltViewModel()
+        val shields by browser.shieldsPreferences.collectAsStateWithLifecycle()
+        val update = browser.shields::update
         val sites by viewModel.sites.collectAsStateWithLifecycle()
         val preferences by viewModel.preferences.collectAsStateWithLifecycle()
         val selection = rememberSelectionState()
-        var editingUrl by remember { mutableStateOf<String?>(null) }
         var isShowingHelp by remember { mutableStateOf(false) }
         var isClearing by remember { mutableStateOf(false) }
         var isRemoving by remember { mutableStateOf(false) }
@@ -97,6 +98,18 @@ data object CookieProfilesScreen : Screen {
                 ),
             )
             SettingsList {
+                SettingsChoiceItem(
+                    title = stringResource(R.string.browser_shields_cookies),
+                    options = listOf(
+                        stringResource(R.string.browser_shields_cookies_cross_site),
+                        stringResource(R.string.browser_shields_cookies_all),
+                        stringResource(R.string.browser_shields_cookies_allow),
+                    ),
+                    selectedIndex = shields.cookies.ordinal,
+                    defaultIndex = CookieBlockMode.CROSS_SITE.ordinal,
+                    onSelect = { index -> update { it.copy(cookies = CookieBlockMode.entries[index]) } },
+                    icon = SonaIcons.Cookie,
+                )
                 // As Seal's: nothing to read sites signed in with yet, it says how to have some instead.
                 SettingsSwitchContainerItem(
                     title = stringResource(R.string.downloads_settings_use_cookies),
@@ -111,7 +124,7 @@ data object CookieProfilesScreen : Screen {
                         subtitle = pluralStringResource(R.plurals.downloads_settings_cookie_count, site.cookieCount, site.cookieCount),
                         selection = selection,
                         selectionKey = site.domain,
-                        onClick = { editingUrl = "https://${site.domain}" },
+                        onClick = { navigator.go(BrowserScreen(page = "https://${site.domain}")) },
                         onOpenOptions = null,
                         cover = { Icon(SonaIcons.Language, contentDescription = null) },
                     )
@@ -119,7 +132,8 @@ data object CookieProfilesScreen : Screen {
                 SettingsActionItem(
                     title = stringResource(R.string.downloads_settings_generate_cookies),
                     icon = SonaIcons.Add,
-                    onClick = { editingUrl = "" },
+                    // Signed in on the browser, as on any - its address bar is where the site is gone to.
+                    onClick = { navigator.go(BrowserScreen()) },
                 )
                 SettingsSwitchItem(
                     title = stringResource(R.string.downloads_settings_ua_header),
@@ -138,17 +152,6 @@ data object CookieProfilesScreen : Screen {
                     ),
                 )
             }
-        }
-
-        editingUrl?.let { url ->
-            CookieGeneratorDialog(
-                initialUrl = url,
-                onGenerate = { site ->
-                    editingUrl = null
-                    navigator.go(CookiesScreen(site))
-                },
-                onDismiss = { editingUrl = null },
-            )
         }
 
         if (isShowingHelp) {
@@ -195,34 +198,5 @@ data object CookieProfilesScreen : Screen {
                 },
             )
         }
-    }
-}
-
-/**
- * Seal's cookie generator: the site to sign in on, opened to sign in on it - its cookies then saved for it, in place of any
- * saved for it before.
- */
-@Composable
-private fun CookieGeneratorDialog(initialUrl: String, onGenerate: (String) -> Unit, onDismiss: () -> Unit) {
-    var url by remember { mutableStateOf(initialUrl) }
-    val cancelLabel = stringResource(R.string.download_cancel)
-    val generateLabel = stringResource(R.string.downloads_settings_generate_cookies)
-    SonaDialog(
-        onDismissRequest = onDismiss,
-        title = stringResource(R.string.downloads_settings_cookies_title),
-        icon = { Icon(SonaIcons.Cookie, contentDescription = null) },
-        buttons = {
-            actionButton(label = cancelLabel, onClick = onDismiss)
-            actionButton(label = generateLabel, enabled = url.isNotBlank(), onClick = { onGenerate(url.trim()) })
-        },
-    ) {
-        OutlinedTextField(
-            value = url,
-            onValueChange = { url = it },
-            label = { Text(stringResource(R.string.downloads_settings_cookies_url)) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-            modifier = Modifier.fillMaxWidth(),
-        )
     }
 }

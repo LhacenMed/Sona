@@ -63,6 +63,17 @@ import com.lhacenmed.sona.core.model.YtDlpChannel
 import com.lhacenmed.sona.feature.download.R
 import com.lhacenmed.sona.feature.download.rememberDownloadFolderPicker
 import kotlin.math.roundToInt
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.drop
+import androidx.compose.foundation.text.input.TextFieldState
 
 /** Where yt-dlp's SponsorBlock options are described - what Seal's dialog links to. */
 private const val SponsorBlockReference = "https://github.com/yt-dlp/yt-dlp#sponsorblock-options"
@@ -126,9 +137,9 @@ internal fun YtDlpUpdateDialog(
         }
         DialogSubtitle(stringResource(R.string.downloads_settings_additional_settings))
         ExposedDropdownMenuBox(expanded = isChoosingInterval, onExpandedChange = { isChoosingInterval = it }) {
+            val intervalLabel = stringResource(pickedInterval.labelRes)
             OutlinedTextField(
-                value = stringResource(pickedInterval.labelRes),
-                onValueChange = {},
+                state = remember(intervalLabel) { TextFieldState(intervalLabel) },
                 readOnly = true,
                 label = { Text(stringResource(R.string.downloads_settings_auto_update)) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isChoosingInterval) },
@@ -169,11 +180,11 @@ private val YtDlpChannel.labelRes: Int
  */
 @Composable
 internal fun SponsorBlockDialog(picked: Set<SponsorSegment>, onSave: (Set<SponsorSegment>) -> Unit, onDismiss: () -> Unit) {
-    var categories by remember { mutableStateOf(SponsorSegment.entries.filter { it in picked }.joinToString(",") { it.id }) }
+    val categories = rememberTextFieldState(SponsorSegment.entries.filter { it in picked }.joinToString(",") { it.id })
     val uriHandler = LocalUriHandler.current
     val cancelLabel = stringResource(R.string.download_cancel)
     val saveLabel = stringResource(R.string.download_save)
-    val named = categories.split(',').map(String::trim)
+    val named = categories.text.split(',').map(String::trim)
 
     SonaDialog(
         onDismissRequest = onDismiss,
@@ -186,20 +197,20 @@ internal fun SponsorBlockDialog(picked: Set<SponsorSegment>, onSave: (Set<Sponso
     ) {
         Text(stringResource(R.string.downloads_settings_sponsorblock_categories_summary), style = MaterialTheme.typography.bodyLarge)
         OutlinedTextField(
-            value = categories,
-            onValueChange = { categories = it },
+            state = categories,
             label = { Text(stringResource(R.string.downloads_settings_sponsorblock_categories)) },
+            keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
             modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 12.dp),
         )
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            item { SuggestionChip(onClick = { categories = DEFAULT_SEGMENTS }, label = { Text(DEFAULT_SEGMENTS) }) }
-            item { SuggestionChip(onClick = { categories = ALL_SEGMENTS }, label = { Text(ALL_SEGMENTS) }) }
+            item { SuggestionChip(onClick = { categories.setTextAndPlaceCursorAtEnd(DEFAULT_SEGMENTS) }, label = { Text(DEFAULT_SEGMENTS) }) }
+            item { SuggestionChip(onClick = { categories.setTextAndPlaceCursorAtEnd(ALL_SEGMENTS) }, label = { Text(ALL_SEGMENTS) }) }
             SponsorSegment.entries.filter { it.id !in named }.forEach { segment ->
                 item {
                     SuggestionChip(
                         onClick = {
                             val kept = named.filter { it.isNotEmpty() && it != ALL_SEGMENTS && it != DEFAULT_SEGMENTS }
-                            categories = (kept + segment.id).joinToString(",")
+                            categories.setTextAndPlaceCursorAtEnd((kept + segment.id).joinToString(","))
                         },
                         label = { Text(segment.id) },
                     )
@@ -230,7 +241,7 @@ private fun segmentsNamed(names: List<String>): Set<SponsorSegment> = names.flat
 /** The archive - Seal's Edit file: what it holds, a site and a video's id to a line, edited and saved in place of it. */
 @Composable
 internal fun ArchiveDialog(content: String, onSave: (String) -> Unit, onDismiss: () -> Unit) {
-    var edited by remember { mutableStateOf(content) }
+    val edited = rememberTextFieldState(content)
     val cancelLabel = stringResource(R.string.download_cancel)
     val saveLabel = stringResource(R.string.download_save)
 
@@ -240,16 +251,15 @@ internal fun ArchiveDialog(content: String, onSave: (String) -> Unit, onDismiss:
         icon = { Icon(SonaIcons.Edit, contentDescription = null) },
         buttons = {
             actionButton(label = cancelLabel, onClick = onDismiss)
-            actionButton(label = saveLabel, onClick = { onSave(edited) })
+            actionButton(label = saveLabel, onClick = { onSave(edited.text.toString()) })
         },
     ) {
         OutlinedTextField(
-            value = edited,
-            onValueChange = { edited = it },
+            state = edited,
             label = { Text(stringResource(R.string.downloads_settings_archive_file)) },
             textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
-            minLines = 10,
-            maxLines = 10,
+            lineLimits = TextFieldLineLimits.MultiLine(minHeightInLines = 10, maxHeightInLines = 10),
+            keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
             modifier = Modifier.fillMaxWidth(),
         )
     }
@@ -307,7 +317,7 @@ private fun DialogChip(label: String, icon: ImageVector, onClick: () -> Unit) {
  */
 @Composable
 internal fun SubtitleLanguagesDialog(languages: String, onSave: (String) -> Unit, onDismiss: () -> Unit) {
-    var edited by remember { mutableStateOf(languages) }
+    val edited = rememberTextFieldState(languages)
     val uriHandler = LocalUriHandler.current
     val cancelLabel = stringResource(R.string.download_cancel)
     val saveLabel = stringResource(R.string.download_save)
@@ -318,21 +328,22 @@ internal fun SubtitleLanguagesDialog(languages: String, onSave: (String) -> Unit
         icon = { Icon(SonaIcons.Language, contentDescription = null) },
         buttons = {
             actionButton(label = cancelLabel, onClick = onDismiss)
-            actionButton(label = saveLabel, onClick = { onSave(edited) })
+            actionButton(label = saveLabel, onClick = { onSave(edited.text.toString()) })
         },
     ) {
         Text(stringResource(R.string.downloads_settings_subtitle_languages_summary))
         OutlinedTextField(
-            value = edited,
-            onValueChange = { edited = it },
+            state = edited,
             label = { Text(stringResource(R.string.downloads_settings_subtitle_languages)) },
             placeholder = { Text(stringResource(R.string.downloads_settings_subtitle_languages_default)) },
             textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
-            singleLine = true,
+            lineLimits = TextFieldLineLimits.SingleLine,
+            keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, imeAction = ImeAction.Done),
+            onKeyboardAction = { onSave(edited.text.toString()) },
             modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp),
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
-            DialogChip(stringResource(R.string.downloads_settings_reset), SonaIcons.Sync) { edited = "" }
+            DialogChip(stringResource(R.string.downloads_settings_reset), SonaIcons.Sync) { edited.clearText() }
             DialogChip(stringResource(R.string.downloads_settings_ytdlp_docs), SonaIcons.OpenInNew) { runCatching { uriHandler.openUri(SubtitleReference) } }
         }
     }
@@ -348,8 +359,10 @@ private val FileNameTemplates = listOf(TITLE_FILE_NAME_TEMPLATE, DEFAULT_FILE_NA
 @Composable
 internal fun OutputTemplateDialog(template: String, onSave: (String) -> Unit, onDismiss: () -> Unit) {
     var picked by remember { mutableIntStateOf(FileNameTemplates.indexOf(template).takeIf { it >= 0 } ?: FileNameTemplates.size) }
-    var custom by remember { mutableStateOf(template.takeIf { it !in FileNameTemplates } ?: DEFAULT_FILE_NAME_TEMPLATE) }
-    val isCustomValid = FILE_NAME_BASENAME in custom && custom.endsWith(FILE_NAME_EXTENSION)
+    val custom = rememberTextFieldState(template.takeIf { it !in FileNameTemplates } ?: DEFAULT_FILE_NAME_TEMPLATE)
+    val customTemplate = custom.text.toString()
+    val isCustomValid = FILE_NAME_BASENAME in customTemplate && customTemplate.endsWith(FILE_NAME_EXTENSION)
+    LaunchedEffect(custom) { snapshotFlow { custom.text.toString() }.drop(1).collect { picked = FileNameTemplates.size } }
     val uriHandler = LocalUriHandler.current
     val cancelLabel = stringResource(R.string.download_cancel)
     val saveLabel = stringResource(R.string.download_save)
@@ -364,7 +377,7 @@ internal fun OutputTemplateDialog(template: String, onSave: (String) -> Unit, on
             actionButton(
                 label = saveLabel,
                 enabled = picked < FileNameTemplates.size || isCustomValid,
-                onClick = { onSave(FileNameTemplates.getOrNull(picked) ?: custom) },
+                onClick = { onSave(FileNameTemplates.getOrNull(picked) ?: customTemplate) },
             )
         },
     ) {
@@ -378,13 +391,10 @@ internal fun OutputTemplateDialog(template: String, onSave: (String) -> Unit, on
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 12.dp)) {
                 RadioButton(selected = picked == FileNameTemplates.size, onClick = { picked = FileNameTemplates.size })
                 OutlinedTextField(
-                    value = custom,
-                    onValueChange = {
-                        custom = it
-                        picked = FileNameTemplates.size
-                    },
+                    state = custom,
                     label = { Text(stringResource(R.string.downloads_settings_custom_template)) },
                     textStyle = monospace,
+                    keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
                     isError = !isCustomValid,
                     supportingText = {
                         Text(
@@ -408,8 +418,9 @@ internal fun OutputTemplateDialog(template: String, onSave: (String) -> Unit, on
  */
 @Composable
 internal fun CommandFolderDialog(folder: String, onSave: (String) -> Unit, onDismiss: () -> Unit) {
-    var edited by remember { mutableStateOf(folder) }
-    val pickFolder = rememberDownloadFolderPicker { edited = it }
+    val edited = rememberTextFieldState(folder)
+    val pickFolder = rememberDownloadFolderPicker(edited::setTextAndPlaceCursorAtEnd)
+    fun save() = onSave(edited.text.trim().trimEnd('/').toString())
     val uriHandler = LocalUriHandler.current
     val cancelLabel = stringResource(R.string.download_cancel)
     val saveLabel = stringResource(R.string.download_save)
@@ -420,15 +431,16 @@ internal fun CommandFolderDialog(folder: String, onSave: (String) -> Unit, onDis
         icon = { Icon(SonaIcons.Folder, contentDescription = null) },
         buttons = {
             actionButton(label = cancelLabel, onClick = onDismiss)
-            actionButton(label = saveLabel, onClick = { onSave(edited.trim().trimEnd('/')) })
+            actionButton(label = saveLabel, onClick = ::save)
         },
     ) {
         Text(stringResource(R.string.downloads_settings_command_folder_summary), style = MaterialTheme.typography.bodyLarge)
         OutlinedTextField(
-            value = edited,
-            onValueChange = { edited = it },
+            state = edited,
             leadingIcon = { Text(stringResource(R.string.downloads_settings_command_folder_flag), fontFamily = FontFamily.Monospace) },
-            singleLine = true,
+            lineLimits = TextFieldLineLimits.SingleLine,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
+            onKeyboardAction = { save() },
             modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 8.dp),
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {

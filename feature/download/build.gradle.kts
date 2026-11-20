@@ -41,6 +41,9 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.work.runtime)
+    // The browser's Shields: a script every page starts with, and the filter lists fetched.
+    implementation(libs.androidx.webkit)
+    implementation(libs.okhttp)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
@@ -57,6 +60,8 @@ dependencies {
     ksp(libs.hilt.compiler)
 
     testImplementation(libs.junit)
+    // Android's own org.json is a stub off the device.
+    testImplementation("org.json:json:20240303")
 }
 
 kotlin {

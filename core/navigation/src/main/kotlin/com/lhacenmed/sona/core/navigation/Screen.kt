@@ -27,6 +27,12 @@ interface Screen : Serializable {
      */
     val isPrivate: Boolean get() = false
 
+    /**
+     * Whether the player is laid over this screen - its mini player at the foot, opening into the full one. False for a screen
+     * that takes the whole window for its own controls, as the browser's are at its foot: nothing of the player is there.
+     */
+    val hasPlayer: Boolean get() = true
+
     @Composable
     fun Content()
 }

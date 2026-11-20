@@ -28,6 +28,7 @@ object SonaIcons {
     val AccountCircle: ImageVector by icon { Glyphs.AccountCircle }
     val Add: ImageVector by icon { Glyphs.Add }
     val AddPhotoAlternate: ImageVector by icon { Glyphs.AddPhotoAlternate }
+    val AutoDelete: ImageVector by icon { Glyphs.AutoDelete }
     val Album: ImageVector by icon { Glyphs.Album }
     val Archive: ImageVector by icon { Glyphs.Archive }
     val ArrowBack: ImageVector by icon { MirroredGlyphs.ArrowBack }
@@ -52,7 +53,11 @@ object SonaIcons {
     val Backup: ImageVector by icon { Glyphs.Backup }
     val Bedtime: ImageVector by icon { Glyphs.Bedtime }
     val Block: ImageVector by icon { Glyphs.Block }
+    val Bolt: ImageVector by icon { Glyphs.Bolt }
     val Bookmark: ImageVector by icon { Glyphs.Bookmark }
+    /** Marking a place in a video, and the place marked. */
+    val BookmarkAdd: ImageVector by icon { Glyphs.BookmarkAdd }
+    val BookmarkAdded: ImageVector by icon { Glyphs.BookmarkAdded }
     val Brightness: ImageVector by icon { Glyphs.BrightnessMedium }
     /** The theme following the system's. */
     val BrightnessAuto: ImageVector by icon { Glyphs.BrightnessAuto }
@@ -87,6 +92,7 @@ object SonaIcons {
     val DeleteSweep: ImageVector by icon { Glyphs.DeleteSweep }
     val Description: ImageVector by icon { Glyphs.Description }
     val Deselect: ImageVector by icon { Glyphs.Deselect }
+    val Computer: ImageVector by icon { Glyphs.Computer }
     val Details: ImageVector by icon { Glyphs.Info }
     val DoNotDisturbOn: ImageVector by icon { Glyphs.DoNotDisturbOn }
     val Download: ImageVector by icon { symbolIcon("Download", "M480-337q-8 0-15-2.5t-13-8.5L308-492q-12-12-11.5-28t11.5-28q12-12 28.5-12.5T365-549l75 75v-286q0-17 11.5-28.5T480-800q17 0 28.5 11.5T520-760v286l75-75q12-12 28.5-11.5T652-548q11 12 11.5 28T652-492L508-348q-6 6-13 8.5t-15 2.5ZM240-160q-33 0-56.5-23.5T160-240v-80q0-17 11.5-28.5T200-360q17 0 28.5 11.5T240-320v80h480v-80q0-17 11.5-28.5T760-360q17 0 28.5 11.5T800-320v80q0 33-23.5 56.5T720-160H240Z") }
@@ -98,6 +104,7 @@ object SonaIcons {
     val Equalizer: ImageVector by icon { Glyphs.Equalizer }
     val Export: ImageVector by icon { Glyphs.FileUpload }
     val Error: ImageVector by icon { Glyphs.Error }
+    val FindInPage: ImageVector by icon { Glyphs.FindInPage }
     val ExpandLess: ImageVector by icon { Glyphs.ExpandLess }
     val ExpandMore: ImageVector by icon { Glyphs.ExpandMore }
     val Extension: ImageVector by icon { Glyphs.Extension }
@@ -108,6 +115,7 @@ object SonaIcons {
     val FileOpen: ImageVector by icon { Glyphs.FileOpen }
     val File: ImageVector by icon { Glyphs.InsertDriveFile }
     val Fingerprint: ImageVector by icon { Glyphs.Fingerprint }
+    val FilterList: ImageVector by icon { Glyphs.FilterList }
     val Folder: ImageVector by icon { Glyphs.Folder }
     val FolderOpen: ImageVector by icon { Glyphs.FolderOpen }
     val FolderSpecial: ImageVector by icon { Glyphs.FolderSpecial }
@@ -122,6 +130,7 @@ object SonaIcons {
     val HighQuality: ImageVector by icon { Glyphs.HighQuality }
     val History: ImageVector by icon { Glyphs.History }
     val HistoryToggleOff: ImageVector by icon { Glyphs.HistoryToggleOff }
+    val Home: ImageVector by icon { Glyphs.Home }
     val Image: ImageVector by icon { Glyphs.Image }
     val Import: ImageVector by icon { Glyphs.FileDownload }
     val IndeterminateCheckBox: ImageVector by icon { Glyphs.IndeterminateCheckBox }
@@ -171,6 +180,7 @@ object SonaIcons {
     val RecordVoiceOver: ImageVector by icon { Glyphs.RecordVoiceOver }
     val Redo: ImageVector by icon { MirroredGlyphs.Redo }
     val Refresh: ImageVector by icon { Glyphs.Refresh }
+    val Remove: ImageVector by icon { Glyphs.Remove }
     val RemoveCircleOutline: ImageVector by icon { Glyphs.RemoveCircleOutline }
     val Repeat: ImageVector by icon { Glyphs.Repeat }
     val RepeatOne: ImageVector by icon { Glyphs.RepeatOne }
@@ -185,6 +195,8 @@ object SonaIcons {
     val Search: ImageVector by icon { symbolIcon("Search", "M380-320q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l224 224q11 11 11 28t-11 28q-11 11-28 11t-28-11L532-372q-30 24-69 38t-83 14Zm0-80q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z") }
     val SearchOff: ImageVector by icon { Glyphs.SearchOff }
     val Security: ImageVector by icon { Glyphs.Security }
+    val Shield: ImageVector by icon { Glyphs.Shield }
+    val ShieldOff: ImageVector by icon { Glyphs.RemoveModerator }
     /** Points forward; drawn mirrored for the way back. */
     val SeekForward: ImageVector by icon { Glyphs.PlayArrow }
     val SelectAll: ImageVector by icon { Glyphs.SelectAll }
@@ -225,6 +237,8 @@ object SonaIcons {
     val Title: ImageVector by icon { Glyphs.Title }
     val ToggleOff: ImageVector by icon { Glyphs.ToggleOff }
     val TouchApp: ImageVector by icon { Glyphs.TouchApp }
+    val Translate: ImageVector by icon { Glyphs.Translate }
+    val ZoomIn: ImageVector by icon { Glyphs.ZoomIn }
     val TrendingFlat: ImageVector by icon { MirroredGlyphs.TrendingFlat }
     val TrendingUp: ImageVector by icon { MirroredGlyphs.TrendingUp }
     val Tune: ImageVector by icon { Glyphs.Tune }

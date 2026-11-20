@@ -11,14 +11,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsActionItem
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsList
-import com.lhacenmed.sona.core.designsystem.component.settings.SettingsNavigationItem
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSection
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSectionDivider
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSwitchItem
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsSwitchSplitItem
 import com.lhacenmed.sona.core.designsystem.component.settings.SettingsTextFieldDialog
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
-import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.download.R
 
@@ -34,7 +32,6 @@ data object NetworkSettingsScreen : Screen {
 
     @Composable
     override fun Content() {
-        val navigator = LocalNavigator.current
         val viewModel: DownloadsSettingsViewModel = hiltViewModel()
         val preferences by viewModel.preferences.collectAsStateWithLifecycle()
         var dialog by remember { mutableStateOf<NetworkDialog?>(null) }
@@ -82,12 +79,6 @@ data object NetworkSettingsScreen : Screen {
                     icon = SonaIcons.SettingsEthernet,
                     checked = preferences.forcesIpv4,
                     onCheckedChange = { forces -> viewModel.updatePreferences { it.copy(forcesIpv4 = forces) } },
-                )
-                SettingsNavigationItem(
-                    title = stringResource(R.string.downloads_settings_cookies_title),
-                    summary = stringResource(R.string.downloads_settings_cookies_summary),
-                    icon = SonaIcons.Cookie,
-                    onClick = { navigator.go(CookieProfilesScreen) },
                 )
             }
         }

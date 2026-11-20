@@ -35,6 +35,7 @@ viewpager2 = "1.1.0"
 kuromojiIpadic = "0.9.0"
 androidsvg = "1.4"
 work = "2.12.0"
+webkit = "1.17.1"
 aboutLibraries = "15.0.3"
 kotlinxSerialization = "1.9.0"
 tink = "1.18.0"
@@ -91,6 +92,7 @@ androidx-palette = { group = "androidx.palette", name = "palette-ktx", version.r
 materialkolor = { group = "com.materialkolor", name = "material-kolor", version.ref = "materialKolor" }
 androidsvg = { group = "com.caverock", name = "androidsvg-aar", version.ref = "androidsvg" }
 androidx-work-runtime = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
+androidx-webkit = { group = "androidx.webkit", name = "webkit", version.ref = "webkit" }
 aboutlibraries-core = { group = "com.mikepenz", name = "aboutlibraries-core", version.ref = "aboutLibraries" }
 reorderable = { group = "sh.calvin.reorderable", name = "reorderable", version.ref = "reorderable" }
 kuromoji-ipadic = { group = "com.atilika.kuromoji", name = "kuromoji-ipadic", version.ref = "kuromojiIpadic" }
