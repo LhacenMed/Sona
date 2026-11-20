@@ -46,6 +46,8 @@ import com.lhacenmed.sona.core.model.VideoFormat
 import java.util.Calendar
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.component.SonaSwitch
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
 
 /** Which of the sheet's dialogs is open. */
 private enum class OptionsDialog { VIDEO_FORMAT, EXACT_FORMAT, CLIP, COMMAND, START_AT }
@@ -297,9 +299,9 @@ internal fun <T> OptionDialog(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ClipDialog(clip: ClipRange?, durationSeconds: Long?, onConfirm: (ClipRange?) -> Unit, onDismiss: () -> Unit) {
-    var start by remember { mutableStateOf(clip?.let { formatPlaybackTime(it.startSeconds * 1000) } ?: "0:00") }
-    var end by remember { mutableStateOf(clip?.let { formatPlaybackTime(it.endSeconds * 1000) } ?: durationSeconds?.let { formatPlaybackTime(it * 1000) }.orEmpty()) }
-    val range = secondsOf(start)?.let { from -> secondsOf(end)?.takeIf { it > from }?.let { ClipRange(from, it) } }
+    val start = rememberTextFieldState(clip?.let { formatPlaybackTime(it.startSeconds * 1000) } ?: "0:00")
+    val end = rememberTextFieldState(clip?.let { formatPlaybackTime(it.endSeconds * 1000) } ?: durationSeconds?.let { formatPlaybackTime(it * 1000) }.orEmpty())
+    val range = secondsOf(start.text.toString())?.let { from -> secondsOf(end.text.toString())?.takeIf { it > from }?.let { ClipRange(from, it) } }
     val cancelLabel = stringResource(R.string.download_cancel)
     val wholeLabel = stringResource(R.string.download_option_whole)
     val confirmLabel = stringResource(R.string.download_option_clip_confirm)
@@ -314,8 +316,8 @@ private fun ClipDialog(clip: ClipRange?, durationSeconds: Long?, onConfirm: (Cli
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             val time = KeyboardOptions(keyboardType = KeyboardType.Number)
-            OutlinedTextField(value = start, onValueChange = { start = it }, label = { Text(stringResource(R.string.download_option_clip_from)) }, singleLine = true, keyboardOptions = time, modifier = Modifier.weight(1f))
-            OutlinedTextField(value = end, onValueChange = { end = it }, label = { Text(stringResource(R.string.download_option_clip_to)) }, singleLine = true, keyboardOptions = time, modifier = Modifier.weight(1f))
+            OutlinedTextField(state = start, label = { Text(stringResource(R.string.download_option_clip_from)) }, lineLimits = TextFieldLineLimits.SingleLine, keyboardOptions = time, modifier = Modifier.weight(1f))
+            OutlinedTextField(state = end, label = { Text(stringResource(R.string.download_option_clip_to)) }, lineLimits = TextFieldLineLimits.SingleLine, keyboardOptions = time, modifier = Modifier.weight(1f))
         }
     }
 }

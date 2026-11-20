@@ -9,6 +9,7 @@ import android.text.format.DateFormat
 import android.text.format.DateUtils
 import android.text.format.Formatter
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,9 +28,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -59,8 +62,10 @@ import com.lhacenmed.sona.core.model.DownloadStatus
 import com.lhacenmed.sona.core.designsystem.component.sheet.SonaBottomSheetScope
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.feature.download.tools.DownloadLogScreen
-import com.lhacenmed.sona.feature.download.tools.CookiesScreen
+import com.lhacenmed.sona.feature.download.browser.BrowserScreen
+import com.lhacenmed.sona.feature.tageditor.RenameFileDialog
 import com.lhacenmed.sona.feature.tageditor.autotag.AutoTagScreen
+import com.lhacenmed.sona.feature.tageditor.rememberFileAccessRequest
 import java.io.File
 
 /**
@@ -94,7 +99,7 @@ internal fun DownloadSheet(download: Download, viewModel: DownloadViewModel, onD
 
             DownloadStatus.FAILED, DownloadStatus.CANCELED -> {
                 Unsaved(download, viewModel, onFixed = { dismiss() }, onSignIn = {
-                    navigator.go(CookiesScreen(download.url))
+                    navigator.go(BrowserScreen(page = download.url))
                     dismiss()
                 })
                 ShowLogRow(download.id)
@@ -108,8 +113,8 @@ internal fun DownloadSheet(download: Download, viewModel: DownloadViewModel, onD
 }
 
 /**
- * A saved download: its picture, title and who published it where; the link it came from - opened or copied - and the file it
- * saved - what, how big, where and when; then Play, Download again and Share. Deleting is the list's, from a selection.
+ * A saved download: its picture, title and who published it where - the title tapped to rename what it saved, still there; the link it came from - opened or copied - and the file it saved - its name, what, how big, where and when;
+ * then Play, Download again and Share. Deleting is the list's, from a selection.
  */
 @Composable
 private fun SavedSheet(download: Download, viewModel: DownloadViewModel, onDismiss: () -> Unit) {
@@ -123,6 +128,15 @@ private fun SavedSheet(download: Download, viewModel: DownloadViewModel, onDismi
         DateUtils.formatDateTime(context, finishedAt, DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_TIME)
     }
     val folder = path?.let { File(it).parent?.removePrefix(Environment.getExternalStorageDirectory().path)?.trimStart('/') }
+    // Renamed whatever it saved, while it is still there - once Android lets Sona: see DownloadViewModel.onRenameSaved.
+    val missingFiles by viewModel.missingFiles.collectAsStateWithLifecycle()
+    val canRename = path != null && download.id !in missingFiles
+    var isRenaming by remember { mutableStateOf(false) }
+    var pendingName by remember { mutableStateOf<String?>(null) }
+    val requestAccess = rememberFileAccessRequest(onGranted = {
+        pendingName?.let { viewModel.onRenameSaved(download, it) }
+        pendingName = null
+    })
     SonaBottomSheet(
         onDismissRequest = onDismiss,
         header = {
@@ -133,13 +147,22 @@ private fun SavedSheet(download: Download, viewModel: DownloadViewModel, onDismi
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest),
                 )
-                Text(
-                    download.title ?: hostOf(download.url),
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 16.dp),
-                )
+                Row(
+                    modifier = Modifier
+                        .padding(start = 8.dp, end = 8.dp, top = 16.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .then(if (canRename) Modifier.clickable(onClickLabel = stringResource(R.string.download_name_file)) { isRenaming = true } else Modifier),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        download.title ?: hostOf(download.url),
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (canRename) Icon(SonaIcons.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 6.dp).size(16.dp))
+                }
                 Text(
                     listOfNotNull(download.uploader, download.site).joinToString(InfoSeparator),
                     style = MaterialTheme.typography.bodyMedium,
@@ -165,12 +188,14 @@ private fun SavedSheet(download: Download, viewModel: DownloadViewModel, onDismi
                         )
                     },
                     { shapes ->
+                        val facts = listOfNotNull(
+                            stringResource(download.choices.kind.labelRes),
+                            path?.let { File(it).extension.uppercase() }?.takeIf { it.isNotEmpty() },
+                            download.sizeBytes.takeIf { it > 0 }?.let { Formatter.formatShortFileSize(context, it) },
+                        ).joinToString(InfoSeparator)
                         SonaValueRow(
-                            label = listOfNotNull(
-                                stringResource(download.choices.kind.labelRes),
-                                path?.let { File(it).extension.uppercase() }?.takeIf { it.isNotEmpty() },
-                                download.sizeBytes.takeIf { it > 0 }?.let { Formatter.formatShortFileSize(context, it) },
-                            ).joinToString(InfoSeparator),
+                            // Named as it is on the device - as renamed - its facts under it.
+                            label = path?.let { File(it).name } ?: facts,
                             shapes = shapes,
                             icon = when (download.choices.kind) {
                                 DownloadKind.AUDIO -> SonaIcons.AudioFile
@@ -178,7 +203,7 @@ private fun SavedSheet(download: Download, viewModel: DownloadViewModel, onDismi
                                 DownloadKind.SUBTITLES -> SonaIcons.Description
                                 DownloadKind.FILE -> SonaIcons.File
                             },
-                            value = listOfNotNull(folder, savedOn).joinToString(InfoSeparator),
+                            value = listOfNotNull(facts.takeIf { path != null }, folder, savedOn).joinToString(InfoSeparator),
                             onClick = {
                                 viewModel.onPlay(download)
                                 dismiss()
@@ -225,6 +250,12 @@ private fun SavedSheet(download: Download, viewModel: DownloadViewModel, onDismi
         }
         if (download.choices.kind == DownloadKind.SUBTITLES) download.savedPaths.forEach { CopySubtitlesRow(it) }
         ShowLogRow(download.id)
+    }
+    if (isRenaming && path != null) {
+        RenameFileDialog(name = File(path).nameWithoutExtension, onRename = { name ->
+            pendingName = name
+            requestAccess()
+        }, onDismiss = { isRenaming = false })
     }
 }
 
@@ -327,7 +358,11 @@ internal fun FixButton(labelRes: Int, icon: ImageVector, onClick: () -> Unit) {
     }
 }
 
-/** What else the selection can do - beyond Select all and Delete, which the bar holds itself. */
+/**
+ * What else the selection can do - beyond Select all and Delete, which the bar holds itself - each offered only where it does
+ * something to what is selected: Pause what runs or waits, Resume what is paused, Cancel what is not over, Download again
+ * what is over.
+ */
 @Composable
 internal fun SelectionOptionsSheet(
     selected: List<Download>,
@@ -339,23 +374,22 @@ internal fun SelectionOptionsSheet(
     val navigator = LocalNavigator.current
     val songIds = selected.filter { it.status == DownloadStatus.DONE && it.choices.kind == DownloadKind.AUDIO }
         .flatMap(viewModel::tracksOf).filterNot { it.isVideo }.map { it.id }
+    val toPause = selected.filter { it.status == DownloadStatus.QUEUED || it.status == DownloadStatus.RUNNING }.map(Download::id)
+    val toResume = selected.filter { it.status == DownloadStatus.PAUSED }.map(Download::id)
+    val toCancel = toPause + toResume
+    val toRepeat = selected.filter { it.status.isFinished }
     SonaBottomSheet(title = LocalContext.current.resources.getQuantityString(R.plurals.download_selected, selected.size, selected.size), onDismissRequest = onDismiss) {
-        SonaOptionRow(label = stringResource(R.string.download_again), icon = SonaIcons.Download, onClick = {
-            viewModel.onDownloadAgain(selected)
+        @Composable
+        fun Option(labelRes: Int, icon: ImageVector, action: () -> Unit) = SonaOptionRow(label = stringResource(labelRes), icon = icon, onClick = {
+            action()
             onDone()
             dismiss()
         })
-        SonaOptionRow(label = stringResource(R.string.download_share_links), icon = SonaIcons.Share, onClick = {
-            onShareLinks()
-            onDone()
-            dismiss()
-        })
-        if (songIds.isNotEmpty()) {
-            SonaOptionRow(label = stringResource(R.string.download_auto_tag), icon = SonaIcons.LibraryMusic, onClick = {
-                navigator.go(AutoTagScreen(songIds))
-                onDone()
-                dismiss()
-            })
-        }
+        if (toResume.isNotEmpty()) Option(R.string.download_resume, SonaIcons.Play) { viewModel.onResume(toResume) }
+        if (toPause.isNotEmpty()) Option(R.string.download_pause, SonaIcons.Pause) { viewModel.onPause(toPause) }
+        if (toCancel.isNotEmpty()) Option(R.string.download_cancel, SonaIcons.Close) { viewModel.onCancel(toCancel) }
+        if (toRepeat.isNotEmpty()) Option(R.string.download_again, SonaIcons.Download) { viewModel.onDownloadAgain(toRepeat) }
+        Option(R.string.download_share_links, SonaIcons.Share, onShareLinks)
+        if (songIds.isNotEmpty()) Option(R.string.download_auto_tag, SonaIcons.LibraryMusic) { navigator.go(AutoTagScreen(songIds)) }
     }
 }

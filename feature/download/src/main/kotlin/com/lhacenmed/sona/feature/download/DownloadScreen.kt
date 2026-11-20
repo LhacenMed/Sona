@@ -32,7 +32,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -41,17 +40,17 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.CookieShape
-import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.ContainerEdge
-import com.lhacenmed.sona.core.model.DownloadStatus
 import com.lhacenmed.sona.core.navigation.LocalNavigator
 import com.lhacenmed.sona.core.navigation.Screen
 import com.lhacenmed.sona.feature.download.browser.BrowserScreen
 import com.lhacenmed.sona.feature.download.settings.DownloadsSettingsScreen
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import com.lhacenmed.sona.core.designsystem.component.rememberSyncedTextFieldState
 
 /**
  * Where links become songs and videos - Seal's home: a large title saying where things stand, one field a link is pasted or
@@ -67,7 +66,6 @@ data class DownloadScreen(val link: String? = null, val downloadId: Long? = null
         val navigator = LocalNavigator.current
         val viewModel: DownloadViewModel = hiltViewModel()
         val sections by viewModel.sections.collectAsStateWithLifecycle()
-        val running by viewModel.running.collectAsStateWithLifecycle()
         val linkEntry by viewModel.linkEntry.collectAsStateWithLifecycle()
         val linkSheet by viewModel.linkSheet.collectAsStateWithLifecycle()
         val state = rememberDownloadListState()
@@ -87,14 +85,6 @@ data class DownloadScreen(val link: String? = null, val downloadId: Long? = null
         val downloading = sections?.downloading.orEmpty()
         val today = sections?.today.orEmpty()
         val listed = downloading + today
-        val runningCount = downloading.count { it.id in running }
-        val pausedCount = downloading.count { it.status == DownloadStatus.PAUSED && it.id !in running }
-        val waiting = downloading.size - runningCount - pausedCount
-        val summary = listOfNotNull(
-            runningCount.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.download_downloading_count, it, it) },
-            pausedCount.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.download_paused_count, it, it) },
-            waiting.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.download_waiting_count, it, it) },
-        ).joinToString(InfoSeparator).ifEmpty { stringResource(R.string.download_ready) }
         val title = stringResource(R.string.download_title)
         val seeAll = TopBarAction(stringResource(R.string.download_see_all), SonaIcons.KeyboardArrowRight) { navigator.go(HistoryScreen) }
 
@@ -119,7 +109,7 @@ data class DownloadScreen(val link: String? = null, val downloadId: Long? = null
                 viewModel = viewModel,
                 state = state,
                 header = {
-                    screenTitle(title, summary)
+                    screenTitle(title)
                     item(key = "link-field") { LinkField(linkEntry, viewModel) }
                 },
                 footer = {
@@ -142,8 +132,7 @@ private fun LinkField(text: String, viewModel: DownloadViewModel) {
     val context = LocalContext.current
     val focusRequester = remember { FocusRequester() }
     TextField(
-        value = text,
-        onValueChange = viewModel::onLinkEntryChange,
+        state = rememberSyncedTextFieldState(text, viewModel::onLinkEntryChange),
         placeholder = { Text(stringResource(R.string.download_link_hint)) },
         leadingIcon = { Icon(SonaIcons.Link, contentDescription = null) },
         trailingIcon = {
@@ -160,7 +149,7 @@ private fun LinkField(text: String, viewModel: DownloadViewModel) {
                 Text(stringResource(R.string.download_paste), modifier = Modifier.padding(start = ButtonDefaults.IconSpacing))
             }
         },
-        singleLine = true,
+        lineLimits = TextFieldLineLimits.SingleLine,
         shape = CircleShape,
         colors = TextFieldDefaults.colors(
             focusedIndicatorColor = Color.Transparent,

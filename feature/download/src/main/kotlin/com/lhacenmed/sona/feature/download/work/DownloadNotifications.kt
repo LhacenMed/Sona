@@ -22,6 +22,7 @@ import com.lhacenmed.sona.feature.download.R
 import com.lhacenmed.sona.feature.download.presentation
 import com.lhacenmed.sona.feature.download.RunningDownload
 import dagger.hilt.android.EntryPointAccessors
+import java.util.concurrent.ConcurrentHashMap
 
 private const val EXTRA_DOWNLOAD_ID = "com.lhacenmed.sona.download.extra.ID"
 private const val EXTRA_TITLE = "com.lhacenmed.sona.download.extra.TITLE"
@@ -29,14 +30,23 @@ private const val EXTRA_TITLE = "com.lhacenmed.sona.download.extra.TITLE"
 /**
  * What downloads say in the shade, as Seal says it: each notification one of its own, none grouped by the app, so Android
  * bundles them all - running, paused, saved or failed - as it bundles any app's. The foreground service keeps one on a
- * channel of its own for as long as any download runs, never taken away and posted again: how many run, and how fast. Each
- * download has its own while it runs, with how far it is, Pause and Cancel; then, in its place, whether it was saved, in one
- * that opens its sheet.
+ * channel of its own for as long as any download runs, never taken away and posted again: how many run - each says how fast
+ * itself. Each download has its own while it runs, with how far it is, Pause and Cancel; then, in its place, whether it was
+ * saved, in one that opens its sheet. Each is posted again every moment as it goes, keeping the time it was first shown - which
+ * Android orders them by - so none takes another's place: the newest download first, how many run beneath them all.
  */
 internal object DownloadNotifications {
 
+    /** When the downloads running now began to run - the service's notification's time. */
+    @Volatile
+    private var runningSince = 0L
+
+    /** When each download's notification was first shown, by its id - its time, while it runs. */
+    private val shownSince = ConcurrentHashMap<Long, Long>()
+
     /** What the worker's foreground service shows for [running] - see [show]. */
     fun foregroundInfo(context: Context, running: List<RunningDownload>): ForegroundInfo {
+        runningSince = System.currentTimeMillis()
         val notification = service(context, running)
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ForegroundInfo(SonaNotificationId.DOWNLOAD, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
@@ -51,6 +61,7 @@ internal object DownloadNotifications {
      */
     fun show(context: Context, running: List<RunningDownload>, shown: Set<Int>): Set<Int> {
         SonaNotifications.post(context, SonaNotificationId.DOWNLOAD, service(context, running))
+        shownSince.keys.retainAll(running.map { it.id }.toSet())
         val own = running.associateBy { SonaNotificationId.download(it.id) }
         own.forEach { (id, download) -> SonaNotifications.post(context, id, runningNotification(context, download)) }
         clear(context, shown - own.keys)
@@ -60,9 +71,8 @@ internal object DownloadNotifications {
     /** Takes [shown], downloads' own notifications, out of the shade. */
     fun clear(context: Context, shown: Set<Int>) = shown.forEach { SonaNotifications.cancel(context, it) }
 
-    private fun service(context: Context, running: List<RunningDownload>): Notification {
-        val speed = running.sumOf { it.bytesPerSecond ?: 0 }.takeIf { it > 0 }
-        return SonaNotifications.builder(context, SonaNotificationChannel.DOWNLOAD_SERVICE)
+    private fun service(context: Context, running: List<RunningDownload>): Notification =
+        SonaNotifications.builder(context, SonaNotificationChannel.DOWNLOAD_SERVICE)
             .setContentTitle(
                 if (running.isEmpty()) {
                     context.getString(R.string.download_starting)
@@ -70,12 +80,12 @@ internal object DownloadNotifications {
                     context.resources.getQuantityString(R.plurals.download_downloading_count, running.size, running.size)
                 },
             )
-            .setContentText(speed?.let { context.getString(R.string.download_speed, Formatter.formatShortFileSize(context, it)) })
+            .setWhen(runningSince)
+            .setShowWhen(false)
             .setOngoing(true)
             .setSilent(true)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .build()
-    }
 
     /** Says [title] is paused, with Resume and Cancel - posted where it was paused from its notification. */
     fun postPaused(context: Context, downloadId: Long, title: String?) {
@@ -126,6 +136,7 @@ internal object DownloadNotifications {
             },
             // Bundled with the rest, as a live update never is.
             asLiveUpdate = false,
+            since = shownSince.getOrPut(running.id) { System.currentTimeMillis() },
         )
     }
 

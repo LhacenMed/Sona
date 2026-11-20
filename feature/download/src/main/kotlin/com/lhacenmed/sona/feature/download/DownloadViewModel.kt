@@ -43,9 +43,12 @@ import com.lhacenmed.sona.core.model.DownloadStatus
 import com.lhacenmed.sona.core.model.DownloaderPreferences
 import com.lhacenmed.sona.core.model.Track
 import com.lhacenmed.sona.core.model.preferredFor
+import com.lhacenmed.sona.core.model.toFileName
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.tageditor.SongSummary
 import com.lhacenmed.sona.feature.tageditor.SongTagging
+import com.lhacenmed.sona.feature.tageditor.FileExistsException
+import com.lhacenmed.sona.feature.tageditor.TrackFileChanges
 import com.lhacenmed.sona.feature.tageditor.VideoSong
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -131,10 +134,9 @@ class DownloadViewModel @Inject constructor(
     private val workspaces: DownloadWorkspaces,
     private val live: LiveDownloads,
     private val libraryCopies: LibraryCopies,
+    private val fileChanges: TrackFileChanges,
     dao: DownloadDao,
 ) : ViewModel() {
-
-    val running: StateFlow<Map<Long, RunningDownload>> = queue.running
 
     /** The downloads running, as they may be played while they download. */
     val liveDownloads: StateFlow<Map<Long, LiveDownload>> = live.downloads
@@ -153,6 +155,15 @@ class DownloadViewModel @Inject constructor(
 
     /** Every download, the newest first - null until it has been read. */
     val downloads: StateFlow<List<Download>?> = queue.downloads.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /**
+     * The downloads running, as they go, by id - none paused, cancelled or over: one stops a moment after it is told to, and is
+     * shown stopped at once, everywhere alike.
+     */
+    val running: StateFlow<Map<Long, RunningDownload>> = combine(queue.running, downloads) { running, downloads ->
+        val stopped = downloads.orEmpty().filter { it.status == DownloadStatus.PAUSED || it.status.isFinished }.map(Download::id)
+        running - stopped.toSet()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     /**
      * The saved downloads whose every file is gone from the device - deleted, or moved where the library does not follow -
@@ -364,6 +375,8 @@ class DownloadViewModel @Inject constructor(
             return
         }
         val options = _options.value.copy(
+            // Further sounds are a video's alone.
+            audioLanguages = _options.value.audioLanguages.takeIf { kind == DownloadKind.VIDEO }.orEmpty(),
             formatId = _pickedFormat.value?.takeIf { kind.isMedia && it.hasVideo == (kind == DownloadKind.VIDEO) }?.selector,
             song = _song.value?.takeIf { kind == DownloadKind.AUDIO && chosen.savesAsSong }?.plan,
             // Captions alone are taken as the sheet showed them - its speech transcribed among them where it has none.
@@ -372,7 +385,7 @@ class DownloadViewModel @Inject constructor(
         )
         // A playlist's videos listed as one, under its own name.
         val batch = entries?.let { DownloadBatch("playlist:${System.currentTimeMillis()}", info?.title ?: hostOf(url)) }
-        val requests = entries?.map { DownloadRequest(it.url, it.title, it.thumbnailUrl, it.uploader, chosen, options.copy(formatId = null), batch) }
+        val requests = entries?.map { DownloadRequest(it.url, it.title, it.thumbnailUrl, it.uploader, chosen, options.copy(formatId = null, fileName = null, audioLanguages = emptyList()), batch) }
             ?: listOf(DownloadRequest(url, info?.title, info?.thumbnailUrl, info?.uploader, chosen, options))
         val startAt = _startAt.value
         // Nothing in the library is downloaded again untold: what the check has found of it by now is shown, to pick from.
@@ -486,6 +499,8 @@ class DownloadViewModel @Inject constructor(
      */
     fun onAudioTrackChange(language: String?, alwaysOriginal: Boolean) {
         _sheetChoices.value = _sheetChoices.value.copy(audioLanguage = language)
+        // The first sound is no further one too.
+        _options.value = _options.value.copy(audioLanguages = _options.value.audioLanguages - setOfNotNull(language))
         remember { it.copy(audioLanguage = if (alwaysOriginal) null else language) }
     }
 
@@ -518,6 +533,43 @@ class DownloadViewModel @Inject constructor(
 
     fun onPickFormat(format: MediaFormat?) {
         _pickedFormat.value = format
+    }
+
+    /** Adds the video's sound in [language] as a further track of the next download - or takes it off, added already. */
+    fun onMoreAudioToggle(language: String) {
+        val languages = _options.value.audioLanguages
+        _options.value = _options.value.copy(audioLanguages = if (language in languages) languages - language else languages + language)
+    }
+
+    /** Names the next download's file [name], its extension its own - a playlist's videos are each named as their template says. */
+    fun onFileNameChange(name: String) {
+        _options.value = _options.value.copy(fileName = name.toFileName())
+    }
+
+    /**
+     * Renames what [download] saved [name]: its file, and every other it saved under the same name beside it - its subtitles,
+     * `Title [id].en.srt` - each keeping what follows that name. One the library holds is renamed as the tag editor renames a
+     * track, the library following it; any other on its own. The download follows them all.
+     */
+    fun onRenameSaved(download: Download, name: String) {
+        val files = download.savedPaths.map(::File).filter(File::exists)
+        val base = files.firstOrNull()?.nameWithoutExtension ?: return
+        val newBase = name.trim().toFileName()
+        val tracks = tracksOf(download).associateBy(Track::path)
+        viewModelScope.launch {
+            try {
+                files.filter { it.name.startsWith(base) }.forEach { file ->
+                    val renamed = newBase + file.name.removePrefix(base)
+                    tracks[file.path]?.let { fileChanges.renameWhole(it, renamed) } ?: queue.renameSaved(file, File(file.parentFile, renamed))
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: FileExistsException) {
+                context.toast(context.getString(R.string.download_rename_exists, e.file.name))
+            } catch (_: Exception) {
+                context.toast(R.string.download_rename_failed)
+            }
+        }
     }
 
     fun onClipChange(clip: ClipRange?) {

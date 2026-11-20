@@ -54,6 +54,10 @@ interface DownloadDao {
     @Query("UPDATE downloads SET savedPaths = REPLACE(savedPaths, :from, :to) WHERE instr(savedPaths, :from) > 0")
     suspend fun moveSavedPath(from: String, to: String)
 
+    /** The link of the latest download that saved the file at [path] - null where none still listed did. */
+    @Query("SELECT url FROM downloads WHERE instr(char(10) || savedPaths || char(10), char(10) || :path || char(10)) > 0 ORDER BY id DESC LIMIT 1")
+    suspend fun urlOfSaved(path: String): String?
+
     /** The song [id] is saved as, as it is found. */
     /** What the download's link was found to serve, where it is not what it was asked as - a file, asked for as a video. */
     @Query("UPDATE downloads SET kind = :kind WHERE id = :id")
@@ -72,8 +76,9 @@ interface DownloadDao {
     @Query("UPDATE downloads SET status = 'CANCELED' WHERE id IN (:ids) AND status IN ('QUEUED', 'PAUSED')")
     suspend fun cancelQueued(ids: Collection<Long>)
 
-    @Query("UPDATE downloads SET status = 'PAUSED' WHERE id IN (:ids) AND status = 'QUEUED'")
-    suspend fun pauseQueued(ids: Collection<Long>)
+    /** Pauses [ids] waiting or running - those running stop as they are told to: see `DownloadQueue.pause`. */
+    @Query("UPDATE downloads SET status = 'PAUSED' WHERE id IN (:ids) AND status IN ('QUEUED', 'RUNNING')")
+    suspend fun pause(ids: Collection<Long>)
 
     @Query("SELECT id FROM downloads")
     suspend fun ids(): List<Long>

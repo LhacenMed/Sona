@@ -23,6 +23,7 @@ import com.lhacenmed.sona.core.database.dao.ReplayHeatmapDao
 import com.lhacenmed.sona.core.database.dao.ResumePositionDao
 import com.lhacenmed.sona.core.database.dao.TrackDao
 import com.lhacenmed.sona.core.database.dao.TrackMoveDao
+import com.lhacenmed.sona.core.database.dao.VideoBookmarkDao
 import com.lhacenmed.sona.core.database.dao.VideoChapterDao
 import com.lhacenmed.sona.core.database.dao.VideoExtrasDao
 import com.lhacenmed.sona.core.database.dao.VideoSubtitleDao
@@ -48,6 +49,7 @@ import com.lhacenmed.sona.core.database.entity.QueueItemEntity
 import com.lhacenmed.sona.core.database.entity.ReplayHeatmapEntity
 import com.lhacenmed.sona.core.database.entity.ResumePositionEntity
 import com.lhacenmed.sona.core.database.entity.TrackEntity
+import com.lhacenmed.sona.core.database.entity.VideoBookmarkEntity
 import com.lhacenmed.sona.core.database.entity.VideoChapterEntity
 import com.lhacenmed.sona.core.database.entity.VideoExtraReadEntity
 import com.lhacenmed.sona.core.database.entity.VideoSubtitleEntity
@@ -79,8 +81,9 @@ import com.lhacenmed.sona.core.database.entity.VideoSubtitleEntity
         DownloadCommandEntity::class,
         DownloadCommandShortcutEntity::class,
         DownloadWatchEntity::class,
+        VideoBookmarkEntity::class,
     ],
-    version = 37,
+    version = 40,
     exportSchema = true,
 )
 @TypeConverters(CoverArtUrisConverter::class, ArtistIdsConverter::class)
@@ -109,6 +112,7 @@ abstract class SonaDatabase : RoomDatabase() {
     abstract fun onlineHeatmapDao(): OnlineHeatmapDao
     abstract fun videoChapterDao(): VideoChapterDao
     abstract fun videoExtrasDao(): VideoExtrasDao
+    abstract fun videoBookmarkDao(): VideoBookmarkDao
 
     companion object {
         const val FILE_NAME = "sona.db"

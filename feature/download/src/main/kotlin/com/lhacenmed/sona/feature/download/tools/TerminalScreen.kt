@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -13,8 +12,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +40,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
 
 /** The most lines the terminal keeps of what yt-dlp wrote. */
 private const val KeptLines = 2_000
@@ -59,7 +58,7 @@ data object TerminalScreen : Screen {
         val viewModel: TerminalViewModel = hiltViewModel()
         val lines by viewModel.lines.collectAsStateWithLifecycle()
         val isRunning by viewModel.isRunning.collectAsStateWithLifecycle()
-        var arguments by rememberSaveable { mutableStateOf("--version") }
+        val arguments = rememberTextFieldState("--version")
 
         Column(modifier = Modifier.fillMaxSize()) {
             Row(
@@ -68,15 +67,15 @@ data object TerminalScreen : Screen {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 OutlinedTextField(
-                    value = arguments,
-                    onValueChange = { arguments = it },
+                    state = arguments,
                     label = { Text(stringResource(R.string.download_terminal_arguments)) },
                     textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                    lineLimits = TextFieldLineLimits.SingleLine,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
-                    keyboardActions = KeyboardActions(onGo = { if (!isRunning) viewModel.run(arguments) }),
+                    onKeyboardAction = { if (!isRunning) viewModel.run(arguments.text.toString()) },
                     modifier = Modifier.weight(1f),
                 )
-                Button(onClick = { if (isRunning) viewModel.stop() else viewModel.run(arguments) }, shapes = buttonPressShapes()) {
+                Button(onClick = { if (isRunning) viewModel.stop() else viewModel.run(arguments.text.toString()) }, shapes = buttonPressShapes()) {
                     Text(stringResource(if (isRunning) R.string.download_terminal_stop else R.string.download_terminal_run))
                 }
             }

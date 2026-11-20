@@ -9,6 +9,7 @@ import com.lhacenmed.sona.core.database.entity.toDomain
 import com.lhacenmed.sona.core.datastore.DownloadSettings
 import com.lhacenmed.sona.core.downloader.DownloadWorkspaces
 import com.lhacenmed.sona.core.downloader.DownloaderRuntime
+import com.lhacenmed.sona.core.downloader.LiveDownloads
 import com.lhacenmed.sona.core.downloader.RuntimeState
 import com.lhacenmed.sona.core.downloader.fractionOf
 import com.lhacenmed.sona.core.model.Download
@@ -16,23 +17,30 @@ import com.lhacenmed.sona.core.model.DownloadBatch
 import com.lhacenmed.sona.core.model.DownloadChoices
 import com.lhacenmed.sona.core.model.DownloadFailure
 import com.lhacenmed.sona.core.model.DownloadOptions
+import com.lhacenmed.sona.core.model.DownloadStatus
 import com.lhacenmed.sona.feature.download.work.DownloadWork
+import com.lhacenmed.sona.feature.tageditor.FileExistsException
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** A download running: which, and how far it has got - see [DownloadQueue.running]. */
 data class RunningDownload(
@@ -48,6 +56,8 @@ data class RunningDownload(
     val line: String? = null,
     /** Whether what it downloaded is being made ready - tagged, covered, given its lyrics - before it is saved. */
     val isFinishing: Boolean = false,
+    /** Whether it has fetched since it began - its figures its own, not those it was resumed from. */
+    val isFetching: Boolean = false,
 ) {
     /** How far the file downloading is, from 0 to 1 - null while unknown. */
     val fraction: Float? get() = fractionOf(downloadedBytes, totalBytes)
@@ -93,11 +103,31 @@ class DownloadQueue @Inject constructor(
     private val settings: DownloadSettings,
     private val workspaces: DownloadWorkspaces,
     private val logs: DownloadLogs,
+    private val live: LiveDownloads,
     runtime: DownloaderRuntime,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
-    /** Every download, the newest first. */
-    val downloads: Flow<List<Download>> = dao.observeAll().map { rows -> rows.map(DownloadEntity::toDomain) }
+    /** What the user has just paused, resumed or cancelled, by id - as it is shown until the database says so too. */
+    private val tapped = MutableStateFlow<Map<Long, DownloadStatus>>(emptyMap())
+
+    /**
+     * Every download, the newest first - each the user has just paused, resumed or cancelled shown so at once, not as it stood
+     * for the moment the database takes to say so; let go once it does, or once the download is over another way.
+     */
+    val downloads: Flow<List<Download>> = dao.observeAll()
+        .map { rows -> rows.map(DownloadEntity::toDomain) }
+        .combine(tapped) { downloads, tapped ->
+            if (tapped.isEmpty()) return@combine downloads
+            // Each tap the database says too - or the download over another way - let go of, once this list shows it: let go of
+            // before, the list would be shown a moment as the database stood before it did.
+            val byId = downloads.associateBy(Download::id)
+            val settled = tapped.filter { (id, status) -> byId[id]?.status?.let { it == status || it.isFinished } ?: true }.keys
+            if (settled.isNotEmpty()) this@DownloadQueue.tapped.update { it - settled }
+            downloads.map { download -> tapped[download.id]?.takeUnless { download.id in settled }?.let { download.copy(status = it) } ?: download }
+        }
+        // One list for every reader: each reading its own would let go of a tap the others still show it by, a frame before
+        // their database says so too.
+        .shareIn(scope, SharingStarted.WhileSubscribed(5_000), replay = 1)
 
     private val _running = MutableStateFlow<Map<Long, RunningDownload>>(emptyMap())
 
@@ -135,10 +165,15 @@ class DownloadQueue @Inject constructor(
                 wasInstalled = state == RuntimeState.Installed
             }
         }
+        // Each paused before the app last stopped as it was: as far as it had got, and playable as far as that.
         scope.launch {
-            val saved = dao.pausedIds().mapNotNull { id -> workspaces.progressOf(id)?.let { id to it } }.toMap()
+            val paused = dao.pausedIds()
+            val saved = paused.mapNotNull { id -> workspaces.progressOf(id)?.let { id to it } }.toMap()
             _held.update { saved + it }
+            paused.forEach { id -> live.restore(id, workspaces.partsOf(id)) }
         }
+        // What was queued, or cut off as the app last stopped, runs as the app starts - never left waiting on a run that ended.
+        scope.launch { if (dao.nextToRun(emptyList(), System.currentTimeMillis(), limit = 1).isNotEmpty()) changed() }
     }
 
     /** Queues [requests] - to start at [startAt], or as soon as they can - and has them run. */
@@ -161,6 +196,7 @@ class DownloadQueue @Inject constructor(
 
     /** Queues [ids] again, as they were asked for. */
     fun retry(ids: Collection<Long>) {
+        tap(ids, DownloadStatus.QUEUED)
         scope.launch {
             dao.requeue(ids)
             changed()
@@ -200,6 +236,10 @@ class DownloadQueue @Inject constructor(
      * waiting or paused.
      */
     fun cancel(ids: Collection<Long>) {
+        tap(ids, DownloadStatus.CANCELED)
+        ids.forEach(::release)
+        // A paused one played is over: its player waits for it no more.
+        ids.forEach { live.finish(it, saved = null) }
         val running = stop(ids, DownloadStop.CANCEL)
         scope.launch {
             dao.cancelQueued(ids)
@@ -207,11 +247,22 @@ class DownloadQueue @Inject constructor(
         }
     }
 
-    /** Pauses [ids], keeping what they fetched to carry on from its last byte - see [resume]. */
+    /**
+     * Pauses [ids], keeping what they fetched to carry on from its last byte - see [resume]: shown paused, as far as they had got,
+     * the moment they are told to, those running stopping after.
+     */
     fun pause(ids: Collection<Long>) {
-        stop(ids, DownloadStop.PAUSE)
-        scope.launch { dao.pauseQueued(ids) }
+        tap(ids, DownloadStatus.PAUSED)
+        val running = _running.value
+        ids.forEach { id -> running[id]?.let { hold(id, it.downloadedBytes to it.totalBytes) } }
+        scope.launch {
+            dao.pause(ids)
+            stop(ids, DownloadStop.PAUSE)
+        }
     }
+
+    /** Shows [ids] as [status] at once - see [downloads]. */
+    private fun tap(ids: Collection<Long>, status: DownloadStatus) = tapped.update { it + ids.associateWith { status } }
 
     /** Carries on [ids], paused, from their last byte. */
     fun resume(ids: Collection<Long>) = retry(ids)
@@ -247,16 +298,32 @@ class DownloadQueue @Inject constructor(
         return allDeleted
     }
 
+    /** Renames [from], a file saved that the library does not hold - subtitles, any other file - to [to], its download following it. */
+    suspend fun renameSaved(from: File, to: File) = withContext(Dispatchers.IO) {
+        if (to.exists()) throw FileExistsException(to)
+        check(from.renameTo(to)) { "Could not rename ${from.name}" }
+        dao.moveSavedPath(from.path, to.path)
+    }
+
     /** Has the worker run what is queued - picked up at once where it already runs. */
     private fun changed() {
         changes.trySend(Unit)
         DownloadWork.start(context, settings.preferences.value)
     }
 
-    /** Holds [progress] as how far [id] had got as it was paused. */
-    internal fun hold(id: Long, progress: HeldProgress) = _held.update { it + (id to progress) }
+    /**
+     * Holds [progress] as how far [id] has got - as it is paused, kept until it is over: never less far than it held already,
+     * which a figure read as it starts again may say for a moment.
+     */
+    internal fun hold(id: Long, progress: HeldProgress) {
+        val further = fractionOf(progress.first, progress.second) ?: return
+        _held.update { held -> if ((held[id]?.let { fractionOf(it.first, it.second) } ?: -1f) > further) held else held + (id to progress) }
+    }
 
-    /** Lets go of what [id] held - running again, or cancelled. */
+    /** How far [id] had got as it was paused - what it starts from as it runs again. */
+    internal fun heldOf(id: Long): HeldProgress? = _held.value[id]
+
+    /** Lets go of what [id] held - over: saved, failed or cancelled. */
     internal fun release(id: Long) = _held.update { it - id }
 
     internal fun setRunning(id: Long, running: RunningDownload?) {

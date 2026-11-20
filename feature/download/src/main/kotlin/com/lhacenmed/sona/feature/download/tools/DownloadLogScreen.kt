@@ -4,8 +4,11 @@ import android.content.Intent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import com.lhacenmed.sona.core.designsystem.component.LocalBottomContentPadding
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -16,6 +19,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.SonaActionButtonGroup
+import com.lhacenmed.sona.core.designsystem.component.fab.floatingActionButtonFloor
 import com.lhacenmed.sona.core.designsystem.component.SonaEmptyState
 import com.lhacenmed.sona.core.designsystem.component.actionButton
 import com.lhacenmed.sona.core.designsystem.component.copyToClipboard
@@ -31,6 +35,9 @@ import javax.inject.Inject
  */
 data class DownloadLogScreen(val downloadId: Long) : Screen {
     override val titleRes: Int get() = R.string.download_log_title
+
+    // Its Copy and Share at its foot are its own: no mini player over them.
+    override val hasPlayer: Boolean get() = false
 
     @Composable
     override fun Content() {
@@ -50,9 +57,12 @@ data class DownloadLogScreen(val downloadId: Long) : Screen {
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                 )
             } else {
-                DownloaderOutput(lines, Modifier.weight(1f))
+                // Its end meets the bar below, which stands clear of the navigation bar itself.
+                CompositionLocalProvider(LocalBottomContentPadding provides 0.dp) { DownloaderOutput(lines, Modifier.weight(1f)) }
             }
-            SonaActionButtonGroup(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp)) {
+            SonaActionButtonGroup(
+                modifier = Modifier.fillMaxWidth().floatingActionButtonFloor().navigationBarsPadding().padding(horizontal = 24.dp, vertical = 12.dp),
+            ) {
                 actionButton(label = copyLabel, enabled = lines.isNotEmpty(), onClick = {
                     context.copyToClipboard(log, copiedLabel)
                 })

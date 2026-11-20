@@ -111,7 +111,12 @@ internal class DownloadWorker(context: Context, params: WorkerParameters) : Coro
     @OptIn(FlowPreview::class)
     override suspend fun doWork(): Result {
         val entryPoint = entryPointOf(applicationContext)
-        setForeground(getForegroundInfo())
+        // Refused from the background - a watched channel's videos queued by its look, twice a day - the queue still runs, as a job:
+        // left unrun, it would read as downloading while nothing does.
+        try {
+            setForeground(getForegroundInfo())
+        } catch (_: IllegalStateException) {
+        }
         coroutineScope {
             val notification = launch {
                 var shown = emptySet<Int>()

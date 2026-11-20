@@ -62,6 +62,10 @@ data class DownloadEntity(
     @ColumnInfo(defaultValue = "0") val downloadsAgain: Boolean = false,
     /** What the browser it was found in sent for it, one `Name: value` a line - null for a link given. */
     val requestHeaders: String? = null,
+    /** The name the user gave its file, without its extension - null for the file name template's. */
+    val fileName: String? = null,
+    /** The video's further sounds embedded beside its own, one language code a line - null for none. */
+    val audioLanguages: String? = null,
 )
 
 fun DownloadEntity.toDomain() = Download(
@@ -91,6 +95,8 @@ fun DownloadEntity.toDomain() = Download(
         requestHeaders = requestHeaders?.lines().orEmpty().mapNotNull { line ->
             line.split(": ", limit = 2).takeIf { it.size == 2 }?.let { (name, value) -> name to value }
         }.toMap(),
+        fileName = fileName,
+        audioLanguages = audioLanguages?.lines()?.filter(String::isNotEmpty).orEmpty(),
     ),
     // One running as the app was last stopped never finished: it is taken up again.
     status = enumOr(status, DownloadStatus.QUEUED).let { if (it == DownloadStatus.RUNNING) DownloadStatus.QUEUED else it },
@@ -149,6 +155,8 @@ fun queuedDownload(
     batchTitle = batch?.title,
     downloadsAgain = options.downloadsAgain,
     requestHeaders = options.requestHeaders.takeIf { it.isNotEmpty() }?.entries?.joinToString("\n") { (name, value) -> "$name: $value" },
+    fileName = options.fileName,
+    audioLanguages = options.audioLanguages.takeIf { it.isNotEmpty() }?.joinToString("\n"),
 )
 
 private inline fun <reified T : Enum<T>> enumOr(name: String, default: T): T = enumValues<T>().firstOrNull { it.name == name } ?: default

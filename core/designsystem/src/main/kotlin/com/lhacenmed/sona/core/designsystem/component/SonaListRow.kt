@@ -60,6 +60,9 @@ private val RowShape = RoundedCornerShape(16.dp)
 /** The space between one row's shape and the next, half of it above each row and half below. */
 val ListRowGap = 4.dp
 
+/** Brings what is drawn to a row's own inset, rounded shape - its tint, and whatever is laid over it, as a download's progress. */
+fun Modifier.listRowBounds(): Modifier = padding(horizontal = RowInset, vertical = ListRowGap / 2).clip(RowShape)
+
 /** A row's title and its line beneath: a little smaller than a list's usual, so a row stays 64dp tall. */
 private val RowTitleSize = 15.sp
 private val RowTitleLineHeight = 20.sp
@@ -173,8 +176,7 @@ fun SonaListRow(
                     .background(containerColor)
                     // Every row is inset from the list's sides in a shape of its own, its content still on the keyline;
                     // the playing row stands apart on a container in it.
-                    .padding(horizontal = RowInset, vertical = ListRowGap / 2)
-                    .clip(RowShape)
+                    .listRowBounds()
                     .then(if (isCurrent) Modifier.background(MaterialTheme.colorScheme.surfaceContainer) else Modifier)
                     .drawBehind {
                         drawRect(selectedTint.copy(alpha = SELECTED_ROW_TINT_ALPHA * selectedFraction.value))

@@ -111,7 +111,9 @@ class DownloadRunner @Inject constructor(
 
     /** Runs [download] to its end, or until it is stopped. Whether it waits for the connection to come back. */
     private suspend fun run(download: Download): Boolean {
-        var running = RunningDownload(download.id, download.title)
+        // Resumed, it starts from as far as it had got - never from nothing until its first figure comes.
+        val held = queue.heldOf(download.id)
+        var running = RunningDownload(download.id, download.title, downloadedBytes = held?.first, totalBytes = held?.second)
         fun show(next: RunningDownload) {
             running = next
             queue.setRunning(download.id, next)
@@ -123,8 +125,7 @@ class DownloadRunner @Inject constructor(
         var picture = download.thumbnailUrl
         var kind = download.choices.kind
         val workspace = workspaces.of(download.id)
-        live.forget(download.id)
-        queue.release(download.id)
+        live.resume(download.id)
         val log = logs.open(download.id)
         log.append("[sona] Downloading ${download.url} as ${download.choices.kind.name.lowercase()}")
         val outcome = runCatching {
@@ -136,9 +137,13 @@ class DownloadRunner @Inject constructor(
                 kind = found.kindFor(kind)
             }) { event ->
                 when (event) {
-                    is DownloadEvent.Item -> show(running.copy(title = event.title, item = event.index, itemCount = event.count, downloadedBytes = null, totalBytes = null))
+                    // A playlist's next video counted from its start; one video alone, as far as it had got.
+                    is DownloadEvent.Item -> show(
+                        if (event.count == null) running.copy(title = event.title)
+                        else running.copy(title = event.title, item = event.index, itemCount = event.count, downloadedBytes = null, totalBytes = null, isFetching = false),
+                    )
                     is DownloadEvent.Progress -> {
-                        show(running.copy(downloadedBytes = event.downloadedBytes, totalBytes = event.totalBytes, bytesPerSecond = event.bytesPerSecond))
+                        show(running.copy(downloadedBytes = event.downloadedBytes, totalBytes = event.totalBytes, bytesPerSecond = event.bytesPerSecond, isFetching = true))
                         // The file playing, not the whole: what of it a seek bar can reach.
                         live.setFraction(download.id, event.fileFraction ?: event.fraction)
                     }
@@ -170,9 +175,12 @@ class DownloadRunner @Inject constructor(
                 bringIntoLibrary(saved.map { if (it.heatmapJson == null && pageHeatmap != null) it.copy(heatmapJson = pageHeatmap) else it }, covers)
                 dao.setSaved(download.id, saved.joinToString("\n") { it.file.path }, saved.sumOf { it.file.length() }, System.currentTimeMillis())
             }
-            // Played as it downloaded, it is played on from the file saved - before what it was fetched into goes.
-            live.finish(download.id, saved.firstOrNull()?.file?.takeIf { outcome.isSuccess })
             val error = outcome.exceptionOrNull()
+            // How the user stopped it, where they did - asked once.
+            val stop = if (error is CancellationException) queue.stopOf(download.id) else null
+            // Played as it downloaded, it is played on from the file saved - before what it was fetched into goes. Paused, it plays
+            // on as far as it got, and waits there for the rest.
+            if (stop != DownloadStop.PAUSE) live.finish(download.id, saved.firstOrNull()?.file?.takeIf { outcome.isSuccess })
             // Cut off by the device going offline, not failed: queued again, to carry on once it is back.
             val failure = error?.let { if (it is AlreadySavedException || it is DownloadedBeforeException) DownloadFailure.ALREADY_SAVED else failureOf(it) }
             val waitsForNetwork = error != null && error !is CancellationException && failure == DownloadFailure.NO_NETWORK &&
@@ -182,22 +190,26 @@ class DownloadRunner @Inject constructor(
                     // Incognito, it leaves the list once saved, as clearing the history would take it: its files stay.
                     if (settings.preferences.value.isIncognito) dao.delete(listOf(download.id)) else dao.setStatus(download.id, DownloadStatus.DONE.name)
                     workspaces.discard(listOf(download.id))
+                    queue.release(download.id)
                 }
-                error is CancellationException -> when (queue.stopOf(download.id)) {
+                error is CancellationException -> when (stop) {
                     DownloadStop.CANCEL -> {
                         dao.setStatus(download.id, DownloadStatus.CANCELED.name)
                         workspaces.discard(listOf(download.id))
                     }
+                    // Paused as it was told to - see DownloadQueue.pause: not written again, which would undo a resume since.
                     DownloadStop.PAUSE -> {
-                        workspaces.saveProgress(download.id, running.downloadedBytes, running.totalBytes)
                         queue.hold(download.id, running.downloadedBytes to running.totalBytes)
-                        dao.setStatus(download.id, DownloadStatus.PAUSED.name)
+                        queue.heldOf(download.id)?.let { (done, total) -> workspaces.saveProgress(download.id, done, total) }
                     }
                     // Stopped with the worker, it is taken up again the next time the queue runs - and restarted, at once.
                     DownloadStop.RESTART, null -> dao.setStatus(download.id, DownloadStatus.QUEUED.name)
                 }
                 waitsForNetwork -> dao.setStatus(download.id, DownloadStatus.QUEUED.name, failure = DownloadFailure.NO_NETWORK.name)
-                else -> dao.setStatus(download.id, DownloadStatus.FAILED.name, error.message, checkNotNull(failure).name)
+                else -> {
+                    dao.setStatus(download.id, DownloadStatus.FAILED.name, error.message, checkNotNull(failure).name)
+                    queue.release(download.id)
+                }
             }
             log.append(
                 when {
@@ -272,7 +284,7 @@ class DownloadRunner @Inject constructor(
         // The saved commands added to its kind and for its link, as they stand when it starts, beside the one picked.
         val options = download.options.copy(commandArguments = dao.commandArgumentsFor(download.choices.kind, download.url, download.options.commandArguments))
         directTransfer.formatFor(info, download.choices, options, preferences)?.let { format ->
-            directTransfer.download(info, format, preferences, workspace, outputDir, onEvent)
+            directTransfer.download(info, format, preferences, workspace, outputDir, options.fileName, onEvent)
             return
         }
 
@@ -290,9 +302,10 @@ class DownloadRunner @Inject constructor(
             ytDlp.download(DownloadSource(download.url, infoFile), download.choices, options, preferences, workspace, outputDir, onEvent)
         } catch (e: YtDlpException) {
             if (infoFile == null || !isStaleRead(e)) throw e
-            // The read was the failure, not the link: its streams were no longer served. Read again, it downloads.
-            resolver.forget(download.url)
-            ytDlp.download(DownloadSource(download.url, null), download.choices, options, preferences, workspace, outputDir, onEvent)
+            // The read was the failure, not the link: its streams were no longer served. Read again - the way it was read, so
+            // a YouTube video is not left to yt-dlp's own read, which YouTube can refuse - it downloads.
+            infoFile.writeText(resolver.readAgain(download.url, preferences).json)
+            ytDlp.download(DownloadSource(download.url, infoFile), download.choices, options, preferences, workspace, outputDir, onEvent)
         } finally {
             infoFile?.delete()
         }

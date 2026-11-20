@@ -23,7 +23,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -82,6 +81,11 @@ import com.lhacenmed.sona.feature.tageditor.tags.label
 import kotlin.math.abs
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.ContainerEdge
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.clearText
+import com.lhacenmed.sona.core.designsystem.component.rememberSyncedTextFieldState
+import androidx.compose.ui.text.input.KeyboardCapitalization
 
 /** A recording within this much of the video's length is the same recording - the lyrics' own margin. */
 private const val SameLengthMarginSeconds = 2L
@@ -485,21 +489,20 @@ private fun tagRow(name: String, value: String, onClick: () -> Unit): SonaGroupR
  */
 @Composable
 private fun ColumnScope.ChangePageContent(song: VideoSong, onPick: () -> Unit, onSaveAsFile: () -> Unit) {
-    var text by remember { mutableStateOf(song.queryTitle.takeIf { song.matchLookup is MatchLookup.Found && it.isNotBlank() }?.let { listOf(song.queryArtist, it).filter(String::isNotBlank).joinToString(" ") } ?: song.searchText) }
+    val text = rememberTextFieldState(song.queryTitle.takeIf { song.matchLookup is MatchLookup.Found && it.isNotBlank() }?.let { listOf(song.queryArtist, it).filter(String::isNotBlank).joinToString(" ") } ?: song.searchText)
     OutlinedTextField(
-        value = text,
-        onValueChange = { text = it },
+        state = text,
         placeholder = { Text(stringResource(R.string.download_search_songs)) },
         leadingIcon = { Icon(SonaIcons.Search, contentDescription = null) },
         trailingIcon = {
-            if (text.isNotEmpty()) {
-                SonaIconButton(onClick = { text = "" }, icon = SonaIcons.Close, contentDescription = stringResource(R.string.download_clear_search), edge = ContainerEdge.End)
+            if (text.text.isNotEmpty()) {
+                SonaIconButton(onClick = { text.clearText() }, icon = SonaIcons.Close, contentDescription = stringResource(R.string.download_clear_search), edge = ContainerEdge.End)
             }
         },
-        singleLine = true,
+        lineLimits = TextFieldLineLimits.SingleLine,
         shape = CircleShape,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        keyboardActions = KeyboardActions(onSearch = { song.searchFor(text) }),
+        onKeyboardAction = { song.searchFor(text.text.toString()) },
         modifier = Modifier.fillMaxWidth(),
     )
     Row(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -648,11 +651,14 @@ private fun TagsPageContent(song: VideoSong) {
     @Composable
     fun Field(field: TagField, label: String, modifier: Modifier = Modifier.fillMaxWidth()) {
         OutlinedTextField(
-            value = song.tags[field],
-            onValueChange = { song.setField(field, it) },
+            state = rememberSyncedTextFieldState(song.tags[field]) { song.setField(field, it) },
             label = { Text(if (song.isEdited(field)) stringResource(R.string.download_song_edited, label) else label) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = if (field.isNumeric) KeyboardType.Number else KeyboardType.Text, imeAction = ImeAction.Next),
+            lineLimits = TextFieldLineLimits.SingleLine,
+            keyboardOptions = KeyboardOptions(
+                capitalization = if (field.isNumeric) KeyboardCapitalization.None else KeyboardCapitalization.Words,
+                keyboardType = if (field.isNumeric) KeyboardType.Number else KeyboardType.Text,
+                imeAction = ImeAction.Next,
+            ),
             modifier = modifier,
         )
     }
@@ -674,7 +680,7 @@ private fun TagsPageContent(song: VideoSong) {
 /** Lyrics written or pasted by the user, starting from those picked - none, where left blank. */
 @Composable
 private fun WriteLyricsDialog(initial: String, onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
-    var text by remember { mutableStateOf(initial) }
+    val text = rememberTextFieldState(initial)
     val cancelLabel = stringResource(R.string.download_cancel)
     val useLabel = stringResource(R.string.download_song_lyrics_use)
     SonaDialog(
@@ -682,10 +688,15 @@ private fun WriteLyricsDialog(initial: String, onConfirm: (String) -> Unit, onDi
         title = stringResource(R.string.download_song_lyrics_write),
         buttons = {
             actionButton(label = cancelLabel, onClick = onDismiss)
-            actionButton(label = useLabel, onClick = { onConfirm(text) })
+            actionButton(label = useLabel, onClick = { onConfirm(text.text.toString()) })
         },
     ) {
-        OutlinedTextField(value = text, onValueChange = { text = it }, minLines = 6, maxLines = 12, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(
+            state = text,
+            lineLimits = TextFieldLineLimits.MultiLine(minHeightInLines = 6, maxHeightInLines = 12),
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 

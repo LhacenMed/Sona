@@ -31,11 +31,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
+import com.lhacenmed.sona.core.designsystem.component.animateProgressAsState
 import com.lhacenmed.sona.core.designsystem.component.sheet.SonaBottomSheetScope
 import com.lhacenmed.sona.core.designsystem.component.sheet.SonaOptionRow
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
-import com.lhacenmed.sona.core.downloader.fractionOf
 import com.lhacenmed.sona.core.model.Download
 import com.lhacenmed.sona.core.model.DownloadStatus
 import com.lhacenmed.sona.core.navigation.LocalNavigator
@@ -59,14 +59,15 @@ internal fun SonaBottomSheetScope.ActiveDownloadContent(download: Download, view
     val isPaused = download.status == DownloadStatus.PAUSED
     val downloaded = running?.downloadedBytes ?: held?.first
     val total = running?.totalBytes ?: held?.second
-    val fraction = running?.fraction ?: fractionOf(downloaded, total)
+    val fraction = progressOf(running, held)
+    val shownFraction by animateProgressAsState(fraction ?: 0f)
     val status = rowStatus(context, download, running, held, preferences)
     fun size(bytes: Long) = Formatter.formatShortFileSize(context, bytes)
 
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.Bottom) {
             Text(
-                fraction?.let { context.getString(R.string.download_percent, (it * 100).roundToInt()) } ?: status.text,
+                if (fraction != null) context.getString(R.string.download_percent, (shownFraction * 100).roundToInt()) else status.text,
                 style = if (fraction != null) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.titleMedium,
                 modifier = Modifier.weight(1f),
                 maxLines = 1,
@@ -78,7 +79,7 @@ internal fun SonaBottomSheetScope.ActiveDownloadContent(download: Download, view
         when {
             running != null && fraction == null -> LinearProgressIndicator(modifier = barModifier)
             else -> LinearProgressIndicator(
-                progress = { fraction ?: 0f },
+                progress = { shownFraction },
                 modifier = barModifier,
                 color = if (isPaused) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
             )
@@ -101,7 +102,9 @@ internal fun SonaBottomSheetScope.ActiveDownloadContent(download: Download, view
     }
     ShowLogRow(download.id)
     // One video or one sound - a playlist's are each played once saved.
-    if (running != null && running.itemCount == null && download.choices.kind.isMedia && liveAll[download.id]?.isPlayable == true) {
+    // Whenever there is enough of it, however it stands - running, paused, resuming: played as far as it got, carrying on as it
+    // downloads. It leaves the sheet only once it can no longer be played so - cancelled, failed - never for a moment between.
+    if (running?.itemCount == null && download.choices.kind.isMedia && liveAll[download.id]?.isPlayable == true) {
         Button(
             onClick = {
                 viewModel.onPlayDownloading(download)

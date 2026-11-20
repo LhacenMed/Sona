@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -15,6 +16,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -34,6 +36,7 @@ import com.lhacenmed.sona.core.designsystem.component.SonaListRow
 import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
 import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.component.actionButton
+import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialogOption
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaConfirmationDialog
 import com.lhacenmed.sona.core.designsystem.component.dialog.SonaDialog
 import com.lhacenmed.sona.core.designsystem.component.fab.ExtendedFloatingActionButtonContent
@@ -61,6 +64,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 
 /**
  * Watched channels and playlists - YTDLnis's observed sources: each looked at twice a day, every new video on it downloaded as
@@ -132,8 +140,8 @@ data object WatchesScreen : Screen {
 
         if (isAdding) {
             AddWatchDialog(
-                onAdd = { url ->
-                    viewModel.add(url) { failure -> context.toast(failure ?: context.getString(R.string.download_watches_added)) }
+                onAdd = { url, latest ->
+                    viewModel.add(url, latest) { failure -> context.toast(failure ?: context.getString(R.string.download_watches_added)) }
                 },
                 onDismiss = { isAdding = false },
             )
@@ -158,10 +166,17 @@ data object WatchesScreen : Screen {
     }
 }
 
+/** How many of a channel's videos it can be watched from: none - only what comes after - or its latest few. */
+private val LatestToDownload = listOf(0, 5, 10, 25)
+
+/** A link to watch, and whether its latest videos are downloaded now too, or only what comes after. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun AddWatchDialog(onAdd: (String) -> Unit, onDismiss: () -> Unit) {
-    var link by remember { mutableStateOf("") }
+private fun AddWatchDialog(onAdd: (url: String, latest: Int) -> Unit, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val link = rememberTextFieldState()
+    val url = linkIn(link.text.toString())
+    var latest by rememberSaveable { mutableIntStateOf(0) }
     val cancelLabel = stringResource(R.string.download_cancel)
     val addLabel = stringResource(R.string.download_watches_add)
     SonaDialog(
@@ -169,14 +184,35 @@ private fun AddWatchDialog(onAdd: (String) -> Unit, onDismiss: () -> Unit) {
         title = stringResource(R.string.download_watches_add),
         buttons = {
             actionButton(label = cancelLabel, onClick = onDismiss)
-            actionButton(label = addLabel, enabled = linkIn(link) != null, onClick = {
-                linkIn(link)?.let(onAdd)
+            actionButton(label = addLabel, enabled = url != null, onClick = {
+                url?.let { onAdd(it, latest) }
                 onDismiss()
             })
         },
     ) {
         Text(stringResource(R.string.download_watches_add_message))
-        OutlinedTextField(value = link, onValueChange = { link = it }, label = { Text(stringResource(R.string.download_link)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(
+            state = link,
+            label = { Text(stringResource(R.string.download_link)) },
+            lineLimits = TextFieldLineLimits.SingleLine,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
+            onKeyboardAction = {
+                url?.let {
+                    onAdd(it, latest)
+                    onDismiss()
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Column(modifier = Modifier.selectableGroup()) {
+            LatestToDownload.forEach { count ->
+                SonaDialogOption(
+                    label = if (count == 0) stringResource(R.string.download_watches_only_new) else context.resources.getQuantityString(R.plurals.download_watches_latest, count, count),
+                    selected = count == latest,
+                    onClick = { latest = count },
+                )
+            }
+        }
     }
 }
 
@@ -192,11 +228,11 @@ internal class WatchesViewModel @Inject constructor(
     /** Whether a channel is being read - added, or every one looked at. */
     val isBusy: StateFlow<Boolean> = _isBusy.asStateFlow()
 
-    /** Watches [url], saying why not to [onDone] where it cannot be - null once it is watched. */
-    fun add(url: String, onDone: (String?) -> Unit) = busy {
+    /** Watches [url] - its [latest] videos downloaded now - saying why not to [onDone] where it cannot be - null once it is watched. */
+    fun add(url: String, latest: Int, onDone: (String?) -> Unit) = busy {
         onDone(
             try {
-                checker.add(url)
+                checker.add(url, latest)
                 null
             } catch (e: CancellationException) {
                 throw e

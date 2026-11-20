@@ -4,9 +4,6 @@ import android.content.Context
 import android.text.format.DateFormat
 import android.text.format.DateUtils
 import android.text.format.Formatter
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -37,6 +34,8 @@ import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverArt
 import com.lhacenmed.sona.core.designsystem.component.SonaIconButton
 import com.lhacenmed.sona.core.designsystem.component.SonaVideoCover
+import com.lhacenmed.sona.core.designsystem.component.animateProgressAsState
+import com.lhacenmed.sona.core.designsystem.component.listRowBounds
 import com.lhacenmed.sona.core.designsystem.component.shape
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.designsystem.theme.LocalCoverStyle
@@ -123,6 +122,10 @@ internal fun rowStatus(
         running != null && running.isFinishingUp ->
             RowStatus(context.getString(if (download.isSong) R.string.download_finishing_song else R.string.download_finishing), StatusTone.ACTIVE)
 
+        // Resumed, as far as it had got until it fetches again - what it said paused, and will say downloading.
+        running != null && !running.isFetching && held != null ->
+            RowStatus(listOfNotNull(context.getString(R.string.download_resuming), sizes(held.first, held.second)).joinToString(InfoSeparator), StatusTone.ACTIVE)
+
         running != null -> RowStatus(
             listOfNotNull(
                 if (running.item != null && running.itemCount != null) context.getString(R.string.download_item_of, running.item, running.itemCount) else null,
@@ -143,6 +146,8 @@ internal fun rowStatus(
                     val time = DateFormat.getTimeFormat(context).format(startAt)
                     RowStatus(context.getString(if (DateUtils.isToday(startAt)) R.string.download_starts_at else R.string.download_starts_tomorrow_at, time), StatusTone.QUIET)
                 }
+                // Resumed, and waiting its turn: as far as it had got, as it said paused and will say downloading.
+                held != null -> RowStatus(listOfNotNull(context.getString(R.string.download_resuming), sizes(held.first, held.second)).joinToString(InfoSeparator), StatusTone.ACTIVE)
                 preferences.wifiOnly -> RowStatus(context.getString(R.string.download_waiting_wifi), StatusTone.QUIET, SonaIcons.Wifi)
                 else -> RowStatus(context.getString(R.string.download_waiting), StatusTone.QUIET)
             }
@@ -187,17 +192,17 @@ internal fun RowStatusLine(status: RowStatus) {
 /**
  * How far a download is, filling its row from behind - YTDLnis's queue card: Material's linear progress indicator laid over the
  * whole row, its indicator in the theme's primary colour at [FillAlpha], and no track - the rest of the row is as every other row. Each figure
- * is moved to as Material's own `setProgressCompat(progress, true)` moves - see [FillSpring] - and while there is none - [fraction]
+ * is moved to as every progress indicator moves - see [animateProgressAsState] - and while there is none - [fraction]
  * null - it runs Material's indeterminate animation across the row.
  */
 @Composable
 internal fun BoxScope.RowProgressFill(fraction: Float?) {
-    val modifier = Modifier.matchParentSize().alpha(FillAlpha)
+    val modifier = Modifier.matchParentSize().listRowBounds().alpha(FillAlpha)
     val color = MaterialTheme.colorScheme.primary
     if (fraction == null) {
         LinearProgressIndicator(modifier = modifier, color = color, trackColor = Color.Transparent, strokeCap = StrokeCap.Butt, gapSize = 0.dp)
     } else {
-        val shown by animateFloatAsState(targetValue = fraction, animationSpec = FillSpring, label = "rowFill")
+        val shown by animateProgressAsState(fraction)
         LinearProgressIndicator(
             progress = { shown },
             modifier = modifier,
@@ -213,21 +218,31 @@ internal fun BoxScope.RowProgressFill(fraction: Float?) {
 /** How strongly the fill lies over its row: YTDLnis's `android:alpha="0.3"`. */
 private const val FillAlpha = 0.3f
 
-/** How the fill moves to each new figure: Material's own determinate drawable's spring - no bounce, stiffness 50. */
-private val FillSpring = spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 50f)
-
-/** How far [download] is as its row fills - null where it does not fill: neither running nor paused. See [RowProgressFill]. */
+/**
+ * How far [download] is as its row fills - null where it does not fill: neither running, paused, nor resumed and waiting its turn,
+ * which fills as far as it had got. See [RowProgressFill].
+ */
 internal class RowFill(val fraction: Float?)
 
 internal fun rowFillOf(download: Download, running: RunningDownload?, held: HeldProgress?): RowFill? = when {
     // None yet, or whole and made ready - merged, converted, tagged: Material's indeterminate run, as YTDLnis's `progress <= 0`.
-    running != null -> RowFill(running.fraction?.takeUnless { running.isFinishingUp || it <= 0f })
-    download.status == DownloadStatus.PAUSED -> RowFill(fractionOf(held?.first, held?.second) ?: 0f)
+    running != null -> RowFill(progressOf(running, held)?.takeUnless { it <= 0f })
+    download.status == DownloadStatus.PAUSED || (held != null && download.status == DownloadStatus.QUEUED) -> RowFill(progressOf(null, held) ?: 0f)
     else -> null
 }
 
 /**
- * A row's one button, as its download stands: Pause while it runs, Resume while paused, Start now where it waits for a time,
+ * How far a download is, from 0 to 1, as everything shows it - its row, its sheet, its batch: as it runs, never less far than it
+ * had got before - what it reads as it starts again may say less, for a moment - and null while it is made ready, or nothing is
+ * known of it.
+ */
+internal fun progressOf(running: RunningDownload?, held: HeldProgress?): Float? {
+    if (running?.isFinishingUp == true) return null
+    return listOfNotNull(running?.fraction, fractionOf(held?.first, held?.second)).maxOrNull()
+}
+
+/**
+ * A row's one button, as its download stands: Pause while it runs or waits its turn, Resume while paused, Start now where it waits for a time,
  * then Play once saved, its fix once failed, and Download again once cancelled. How far it is fills the row - see
  * [RowProgressFill].
  */
@@ -238,20 +253,16 @@ internal fun DownloadRowButton(download: Download, running: RunningDownload?, is
         running != null && running.isFinishingUp ->
             SonaIconButton(onClick = {}, icon = SonaIcons.AutoAwesome, contentDescription = stringResource(R.string.download_finishing), enabled = false)
 
-        running != null -> SonaIconButton(onClick = { viewModel.onPause(ids) }, icon = SonaIcons.Pause, contentDescription = stringResource(R.string.download_pause))
-
         download.status == DownloadStatus.PAUSED ->
             SonaIconButton(onClick = { viewModel.onResume(ids) }, icon = SonaIcons.Play, contentDescription = stringResource(R.string.download_resume))
 
-        download.status == DownloadStatus.QUEUED || download.status == DownloadStatus.RUNNING -> {
-            val waitsForTime = (download.startAt ?: 0) > System.currentTimeMillis()
-            SonaIconButton(
-                onClick = { viewModel.onResume(ids) },
-                icon = SonaIcons.Download,
-                contentDescription = stringResource(R.string.download_start_now),
-                enabled = waitsForTime,
-            )
-        }
+        // Set to start later: started now. Running, or waiting its turn - as one just resumed does, a moment - paused: the one
+        // button it keeps from Resume to running, never another between.
+        running == null && (download.startAt ?: 0) > System.currentTimeMillis() ->
+            SonaIconButton(onClick = { viewModel.onResume(ids) }, icon = SonaIcons.Download, contentDescription = stringResource(R.string.download_start_now))
+
+        running != null || download.status == DownloadStatus.QUEUED || download.status == DownloadStatus.RUNNING ->
+            SonaIconButton(onClick = { viewModel.onPause(ids) }, icon = SonaIcons.Pause, contentDescription = stringResource(R.string.download_pause))
 
         download.status == DownloadStatus.CANCELED || (download.status == DownloadStatus.DONE && isMissing) ->
             FilledActionButton(SonaIcons.Download, stringResource(R.string.download_again), MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.colorScheme.onSurface) {

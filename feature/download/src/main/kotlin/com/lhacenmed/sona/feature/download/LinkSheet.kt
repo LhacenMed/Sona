@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -56,6 +57,7 @@ import com.lhacenmed.sona.core.designsystem.component.SonaActionButtonGroup
 import com.lhacenmed.sona.core.designsystem.component.SonaConnectedChoice
 import com.lhacenmed.sona.core.designsystem.component.SonaCoverArt
 import com.lhacenmed.sona.core.designsystem.component.SonaGroupRow
+import com.lhacenmed.sona.core.designsystem.component.animateProgressAsState
 import com.lhacenmed.sona.core.designsystem.component.SonaListRow
 import com.lhacenmed.sona.core.designsystem.component.SonaRowGroup
 import com.lhacenmed.sona.core.designsystem.component.SonaValueRow
@@ -79,9 +81,11 @@ import com.lhacenmed.sona.core.model.DownloadFailure
 import com.lhacenmed.sona.core.model.DownloadKind
 import com.lhacenmed.sona.core.model.DownloadOptions
 import com.lhacenmed.sona.core.model.DownloaderPreferences
+import com.lhacenmed.sona.core.model.toFileName
 import com.lhacenmed.sona.core.navigation.LocalNavigator
-import com.lhacenmed.sona.feature.download.tools.CookiesScreen
+import com.lhacenmed.sona.feature.download.browser.BrowserScreen
 import com.lhacenmed.sona.feature.tageditor.LyricsPick
+import com.lhacenmed.sona.feature.tageditor.RenameFileDialog
 import com.lhacenmed.sona.feature.tageditor.VideoSong
 import com.lhacenmed.sona.feature.tageditor.lyrics.LyricsTiming
 import com.lhacenmed.sona.feature.tageditor.tags.TagField
@@ -123,10 +127,22 @@ private fun MediaSheet(info: MediaInfo?, preview: LinkPreview?, viewModel: Downl
     val check by viewModel.libraryCheck.collectAsStateWithLifecycle()
     val preferences by viewModel.preferences.collectAsStateWithLifecycle()
     var picker by remember { mutableStateOf<MediaPicker?>(null) }
+    var isNaming by remember { mutableStateOf(false) }
     // A link that serves a file is downloaded as that file: no kind to pick, nothing of a video's to choose - its name, its size.
     val kind = info?.kindFor(choices.kind) ?: choices.kind
     val size = info?.estimatedSizeBytes(choices.copy(kind = kind), pickedFormat)?.let { Formatter.formatShortFileSize(context, it) }
-    SonaBottomSheet(onDismissRequest = viewModel::onDismissLink, header = { MediaHeader(info, preview, showsThumbnail = !viewModel.preferences.collectAsStateWithLifecycle().value.hidesPreview) }) {
+    SonaBottomSheet(
+        onDismissRequest = viewModel::onDismissLink,
+        header = {
+            MediaHeader(
+                info,
+                preview,
+                showsThumbnail = !viewModel.preferences.collectAsStateWithLifecycle().value.hidesPreview,
+                fileName = options.fileName,
+                onName = { isNaming = true }.takeIf { info != null },
+            )
+        },
+    ) {
         Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
             if (kind != DownloadKind.FILE) {
                 KindChoice(choices.kind) { picked -> viewModel.onSheetChoicesChange { it.copy(kind = picked) } }
@@ -135,7 +151,7 @@ private fun MediaSheet(info: MediaInfo?, preview: LinkPreview?, viewModel: Downl
                     // Each as the kind it is shown for: the one fading out keeps its own look until it is gone.
                     val shown = choices.copy(kind = shownKind)
                     val quality = qualityRow(info, shown) { picker = MediaPicker.QUALITY }
-                    val track = audioTrackRow(info, shown) { picker = MediaPicker.AUDIO_TRACK }
+                    val track = audioTrackRow(info, shown, options) { picker = MediaPicker.AUDIO_TRACK }
                     val subtitles = subtitlesRow(info, shown, options, preferences) { picker = MediaPicker.SUBTITLES }
                     SonaRowGroup(
                         when (shownKind) {
@@ -169,6 +185,7 @@ private fun MediaSheet(info: MediaInfo?, preview: LinkPreview?, viewModel: Downl
         }
     }
     if (info == null) return
+    if (isNaming) RenameFileDialog(name = options.fileName ?: info.title.toFileName(), onRename = viewModel::onFileNameChange, onDismiss = { isNaming = false })
     val close = { picker = null }
     when (picker) {
         MediaPicker.SONG -> song?.let {
@@ -184,12 +201,13 @@ private fun MediaSheet(info: MediaInfo?, preview: LinkPreview?, viewModel: Downl
 
 /**
  * Is it the right thing? Its picture with its length - unless [showsThumbnail] is off, the preview disabled - its title, and who
- * published it where: a skeleton until they are known.
+ * published it where: a skeleton until they are known. The title - the [fileName] it is saved as, once given one - is tapped to
+ * name the file, [onName], where it can be.
  */
 @Composable
-private fun MediaHeader(info: MediaInfo?, preview: LinkPreview?, showsThumbnail: Boolean) {
+private fun MediaHeader(info: MediaInfo?, preview: LinkPreview?, showsThumbnail: Boolean, fileName: String? = null, onName: (() -> Unit)? = null) {
     val thumbnail = info?.thumbnailUrl ?: preview?.thumbnailUrl
-    val title = info?.title ?: preview?.title
+    val title = fileName ?: info?.title ?: preview?.title
     val details = if (info?.isPlaylist == true) {
         val count = info.entries.orEmpty().size
         listOfNotNull(stringResource(R.string.download_playlist), pluralStringResource(R.plurals.download_videos, count, count), info.uploader)
@@ -229,8 +247,16 @@ private fun MediaHeader(info: MediaInfo?, preview: LinkPreview?, showsThumbnail:
             if (title == null) {
                 Bone(widthFraction = 0.92f)
                 Bone(widthFraction = 0.6f, modifier = Modifier.padding(top = 10.dp))
-            } else {
+            } else if (onName == null) {
                 Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            } else {
+                Row(
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClickLabel = stringResource(R.string.download_name_file), onClick = onName),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    Icon(SonaIcons.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 6.dp).size(16.dp))
+                }
             }
             Text(
                 text = details.joinToString(InfoSeparator),
@@ -353,14 +379,18 @@ private fun qualityRow(info: MediaInfo?, choices: DownloadChoices, onClick: () -
 }
 
 /** The audio track row: the sound kept - the one recorded unless another is picked - offered where the video has more than one. */
-private fun audioTrackRow(info: MediaInfo?, choices: DownloadChoices, onClick: () -> Unit): @Composable (ListItemShapes) -> Unit = { shapes ->
+private fun audioTrackRow(info: MediaInfo?, choices: DownloadChoices, options: DownloadOptions, onClick: () -> Unit): @Composable (ListItemShapes) -> Unit = { shapes ->
     val track = info?.audioLanguageFor(choices.audioLanguage)?.let { language -> info.audioTracks.firstOrNull { it.language == language } }
+    // Further sounds counted on the row of a video's - see AudioTrackSheet.
+    val more = choices.kind.takeIf { it == DownloadKind.VIDEO }?.let { options.audioLanguages.size } ?: 0
     SonaValueRow(
         label = stringResource(R.string.download_audio_track),
         shapes = shapes,
         icon = SonaIcons.RecordVoiceOver,
-        value = track?.let { listOf(languageName(it.language), stringResource(it.kind.labelRes)).joinToString(InfoSeparator) }
-            ?: stringResource(R.string.download_track_original),
+        value = listOfNotNull(
+            track?.let { listOf(languageName(it.language), stringResource(it.kind.labelRes)).joinToString(InfoSeparator) } ?: stringResource(R.string.download_track_original),
+            more.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.download_audio_more_count, it, it) },
+        ).joinToString(InfoSeparator),
         enabled = track != null,
         onClick = onClick,
     )
@@ -567,7 +597,7 @@ private fun UnreadableSheet(sheet: LinkSheet.Unreadable, viewModel: DownloadView
                 FailureFix.TRY_AGAIN, FailureFix.TRY_BEST_FORMAT, FailureFix.DOWNLOAD_ANYWAY -> viewModel.open(sheet.url)
                 FailureFix.OPEN_LINK -> runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(sheet.url))) }
                 FailureFix.SIGN_IN -> {
-                    navigator.go(CookiesScreen(sheet.url))
+                    navigator.go(BrowserScreen(page = sheet.url))
                     dismiss()
                 }
                 FailureFix.FREE_UP_SPACE -> runCatching { context.startActivity(Intent(Settings.ACTION_INTERNAL_STORAGE_SETTINGS)) }
@@ -612,12 +642,13 @@ private fun DownloaderSheet(sheet: LinkSheet.NeedsDownloader, viewModel: Downloa
         )
         when (val current = state) {
             is RuntimeState.Downloading -> Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) {
+                val progress by animateProgressAsState(current.progress)
                 Text(
-                    text = stringResource(R.string.download_getting_downloader, (current.progress * 100).toInt()),
+                    text = stringResource(R.string.download_getting_downloader, (progress * 100).toInt()),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                LinearWavyProgressIndicator(progress = { current.progress }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp))
+                LinearWavyProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp))
             }
             RuntimeState.Failed -> Text(
                 text = stringResource(R.string.download_downloader_failed),

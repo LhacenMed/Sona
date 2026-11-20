@@ -150,10 +150,14 @@ internal fun QualitySheet(viewModel: DownloadViewModel, info: MediaInfo, onDismi
     if (isPickingFormat) ExactFormatDialog(viewModel, info, onDismiss = { isPickingFormat = false })
 }
 
-/** The videos's sounds - the one recorded first - one picked; and whether every download keeps to the one recorded. */
+/**
+ * The videos's sounds - the one recorded first - one picked; a video's others, any added beside it as tracks of their own; and
+ * whether every download keeps to the one recorded.
+ */
 @Composable
 internal fun AudioTrackSheet(viewModel: DownloadViewModel, info: MediaInfo, onDismiss: () -> Unit) {
     val choices by viewModel.sheetChoices.collectAsStateWithLifecycle()
+    val options by viewModel.options.collectAsStateWithLifecycle()
     val remembered by viewModel.choices.collectAsStateWithLifecycle()
     var alwaysOriginal by remember { mutableStateOf(remembered.audioLanguage == null) }
     val tracks = info.audioTracks
@@ -177,6 +181,24 @@ internal fun AudioTrackSheet(viewModel: DownloadViewModel, info: MediaInfo, onDi
                     }
                 },
             )
+            val others = tracks.filter { it.language != chosen }
+            if (choices.kind == DownloadKind.VIDEO && others.isNotEmpty()) {
+                SectionLabel(stringResource(R.string.download_audio_more))
+                SonaRowGroup(
+                    others.map<AudioTrack, SonaGroupRow> { track ->
+                        { shapes ->
+                            val isAdded = track.language in options.audioLanguages
+                            SonaValueRow(
+                                label = languageName(track.language),
+                                shapes = shapes,
+                                value = stringResource(track.kind.summaryRes),
+                                trailing = if (isAdded) ({ Icon(SonaIcons.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }) else null,
+                                onClick = { viewModel.onMoreAudioToggle(track.language) },
+                            )
+                        }
+                    },
+                )
+            }
             SonaRowGroup(
                 listOf(
                     { shapes ->

@@ -67,7 +67,9 @@ object SonaNotifications {
      * A task running, on [channel]: [title], what it is doing now - [text] - and [detail] beneath, with how far it is -
      * [percent], null while it cannot tell - and [actions]. On Android 16 and later, where [canPostPromoted] and
      * [asLiveUpdate], a promoted live update, its percent the title, which the system shows in the status bar too; a
-     * progress bar otherwise - which, unlike a live update, Android bundles with the app's others.
+     * progress bar otherwise - which, unlike a live update, Android bundles with the app's others. [since], when the task began,
+     * is kept as the notification's time: posted again as it goes, it stays where it is among the others, which Android orders
+     * by it, rather than coming first each time.
      */
     fun progress(
         context: Context,
@@ -78,6 +80,7 @@ object SonaNotifications {
         percent: Int?,
         actions: List<SonaNotificationAction>,
         asLiveUpdate: Boolean = true,
+        since: Long? = null,
     ): Notification {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA && asLiveUpdate && canPostPromoted(context)) {
             val progressStyle = Notification.ProgressStyle()
@@ -92,6 +95,7 @@ object SonaNotifications {
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setCategory(Notification.CATEGORY_PROGRESS)
+                .apply { since?.let(::setWhen) }
                 // Asks for the notification to be promoted to a live update.
                 .addExtras(Bundle().apply { putBoolean("android.requestPromotedOngoing", true) })
                 .apply { actions.forEach { addAction(Notification.Action.Builder(Icon.createWithResource(context, it.iconRes), it.label, it.intent).build()) } }
@@ -106,6 +110,7 @@ object SonaNotifications {
             .setOnlyAlertOnce(true)
             .setSilent(true)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+            .apply { since?.let(::setWhen) }
             .apply { actions.forEach { addAction(it.iconRes, it.label, it.intent) } }
             .build()
     }

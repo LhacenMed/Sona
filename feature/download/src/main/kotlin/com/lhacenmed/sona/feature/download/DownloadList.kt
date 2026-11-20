@@ -44,10 +44,9 @@ import com.lhacenmed.sona.core.designsystem.component.selectAllAction
 import com.lhacenmed.sona.core.designsystem.component.toTopBarSelection
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.model.Download
-import com.lhacenmed.sona.core.model.DownloadBatch
 import com.lhacenmed.sona.core.model.DownloaderPreferences
 import com.lhacenmed.sona.core.navigation.LocalNavigator
-import com.lhacenmed.sona.feature.download.tools.CookiesScreen
+import com.lhacenmed.sona.feature.download.browser.BrowserScreen
 import kotlinx.coroutines.launch
 
 /** Downloads listed under one heading - [actions] beside it - each batch's as one: see [listedOf]. */
@@ -58,9 +57,6 @@ internal class DownloadGroup(val key: String, val title: String, val downloads: 
 internal class DownloadListState(val selection: SelectionState) {
     /** The download opened in its sheet, followed by its id as it goes, from downloading to saved. */
     var openedId by mutableStateOf<Long?>(null)
-
-    /** The batch opened in its sheet - a playlist's or a watched channel's videos. */
-    var openedBatch by mutableStateOf<DownloadBatch?>(null)
     var isChoosingSelectionOptions by mutableStateOf(false)
     var isDeleting by mutableStateOf(false)
 }
@@ -93,6 +89,7 @@ internal fun DownloadList(
     header: LazyListScope.() -> Unit = {},
     footer: LazyListScope.() -> Unit = {},
 ) {
+    val navigator = LocalNavigator.current
     val running by viewModel.running.collectAsStateWithLifecycle()
     val preferences by viewModel.preferences.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
@@ -116,7 +113,7 @@ internal fun DownloadList(
                         items(rows, key = ListedDownload::key) { row ->
                             when (row) {
                                 is ListedDownload.One -> DownloadRow(row.download, running[row.download.id], preferences, state.selection, viewModel, onOpen = { state.openedId = row.download.id })
-                                is ListedDownload.Batch -> BatchRow(row.batch, state.selection, viewModel, onOpen = { state.openedBatch = row.batch })
+                                is ListedDownload.Batch -> BatchRow(row.batch, state.selection, viewModel, onOpen = { navigator.go(DownloadBatchScreen(row.batch.key, row.batch.title)) })
                             }
                         }
                     }
@@ -128,12 +125,12 @@ internal fun DownloadList(
     }
 }
 
-/** A large title over a list, and under it a line of where things stand - the screen's name, as Seal's home writes it. */
-internal fun LazyListScope.screenTitle(title: String, summary: String) {
+/** A large title over a list, and under it, where it has one, a line of where things stand - the screen's name, as Seal's home writes it. */
+internal fun LazyListScope.screenTitle(title: String, summary: String? = null) {
     item(key = "screen-title") {
         Column(modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 16.dp)) {
             Text(title, style = MaterialTheme.typography.displaySmall)
-            Text(summary, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+            summary?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp)) }
         }
     }
 }
@@ -150,9 +147,6 @@ internal fun DownloadListSheets(state: DownloadListState, listed: List<Download>
     // Found among every download, not only those listed: a batch's videos are opened from its sheet.
     all.orEmpty().firstOrNull { it.id == state.openedId }?.let { download ->
         DownloadSheet(download, viewModel, onDismiss = { state.openedId = null })
-    }
-    state.openedBatch?.let { batch ->
-        BatchSheet(batch, viewModel, onOpenDownload = { state.openedId = it.id }, onDismiss = { state.openedBatch = null })
     }
 
     if (state.isChoosingSelectionOptions) {
@@ -221,7 +215,7 @@ internal fun DownloadRow(
             supporting = { RowStatusLine(rowStatus(context, download, running, held, preferences, isMissing)) },
             trailing = if (selection.isActive) null else ({
                 DownloadRowButton(download, running, isMissing, viewModel, onFix = {
-                    applyFix(context, viewModel, download, onSignIn = { navigator.go(CookiesScreen(download.url)) })
+                    applyFix(context, viewModel, download, onSignIn = { navigator.go(BrowserScreen(page = download.url)) })
                 })
             }),
             cover = { isSelected -> DownloadCover(download, isSelected) },

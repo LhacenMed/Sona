@@ -605,3 +605,28 @@ val MIGRATION_36_37 = object : Migration(36, 37) {
         db.execSQL("ALTER TABLE `downloads` ADD COLUMN `requestHeaders` TEXT")
     }
 }
+
+/** The name the user gave a download's file - see `DownloadOptions.fileName`. */
+val MIGRATION_37_38 = object : Migration(37, 38) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `downloads` ADD COLUMN `fileName` TEXT")
+    }
+}
+
+/** The video's further sounds embedded beside its own - see `DownloadOptions.audioLanguages`. */
+val MIGRATION_38_39 = object : Migration(38, 39) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `downloads` ADD COLUMN `audioLanguages` TEXT")
+    }
+}
+
+/** The places the user marked in each video. A table of its own, starting empty. */
+val MIGRATION_39_40 = object : Migration(39, 40) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `video_bookmarks` (`trackId` INTEGER NOT NULL, `positionMs` INTEGER NOT NULL, " +
+                "PRIMARY KEY(`trackId`, `positionMs`), " +
+                "FOREIGN KEY(`trackId`) REFERENCES `tracks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        )
+    }
+}

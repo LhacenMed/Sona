@@ -75,6 +75,13 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.KeyboardCapitalization
 
 /**
  * Saved yt-dlp arguments - YTDLnis's command templates: each named, picked in a download's options to be given after
@@ -198,7 +205,10 @@ private fun DownloadCommand.uses(context: Context): List<String> = listOfNotNull
 @Composable
 private fun CommandDialog(command: DownloadCommand?, shortcuts: List<DownloadCommandShortcut>, onSave: (DownloadCommand) -> Unit, onDismiss: () -> Unit) {
     var edited by remember { mutableStateOf(command ?: DownloadCommand(id = 0, name = "", arguments = "")) }
-    var patterns by remember { mutableStateOf(edited.urlPatterns.joinToString("\n")) }
+    // What is typed is the fields' own; the rest of the command - what it is given to - is [edited].
+    val name = rememberTextFieldState(edited.name)
+    val arguments = rememberTextFieldState(edited.arguments)
+    val patterns = rememberTextFieldState(edited.urlPatterns.joinToString("\n"))
     val cancelLabel = stringResource(R.string.download_cancel)
     val saveLabel = stringResource(R.string.download_save)
     SonaDialog(
@@ -206,33 +216,39 @@ private fun CommandDialog(command: DownloadCommand?, shortcuts: List<DownloadCom
         title = stringResource(if (command == null) R.string.download_commands_add else R.string.download_commands_edit),
         buttons = {
             actionButton(label = cancelLabel, onClick = onDismiss)
-            actionButton(label = saveLabel, enabled = edited.name.isNotBlank() && edited.arguments.isNotBlank(), onClick = {
-                onSave(edited.copy(name = edited.name.trim(), arguments = edited.arguments.trim(), urlPatterns = patterns.lines().map(String::trim).filter(String::isNotEmpty)))
+            actionButton(label = saveLabel, enabled = name.text.isNotBlank() && arguments.text.isNotBlank(), onClick = {
+                onSave(
+                    edited.copy(
+                        name = name.text.trim().toString(),
+                        arguments = arguments.text.trim().toString(),
+                        urlPatterns = patterns.text.lines().map(String::trim).filter(String::isNotEmpty),
+                    ),
+                )
                 onDismiss()
             })
         },
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedTextField(
-                value = edited.name,
-                onValueChange = { edited = edited.copy(name = it) },
+                state = name,
                 label = { Text(stringResource(R.string.download_commands_name)) },
-                singleLine = true,
+                lineLimits = TextFieldLineLimits.SingleLine,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
-                value = edited.arguments,
-                onValueChange = { edited = edited.copy(arguments = it) },
+                state = arguments,
                 label = { Text(stringResource(R.string.download_commands_arguments)) },
                 placeholder = { Text("--embed-subs --sub-langs all") },
-                minLines = 3,
+                lineLimits = TextFieldLineLimits.MultiLine(minHeightInLines = 3),
+                keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
                 modifier = Modifier.fillMaxWidth(),
             )
             if (shortcuts.isNotEmpty()) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     shortcuts.forEach { shortcut ->
                         SuggestionChip(
-                            onClick = { edited = edited.copy(arguments = listOf(edited.arguments.trimEnd(), shortcut.content).filter(String::isNotEmpty).joinToString(" ")) },
+                            onClick = { arguments.setTextAndPlaceCursorAtEnd(listOf(arguments.text.trimEnd().toString(), shortcut.content).filter(String::isNotEmpty).joinToString(" ")) },
                             label = { Text(shortcut.content) },
                         )
                     }
@@ -247,12 +263,12 @@ private fun CommandDialog(command: DownloadCommand?, shortcuts: List<DownloadCom
                 ),
             )
             OutlinedTextField(
-                value = patterns,
-                onValueChange = { patterns = it },
+                state = patterns,
                 label = { Text(stringResource(R.string.download_commands_patterns)) },
                 placeholder = { Text("youtube\\.com\nsoundcloud\\.com") },
                 supportingText = { Text(stringResource(R.string.download_commands_patterns_summary)) },
-                minLines = 2,
+                lineLimits = TextFieldLineLimits.MultiLine(minHeightInLines = 2),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, autoCorrectEnabled = false),
                 modifier = Modifier.fillMaxWidth(),
             )
         }

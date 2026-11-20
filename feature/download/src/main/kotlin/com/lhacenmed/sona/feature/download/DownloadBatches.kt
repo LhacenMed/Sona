@@ -1,44 +1,35 @@
 package com.lhacenmed.sona.feature.download
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lhacenmed.sona.core.designsystem.component.InfoSeparator
 import com.lhacenmed.sona.core.designsystem.component.SelectionState
 import com.lhacenmed.sona.core.designsystem.component.SonaIconButton
 import com.lhacenmed.sona.core.designsystem.component.SonaListRow
-import com.lhacenmed.sona.core.designsystem.component.rememberSelectionState
-import com.lhacenmed.sona.core.designsystem.component.sheet.SonaColumnBottomSheet
+import com.lhacenmed.sona.core.designsystem.component.SonaTopAppBar
+import com.lhacenmed.sona.core.designsystem.component.TopBarAction
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
-import com.lhacenmed.sona.core.designsystem.theme.buttonPressShapes
 import com.lhacenmed.sona.core.designsystem.theme.iconButtonPressShapes
-import com.lhacenmed.sona.core.downloader.fractionOf
 import com.lhacenmed.sona.core.model.Download
 import com.lhacenmed.sona.core.model.DownloadBatch
 import com.lhacenmed.sona.core.model.DownloadStatus
+import com.lhacenmed.sona.core.navigation.LocalNavigator
+import com.lhacenmed.sona.core.navigation.Screen
 
 /** What a list shows of its downloads: each alone, or a [DownloadBatch]'s as one - a playlist's, a watched channel's. */
 internal sealed interface ListedDownload {
@@ -103,7 +94,7 @@ internal fun BatchRow(batch: DownloadBatch, selection: SelectionState, viewModel
     videos.forEach { video ->
         val now = when {
             video.status == DownloadStatus.DONE -> 1f
-            else -> running[video.id]?.fraction ?: held[video.id]?.let { fractionOf(it.first, it.second) } ?: 0f
+            else -> progressOf(running[video.id], held[video.id]) ?: 0f
         }
         reached[video.id] = maxOf(reached[video.id] ?: 0f, now)
     }
@@ -165,47 +156,52 @@ internal fun BatchRow(batch: DownloadBatch, selection: SelectionState, viewModel
 internal const val WatchBatchPrefix = "watch:"
 
 /**
- * A batch opened: every one of its videos as a download's own row - paused, resumed, played and opened each as any other - then
- * Pause or Resume and Cancel for all that are not over yet.
+ * A batch opened - a playlist's or a watched channel's videos - as a list of its own: the Downloads list itself, each video one
+ * of its rows, selected, paused, resumed, cancelled and deleted as any other; Play all and Pause or Resume all on the bar.
  */
-@Composable
-internal fun BatchSheet(batch: DownloadBatch, viewModel: DownloadViewModel, onOpenDownload: (Download) -> Unit, onDismiss: () -> Unit) {
-    val videos = rememberBatch(batch, viewModel)
-    val running by viewModel.running.collectAsStateWithLifecycle()
-    val preferences by viewModel.preferences.collectAsStateWithLifecycle()
-    // A batch's videos are opened, not selected, here: they are selected from the history.
-    val selection = rememberSelectionState()
-    val active = videos.filter { it.isActive }.map(Download::id)
-    val isPaused = videos.none { it.id in running || it.status == DownloadStatus.QUEUED }
-    SonaColumnBottomSheet(onDismissRequest = onDismiss, title = batch.title) { sheet ->
-        LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
-            items(videos, key = Download::id) { download ->
-                DownloadRow(download, running[download.id], preferences, selection, viewModel, onOpen = { onOpenDownload(download) })
-            }
-        }
-        if (active.isNotEmpty()) {
-            Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilledTonalButton(
-                    onClick = { if (isPaused) viewModel.onResume(active) else viewModel.onPause(active) },
-                    shapes = buttonPressShapes(),
-                    modifier = Modifier.weight(1f).heightIn(min = 56.dp),
-                ) {
-                    Icon(if (isPaused) SonaIcons.Play else SonaIcons.Pause, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
-                    Text(stringResource(if (isPaused) R.string.download_resume_all else R.string.download_pause_all), modifier = Modifier.padding(start = ButtonDefaults.IconSpacing), maxLines = 1)
-                }
-                OutlinedButton(
-                    onClick = {
-                        viewModel.onCancel(active)
-                        sheet.dismiss()
+internal data class DownloadBatchScreen(val key: String, val title: String) : Screen {
+
+    @Composable
+    override fun Content() {
+        val context = LocalContext.current
+        val navigator = LocalNavigator.current
+        val viewModel: DownloadViewModel = hiltViewModel()
+        val all by viewModel.downloads.collectAsStateWithLifecycle()
+        val running by viewModel.running.collectAsStateWithLifecycle()
+        val state = rememberDownloadListState()
+        // Each listed alone: here the batch is the list, not one row of it.
+        val videos = remember(all) { all.orEmpty().filter { it.batch?.key == key }.map { it.copy(batch = null) } }
+        // Every video deleted, the batch is gone with them.
+        if (all != null && videos.isEmpty()) LaunchedEffect(Unit) { navigator.back() }
+        val active = videos.filter { it.isActive }.map(Download::id)
+        val isPaused = videos.none { it.id in running || it.status == DownloadStatus.QUEUED }
+        val saved = videos.count { it.status == DownloadStatus.DONE }
+        val summary = listOf(
+            stringResource(if (key.startsWith(WatchBatchPrefix)) R.string.download_batch_channel else R.string.download_playlist),
+            stringResource(R.string.download_batch_saved, saved, videos.size),
+        ).joinToString(InfoSeparator)
+
+        Column(modifier = Modifier.fillMaxSize()) {
+            SonaTopAppBar(
+                title = "",
+                onNavigateBack = navigator::back,
+                actions = listOfNotNull(
+                    TopBarAction(stringResource(R.string.download_play), SonaIcons.PlayCircle) { viewModel.onPlayAll(videos) }.takeIf { saved > 0 },
+                    when {
+                        active.isEmpty() -> null
+                        isPaused -> TopBarAction(stringResource(R.string.download_resume_all), SonaIcons.Play) { viewModel.onResume(active) }
+                        else -> TopBarAction(stringResource(R.string.download_pause_all), SonaIcons.Pause) { viewModel.onPause(active) }
                     },
-                    shapes = buttonPressShapes(),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                    modifier = Modifier.weight(1f).heightIn(min = 56.dp),
-                ) {
-                    Icon(SonaIcons.Close, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
-                    Text(stringResource(R.string.download_cancel_all), modifier = Modifier.padding(start = ButtonDefaults.IconSpacing), maxLines = 1)
-                }
-            }
+                ),
+                selection = state.topBarSelection(videos),
+            )
+            DownloadList(
+                groups = listOf(DownloadGroup("videos", context.resources.getQuantityString(R.plurals.download_videos, videos.size, videos.size), videos)),
+                viewModel = viewModel,
+                state = state,
+                header = { screenTitle(title, summary) },
+            )
         }
+        DownloadListSheets(state, videos, viewModel)
     }
 }
