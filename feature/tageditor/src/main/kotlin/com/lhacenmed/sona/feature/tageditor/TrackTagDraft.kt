@@ -26,7 +26,7 @@ class TrackTagDraft(
         internal set
 
     /** What the user has made of the draft - its tags, its cover and the match they came from - to come back to. */
-    data class Edits(val tags: TrackTags, val cover: CoverChoice, val appliedMatch: CatalogueMatch?)
+    data class Edits(val tags: TrackTags, val cover: CoverChoice, val appliedMatch: CatalogueMatch?, val link: String = "")
 
     /** What the file held as it was read, or null until it has been - see [takeFile]. */
     var file by mutableStateOf<TagFileInfo?>(null)
@@ -42,12 +42,19 @@ class TrackTagDraft(
 
     val hasChanges: Boolean get() = tags != original || cover != CoverChoice.Own
 
-    val edits: Edits get() = Edits(tags, cover, appliedMatch)
+    /**
+     * A video's link - the page it came from, which its details are read again from - kept in its file with those details
+     * rather than as a tag: see `EmbeddedExtras`. Empty for a song, and for a video that names none.
+     */
+    var link by mutableStateOf("")
+
+    val edits: Edits get() = Edits(tags, cover, appliedMatch, link)
 
     /** Goes back to [edits], as the draft stood when they were taken. */
     fun restore(edits: Edits) {
         tags = edits.tags
         cover = edits.cover
         appliedMatch = edits.appliedMatch
+        link = edits.link
     }
 }

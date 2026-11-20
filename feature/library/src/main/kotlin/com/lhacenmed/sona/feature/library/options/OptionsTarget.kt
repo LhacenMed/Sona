@@ -124,7 +124,7 @@ private val PlaylistActions =
  * What a video offers, wherever it was opened from: it is on no album and credited to no artist of the library's, and -
  * played for its sound, seldom a song - has no tags to edit.
  */
-private val VideoActions = listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, SONG_PROPERTIES, SHARE)
+private val VideoActions = listOf(PLAY, SHUFFLE, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, SONG_PROPERTIES, EDIT_TAGS, SHARE)
 private val FolderActions =
     listOf(PLAY, SHUFFLE, VIEW_DETAILS, BROWSE_FOLDER, PLAY_NEXT, QUEUE_ADD, PLAYLIST_ADD, AUTO_TAG, EXPORT, EXCLUDE, DELETE_FROM_DEVICE)
 

@@ -7,7 +7,9 @@ import android.media.MediaScannerConnection
 import android.net.Uri
 import com.lhacenmed.sona.core.common.di.IoDispatcher
 import com.lhacenmed.sona.core.data.contentUri
+import com.lhacenmed.sona.core.downloader.EmbeddedExtras
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.model.VideoStats
 import com.lhacenmed.sona.feature.playback.TrackFiles
 import com.lhacenmed.sona.feature.scanner.MediaScanner
 import com.lhacenmed.sona.feature.tageditor.net.Http
@@ -18,6 +20,7 @@ import com.lhacenmed.sona.feature.tageditor.tags.TagFileInfo
 import com.lhacenmed.sona.feature.tageditor.tags.TrackTags
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.ByteArrayOutputStream
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
@@ -66,6 +69,19 @@ class TrackTagsRepository @Inject constructor(
 
     /** The lyrics [track]'s file holds, as written - blank where it holds none. */
     suspend fun readLyrics(track: Track): String = read(track).tags[TagField.LYRICS]
+
+    /** The link [track] - a video - was downloaded from, as its file names it - see [EmbeddedExtras.linkOf]: blank for none. */
+    suspend fun readLink(track: Track): String = withContext(ioDispatcher) { EmbeddedExtras.linkOf(File(track.path)).orEmpty() }
+
+    /**
+     * Keeps [link] as the page [track] - a video - came from, with the details its site counted of it, which are read again
+     * from it: in its file, as they are - see [EmbeddedExtras]. Blank, or no web address, the file names no page any more.
+     */
+    suspend fun saveLink(track: Track, link: String) = writeFile(track) {
+        val file = File(track.path)
+        val stats = EmbeddedExtras.read(file)?.stats ?: VideoStats(uploadedAtMs = null, viewCount = null, likeCount = null)
+        EmbeddedExtras.writeStats(file, EmbeddedExtras.statsJsonOf(stats.copy(sourceUrl = link.trim().takeIf(::isWebAddress))))
+    }
 
     /**
      * The lyrics [track]'s file holds - read as this is collected, and again each time Sona writes the file, so
@@ -189,3 +205,6 @@ internal fun scaledCoverOf(context: Context, uri: Uri): ByteArray {
         output.toByteArray()
     }
 }
+
+/** Whether [text] is a web page's address - what a video's link has to be to be read again. */
+internal fun isWebAddress(text: String): Boolean = (text.startsWith("https://") || text.startsWith("http://")) && text.none(Char::isWhitespace)

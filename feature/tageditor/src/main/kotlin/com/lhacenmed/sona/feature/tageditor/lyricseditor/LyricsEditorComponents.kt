@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -54,7 +53,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -73,6 +71,14 @@ import com.lhacenmed.sona.feature.tageditor.LyricsSearchStatus
 import com.lhacenmed.sona.feature.tageditor.R
 import com.lhacenmed.sona.feature.tageditor.lyrics.FoundLyrics
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.maxLength
+import androidx.compose.foundation.text.input.then
+import androidx.compose.ui.text.input.KeyboardCapitalization
 
 /** Digits that all take one width, so a time keeps its place as it is nudged. */
 private const val TabularFigures = "tnum"
@@ -237,21 +243,22 @@ private fun TimePartField(text: String, digits: Int, onDone: (Long) -> Unit) {
         val digitsWidth = with(density) { textMeasurer.measure("0".repeat(digits), textStyle).size.width.toDp() }
         digitsWidth + TimePartPadding * 2 + TimePartCursorWidth
     }
-    var field by remember(text) { mutableStateOf(TextFieldValue(text)) }
+    val field = remember(text) { TextFieldState(text) }
     var isFocused by remember { mutableStateOf(false) }
     // A frame after focus, once the tap that gave it has placed its cursor, so the choosing is not undone by it.
     LaunchedEffect(isFocused) {
-        if (isFocused) field = field.copy(selection = TextRange(0, field.text.length))
+        if (isFocused) field.edit { selection = TextRange(0, length) }
     }
     BasicTextField(
-        value = field,
-        onValueChange = { if (it.text.length <= digits && it.text.all(Char::isDigit)) field = it },
+        state = field,
+        // Digits alone, no more than the part holds: anything else is never typed in.
+        inputTransformation = InputTransformation.maxLength(digits).then { if (!asCharSequence().all(Char::isDigit)) revertAllChanges() },
         textStyle = textStyle,
-        singleLine = true,
+        lineLimits = TextFieldLineLimits.SingleLine,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+        onKeyboardAction = { focusManager.clearFocus() },
         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-        decorationBox = { innerTextField ->
+        decorator = { innerTextField ->
             Box(
                 modifier = Modifier
                     .clip(MaterialTheme.shapes.extraSmall)
@@ -265,8 +272,9 @@ private fun TimePartField(text: String, digits: Int, onDone: (Long) -> Unit) {
             .width(width)
             .onFocusChanged { focus ->
                 if (isFocused && !focus.isFocused) {
-                    val value = field.text.toLongOrNull()
-                    if (value != null && field.text != text) onDone(value) else field = TextFieldValue(text)
+                    val typed = field.text.toString()
+                    val value = typed.toLongOrNull()
+                    if (value != null && typed != text) onDone(value) else field.setTextAndPlaceCursorAtEnd(text)
                 }
                 isFocused = focus.isFocused
             },
@@ -324,7 +332,7 @@ internal fun FoundLyricsSheet(
 /** Writing one line's words. */
 @Composable
 internal fun LyricsLineTextDialog(initialText: String, onDismiss: () -> Unit, onDone: (String) -> Unit) {
-    var text by rememberSaveable { mutableStateOf(initialText) }
+    val text = rememberTextFieldState(initialText)
     val focusRequester = remember { FocusRequester() }
     // Read here rather than inside the buttons: they are built outside composition.
     val lineButton0 = stringResource(DesignR.string.confirmation_dialog_cancel)
@@ -334,13 +342,14 @@ internal fun LyricsLineTextDialog(initialText: String, onDismiss: () -> Unit, on
         title = stringResource(R.string.lyrics_editor_line),
         buttons = {
             actionButton(label = lineButton0, onClick = onDismiss)
-            actionButton(label = lineButton1, onClick = { onDone(text) })
+            actionButton(label = lineButton1, onClick = { onDone(text.text.toString()) })
         },
     ) {
         OutlinedTextField(
-            value = text,
-            onValueChange = { text = it },
-            singleLine = true,
+            state = text,
+            lineLimits = TextFieldLineLimits.SingleLine,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+            onKeyboardAction = { onDone(text.text.toString()) },
             modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
         )
     }
@@ -350,7 +359,7 @@ internal fun LyricsLineTextDialog(initialText: String, onDismiss: () -> Unit, on
 /** The lyrics written out in full, as they are kept - LRC, each line at its time - to read, or to change all at once. */
 @Composable
 internal fun LyricsTextDialog(initialText: String, onDismiss: () -> Unit, onDone: (String) -> Unit) {
-    var text by rememberSaveable { mutableStateOf(initialText) }
+    val text = rememberTextFieldState(initialText)
     // Read here rather than inside the buttons: they are built outside composition.
     val lyricsAsTextButton0 = stringResource(DesignR.string.confirmation_dialog_cancel)
     val lyricsAsTextButton1 = stringResource(R.string.lyrics_editor_done)
@@ -359,13 +368,13 @@ internal fun LyricsTextDialog(initialText: String, onDismiss: () -> Unit, onDone
         title = stringResource(R.string.lyrics_editor_text_title),
         buttons = {
             actionButton(label = lyricsAsTextButton0, onClick = onDismiss)
-            actionButton(label = lyricsAsTextButton1, onClick = { onDone(text) })
+            actionButton(label = lyricsAsTextButton1, onClick = { onDone(text.text.toString()) })
         },
     ) {
         OutlinedTextField(
-            value = text,
-            onValueChange = { text = it },
+            state = text,
             textStyle = MaterialTheme.typography.bodyMedium,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
             modifier = Modifier.fillMaxWidth().heightIn(max = LyricsTextMaxHeight),
         )
     }

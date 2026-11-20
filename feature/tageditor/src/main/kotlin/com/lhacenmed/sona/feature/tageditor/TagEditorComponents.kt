@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -65,6 +64,9 @@ import com.lhacenmed.sona.feature.tageditor.tags.CoverChoice
 import com.lhacenmed.sona.feature.tageditor.tags.TagField
 import com.lhacenmed.sona.feature.tageditor.tags.TrackTags
 import com.lhacenmed.sona.feature.tageditor.tags.label
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import com.lhacenmed.sona.core.designsystem.component.rememberSyncedTextFieldState
+import androidx.compose.ui.text.input.KeyboardCapitalization
 
 /** The best match's card keeps this height whatever it holds, so nothing under it moves as the lookup ends. */
 private val MatchCardMinHeight = 112.dp
@@ -91,20 +93,18 @@ internal fun SearchFields(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         OutlinedTextField(
-            value = artist,
-            onValueChange = onArtistChange,
+            state = rememberSyncedTextFieldState(artist, onArtistChange),
             label = { Text(stringResource(R.string.tag_field_artist)) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            lineLimits = TextFieldLineLimits.SingleLine,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
-            value = title,
-            onValueChange = onTitleChange,
+            state = rememberSyncedTextFieldState(title, onTitleChange),
             label = { Text(stringResource(R.string.tag_field_title)) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+            lineLimits = TextFieldLineLimits.SingleLine,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Search),
+            onKeyboardAction = { if (title.isNotBlank()) onSearch() },
             modifier = Modifier.fillMaxWidth(),
         )
         Button(
@@ -231,20 +231,25 @@ internal fun BestMatchCard(
 
 /** Every field, to be changed by hand - AutomaTag's "metadata fields". */
 @Composable
-internal fun TagFields(tags: TrackTags, onChange: (TagField, String) -> Unit) {
+internal fun TagFields(tags: TrackTags, onChange: (TagField, String) -> Unit, fields: List<TagField> = TagField.entries) {
     Column(
         modifier = Modifier.padding(horizontal = ContentPadding, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        TagField.entries.forEach { field ->
+        fields.forEach { field ->
             OutlinedTextField(
-                value = tags[field],
-                onValueChange = { onChange(field, it) },
+                state = rememberSyncedTextFieldState(tags[field]) { onChange(field, it) },
                 label = { Text(field.label) },
-                singleLine = !field.isMultiline,
-                minLines = if (field.isMultiline) 3 else 1,
-                maxLines = if (field.isMultiline) 10 else 1,
-                keyboardOptions = KeyboardOptions(keyboardType = if (field.isNumeric) KeyboardType.Number else KeyboardType.Text),
+                lineLimits = if (field.isMultiline) TextFieldLineLimits.MultiLine(minHeightInLines = 3, maxHeightInLines = 10) else TextFieldLineLimits.SingleLine,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = when {
+                        field.isNumeric -> KeyboardCapitalization.None
+                        field.isMultiline -> KeyboardCapitalization.Sentences
+                        else -> KeyboardCapitalization.Words
+                    },
+                    keyboardType = if (field.isNumeric) KeyboardType.Number else KeyboardType.Text,
+                    imeAction = if (field.isMultiline) ImeAction.Default else ImeAction.Next,
+                ),
                 modifier = Modifier.fillMaxWidth(),
             )
         }

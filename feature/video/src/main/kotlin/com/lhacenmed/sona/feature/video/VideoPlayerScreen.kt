@@ -3,6 +3,7 @@ package com.lhacenmed.sona.feature.video
 import android.Manifest
 import android.graphics.Bitmap
 import android.os.Build
+import android.widget.Toast
 import android.view.SurfaceView
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -67,7 +68,9 @@ import com.lhacenmed.sona.core.model.VideoChapter
 import com.lhacenmed.sona.core.designsystem.component.toast
 import com.lhacenmed.sona.core.designsystem.effect.rememberDeviceMusicVolumeController
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.feature.playback.StatsRefresh
 import com.lhacenmed.sona.feature.playback.VideoPlaybackState
+import com.lhacenmed.sona.feature.playback.bookmarkAt
 import com.lhacenmed.sona.feature.video.capture.captureVideoFrame
 import com.lhacenmed.sona.feature.video.capture.saveScreenshot
 import com.lhacenmed.sona.feature.video.controls.AmbientProgress
@@ -144,6 +147,7 @@ internal fun VideoPlayerScreen(
     isFloating: Boolean,
     onFloat: (() -> Unit)?,
     onOpenEqualizer: () -> Unit,
+    onEditInfo: (trackId: Long) -> Unit,
 ) {
     val playback by viewModel.playback.collectAsStateWithLifecycle()
     val session by viewModel.session.collectAsStateWithLifecycle()
@@ -168,7 +172,11 @@ internal fun VideoPlayerScreen(
     val zoom = remember { VideoZoomState() }
     val feedback = remember(scope) { GestureFeedbackState(scope) }
     val scrub = remember(viewModel) {
-        VideoScrubState(viewModel::onScrubSeek, onSnapped = { haptics.performHapticFeedback(HapticFeedbackType.LongPress) })
+        VideoScrubState(
+            onSeek = viewModel::onScrubSeek,
+            onSnapped = { haptics.performHapticFeedback(HapticFeedbackType.LongPress) },
+            onSeekExactly = viewModel::onSeek,
+        )
     }
     val brightness = rememberWindowBrightness()
     val volume = rememberDeviceMusicVolumeController()
@@ -188,6 +196,20 @@ internal fun VideoPlayerScreen(
     LaunchedEffect(current?.id, playback.currentQueueIndex) { scrub.cancel() }
     LaunchedEffect(viewModel) {
         viewModel.subtitles.readFailures.collect { context.toast(R.string.video_subtitle_failed) }
+    }
+    LaunchedEffect(viewModel) {
+        viewModel.statsRefreshes.collect { refresh ->
+            when (refresh) {
+                StatsRefresh.Read -> context.toast(R.string.video_about_refreshed)
+                // Why, in its site's or reader's words, so what went wrong can be told apart - and reported.
+                is StatsRefresh.Failed -> Toast.makeText(
+                    context,
+                    refresh.reason?.take(160)?.let { context.getString(R.string.video_about_refresh_failed_because, it) }
+                        ?: context.getString(R.string.video_about_refresh_failed),
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+        }
     }
 
     // Nothing left to watch - the Private Folder locked, music started - or a newer screen showing it leaves nothing to show.
@@ -452,14 +474,21 @@ internal fun VideoPlayerScreen(
                 )
 
                 VideoPanel.MORE -> MorePanel(
-                    actions = moreActions(playback, viewModel, screenshot, onOpenEqualizer) { panel = VideoPanel.ABOUT },
+                    actions = moreActions(playback, viewModel, screenshot, onOpenEqualizer, onEditInfo) { panel = VideoPanel.ABOUT },
                     onClose = close,
                 )
 
                 // Opened only where there is something to tell - see moreActions - and closed should the next video have nothing.
-                VideoPanel.ABOUT -> when (val stats = playback.stats) {
-                    null -> LaunchedEffect(Unit) { close() }
-                    else -> AboutPanel(stats, close)
+                VideoPanel.ABOUT -> if (playback.hasAbout) {
+                    AboutPanel(
+                        stats = playback.stats,
+                        sourceUrl = playback.sourceUrl,
+                        isRefreshing = playback.isRefreshingStats,
+                        onRefresh = viewModel::onRefreshStats.takeIf { playback.sourceUrl != null },
+                        onClose = close,
+                    )
+                } else {
+                    LaunchedEffect(Unit) { close() }
                 }
             }
         }
@@ -492,6 +521,9 @@ private fun PlayerControls(
     val durationMs = playback.durationMs
     // Read as the position moves, but changing only as another chapter starts: the bar composes once a chapter.
     val chapterIndex by remember(chapters, position) { derivedStateOf { chapters.indexAt(position.positionMs) } }
+    // The same: changing only as the video comes to a bookmark, or leaves it.
+    val bookmarksMs = playback.bookmarksMs
+    val isAtBookmark by remember(bookmarksMs, position) { derivedStateOf { bookmarkAt(position.positionMs, bookmarksMs) != null } }
     val topActions = listOf(
         VideoAction(SonaIcons.PlayAsAudio, stringResource(R.string.video_play_as_audio), viewModel::onPlayAsAudio),
         VideoAction(
@@ -499,6 +531,12 @@ private fun PlayerControls(
             label = stringResource(R.string.video_tracks),
             onClick = { onOpenPanel(VideoPanel.TRACKS) },
             checked = isShowingSubtitles,
+        ),
+        VideoAction(
+            icon = if (isAtBookmark) SonaIcons.BookmarkAdded else SonaIcons.BookmarkAdd,
+            label = stringResource(if (isAtBookmark) R.string.video_bookmark_remove else R.string.video_bookmark_add),
+            onClick = viewModel::onToggleBookmark,
+            checked = isAtBookmark,
         ),
         VideoAction(SonaIcons.MoreVert, stringResource(R.string.video_more), { onOpenPanel(VideoPanel.MORE) }),
     )
@@ -541,7 +579,7 @@ private fun PlayerControls(
                         modifier = modifier,
                     )
                 },
-                seekBar = { modifier -> VideoSeekBar(position, durationMs, scrub, replayHeights, chapters, downloadedFraction, modifier) },
+                seekBar = { modifier -> VideoSeekBar(position, durationMs, scrub, replayHeights, chapters, bookmarksMs, downloadedFraction, modifier) },
                 times = { modifier -> VideoTimes(position, durationMs, scrub, showsTotalDuration, viewModel::onToggleEndTime, modifier) },
                 elapsedTime = { modifier -> VideoElapsedTime(position, durationMs, scrub, modifier) },
                 endTime = { modifier -> VideoEndTime(position, durationMs, scrub, showsTotalDuration, viewModel::onToggleEndTime, modifier) },
@@ -594,6 +632,7 @@ private fun moreActions(
     viewModel: VideoPlayerViewModel,
     onScreenshot: () -> Unit,
     onOpenEqualizer: () -> Unit,
+    onEditInfo: (trackId: Long) -> Unit,
     onOpenAbout: () -> Unit,
 ): List<VideoAction> = listOfNotNull(
     VideoAction(
@@ -606,8 +645,12 @@ private fun moreActions(
     // A Private Folder video is never saved out to the gallery.
     VideoAction(SonaIcons.Screenshot, stringResource(R.string.video_screenshot), onScreenshot)
         .takeUnless { playback.isPrivate },
-    // What its site counted of it, for a video downloaded with any.
-    VideoAction(SonaIcons.Info, stringResource(R.string.video_about), onOpenAbout).takeIf { playback.stats != null },
+    // Its title, channel, date, thumbnail and link, edited in its file - a library video's: the Private Folder's are kept apart.
+    playback.current?.takeUnless { playback.isPrivate }?.let { video ->
+        VideoAction(SonaIcons.EditNote, stringResource(R.string.video_edit_info), onClick = { onEditInfo(video.id) })
+    },
+    // What its site counted of it, for a video downloaded with any - or from a page they can be read from.
+    VideoAction(SonaIcons.Info, stringResource(R.string.video_about), onOpenAbout).takeIf { playback.hasAbout },
 )
 
 /**
@@ -753,3 +796,6 @@ private fun rememberScreenshotAction(
         }
     }
 }
+
+/** Whether the About panel has anything to tell: the site's counts, or the page they can be read from. */
+private val VideoPlaybackState.hasAbout: Boolean get() = stats?.hasCounts == true || sourceUrl != null

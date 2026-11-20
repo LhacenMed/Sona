@@ -24,7 +24,7 @@ private const val RestingShare = 4
 /**
  * A scrub through the video - by the seek bar's thumb or by a swipe across the picture, one and the same to everything
  * that shows it. The video plays on meanwhile: only letting go moves it, and letting go where the scrub began - or snapped to
- * where the video is - leaves it be.
+ * where the video is - leaves it be. Snapped to a bookmark instead, letting go goes to it exactly.
  * A scrub is through one video: should another take its place under the finger, it is called off - see [cancel].
  *
  * Each read of [targetMs] where it is drawn or laid out follows the finger without composing anything for it.
@@ -34,6 +34,8 @@ internal class VideoScrubState(
     private val onSeek: (Long) -> Unit,
     private val onSnapped: () -> Unit,
     private val now: () -> Long = SystemClock::uptimeMillis,
+    /** Where letting go snapped to a bookmark goes: there exactly, rather than near it as [onSeek] may. */
+    private val onSeekExactly: (Long) -> Unit = onSeek,
 ) {
     var isActive by mutableStateOf(false)
         private set
@@ -69,6 +71,14 @@ internal class VideoScrubState(
     /** Whether the thumb may snap the next time it comes near where the video is - see [dragTo]. */
     private var canSnap = false
 
+    /** The bookmark the thumb stands snapped to - null where it stands at none. */
+    var snappedBookmarkMs by mutableStateOf<Long?>(null)
+        private set
+
+    /** The bookmarks the thumb may snap to the next time it comes near: those it has been far enough from since it last did. */
+    private val armedBookmarks = HashSet<Long>()
+    private var hasArmedBookmarks = false
+
     /** Where the thumb was taken last - what a swipe passed over since is read from. */
     private var lastPositionMs = 0L
 
@@ -83,6 +93,9 @@ internal class VideoScrubState(
         settlingMs = null
         canSnap = false
         isSnapped = false
+        snappedBookmarkMs = null
+        armedBookmarks.clear()
+        hasArmedBookmarks = false
         lastPositionMs = fromMs
         isActive = true
     }
@@ -98,27 +111,47 @@ internal class VideoScrubState(
      * gone further than [releaseRadiusMs] from where the video is, the thumb snaps to it on coming within [snapRadiusMs] - or
      * passing right over it, within [releaseRadiusMs] - however fast it comes, and stays with it while it moves on. It lets go
      * pulled out past [releaseRadiusMs], or moved on after resting there [RestMs]: the thumb is being aimed there, so it moves
-     * freely, and snaps again only once it has left and come back.
+     * freely, and snaps again only once it has left and come back. Each of [bookmarksMs] holds the thumb just the same - where
+     * the video is first, should both be in reach.
      */
-    fun dragTo(positionMs: Long, playingMs: Long, snapRadiusMs: Long, releaseRadiusMs: Long) {
+    fun dragTo(positionMs: Long, playingMs: Long, snapRadiusMs: Long, releaseRadiusMs: Long, bookmarksMs: List<Long> = emptyList()) {
         if (!isActive) return
         val nowMs = now()
         val distanceMs = abs(positionMs - playingMs)
-        // A fast swipe can leap past it between two touches, never landing within the snap radius.
-        val hasPassedOver = (lastPositionMs < playingMs) != (positionMs < playingMs) && distanceMs <= releaseRadiusMs
+        val lastMs = lastPositionMs
         lastPositionMs = positionMs
-        if (isSnapped) {
+        // A fast swipe can leap past one between two touches, never landing within the snap radius.
+        fun isReached(atMs: Long) = abs(positionMs - atMs) <= snapRadiusMs ||
+            ((lastMs < atMs) != (positionMs < atMs) && abs(positionMs - atMs) <= releaseRadiusMs)
+        // Those away from where the scrub began are in reach at once: a tap on one lands on it.
+        if (!hasArmedBookmarks) {
+            hasArmedBookmarks = true
+            bookmarksMs.filterTo(armedBookmarks) { abs(it - originMs) > releaseRadiusMs }
+        }
+        val heldAtMs = if (isSnapped) playingMs else snappedBookmarkMs
+        if (heldAtMs != null) {
             val hasMoved = abs(positionMs - restPositionMs) > snapRadiusMs / RestingShare
-            if (distanceMs > releaseRadiusMs || (hasMoved && nowMs - restingSinceMs >= RestMs)) isSnapped = false
+            if (abs(positionMs - heldAtMs) > releaseRadiusMs || (hasMoved && nowMs - restingSinceMs >= RestMs)) {
+                isSnapped = false
+                snappedBookmarkMs = null
+            }
             if (hasMoved) rest(positionMs, nowMs)
-        } else if (canSnap && (distanceMs <= snapRadiusMs || hasPassedOver)) {
+        } else if (canSnap && isReached(playingMs)) {
             canSnap = false
             isSnapped = true
             rest(positionMs, nowMs)
             onSnapped()
+        } else {
+            armedBookmarks.filter(::isReached).minByOrNull { abs(positionMs - it) }?.let { bookmark ->
+                armedBookmarks -= bookmark
+                snappedBookmarkMs = bookmark
+                rest(positionMs, nowMs)
+                onSnapped()
+            }
         }
         if (distanceMs > releaseRadiusMs) canSnap = true
-        targetMs = if (isSnapped) playingMs else positionMs
+        bookmarksMs.forEach { if (abs(positionMs - it) > releaseRadiusMs && it != snappedBookmarkMs) armedBookmarks += it }
+        targetMs = if (isSnapped) playingMs else snappedBookmarkMs ?: positionMs
     }
 
     /** Counts the finger as resting at [positionMs] from [atMs] on, until it moves. */
@@ -133,11 +166,13 @@ internal class VideoScrubState(
         if (!isActive) return
         isActive = false
         val isReleasedToCancel = isSnapped
+        val bookmark = snappedBookmarkMs
         isSnapped = false
+        snappedBookmarkMs = null
         if (isReleasedToCancel || targetMs == originMs) return
         settlingMs = targetMs
         settlingUntilMs = now() + SettleTimeoutMs
-        onSeek(targetMs)
+        if (bookmark != null) onSeekExactly(bookmark) else onSeek(targetMs)
     }
 
     /**
@@ -148,6 +183,7 @@ internal class VideoScrubState(
         if (isActive) isCancelled = true
         isActive = false
         isSnapped = false
+        snappedBookmarkMs = null
         settlingMs = null
     }
 

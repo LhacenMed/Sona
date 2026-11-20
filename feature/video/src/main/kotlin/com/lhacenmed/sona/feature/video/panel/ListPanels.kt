@@ -1,28 +1,36 @@
 package com.lhacenmed.sona.feature.video.panel
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import android.icu.text.CompactDecimalFormat
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lhacenmed.sona.core.designsystem.player.formatPlaybackTime
 import com.lhacenmed.sona.core.designsystem.component.SonaPlaybackModeButtons
 import com.lhacenmed.sona.core.designsystem.component.SonaTrackRow
+import com.lhacenmed.sona.core.designsystem.component.copyToClipboard
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.core.model.VideoChapter
 import com.lhacenmed.sona.core.model.VideoStats
+import com.lhacenmed.sona.core.model.siteNameOf
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
@@ -32,6 +40,7 @@ import com.lhacenmed.sona.feature.playback.labelRes
 import com.lhacenmed.sona.feature.video.R
 import com.lhacenmed.sona.feature.video.VideoPlayerTokens
 import com.lhacenmed.sona.feature.video.controls.VideoAction
+import com.lhacenmed.sona.feature.video.controls.VideoBarButton
 import com.lhacenmed.sona.feature.video.speedLabel
 
 /** The speeds the speed button offers. */
@@ -122,18 +131,47 @@ internal fun ColumnScope.ChaptersPanel(chapters: List<VideoChapter>, currentInde
 }
 
 /**
- * What the video's site counted of it as it was downloaded - when it was uploaded, how often watched and liked - each where
- * the site said. The day is the site's own, UTC's, wherever the device is.
+ * What the video's site counted of it as it was downloaded, or last read again - when it was uploaded, how often watched and
+ * liked - each where the site said. The day is the site's own, UTC's, wherever the device is. With [onRefresh], they can be
+ * read again from the video's page - and, read [isRefreshing], are being.
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-internal fun ColumnScope.AboutPanel(stats: VideoStats, onClose: () -> Unit) {
-    PanelHeader(stringResource(R.string.video_about), onClose)
+internal fun ColumnScope.AboutPanel(stats: VideoStats?, sourceUrl: String?, isRefreshing: Boolean, onRefresh: (() -> Unit)?, onClose: () -> Unit) {
+    PanelHeader(
+        title = stringResource(R.string.video_about),
+        onClose = onClose,
+        action = onRefresh?.let { refresh ->
+            {
+                if (isRefreshing) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(VideoPlayerTokens.BarButtonSize)) {
+                        LoadingIndicator(color = VideoPlayerTokens.ContentColor, modifier = Modifier.size(VideoPlayerTokens.BarIconSize + 8.dp))
+                    }
+                } else {
+                    VideoBarButton(VideoAction(SonaIcons.Refresh, stringResource(R.string.video_about_refresh), refresh))
+                }
+            }
+        },
+    )
     val count = remember { CompactDecimalFormat.getInstance(Locale.getDefault(), CompactDecimalFormat.CompactStyle.SHORT) }
     val day = remember { DateFormat.getDateInstance(DateFormat.LONG).apply { timeZone = TimeZone.getTimeZone("UTC") } }
     Column(modifier = Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
-        stats.uploadedAtMs?.let { PanelFactRow(SonaIcons.CalendarMonth, stringResource(R.string.video_uploaded, day.format(Date(it)))) }
-        stats.viewCount?.let { PanelFactRow(SonaIcons.Visibility, pluralStringResource(R.plurals.video_views, it.toPluralCount(), count.format(it))) }
-        stats.likeCount?.let { PanelFactRow(SonaIcons.ThumbUp, pluralStringResource(R.plurals.video_likes, it.toPluralCount(), count.format(it))) }
+        // Where it came from first, its link copied with a tap - the page its details are read again from.
+        sourceUrl?.let { link ->
+            val context = LocalContext.current
+            val copied = stringResource(R.string.video_about_link_copied)
+            PanelActionRow(
+                icon = SonaIcons.Link,
+                label = stringResource(R.string.video_about_source, siteNameOf(link) ?: link),
+                onClick = { context.copyToClipboard(link, copied) },
+            )
+        }
+        if (stats?.hasCounts != true) PanelFactRow(SonaIcons.Info, stringResource(R.string.video_about_unread))
+        stats?.uploadedAtMs?.let { PanelFactRow(SonaIcons.CalendarMonth, stringResource(R.string.video_uploaded, day.format(Date(it)))) }
+        stats?.viewCount?.let { PanelFactRow(SonaIcons.Visibility, pluralStringResource(R.plurals.video_views, it.toPluralCount(), count.format(it))) }
+        stats?.likeCount?.let { PanelFactRow(SonaIcons.ThumbUp, pluralStringResource(R.plurals.video_likes, it.toPluralCount(), count.format(it))) }
+        stats?.commentCount?.let { PanelFactRow(SonaIcons.Comment, pluralStringResource(R.plurals.video_comments, it.toPluralCount(), count.format(it))) }
+        stats?.repostCount?.let { PanelFactRow(SonaIcons.Share, pluralStringResource(R.plurals.video_shares, it.toPluralCount(), count.format(it))) }
     }
 }
 

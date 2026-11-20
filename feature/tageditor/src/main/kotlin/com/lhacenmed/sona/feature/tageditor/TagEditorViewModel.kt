@@ -137,7 +137,7 @@ class TagEditorViewModel @AssistedInject constructor(
         get() {
             val draft = draft ?: return false
             val opened = opened ?: return false
-            return draft.tags != opened.tags || draft.cover != opened.cover
+            return draft.tags != opened.tags || draft.cover != opened.cover || draft.link != opened.link
         }
 
     /** Whether the track is the one playing, and playing. */
@@ -186,8 +186,10 @@ class TagEditorViewModel @AssistedInject constructor(
         viewModelScope.launch {
             // Read before anything can be applied over them - a matter of milliseconds, as the file is local.
             draft.takeFile(trackTagsRepository.read(track))
+            if (track.isVideo) draft.link = trackTagsRepository.readLink(track)
             opened = draft.edits
-            draft.lookUp(TrackQueries.of(track), album = track.album.takeUnless { it == UnknownNames.ALBUM })
+            // A video is no song any catalogue or lyrics site knows.
+            if (!track.isVideo) draft.lookUp(TrackQueries.of(track), album = track.album.takeUnless { it == UnknownNames.ALBUM })
             snapshotFlow { draft.cover }.collect(::prepareCover)
         }
     }
@@ -205,6 +207,9 @@ class TagEditorViewModel @AssistedInject constructor(
         viewModelScope.launch {
             val outcome = saveOutcomeOf(R.string.tag_editor_save_failed) {
                 trackTagsRepository.save(draft.track, draft.tags, preparedCover?.await())
+                // A link half typed is no page: the one the file names stays.
+                val link = draft.link.trim()
+                if (draft.link != opened?.link && (link.isEmpty() || isWebAddress(link))) trackTagsRepository.saveLink(draft.track, link)
             }
             // A cover that could not be had is fetched afresh, so saving again tries it again.
             if (outcome != SaveOutcome.Saved && preparedCover?.isCancelled == true) prepareCover(draft.cover)

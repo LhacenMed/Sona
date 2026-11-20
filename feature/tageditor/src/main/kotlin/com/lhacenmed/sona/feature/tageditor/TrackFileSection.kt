@@ -30,6 +30,11 @@ import com.lhacenmed.sona.core.downloader.FileFormat
 import com.lhacenmed.sona.core.downloader.RuntimeState
 import com.lhacenmed.sona.core.model.Track
 import java.io.File
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.TextRange
 
 /**
  * The track's file, at the editor's foot: its name, its format and where it is - each changed from its row: renamed, turned into
@@ -72,17 +77,20 @@ internal fun ColumnScope.TrackFileSection(track: Track, bitrateKbps: Long?, view
     }
 
     if (isRenaming) {
-        RenameDialog(name = file.nameWithoutExtension, onRename = { name -> whenAllowed { viewModel.rename(name) } }, onDismiss = { isRenaming = false })
+        RenameFileDialog(name = file.nameWithoutExtension, onRename = { name -> whenAllowed { viewModel.rename(name) } }, onDismiss = { isRenaming = false })
     }
     if (isChoosingFormat) {
         FormatSheet(file, track.isVideo, viewModel, onConvert = { format -> whenAllowed { viewModel.convertTo(format) } }, onDismiss = { isChoosingFormat = false })
     }
 }
 
-/** The file's name to change - its extension kept - with Cancel, then Rename. */
+/** A file's name to change - its extension kept - with Cancel, then Rename: a track's here, a download's before or once saved. */
 @Composable
-private fun RenameDialog(name: String, onRename: (String) -> Unit, onDismiss: () -> Unit) {
-    var text by rememberSaveable { mutableStateOf(name) }
+fun RenameFileDialog(name: String, onRename: (String) -> Unit, onDismiss: () -> Unit) {
+    // Selected whole as it opens, as a file manager's rename is: typed over, or moved through.
+    val text = rememberTextFieldState(name, initialSelection = TextRange(0, name.length))
+    val typed = text.text.toString()
+    val canRename = typed.isNotBlank() && typed.trim() != name
     val cancelLabel = stringResource(R.string.tag_editor_cancel)
     val renameLabel = stringResource(R.string.tag_editor_rename)
     SonaDialog(
@@ -90,13 +98,25 @@ private fun RenameDialog(name: String, onRename: (String) -> Unit, onDismiss: ()
         title = stringResource(R.string.tag_editor_rename_title),
         buttons = {
             actionButton(label = cancelLabel, onClick = onDismiss)
-            actionButton(label = renameLabel, enabled = text.isNotBlank() && text.trim() != name, onClick = {
-                onRename(text)
+            actionButton(label = renameLabel, enabled = canRename, onClick = {
+                onRename(typed)
                 onDismiss()
             })
         },
     ) {
-        OutlinedTextField(value = text, onValueChange = { text = it }, label = { Text(stringResource(R.string.tag_editor_name)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(
+            state = text,
+            label = { Text(stringResource(R.string.tag_editor_name)) },
+            lineLimits = TextFieldLineLimits.SingleLine,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            onKeyboardAction = {
+                if (canRename) {
+                    onRename(typed)
+                    onDismiss()
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 

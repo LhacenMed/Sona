@@ -136,9 +136,10 @@ private fun PanelFrame(width: Dp, isLandscape: Boolean, content: @Composable Col
 
 /** A panel's name and the way to close it. */
 @Composable
-internal fun PanelHeader(title: String, onClose: () -> Unit) {
+internal fun PanelHeader(title: String, onClose: () -> Unit, action: (@Composable () -> Unit)? = null) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().height(VideoPlayerTokens.BarButtonSize)) {
         PlayerText(title, VideoPlayerType.Title, modifier = Modifier.weight(1f))
+        action?.invoke()
         VideoBarButton(VideoAction(SonaIcons.Close, stringResource(R.string.video_panel_close), onClose))
     }
 }

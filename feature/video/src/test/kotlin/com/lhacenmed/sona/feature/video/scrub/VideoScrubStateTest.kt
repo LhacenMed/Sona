@@ -10,12 +10,13 @@ class VideoScrubStateTest {
     private var nowMs = 0L
     private val sought = mutableListOf<Long>()
     private var snaps = 0
-    private val scrub = VideoScrubState(onSeek = { sought += it }, onSnapped = { snaps++ }, now = { nowMs })
+    private val soughtExactly = mutableListOf<Long>()
+    private val scrub = VideoScrubState(onSeek = { sought += it }, onSnapped = { snaps++ }, now = { nowMs }, onSeekExactly = { soughtExactly += it })
 
-    /** Drags to [positionMs] [afterMs] after the last move, the video at [playingMs]. */
-    private fun drag(positionMs: Long, playingMs: Long = 1_000L, afterMs: Long = 10L) {
+    /** Drags to [positionMs] [afterMs] after the last move, the video at [playingMs], with the video marked at [bookmarksMs]. */
+    private fun drag(positionMs: Long, playingMs: Long = 1_000L, afterMs: Long = 10L, bookmarksMs: List<Long> = emptyList()) {
         nowMs += afterMs
-        scrub.dragTo(positionMs, playingMs, snapRadiusMs = 100L, releaseRadiusMs = 200L)
+        scrub.dragTo(positionMs, playingMs, snapRadiusMs = 100L, releaseRadiusMs = 200L, bookmarksMs = bookmarksMs)
     }
 
     @Test
@@ -250,5 +251,63 @@ class VideoScrubStateTest {
     @Test
     fun `a preview wider than the screen still stands at its margin`() {
         assertEquals(8f, previewLeft(thumbX = 50f, previewWidth = 300f, screenWidth = 100f, edgeMargin = 8f), 0f)
+    }
+
+    @Test
+    fun `brought near a bookmark, it snaps there, and letting go goes to it exactly`() {
+        val bookmarks = listOf(5_000L)
+        scrub.begin(fromMs = 1_000L)
+        drag(4_000L, bookmarksMs = bookmarks)
+        drag(4_950L, bookmarksMs = bookmarks)
+
+        assertEquals(5_000L, scrub.snappedBookmarkMs)
+        assertFalse(scrub.isSnapped)
+        assertEquals(5_000L, scrub.targetMs)
+        assertEquals(1, snaps)
+
+        scrub.end()
+        assertEquals(listOf(5_000L), soughtExactly)
+        assertEquals(emptyList<Long>(), sought)
+    }
+
+    @Test
+    fun `a tap straight onto a bookmark lands on it, and a swipe leaping over one snaps to it too`() {
+        val bookmarks = listOf(5_000L, 9_000L)
+        scrub.begin(fromMs = 1_000L)
+        drag(5_040L, bookmarksMs = bookmarks)
+        assertEquals(5_000L, scrub.snappedBookmarkMs)
+
+        drag(7_000L, bookmarksMs = bookmarks)
+        assertEquals(null, scrub.snappedBookmarkMs)
+        drag(8_000L, bookmarksMs = bookmarks)
+        drag(9_150L, bookmarksMs = bookmarks)
+        assertEquals(9_000L, scrub.snappedBookmarkMs)
+        assertEquals(2, snaps)
+    }
+
+    @Test
+    fun `pulled off a bookmark, it moves freely until it has left it and come back`() {
+        val bookmarks = listOf(5_000L)
+        scrub.begin(fromMs = 1_000L)
+        drag(4_000L, bookmarksMs = bookmarks)
+        drag(4_990L, bookmarksMs = bookmarks)
+        drag(5_300L, bookmarksMs = bookmarks)
+        assertEquals(null, scrub.snappedBookmarkMs)
+        assertEquals(5_300L, scrub.targetMs)
+
+        drag(5_050L, bookmarksMs = bookmarks)
+        assertEquals(5_000L, scrub.snappedBookmarkMs)
+        assertEquals(2, snaps)
+    }
+
+    @Test
+    fun `where the video is and a bookmark both in reach, it snaps to where the video is`() {
+        val bookmarks = listOf(1_050L)
+        scrub.begin(fromMs = 1_000L)
+        drag(2_000L, bookmarksMs = bookmarks)
+        drag(1_020L, bookmarksMs = bookmarks)
+
+        assertTrue(scrub.isSnapped)
+        assertEquals(null, scrub.snappedBookmarkMs)
     }
 }

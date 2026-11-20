@@ -63,6 +63,12 @@
     <string name="tag_editor_best_match">Best match</string>
     <string name="tag_editor_tags">Tags</string>
     <string name="tag_editor_covers">Covers</string>
+    <string name="tag_editor_video_title">Edit info</string>
+    <string name="tag_editor_thumbnail">Thumbnail</string>
+    <string name="tag_editor_link">Link</string>
+    <string name="tag_editor_link_label">Video link</string>
+    <string name="tag_editor_link_summary">The page it came from. Its views, likes and date are reloaded from here.</string>
+    <string name="tag_editor_link_invalid">Enter a web address starting with https://</string>
     <string name="tag_editor_lyrics">Lyrics</string>
     <string name="tag_editor_edit_lyrics">Edit lyrics</string>
     <string name="tag_editor_other_matches">Other matches</string>

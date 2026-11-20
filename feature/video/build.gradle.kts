@@ -32,6 +32,7 @@ dependencies {
     implementation(project(":core:vault"))
     implementation(project(":feature:playback"))
     implementation(project(":feature:equalizer"))
+    implementation(project(":feature:tageditor"))
     implementation(project(":core:navigation"))
 
     implementation(libs.androidx.media3.common)

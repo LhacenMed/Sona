@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.lerp
+import com.lhacenmed.sona.core.designsystem.component.rememberFollowingSliderState
 import com.lhacenmed.sona.core.designsystem.player.PlayerElapsedTime
 import com.lhacenmed.sona.core.designsystem.player.PlayerEndTime
 import com.lhacenmed.sona.core.designsystem.player.PlayerTimes
@@ -36,6 +37,7 @@ import com.lhacenmed.sona.core.model.VideoChapter
 import com.lhacenmed.sona.core.model.indexAt
 import com.lhacenmed.sona.feature.video.VideoPlayerTokens
 import com.lhacenmed.sona.feature.video.scrub.VideoScrubState
+import kotlin.math.abs
 
 /**
  * Material's slider, for its dragging, touch target and accessibility, drawn as the player's design draws it: a line cut at
@@ -43,7 +45,8 @@ import com.lhacenmed.sona.feature.video.scrub.VideoScrubState
  * played; under a scrub the thumb swells and moves alone - the video playing on where it was, the line filled to the thumb in
  * white - every chapter thickens, the one the thumb is over the most, and the video's Most replayed graph - its
  * [replayHeights] - rises over the line, where it has one. Brought back to where the video is, the thumb snaps to it and
- * shrinks back, following the video, until pulled away or moved on after a rest - see [VideoScrubState.dragTo].
+ * shrinks back, following the video, until pulled away or moved on after a rest - see [VideoScrubState.dragTo]. Each of the
+ * video's [bookmarksMs] is a dot along the line, which holds the thumb the same way - letting go there goes to it.
  *
  * Everything that moves is read as it is drawn, so a scrub draws this again and composes nothing beyond the slider's own value.
  */
@@ -55,6 +58,7 @@ internal fun VideoSeekBar(
     scrub: VideoScrubState,
     replayHeights: FloatArray?,
     chapters: List<VideoChapter>,
+    bookmarksMs: List<Long>,
     downloadedFraction: Float?,
     modifier: Modifier = Modifier,
 ) {
@@ -78,7 +82,7 @@ internal fun VideoSeekBar(
         label = "heatmapReveal",
     )
     Slider(
-        value = fractionOf(shownMs, durationMs),
+        state = rememberFollowingSliderState(fractionOf(shownMs, durationMs)),
         onValueChange = { fraction ->
             scrub.begin(position.positionMs)
             // The radii are the finger's, so they are worth more of a longer video.
@@ -88,6 +92,7 @@ internal fun VideoSeekBar(
                 playingMs = position.positionMs,
                 snapRadiusMs = (with(density) { VideoPlayerTokens.ScrubSnapRadius.toPx() } * msPerPx).toLong(),
                 releaseRadiusMs = (with(density) { VideoPlayerTokens.ScrubSnapReleaseRadius.toPx() } * msPerPx).toLong(),
+                bookmarksMs = bookmarksMs,
             )
         },
         onValueChangeFinished = scrub::end,
@@ -127,6 +132,14 @@ internal fun VideoSeekBar(
                     thumbWidth = thumbSizeOf(progress, snapProgress.value).width.toPx(),
                     heightOf = { chapter -> if (chapter == raisedChapter) raisedHeight else chapterHeight },
                 )
+                if (bookmarksMs.isNotEmpty()) {
+                    drawBookmarks(
+                        bookmarks = bookmarksMs.map { fractionOf(it, durationMs) },
+                        thumb = thumb,
+                        clearance = thumbSizeOf(progress, snapProgress.value).width.toPx() / 2f + VideoPlayerTokens.ThumbClearance.toPx(),
+                        diameter = lerp(VideoPlayerTokens.BookmarkSize, VideoPlayerTokens.ScrubBookmarkSize, progress).toPx(),
+                    )
+                }
                 val reveal = heatmapReveal.value
                 if (replayHeights != null && reveal > 0f) {
                     drawReplayHeatmap(
@@ -250,6 +263,23 @@ private fun DrawScope.drawSeekPiece(from: Float, to: Float, height: Float, playe
         downloadedX?.let { fill(it, VideoPlayerTokens.DownloadedColor) }
         scrubbedX?.let { fill(it, VideoPlayerTokens.ScrubbedColor) }
         fill(playedX, VideoPlayerTokens.Accent)
+    }
+}
+
+/**
+ * The [bookmarks] along the seek line - each a fraction of it from 0 to 1, from the right where text runs that way - as ringed
+ * dots [diameter] across, over every chapter and gap alike. Those within [clearance] of the [thumb] are left to it.
+ */
+private fun DrawScope.drawBookmarks(bookmarks: List<Float>, thumb: Float, clearance: Float, diameter: Float) {
+    val isRtl = layoutDirection == LayoutDirection.Rtl
+    val thumbX = thumb * size.width
+    val ring = VideoPlayerTokens.BookmarkRing.toPx()
+    for (bookmark in bookmarks) {
+        val x = bookmark * size.width
+        if (abs(x - thumbX) < clearance) continue
+        val centre = Offset(if (isRtl) size.width - x else x, size.height / 2f)
+        drawCircle(VideoPlayerTokens.BookmarkRingColor, radius = diameter / 2f + ring, center = centre)
+        drawCircle(VideoPlayerTokens.BookmarkColor, radius = diameter / 2f, center = centre)
     }
 }
 

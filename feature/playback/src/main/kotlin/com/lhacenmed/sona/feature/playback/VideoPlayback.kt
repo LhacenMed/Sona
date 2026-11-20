@@ -1,6 +1,7 @@
 package com.lhacenmed.sona.feature.playback
 
 import android.content.Context
+import android.util.Log
 import android.view.SurfaceView
 import android.view.TextureView
 import androidx.annotation.OptIn
@@ -21,24 +22,32 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.session.MediaSession
+import com.lhacenmed.sona.core.database.dao.DownloadDao
 import com.lhacenmed.sona.core.database.dao.OnlineHeatmapDao
+import com.lhacenmed.sona.core.database.dao.VideoBookmarkDao
 import com.lhacenmed.sona.core.database.dao.VideoChapterDao
+import com.lhacenmed.sona.core.database.entity.VideoBookmarkEntity
 import com.lhacenmed.sona.core.database.entity.toDomain
+import com.lhacenmed.sona.core.datastore.DownloadSettings
 import com.lhacenmed.sona.core.datastore.ImageSettings
 import com.lhacenmed.sona.core.datastore.PlaybackSettings
 import com.lhacenmed.sona.core.datastore.VideoSettings
 import com.lhacenmed.sona.core.downloader.DownloadedExtras
 import com.lhacenmed.sona.core.downloader.EmbeddedExtras
 import com.lhacenmed.sona.core.downloader.LiveDownloads
+import com.lhacenmed.sona.core.downloader.MediaResolver
 import com.lhacenmed.sona.core.model.RepeatMode
 import com.lhacenmed.sona.core.model.ReplayHeatmap
 import com.lhacenmed.sona.core.model.Track
+import com.lhacenmed.sona.core.model.VideoBookmarkStore
 import com.lhacenmed.sona.core.model.VideoChapter
 import com.lhacenmed.sona.core.model.VideoStats
+import com.lhacenmed.sona.core.vault.VaultRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -62,6 +71,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 
 private const val FilesHolder = "video"
 
@@ -137,8 +147,17 @@ data class VideoPlaybackState(
     val subtitleTracks: List<MediaTrack> = emptyList(),
     /** [current]'s chapters, as its site marks them - none for one downloaded without, or not downloaded at all. */
     val chapters: List<VideoChapter> = emptyList(),
-    /** What [current]'s site counted of it as it was downloaded - null for one downloaded without, or not downloaded at all. */
+    /**
+     * What [current]'s site counted of it as it was downloaded, or last read again - see [VideoPlayback.refreshStats]: null for
+     * one downloaded without, or not downloaded at all.
+     */
     val stats: VideoStats? = null,
+    /** The page [current] was downloaded from, which its [stats] are read again from - null where it is not known. */
+    val sourceUrl: String? = null,
+    /** Whether its [stats] are being read again from its site. */
+    val isRefreshingStats: Boolean = false,
+    /** Where the user marked [current], to come back to - earliest first. See [VideoPlayback.toggleBookmark]. */
+    val bookmarksMs: List<Long> = emptyList(),
     /**
      * The heights of [current]'s Most replayed graph, from 0 to 1 along it - null with none to show. The site's own where it
      * was downloaded with one - YouTube's, from everyone's watching - and this device's otherwise, as it grows - see
@@ -176,6 +195,11 @@ class VideoPlayback @Inject constructor(
     private val replayHeatmaps: ReplayHeatmaps,
     private val onlineHeatmaps: OnlineHeatmapDao,
     private val videoChapters: VideoChapterDao,
+    videoBookmarkDao: VideoBookmarkDao,
+    private val downloads: DownloadDao,
+    private val resolver: MediaResolver,
+    private val downloadSettings: DownloadSettings,
+    vault: VaultRepository,
     private val equalizer: SonaEqualizer,
     private val imageSettings: ImageSettings,
 ) {
@@ -224,11 +248,51 @@ class VideoPlayback @Inject constructor(
 
     /**
      * The watched video's [VideoPlaybackState.stats], from its file, whichever space it is in: the file is where they are kept,
-     * and they are read only as a video is opened.
+     * and they are read only as a video is opened - with the page they are read again from: the one kept with them, else the
+     * one another downloader wrote into the file, else its download's, while that is still listed.
      */
     @kotlin.OptIn(ExperimentalCoroutinesApi::class)
-    private val watchedStats: Flow<VideoStats?> = watchedVideo
-        .flatMapLatest { video -> if (video == null) flowOf(null) else fileExtrasOf(video).map { it?.stats } }
+    private val watchedStats: Flow<Pair<VideoStats?, String?>> = watchedVideo
+        .flatMapLatest { video ->
+            if (video == null) return@flatMapLatest flowOf(null to null)
+            fileExtrasOf(video).map { extras ->
+                val stats = extras?.stats
+                val path = _state.value.current?.takeIf { it.id == video.id }?.path
+                stats to (stats?.sourceUrl ?: path?.let { withContext(Dispatchers.IO) { EmbeddedExtras.linkOf(File(it)) ?: downloads.urlOfSaved(it) } })
+            }
+        }
+
+    /** Each space's bookmarks - the Private Folder's kept in the vault, apart from the library's database. */
+    private val bookmarkStores: Map<PlaybackSpace, VideoBookmarkStore> = mapOf(
+        PlaybackSpace.Library to object : VideoBookmarkStore {
+            override suspend fun read(videoId: Long) = videoBookmarkDao.get(videoId)
+            override suspend fun add(videoId: Long, positionMs: Long) = videoBookmarkDao.upsert(VideoBookmarkEntity(videoId, positionMs))
+            override suspend fun remove(videoId: Long, positionMs: Long) = videoBookmarkDao.delete(videoId, positionMs)
+        },
+        PlaybackSpace.Private to vault.videoBookmarks,
+    )
+
+    /** The watched video's [VideoPlaybackState.bookmarksMs], read as it is opened - then kept in the state as they change. */
+    @kotlin.OptIn(ExperimentalCoroutinesApi::class)
+    private val watchedBookmarks: Flow<List<Long>> = watchedVideo
+        .flatMapLatest { video ->
+            if (video == null) {
+                flowOf(emptyList())
+            } else {
+                flow { emit(withContext(Dispatchers.IO) { bookmarkStores.getValue(video.space).read(video.id) }) }
+            }
+        }
+
+    /**
+     * Counts read again from their sites, by the file they are to be written into once nothing plays it: written under a
+     * player reading it, the tags could move what it reads from.
+     */
+    private val pendingStats = HashMap<String, String>()
+
+    private val statsRefreshChannel = Channel<StatsRefresh>(Channel.CONFLATED)
+
+    /** Each time a video's details were read again from its site, or could not be. See [refreshStats]. */
+    val statsRefreshes: Flow<StatsRefresh> = statsRefreshChannel.receiveAsFlow()
 
     /**
      * What [video]'s file carries of its site - see [EmbeddedExtras] - read from the file itself: the library's index holds
@@ -358,7 +422,12 @@ class VideoPlayback @Inject constructor(
                 _state.update { it.copy(chapters = chapters, replayHeights = replayHeights) }
             }
         }
-        scope.launch { watchedStats.collect { stats -> _state.update { it.copy(stats = stats) } } }
+        scope.launch {
+            watchedStats.collect { (stats, link) -> _state.update { it.copy(stats = stats, sourceUrl = link, isRefreshingStats = false) } }
+        }
+        scope.launch { watchedBookmarks.collect { bookmarks -> _state.update { it.copy(bookmarksMs = bookmarks) } } }
+        // Another video taken up: the counts read again for those no longer played are written into their files.
+        scope.launch { _state.map { it.current?.path }.distinctUntilChanged().collect { writePendingStats() } }
         scope.launch { watchedDownload.collect { fraction -> _state.update { it.copy(downloadedFraction = fraction) } } }
         // Changed while a video plays, from its queue or the settings, each takes hold at once.
         scope.launch {
@@ -673,6 +742,71 @@ class VideoPlayback @Inject constructor(
         trackFiles.hold(FilesHolder, emptySet())
         _subtitleCues.value = emptyList()
         _state.value = VideoPlaybackState()
+        writePendingStats()
+    }
+
+    /**
+     * Marks where the video is, to come back to - or, at a place already marked, within [BookmarkToleranceMs], unmarks it.
+     * Kept by the video, in its own space.
+     */
+    fun toggleBookmark() {
+        if (!isOpen) return
+        val video = player.currentMediaItem?.videoKey ?: return
+        val positionMs = player.currentPosition
+        val marked = bookmarkAt(positionMs, _state.value.bookmarksMs)
+        _state.update { state ->
+            state.copy(bookmarksMs = if (marked != null) state.bookmarksMs - marked else (state.bookmarksMs + positionMs).sorted())
+        }
+        val store = bookmarkStores.getValue(video.space)
+        scope.launch(Dispatchers.IO) { if (marked != null) store.remove(video.id, marked) else store.add(video.id, positionMs) }
+    }
+
+    /**
+     * Reads the watched video's counts again from its page - see [VideoPlaybackState.sourceUrl] - and shows them. They, and the
+     * page, are written into its file once it is no longer played, so they go wherever it goes, and are read again even once
+     * its download is long gone from the list.
+     */
+    fun refreshStats() {
+        val state = _state.value
+        val video = state.current ?: return
+        val savedUrl = state.sourceUrl ?: return
+        if (state.isRefreshingStats) return
+        _state.update { it.copy(isRefreshingStats = true) }
+        scope.launch {
+            var failure: Throwable? = null
+            val fresh = withContext(Dispatchers.IO) {
+                // The page kept with it first, then the link it was downloaded from, while its download is still listed: a
+                // site may serve the one and not the other.
+                val links = listOfNotNull(savedUrl, runCatching { downloads.urlOfSaved(video.path) }.getOrNull()).distinct()
+                links.firstNotNullOfOrNull { link ->
+                    runCatching {
+                        EmbeddedExtras.statsOf(JSONObject(resolver.readDetails(link, downloadSettings.preferences.value)))
+                            ?.takeIf { it.hasCounts } ?: error("$link holds none of its details")
+                    }.onFailure {
+                        failure = it
+                        Log.w(StatsLogTag, "Couldn't read the details of ${video.path} again from $link", it)
+                    }.getOrNull()
+                }
+            }
+            val isSameVideo = _state.value.current?.id == video.id
+            // A count the site no longer shows - hidden, or not read this time - stays as it was.
+            val stats = fresh?.let { (if (isSameVideo) _state.value.stats else null)?.updatedBy(it) ?: it }
+                ?.let { if (it.sourceUrl == null) it.copy(sourceUrl = savedUrl) else it }
+            if (isSameVideo) _state.update { it.copy(stats = stats ?: it.stats, isRefreshingStats = false) }
+            statsRefreshChannel.trySend(if (stats != null) StatsRefresh.Read else StatsRefresh.Failed(failure?.message?.lineSequence()?.firstOrNull()))
+            if (stats == null) return@launch
+            pendingStats[video.path] = EmbeddedExtras.statsJsonOf(stats)
+            if (!isSameVideo) writePendingStats()
+        }
+    }
+
+    /** Writes into each file the counts read again for it - see [pendingStats] - but those of the videos still being played. */
+    private fun writePendingStats() {
+        val playing = tracksByMediaId.values.mapTo(HashSet()) { it.path }
+        val written = pendingStats.filterKeys { it !in playing }
+        if (written.isEmpty()) return
+        written.keys.forEach(pendingStats::remove)
+        scope.launch(Dispatchers.IO) { written.forEach { (path, json) -> runCatching { EmbeddedExtras.writeStats(File(path), json) } } }
     }
 
     private fun readQueue() {
@@ -779,3 +913,21 @@ internal fun <T> videosFrom(all: List<T>, startIndex: Int, isVideo: (T) -> Boole
  */
 @OptIn(UnstableApi::class)
 private fun Cue.withoutContainerPlacement(): Cue = buildUpon().setLine(Cue.DIMEN_UNSET, Cue.TYPE_UNSET).setLineAnchor(Cue.TYPE_UNSET).build()
+
+/** How reading a video's details again went - see [VideoPlayback.refreshStats]. */
+sealed interface StatsRefresh {
+    data object Read : StatsRefresh
+
+    /** Not read, for [reason] as its site or reader said it - null where it said nothing. */
+    data class Failed(val reason: String?) : StatsRefresh
+}
+
+/** What a video's details failing to be read again is logged under. */
+private const val StatsLogTag = "VideoStats"
+
+/** How near the video has to be to a bookmark to stand at it - where marking it again unmarks it. */
+const val BookmarkToleranceMs = 1_000L
+
+/** The one of [bookmarksMs] the video stands at, at [positionMs] - null at none. */
+fun bookmarkAt(positionMs: Long, bookmarksMs: List<Long>): Long? =
+    bookmarksMs.filter { abs(it - positionMs) <= BookmarkToleranceMs }.minByOrNull { abs(it - positionMs) }

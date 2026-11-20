@@ -9,8 +9,9 @@ import com.lhacenmed.sona.core.designsystem.icon.SonaIcons
 import com.lhacenmed.sona.feature.tageditor.R
 
 /**
- * One tag the editor reads, shows and writes: how it is labelled, drawn and typed, and the name TagLib
- * gives it in every format alike. The order here is the order the fields are laid out in.
+ * One tag the editor reads, shows and writes: how it is labelled, drawn and typed, the name TagLib gives it in every format
+ * alike, and whether a video [describesVideos] - its title, its channel, its genre, its date and its description - rather
+ * than a song alone. The order here is the order the fields are laid out in.
  */
 enum class TagField(
     @StringRes val labelRes: Int,
@@ -18,18 +19,19 @@ enum class TagField(
     internal val key: String,
     val isNumeric: Boolean = false,
     val isMultiline: Boolean = false,
+    val describesVideos: Boolean = false,
 ) {
-    TITLE(R.string.tag_field_title, SonaIcons.Title, "TITLE"),
-    ARTIST(R.string.tag_field_artist, SonaIcons.Artist, "ARTIST"),
+    TITLE(R.string.tag_field_title, SonaIcons.Title, "TITLE", describesVideos = true),
+    ARTIST(R.string.tag_field_artist, SonaIcons.Artist, "ARTIST", describesVideos = true),
     ALBUM(R.string.tag_field_album, SonaIcons.Album, "ALBUM"),
     ALBUM_ARTIST(R.string.tag_field_album_artist, SonaIcons.Group, "ALBUMARTIST"),
-    GENRE(R.string.tag_field_genre, SonaIcons.Sell, "GENRE"),
-    YEAR(R.string.tag_field_year, SonaIcons.CalendarMonth, "DATE", isNumeric = true),
+    GENRE(R.string.tag_field_genre, SonaIcons.Sell, "GENRE", describesVideos = true),
+    YEAR(R.string.tag_field_year, SonaIcons.CalendarMonth, "DATE", isNumeric = true, describesVideos = true),
     TRACK_NUMBER(R.string.tag_field_track_number, SonaIcons.Numbers, "TRACKNUMBER", isNumeric = true),
     TRACK_TOTAL(R.string.tag_field_track_count, SonaIcons.Numbers, "TRACKTOTAL", isNumeric = true),
     DISC_NUMBER(R.string.tag_field_disc_number, SonaIcons.Numbers, "DISCNUMBER", isNumeric = true),
     COMPOSER(R.string.tag_field_composer, SonaIcons.Song, "COMPOSER"),
-    COMMENT(R.string.tag_field_comment, SonaIcons.Comment, "COMMENT"),
+    COMMENT(R.string.tag_field_comment, SonaIcons.Comment, "COMMENT", describesVideos = true),
     LYRICS(R.string.tag_field_lyrics, SonaIcons.Lyrics, "LYRICS", isMultiline = true),
 }
 

@@ -25,6 +25,7 @@ import com.lhacenmed.sona.core.designsystem.theme.SonaTheme
 import com.lhacenmed.sona.core.model.ThemeMode
 import com.lhacenmed.sona.core.navigation.IntentNavigator
 import com.lhacenmed.sona.feature.equalizer.EqualizerScreen
+import com.lhacenmed.sona.feature.tageditor.TagEditorScreen
 import com.lhacenmed.sona.feature.playback.VideoScreenRequest
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -150,6 +151,7 @@ class VideoPlayerActivity : SonaActivity() {
                         isFloating = isFloating,
                         onFloat = if (hasFloatingWindows()) ::float else null,
                         onOpenEqualizer = ::openEqualizer,
+                        onEditInfo = { trackId -> navigator.go(TagEditorScreen(trackId)) },
                     )
                 }
             }

@@ -26,6 +26,7 @@ import com.lhacenmed.sona.feature.playback.MediaTrack
 import com.lhacenmed.sona.feature.playback.PlaybackController
 import com.lhacenmed.sona.feature.playback.SonaEqualizer
 import com.lhacenmed.sona.feature.playback.QueueVideo
+import com.lhacenmed.sona.feature.playback.StatsRefresh
 import com.lhacenmed.sona.feature.playback.VideoPlayback
 import com.lhacenmed.sona.feature.playback.VideoPlaybackState
 import com.lhacenmed.sona.feature.playback.labelRes
@@ -222,6 +223,19 @@ class VideoPlayerViewModel @Inject constructor(
     fun onSeek(positionMs: Long) {
         video?.seekTo(positionMs)
     }
+
+    /** Marks where the video is, or unmarks the bookmark it stands at - see [VideoPlayback.toggleBookmark]. */
+    fun onToggleBookmark() {
+        video?.toggleBookmark()
+    }
+
+    /** Reads the video's counts again from its site - see [VideoPlayback.refreshStats]. */
+    fun onRefreshStats() {
+        video?.refreshStats()
+    }
+
+    /** Each time this screen's video's details were read again, or could not be. */
+    val statsRefreshes: Flow<StatsRefresh> get() = videoPlayback.statsRefreshes
 
     /** Where a scrub lets go: the keyframe its preview showed - see [VideoPlayback.seekNear]. */
     fun onScrubSeek(positionMs: Long) {

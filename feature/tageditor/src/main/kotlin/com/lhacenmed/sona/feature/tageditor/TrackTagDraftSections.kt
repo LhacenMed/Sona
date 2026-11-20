@@ -14,6 +14,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import com.lhacenmed.sona.core.designsystem.component.rememberSyncedTextFieldState
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -59,6 +67,10 @@ internal fun ColumnScope.TrackTagDraftSections(
     )
     HeaderText(tags[TagField.TITLE].ifBlank { track.title }, MaterialTheme.typography.titleLargeEmphasized)
     HeaderText(tags[TagField.ARTIST].ifBlank { track.artist }, MaterialTheme.typography.bodyLarge)
+    if (track.isVideo) {
+        VideoDraftSections(draft, onPickFromGallery = { galleryPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
+        return
+    }
     // Under the names, as a collection's Play is under its header: the song is heard while its tags are told apart.
     FilledTonalButton(onClick = onTogglePlayback, shapes = buttonPressShapes(), modifier = Modifier.padding(top = 12.dp, bottom = 8.dp)) {
         Icon(
@@ -145,6 +157,48 @@ internal fun ColumnScope.TrackTagDraftSections(
         }
     }
 }
+
+/**
+ * A video's own: the tags a video carries - see [TagField.describesVideos] - its thumbnail, from its own or the gallery, and
+ * the link it came from, which its details are read again from. Nothing of a song's - no catalogue, no lyrics.
+ */
+@Composable
+private fun ColumnScope.VideoDraftSections(draft: TrackTagDraft, onPickFromGallery: () -> Unit) {
+    Spacer(modifier = Modifier.height(8.dp))
+    HorizontalDivider()
+    ColumnSection(title = stringResource(R.string.tag_editor_tags)) {
+        TagFields(tags = draft.tags, onChange = draft::setField, fields = VideoFields)
+    }
+
+    HorizontalDivider()
+    ColumnSection(title = stringResource(R.string.tag_editor_thumbnail)) {
+        CoverChoices(
+            ownCoverUri = draft.track.coverArtUri,
+            deviceCoverUri = draft.deviceCoverUri,
+            matchCovers = emptyList(),
+            selected = draft.cover,
+            onPickFromGallery = onPickFromGallery,
+            onSelect = draft::chooseCover,
+        )
+    }
+
+    HorizontalDivider()
+    ColumnSection(title = stringResource(R.string.tag_editor_link)) {
+        val link = draft.link.trim()
+        OutlinedTextField(
+            state = rememberSyncedTextFieldState(draft.link) { draft.link = it },
+            label = { Text(stringResource(R.string.tag_editor_link_label)) },
+            supportingText = { Text(stringResource(if (link.isEmpty() || isWebAddress(link)) R.string.tag_editor_link_summary else R.string.tag_editor_link_invalid)) },
+            isError = link.isNotEmpty() && !isWebAddress(link),
+            lineLimits = TextFieldLineLimits.SingleLine,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+    }
+}
+
+/** The tags a video carries, in the order they are laid out. */
+private val VideoFields = TagField.entries.filter(TagField::describesVideos)
 
 /** The picture this cover choice stands for - [own], the file's, for the file's own. */
 internal fun CoverChoice.uriOr(own: String?): String? = when (this) {

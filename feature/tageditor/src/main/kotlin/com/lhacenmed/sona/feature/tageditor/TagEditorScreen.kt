@@ -126,7 +126,10 @@ data class TagEditorScreen(val trackId: Long, val isInAutoTagRun: Boolean = fals
         }
 
         Column(modifier = Modifier.fillMaxSize()) {
-            SonaTopAppBar(title = stringResource(R.string.tag_editor_title), onNavigateBack = navigator::back)
+            SonaTopAppBar(
+                title = stringResource(if (draft?.track?.isVideo == true) R.string.tag_editor_video_title else R.string.tag_editor_title),
+                onNavigateBack = navigator::back,
+            )
             if (draft == null) return@Column
 
             val track = draft.track

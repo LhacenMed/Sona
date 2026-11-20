@@ -145,6 +145,13 @@ internal object VideoPlayerTokens {
     val ThumbSize = DpSize(4.dp, 20.dp)
     val ScrubThumbSize = DpSize(6.dp, 28.dp)
 
+    /** Each bookmark along the seek line: a dot, [BookmarkSize] across - [ScrubBookmarkSize] under a scrub - ringed to stand off any fill. */
+    val BookmarkSize = 6.dp
+    val ScrubBookmarkSize = 9.dp
+    val BookmarkRing = 1.dp
+    val BookmarkColor = Color.White
+    val BookmarkRingColor = Color.Black.copy(alpha = 0.55f)
+
     /**
      * The room the landscape foot keeps either side of each time, as it is seen: to the glyph of the button beside it, inset
      * within its touch target, and to the end of the seek line, inset within the slider by half its thumb - [TimeButtonGap]

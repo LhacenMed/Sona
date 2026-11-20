@@ -2,8 +2,8 @@
 
 package com.lhacenmed.sona.feature.tageditor.autotag
 
+import com.lhacenmed.sona.core.designsystem.component.animateProgressAsState
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -24,7 +24,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.WavyProgressIndicatorDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -194,12 +193,8 @@ internal fun RunProgress(session: AutoTagSession, onStop: () -> Unit, onFinish: 
             enter = expandVertically(SectionMotion.size, expandFrom = Alignment.Top) + fadeIn(fade),
             exit = shrinkVertically(SectionMotion.size, shrinkTowards = Alignment.Top) + fadeOut(fade),
         ) {
-            // Glides to each track done rather than stepping, at Material's own pace for a progress indicator.
-            val progress by animateFloatAsState(
-                targetValue = if (session.total == 0) 0f else session.done.toFloat() / session.total,
-                animationSpec = WavyProgressIndicatorDefaults.ProgressAnimationSpec,
-                label = "autoTagProgress",
-            )
+            // Glides to each track done rather than stepping.
+            val progress by animateProgressAsState(if (session.total == 0) 0f else session.done.toFloat() / session.total)
             LinearWavyProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().padding(top = 12.dp))
         }
     }

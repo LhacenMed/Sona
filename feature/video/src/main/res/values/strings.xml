@@ -6,9 +6,26 @@
     <string name="video_more">More</string>
     <string name="video_about">About this video</string>
     <string name="video_uploaded">Uploaded %1$s</string>
+    <string name="video_about_refresh">Reload from its site</string>
+    <string name="video_about_unread">Its date, views and likes aren\'t known yet. Reload to read them from its site.</string>
+    <string name="video_about_refreshed">Details updated</string>
+    <string name="video_about_source">From %1$s · copy link</string>
+    <string name="video_about_link_copied">Link copied</string>
+    <string name="video_about_refresh_failed_because">Couldn\'t reload this video\'s details: %1$s</string>
+    <string name="video_about_refresh_failed">Couldn\'t reload this video\'s details</string>
+    <string name="video_bookmark_add">Bookmark this moment</string>
+    <string name="video_bookmark_remove">Remove bookmark</string>
     <plurals name="video_views">
         <item quantity="one">%1$s view</item>
         <item quantity="other">%1$s views</item>
+    </plurals>
+    <plurals name="video_comments">
+        <item quantity="one">%1$s comment</item>
+        <item quantity="other">%1$s comments</item>
+    </plurals>
+    <plurals name="video_shares">
+        <item quantity="one">%1$s share</item>
+        <item quantity="other">%1$s shares</item>
     </plurals>
     <plurals name="video_likes">
         <item quantity="one">%1$s like</item>
@@ -37,6 +54,7 @@
     <string name="video_unmute">Unmute</string>
     <string name="video_screenshot">Screenshot</string>
     <string name="video_equalizer">Equalizer</string>
+    <string name="video_edit_info">Edit info</string>
     <string name="video_shuffle">Shuffle</string>
     <string name="video_screenshot_saved">Screenshot saved to Pictures/Sona</string>
     <string name="video_screenshot_failed">Couldn\'t take a screenshot</string>
