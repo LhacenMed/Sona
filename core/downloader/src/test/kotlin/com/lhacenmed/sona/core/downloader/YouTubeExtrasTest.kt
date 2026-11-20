@@ -47,4 +47,17 @@ class YouTubeExtrasTest {
         assertEquals(54.0, chapters.getJSONObject(1).getDouble("start_time"), 0.0)
         assertNull(YouTubeExtras.chaptersOf(null, "No times here", durationSeconds = 952.0))
     }
+
+    @Test
+    fun `likes are read from the like count entity, else from the like button's words`() {
+        val entity = JSONObject("""{"frameworkUpdates":{"entityBatchUpdate":{"mutations":[{"payload":{"likeCountEntity":
+            {"likeCountIfIndifferentNumber":"1200"}}}]}}}""")
+        assertEquals(1200L, YouTubeExtras.likesOf(entity))
+
+        val button = JSONObject("""{"frameworkUpdates":{"entityBatchUpdate":{"mutations":[{"payload":{"likeCountEntity":
+            {"key":"unset_like_count_entity_key"}}}]}},"contents":{"a":[{"buttonViewModel":
+            {"accessibilityText":"like this video along with 25,481 other people"}}]}}""")
+        assertEquals(25_481L, YouTubeExtras.likesOf(button))
+        assertEquals(null, YouTubeExtras.likesOf(JSONObject("""{"contents":{}}""")))
+    }
 }

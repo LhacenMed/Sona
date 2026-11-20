@@ -75,6 +75,17 @@ class YtDlpArgumentsTest {
     }
 
     @Test
+    fun `further sounds are each a track of the video, which keeps its one sound where it lacks any`() {
+        val more = DownloadOptions(audioLanguages = listOf("fr", "de"))
+        val arguments = DownloadChoices(kind = DownloadKind.VIDEO, audioLanguage = "es").arguments(options = more)
+        assertEquals("ba[language=es]+ba[language=fr]+ba[language=de]+bv/ba[language=es]+bv/ba+bv/bv*+ba/b", arguments.valueOf("-f"))
+        assertTrue("--audio-multistreams" in arguments)
+        assertEquals("ba+ba[language=fr]+ba[language=de]+bv/ba+bv/bv*+ba/b", DownloadChoices(kind = DownloadKind.VIDEO).arguments(options = more).valueOf("-f"))
+        assertEquals("(137+140)+ba[language=fr]+ba[language=de]/137+140", DownloadChoices(kind = DownloadKind.VIDEO).arguments(options = more.copy(formatId = "137+140")).valueOf("-f"))
+        assertFalse("--audio-multistreams" in DownloadChoices(kind = DownloadKind.VIDEO).arguments())
+    }
+
+    @Test
     fun `captions saved as files are written beside the video, and kept`() {
         val arguments = DownloadChoices(kind = DownloadKind.VIDEO, subtitlesAsFile = true).arguments("en")
         assertEquals("en", arguments.valueOf("--sub-langs"))
@@ -218,6 +229,7 @@ class YtDlpArgumentsTest {
     fun `anything else yt-dlp writes says nothing`() {
         assertEquals(DownloadEvent.Part(File("video.f399.mp4.part"), File("video.f399.mp4")), parseLine("[download] Destination: video.f399.mp4"))
         assertNull(parseLine("[download] Destination: video.en.vtt"))
+        assertEquals(DownloadEvent.Part(File("video.f251.webm.part"), File("video.f251.webm")), parseLine("[download] video.f251.webm has already been downloaded"))
     }
 
     @Test

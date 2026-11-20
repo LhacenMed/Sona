@@ -104,8 +104,10 @@ internal object InstagramReader : SiteReader {
                 extractorKey = "Instagram",
                 formats = formats,
                 timestamp = media.opt("taken_at").wholeNumber(),
-                viewCount = media.opt("play_count").wholeNumber() ?: media.opt("view_count").wholeNumber(),
+                viewCount = media.opt("play_count").wholeNumber() ?: media.opt("ig_play_count").wholeNumber() ?: media.opt("view_count").wholeNumber(),
                 likeCount = media.opt("like_count").wholeNumber(),
+                commentCount = media.opt("comment_count").wholeNumber(),
+                repostCount = media.opt("media_repost_count").wholeNumber() ?: media.opt("share_count").wholeNumber(),
             ),
         )
     }

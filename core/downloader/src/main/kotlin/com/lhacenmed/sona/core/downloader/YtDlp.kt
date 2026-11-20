@@ -1,11 +1,13 @@
 package com.lhacenmed.sona.core.downloader
 
 import android.content.Context
+import android.webkit.WebSettings
 import com.lhacenmed.sona.core.model.DownloadChoices
 import com.lhacenmed.sona.core.model.DownloadKind
 import com.lhacenmed.sona.core.model.DownloadOptions
 import com.lhacenmed.sona.core.model.DownloaderPreferences
 import com.lhacenmed.sona.core.model.YtDlpChannel
+import com.lhacenmed.sona.core.model.FILE_NAME_EXTENSION
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
@@ -18,6 +20,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import org.json.JSONTokener
 
 /** What a download says as it goes. */
 sealed interface DownloadEvent {
@@ -80,14 +83,51 @@ class YtDlp @Inject constructor(
     @ApplicationContext private val context: Context,
     private val runtime: DownloaderRuntime,
     private val transcriptionUsage: TranscriptionUsage,
+    private val browserCookies: BrowserCookies,
 ) {
+    /**
+     * Runs [block] signed in to [url]'s site as the app's browser is, where downloads read sites signed in: with the cookies
+     * the browser holds for it the moment it starts, sent as that browser - see [BrowserCookies.fileFor] - their file gone once
+     * it is over. Nothing where the browser holds none for it.
+     */
+    private suspend fun <T> withCookies(url: String, preferences: DownloaderPreferences, block: suspend (List<String>) -> T): T {
+        val file = if (preferences.usesCookies) browserCookies.fileFor(url, File(context.cacheDir, "cookies")) else null
+        try {
+            val arguments = file?.let { cookies ->
+                listOf("--cookies", cookies.path) + if (preferences.sendsUserAgent) {
+                    listOf("--add-header", "User-Agent:${preferences.userAgent.ifBlank { WebSettings.getDefaultUserAgent(context) }}")
+                } else {
+                    emptyList()
+                }
+            }.orEmpty()
+            return block(arguments)
+        } finally {
+            file?.delete()
+        }
+    }
+
     /**
      * [url], read into yt-dlp's info JSON - one video with its formats and every caption it has, or a playlist with its
      * videos - given [extraArguments] beside its own. YouTube's translated captions are listed only where yt-dlp is told it
      * may write them.
+     *
+     * Never told of the download archive: a read only looks, and yt-dlp skips a video the archive holds - printing `null` for
+     * it - so a video downloaded once could never be read again, to download it again or read its details. Whether it was
+     * downloaded before is the download's to tell - see [DownloadedBeforeException]. Skipped all the same - by a saved
+     * command's filter - it throws, saying why, as yt-dlp says.
      */
-    internal suspend fun infoJson(url: String, preferences: DownloaderPreferences, extraArguments: List<String>): JSONObject =
-        JSONObject(run(listOf("-J", "--flat-playlist", "--no-playlist", "--write-auto-subs") + preferences.networkArguments(runtime) + extraArguments + url))
+    internal suspend fun infoJson(url: String, preferences: DownloaderPreferences, extraArguments: List<String>): JSONObject {
+        var errors = ""
+        val output = withCookies(url, preferences) { cookies ->
+            run(
+                listOf("-J", "--flat-playlist", "--no-playlist", "--write-auto-subs") + preferences.networkArguments(runtime, archives = false) +
+                    cookies + extraArguments + url,
+                onErrors = { errors = it },
+            )
+        }
+        return runCatching { JSONTokener(output).nextValue() as? JSONObject }.getOrNull()
+            ?: throw YtDlpException(skipReasonOf("$output\n$errors") ?: "yt-dlp read nothing of $url")
+    }
 
     /**
      * Downloads [source] with [choices], [options] and [preferences] into [outputDir] by way of its download's [workspace] - see
@@ -129,18 +169,19 @@ class YtDlp @Inject constructor(
         // Whether yt-dlp let a video go as downloaded before, by the archive - and whether it saved anything at all.
         var isInArchive = false
         var hasSaved = false
-        suspend fun runWith(languages: String?, target: List<String>) {
+        suspend fun runWith(languages: String?, target: List<String>) = withCookies(source.url, preferences) { cookies ->
             val arguments = choices.toArguments(options, preferences, languages, decodesAv1InHardware(choices.videoQuality.height)) +
                 // The archive is of what was saved as sound or picture: captions alone are neither held back by it nor kept in it -
                 // and one asked for again anyway is downloaded, as it is recorded there already.
-                preferences.networkArguments(runtime, archives = choices.kind.isMedia && !options.downloadsAgain) +
-                downloadArguments(savesTo.path, workspace.path, preferences.fileNameTemplate, options.splitChapters, preferences.concurrentFragments) +
+                preferences.networkArguments(runtime, archives = choices.kind.isMedia && !options.downloadsAgain) + cookies +
+                // A name the user gave is taken as it is - its `%` not read as a template's.
+                downloadArguments(savesTo.path, workspace.path, options.fileName?.let { it.replace("%", "%%") + FILE_NAME_EXTENSION } ?: preferences.fileNameTemplate, options.splitChapters, preferences.concurrentFragments) +
                 (if (hasTranslations) listOf("--enable-file-urls") else emptyList()) +
                 headerArguments(options.requestHeaders) +
                 options.commandArguments?.let(::splitArguments).orEmpty() +
                 target
             // Its errors among the rest, in the order it wrote them: its log is all it said.
-            val progress = WholeProgress()
+            val progress = WholeProgress(countsStreamsOnly = !subtitlesAlone)
             run(arguments, mergesErrors = true, onLine = { line ->
                 progress.read(line)
                 parseLine(line)?.let(progress::of)?.let { event ->
@@ -213,6 +254,7 @@ class YtDlp @Inject constructor(
         onLine: (String) -> Unit = {},
         mergesErrors: Boolean = false,
         workingDir: File? = null,
+        onErrors: (String) -> Unit = {},
     ): String = withContext(Dispatchers.IO) {
         val files = runtime.files() ?: throw DownloaderMissingException()
         val command = listOf(files.python.path, files.ytDlp.path) + commonArguments(files) + arguments
@@ -238,6 +280,7 @@ class YtDlp @Inject constructor(
             }
             val exitCode = process.waitFor()
             ensureActive()
+            onErrors(errors)
             if (exitCode != 0) throw YtDlpException(failureOf(if (mergesErrors) output.toString() else errors))
             output.toString()
         } finally {
@@ -269,15 +312,22 @@ internal fun environmentOf(context: Context, files: RuntimeFiles) = mapOf(
     "PATH" to "${files.python.parent}:${System.getenv("PATH") ?: "/system/bin"}",
 )
 
+/**
+ * The file [line] says yt-dlp begins - or, resumed, has whole from before it was paused, which plays and counts as much as the
+ * rest - null for any other line.
+ */
+internal fun fileBegunIn(line: String): File? =
+    line.substringAfter("[download] Destination: ", "").ifEmpty { line.substringAfter("[download] ", "").substringBefore(" has already been downloaded", "") }
+        .takeIf(String::isNotEmpty)?.let { File(it.trim()) }
+
 /** What a line yt-dlp wrote says, where it is one of Sona's own - see [YtDlpLines] - or names a chapter's file. */
 internal fun parseLine(line: String): DownloadEvent? {
     line.substringAfter("[SplitChapters] ", "").substringAfter("Destination: ", "").takeIf(String::isNotEmpty)?.let {
         return DownloadEvent.Saved(File(it.trim()), heatmapJson = null, chaptersJson = null)
     }
-    line.substringAfter("[download] Destination: ", "").takeIf(String::isNotEmpty)?.let {
-        val whole = File(it.trim())
+    fileBegunIn(line)?.let { whole ->
         // Its captions are downloaded the same way, and are no part of what plays.
-        return if (whole.extension.lowercase() in MediaExtensions) DownloadEvent.Part(File(whole.path + ".part"), whole) else null
+        return if (whole.isStream) DownloadEvent.Part(File(whole.path + ".part"), whole) else null
     }
     val (tag, rest) = line.split(' ', limit = 2).let { it[0] to it.getOrElse(1) { "" } }
     return when (tag) {
@@ -315,7 +365,9 @@ private val Spaces = Regex(" +")
 /** Why a download of captions alone saved nothing: the video has none in the languages picked. */
 private const val NoSubtitles = "The video has no subtitles in the languages picked"
 
-/** What a stream of sound or picture is saved as - not a caption, a description or a picture. */
+/** Whether this is a stream of sound or picture - not a caption, a description or a picture - by what it is saved as. */
+internal val File.isStream: Boolean get() = extension.lowercase() in MediaExtensions
+
 private val MediaExtensions = setOf("mp4", "m4a", "webm", "mkv", "mov", "mp3", "opus", "ogg", "oga", "flac", "wav", "aac", "ts", "3gp", "flv")
 
 /** [text] as the arguments a shell would make of it: split at spaces, outside quotes. */
@@ -323,6 +375,11 @@ fun splitArguments(text: String): List<String> =
     Regex(""""([^"]*)"|'([^']*)'|(\S+)""").findAll(text).map { match -> match.groupValues.drop(1).firstOrNull(String::isNotEmpty).orEmpty() }.toList()
 
 /** Why yt-dlp failed: the errors it named, or the last of what it wrote. */
+/** Why yt-dlp let a video go unread, in its own words - "does not pass filter", an age limit - null where it said nothing of it. */
+internal fun skipReasonOf(output: String): String? =
+    output.lines().map(String::trim).lastOrNull { it.contains("skipping", ignoreCase = true) || it.startsWith("ERROR:") }
+        ?.removePrefix("ERROR:")?.removePrefix("[download]")?.trim()?.takeIf(String::isNotEmpty)
+
 private fun failureOf(errors: String): String {
     val named = errors.lines().filter { it.startsWith("ERROR:") }.map { it.removePrefix("ERROR:").trim() }
     return named.joinToString("\n").ifBlank { errors.trim().takeLast(500) }

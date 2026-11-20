@@ -126,8 +126,28 @@ class Extraction(
 /** [json], a reader's read of a link - [isComplete] where it holds all yt-dlp's own would: see [Extraction.isComplete]. */
 internal fun extractionOf(json: String, isComplete: Boolean): Extraction {
     val parsed = JSONObject(json)
-    return Extraction(json, mediaInfoOf(parsed), isComplete, expiryOf(parsed))
+    // Handed to yt-dlp as it is, a read's day has to be yt-dlp's own: one kept from before, or any reader's, is made so.
+    val read = if (withYtDlpDay(parsed)) parsed.toString() else json
+    return Extraction(read, mediaInfoOf(parsed), isComplete, expiryOf(parsed))
 }
+
+/**
+ * Makes [json]'s `upload_date` - and each entry's - the YYYYMMDD yt-dlp reads it as, or drops it where it holds no day: yt-dlp
+ * fails the whole download on any other, a "20261023Z" as much as a "2026-10-23". True where anything was changed.
+ */
+internal fun withYtDlpDay(json: JSONObject): Boolean {
+    var changed = false
+    val day = json.opt("upload_date")
+    if (day != null && day != JSONObject.NULL && !(day is String && YtDlpDay.matches(day))) {
+        val digits = (day as? String)?.filter(Char::isDigit)?.take(8)?.takeIf { it.length == 8 }
+        if (digits != null) json.put("upload_date", digits) else json.remove("upload_date")
+        changed = true
+    }
+    json.optJSONArray("entries")?.let { entries -> for (i in 0 until entries.length()) entries.optJSONObject(i)?.let { if (withYtDlpDay(it)) changed = true } }
+    return changed
+}
+
+private val YtDlpDay = Regex("""\d{8}""")
 
 /** How long before its streams' own expiry a read is let go: a download started then has time to finish. */
 private const val ExpiryMarginMs = 30 * 60 * 1000L

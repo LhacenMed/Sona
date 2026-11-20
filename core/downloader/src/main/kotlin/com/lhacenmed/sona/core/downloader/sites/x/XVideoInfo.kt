@@ -76,6 +76,9 @@ internal object XVideoInfo {
                 // The syndication's ISO time, "2020-08-01T16:11:39.000Z".
                 timestamp = root.text("created_at")?.let { runCatching { java.time.Instant.parse(it).epochSecond }.getOrNull() },
                 likeCount = root.opt("favorite_count").wholeNumber(),
+                // The syndication counts a post's replies as its conversation; its reposts and views it does not give.
+                commentCount = root.opt("conversation_count").wholeNumber() ?: root.opt("reply_count").wholeNumber(),
+                repostCount = root.opt("retweet_count").wholeNumber(),
             ),
         ) {
             put("display_id", postId)

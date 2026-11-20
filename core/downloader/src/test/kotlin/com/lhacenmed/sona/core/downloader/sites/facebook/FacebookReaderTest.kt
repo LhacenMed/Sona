@@ -27,7 +27,41 @@ private fun videoNode(hd: String? = Hd) = """{"__typename":"Video","id":"$VideoI
 private fun story(attachments: String, postId: String = "900000000000003") = """{"node_v2":{"__typename":"Story","post_id":"$postId",
     "message":{"text":"Synthetic message\nsecond"},"actors":[{"name":"Synthetic Actor"}],"attachments":$attachments}}"""
 
+/** One reel's react-button result, as a reel's page holds one for it and each reel after it. */
+private fun reactResult(videoId: String, reactions: Long) = """{"video":{"id":"$videoId"},"feedback":{"total_comment_count":${reactions / 10},
+    "share_count_reduced":"1.2K"},"fb_reel_react_button":{"story":{"feedback":{"unified_reactors":{"count":$reactions}}}}}"""
+
 class FacebookReaderTest {
+
+    @Test
+    fun aReelsDateAndReactionsAreItsOwnNotTheNextReels() {
+        val reel = identity("https://www.facebook.com/reel/$VideoId")
+        val data = """{"video":{"id":"$VideoId","creation_story":{"creation_time":1769205641,"short_form_video_context":
+            {"playback_video":${videoNode()}}}}}"""
+        val html = page(data).replace(
+            "</body>",
+            listOf(reactResult("900000000000009", 634), reactResult(VideoId, 2826)).joinToString("") { result ->
+                """<script type="application/json" data-sjs>{"require":[["ScheduledServerJS","handle",null,[{"__bbox":{"require":
+                [["RelayPrefetchedStreamCache","next",[],["adp_2",{"__bbox":{"complete":true,"result":{"data":$result}}}]]]}}]]]}</script>"""
+            } + "</body>",
+        )
+        val info = JSONObject(checkNotNull(FacebookReader.parse(html, reel, reel, reel.fetchUrl)))
+        assertEquals(1769205641L, info.getLong("timestamp"))
+        assertEquals(2826L, info.getLong("like_count"))
+        assertEquals(282L, info.getLong("comment_count"))
+        assertEquals(1200L, info.getLong("repost_count"))
+        assertFalse(info.has("view_count"))
+
+        val titled = JSONObject(checkNotNull(FacebookReader.parse(html.replace("Synthetic page title", "254K views &#xb7; 2.8K reactions | A caption"), reel, reel, reel.fetchUrl)))
+        assertEquals(254_000L, titled.getLong("view_count"))
+        assertEquals("A caption", titled.getString("title"))
+    }
+
+    @Test
+    fun aTitleLeadingWithNoCountsIsTheTitle() {
+        assertEquals(Triple(null, null, "Just a caption | with a bar"), FacebookReader.titleCountsOf("Just a caption | with a bar"))
+        assertEquals(Triple(1_200_000L, null, "Clip"), FacebookReader.titleCountsOf("1.2M views | Clip"))
+    }
     private fun identity(url: String) = checkNotNull(FacebookPostIdentity.parse(url))
 
     @Test

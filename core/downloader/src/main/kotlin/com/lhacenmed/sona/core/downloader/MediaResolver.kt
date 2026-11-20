@@ -14,13 +14,18 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import java.io.IOException
 import okhttp3.OkHttpClient
+import org.json.JSONObject
 
 /** How long NewPipe is given a link before yt-dlp reads it instead - Nezzel's budget. */
 private const val NewPipeBudgetMs = 10_000L
 
 /** How long a site's own reader is given a post - its requests' own limit, so a reader is never cut off mid-answer. */
 private const val SiteBudgetMs = 20_000L
+
+/** How long NewPipe is given again for a YouTube link yt-dlp could not read: past a first read's warming up. */
+private const val NewPipeRetryBudgetMs = 30_000L
 
 /** How long a link no site here reads is given to say whether it serves a file - see [FileLinks]. */
 private const val FileBudgetMs = 10_000L
@@ -106,6 +111,42 @@ class MediaResolver @Inject internal constructor(
     }
 
     /**
+     * What [url]'s video's details are now - when it was published, how often watched, liked, commented on, shared, as
+     * [VideoStatsFields] names them - read the surest way there is for it: a YouTube video's from its watch page's own data,
+     * which needs neither its player, refused to whatever YouTube takes for a bot, nor its streams - see [YouTubeDetails]; a
+     * post of one of [SiteReaders] by its own reader, afresh; and anything else - or where those fail - as a download reads
+     * it, afresh. Through the proxy where one is set, as every read is. Throws, saying why, where none of them could.
+     */
+    suspend fun readDetails(url: String, preferences: DownloaderPreferences): String = withContext(Dispatchers.IO) {
+        val failures = mutableListOf<Throwable>()
+        fun counted(json: String?): String? = json?.takeIf { EmbeddedExtras.statsOf(JSONObject(it))?.hasCounts == true }
+        YouTubeDetails.watchUrlOf(url)?.let { watchUrl ->
+            runCatching { YouTubeDetails.read(watchUrl, preferences.transferClient(fileClient)) }
+                .onSuccess { return@withContext it }.onFailure(failures::add)
+        }
+        if (readsItself(preferences)) {
+            SiteReaders.readerFor(url)?.let { reader ->
+                runCatching { counted(reader.read(url, SiteHttp())?.let { mediaInfoOf(JSONObject(it)).statsJson }) ?: error("$url's page held none of its details") }
+                    .onSuccess { return@withContext it }.onFailure(failures::add)
+            }
+        }
+        runCatching { counted(readAgain(url, preferences).info.statsJson) ?: error("$url's read held none of its details") }
+            .onSuccess { return@withContext it }.onFailure(failures::add)
+        throw IOException(failures.joinToString("; ") { it.message ?: it.javaClass.simpleName }, failures.lastOrNull())
+    }
+
+    /**
+     * [url] read afresh, as it is downloaded - see [resolveForDownload]: nothing kept of an earlier read, and the app's own
+     * readers tried again even where they missed it once. What a video's details are read again with: they change.
+     */
+    suspend fun readAgain(url: String, preferences: DownloaderPreferences): Extraction {
+        val key = linkKeyOf(url)
+        cache.remove(key)
+        synchronized(appMisses) { appMisses -= key }
+        return resolveForDownload(url, preferences)
+    }
+
+    /**
      * [url] read the fastest way there is: by NewPipe for YouTube, by its site's own reader for a post of one of [SiteReaders],
      * each within its budget; a link of no site here, as the file it serves where it serves one - see [FileLinks] - asked
      * through the proxy as yt-dlp would ask; and by yt-dlp for everything else.
@@ -130,7 +171,15 @@ class MediaResolver @Inject internal constructor(
         if (!newPipe.accepts(url) && SiteReaders.readerFor(url) == null) {
             readWithin(FileBudgetMs) { FileLinks.read(url, preferences.transferClient(fileClient), headers) }?.let { return extractionOf(it, isComplete = true) }
         }
-        return extractionOf(ytDlp.infoJson(url, preferences, readingArguments.forLink(url) + headerArguments(headers)).toString(), isComplete = true)
+        return try {
+            extractionOf(ytDlp.infoJson(url, preferences, readingArguments.forLink(url) + headerArguments(headers)).toString(), isComplete = true)
+        } catch (e: YtDlpException) {
+            // yt-dlp asks YouTube as its website's player does, which YouTube refuses whatever it takes for a bot - "Sign in to
+            // confirm you're not a bot", signed in or not. NewPipe asks as YouTube's own apps do, which it lets by: given the
+            // time a slow first read takes, it reads what yt-dlp could not, so the download goes on from its read.
+            if (!readsItself(preferences) || !newPipe.accepts(url)) throw e
+            readWithin(NewPipeRetryBudgetMs) { newPipe.read(url) }?.let { extractionOf(it, isComplete = false) } ?: throw e
+        }
     }
 
     /**

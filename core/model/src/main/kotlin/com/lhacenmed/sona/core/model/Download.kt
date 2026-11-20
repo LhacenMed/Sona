@@ -119,7 +119,17 @@ data class DownloadOptions(
      * request for it, so a site that serves a file only to the page that links it serves it here too. None for a link given.
      */
     val requestHeaders: Map<String, String> = emptyMap(),
+    /** The name the user gave its file, without its extension - see [toFileName]. Null names it by the file name template. */
+    val fileName: String? = null,
+    /**
+     * The video's further sounds embedded beside the one [DownloadChoices.audioLanguage] picks, by their language codes - a track
+     * each, which a player switches between. None for the one sound.
+     */
+    val audioLanguages: List<String> = emptyList(),
 )
+
+/** [this] as a file can be named: without what a file system forbids, cut to fit - "download" for nothing left. */
+fun String.toFileName(): String = replace(Regex("""[\\/:*?"<>|\x00-\x1f]"""), "_").trim().take(150).ifEmpty { "download" }
 
 /** What every file name is built from, yt-dlp's way: its title, cut to fit - which every template keeps. */
 const val FILE_NAME_BASENAME = "%(title).150B"
@@ -200,11 +210,11 @@ data class DownloaderPreferences(
     val forcesIpv4: Boolean = false,
     /** How many parts of a stream in fragments - HLS, DASH - yt-dlp fetches at once: 1, 8, 16 or 24. */
     val concurrentFragments: Int = 8,
-    /** Sites are read signed in, with the cookies saved from signing in on them. */
-    val usesCookies: Boolean = false,
+    /** Sites are read signed in, as the app's browser is signed in to them - see `BrowserCookies`. */
+    val usesCookies: Boolean = true,
     /** Signed in, requests also say they come from the browser the cookies were made in - [userAgent]. */
     val sendsUserAgent: Boolean = false,
-    /** What the browser cookies were last made in calls itself - empty before any were. */
+    /** What the browser cookies are sent as calls itself - the app's browser's own while empty. */
     val userAgent: String = "",
     /** The folder what downloads with a command - or is run in the terminal - is saved in: each kind's own while blank. */
     val commandFolder: String = "",

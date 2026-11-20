@@ -88,6 +88,8 @@ internal object ThreadsReader : SiteReader {
                 formats = listOf(format),
                 timestamp = media.opt("taken_at").wholeNumber(),
                 likeCount = media.opt("like_count").wholeNumber(),
+                commentCount = media.optJSONObject("text_post_app_info")?.opt("direct_reply_count").wholeNumber(),
+                repostCount = media.optJSONObject("text_post_app_info")?.opt("repost_count").wholeNumber(),
             ),
         )
     }

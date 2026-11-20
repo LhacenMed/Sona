@@ -34,14 +34,22 @@ internal fun DownloadChoices.toArguments(
     when (kind) {
         DownloadKind.VIDEO -> {
             val formatId = options.formatId
+            // The further sounds picked, each a track beside the first - the whole falling back to the one sound where the video
+            // lacks any of them.
+            val moreSounds = options.audioLanguages.joinToString("") { "+ba[language=$it]" }
+            if (moreSounds.isNotEmpty()) add("--audio-multistreams")
             if (formatId != null) {
-                addAll(listOf("-f", formatId))
+                addAll(listOf("-f", if (moreSounds.isEmpty()) formatId else "($formatId)$moreSounds/$formatId"))
             } else {
                 // The sound first: small, it is soon whole, so the picture plays with it as it downloads - see LiveDownloads. With a
                 // picture alone: one that may carry its own sound - a file whose codecs its site does not say, as Facebook's - is
                 // merged away into the sound alone. Without one, yt-dlp's own order: the best picture with the best sound, else
                 // the best whole file.
-                val sound = audioLanguage?.let { "ba[language=$it]+bv/" }.orEmpty()
+                val firstSound = audioLanguage?.let { "ba[language=$it]" }
+                val sound = when {
+                    moreSounds.isNotEmpty() -> "${firstSound ?: "ba"}$moreSounds+bv/" + firstSound?.let { "$it+bv/" }.orEmpty()
+                    else -> firstSound?.let { "$it+bv/" }.orEmpty()
+                }
                 addAll(listOf("-f", "${sound}ba+bv/bv*+ba/b", "-S", videoSorter(decodesAv1InHardware)))
             }
             addAll(listOf("--merge-output-format", "mp4"))
@@ -118,17 +126,13 @@ private fun DownloadChoices.videoSorter(decodesAv1InHardware: Boolean): String {
 }
 
 /**
- * What every request yt-dlp makes is told: through the proxy, at the rate, over IPv4, signed in - as the browser the cookies were
- * made in, where it says so - and, where it [archives], remembering what it downloaded.
+ * What every request yt-dlp makes is told: through the proxy, at the rate, over IPv4 and, where it [archives], remembering what
+ * it downloaded. Signed in it is told apart, for each link - see [YtDlp.withCookies].
  */
 internal fun DownloaderPreferences.networkArguments(runtime: DownloaderRuntime, archives: Boolean = true): List<String> = buildList {
     activeProxy?.let { addAll(listOf("--proxy", it)) }
     activeRateLimit?.let { addAll(listOf("--limit-rate", it)) }
     if (forcesIpv4) add("--force-ipv4")
-    if (usesCookies && runtime.cookiesFile.exists()) {
-        addAll(listOf("--cookies", runtime.cookiesFile.path))
-        if (sendsUserAgent && userAgent.isNotBlank()) addAll(listOf("--add-header", "User-Agent:$userAgent"))
-    }
     if (usesArchive && archives) addAll(listOf("--download-archive", runtime.archiveFile.path))
 }
 

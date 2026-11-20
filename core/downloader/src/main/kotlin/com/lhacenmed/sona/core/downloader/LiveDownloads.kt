@@ -53,8 +53,19 @@ class LiveDownloads @Inject constructor() {
     /** [id] is over, having [saved] its file - null where it saved none, failed or stopped. */
     fun finish(id: Long, saved: File?) = update(id) { it.copy(isOver = true, saved = saved) }
 
-    /** Forgets [id], played no longer - or started again. */
-    fun forget(id: Long) = _downloads.update { it - id }
+    /** [id], paused before the app last stopped, playable again from the [parts] it had fetched - see `DownloadWorkspaces.partsOf`. */
+    fun restore(id: Long, parts: List<DownloadEvent.Part>) {
+        if (parts.isNotEmpty()) _downloads.update { if (id in it) it else it + (id to LiveDownload(parts = parts)) }
+    }
+
+    /**
+     * [id] runs again - resumed, or retried - from the parts it has fetched so far, still there: playable as it was the moment it
+     * starts, not once it fetches its next byte.
+     */
+    fun resume(id: Long) = _downloads.update { downloads ->
+        val live = downloads[id] ?: return@update downloads
+        downloads + (id to LiveDownload(parts = live.parts.filter { it.growing.exists() || it.whole.exists() }, fraction = live.fraction))
+    }
 
     companion object {
         const val SCHEME = "sona-download"

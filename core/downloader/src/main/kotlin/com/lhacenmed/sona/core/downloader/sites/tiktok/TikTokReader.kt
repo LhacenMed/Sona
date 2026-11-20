@@ -128,6 +128,8 @@ internal object TikTokReader : SiteReader {
                 timestamp = item.opt("createTime").wholeNumber(),
                 viewCount = item.optJSONObject("stats")?.opt("playCount").wholeNumber() ?: item.optJSONObject("statsV2")?.opt("playCount").wholeNumber(),
                 likeCount = item.optJSONObject("stats")?.opt("diggCount").wholeNumber() ?: item.optJSONObject("statsV2")?.opt("diggCount").wholeNumber(),
+                commentCount = item.optJSONObject("stats")?.opt("commentCount").wholeNumber() ?: item.optJSONObject("statsV2")?.opt("commentCount").wholeNumber(),
+                repostCount = item.optJSONObject("stats")?.opt("shareCount").wholeNumber() ?: item.optJSONObject("statsV2")?.opt("shareCount").wholeNumber(),
             ),
         )
     }

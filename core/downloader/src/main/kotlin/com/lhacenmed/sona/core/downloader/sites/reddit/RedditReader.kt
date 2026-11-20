@@ -26,7 +26,17 @@ private const val MaxManifestBytes = 256 * 1024
 private const val SpokenCaptions = "wh_ben_en.vtt"
 
 /** What a post page names of its video. */
-internal class RedditVideo(val videoId: String, val title: String?, val author: String?, val thumbnail: String?, val durationSeconds: Long?)
+internal class RedditVideo(
+    val videoId: String,
+    val title: String?,
+    val author: String?,
+    val thumbnail: String?,
+    val durationSeconds: Long?,
+    /** When it was posted, in seconds since 1970, its score - what Reddit counts in place of likes - and its comments. */
+    val timestamp: Long? = null,
+    val score: Long? = null,
+    val comments: Long? = null,
+)
 
 /**
  * Reddit, read from a post's logged-out page - yt-dlp's reddit extractor needs Reddit's JSON API, which refuses logged-out
@@ -87,7 +97,12 @@ internal object RedditReader : SiteReader {
             JSONObject(player.attr("packaged-media-json").takeIf { it.length in 1..64 * 1024 } ?: "{}")
                 .optJSONObject("playbackMp4s")?.opt("duration").wholeNumber()?.takeIf { it > 0 }
         }.getOrNull()
-        RedditVideo(id, firstLine(post.attr("post-title")), post.attr("author").takeIf(String::isNotBlank), thumbnail, duration)
+        RedditVideo(
+            id, firstLine(post.attr("post-title")), post.attr("author").takeIf(String::isNotBlank), thumbnail, duration,
+            timestamp = epochSecondsOf(post.attr("created-timestamp")),
+            score = post.attr("score").toLongOrNull(),
+            comments = post.attr("comment-count").toLongOrNull(),
+        )
     }.getOrNull()
 
     /**
@@ -136,6 +151,9 @@ internal object RedditReader : SiteReader {
                 webpageUrl = webpageUrl,
                 extractorKey = "Reddit",
                 formats = formats,
+                timestamp = video.timestamp,
+                likeCount = video.score,
+                commentCount = video.comments,
                 captions = captions.ifEmpty { listOfNotNull(spokenCaptions()?.let { CaptionFile("en", it, isAutomatic = true, extension = "vtt") }) },
             ),
         )
@@ -188,3 +206,8 @@ internal object RedditJsChallenge {
         }.getOrNull()
     }
 }
+
+/** Reddit's "2024-05-21T14:33:12.345000+0000", in seconds since 1970 - null where it is not that. */
+private fun epochSecondsOf(raw: String): Long? = runCatching {
+    java.time.OffsetDateTime.parse(raw.trim().replace(Regex("""([+-]\d{2})(\d{2})$"""), "$1:$2")).toEpochSecond()
+}.getOrNull()

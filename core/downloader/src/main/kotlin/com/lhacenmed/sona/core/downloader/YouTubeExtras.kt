@@ -30,6 +30,30 @@ internal object YouTubeExtras {
     }
 
     /**
+     * How often [next]'s video was liked, as yt-dlp reads it: its like count entity's number, else its like button's words -
+     * "like this video along with 25,481 other people", in the English the answer is asked in. Null where it says neither: one
+     * whose likes are hidden.
+     */
+    fun likesOf(next: JSONObject): Long? {
+        next.path("frameworkUpdates", "entityBatchUpdate").optJSONArray("mutations")?.objects()?.firstNotNullOfOrNull {
+            it.path("payload", "likeCountEntity").optString("likeCountIfIndifferentNumber").toLongOrNull()
+        }?.let { return it }
+        return firstText(next, 0) { LikeWords.find(it)?.groupValues?.get(1)?.filter(Char::isDigit)?.toLongOrNull() }
+    }
+
+    /** The first of [value]'s texts, depth first, that [read] reads. */
+    private fun <T : Any> firstText(value: Any?, depth: Int, read: (String) -> T?): T? = when {
+        depth > MaxDepth -> null
+        value is String -> read(value)
+        value is JSONObject -> value.keys().asSequence().firstNotNullOfOrNull { firstText(value.opt(it), depth + 1, read) }
+        value is JSONArray -> (0 until value.length()).firstNotNullOfOrNull { firstText(value.opt(it), depth + 1, read) }
+        else -> null
+    }
+
+    private const val MaxDepth = 64
+    private val LikeWords = Regex("""like this video along with (\d[\d,.   ]*) other""", RegexOption.IGNORE_CASE)
+
+    /**
      * The chapters of a video [durationSeconds] long - each its start, end and title: the player bar's in [next], else its
      * chapters panel's, else those its [description] lists. Null with none.
      */

@@ -1,6 +1,7 @@
 package com.lhacenmed.sona.core.downloader
 
 import java.io.IOException
+import java.time.format.DateTimeFormatter
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -14,6 +15,7 @@ import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
+import org.json.JSONTokener
 import org.schabi.newpipe.extractor.Image
 import org.schabi.newpipe.extractor.channel.ChannelInfo
 import org.schabi.newpipe.extractor.channel.tabs.ChannelTabInfo
@@ -106,8 +108,11 @@ internal class NewPipeSource @Inject constructor() {
     fun complete(json: String): String {
         installed
         val read = JSONObject(json)
-        val next = runCatching { network.next(read.getString("id")) }.getOrNull()?.let(::JSONObject)
+        // An answer that is no object - none, or "null" - leaves the read as it was: what it adds is extra.
+        val next = runCatching { network.next(read.getString("id"))?.let { JSONTokener(it).nextValue() as? JSONObject } }.getOrNull()
         next?.let(YouTubeExtras::heatmapOf)?.let { read.put("heatmap", it) }
+        // NewPipe reads no likes where YouTube shows them only on the like button.
+        if (!read.has("like_count")) next?.let(YouTubeExtras::likesOf)?.let { read.put("like_count", it) }
         YouTubeExtras.chaptersOf(next, read.optString("description"), read.optDouble("duration"))?.let { read.put("chapters", it) }
         return read.toString()
     }
@@ -132,6 +137,8 @@ internal class NewPipeSource @Inject constructor() {
             .put("extractor_key", "Youtube")
             // Its counts, where YouTube gave them: NewPipe's -1 is none, and a date it could only guess is left out.
             .put("timestamp", info.uploadDate?.takeUnless { it.isApproximation }?.offsetDateTime()?.toEpochSecond())
+            // YouTube's watch page dates a video by its day alone, which NewPipe counts as a guess: the day is still its own.
+            .put("upload_date", info.uploadDate?.offsetDateTime()?.toLocalDate()?.format(DateTimeFormatter.BASIC_ISO_DATE))
             .put("view_count", info.viewCount.takeIf { it >= 0 })
             .put("like_count", info.likeCount.takeIf { it >= 0 })
             .put("formats", JSONArray(formats))

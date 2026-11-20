@@ -7,6 +7,7 @@ import com.lhacenmed.sona.core.downloader.sites.keyList
 import com.lhacenmed.sona.core.downloader.sites.SiteHttp
 import com.lhacenmed.sona.core.downloader.sites.SiteReader
 import com.lhacenmed.sona.core.downloader.sites.VideoFormat
+import com.lhacenmed.sona.core.downloader.sites.compactCountOf
 import com.lhacenmed.sona.core.downloader.sites.VideoPost
 import com.lhacenmed.sona.core.downloader.sites.firstLine
 import com.lhacenmed.sona.core.downloader.sites.languageTagOf
@@ -18,6 +19,11 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.jsoup.Jsoup
 import org.jsoup.parser.Parser
+
+/** What Facebook names a video's views, and its reactions - as yt-dlp's facebook extractor reads them, and its reels' pages. */
+private val ViewKeys = setOf("video_view_count", "play_count", "view_count")
+private val ReactionKeys = setOf("unified_reactors", "reaction_count")
+private val TitleCounts = Regex("""^\s*(?:([\d.,]+\s*[KMB]?)\s+views?)?\s*(?:·\s*)?(?:([\d.,]+\s*[KMB]?)\s+reactions?)?\s*\|""", RegexOption.IGNORE_CASE)
 
 /** A logged-out post page runs to several megabytes. */
 private const val MaxBytes = 10 * 1024 * 1024
@@ -108,7 +114,8 @@ internal object FacebookReader : SiteReader {
             sd != null -> VideoFormat("sd", sd, width, height, "h264", "aac")
             else -> return null
         }
-        val ogTitle = document.selectFirst("meta[property=og:title]")?.attr("content")
+        // A reel's page title leads with its counts: "254K views · 2.8K reactions | Its caption".
+        val (titleViews, titleReactions, ogTitle) = titleCountsOf(document.selectFirst("meta[property=og:title]")?.attr("content"))
         videoInfoJson(
             VideoPost(
                 id = videoId,
@@ -121,6 +128,13 @@ internal object FacebookReader : SiteReader {
                 extractorKey = "Facebook",
                 formats = listOf(format),
                 captions = nodes.firstNotNullOfOrNull { captionsOf(it).ifEmpty { null } }.orEmpty(),
+                timestamp = postedAtOf(results, nodes, bound, videoId),
+                viewCount = nodes.firstNotNullOfOrNull { numberOf(it, ViewKeys, 0) } ?: bound?.let { numberOf(it, ViewKeys, 0) } ?: titleViews,
+                likeCount = reactionsOf(results, bound, videoId) ?: titleReactions,
+                commentCount = feedbackOf(results, videoId)?.opt("total_comment_count").wholeNumber()
+                    ?: bound?.let { numberOf(it, setOf("total_comment_count"), 0) },
+                repostCount = feedbackOf(results, videoId)?.let { compactCountOf(it.text("share_count_reduced")) }
+                    ?: bound?.let { numberOf(it, setOf("share_count"), 0) },
             ),
         )
     }.getOrNull()
@@ -204,6 +218,58 @@ internal object FacebookReader : SiteReader {
         story.optJSONObject("comet_sections")?.optJSONObject("content")?.optJSONObject("story")
 
     /** Every `__bbox.result.data` object in one Relay block. */
+    /**
+     * When [videoId] was posted, in seconds since 1970: its own node's, else - a reel's - the story it was made in, a result's
+     * `video` naming it, else its post's.
+     */
+    private fun postedAtOf(results: List<JSONObject>, nodes: List<JSONObject>, bound: JSONObject?, videoId: String): Long? =
+        nodes.firstNotNullOfOrNull { it.opt("publish_time").wholeNumber() }
+            ?: results.firstNotNullOfOrNull { data ->
+                data.optJSONObject("video")?.takeIf { it.opt("id") == videoId }?.optJSONObject("creation_story")?.opt("creation_time").wholeNumber()
+            }
+            ?: bound?.let { numberOf(it, setOf("creation_time", "publish_time"), 0) }
+
+    /**
+     * How often [videoId] was reacted to - Facebook's likes, and the rest. A reel's from its react button, in the result whose
+     * `video` is it - its page holds every reel after it too, each with its own; a post's from its own feedback.
+     */
+    private fun reactionsOf(results: List<JSONObject>, bound: JSONObject?, videoId: String): Long? =
+        reelResultsOf(results, videoId).firstNotNullOfOrNull { data -> data.optJSONObject("fb_reel_react_button")?.let { numberOf(it, ReactionKeys, 0) } }
+            ?: bound?.let { numberOf(it, ReactionKeys, 0) }
+
+    /** [videoId]'s own feedback, on a reel's page - its comments, its shares - in the result whose `video` is it. */
+    private fun feedbackOf(results: List<JSONObject>, videoId: String): JSONObject? =
+        reelResultsOf(results, videoId).firstNotNullOfOrNull { it.optJSONObject("feedback")?.takeIf { feedback -> feedback.has("total_comment_count") } }
+
+    /** The results of a reel's page about [videoId] itself: its page holds every reel after it too, each with results of its own. */
+    private fun reelResultsOf(results: List<JSONObject>, videoId: String): List<JSONObject> = results.filter { data ->
+        (data.optJSONObject("video") ?: data.optJSONObject("short_form_video_context")?.optJSONObject("video"))?.opt("id") == videoId
+    }
+
+    /**
+     * A reel's page title, "254K views · 2.8K reactions | Its caption", as its views, its reactions and the title left - each
+     * null it does not lead with, and the whole of it the title where it leads with no counts.
+     */
+    internal fun titleCountsOf(title: String?): Triple<Long?, Long?, String?> {
+        val match = TitleCounts.find(title ?: return Triple(null, null, null)) ?: return Triple(null, null, title)
+        val views = match.groups[1]?.value?.let(::compactCountOf)
+        val reactions = match.groups[2]?.value?.let(::compactCountOf)
+        if (views == null && reactions == null) return Triple(null, null, title)
+        return Triple(views, reactions, title.substring(match.range.last + 1).trim().takeIf(String::isNotEmpty))
+    }
+
+    /** The first number under one of [keys] within [value], depth first - itself, or the `count` it holds. */
+    private fun numberOf(value: Any?, keys: Set<String>, depth: Int): Long? {
+        if (depth > MaxDepth) return null
+        return when (value) {
+            is JSONObject -> keys.firstNotNullOfOrNull { key ->
+                value.opt(key).let { it.wholeNumber() ?: (it as? JSONObject)?.opt("count").wholeNumber() }
+            } ?: value.keyList().firstNotNullOfOrNull { numberOf(value.opt(it), keys, depth + 1) }
+            is JSONArray -> (0 until value.length()).firstNotNullOfOrNull { numberOf(value.opt(it), keys, depth + 1) }
+            else -> null
+        }
+    }
+
     private fun results(value: Any?, depth: Int): List<JSONObject> {
         if (depth > MaxDepth) return emptyList()
         return when (value) {

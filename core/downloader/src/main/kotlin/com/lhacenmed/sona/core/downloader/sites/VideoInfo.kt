@@ -69,10 +69,12 @@ internal class VideoPost(
     val formats: List<VideoFormat>,
     /** Its captions, where its site gives any - see [CaptionFile]. */
     val captions: List<CaptionFile> = emptyList(),
-    /** When it was posted, in seconds since 1970, and how often watched and liked - where its site says. */
+    /** When it was posted, in seconds since 1970, and how often watched, liked, commented on and shared - where its site says. */
     val timestamp: Long? = null,
     val viewCount: Long? = null,
     val likeCount: Long? = null,
+    val commentCount: Long? = null,
+    val repostCount: Long? = null,
 )
 
 /**
@@ -96,6 +98,8 @@ internal fun videoInfoJson(post: VideoPost, extra: JSONObject.() -> Unit = {}): 
         .put("timestamp", post.timestamp?.takeIf { it > 0 })
         .put("view_count", post.viewCount?.takeIf { it >= 0 })
         .put("like_count", post.likeCount?.takeIf { it >= 0 })
+        .put("comment_count", post.commentCount?.takeIf { it >= 0 })
+        .put("repost_count", post.repostCount?.takeIf { it >= 0 })
         .put("formats", JSONArray(formats.map { format ->
             JSONObject()
                 .put("format_id", format.id)
@@ -138,6 +142,29 @@ internal fun isoDurationSeconds(raw: String): Double? {
 }
 
 private val IsoDuration = Regex("PT(?:([0-9]+)H)?(?:([0-9]+)M)?(?:([0-9.]+)S)?")
+
+/**
+ * A count as a site shows it rounded - "254K", "2.8K", "1,2 M", "43" - as the number it stands for: 254000, 2800, 1200000.
+ * Null where it is not one.
+ */
+internal fun compactCountOf(text: String?): Long? {
+    val match = CompactCount.matchEntire(text?.trim()?.replace('\u00A0', ' ') ?: return null) ?: return null
+    val (digits, suffix) = match.destructured
+    val number = digits.replace(" ", "").let { raw ->
+        // "1,234" groups thousands; "1,2" is a decimal comma.
+        if (Regex("""\d{1,3}(,\d{3})+""").matches(raw)) raw.replace(",", "") else raw.replace(',', '.')
+    }.toBigDecimalOrNull() ?: return null
+    val scale = when (suffix.uppercase()) {
+        "" -> 1L
+        "K" -> 1_000L
+        "M" -> 1_000_000L
+        "B" -> 1_000_000_000L
+        else -> return null
+    }
+    return number.multiply(scale.toBigDecimal()).toLong().takeIf { it >= 0 }
+}
+
+private val CompactCount = Regex("""([\d][\d.,]*)\s*([KkMmBb]?)""")
 
 /** A whole number a JSON value is - null for any other value, or a negative one. */
 internal fun Any?.wholeNumber(): Long? = when (this) {

@@ -21,6 +21,7 @@ import com.lhacenmed.sona.core.model.DownloadChoices
 import com.lhacenmed.sona.core.model.DownloadKind
 import com.lhacenmed.sona.core.model.DownloadOptions
 import com.lhacenmed.sona.core.model.DownloaderPreferences
+import com.lhacenmed.sona.core.model.toFileName
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
@@ -94,8 +95,8 @@ class DirectTransfer @Inject constructor() {
             }
 
             DownloadKind.VIDEO -> {
-                // Captions are embedded by yt-dlp - and made, picked to be transcribed or translated, before it.
-                if (info.pickedCaptions(choices, options, preferences, transcribes = false).isNotEmpty()) return null
+                // Captions are embedded by yt-dlp - and made, picked to be transcribed or translated, before it - as further sounds are.
+                if (options.audioLanguages.isNotEmpty() || info.pickedCaptions(choices, options, preferences, transcribes = false).isNotEmpty()) return null
                 val tallest = choices.videoQuality.height ?: Int.MAX_VALUE
                 val pictures = info.formats.filter { it.hasVideo && (it.height ?: 0) <= tallest }
                 // One file with its sound, as a post's video is served: taken only where nothing assembled would be better.
@@ -112,6 +113,7 @@ class DirectTransfer @Inject constructor() {
     /**
      * Downloads [format] of [info] into [outputDir] by way of its download's [workspace] - see [DownloadWorkspaces] - as
      * [preferences] say requests are made, tagging a song or a video, a song with its cover, and says the file saved to [onEvent].
+     * Named [fileName] where the user named it.
      */
     suspend fun download(
         info: MediaInfo,
@@ -119,17 +121,20 @@ class DirectTransfer @Inject constructor() {
         preferences: DownloaderPreferences,
         workspace: File,
         outputDir: File,
+        fileName: String?,
         onEvent: (DownloadEvent) -> Unit,
     ) = withContext(Dispatchers.IO) {
         val client = preferences.transferClient(client)
         val part = fetch(format, client, preferences.rateThrottler(), workspace, onEvent)
         val total = part.length()
         outputDir.mkdirs()
-        val base = info.title.toFileName()
+        val base = fileName ?: info.title.toFileName()
         val extension = format.extension.takeIf(String::isNotEmpty)?.let { ".$it" }.orEmpty()
-        // A song or a video is named as yt-dlp names them, the same one saved over itself; a file keeps the name it was served
-        // with, beside any other of that name - never over it.
-        val file = if (format.isMedia) {
+        // A song or a video is named as yt-dlp names them, the same one saved over itself - or as the user named it; a file keeps
+        // the name it was served with, beside any other of that name - never over it.
+        val file = if (fileName != null && format.isMedia) {
+            File(outputDir, "$base$extension")
+        } else if (format.isMedia) {
             File(outputDir, "$base [${info.id.orEmpty()}]$extension")
         } else {
             generateSequence(0) { it + 1 }.map { File(outputDir, if (it == 0) "$base$extension" else "$base ($it)$extension") }.first { !it.exists() }
@@ -149,7 +154,7 @@ class DirectTransfer @Inject constructor() {
      */
     private suspend fun fetch(format: MediaFormat, client: OkHttpClient, throttler: Throttler?, workspace: File, onEvent: (DownloadEvent) -> Unit): File {
         val url = checkNotNull(format.directUrl)
-        val part = File(workspace, "direct.part")
+        val part = File(workspace, DirectPartName)
         val recordFile = File(workspace, "direct.json")
         val connections = if (format.isMedia) 1 else ConnectionsPerDownload
         var startsOver = 0
@@ -388,6 +393,9 @@ class DirectTransfer @Inject constructor() {
     }
 }
 
+/** What a file downloaded directly is fetched into, in its download's folder - see [DownloadWorkspaces.partsOf]. */
+internal const val DirectPartName = "direct.part"
+
 /**
  * Whether an answer to a request for the bytes from [offset] of a file of [heldTotal] bytes carries that file on: the range
  * asked for, of a file of its very size - never the whole sent again, nor another file.
@@ -403,6 +411,3 @@ private fun progressLine(done: Long, total: Long?, bytesPerSecond: Long?): Strin
 }
 
 private fun mebibytes(bytes: Long): String = String.format(Locale.US, "%.2fMiB", bytes / 1_048_576.0)
-
-/** A title as a file can be named: without what a file system forbids, cut to fit. */
-private fun String.toFileName(): String = replace(Regex("""[\\/:*?"<>|\x00-\x1f]"""), "_").trim().take(150).ifEmpty { "download" }

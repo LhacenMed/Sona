@@ -20,8 +20,12 @@ class DownloadedExtras(
     val stats: VideoStats?,
 )
 
-/** yt-dlp's fields for when a video was uploaded and how often watched and liked, as every site's extractor names them. */
-internal const val VideoStatsFields = "upload_date,timestamp,view_count,like_count"
+/**
+ * yt-dlp's fields for when a video was uploaded and how often watched, liked, commented on and shared, as every site's
+ * extractor names them - and
+ * the page it came from, kept with them so the file can always be read again from its site: see [EmbeddedExtras.linkOf].
+ */
+internal const val VideoStatsFields = "upload_date,timestamp,view_count,like_count,comment_count,repost_count,webpage_url"
 
 /** Those of [VideoStatsFields] [json] has, as yt-dlp gave them - null where it has none. */
 internal fun videoStatsJsonOf(json: JSONObject): String? {
@@ -69,6 +73,37 @@ object EmbeddedExtras {
         }
     }.getOrNull()
 
+    /** [stats] as yt-dlp's fields - see [VideoStatsFields] - what [writeStats] keeps and [statsOf] reads back. */
+    fun statsJsonOf(stats: VideoStats): String = JSONObject()
+        .put("timestamp", stats.uploadedAtMs?.div(1_000))
+        .put("view_count", stats.viewCount)
+        .put("like_count", stats.likeCount)
+        .put("comment_count", stats.commentCount)
+        .put("repost_count", stats.repostCount)
+        .put("webpage_url", stats.sourceUrl)
+        .toString()
+
+    /** Writes yt-dlp's [statsJson] into [file]'s tags in place of what it had - see [write]. */
+    fun writeStats(file: File, statsJson: String) = write(file, heatmapJson = null, chaptersJson = null, statsJson = statsJson)
+
+    /**
+     * The page [file] was downloaded from: the one kept with its counts, else the link yt-dlp, Seal or YTDLnis wrote into
+     * its tags as they saved it - null where it names none, or cannot be read.
+     */
+    fun linkOf(file: File): String? = runCatching {
+        ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { descriptor ->
+            val properties = TagLib.getMetadata(descriptor.dup().detachFd(), readPictures = false)?.propertyMap ?: return null
+            properties[STATS]?.firstOrNull()?.let { statsOf(JSONObject(it))?.sourceUrl }
+                ?: LinkTags.firstNotNullOfOrNull { key -> properties[key]?.firstOrNull(::isLink) }
+        }
+    }.getOrNull()
+
+    /** The tags other downloaders write a video's page into - "purl", or the comment where it has no description. */
+    private val LinkTags = listOf("PURL", "PODCASTURL", "URL", "WEBSITE", "COMMENT", "DESCRIPTION")
+
+    /** Whether [text] is a link and nothing else - not a description that happens to hold one. */
+    private fun isLink(text: String): Boolean = text.trim().let { (it.startsWith("https://") || it.startsWith("http://")) && it.none(Char::isWhitespace) }
+
     /**
      * Whether any of [file]'s tags holds [text] - a video's id in the link yt-dlp, Seal or YTDLnis wrote into it as they saved
      * it ("purl", "comment"). False for a file that cannot be read.
@@ -89,15 +124,23 @@ object EmbeddedExtras {
 
     /**
      * A site's counts of a video: when it was uploaded - to the second where its site says, else the day, as UTC's midnight -
-     * and how often watched and liked. Null where it says none of them.
+     * and how often watched and liked, and the page it came from. Null where it says none of them.
      */
-    internal fun statsOf(json: JSONObject): VideoStats? {
+    fun statsOf(json: JSONObject): VideoStats? {
         val uploadedAtMs = json.longOrNull("timestamp")?.times(1_000)
             ?: json.optString("upload_date").takeIf { it.length == 8 }?.let { day ->
                 runCatching { LocalDate.parse(day, DateTimeFormatter.BASIC_ISO_DATE).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli() }.getOrNull()
             }
-        return VideoStats(uploadedAtMs, json.longOrNull("view_count"), json.longOrNull("like_count"))
-            .takeIf { it.uploadedAtMs != null || it.viewCount != null || it.likeCount != null }
+        val sourceUrl = json.optString("webpage_url").takeIf(::isLink)
+        return VideoStats(
+            uploadedAtMs = uploadedAtMs,
+            viewCount = json.longOrNull("view_count"),
+            likeCount = json.longOrNull("like_count"),
+            sourceUrl = sourceUrl,
+            commentCount = json.longOrNull("comment_count"),
+            repostCount = json.longOrNull("repost_count"),
+        )
+            .takeIf { it.hasCounts || it.sourceUrl != null }
     }
 
     /** [key]'s number, where it holds one. */

@@ -73,7 +73,9 @@ internal object BlueskyReader : SiteReader {
 
     /** What a thread names of its post's own video - and of its captions, each blob's CID by its language. */
     class Video(val cid: String, val mimeType: String, val size: Long?, val width: Int?, val height: Int?,
-        val thumbnail: String?, val text: String?, val author: String?, val captions: Map<String, String> = emptyMap())
+        val thumbnail: String?, val text: String?, val author: String?, val captions: Map<String, String> = emptyMap(),
+        /** When it was posted, in seconds since 1970, and how often liked, replied to and reposted. */
+        val timestamp: Long? = null, val likeCount: Long? = null, val replyCount: Long? = null, val repostCount: Long? = null)
 
     /** The video of the post [atUri] in its thread's JSON - null where it has none of its own. */
     fun parseThread(json: String, atUri: String): Video? {
@@ -104,6 +106,11 @@ internal object BlueskyReader : SiteReader {
             text = post.optJSONObject("record")?.text("text"),
             author = author?.text("displayName") ?: author?.text("handle"),
             captions = captionsOf(record),
+            timestamp = post.optJSONObject("record")?.text("createdAt")
+                ?.let { runCatching { java.time.OffsetDateTime.parse(it).toEpochSecond() }.getOrNull() },
+            likeCount = post.opt("likeCount").wholeNumber(),
+            replyCount = post.opt("replyCount").wholeNumber(),
+            repostCount = post.opt("repostCount").wholeNumber(),
         )
     }
 
@@ -142,6 +149,10 @@ internal object BlueskyReader : SiteReader {
                 // The file as uploaded: what it is encoded in is not said.
                 formats = listOf(VideoFormat("source", blobUrl(video.cid), video.width, video.height, "unknown", "unknown", extension, sizeBytes = video.size)),
                 captions = video.captions.map { (language, cid) -> CaptionFile(language, blobUrl(cid), isAutomatic = false, extension = "vtt") },
+                timestamp = video.timestamp,
+                likeCount = video.likeCount,
+                commentCount = video.replyCount,
+                repostCount = video.repostCount,
             ),
         )
     }

@@ -33,6 +33,22 @@ class DownloadWorkspaces @Inject constructor(@ApplicationContext private val con
     fun progressOf(id: Long): Pair<Long?, Long?>? =
         File(File(root, id.toString()), PROGRESS).takeIf(File::isFile)?.readText()?.split(' ')?.let { it[0].toLongOrNull() to it.getOrNull(1)?.toLongOrNull() }
 
+    /**
+     * The parts [id] is fetched into, as it is played while it downloads - read back from its folder, for one paused before the
+     * app last stopped: the file fetched directly, or each stream yt-dlp fetches - whole, or growing still in its `.part` - in
+     * the order it fetched them. None for one not begun.
+     */
+    fun partsOf(id: Long): List<DownloadEvent.Part> {
+        val folder = File(root, id.toString())
+        File(folder, DirectPartName).takeIf(File::isFile)?.let { return listOf(DownloadEvent.Part(it, it)) }
+        return folder.listFiles().orEmpty()
+            .map { if (it.name.endsWith(".part")) File(it.path.removeSuffix(".part")) else it }
+            .filter { it.isStream }
+            .distinct()
+            .sortedBy { (File(it.path + ".part").takeIf(File::exists) ?: it).lastModified() }
+            .map { DownloadEvent.Part(File(it.path + ".part"), it) }
+    }
+
     /** Deletes the folders of [ids], with all they hold. */
     fun discard(ids: Collection<Long>) = ids.forEach { File(root, it.toString()).deleteRecursively() }
 
